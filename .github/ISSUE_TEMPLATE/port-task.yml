@@ -1,0 +1,20 @@
+name: Port task
+description: One agent-sized porting task (≈ one libyang file or function group, ≤ ~500 Go lines)
+title: "port: <libyang file / functions>"
+labels: [port]
+body:
+  - type: input
+    id: source
+    attributes: { label: libyang source (v5.8.6), placeholder: "src/xpath.c: moveto_* functions" }
+    validations: { required: true }
+  - type: input
+    id: target
+    attributes: { label: Go package / files, placeholder: internal/xpath }
+    validations: { required: true }
+  - type: textarea
+    id: acceptance
+    attributes: { label: Acceptance, description: "Fixtures / oracle cases that must agree; design notes to follow" }
+    validations: { required: true }
+  - type: dropdown
+    id: model
+    attributes: { label: Suggested worker, options: [lead (Opus), porter (Sonnet), codex sol, codex luna] }

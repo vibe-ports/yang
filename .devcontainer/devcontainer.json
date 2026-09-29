@@ -1,0 +1,13 @@
+{
+  "name": "yang",
+  "build": { "dockerfile": "../Dockerfile", "context": "..", "target": "dev" },
+  "workspaceFolder": "/workspaces/yang",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/yang,type=bind",
+  "remoteUser": "dev",
+  "mounts": [
+    "source=yang-gomod,target=/go/pkg/mod,type=volume",
+    "source=yang-gocache,target=/home/dev/.cache,type=volume"
+  ],
+  "postCreateCommand": "go mod download",
+  "customizations": { "vscode": { "extensions": ["golang.go"] } }
+}
