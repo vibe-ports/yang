@@ -89,6 +89,9 @@ func candidates(c tc, r *rand.Rand) []string {
 
 func TestOracle(t *testing.T) {
 	if _, err := os.Stat(yanglint()); err != nil {
+		if os.Getenv("YANG_ORACLE_REQUIRED") != "" {
+			t.Fatal("yanglint not found:", err)
+		}
 		t.Skip("yanglint not found:", err)
 	}
 	type diff struct{ name, pattern, input, ours, theirs string }
@@ -178,6 +181,16 @@ func TestOracle(t *testing.T) {
 	for _, d := range diffs {
 		t.Logf("DIFF %-24s %-40q input=%-12q xsdre=%s libyang=%s", d.name, d.pattern, d.input, d.ours, firstLine(d.theirs))
 	}
+	// Every disagreement must be a registered libyang deviation (conformance/deviations.md).
+	unexplained := map[string]bool{}
+	for _, d := range diffs {
+		if knownDeviation(d.name, d.pattern) == "" {
+			unexplained[d.pattern] = true
+		}
+	}
+	for p := range unexplained {
+		t.Errorf("unregistered disagreement with libyang for pattern %q: fix xsdre or add it to knownDeviations with a D-id", p)
+	}
 	t.Logf("schema verdicts: %d/%d agree", schemaAgre, schemaTotal)
 	t.Logf("match verdicts:  %d/%d agree (%d disagree)", agree, total, total-agree)
 	t.Logf("  of which RFC 7950/6991/9911 patterns: %d/%d agree", ietfAgree, ietfTotal)
@@ -191,3 +204,49 @@ func notXMLChar(r rune) bool {
 }
 
 func firstLine(s string) string { l, _, _ := strings.Cut(s, "\n"); return l }
+
+// knownDeviation returns the conformance/deviations.md id that explains a disagreement between
+// xsdre and libyang on this pattern, or "" if none does. Kept by pattern (not by input) so that a
+// new, unrelated disagreement on a listed pattern still needs review when its class changes.
+func knownDeviation(name, pattern string) string {
+	if name == "unsupported" {
+		return "U-0001"
+	}
+	if id, ok := knownDeviations[pattern]; ok {
+		return id
+	}
+	if name == "bad" {
+		return "D-0008" // invalid XSD that PCRE accepts
+	}
+	return ""
+}
+
+var knownDeviations = map[string]string{
+	// D-0002 class subtraction
+	"[\\p{IsLatin-1Supplement}-[\\p{Ll}]]": "D-0002",
+	"[\\w-[\\d]]+":                         "D-0002",
+	"[^a-z-[0-9]]":                         "D-0002",
+	"[a-z-[aeiou-[e]]]+":                   "D-0002",
+	"[a-z-[aeiou]]+":                       "D-0002",
+	"a[a-[a]]?":                            "D-0002",
+	// D-0003 Perl \w \s \d
+	"[^\\d\\s]": "D-0003",
+	"\\S":       "D-0003",
+	"\\s+":      "D-0003",
+	"\\w":       "D-0003",
+	"\\W":       "D-0003",
+	// D-0004 '.' matches \r
+	".": "D-0004",
+	// D-0005 \C, \i/\c/\I, \P{IsX}, non-BMP blocks
+	"\\C":                                    "D-0005",
+	"\\I":                                    "D-0005",
+	"\\i\\c*":                                "D-0005",
+	"\\P{IsBasicLatin}":                      "D-0005",
+	"\\p{IsMathematicalAlphanumericSymbols}": "D-0005",
+	"\\p{IsPrivateUse}":                      "D-0005",
+	"a\\p{IsHighSurrogates}?":                "D-0005",
+	// D-0006 block names matched by prefix
+	"\\p{IsGreekExtended}": "D-0006",
+	// D-0007 escaped ^ never matches
+	"\\n\\r\\t\\\\\\|\\.\\?\\*\\+\\(\\)\\{\\}\\-\\[\\]\\^": "D-0007",
+}

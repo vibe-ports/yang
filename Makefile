@@ -1,9 +1,9 @@
 # All targets are meant to run inside the dev container (./dev make <target>).
 FUZZTIME ?= 60s
 
-.PHONY: ci fmt-check vet lint nocgo test test-386 vuln secrets sensitive fuzz oracle test-go-min oracle-check oracle-golden
+.PHONY: ci test-oracle fmt-check vet lint nocgo test test-386 vuln secrets sensitive fuzz oracle test-go-min oracle-check oracle-golden
 
-ci: fmt-check vet lint nocgo test test-386 test-go-min vuln secrets sensitive oracle-check
+ci: fmt-check vet lint nocgo test test-386 test-go-min test-oracle vuln secrets sensitive oracle-check
 
 fmt-check:
 	@out=$$(gofmt -l .); [ -z "$$out" ] || { echo "gofmt needed:"; echo "$$out"; exit 1; }
@@ -33,6 +33,10 @@ test-386:
 GO_MIN ?= go1.26.8
 test-go-min:
 	GOTOOLCHAIN=$(GO_MIN) go test ./...
+
+# Differential tests against the pinned libyang (build tag `oracle`); must not skip in CI.
+test-oracle:
+	YANG_ORACLE_REQUIRED=1 go test -tags oracle ./...
 
 vuln:
 	govulncheck ./...
