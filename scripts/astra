@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Independent review by codex (default gpt-6-astra) with structured JSON output.
+#   scripts/astra review [BASE]      review BASE...HEAD (default origin/main)
+#   scripts/astra design FILE...     critique a design note / task plan before implementation
+# Env: ASTRA_MODEL (gpt-6-astra), ASTRA_EFFORT (high), ASTRA_PR (PR number → post as comment).
+# Exit 1 if any high finding or verdict "changes" — usable as a gate.
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+cmd=${1:?usage: scripts/astra review [BASE] | design FILE...}; shift
+model=${ASTRA_MODEL:-gpt-6-astra}
+out=$(mktemp); trap 'rm -f "$out"' EXIT
+sha=$(git rev-parse --short HEAD)
+
+rules="Follow AGENTS.md (goals: no cgo, libyang v5.8.6 compatibility, auditability). Check behaviour
+against libyang v5.8.6 source where relevant (clone of tag v5.8.6 in .cache/libyang if present).
+Report only real problems; no style nits unless they hide a bug. Be terse."
+case $cmd in
+  review)
+    base=${1:-origin/main}
+    prompt="Review the change set \`git diff $base...HEAD\` (commit $sha) of this repo as an adversarial
+reviewer. $rules Focus: correctness vs libyang/RFC, missing oracle fixtures for changed behaviour,
+provenance headers + docs/port-map.md rows, API surface, error handling, concurrency, private data." ;;
+  design)
+    [[ $# -gt 0 ]] || { echo "design needs files" >&2; exit 2; }
+    prompt="Critique this design/task plan before implementation: $*. $rules Focus: wrong RFC/libyang
+assumptions, missing cases, simpler alternatives, what fixtures would prove it." ;;
+  *) echo "unknown command $cmd" >&2; exit 2 ;;
+esac
+
+codex exec -m "$model" -c model_reasoning_effort="${ASTRA_EFFORT:-high}" -s read-only --ephemeral \
+  --output-schema scripts/review-schema.json -o "$out" "$prompt" </dev/null >/dev/null
+
+report=$(python3 - "$out" "$model" "$sha" "$cmd" <<'PY'
+import json, sys
+r = json.load(open(sys.argv[1])); model, sha, cmd = sys.argv[2:5]
+print(f"### {model} {cmd} of `{sha}`: **{r['verdict']}**\n\n{r['summary']}\n")
+for f in r["findings"]:
+    print(f"- **{f['severity']}** `{f['file']}:{f['line']}` — {f['problem']} → {f['fix']}")
+bad = r["verdict"] != "approve" or any(f["severity"] == "high" for f in r["findings"])
+sys.exit(1 if bad else 0)
+PY
+) && rc=0 || rc=$?
+echo "$report"
+[[ -n ${ASTRA_PR:-} ]] && gh pr comment "$ASTRA_PR" --body "$report" >/dev/null
+exit $rc

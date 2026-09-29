@@ -44,6 +44,10 @@ Plan and rationale: `PLAN.md`. Decisions: `docs/decisions/`. Designs: `docs/desi
 - Do not hand-edit files under `conformance/corpus/**/golden/`.
 - Do not edit `LICENSE` or provenance headers of existing files.
 
+## Workflow
+Claude/porter implement, codex writes independent fixtures in parallel, astra reviews every PR
+(`scripts/astra review`), the oracle arbitrates. Details: `docs/agent-workflow.md`.
+
 ## Git
 - Work on a branch, open a PR to `main`. Small PRs (≈ one C file or one feature).
 - Merge gate (the repo has no branch protection, so this is a rule, not a setting): CI green on the

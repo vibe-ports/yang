@@ -34,11 +34,11 @@ scan() {
 
 case $mode in
   --staged | --all)
-    if [[ $mode == --staged ]]; then files=$(git diff --cached --name-only --diff-filter=ACMR); else files=$(git ls-files); fi
-    hits=$(for f in $files; do
-      [[ -f $f ]] || continue
-      if [[ $mode == --staged ]]; then git show ":$f"; else cat "$f"; fi 2>/dev/null |
-        LC_ALL=C perl -ne 'print "'"$f"':$.\t$_"'
+    # NUL-delimited names; the file name reaches perl as data (env), never as code.
+    if [[ $mode == --staged ]]; then list=(git diff --cached --name-only -z --diff-filter=ACMR); else list=(git ls-files -z); fi
+    hits=$("${list[@]}" | while IFS= read -r -d '' f; do
+      if [[ $mode == --staged ]]; then git show ":$f" 2>/dev/null; else [[ -f $f ]] && cat -- "$f"; fi |
+        CS_FILE=$f LC_ALL=C perl -ne 'print "$ENV{CS_FILE}:$.\t$_"'
     done | scan | sort -u) ;;
   --history)
     # Every line ever added in any commit.

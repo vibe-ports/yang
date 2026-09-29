@@ -64,3 +64,7 @@ oracle-check: oracle
 
 oracle-golden: oracle
 	python3 conformance/oracle/run_corpus.py
+
+# libyang v5.8.6 sources for porting and reviews (host side, gitignored).
+libyang-src:
+	[ -d .cache/libyang ] || git clone -q --depth 1 --branch v5.8.6 https://github.com/CESNET/libyang .cache/libyang

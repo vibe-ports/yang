@@ -1,0 +1,8 @@
+{"type":"object","additionalProperties":false,"required":["verdict","summary","findings"],
+ "properties":{
+  "verdict":{"type":"string","enum":["approve","changes"]},
+  "summary":{"type":"string"},
+  "findings":{"type":"array","items":{"type":"object","additionalProperties":false,
+   "required":["severity","file","line","problem","fix"],
+   "properties":{"severity":{"type":"string","enum":["high","med","low"]},"file":{"type":"string"},
+    "line":{"type":"integer"},"problem":{"type":"string"},"fix":{"type":"string"}}}}}}
