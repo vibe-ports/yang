@@ -5,7 +5,7 @@
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/yang,type=bind",
   "remoteUser": "dev",
   "mounts": [
-    "source=yang-gomod,target=/go/pkg/mod,type=volume",
+    "source=yang-gomod,target=/home/dev/go/pkg/mod,type=volume",
     "source=yang-gocache,target=/home/dev/.cache,type=volume"
   ],
   "postCreateCommand": "go mod download",

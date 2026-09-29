@@ -13,8 +13,12 @@ jobs:
   ci:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    env:
+      SENSITIVE_PATTERNS: ${{ secrets.SENSITIVE_PATTERNS }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
       - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
@@ -27,4 +31,6 @@ jobs:
           push: filter
           refFilterForPush: refs/heads/main
           eventFilterForPush: push
+          env: |
+            SENSITIVE_PATTERNS
           runCmd: make ci

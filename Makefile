@@ -1,9 +1,9 @@
 # All targets are meant to run inside the dev container (./dev make <target>).
 FUZZTIME ?= 60s
 
-.PHONY: ci fmt-check vet lint nocgo test test-386 vuln secrets fuzz oracle oracle-check oracle-golden
+.PHONY: ci fmt-check vet lint nocgo test test-386 vuln secrets sensitive fuzz oracle test-go-min oracle-check oracle-golden
 
-ci: fmt-check vet lint nocgo test test-386 vuln secrets oracle-check
+ci: fmt-check vet lint nocgo test test-386 test-go-min vuln secrets sensitive oracle-check
 
 fmt-check:
 	@out=$$(gofmt -l .); [ -z "$$out" ] || { echo "gofmt needed:"; echo "$$out"; exit 1; }
@@ -17,7 +17,8 @@ lint:
 
 # Production code must never use cgo (goal 1). The oracle lives outside this module.
 nocgo:
-	@pk=$$(go list -f '{{if .CgoFiles}}{{.ImportPath}}{{end}}' ./...); [ -z "$$pk" ] || { echo "cgo used in: $$pk"; exit 1; }
+	@f=$$(grep -rl --include='*.go' --exclude-dir=conformance --exclude-dir=spike --exclude-dir=.git 'import "C"' . || true); [ -z "$$f" ] || { echo "import \"C\" in: $$f"; exit 1; }
+	@pk=$$(CGO_ENABLED=1 go list -deps -f '{{if and (not .Standard) .CgoFiles}}{{.ImportPath}}{{end}}' ./...); [ -z "$$pk" ] || { echo "cgo in dependency closure: $$pk"; exit 1; }
 	CGO_ENABLED=0 go build ./...
 
 test:
@@ -27,12 +28,23 @@ test:
 test-386:
 	GOARCH=386 CGO_ENABLED=0 go test ./...
 
+# Oldest supported Go (go.mod `go` line) — the directive alone doesn't stop newer stdlib API use.
+GO_MIN ?= go1.26.8
+test-go-min:
+	GOTOOLCHAIN=$(GO_MIN) go test ./...
+
 vuln:
 	govulncheck ./...
 
 # Secret scan over the whole git history.
 secrets:
 	gitleaks git --no-banner --redact .
+
+# Private details (infra, personal, employer, local paths). Personal patterns come from the
+# SENSITIVE_PATTERNS env (CI secret) or ~/.config/vibe-ports/denylist, never from the repo.
+sensitive:
+	scripts/check-sensitive --all
+	scripts/check-sensitive --history
 
 # Runs every Fuzz target for FUZZTIME each.
 fuzz:

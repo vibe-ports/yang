@@ -2,7 +2,7 @@
 # One image for local dev (dev container), CI and the libyang oracle.
 #   ./dev make ci              everything CI runs
 #   ./dev make oracle-check    lyoracle vs committed goldens
-ARG GO_IMAGE=golang:1.27.1-trixie
+ARG GO_IMAGE=golang:1.27.1-trixie@sha256:433790e515d27dc6003e847e644cc0af956985cf315c1c58a3b73ee2dd305183
 ARG DEBIAN_IMAGE=debian:trixie-slim@sha256:a99cfc517144bc59b1978475ec53b46ecabec7e43635402ee5b77cc54cd1b20a
 
 FROM ${DEBIAN_IMAGE} AS libyang
@@ -45,14 +45,17 @@ COPY --from=libyang /opt/libyang /opt/libyang
 ENV PATH=/opt/libyang/bin:${PATH} \
     LD_LIBRARY_PATH=/opt/libyang/lib \
     PKG_CONFIG_PATH=/opt/libyang/lib/pkgconfig \
-    GOTOOLCHAIN=local
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh \
+    GOTOOLCHAIN=local \
+    GOPATH=/home/dev/go \
+    GOCACHE=/home/dev/.cache/go-build
+RUN curl -sSfL "https://raw.githubusercontent.com/golangci/golangci-lint/${GOLANGCI_LINT_VERSION}/install.sh" \
       | sh -s -- -b /usr/local/bin "${GOLANGCI_LINT_VERSION}" \
     && GOBIN=/usr/local/bin go install "golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION}" \
     && GOBIN=/usr/local/bin go install "github.com/zricethezav/gitleaks/v8@${GITLEAKS_VERSION}"
-# Non-root user matching the usual host uid so bind-mounted files keep sane ownership.
+# Non-root user; all Go caches live under its home so devcontainer UID remapping
+# (which chowns the home dir) keeps them writable.
 RUN useradd -m -u 1000 -s /bin/bash dev && echo 'dev ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/dev \
-    && mkdir -p /go/pkg /home/dev/.cache && chown -R dev:dev /go /home/dev
+    && mkdir -p /home/dev/go/pkg/mod /home/dev/.cache && chown -R dev:dev /home/dev
 USER dev
 # Bind-mounted checkout is owned by the host uid; let git (vcs stamping, gitleaks) read it.
 RUN git config --global --add safe.directory '*'

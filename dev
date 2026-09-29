@@ -4,6 +4,9 @@ set -euo pipefail
 cd "$(dirname "$0")"
 docker build -q --target dev -t yang-dev . >/dev/null
 tty=(); [ -t 0 ] && tty=(-it)
+# Personal sensitive-data patterns stay outside the repo; hand them to the container as env.
+dl=${SENSITIVE_DENYLIST:-$HOME/.config/vibe-ports/denylist}
+[ -r "$dl" ] && export SENSITIVE_PATTERNS="$(cat "$dl")"
 exec docker run --rm "${tty[@]}" \
-  -v "$PWD":/workspaces/yang -v yang-gomod:/go/pkg/mod -v yang-gocache:/home/dev/.cache \
-  -e FUZZTIME yang-dev "${@:-bash}"
+  -v "$PWD":/workspaces/yang -v yang-gomod:/home/dev/go/pkg/mod -v yang-gocache:/home/dev/.cache \
+  -e FUZZTIME -e SENSITIVE_PATTERNS yang-dev "${@:-bash}"
