@@ -1,10 +1,23 @@
-# yangwright — plan
+# yang — plan
 
 A native Go (no cgo) implementation of the YANG runtime that libyang provides: schema parsing and
 compilation, a generic data tree, full RFC 7950 validation, RFC 7951 JSON / XML encoding, diff.
 Behaviour is ported from libyang (CESNET, BSD-3-Clause); API is idiomatic Go, not a transliteration.
 
 Status: v1 plan rev 1 (after astra review), 2026-09-30. Reference: libyang v5.8.6 (tag, 2026-06-22).
+
+## Goals (in priority order)
+
+1. **Remove cgo.** Replace cgo bindings to libyang in Go projects: no C toolchain, no libyang /
+   libpcre2 shared libraries, static + cross-compiled binaries. Production code never imports cgo;
+   the only C in the repo is the test-only oracle helper.
+2. **libyang compatibility.** Same inputs → same accept/reject, verdict, diagnostic code + data path,
+   JSON/XML/diff output as libyang v5.8.6. Measured, not claimed (§5).
+3. **Auditability of an AI-assisted port.** Every ported file carries
+   `// Ported from libyang v5.8.6 src/<file>.c (BSD-3, © CESNET)`; `docs/port-map.md` maps libyang
+   functions → Go functions; every divergence from libyang is in `conformance/deviations.md` with an
+   RFC reason; the oracle container and corpus manifest let anyone re-run the comparison; CI
+   publishes the compatibility report per area (schema, types, XPath, validation, codecs, diff).
 
 ## 0. Why write it (survey summary, 2026-09-30)
 
@@ -71,7 +84,7 @@ In:
   (`nc:operation`), YANG Patch (RFC 8072) is out of v1, and libyang-style diff trees
   (`yang:operation`, may violate schema constraints by design). v1: diff + apply-diff + merge with a
   documented input contract; NETCONF edit semantics as a separate `ApplyEdit`.
-- `cmd/yangwright`: minimal yanglint-like CLI (used by the conformance harness).
+- `cmd/yanglint-go`: minimal yanglint-like CLI (used by the conformance harness).
 
 Out of v1 (explicit): YIN input/output, LYB binary format, schema-mount (RFC 8528), tree printer
 (RFC 8340), YANG printer beyond debugging, extension plugins beyond `yang-data`/`structure`
@@ -104,14 +117,14 @@ NETCONF/RESTCONF transport, YANG Patch, public plugin interfaces (§2).
 ## 3. Package layout
 
 ```
-github.com/yangwright/yang   (module root; package yang — Context, Module, public schema API)
+github.com/vibe-ports/yang   (module root; package yang — Context, Module, public schema API)
   internal/parser/     YANG lexer + parser → parsed AST (lysp_*)
   internal/compile/    AST → compiled schema (lysc_*): groupings, augment, deviation, features
   internal/types/      built-in + ietf types
   internal/xsdre/      XSD regex → Go RE2 translator (XSD regexes are regular, no backrefs)
   internal/xpath/      XPath 1.0 + YANG functions, evaluated over the data tree with §2a.3 context
   data/                data tree, paths, defaults, validation, JSON/XML codecs, diff/merge
-  cmd/yangwright/      CLI
+  cmd/yanglint-go/     CLI
   conformance/         oracle harness + corpus manifests
   conformance/oracle/  test-only C helper linked to libyang (NOT imported by Go code; production stays cgo-free)
 ```
@@ -171,7 +184,7 @@ Vertical slice first, breadth after: architecture-breaking feedback (value model
   them in docs of binary distributions, no CESNET/contributor names for endorsement.
 - BSD-3 does not force our license; we **choose BSD-3-Clause** for symmetry with upstream and
   simplest downstream story. `LICENSE` = our copyright + the CESNET notice for ported portions;
-  files translated from a specific libyang file carry `// Ported from libyang src/<file>.c (BSD-3, CESNET)`. README says "port of libyang" factually, never "official"/"endorsed";
+  files translated from a specific libyang file carry the header from Goal 3. README says "port of libyang" factually, never "official"/"endorsed";
   names avoid "libyang".
 - Test corpora keep their own licenses; redistribution rights verified **per file/set** before
   commit (IETF Trust TLP / Simplified BSD, Apache-2.0 for OpenConfig, IEEE per-file terms). No GPL/AGPL code (e.g. ze-software/ze) is read or copied.
