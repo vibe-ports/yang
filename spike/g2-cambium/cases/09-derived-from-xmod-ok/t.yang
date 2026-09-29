@@ -1,0 +1,4 @@
+module t { yang-version 1.1; namespace "urn:t"; prefix t; import a { prefix a; }
+  leaf kind { type identityref { base a:base; } }
+  leaf x { type string; must "derived-from(../kind, 'a:mid')"; }
+}

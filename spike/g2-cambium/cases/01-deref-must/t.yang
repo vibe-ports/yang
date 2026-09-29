@@ -1,0 +1,4 @@
+module t { yang-version 1.1; namespace "urn:t"; prefix t;
+  list ifc { key name; leaf name { type string; } leaf enabled { type boolean; } }
+  leaf ref { type leafref { path "/ifc/name"; } must "deref(.)/../enabled = 'true'"; }
+}

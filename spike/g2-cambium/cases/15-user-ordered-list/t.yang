@@ -1,0 +1,4 @@
+module t { yang-version 1.1; namespace "urn:t"; prefix t;
+  list l { key k; ordered-by user; leaf k { type string; } }
+  leaf-list s { type string; }
+}

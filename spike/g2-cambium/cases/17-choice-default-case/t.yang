@@ -1,0 +1,4 @@
+module t { yang-version 1.1; namespace "urn:t"; prefix t;
+  choice ch { default a; case a { leaf a1 { type string; default "x"; } } case b { leaf b1 { type string; } } }
+  leaf chk { type string; must "../a1 = 'x'"; }
+}

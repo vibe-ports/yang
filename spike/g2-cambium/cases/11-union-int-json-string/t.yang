@@ -1,0 +1,3 @@
+module t { yang-version 1.1; namespace "urn:t"; prefix t;
+  leaf u { type union { type int32; type boolean; } }
+}

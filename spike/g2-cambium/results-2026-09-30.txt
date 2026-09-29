@@ -1,0 +1,78 @@
+01-deref-must | yanglint=reject | cambium=accept
+  YL: libyang err : Must condition "deref(.)/../enabled = 'true'" not satisfied. (/t:ref) YANGLINT[E]: Failed to parse input data file "data.json". 
+  CT: OK {"t:ifc":[{"name":"e0","enabled":false}],"t:ref":"e0"} 
+02-when-nonpresence-explicit | yanglint=reject | cambium=reject
+  YL: libyang err : When condition "../flag = 'true'" not satisfied. (/t:c) YANGLINT[E]: Failed to parse input data file "data.json". 
+  CT: REJECT(validate): datatree: 1 validation violation(s): /c: when condition "../flag = 'true'" is not satisfied 
+03-when-autodelete-default | yanglint=accept | cambium=accept
+  YL: {   "t:flag": false } 
+  CT: OK {"t:flag":false} 
+04-must-sees-default-leaf | yanglint=accept | cambium=reject
+  YL:  
+  CT: REJECT(validate): datatree: 1 validation violation(s): /x: must condition "../mode = 'a'" is not satisfied 
+05-must-sees-np-container-default | yanglint=accept | cambium=reject
+  YL:  
+  CT: REJECT(validate): datatree: 1 validation violation(s): /x: must condition "../c/y = 'd'" is not satisfied 
+06-leafref-noreq-dangling | yanglint=accept | cambium=accept
+  YL:  
+  CT: OK {"t:ref":7} 
+07-leafref-noreq-badtype | yanglint=reject | cambium=reject
+  YL: libyang err : Value "300" is out of type uint8 min/max bounds. (/t:ref) (line 1) YANGLINT[E]: Failed to parse input data file "data.json". 
+  CT: REJECT(validate): datatree: 1 validation violation(s): /ref: 300 is outside the base type range [0, 255] 
+08-instance-id-missing | yanglint=reject | cambium=reject
+  YL: libyang err : Invalid instance-identifier "/t:e[k='b']" value - required instance not found. (/t:p) YANGLINT[E]: Failed to parse input data file "data.json". 
+  CT: REJECT(validate): datatree: 1 validation violation(s): /p: instance-identifier "/t:e[k='b']" references a non-existent instance 
+09-derived-from-xmod-ok | yanglint=accept | cambium=accept
+  YL:  
+  CT: OK {"t:kind":"b:leafy","t:x":"v"} 
+10-identityref-not-derived | yanglint=reject | cambium=reject
+  YL: libyang err : Invalid identityref "b:other" value - identity not derived from the base "a:base". (/t:kind) (line 1) YANGLINT[E]: Failed to parse input data file "data.json". 
+  CT: REJECT(validate): datatree: 1 validation violation(s): /kind: "b:other" is not an identity derived from the required base identity 
+11-union-int-json-string | yanglint=reject | cambium=reject
+  YL: libyang err : Invalid union value "5" - no matching subtype found:     ly2 integers: Invalid non-number-encoded int32 value "5".     ly2 boolean: Invalid non-boolean-encoded boolean value "5".  (/t:u) (line 1) YANGLINT[E
+  CT: REJECT(validate): datatree: 1 validation violation(s): /u: "5" matches no union member type 
+12-int64-json-number | yanglint=reject | cambium=reject
+  YL: libyang err : Invalid non-num64-encoded int64 value "5". (/t:big) (line 1) YANGLINT[E]: Failed to parse input data file "data.json". 
+  CT: REJECT(validate): datatree: 1 validation violation(s): /big: expected an integer JSON string 
+13-decimal64-excess-digits | yanglint=reject | cambium=reject
+  YL: libyang err : Value "1.234" of decimal64 type exceeds defined number (2) of fraction digits. (/t:d) (line 1) YANGLINT[E]: Failed to parse input data file "data.json". 
+  CT: REJECT(validate): datatree: 1 validation violation(s): /d: 1.234 has 3 fraction digits, more than fraction-digits 2 
+14-decimal64-fd18-overflow | yanglint=reject | cambium=reject
+  YL: libyang err : Invalid type decimal64 value "9223372036854775808". (/t:d) (line 1) YANGLINT[E]: Failed to parse input data file "data.json". 
+  CT: REJECT(validate): datatree: 1 validation violation(s): /d: 9.223372036854775808 is outside the decimal64 range for fraction-digits 18 
+15-user-ordered-list | yanglint=accept | cambium=accept
+  YL: {   "t:l": [     {       "k": "b"     },     {       "k": "a"     }   ],   "t:s": [     "a",     "z"   ] } 
+  CT: OK {"t:l":[{"k":"b"},{"k":"a"}],"t:s":["a","z"]} 
+16-keyless-state-list | yanglint=accept | cambium=accept
+  YL:  
+  CT: OK {"t:st":{"e":[{"v":"1"},{"v":"1"}]}} 
+17-choice-default-case | yanglint=accept | cambium=reject
+  YL:  
+  CT: REJECT(validate): datatree: 1 validation violation(s): /chk: must condition "../a1 = 'x'" is not satisfied 
+18-unique-nested | yanglint=reject | cambium=reject
+  YL: libyang err : Unique data leaf(s) "c/x" not satisfied in "/t:l[k='1']" and "/t:l[k='2']". (/t:l[k='2']) YANGLINT[E]: Failed to parse input data file "data.json". 
+  CT: REJECT(validate): datatree: 1 validation violation(s): /l[1]: unique constraint "c/x" is violated: same values as /l[0] 
+19-operational-must | yanglint=accept | cambium=reject
+  YL: libyang warn: Must condition ". > ../a" not satisfied. 
+  CT: REJECT(validate): datatree: 1 validation violation(s): /st/b: must condition ". > ../a" is not satisfied 
+20-rpc-output-mandatory | yanglint=reject | cambium=reject
+  YL: libyang err : Mandatory node "r" instance does not exist. (/t:op) YANGLINT[E]: Failed to validate input data file "data.json". 
+  CT: REJECT(parse): datatree: unknown member "t:op" (no matching schema node) 
+21-anydata-json | yanglint=accept | cambium=accept
+  YL:  
+  CT: OK {"t:blob":{"t:anything":{"n":[1,2]}}} 
+22-anydata-xml | yanglint=accept | cambium=reject
+  YL:  
+  CT: REJECT(parse): datatree: anydata/anyxml "blob" in XML input is not supported (the pure-Go XML reader cannot losslessly capture opaque content; use JSON_IETF or the libyang backend) 
+23-xsd-pattern-block | yanglint=reject | cambium=reject
+  YL: libyang err : Unsatisfied pattern - "café" does not match "\p{IsBasicLatin}+". (/t:n) (line 1) YANGLINT[E]: Failed to parse input data file "data.json". 
+  CT: REJECT(validate): datatree: 1 validation violation(s): /n: value does not match pattern "\\p{IsBasicLatin}+" 
+24-when-sees-default-toplevel | yanglint=reject | cambium=reject
+  YL: libyang err : When condition "../mode = 'a'" not satisfied. (/t:c) YANGLINT[E]: Failed to parse input data file "data.json". 
+  CT: REJECT(validate): datatree: 1 validation violation(s): /c: when condition "../mode = 'a'" is not satisfied 
+25-edit-when-false | yanglint=accept | cambium=reject
+  YL:  
+  CT: REJECT(validate): datatree: 1 validation violation(s): /c: when condition "../flag = 'true'" is not satisfied 
+26-when-sees-default-nested | yanglint=accept | cambium=reject
+  YL:  
+  CT: REJECT(validate): datatree: 1 validation violation(s): /top/c: when condition "../mode = 'a'" is not satisfied 
