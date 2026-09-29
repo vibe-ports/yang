@@ -18,8 +18,10 @@ bad = 0
 for fx in manifest["fixtures"]:
     req = dict(fx["request"], base_dir=fx["dir"])
     cmd = [os.path.join(here, "lyoracle")]
-    out = subprocess.run(cmd, input=json.dumps(req), capture_output=True, text=True, cwd=corpus)
-    resp = json.loads(out.stdout)
+    out = subprocess.run(cmd, input=json.dumps(req), capture_output=True, text=True, cwd=corpus, timeout=60)
+    resp = json.loads(out.stdout) if out.stdout else {}
+    if out.returncode != 0 or "verdict" not in resp or resp.get("verdict") == "request-error":
+        sys.exit(f"harness failure on {fx['id']}: rc={out.returncode} {out.stderr.strip()[:300]} {out.stdout[:300]}")
     text = json.dumps(resp, indent=2, sort_keys=True) + "\n"
     path = os.path.join(corpus, fx["dir"], fx["golden"])
     if check:

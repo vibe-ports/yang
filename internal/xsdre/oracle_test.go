@@ -4,7 +4,8 @@
 //
 //	go test -tags oracle -run Oracle -v ./internal/xsdre/
 //
-// YANGLINT overrides the binary (default /opt/homebrew/bin/yanglint).
+// Authoritative run: ./dev go test -tags oracle ./internal/xsdre/ (pinned libyang + pcre2).
+// YANGLINT overrides the binary (default: yanglint from PATH).
 // Disagreements are reported, not failed: libyang rewrites XSD into PCRE2
 // syntax textually, so it inherits Perl semantics for several constructs
 // (see docs/decisions/0003-xsd-regex.md). The test fails only if the harness
@@ -32,7 +33,10 @@ func yanglint() string {
 	if p := os.Getenv("YANGLINT"); p != "" {
 		return p
 	}
-	return "/opt/homebrew/bin/yanglint"
+	if p, err := exec.LookPath("yanglint"); err == nil {
+		return p
+	}
+	return "yanglint"
 }
 
 func yangQuote(s string) string { // single-quoted YANG string, "'" via concatenation

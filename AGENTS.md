@@ -37,12 +37,18 @@ Plan and rationale: `PLAN.md`. Decisions: `docs/decisions/`. Designs: `docs/desi
 - Public sources only: libyang, RFCs, public YANG models, public Go code with compatible license.
   Never add code, models, data or knowledge from any employer. Never name an employer anywhere.
 - No secrets in the repo. `make secrets` (gitleaks) runs in CI.
+- **No private details** — this repo will be public: no host names, hardware, IPs, network layout,
+  local paths, personal e-mails, account names beyond the commit identity, or tooling of the
+  maintainer's own infrastructure. `make sensitive` + the pre-commit hook check it
+  (`git config core.hooksPath .githooks` once per clone). See the `sensitive-check` skill.
 - Do not hand-edit files under `conformance/corpus/**/golden/`.
 - Do not edit `LICENSE` or provenance headers of existing files.
 
 ## Git
-- Work on a branch, open a PR to `main`; the lead reviews and merges. Small PRs (≈ one C file or
-  one feature).
+- Work on a branch, open a PR to `main`. Small PRs (≈ one C file or one feature).
+- Merge gate (the repo has no branch protection, so this is a rule, not a setting): CI green on the
+  PR's **exact head SHA** + a `port-reviewer` (or codex astra) review of that SHA, linked in the PR.
+  Only the lead merges; worker agents never push to `main` or hold merge rights.
 - Conventional-commit subjects (`feat(xpath): …`, `fix:`, `docs:`, `test:`, `build:`).
 - Commit with `TZ=UTC` (`git ci` alias) as the configured author. **No AI trailers**
   (`Co-Authored-By`, `Assisted-by`) — AI assistance is disclosed once, in README.

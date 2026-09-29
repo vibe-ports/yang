@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Fails if the repo would expose private details: infrastructure, personal data, employer names,
+# local paths. Generic rules live here; personal/infra names live OUTSIDE the repo:
+#   - local file  ${SENSITIVE_DENYLIST:-$HOME/.config/vibe-ports/denylist}  (one Perl regex per line)
+#   - CI secret   SENSITIVE_PATTERNS                                          (same format)
+# Usage: scripts/check-sensitive [--staged | --all | --history]   (default --staged)
+# Matching is case-insensitive. A line containing "sensitive:allow" is ignored.
+# Perl, not grep: git/grep regex dialects differ between macOS and Linux.
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+mode=${1:---staged}
+
+# Generic rules (safe to publish). /home/dev is the container user and is allowed.
+generic=$(printf '%s\n' \
+  '/Users/[\w.-]+' \
+  '/home/(?!dev\b)[a-z][\w-]*' \
+  '/private/tmp/|/var/folders/') # sensitive:allow (rule definitions)
+
+denylist=${SENSITIVE_DENYLIST:-$HOME/.config/vibe-ports/denylist}
+personal=$( { [[ -r $denylist ]] && cat "$denylist"; printf '%s\n' "${SENSITIVE_PATTERNS:-}"; } || true)
+[[ -n ${personal//[[:space:]]/} ]] || echo "check-sensitive: no personal denylist ($denylist / SENSITIVE_PATTERNS) - generic rules only" >&2
+
+export CS_PATTERNS="$generic
+$personal"
+
+# Reads "<label>\t<text>" lines, prints "<label>" for each match (the matched text is not printed).
+scan() {
+  perl -ne '
+    BEGIN { @p = map { qr/$_/i } grep { length && !/^\s*#/ } split /\n/, $ENV{CS_PATTERNS} }
+    chomp; my ($where, $t) = split /\t/, $_, 2; next unless defined $t;
+    next if $t =~ /sensitive:allow/;
+    for my $re (@p) { if ($t =~ $re) { print "$where\n"; last } }'
+}
+
+case $mode in
+  --staged | --all)
+    if [[ $mode == --staged ]]; then files=$(git diff --cached --name-only --diff-filter=ACMR); else files=$(git ls-files); fi
+    hits=$(for f in $files; do
+      [[ -f $f ]] || continue
+      if [[ $mode == --staged ]]; then git show ":$f"; else cat "$f"; fi 2>/dev/null |
+        LC_ALL=C perl -ne 'print "'"$f"':$.\t$_"'
+    done | scan | sort -u) ;;
+  --history)
+    # Every line ever added in any commit.
+    hits=$(git log --all -p --no-color --format='commit %h' | LC_ALL=C perl -ne '
+      if (/^commit (\w+)/) { $c = $1; next } if (/^\+\+\+ b\/(.*)/) { $f = $1; next }
+      print "$c:$f\t$1\n" if /^\+(?!\+\+)(.*)/' | scan | sort -u) ;;
+  *) echo "usage: $0 [--staged|--all|--history]" >&2; exit 2 ;;
+esac
+
+if [[ -n $hits ]]; then
+  echo "check-sensitive: possible private data at (matched text not repeated):" >&2
+  echo "$hits" >&2
+  echo "Remove or generalise it (history: rewrite before publishing), or mark a false positive with 'sensitive:allow'." >&2
+  exit 1
+fi

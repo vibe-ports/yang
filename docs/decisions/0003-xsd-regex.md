@@ -101,8 +101,9 @@ none is an xsdre bug. They fall into:
 | Declared limit | `a{1001}`, `a{0,1001}`, `(a{100}){100}` | ErrUnsupported | accepted |
 
 Consequence for Goal 2: on the IETF type library (the patterns real modules use) we agree 100 %.
-The divergences are libyang deviations from XSD/RFC 7950 §9.4.5; each must be recorded in
-`conformance/deviations.md` when that file is created. The riskiest for real models are the
+The divergences are libyang deviations from XSD/RFC 7950 §9.4.5; they are recorded in
+`conformance/deviations.md` as D-0002…D-0008 (our RE2 limits as U-0001). Rerun on the pinned
+dev-container oracle (pcre2 10.46) gives identical numbers. The riskiest for real models are the
 strict rejections (`\$`, `{` unescaped, `a{,n}`): a public model that libyang loads could fail in
 ours. Before M2, scan the public-model corpus with `Compile` and decide per construct whether a
 compatibility mode is warranted (it would be opt-in, never default).

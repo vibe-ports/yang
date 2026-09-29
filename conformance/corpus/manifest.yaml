@@ -83,13 +83,13 @@ fixtures:
   # --- one fixture per remaining oracle op, same module ---
   - id: basic/valid-all-tagged
     dir: basic
-    source: *own
+    source: {url: "hand-written (this repo) + ietf/ (see ietf/SOURCE.md)", commit: null, license: BSD-3-Clause}
     rfc: ["RFC7950#7.6.1", "RFC6243#3.4"]
     expected_from: oracle
     request:
       op: data
-      searchdirs: [schemas]
-      modules: [{name: basic, features: [jumbo]}]
+      searchdirs: [schemas, ../ietf]
+      modules: [{name: basic, features: [jumbo]}, {name: ietf-netconf-with-defaults}]
       format: json
       data_type: config
       data_file: data/valid.json

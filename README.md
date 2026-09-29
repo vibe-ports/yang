@@ -22,7 +22,8 @@ RFC 7950 validation, RFC 7951 JSON and XML encoding, diff — built as an
 
 ## Status
 
-Planning. See [PLAN.md](PLAN.md).
+M0 (foundations): plan, design notes, libyang oracle, XSD-regex compiler. See [PLAN.md](PLAN.md)
+and how this compares with other Go YANG projects: [docs/comparison.md](docs/comparison.md).
 
 ## License
 

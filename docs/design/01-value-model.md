@@ -44,11 +44,13 @@ type UnionValue struct {
 - Store is `func (t *Type) Store(lex string, f Format, h Hints, pc PrefixCtx, ctx *schema.Node) (Value, *Diagnostic)`;
   validation-time resolution (leafref require-instance, instance-identifier existence, union
   re-resolution) is a separate pass with access to the data tree.
-- Comparison = canonical string compare except union (compare member type + canonical) —
-  same as libyang `lyplg_type_compare`.
+- Comparison: per type, mirroring libyang's per-plugin `compare`/`sort` callbacks (not a generic
+  canonical-string compare); union delegates to the selected member. Store / equality / order /
+  print are defined per type in M1 and fixture-tested.
 
 ## Open questions (decide in M1 slice)
 - Interning of canonical strings: only if profiling shows need.
 - `ietf-yang-types`/`ietf-inet-types` special types (ip-address canonical zone/compression,
-  date-and-time) as dedicated kinds vs string with canonicalizer — libyang uses plugins; start with
-  canonicalizer funcs keyed by (module, typedef).
+  date-and-time) as dedicated kinds vs string with canonicalizer — libyang uses plugins; key handlers
+  by (module, **revision**, typedef), because semantics changed between revisions (e.g. RFC 6991 →
+  RFC 9911 date-and-time).

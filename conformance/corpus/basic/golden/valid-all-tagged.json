@@ -8,6 +8,12 @@
       "diagnostics": [],
       "name": "basic",
       "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ietf-netconf-with-defaults",
+      "revision": "2011-06-01"
     }
   ],
   "op": "data",
@@ -16,8 +22,8 @@
     "name": "LY_SUCCESS"
   },
   "tree": {
-    "json": "{\n  \"basic:sys\": {\n    \"mtu\": 9000,\n    \"iface\": [\n      {\n        \"name\": \"eth0\",\n        \"type\": \"eth\"\n      },\n      {\n        \"name\": \"lo\",\n        \"type\": \"loopback\"\n      }\n    ],\n    \"primary\": \"eth0\",\n    \"jumbo-frames\": true,\n    \"min\": 1,\n    \"max\": 5,\n    \"user\": {\n      \"name\": \"admin\",\n      \"shell\": \"/bin/sh\"\n    }\n  }\n}\n",
-    "xml": "<sys xmlns=\"urn:vibe-ports:yang:conformance:basic\">\n  <mtu>9000</mtu>\n  <iface>\n    <name>eth0</name>\n    <type>eth</type>\n  </iface>\n  <iface>\n    <name>lo</name>\n    <type>loopback</type>\n  </iface>\n  <primary>eth0</primary>\n  <jumbo-frames>true</jumbo-frames>\n  <min>1</min>\n  <max>5</max>\n  <user>\n    <name>admin</name>\n    <shell>/bin/sh</shell>\n  </user>\n</sys>\n"
+    "json": "{\n  \"basic:sys\": {\n    \"mtu\": 9000,\n    \"iface\": [\n      {\n        \"name\": \"eth0\",\n        \"type\": \"eth\"\n      },\n      {\n        \"name\": \"lo\",\n        \"type\": \"loopback\"\n      }\n    ],\n    \"primary\": \"eth0\",\n    \"jumbo-frames\": true,\n    \"min\": 1,\n    \"max\": 5,\n    \"user\": {\n      \"name\": \"admin\",\n      \"shell\": \"/bin/sh\",\n      \"@shell\": {\n        \"ietf-netconf-with-defaults:default\": true\n      }\n    }\n  }\n}\n",
+    "xml": "<sys xmlns=\"urn:vibe-ports:yang:conformance:basic\">\n  <mtu>9000</mtu>\n  <iface>\n    <name>eth0</name>\n    <type>eth</type>\n  </iface>\n  <iface>\n    <name>lo</name>\n    <type>loopback</type>\n  </iface>\n  <primary>eth0</primary>\n  <jumbo-frames>true</jumbo-frames>\n  <min>1</min>\n  <max>5</max>\n  <user>\n    <name>admin</name>\n    <shell xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">/bin/sh</shell>\n  </user>\n</sys>\n"
   },
   "verdict": "valid"
 }

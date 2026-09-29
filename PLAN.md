@@ -99,9 +99,11 @@ NETCONF/RESTCONF transport, YANG Patch, public plugin interfaces (§2).
 
 ## 2. Idiomatic-Go rules (non-negotiable)
 
-- Errors are values: `error` return; validation returns `*ValidationError` aggregating
-  `[]Diagnostic{Severity (error|warning), Code, DataPath, SchemaPath, Line, AppTag, Message}` —
-  enough for a NETCONF `rpc-error`/RESTCONF error mapping. No global log callback.
+- Errors are values. Validation returns diagnostics **separately** from failure:
+  `Validate(...) (Diagnostics, error)` where `Diagnostics` = `[]Diagnostic{Severity (error|warning),
+  Code, DataPath, SchemaPath, Line, AppTag, Message}` and `error` is non-nil only for failure
+  (`*ValidationError` wrapping the error diagnostics, or cancellation / resource-limit sentinels).
+  Operational-mode warnings therefore come back with a nil error. No global log callback.
 - No global state: everything hangs off `*Context` (libyang `ly_ctx`). Context immutable after
   `Compile()` → safe for concurrent readers; data trees are not goroutine-safe (documented).
 - Inputs are `io.Reader` / `fs.FS` (module search path = `fs.FS`, so `embed.FS` works).
@@ -196,6 +198,7 @@ Vertical slice first, breadth after: architecture-breaking feedback (value model
 | # | Milestone | libyang source mainly | Exit criterion |
 |---|---|---|---|
 | M0 ✅/⏳ | Decisions + harness. **G1:** 2-day spike — does goyang's parser/AST keep everything a compiler needs (statement order, extension args, source positions)? reuse vs own parser. **G2:** evaluate cambium with our adversarial cases + talk to its maintainer → contribute vs write. Design notes §2a. Oracle C helper + pinned container (libyang 5.8.6, pcre2 version, build flags). XSD-regex prototype with char-set algebra and declared limits. | `tools/lint`, `plugins_types/string.c` | G1/G2 recorded in `docs/decisions/`; oracle runs on corpus in CI |
+| M1-pre | Harness gaps from the M0 review (must land before slice code): Go comparator in a separate `conformance/go.mod` + per-area compatibility report; oracle typed-node dump (union member, default provenance, flags) next to printer output; structured compiled-schema dump instead of printer text; oracle action sequences on a retained tree (edit → revalidate) for when/default/New history; explicit unknown-node policy (reject/skip/opaque) instead of forced STRICT; manifest split into oracle observations vs normative assertions; libyang `tests/utests` inventory with coverage targets; xsdre oracle test fails on any mismatch not in `deviations.md` | libyang tests, `lyoracle.c` | Go test consumes goldens in CI; report generated |
 | M1 | **Vertical slice** on a small real module set (e.g. ietf-interfaces + ietf-ip + an augmenting module): parser → compile (grouping/uses/augment/refine/if-feature) → value model → JSON+XML parse → defaults → XPath subset → must/when/leafref/mandatory validation. Fuzz + budgets on parsers from here on. | all of the above, shallow | slice cases agree with oracle; design notes revised from findings |
 | M2 | Schema breadth: full compiler, deviations, identities, all types, XSD regex complete, YANG 1.0 vs 1.1 differences | `schema_compile*.c`, `schema_features.c`, `tree_schema*.c`, `plugins_types/` | compiled-schema dump from oracle helper (`LYS_OUT_YANG_COMPILED` / `yanglint -f info` for inspection) equal for all corpus modules |
 | M3 | XPath complete + YANG functions (`xpath.c`, 10 kLOC) | `xpath.c` | expression results (typed: node-set/string/number/boolean) equal via oracle helper |
@@ -316,3 +319,34 @@ against libyang v5.8.6 source before acting: `yanglint -f info` = `LYS_OUT_YANG_
 | 23 | estimate has no basis | accept | calendar removed; re-estimate from M1 actuals |
 | 24 | premature public interfaces | accept | plugins internal; only ModuleLoader public |
 | 25 | hardening deferred | accept | budgets, cancellation, fuzz from M1 |
+
+## 11. Review log — codex `gpt-6-astra`, final M0 review, 2026-09-30
+
+25 findings on the M0 repo state. Two claims checked in libyang v5.8.6 source first: the oracle
+forces `LYD_PARSE_STRICT` (`lyoracle.c:369`, true) and libyang has an explicit `when`-cycle check
+(not found — so #5 is recorded as an open fixture question, not a rule).
+
+| # | Finding | Verdict | Change |
+|---|---|---|---|
+| 1, 2, 8–13 | Go comparator missing; xsdre diff only logs; no stateful sequences; small corpus; printer-text goldens; STRICT forced; normative vs observed mixed | accept → **M1-pre** row in §4 | harness work before slice code |
+| 3 | unprefixed names bind to instantiating context, not defining module | accept | design 03 rule 1 rewritten (two contexts) |
+| 4 | dummy-`when` view incomplete | accept | design 03 rule 3: open M1 question |
+| 5 | fixpoint can accept cycles | accept | design 03 rule 5: explicit cycle handling + fixture |
+| 6 | compare ≠ canonical string; revision-aware type handlers | accept | design 01 |
+| 7 | xsdre divergences not registered; limits mixed with deviations | accept | deviations D-0002…D-0008, U-0001; rerun on pinned pcre2 10.46 (same numbers) |
+| 14 | harness failures could become goldens | accept | `run_corpus.py` fails on rc≠0 / request-error, 60 s timeout |
+| 15 | all-tagged fixture had no tags | accept | loads `ietf-netconf-with-defaults` (IETF module added to corpus) |
+| 16 | `data` ↔ `xpath` import cycle | accept | design 03: xpath owns a narrow Node interface |
+| 17 | warnings inside a failure error | accept | §2: `Validate` returns `(Diagnostics, error)` |
+| 18 | review/CI not tied to merged SHA; no branch protection | accept | AGENTS.md merge gate |
+| 19 | shallow checkout defeats history secret scan | accept | `fetch-depth: 0` in all workflows |
+| 20 | UID remap vs caches owned by uid 1000 | accept | all Go caches under `/home/dev` |
+| 21 | fuzz minutes on Free plan | accept | weekly, 20 s/target on hosted CI, crashers uploaded; long runs on own hosts |
+| 22 | Go 1.26 promised, untested | accept | `make test-go-min` (go1.26.8) in `make ci` |
+| 23 | nocgo misses deps / tag-excluded files | accept | source grep + cgo-enabled dependency-closure check |
+| 24 | mutable base image, installer from HEAD | partial | Go image pinned by digest, installer pinned to tag; dated Debian snapshot for apt deferred (pcre2 is version-pinned already) |
+| 25 | any `v*` tag releases | partial | semver + on-main check added; `gorelease`/`apidiff` before first tag (v0.1.0) |
+
+Also added after the review, on the maintainer's request: `scripts/check-sensitive` + pre-commit hook
++ `make sensitive` (private-details scan; personal patterns never stored in the repo) and
+`docs/comparison.md`.
