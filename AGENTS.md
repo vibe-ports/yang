@@ -48,6 +48,18 @@ Plan and rationale: `PLAN.md`. Decisions: `docs/decisions/`. Designs: `docs/desi
 Claude/porter implement, codex writes independent fixtures in parallel, astra reviews every PR
 (`scripts/astra review`), the oracle arbitrates. Details: `docs/agent-workflow.md`.
 
+## Code review rules
+(Used by every reviewer: Claude `ai-review` workflow, Codex GitHub reviews, `scripts/astra`.)
+Flag, most severe first, with file:line and a concrete fix:
+1. Behaviour that differs from libyang v5.8.6 / the RFC without a fixture and a
+   `conformance/deviations.md` entry; changed behaviour without new oracle fixtures.
+2. cgo, new dependencies, new exported API without a reason in the PR.
+3. Missing provenance header or `docs/port-map.md` row for ported code.
+4. Error handling that loses data or panics on untrusted input; missing resource budgets.
+5. Hand-edited goldens; tests that only restate the implementation.
+6. Private details (hosts, paths, personal data, employer) or secrets.
+Do not comment on style that gofmt/golangci-lint already enforce.
+
 ## Git
 - Work on a branch, open a PR to `main`. Small PRs (≈ one C file or one feature).
 - Merge gate (the repo has no branch protection, so this is a rule, not a setting): CI green on the

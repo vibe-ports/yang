@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Prints "deep" or "light" for a PR: which model reviews it.
+#   scripts/review-tier <pr-number>        (needs GH_TOKEN; optional TYPESAFE_API_KEY)
+# 1. Free heuristic: size and risky paths → deep.
+# 2. Otherwise, if TYPESAFE_API_KEY is set, ask Jev (TypeSafe) whether the PR needs attention.
+#    Only metadata is sent (title, body, file list, line counts) — never code. Jev can only
+#    escalate light → deep, never the reverse; any Jev failure keeps the heuristic answer.
+set -euo pipefail
+pr=${1:?usage: review-tier <pr-number>}
+meta=$(gh pr view "$pr" --json title,body,additions,deletions,files \
+  --jq '{title, body: (.body // "" | .[0:2000]), additions, deletions, files: [.files[] | {path, additions, deletions}]}')
+lines=$(jq '.additions + .deletions' <<<"$meta")
+risky=$(jq -r '.files[].path' <<<"$meta" | grep -cE '^(internal/(parser|compile|xpath|types)/|data/|[^/]+\.go$|go\.(mod|sum)$|Dockerfile$|\.github/|scripts/|conformance/oracle/|LICENSE$)' || true)
+
+if (( lines > 400 || risky > 0 )); then echo deep; exit 0; fi
+if [[ -z ${TYPESAFE_API_KEY:-} ]]; then echo light; exit 0; fi
+
+body=$(jq -n --argjson pr "$meta" '{
+  model: "jev-latest",
+  state: {pull_request: $pr, project: "pure-Go port of the libyang YANG library; correctness vs libyang matters most"},
+  questions: {deep: {type: "noul",
+    instructions: "Does this pull request need a deep expert review (behaviour changes, parsing/validation logic, public API, security, build/release process) rather than a quick check (docs, comments, formatting, test data only)?"}}}')
+p=$(curl -fsS --max-time 20 https://api.typesafe.ai/v1/systemone \
+  -H "Authorization: Bearer $TYPESAFE_API_KEY" -H 'Content-Type: application/json' -d "$body" \
+  | jq -r '.answers.deep.noul // empty' 2>/dev/null || true)
+if [[ -n $p ]] && awk -v p="$p" 'BEGIN{exit !(p >= 0.5)}'; then echo deep; else echo light; fi

@@ -38,6 +38,7 @@ ARG PCRE2_VERSION=10.46-1~deb13u3
 ARG GOLANGCI_LINT_VERSION=v2.14.0
 ARG GOVULNCHECK_VERSION=v1.8.0
 ARG GITLEAKS_VERSION=v8.30.1
+ARG ACTIONLINT_VERSION=v1.7.12
 RUN apt-get update && apt-get install -y --no-install-recommends \
       libpcre2-dev=${PCRE2_VERSION} libpcre2-8-0=${PCRE2_VERSION} python3-yaml sudo \
     && rm -rf /var/lib/apt/lists/*
@@ -51,7 +52,8 @@ ENV PATH=/opt/libyang/bin:${PATH} \
 RUN curl -sSfL "https://raw.githubusercontent.com/golangci/golangci-lint/${GOLANGCI_LINT_VERSION}/install.sh" \
       | sh -s -- -b /usr/local/bin "${GOLANGCI_LINT_VERSION}" \
     && GOBIN=/usr/local/bin go install "golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION}" \
-    && GOBIN=/usr/local/bin go install "github.com/zricethezav/gitleaks/v8@${GITLEAKS_VERSION}"
+    && GOBIN=/usr/local/bin go install "github.com/zricethezav/gitleaks/v8@${GITLEAKS_VERSION}" \
+    && GOBIN=/usr/local/bin go install "github.com/rhysd/actionlint/cmd/actionlint@${ACTIONLINT_VERSION}"
 # Non-root user; all Go caches live under its home so devcontainer UID remapping
 # (which chowns the home dir) keeps them writable.
 RUN useradd -m -u 1000 -s /bin/bash dev && echo 'dev ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/dev \

@@ -1,0 +1,74 @@
+name: libyang-sync
+# Weekly: keep the pinned libyang oracle in sync with upstream releases (like Dependabot).
+#  - new release  → PR bumping Dockerfile pins + regenerated goldens (golden diff = behaviour change)
+#  - master drift → one tracking issue listing upstream commits since the pinned tag that touch src/
+on:
+  schedule:
+    - cron: "23 4 * * 1"
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  packages: write
+jobs:
+  sync:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: check
+        run: |
+          cur=$(sed -n 's/^ARG LIBYANG_REF=//p' Dockerfile)
+          tag=$(gh api repos/CESNET/libyang/releases/latest --jq .tag_name)
+          sha=$(gh api "repos/CESNET/libyang/commits/$tag" --jq .sha)
+          echo "cur=$cur tag=$tag sha=$sha"
+          { echo "cur=$cur"; echo "tag=$tag"; echo "sha=$sha"; } >> "$GITHUB_OUTPUT"
+      - name: Tracking issue for upstream master drift
+        run: |
+          cur=${{ steps.check.outputs.cur }}
+          list=$(gh api "repos/CESNET/libyang/compare/$cur...master" --paginate \
+            --jq '.commits[] | "- [`\(.sha[0:7])`](\(.html_url)) \(.commit.message | split("\n")[0])"' | tail -n 200)
+          files=$(gh api "repos/CESNET/libyang/compare/$cur...master" --jq '[.files[].filename | select(startswith("src/"))] | unique | join(", ")')
+          body=$(printf 'Upstream libyang commits on master since pinned **%s** (updated weekly by libyang-sync).\n\nTouched src/ files: %s\n\nCross-check with docs/port-map.md before porting further.\n\n%s\n' "$cur" "${files:-none}" "${list:-none}")
+          num=$(gh issue list --state open --label upstream-drift --json number --jq '.[0].number // empty')
+          gh label create upstream-drift --color BFD4F2 --force >/dev/null
+          if [ -n "$num" ]; then gh issue edit "$num" --body "$body"; else gh issue create --title "upstream libyang drift since $cur" --label upstream-drift --body "$body"; fi
+      - if: steps.check.outputs.cur != steps.check.outputs.tag
+        name: Bump pins
+        run: |
+          sed -i "s/^ARG LIBYANG_REF=.*/ARG LIBYANG_REF=${{ steps.check.outputs.tag }}/; s/^ARG LIBYANG_COMMIT=.*/ARG LIBYANG_COMMIT=${{ steps.check.outputs.sha }}/" Dockerfile
+          # Only the oracle pin moves. Provenance headers/docs keep the version code was ported from.
+          sed -i "s/^  libyang: .*/  libyang: ${{ steps.check.outputs.tag }}/; s/^  libyang_commit: .*/  libyang_commit: ${{ steps.check.outputs.sha }}/" conformance/corpus/manifest.yaml
+      - if: steps.check.outputs.cur != steps.check.outputs.tag
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - if: steps.check.outputs.cur != steps.check.outputs.tag
+        name: Regenerate goldens with the new libyang
+        uses: devcontainers/ci@513af61f4de4f75d37e4438f184ba4358f0fc1ca # v0.3.1900000450
+        with:
+          imageName: ghcr.io/vibe-ports/yang-dev
+          cacheFrom: ghcr.io/vibe-ports/yang-dev
+          push: never
+          runCmd: make oracle-golden
+      - if: steps.check.outputs.cur != steps.check.outputs.tag
+        # A PAT/App token is needed so the PR triggers CI + ai-review (GITHUB_TOKEN PRs don't).
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ secrets.SYNC_TOKEN || github.token }}
+          branch: deps/libyang-${{ steps.check.outputs.tag }}
+          commit-message: "build(deps): libyang ${{ steps.check.outputs.cur }} → ${{ steps.check.outputs.tag }}"
+          title: "build(deps): libyang ${{ steps.check.outputs.cur }} → ${{ steps.check.outputs.tag }}"
+          labels: dependencies, libyang
+          body: |
+            Upstream: https://github.com/CESNET/libyang/compare/${{ steps.check.outputs.cur }}...${{ steps.check.outputs.tag }}
+            Pinned commit: `${{ steps.check.outputs.sha }}`
+
+            Goldens were regenerated with the new oracle. **Every golden diff in this PR is a
+            behaviour change in libyang** — port it (update code + docs/port-map.md) or record it
+            in conformance/deviations.md before merging.

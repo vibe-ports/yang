@@ -14,6 +14,7 @@ vet:
 
 lint:
 	golangci-lint run
+	actionlint -shellcheck= .github/workflows/*.yml
 
 # Production code must never use cgo (goal 1). The oracle lives outside this module.
 nocgo:
