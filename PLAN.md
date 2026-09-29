@@ -323,15 +323,16 @@ against libyang v5.8.6 source before acting: `yanglint -f info` = `LYS_OUT_YANG_
 ## 11. Review log — codex `gpt-6-astra`, final M0 review, 2026-09-30
 
 25 findings on the M0 repo state. Two claims checked in libyang v5.8.6 source first: the oracle
-forces `LYD_PARSE_STRICT` (`lyoracle.c:369`, true) and libyang has an explicit `when`-cycle check
-(not found — so #5 is recorded as an open fixture question, not a rule).
+forces `LYD_PARSE_STRICT` (`lyoracle.c:369`, true); `when` cycles — first searched and missed by the
+lead, then found by a later astra review: libyang rejects them at compile time
+(`lys_compile_unres_when_cyclic`), design 03 rule 5 follows that.
 
 | # | Finding | Verdict | Change |
 |---|---|---|---|
 | 1, 2, 8–13 | Go comparator missing; xsdre diff only logs; no stateful sequences; small corpus; printer-text goldens; STRICT forced; normative vs observed mixed | accept → **M1-pre** row in §4 | harness work before slice code |
 | 3 | unprefixed names bind to instantiating context, not defining module | accept | design 03 rule 1 rewritten (two contexts) |
 | 4 | dummy-`when` view incomplete | accept | design 03 rule 3: open M1 question |
-| 5 | fixpoint can accept cycles | accept | design 03 rule 5: explicit cycle handling + fixture |
+| 5 | fixpoint can accept cycles | accept | design 03 rule 5: compile-time cycle rejection as libyang + fixture |
 | 6 | compare ≠ canonical string; revision-aware type handlers | accept | design 01 |
 | 7 | xsdre divergences not registered; limits mixed with deviations | accept | deviations D-0002…D-0008, U-0001; rerun on pinned pcre2 10.46 (same numbers) |
 | 14 | harness failures could become goldens | accept | `run_corpus.py` fails on rc≠0 / request-error, 60 s timeout |

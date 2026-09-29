@@ -21,6 +21,8 @@ family → less correlated blind spots). **codex gpt-5.6-sol/luna** writes indep
 1. **Plan (only when the task makes a design decision or touches public API).** Claude writes a
    ≤1-page plan (PR draft or `docs/design/`). `scripts/astra design <file>` critiques it; Claude
    accepts/rejects each finding in the plan. Mechanical ports skip this step.
+   For contested designs the maintainer may instead run Claude and codex side by side in a
+   terminal split and let them converge interactively; the agreed plan still goes into the PR.
 2. **Parallel work.**
    - (A) implementation by Claude or `porter`, following the `port-libyang-file` skill;
    - (B) tests by codex in its own worktree, from the task text + RFC + libyang v5.8.6 tests:

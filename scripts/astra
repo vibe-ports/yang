@@ -8,7 +8,7 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 cmd=${1:?usage: scripts/astra review [BASE] | design FILE...}; shift
 model=${ASTRA_MODEL:-gpt-6-astra}
-out=$(mktemp); trap 'rm -f "$out"' EXIT
+out=$(mktemp); trap 'rm -f "$out" "$out.log"' EXIT
 sha=$(git rev-parse --short HEAD)
 
 rules="Follow AGENTS.md (goals: no cgo, libyang v5.8.6 compatibility, auditability). Check behaviour
@@ -28,7 +28,8 @@ assumptions, missing cases, simpler alternatives, what fixtures would prove it."
 esac
 
 codex exec -m "$model" -c model_reasoning_effort="${ASTRA_EFFORT:-high}" -s read-only --ephemeral \
-  --output-schema scripts/review-schema.json -o "$out" "$prompt" </dev/null >/dev/null
+  --output-schema scripts/review-schema.json -o "$out" "$prompt" </dev/null >"$out.log" 2>&1 ||
+  { echo "codex failed:" >&2; tail -20 "$out.log" >&2; exit 2; }
 
 report=$(python3 - "$out" "$model" "$sha" "$cmd" <<'PY'
 import json, sys

@@ -44,9 +44,9 @@ type EvalContext struct {
    ancestor of the statement's node; otherwise the node itself.
 5. **Evaluation order**: auto-deleting a node can make another `when` false, so conditions are
    re-evaluated until no change. Circular `when` dependencies must not be "accepted because stable":
-   evaluate dependencies first and report a cycle explicitly; distinguish "unresolved" from "false".
-   libyang v5.8.6 has no explicit `when`-cycle check that we found — its behaviour on cycles is an
-   M1 fixture; any difference goes to `conformance/deviations.md`.
+   libyang rejects them at **schema compile** time (`lys_compile_unres_when_cyclic`,
+   `src/schema_compile.c:457`, LYVE_SEMANTICS) — we do the same in `internal/compile`, so data
+   evaluation never sees a cycle. M1 fixture: two leaves with mutually dependent `when`.
 6. **Defaults are visible** to `must`/`when`: implicit defaults are materialised (flag `Default`)
    before `must`/`when` evaluation (this is where cambium diverges; see ADR 0002 cases 04/05/17).
 7. **YANG functions**: `current()`, `deref()`, `derived-from()`, `derived-from-or-self()`,
