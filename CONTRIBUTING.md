@@ -35,6 +35,11 @@ Every non-draft PR is reviewed automatically:
 - **Codex** (Codex GitHub app, automatic reviews).
 - **astra** on demand or by the lead: `ASTRA_PR=<n> scripts/astra review`.
 
+Claude reviews only PRs authored by org owners/members (never forks); add the label
+`no-ai-review` to skip. The workflow is hardened against token leaks (restricted tools, denied
+system paths, `scripts/leak-guard` deletes any comment containing the token and fails the job).
+Rotate `CLAUDE_CODE_OAUTH_TOKEN` every 90 days and immediately if leak-guard fires.
+
 All reviewers apply "Code review rules" in AGENTS.md. Findings are fixed or answered in the PR.
 Merge gate: CI green + an approving review on the **same head SHA**; the maintainer merges.
 

@@ -10,10 +10,10 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 mode=${1:---staged}
 
-# Generic rules (safe to publish). /home/dev is the container user and is allowed.
+# Generic rules (safe to publish). /home/dev (container user) and /home/runner (GitHub runners) are allowed.
 generic=$(printf '%s\n' \
   '/Users/[\w.-]+' \
-  '/home/(?!dev\b)[a-z][\w-]*' \
+  '/home/(?!dev\b|runner\b)[a-z][\w-]*' \
   '/private/tmp/|/var/folders/') # sensitive:allow (rule definitions)
 
 denylist=${SENSITIVE_DENYLIST:-$HOME/.config/vibe-ports/denylist}

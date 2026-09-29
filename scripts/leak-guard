@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# After an AI review: delete any PR comment that contains the secret in $SECRET, then fail.
+#   SECRET=<value> GH_TOKEN=... scripts/leak-guard <owner/repo> <pr-number>
+# The secret is compared in-process and never printed. Catches verbatim leaks only
+# (not encoded/split ones) — defence in depth behind the tool restrictions.
+set -euo pipefail
+repo=${1:?repo}; pr=${2:?pr}
+[[ -n ${SECRET:-} ]] || exit 0
+leaked=0
+check() { # $1 = API list path, $2 = API item path prefix
+  while IFS=$'\t' read -r id body64; do
+    if base64 -d <<<"$body64" | grep -qF -- "$SECRET"; then
+      gh api -X DELETE "$2/$id" >/dev/null && echo "deleted comment $id: it contained the secret" >&2
+      leaked=1
+    fi
+  done < <(gh api --paginate "$1" --jq '.[] | [.id, (.body // "" | @base64)] | @tsv')
+}
+check "repos/$repo/issues/$pr/comments" "repos/$repo/issues/comments"
+check "repos/$repo/pulls/$pr/comments" "repos/$repo/pulls/comments"
+check "repos/$repo/pulls/$pr/reviews" "repos/$repo/pulls/$pr/reviews" 2>/dev/null || true
+if (( leaked )); then
+  echo "::error::AI review posted the secret. Comment(s) deleted. ROTATE the token now (claude setup-token) and update the secret." >&2
+  exit 1
+fi
