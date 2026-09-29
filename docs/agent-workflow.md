@@ -53,4 +53,4 @@ family → less correlated blind spots). **codex gpt-5.6-sol/luna** writes indep
 
 - astra/sol/luna use the ChatGPT-plan quota; Claude quota is spent on implementation and
   integration. A PR review costs roughly one minute of wall time.
-- Skip step 1 and use `ASTRA_EFFORT=medium` for trivial PRs (docs, config).
+- astra always runs with reasoning effort `xhigh` (maintainer rule); skip step 1 for trivial PRs.

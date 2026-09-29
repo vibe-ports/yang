@@ -2,7 +2,7 @@
 # Independent review by codex (default gpt-6-astra) with structured JSON output.
 #   scripts/astra review [BASE]      review BASE...HEAD (default origin/main)
 #   scripts/astra design FILE...     critique a design note / task plan before implementation
-# Env: ASTRA_MODEL (gpt-6-astra), ASTRA_EFFORT (high), ASTRA_PR (PR number → post as comment).
+# Env: ASTRA_MODEL (gpt-6-astra), ASTRA_EFFORT (xhigh), ASTRA_PR (PR number → post as comment).
 # Exit 1 if any high finding or verdict "changes" — usable as a gate.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
@@ -27,7 +27,7 @@ assumptions, missing cases, simpler alternatives, what fixtures would prove it."
   *) echo "unknown command $cmd" >&2; exit 2 ;;
 esac
 
-codex exec -m "$model" -c model_reasoning_effort="${ASTRA_EFFORT:-high}" -s read-only --ephemeral \
+codex exec -m "$model" -c model_reasoning_effort="${ASTRA_EFFORT:-xhigh}" -s read-only --ephemeral \
   --output-schema scripts/review-schema.json -o "$out" "$prompt" </dev/null >"$out.log" 2>&1 ||
   { echo "codex failed:" >&2; tail -20 "$out.log" >&2; exit 2; }
 
