@@ -1,0 +1,36 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [
+    {
+      "apptag": "instance-required",
+      "code": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "data_path": "/basic:sys/primary",
+      "level": "error",
+      "line": 0,
+      "msg": "Invalid leafref value \"eth9\" - no target instance \"../iface/name\" with the same value.",
+      "phase": "data",
+      "schema_path": null,
+      "vecode": 9,
+      "vecode_name": "LYVE_DATA"
+    }
+  ],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "basic",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "rc": {
+    "err": 7,
+    "name": "LY_EVALID"
+  },
+  "tree": null,
+  "verdict": "invalid"
+}

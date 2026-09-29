@@ -1,0 +1,23 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "diff": {
+    "json": "{\n  \"basic:sys\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"mtu\": 1500,\n    \"@mtu\": {\n      \"yang:operation\": \"replace\",\n      \"yang:orig-default\": false,\n      \"yang:orig-value\": \"9000\"\n    },\n    \"iface\": [\n      {\n        \"@\": {\n          \"yang:operation\": \"delete\"\n        },\n        \"name\": \"lo\",\n        \"type\": \"loopback\"\n      }\n    ],\n    \"jumbo-frames\": true,\n    \"@jumbo-frames\": {\n      \"yang:operation\": \"delete\"\n    },\n    \"max\": 7,\n    \"@max\": {\n      \"yang:operation\": \"replace\",\n      \"yang:orig-default\": false,\n      \"yang:orig-value\": \"5\"\n    },\n    \"user\": {\n      \"@\": {\n        \"yang:operation\": \"none\"\n      },\n      \"shell\": \"/bin/zsh\",\n      \"@shell\": {\n        \"yang:operation\": \"create\"\n      }\n    }\n  }\n}\n",
+    "xml": "<sys xmlns=\"urn:vibe-ports:yang:conformance:basic\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <mtu yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"9000\">1500</mtu>\n  <iface yang:operation=\"delete\">\n    <name>lo</name>\n    <type>loopback</type>\n  </iface>\n  <jumbo-frames yang:operation=\"delete\">true</jumbo-frames>\n  <max yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"5\">7</max>\n  <user yang:operation=\"none\">\n    <shell yang:operation=\"create\">/bin/zsh</shell>\n  </user>\n</sys>\n"
+  },
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "basic",
+      "revision": null
+    }
+  ],
+  "op": "diff",
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "verdict": "valid"
+}

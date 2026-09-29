@@ -1,0 +1,57 @@
+module basic {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:basic";
+  prefix b;
+
+  description "Hand-written seed fixture module for the yang oracle corpus.";
+
+  feature jumbo;
+
+  container sys {
+    leaf mtu {
+      type uint16 {
+        range "68..9000";
+      }
+    }
+    list iface {
+      key "name";
+      leaf name {
+        type string;
+      }
+      leaf type {
+        type string;
+      }
+    }
+    leaf primary {
+      type leafref {
+        path "../iface/name";
+      }
+    }
+    leaf jumbo-frames {
+      if-feature "jumbo";
+      when "../mtu > 1500";
+      type boolean;
+    }
+    leaf min {
+      type uint8;
+    }
+    leaf max {
+      type uint8;
+      must ". >= ../min" {
+        error-message "max must not be below min";
+        error-app-tag "max-below-min";
+      }
+    }
+    container user {
+      presence "a user is configured";
+      leaf name {
+        type string;
+        mandatory true;
+      }
+      leaf shell {
+        type string;
+        default "/bin/sh";
+      }
+    }
+  }
+}

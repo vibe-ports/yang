@@ -1,0 +1,1 @@
+{"basic:sys": {"mtu": 1500, "iface": [{"name": "eth0", "type": "eth"}], "primary": "eth0", "min": 1, "max": 7, "user": {"name": "admin", "shell": "/bin/zsh"}}}

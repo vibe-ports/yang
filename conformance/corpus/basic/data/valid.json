@@ -1,0 +1,1 @@
+{"basic:sys": {"mtu": 9000, "jumbo-frames": true, "iface": [{"name": "eth0", "type": "eth"}, {"name": "lo", "type": "loopback"}], "primary": "eth0", "min": 1, "max": 5, "user": {"name": "admin"}}}
