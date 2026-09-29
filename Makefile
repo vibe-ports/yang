@@ -6,7 +6,7 @@ FUZZTIME ?= 60s
 ci: fmt-check vet lint nocgo test test-386 test-go-min test-oracle vuln secrets sensitive oracle-check
 
 fmt-check:
-	@out=$$(gofmt -l .); [ -z "$$out" ] || { echo "gofmt needed:"; echo "$$out"; exit 1; }
+	@out=$$(git ls-files -z '*.go' | xargs -0 -r gofmt -l); [ -z "$$out" ] || { echo "gofmt needed:"; echo "$$out"; exit 1; }
 	go mod tidy -diff
 
 vet:
