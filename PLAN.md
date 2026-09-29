@@ -37,9 +37,15 @@ compiler semantics (refine, uses-augment, if-feature, XSD) are incomplete. By fe
 goyang+ygot cover well under the 80 % bar (judgement from the table, not a measured number) and
 the missing part — generic tree, XPath, validation — is the core.
 
-**Decision: write new runtime; decide parser reuse and cambium collaboration in M0, before any
-porting starts** (§4 M0 gates G1/G2). Outcome of G2 may legitimately be "contribute to cambium
-instead" — that is a valid result.
+**Decision: write new runtime.** M0 gates (2026-09-30):
+- **G1 → own parser** (`docs/decisions/0001-parser-reuse.md`): goyang's raw parser agrees with
+  yanglint on 20/45 parse-level cases (it is a tokenizer: any keyword/cardinality passes), its typed
+  AST wrongly rejects 14 valid IETF RFC modules, reuse would save ~600 of ~3,000 lines and add
+  Apache-2.0 provenance. Borrow the *design* (generic statement tree → typed builder).
+- **G2 → independent, share corpus** (`docs/decisions/0002-cambium.md`): cambium's pure-Go datatree
+  is secondary to its libyang backend; 16/26 adversarial cases genuinely agree with libyang
+  (deref skipped, must/when blind to defaults, no validation modes). Outreach draft in
+  `0002-cambium-outreach-draft.md` — sent only by the maintainer of this repo, by hand.
 
 ## 1. v1 scope
 
@@ -114,6 +120,58 @@ NETCONF/RESTCONF transport, YANG Patch, public plugin interfaces (§2).
    operation, `when` evaluated on a dummy node, prefix bindings from the *defining* module (groupings),
    dependency ordering of `when` evaluation.
 
+## 2b. Go library practices
+
+- `go` line in go.mod = oldest supported Go (last two releases: 1.26, 1.27); no `toolchain` line;
+  dev image pins the newest toolchain (`GOTOOLCHAIN=local`).
+- v0.x until the API review in M7; then v1 promise; `apidiff`/`gorelease` in CI from the first tag.
+- Errors: typed `*ValidationError` + sentinel errors for conditions callers branch on; `%w` wrapping.
+- Iteration via `iter.Seq`; `context.Context` only on operations that can run long (validation of
+  big trees, loading many modules).
+- Runnable `Example*` for every public entry point; package docs in `doc.go`.
+- SPDX header `// SPDX-License-Identifier: BSD-3-Clause` on every file; ported files also carry the
+  provenance line (Goal 3).
+- No cgo is enforced mechanically: `make nocgo` (no package with CgoFiles + `CGO_ENABLED=0 go build`).
+- 32-bit (`GOARCH=386`) test run in CI; big-endian (s390x under qemu) added once binary/numeric
+  code exists.
+- Oracle code lives in a **separate module** (`conformance/`, own go.mod) so library users never pull
+  oracle tooling; oracle-generated golden files are committed, so normal CI needs no C.
+
+## 2c. Development environment and CI/CD
+
+- **Everything runs in one container image** (`Dockerfile`, targets `libyang` → `dev`):
+  Go 1.27.1 (trixie), libyang v5.8.6 built from the verified commit `47351e5`, pcre2 10.46,
+  golangci-lint v2.14.0, govulncheck v1.8.0. Same image is the VS Code dev container
+  (`.devcontainer/`), the local runner (`./dev make ci`) and the CI runner (`devcontainers/ci`).
+- CI (`.github/workflows/ci.yml`, every push/PR): `make ci` = gofmt + `go mod tidy -diff`, vet,
+  golangci-lint, nocgo, `go test -race -shuffle=on`, `GOARCH=386` tests, govulncheck. Image cached in
+  `ghcr.io/vibe-ports/yang-dev` (pushed from main only). Oracle lane added with the conformance module.
+- Nightly `fuzz.yml`: every `Fuzz*` target; crashers become committed regression inputs.
+- CD (`release.yml`): tag `v*` → `make ci` → GitHub release with generated notes. Library ⇒ no
+  binaries until `cmd/` has users.
+- Actions pinned by commit SHA; Dependabot for actions, gomod, docker.
+- Budget: private repo on a Free org = limited Actions minutes; keep one job per workflow and the
+  image cached.
+
+## 2d. Work distribution (machines and models)
+
+Machines: the lead workstation integrates, reviews and is the only one that merges to `main`.
+Additional build hosts may take long fuzz / differential oracle runs or port an independent package
+on their own branch → PR. All exchange goes through GitHub branches/PRs; every host runs the same
+dev container, clones only this repo and holds nothing else of the project. Host names, hardware and
+network details stay out of this repo. More hosts add CPU and parallel sessions, not model quota
+(model subscriptions are per account).
+
+Models (cheapest that can do the job; lead decides):
+| Work | Model |
+|---|---|
+| design, hard ports (compiler, XPath, validation), final review/merge | Claude Opus (lead) |
+| well-specified file ports with a port-map entry, test tables, fixtures, docs | Claude Sonnet subagents / codex `gpt-5.6-sol` (separate quota) |
+| search, grep, corpus manifests, license checks, summaries | Claude Haiku / codex `gpt-5.6-luna` |
+| plan/design reviews, adversarial code review | codex `gpt-6-astra` |
+| whole-file reads of huge C units (xpath.c 10 kLOC) for port maps | agy (Gemini, large context) |
+Every port, whichever model wrote it, passes the same gate: oracle agreement + lead review.
+
 ## 3. Package layout
 
 ```
@@ -125,8 +183,8 @@ github.com/vibe-ports/yang   (module root; package yang — Context, Module, pub
   internal/xpath/      XPath 1.0 + YANG functions, evaluated over the data tree with §2a.3 context
   data/                data tree, paths, defaults, validation, JSON/XML codecs, diff/merge
   cmd/yanglint-go/     CLI
-  conformance/         oracle harness + corpus manifests
-  conformance/oracle/  test-only C helper linked to libyang (NOT imported by Go code; production stays cgo-free)
+  conformance/         separate Go module: oracle harness, corpus manifests, golden files
+  conformance/oracle/  test-only C helper `lyoracle` linked to libyang (production stays cgo-free)
 ```
 Public API = root `yang` + `data`; everything else `internal/` until a real consumer needs it. Split `data/` only when a file boundary stops being enough.
 
@@ -137,7 +195,7 @@ Vertical slice first, breadth after: architecture-breaking feedback (value model
 
 | # | Milestone | libyang source mainly | Exit criterion |
 |---|---|---|---|
-| M0 | Decisions + harness. **G1:** 2-day spike — does goyang's parser/AST keep everything a compiler needs (statement order, extension args, source positions)? reuse vs own parser. **G2:** evaluate cambium with our adversarial cases + talk to its maintainer → contribute vs write. Design notes §2a. Oracle C helper + pinned container (libyang 5.8.6, pcre2 version, build flags). XSD-regex prototype with char-set algebra and declared limits. | `tools/lint`, `plugins_types/string.c` | G1/G2 recorded in `docs/decisions/`; oracle runs on corpus in CI |
+| M0 ✅/⏳ | Decisions + harness. **G1:** 2-day spike — does goyang's parser/AST keep everything a compiler needs (statement order, extension args, source positions)? reuse vs own parser. **G2:** evaluate cambium with our adversarial cases + talk to its maintainer → contribute vs write. Design notes §2a. Oracle C helper + pinned container (libyang 5.8.6, pcre2 version, build flags). XSD-regex prototype with char-set algebra and declared limits. | `tools/lint`, `plugins_types/string.c` | G1/G2 recorded in `docs/decisions/`; oracle runs on corpus in CI |
 | M1 | **Vertical slice** on a small real module set (e.g. ietf-interfaces + ietf-ip + an augmenting module): parser → compile (grouping/uses/augment/refine/if-feature) → value model → JSON+XML parse → defaults → XPath subset → must/when/leafref/mandatory validation. Fuzz + budgets on parsers from here on. | all of the above, shallow | slice cases agree with oracle; design notes revised from findings |
 | M2 | Schema breadth: full compiler, deviations, identities, all types, XSD regex complete, YANG 1.0 vs 1.1 differences | `schema_compile*.c`, `schema_features.c`, `tree_schema*.c`, `plugins_types/` | compiled-schema dump from oracle helper (`LYS_OUT_YANG_COMPILED` / `yanglint -f info` for inspection) equal for all corpus modules |
 | M3 | XPath complete + YANG functions (`xpath.c`, 10 kLOC) | `xpath.c` | expression results (typed: node-set/string/number/boolean) equal via oracle helper |
