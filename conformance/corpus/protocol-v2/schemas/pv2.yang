@@ -1,0 +1,132 @@
+module pv2 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2";
+  prefix p;
+
+  description
+    "Hand-written module exercising oracle protocol v2 dumps: when auto-delete,
+     implicit defaults, choice default case, unions, anydata, identities.";
+
+  feature extra;
+
+  identity base-id;
+
+  identity one {
+    base base-id;
+  }
+
+  identity two {
+    base one;
+  }
+
+  typedef percent {
+    type uint8 {
+      range "0..100";
+    }
+  }
+
+  container c {
+    leaf mode {
+      type enumeration {
+        enum on;
+        enum off {
+          value 5;
+        }
+      }
+    }
+    leaf x {
+      when "../mode = 'on'";
+      type string;
+    }
+    leaf u {
+      type union {
+        type int8;
+        type percent;
+        type string {
+          pattern "[a-z]+";
+          length "1..8";
+        }
+      }
+    }
+    leaf d {
+      type percent;
+      default "07";
+    }
+    leaf dec {
+      type decimal64 {
+        fraction-digits 2;
+        range "-1.5..10 | 20";
+      }
+    }
+    leaf id {
+      type identityref {
+        base base-id;
+      }
+    }
+    choice ch {
+      default first;
+      case first {
+        leaf f {
+          type string;
+          default "ff";
+        }
+      }
+      case second {
+        leaf s {
+          type string;
+        }
+      }
+    }
+    list l {
+      key "k";
+      ordered-by user;
+      max-elements 3;
+      leaf k {
+        type string;
+      }
+    }
+    leaf ref {
+      type leafref {
+        path "../l/k";
+      }
+    }
+    leaf-list ll {
+      type string;
+      default "a";
+      default "b";
+    }
+    leaf flags {
+      if-feature "extra";
+      type bits {
+        bit x;
+        bit y {
+          position 3;
+        }
+      }
+    }
+    anydata any;
+  }
+
+  rpc ping {
+    input {
+      leaf n {
+        type uint8;
+        must ". < 10" {
+          error-message "too many";
+          error-app-tag "too-many";
+        }
+      }
+    }
+    output {
+      leaf rtt {
+        type uint32;
+      }
+    }
+  }
+
+  notification alarm {
+    leaf sev {
+      type uint8;
+    }
+  }
+}
