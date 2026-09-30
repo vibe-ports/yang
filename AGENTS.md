@@ -65,6 +65,8 @@ Do not comment on style that gofmt/golangci-lint already enforce.
 - Merge gate (the repo has no branch protection, so this is a rule, not a setting): CI green on the
   PR's **exact head SHA** + a `port-reviewer` (or codex astra) review of that SHA, linked in the PR.
   Only the lead merges; worker agents never push to `main` or hold merge rights.
+- Merging is `scripts/merge-pr <n>` only (checks the gate, requires UTC dates, fast-forwards the
+  reviewed head SHA). Never the GitHub merge button — it records the local time zone.
 - Conventional-commit subjects (`feat(xpath): …`, `fix:`, `docs:`, `test:`, `build:`).
 - Commit with `TZ=UTC` (`git ci` alias) as the configured author. **No AI trailers**
   (`Co-Authored-By`, `Assisted-by`) — AI assistance is disclosed once, in README.

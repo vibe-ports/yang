@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Merge gate + fast-forward merge (never the GitHub merge button: it records the local time zone).
+#   scripts/merge-pr <pr-number>
+# Merges only if: CI succeeded on the PR head SHA, a review comment says "VERDICT: approve" and
+# names that head SHA (first 7+ chars), every branch commit has +0000 author/committer dates,
+# and the branch fast-forwards main. Then pushes <head>:main; GitHub marks the PR merged.
+set -euo pipefail
+pr=${1:?usage: scripts/merge-pr <pr-number>}
+cd "$(git rev-parse --show-toplevel)"
+repo=$(gh repo view --json nameWithOwner --jq .nameWithOwner)
+head=$(gh pr view "$pr" --json headRefOid --jq .headRefOid)
+short=${head:0:7}
+
+fail() { echo "merge-pr: $*" >&2; exit 1; }
+
+checks=$(gh pr view "$pr" --json statusCheckRollup --jq '[.statusCheckRollup[] | select(.name=="ci")] | map(.conclusion) | join(",")')
+[[ $checks == SUCCESS ]] || fail "CI on $short is '${checks:-missing}', need SUCCESS"
+
+gh pr view "$pr" --json comments --jq '.comments[].body' | grep -q "VERDICT: approve.*$short" ||
+  fail "no 'VERDICT: approve' review comment naming head $short"
+
+git fetch -q origin main "pull/$pr/head"
+git merge-base --is-ancestor origin/main "$head" || fail "$short does not fast-forward main: rebase (UTC dates) and re-review"
+bad=$(git log --format='%h %ad %cd' --date=format:%z origin/main.."$head" | awk '$2!="+0000" || $3!="+0000"')
+[[ -z $bad ]] || fail "commits with non-UTC dates:"$'\n'"$bad"
+
+git push origin "$head:refs/heads/main"
+git merge -q --ff-only "$head" 2>/dev/null || true
+echo "merged #$pr as $short"
