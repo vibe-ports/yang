@@ -1,6 +1,6 @@
 # Fixture manifest — format: ../manifest.schema.md
 # Regenerate goldens (repo root): ./dev make oracle-golden
-version: 1
+version: 2
 oracle:
   libyang: v5.8.6
   libyang_commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f
@@ -9,7 +9,7 @@ fixtures:
     dir: basic
     source: &own {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
     rfc: ["RFC7950#9.2.4", "RFC7950#9.2.5"]
-    expected_from: oracle
+    areas: [types]
     request:
       op: data
       searchdirs: [schemas]
@@ -19,12 +19,18 @@ fixtures:
       data_file: data/range.json
       with_defaults: explicit
     golden: golden/range.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2.4"]
+      diagnostics:
+        - {vecode_name: LYVE_DATA, data_path: /basic:sys/mtu}
+      deviation: null
 
   - id: basic/mandatory-missing
     dir: basic
     source: *own
     rfc: ["RFC7950#7.6.5", "RFC7950#7.5.1"]
-    expected_from: oracle
+    areas: [validation]
     request:
       op: data
       searchdirs: [schemas]
@@ -34,12 +40,18 @@ fixtures:
       data_file: data/mandatory.json
       with_defaults: explicit
     golden: golden/mandatory-missing.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.6.5"]
+      diagnostics:
+        - {vecode_name: LYVE_DATA, data_path: /basic:sys/user}
+      deviation: null
 
   - id: basic/leafref
     dir: basic
     source: *own
     rfc: ["RFC7950#9.9", "RFC7950#9.9.3"]
-    expected_from: oracle
+    areas: [types, validation]
     request:
       op: data
       searchdirs: [schemas]
@@ -49,12 +61,18 @@ fixtures:
       data_file: data/leafref.json
       with_defaults: explicit
     golden: golden/leafref.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.9.3"]
+      diagnostics:
+        - {vecode_name: LYVE_DATA, data_path: /basic:sys/primary, apptag: instance-required}
+      deviation: null
 
   - id: basic/when-false
     dir: basic
     source: *own
     rfc: ["RFC7950#7.21.5", "RFC7950#8.1"]
-    expected_from: oracle
+    areas: [validation]
     request:
       op: data
       searchdirs: [schemas]
@@ -64,12 +82,18 @@ fixtures:
       data_file: data/when.json
       with_defaults: explicit
     golden: golden/when-false.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.21.5"]
+      diagnostics:
+        - {vecode_name: LYVE_DATA, data_path: /basic:sys/jumbo-frames}
+      deviation: null
 
   - id: basic/must-apptag
     dir: basic
     source: *own
     rfc: ["RFC7950#7.5.3", "RFC7950#7.5.4.2"]
-    expected_from: oracle
+    areas: [validation]
     request:
       op: data
       searchdirs: [schemas]
@@ -79,13 +103,19 @@ fixtures:
       data_file: data/must.json
       with_defaults: explicit
     golden: golden/must-apptag.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.5.4.2"]
+      diagnostics:
+        - {vecode_name: LYVE_DATA, data_path: /basic:sys/max, apptag: max-below-min}
+      deviation: null
 
   # --- one fixture per remaining oracle op, same module ---
   - id: basic/valid-all-tagged
     dir: basic
     source: {url: "hand-written (this repo) + ietf/ (see ietf/SOURCE.md)", commit: null, license: BSD-3-Clause}
     rfc: ["RFC7950#7.6.1", "RFC6243#3.4"]
-    expected_from: oracle
+    areas: [defaults, codecs]
     request:
       op: data
       searchdirs: [schemas, ../ietf]
@@ -95,23 +125,31 @@ fixtures:
       data_file: data/valid.json
       with_defaults: all-tagged
     golden: golden/valid-all-tagged.json
+    assert:
+      verdict: valid
+      rfc: ["RFC6243#3.4"]
+      deviation: null
 
   - id: basic/schema-dump
     dir: basic
     source: *own
     rfc: ["RFC7950#7.20.1", "RFC7950#7.20.2"]
-    expected_from: oracle
+    areas: [schema]
     request:
       op: schema
       searchdirs: [schemas]
       modules: [{name: basic, features: [jumbo]}]
     golden: golden/schema-dump.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.1"]
+      deviation: null
 
   - id: basic/xpath-count
     dir: basic
     source: *own
     rfc: ["XPath1.0#4.1", "RFC7950#6.4.1"]
-    expected_from: oracle
+    areas: [xpath]
     request:
       op: xpath
       searchdirs: [schemas]
@@ -122,12 +160,16 @@ fixtures:
       context_path: /basic:sys
       xpath: "count(iface[type = 'eth'])"
     golden: golden/xpath-count.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#4.1"]
+      deviation: null
 
   - id: basic/diff
     dir: basic
     source: *own
     rfc: []   # libyang diff format (yang:operation metadata), no RFC
-    expected_from: oracle
+    areas: [diff]
     request:
       op: diff
       searchdirs: [schemas]

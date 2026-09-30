@@ -80,13 +80,14 @@ fixtures:
 ```
 Rules: goldens record what libyang does; `assert` records what the spec requires. A fixture whose
 `assert` contradicts its golden must name a deviation id from `conformance/deviations.md`,
-otherwise the harness fails. Our engine is compared against `assert` where present and the golden
-otherwise, except for fields named in the deviation.
+otherwise the harness fails. Without a deviation our engine must match the `assert` (if present) AND the whole normalized golden.
+With a deviation (an intentional difference of ours from libyang): matching the assert but not the
+golden = `deviation`; not matching the assert = `differ`.
 
 ## 6. Go harness (separate module `github.com/vibe-ports/yang/conformance`)
 - `go run ./cmd/golden [-check] [-run REGEX]` — runs lyoracle per fixture (replaces run_corpus.py):
   manifest validation (version, unique ids, required fields, files exist), 60 s timeout, fails on
-  non-zero exit / `request-error` / missing `protocol`, writes or compares goldens byte-exactly.
+  non-zero exit / `request-error` / missing `protocol` (flag `-require-protocol`, default off; switched on when oracle v2 lands), writes or compares goldens byte-exactly.
 - `go test ./...` — manifest well-formed, every assert consistent with its golden (or deviation).
 - `Engine` interface (`Run(Request) (Response, error)`) + `Compare(e Engine) Report`; per-area report
   (agree / differ / deviation / unsupported) as Markdown for the CI job summary. No engine exists yet;

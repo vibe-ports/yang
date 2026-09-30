@@ -40,7 +40,7 @@ ARG GOVULNCHECK_VERSION=v1.8.0
 ARG GITLEAKS_VERSION=v8.30.1
 ARG ACTIONLINT_VERSION=v1.7.12
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      libpcre2-dev=${PCRE2_VERSION} libpcre2-8-0=${PCRE2_VERSION} python3-yaml sudo \
+      libpcre2-dev=${PCRE2_VERSION} libpcre2-8-0=${PCRE2_VERSION} sudo \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=libyang /opt/libyang /opt/libyang
 ENV PATH=/opt/libyang/bin:${PATH} \

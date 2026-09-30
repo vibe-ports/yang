@@ -335,7 +335,7 @@ lead, then found by a later astra review: libyang rejects them at compile time
 | 5 | fixpoint can accept cycles | accept | design 03 rule 5: compile-time cycle rejection as libyang + fixture |
 | 6 | compare ≠ canonical string; revision-aware type handlers | accept | design 01 |
 | 7 | xsdre divergences not registered; limits mixed with deviations | accept | deviations D-0002…D-0008, U-0001; rerun on pinned pcre2 10.46 (same numbers) |
-| 14 | harness failures could become goldens | accept | `run_corpus.py` fails on rc≠0 / request-error, 60 s timeout |
+| 14 | harness failures could become goldens | accept | the Go harness (`conformance/cmd/golden`) fails on rc≠0 / request-error, 60 s timeout |
 | 15 | all-tagged fixture had no tags | accept | loads `ietf-netconf-with-defaults` (IETF module added to corpus) |
 | 16 | `data` ↔ `xpath` import cycle | accept | design 03: xpath owns a narrow Node interface |
 | 17 | warnings inside a failure error | accept | §2: `Validate` returns `(Diagnostics, error)` |

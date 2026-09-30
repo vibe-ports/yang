@@ -8,12 +8,15 @@ ci: fmt-check vet lint nocgo test test-386 test-go-min test-oracle vuln secrets 
 fmt-check:
 	@out=$$(git ls-files -z '*.go' | xargs -0 -r gofmt -l); [ -z "$$out" ] || { echo "gofmt needed:"; echo "$$out"; exit 1; }
 	go mod tidy -diff
+	cd conformance && go mod tidy -diff
 
 vet:
 	go vet ./...
+	cd conformance && go vet ./...
 
 lint:
 	golangci-lint run
+	cd conformance && golangci-lint run
 	actionlint -shellcheck= .github/workflows/*.yml
 
 # Production code must never use cgo (goal 1). The oracle lives outside this module.
@@ -24,15 +27,18 @@ nocgo:
 
 test:
 	go test -race -shuffle=on -coverprofile=coverage.out ./...
+	cd conformance && go test -race -shuffle=on ./...
 
 # 32-bit run catches int-width assumptions (ranges, decimal64).
 test-386:
 	GOARCH=386 CGO_ENABLED=0 go test ./...
+	cd conformance && GOARCH=386 CGO_ENABLED=0 go test ./...
 
 # Oldest supported Go (go.mod `go` line) — the directive alone doesn't stop newer stdlib API use.
 GO_MIN ?= go1.26.8
 test-go-min:
 	GOTOOLCHAIN=$(GO_MIN) go test ./...
+	cd conformance && GOTOOLCHAIN=$(GO_MIN) go test ./...
 
 # Differential tests against the pinned libyang (build tag `oracle`); must not skip in CI.
 test-oracle:
@@ -40,6 +46,7 @@ test-oracle:
 
 vuln:
 	govulncheck ./...
+	cd conformance && govulncheck ./...
 
 # Secret scan over the whole git history.
 secrets:
@@ -64,11 +71,12 @@ LIBYANG_PREFIX ?= /opt/libyang
 oracle:
 	$(MAKE) -C conformance/oracle LIBYANG_PREFIX=$(LIBYANG_PREFIX)
 
-oracle-check: oracle
-	python3 conformance/oracle/run_corpus.py --check
+oracle-check:
+	$(MAKE) oracle
+	cd conformance && go run ./cmd/golden -check && go test ./...
 
 oracle-golden: oracle
-	python3 conformance/oracle/run_corpus.py
+	cd conformance && go run ./cmd/golden && go test ./...
 
 # libyang v5.8.6 sources for porting and reviews (host side, gitignored).
 libyang-src:

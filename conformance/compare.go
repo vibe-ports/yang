@@ -1,0 +1,283 @@
+// SPDX-License-Identifier: BSD-3-Clause
+
+package conformance
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"maps"
+	"reflect"
+	"slices"
+	"strings"
+)
+
+// Request identifies one fixture run. Params is the lyoracle request verbatim; BaseDir is the
+// fixture directory (absolute when the manifest path is).
+type Request struct {
+	ID      string
+	BaseDir string
+	Params  map[string]any
+}
+
+// Engine is a YANG implementation under test. Return ErrUnsupported for inputs it cannot handle.
+type Engine interface {
+	Run(Request) (Response, error)
+}
+
+// ErrUnsupported marks a fixture the engine does not implement (yet).
+var ErrUnsupported = errors.New("unsupported")
+
+// Status is the outcome of one fixture.
+type Status int
+
+// Outcomes, in report column order.
+const (
+	Agree Status = iota
+	Differ
+	Deviation
+	Unsupported
+)
+
+func (s Status) String() string { return [...]string{"agree", "differ", "deviation", "unsupported"}[s] }
+
+// Result is one fixture's outcome.
+type Result struct {
+	ID     string
+	Areas  []string
+	Status Status
+	Detail string
+}
+
+// Report is the outcome of Compare.
+type Report struct{ Results []Result }
+
+// Compare runs every fixture through e (see manifest.schema.md for the rules).
+func (m *Manifest) Compare(e Engine) (Report, error) {
+	var rep Report
+	for _, f := range m.Fixtures {
+		golden, err := LoadGolden(m.GoldenPath(f))
+		if err != nil {
+			return rep, err
+		}
+		got, err := e.Run(Request{ID: f.ID, BaseDir: fixtureDir(m, f), Params: f.Request})
+		r := Result{ID: f.ID, Areas: f.Areas}
+		switch {
+		case errors.Is(err, ErrUnsupported):
+			r.Status = Unsupported
+		case err != nil:
+			r.Status, r.Detail = Differ, err.Error()
+		default:
+			r.Status, r.Detail = classify(f, golden, got)
+		}
+		rep.Results = append(rep.Results, r)
+	}
+	return rep, nil
+}
+
+// classify: without a deviation the engine must match the assert (if any) and the whole
+// normalized golden. With a deviation (libyang differs from the spec on purpose) matching the
+// assert but not the golden is Deviation; not matching the assert is Differ.
+func classify(f Fixture, golden, got Response) (Status, string) {
+	assertDiff, goldenDiff := "", diffResponses(golden, got)
+	if f.Assert != nil {
+		assertDiff = MatchAssert(f.Assert, got)
+	}
+	switch {
+	case assertDiff != "":
+		return Differ, assertDiff
+	case goldenDiff == "":
+		return Agree, ""
+	case f.Assert != nil && f.Assert.Deviation != nil:
+		// The deviation only waives what the assert covers (verdict, rc, diagnostics);
+		// the rest of the golden (trees, xpath results, diffs) must still match.
+		if d := diffResponses(withoutAsserted(golden), withoutAsserted(got)); d != "" {
+			return Differ, d
+		}
+		return Deviation, *f.Assert.Deviation
+	default:
+		return Differ, goldenDiff
+	}
+}
+
+func fixtureDir(m *Manifest, f Fixture) string { return m.corpus + "/" + f.Dir }
+
+// MatchAssert returns "" if resp satisfies a, else the first mismatch.
+func MatchAssert(a *Assert, resp Response) string {
+	if v := resp.Verdict(); v != a.Verdict {
+		return fmt.Sprintf("verdict %q, want %q", v, a.Verdict)
+	}
+	diags := resp.Diagnostics()
+	for _, want := range a.Diagnostics {
+		if !slices.ContainsFunc(diags, func(d map[string]any) bool { return subset(want, d) }) {
+			return fmt.Sprintf("no diagnostic matching %v", want)
+		}
+	}
+	return ""
+}
+
+// withoutAsserted drops the fields an assert (and so a deviation) speaks about.
+func withoutAsserted(r Response) Response {
+	o := maps.Clone(map[string]any(r))
+	for _, k := range []string{"verdict", "rc", "diagnostics", "context_diagnostics"} {
+		delete(o, k)
+	}
+	return o
+}
+
+// sameJSON compares by JSON form after number canonicalisation, so 1, 1.0 and a yaml int are
+// equal but "1" != 1.
+func sameJSON(a, b any) bool {
+	x, err1 := json.Marshal(canonNumbers(a))
+	y, err2 := json.Marshal(canonNumbers(b))
+	return err1 == nil && err2 == nil && bytes.Equal(x, y)
+}
+
+func subset(want, got map[string]any) bool {
+	for k, v := range want {
+		g, ok := got[k]
+		if !ok || !sameJSON(v, g) {
+			return false
+		}
+	}
+	return true
+}
+
+// diffResponses compares what PLAN §5 fixes: everything except msg, line, libyang version and
+// the XML tree rendering. "" = equal.
+func diffResponses(want, got Response) string {
+	w, g := normalize(want), normalize(got)
+	if reflect.DeepEqual(w, g) {
+		return ""
+	}
+	for _, k := range slices.Sorted(maps.Keys(w)) {
+		if !reflect.DeepEqual(w[k], g[k]) {
+			return "field " + k + " differs"
+		}
+	}
+	return "extra fields in response"
+}
+
+func normalize(r Response) map[string]any {
+	o := maps.Clone(map[string]any(r))
+	// msg/line are stripped only inside diagnostic items, never from data trees.
+	stripDiags(o, "diagnostics")
+	stripDiags(o, "context_diagnostics")
+	if mods, ok := o["modules"].([]any); ok {
+		nm := make([]any, len(mods))
+		for i, m := range mods {
+			if mm, ok := m.(map[string]any); ok {
+				mm = maps.Clone(mm)
+				stripDiags(mm, "diagnostics")
+				m = mm
+			}
+			nm[i] = m
+		}
+		o["modules"] = nm
+	}
+	delete(o, "libyang")
+	if t, ok := o["tree"].(map[string]any); ok {
+		t = maps.Clone(t)
+		delete(t, "xml")
+		o["tree"] = t
+	}
+	return canonNumbers(o).(map[string]any)
+}
+
+func stripDiags(m map[string]any, key string) {
+	l, ok := m[key].([]any)
+	if !ok {
+		return
+	}
+	out := make([]any, len(l))
+	for i, e := range l {
+		if d, ok := e.(map[string]any); ok {
+			d = maps.Clone(d)
+			delete(d, "msg")
+			delete(d, "line")
+			e = d
+		}
+		out[i] = e
+	}
+	m[key] = out
+}
+
+// canonNumbers makes 1, 1.0 and 1e0 compare equal (ponytail: float64, exact to 2^53).
+func canonNumbers(v any) any {
+	switch v := v.(type) {
+	case map[string]any:
+		o := make(map[string]any, len(v))
+		for k, x := range v {
+			o[k] = canonNumbers(x)
+		}
+		return o
+	case []any:
+		o := make([]any, len(v))
+		for i, x := range v {
+			o[i] = canonNumbers(x)
+		}
+		return o
+	case json.Number:
+		if f, err := v.Float64(); err == nil {
+			return f
+		}
+	}
+	return v
+}
+
+// Markdown renders the per-area table (fixtures with several areas count in each) followed by
+// every non-agreeing fixture.
+func (r Report) Markdown() string {
+	type tally [4]int
+	byArea := map[string]*tally{}
+	var total tally
+	for _, x := range r.Results {
+		total[x.Status]++
+		for _, a := range x.Areas {
+			if byArea[a] == nil {
+				byArea[a] = &tally{}
+			}
+			byArea[a][x.Status]++
+		}
+	}
+	var b strings.Builder
+	b.WriteString("| area | agree | differ | deviation | unsupported |\n|---|--:|--:|--:|--:|\n")
+	for _, a := range slices.Sorted(maps.Keys(byArea)) {
+		t := byArea[a]
+		fmt.Fprintf(&b, "| %s | %d | %d | %d | %d |\n", a, t[0], t[1], t[2], t[3])
+	}
+	fmt.Fprintf(&b, "| **fixtures** | %d | %d | %d | %d |\n", total[0], total[1], total[2], total[3])
+	for _, x := range r.Results {
+		if x.Status != Agree {
+			fmt.Fprintf(&b, "\n- `%s`: %s %s", x.ID, x.Status, x.Detail)
+		}
+	}
+	b.WriteString("\n")
+	return b.String()
+}
+
+// Replay is an Engine that returns the goldens: it proves the plumbing, nothing more.
+type Replay struct{ golden map[string]Response }
+
+// NewReplay loads every golden of m.
+func NewReplay(m *Manifest) (*Replay, error) {
+	rp := &Replay{golden: map[string]Response{}}
+	for _, f := range m.Fixtures {
+		g, err := LoadGolden(m.GoldenPath(f))
+		if err != nil {
+			return nil, err
+		}
+		rp.golden[f.ID] = g
+	}
+	return rp, nil
+}
+
+// Run implements Engine.
+func (rp *Replay) Run(r Request) (Response, error) {
+	g, ok := rp.golden[r.ID]
+	if !ok {
+		return nil, ErrUnsupported
+	}
+	return g, nil
+}
