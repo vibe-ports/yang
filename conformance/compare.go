@@ -117,13 +117,37 @@ func MatchAssert(a *Assert, resp Response) string {
 	return ""
 }
 
-// withoutAsserted drops the fields an assert (and so a deviation) speaks about.
+// withoutAsserted drops the fields an assert (and so a deviation) speaks about: the verdict and
+// its rc/failed_step and every diagnostic list, also per sequence step (where a deviating step
+// changes everything after it, so the steps' rc and diagnostics are waived too).
 func withoutAsserted(r Response) Response {
 	o := maps.Clone(map[string]any(r))
-	for _, k := range []string{"verdict", "rc", "diagnostics", "context_diagnostics"} {
+	for _, k := range []string{"verdict", "rc", "failed_step", "diagnostics", "context_diagnostics"} {
 		delete(o, k)
 	}
+	mapItems(o, "steps", func(s map[string]any) {
+		delete(s, "rc")
+		delete(s, "diagnostics")
+	})
 	return o
+}
+
+// mapItems replaces m[key] (a list of objects) by clones edited by f.
+func mapItems(m map[string]any, key string, f func(map[string]any)) {
+	l, ok := m[key].([]any)
+	if !ok {
+		return
+	}
+	out := make([]any, len(l))
+	for i, e := range l {
+		if d, ok := e.(map[string]any); ok {
+			d = maps.Clone(d)
+			f(d)
+			e = d
+		}
+		out[i] = e
+	}
+	m[key] = out
 }
 
 // sameJSON compares by JSON form after number canonicalisation, so 1, 1.0 and a yaml int are
@@ -145,7 +169,7 @@ func subset(want, got map[string]any) bool {
 }
 
 // diffResponses compares what PLAN §5 fixes: everything except msg, line, libyang version and
-// the XML tree rendering. "" = equal.
+// the XML tree rendering (also inside sequence steps). "" = equal.
 func diffResponses(want, got Response) string {
 	w, g := normalize(want), normalize(got)
 	if reflect.DeepEqual(w, g) {
@@ -164,43 +188,30 @@ func normalize(r Response) map[string]any {
 	// msg/line are stripped only inside diagnostic items, never from data trees.
 	stripDiags(o, "diagnostics")
 	stripDiags(o, "context_diagnostics")
-	if mods, ok := o["modules"].([]any); ok {
-		nm := make([]any, len(mods))
-		for i, m := range mods {
-			if mm, ok := m.(map[string]any); ok {
-				mm = maps.Clone(mm)
-				stripDiags(mm, "diagnostics")
-				m = mm
-			}
-			nm[i] = m
-		}
-		o["modules"] = nm
-	}
+	mapItems(o, "modules", func(m map[string]any) { stripDiags(m, "diagnostics") })
 	delete(o, "libyang")
-	if t, ok := o["tree"].(map[string]any); ok {
-		t = maps.Clone(t)
-		delete(t, "xml")
-		o["tree"] = t
-	}
+	dropXML(o)
+	mapItems(o, "steps", func(s map[string]any) {
+		stripDiags(s, "diagnostics")
+		dropXML(s)
+	})
 	return canonNumbers(o).(map[string]any)
 }
 
+// dropXML removes the XML rendering of m["tree"]; the JSON one is compared.
+func dropXML(m map[string]any) {
+	if t, ok := m["tree"].(map[string]any); ok {
+		t = maps.Clone(t)
+		delete(t, "xml")
+		m["tree"] = t
+	}
+}
+
 func stripDiags(m map[string]any, key string) {
-	l, ok := m[key].([]any)
-	if !ok {
-		return
-	}
-	out := make([]any, len(l))
-	for i, e := range l {
-		if d, ok := e.(map[string]any); ok {
-			d = maps.Clone(d)
-			delete(d, "msg")
-			delete(d, "line")
-			e = d
-		}
-		out[i] = e
-	}
-	m[key] = out
+	mapItems(m, key, func(d map[string]any) {
+		delete(d, "msg")
+		delete(d, "line")
+	})
 }
 
 // canonNumbers makes 1, 1.0 and 1e0 compare equal (ponytail: float64, exact to 2^53).

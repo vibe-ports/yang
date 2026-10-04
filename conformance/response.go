@@ -47,7 +47,8 @@ func LoadGolden(path string) (Response, error) {
 // Verdict is the response's verdict, "" if absent.
 func (r Response) Verdict() string { v, _ := r["verdict"].(string); return v }
 
-// Diagnostics returns every diagnostic item: top-level, context_diagnostics and per-module.
+// Diagnostics returns every diagnostic item: top-level, context_diagnostics, per-module and
+// per sequence step.
 func (r Response) Diagnostics() []map[string]any {
 	var out []map[string]any
 	collect := func(v any) {
@@ -60,10 +61,12 @@ func (r Response) Diagnostics() []map[string]any {
 	}
 	collect(r["diagnostics"])
 	collect(r["context_diagnostics"])
-	mods, _ := r["modules"].([]any)
-	for _, m := range mods {
-		if mm, ok := m.(map[string]any); ok {
-			collect(mm["diagnostics"])
+	for _, key := range []string{"modules", "steps"} {
+		l, _ := r[key].([]any)
+		for _, e := range l {
+			if m, ok := e.(map[string]any); ok {
+				collect(m["diagnostics"])
+			}
 		}
 	}
 	return out

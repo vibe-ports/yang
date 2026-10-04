@@ -266,6 +266,47 @@ func TestMatchAssertTypes(t *testing.T) {
 	}
 }
 
+func TestSequenceSteps(t *testing.T) {
+	base := `{"verdict":"invalid","rc":{"err":3},"failed_step":1,"steps":[` +
+		`{"do":"parse","rc":{"err":0},"diagnostics":[],"tree":null},` +
+		`{"do":"edit","rc":{"err":3},"diagnostics":[{"level":"error","data_path":"/m:k","msg":"a","line":1}]},` +
+		`{"do":"dump","skipped":true}]}`
+	step := `{"do":"dump","rc":{"err":0},"diagnostics":[],"tree":{"json":"{}","xml":"<a/>"}}`
+	for _, tc := range []struct {
+		name, a, b string
+		same       bool // diffResponses agrees
+		sameWaived bool // diffResponses agrees after withoutAsserted
+	}{
+		{"identical", base, base, true, true},
+		{"step msg/line ignored", base, strings.Replace(base, `"msg":"a","line":1`, `"msg":"b","line":7`, 1), true, true},
+		{"step data_path compared", base, strings.Replace(base, `/m:k`, `/m:x`, 1), false, true},
+		{"step rc compared, waived by deviation", base, strings.Replace(base, `"do":"edit","rc":{"err":3}`, `"do":"edit","rc":{"err":0}`, 1), false, true},
+		{"failed_step waived by deviation", base, strings.Replace(base, `"failed_step":1`, `"failed_step":null`, 1), false, true},
+		{"skipped is not waived", base, strings.Replace(base, `{"do":"dump","skipped":true}`, step, 1), false, false},
+		{"step tree.xml ignored", `{"steps":[` + step + `]}`, `{"steps":[` + strings.Replace(step, `<a/>`, `<b/>`, 1) + `]}`, true, true},
+		{"step tree.json compared", `{"steps":[` + step + `]}`, `{"steps":[` + strings.Replace(step, `"json":"{}"`, `"json":"{ }"`, 1) + `]}`, false, false},
+	} {
+		a, b := resp(t, tc.a), resp(t, tc.b)
+		if got := diffResponses(a, b) == ""; got != tc.same {
+			t.Errorf("%s: diffResponses equal=%v, want %v", tc.name, got, tc.same)
+		}
+		if got := diffResponses(withoutAsserted(a), withoutAsserted(b)) == ""; got != tc.sameWaived {
+			t.Errorf("%s: waived equal=%v, want %v", tc.name, got, tc.sameWaived)
+		}
+	}
+	// asserts see step diagnostics
+	a := &Assert{Verdict: "invalid", Diagnostics: []map[string]any{{"level": "error", "data_path": "/m:k"}}}
+	if d := MatchAssert(a, resp(t, base)); d != "" {
+		t.Errorf("step diagnostic not matched: %s", d)
+	}
+	// normalize must not modify the response it is given
+	r := resp(t, base)
+	normalize(r)
+	if len(r["steps"].([]any)[1].(map[string]any)["diagnostics"].([]any)[0].(map[string]any)) != 4 {
+		t.Error("normalize mutated its input")
+	}
+}
+
 func TestParseResponseTrailing(t *testing.T) {
 	if _, err := ParseResponse([]byte(`{"a":1} {"b":2}`)); err == nil {
 		t.Error("trailing data accepted")
