@@ -7,22 +7,28 @@ Status: contract for M1-pre. v1 = conformance/oracle/README.md. Every response g
 Request field `unknown`: `reject` (default → `LYD_PARSE_STRICT`), `skip` (no STRICT: unknown
 data silently dropped, libyang default), `opaque` (`LYD_PARSE_OPAQ`: kept as opaque nodes).
 `parse_options` may no longer contain `strict`/`opaq` (request-error) — `unknown` is the only knob.
-Operations (`lyd_parse_op`) accept `reject` and `opaque` only.
+Operations (`lyd_parse_op`) accept `reject` and `opaque` only. `opaque` only keeps the nodes:
+libyang validation rejects them (datastore data and operations alike).
 
 ## 2. Typed tree dump (all ops that produce a data tree)
 Next to the printer output (`tree.json` / `tree.xml`, kept) the response carries `typed`: the tree
 in pre-order (siblings in libyang order), one object per node:
 ```json
 {"path": "/basic:sys/iface[name='eth0']/type",      // lyd_path(LYD_PATH_STD)
- "schema": "/basic:sys/iface/type",                  // lysc_path, null for opaque
+ "schema": "/basic:sys/iface/type",   // lysc_path(LYSC_PATH_LOG): with choice/case, input/output; null for opaque
  "kind": "leaf",   // container|list|leaf|leaflist|anydata|anyxml|opaque|rpc|action|notif
  "flags": {"default": false, "when_true": true, "new": false},   // LYD_DEFAULT/WHEN_TRUE/NEW
  "value": {"canonical": "eth", "type": "enumeration",           // realtype basetype name
            "typedef": "iface-type",                             // realtype typedef name or null
-           "union_member": null},    // for unions: {"type":…, "typedef":…} of the selected member
+           "union_member": null},    // unions: {"index", "type", "typedef", "realtype": {"type", "typedef"}}
  "meta": [{"module": "ietf-netconf-with-defaults", "name": "default", "value": "true"}],
- "any": null}   // anydata/anyxml: {"value_type": "datatree|string|xml|json|lyb", "text": "…"}
+ "any": null}   // anydata/anyxml: {"value_type": "datatree"|"string"|null, "text": "…"}
 ```
+libyang v5 anydata holds only a data tree or a string, so `value_type` has no xml/json/lyb.
+`union_member` is the first union member whose type (leafref: its realtype) is the stored realtype
+— libyang does not record the member, this is its own ordering rule (`lyplg_type_sort_union`);
+two members with the same realtype report the earlier one. Opaque nodes: `value.canonical` is the
+original text, type fields null, `value.hints` the parser's JSON type hints, attributes in `meta`.
 `typed` is omitted for `verdict != valid` unless the tree exists (parse_only / operational warnings).
 
 ## 3. Structured compiled schema (op `schema`)
@@ -42,7 +48,11 @@ over `lysc` nodes incl. rpc/action input/output and notifications:
  "extensions": [{"module": "…", "name": "…", "argument": "…"}]}
 ```
 plus `identities`: `[{"name": "m:id", "bases": [...], "derived": [...]}]` and `features`
-(enabled/disabled). Absent facts are `null`, not omitted.
+(enabled/disabled). Absent facts are `null`, not omitted. As implemented: `path` is
+`lysc_path(LYSC_PATH_LOG)`; `typedefs` holds only the nearest typedef (compiled types keep no
+chain); `range`/`length` are the compiled intervals, not the original text; `max_elements: null`
+= unbounded; a choice's `defaults` is its default case name; a leafref member of a union gets its
+target only when `lysc_node_lref_targets` resolves one per leafref member.
 
 ## 4. op `sequence` — stateful runs on one retained tree
 ```json
@@ -56,10 +66,12 @@ plus `identities`: `[{"name": "m:id", "bases": [...], "derived": [...]}]` and `f
    {"do": "validate", "data_type": "config"},
    {"do": "dump", "with_defaults": "all-tagged"}]}
 ```
-Response: `steps`: one object per step with `rc`, `diagnostics`, and for `validate` the
+All steps are checked (request-error) before any runs. Response: `steps`: one object per step with `rc`, `diagnostics`, and for `validate` the
 `implicit_diff` (lyd_validate_all's diff: defaults added, nodes auto-deleted by `when`, printed as
 JSON with `yang:operation`), for every step the resulting `typed` dump. The sequence stops at the
-first step whose rc is not LY_SUCCESS (later steps are reported as `skipped`). This is what makes
+first failing step — rc not LY_SUCCESS or an error-level diagnostic logged (e.g. `lyd_free_tree`
+refusing a list key) — later steps are `{"do", "skipped": true}`; the response adds `failed_step`
+(index or null). `set` is `lyd_new_path` with `LYD_NEW_PATH_UPDATE` only. This is what makes
 `WhenTrue`/`Default`/`New` history observable.
 
 ## 5. Manifest v2 (conformance/corpus/manifest.yaml)

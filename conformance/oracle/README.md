@@ -110,7 +110,8 @@ Per accepted module (protocol 2) also:
   NP containers with mandatory descendants and on (leaf-)lists with min-elements > 0; null for other
   node types. `presence` only for containers; `keys`, `ordered_by`, `min_elements`, `max_elements`
   (null = unbounded) only for lists / leaf-lists. `defaults`: canonical leaf / leaf-list defaults
-  (`lyd_value_validate_dflt`; the original text if that needs a data tree), or the default case name
+  (`lyd_value_validate_dflt`, also when it returns `LY_EINCOMPLETE` because a leafref /
+  instance-identifier instance check needs data; the original text on any other failure), or the default case name
   of a choice. `when`: `[{"expr", "context" (lysc_path, null = root), "module" (defining module)}]`
   — for a leaf the context is the leaf itself. `musts`: `[{"expr", "apptag", "message"}]`.
   `extensions`: `[{"module", "name", "argument"}]`.
@@ -118,7 +119,10 @@ Per accepted module (protocol 2) also:
   its fraction-digits), not the original text; `typedefs` holds only the nearest typedef (libyang
   keeps no chain); `patterns` `[{"expr", "invert"}]`; `enums` `[{"name", "value"}]`; `bits`
   `[{"name", "position"}]`; `bases` `["mod:id"]`; `leafref` `{"path", "require_instance",
-  "target"}` (target via `lysc_node_lref_target`, null inside a union); `union` = member types.
+  "target"}` (`lysc_node_lref_target`; for leafref members of a union the targets of
+  `lysc_node_lref_targets`, attributed in member order, null for every member when that list
+  is shorter than the leafref members — it is deduplicated and skips unresolved paths); `union` =
+  member types.
 - `identities`: `[{"name": "pv2:one", "bases": ["pv2:base-id"], "derived": ["pv2:two"]}]` —
   `derived` as libyang links it (direct only); `bases` found by scanning every context module.
 - `features`: `[{"name": "extra", "enabled": true}]` (`lysp_feature_next` + `lys_feature_value`).
@@ -173,7 +177,9 @@ stays parse-only without STRICT) — what happens to data nodes the schema does 
 Example (`protocol-v2/data/unknown.json` = `{"pv2:c": {"mode": "on", "bogus": 1}}`, `config`,
 `parse_only`): `reject` → `invalid`; `skip` → `valid`, typed `/pv2:c`, `/pv2:c/mode`; `opaque` →
 `valid`, plus `{"path": "/pv2:c/bogus", "schema": null, "kind": "opaque", "value": {"canonical":
-"1", ...}}`. For operations libyang validation still rejects opaque nodes (`validate_op`).
+"1", "hints": ["decnum"], ...}}`. `opaque` only keeps the nodes: validation rejects them for
+datastore data as for operations (fixture `protocol-v2/unknown-opaque-validated`: without
+`parse_only` the same input is `invalid`, `LYVE_REFERENCE` at `/pv2:c`).
 
 Operations: `operational` / `operational_file` (+ `operational_format`, default = `format`) is
 parsed `LYD_PARSE_ONLY` and used as the dependency tree. For a nested action/notification the
@@ -198,15 +204,25 @@ pre-order (siblings in libyang order, list keys first), one object per node. Pre
  "value": {"canonical": "7",         // lyd_get_value()
            "type": "uint8",          // value.realtype basetype (YANG name); a leafref reports its target's type
            "typedef": "percent",     // value.realtype->name (nearest typedef) or null
-           "union_member": null},    // unions: {"type", "typedef"} of subvalue->value.realtype
+           "union_member": null},    // unions: the member that stored the value, see below
  "meta": [],                         // [{module, name, value}]; internal meta (lyd_meta_is_internal) skipped
  "any": null}                        // anydata/anyxml: {"value_type": "datatree"|"string"|null, "text": "…"}
 ```
 `value` is null for inner nodes. Opaque nodes: `canonical` is the original text, the type fields
-are null, attributes are listed in `meta` (`module` = module name for JSON input, namespace for
-XML). Union example: `u` = `"abc"` → `"value": {"canonical": "abc", "type": "union", "typedef":
-null, "union_member": {"type": "string", "typedef": null}}`; `-5` → member `int8`. `any.text` is
-`lyd_any_value_str(LYD_JSON)`; anydata content is not listed as separate nodes.
+are null, `hints` lists the parser's value/node hints (the JSON type the value came as:
+`string`, `decnum`, `octnum`, `hexnum`, `num64`, `boolean`, `empty`, `string_datatypes`, `list`,
+`leaflist`; `1` → `["decnum"]`, `"1"` → `["string"]`), attributes are listed in `meta` (`module` =
+module name for JSON input, namespace for XML). `any.text` is `lyd_any_value_str(LYD_JSON)`;
+anydata content is not listed as separate nodes.
+
+`union_member` = `{"index", "type", "typedef", "realtype": {"type", "typedef"}}`: `index`, `type`
+and `typedef` describe the union member (unions are flattened by libyang), `realtype` the type the
+value is stored as. libyang keeps only the stored realtype (a leafref member stores its target's
+type), so the member is found the way `lyplg_type_sort_union()` orders values: the first member
+whose type, or leafref realtype, is that realtype. When an earlier member shares the realtype
+(same typedef as a later leafref's target), the earlier one is reported; `index: null` if nothing
+matches. Examples (`pv2` `u2`: `percent | leafref ../l/k`): `"a"` → {"index": 1, "type": "leafref", "typedef": null, "realtype": {"type": "string", "typedef": null}}; `"50"` →
+`{"index": 0, "type": "uint8", "typedef": "percent", ...}`.
 
 ## op: xpath
 
@@ -256,11 +272,16 @@ becomes observable. Context fields as in `schema`; step fields are per step (not
 | `validate` | `data_type`, `validate_options` (validate flags of the preset) | `lyd_validate_all(&tree, ctx, opts, &diff)` |
 | `edit` | exactly one of `merge` / `merge_file` (+ `format`, `data_type`, `unknown`) | `lyd_parse_data(… LYD_PARSE_ONLY …)` + `lyd_merge_siblings(LYD_MERGE_DESTRUCT)` |
 | | `set: {"path", "value"}` (value in JSON format, omit for containers/lists) | `lyd_new_path(tree, ctx, path, value, LYD_NEW_PATH_UPDATE)` |
-| | `delete: "<path>"` | `lyd_find_path` + `lyd_free_tree` (`LY_EINCOMPLETE` if only a parent exists) |
+| | `delete: "<path>"` | `lyd_find_path` + `lyd_free_tree` (`LY_EINCOMPLETE` if only a parent exists; a list key is refused, see below) |
 | `dump` | `with_defaults` | `tree` = `{"json", "xml"}` as op `data` |
 
-Response: `steps` (one per request step), `verdict` (`valid` iff every step returned
-`LY_SUCCESS`), `rc` (of the last executed step), `failed_step` (index or null). Executed step:
+All steps are checked before the first runs (unknown `do`, missing/extra edit fields, bad enums,
+unreadable files → request-error), so a run that stops early never hides a malformed later step.
+A step fails when its call returns an error **or** it logged an error-level diagnostic (void
+APIs: `lyd_free_tree` refuses a list key with `LY_EINVAL` "Cannot free a list key"); its `rc` is
+then that item's code.
+
+Response: `steps` (one per request step), `verdict` (`valid` iff every step succeeded), `rc` (of the last executed step), `failed_step` (index or null). Executed step:
 `{"do", "diagnostics" (phase `parse` | `validate` | `edit`), "rc", "typed"}`, plus
 `implicit_diff` for `validate` (the diff printed as JSON with `LYD_PRINT_WD_ALL`, carrying
 `yang:operation`; null when validation changed nothing) and `tree` for `dump`. The first step whose
@@ -274,7 +295,12 @@ For the request above (`x` has `when "../mode = 'on'"`): step 0 `typed` has `/pv
 "implicit_diff": "{\"pv2:c\": {\"@\": {\"yang:operation\": \"none\"}, \"x\": \"hi\", \"@x\": {\"yang:operation\": \"delete\"}}}"
 ```
 step 3 fails with `LYVE_XPATH` (`Not found node "nope" in path.`), step 4 is `skipped`,
-`verdict: "invalid"`, `failed_step: 3`.
+`verdict: "invalid"`, `failed_step: 3`. Fixture `protocol-v2/sequence-edits` covers `merge_file`,
+`delete`, a non-null then a null `implicit_diff`, and the refused key delete.
+
+The Go harness (`conformance/`) reads `steps[].diagnostics` for asserts, ignores their
+`msg`/`line` and `steps[].tree.xml`, and a deviation waives `failed_step` and every step's
+`rc`/`diagnostics` (not the steps' trees or `skipped`).
 
 ## Known limitations
 

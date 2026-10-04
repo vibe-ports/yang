@@ -13,6 +13,7 @@
 
 #include <inttypes.h>
 #include <math.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -103,14 +104,29 @@ static const char *level_names[] = {"error", "warning", "verbose", "debug"};
 
 static cJSON *resp;
 
+/* printf into a malloc'ed string of the exact size (no fixed buffers anywhere). */
+static char *
+xprintf(const char *fmt, ...)
+{
+    va_list ap;
+    int n;
+    char *s;
+
+    va_start(ap, fmt);
+    n = vsnprintf(NULL, 0, fmt, ap);
+    va_end(ap);
+    s = malloc(n + 1);
+    va_start(ap, fmt);
+    vsnprintf(s, n + 1, fmt, ap);
+    va_end(ap);
+    return s;
+}
+
 static void
 die(const char *fmt, const char *arg)
 {
-    char buf[512];
-
-    snprintf(buf, sizeof buf, fmt, arg ? arg : "");
     cJSON_AddStringToObject(resp, "verdict", "request-error");
-    cJSON_AddStringToObject(resp, "request_error", buf);
+    cJSON_AddStringToObject(resp, "request_error", xprintf(fmt, arg ? arg : ""));
     char *s = cJSON_Print(resp);
     printf("%s\n", s);
     exit(2);
@@ -182,11 +198,10 @@ read_file(const char *path)
 static const char *
 input_of(const cJSON *req, const char *key)
 {
-    char fkey[64];
-    const char *s = str_of(req, key), *p;
+    char *fkey = xprintf("%s_file", key);
+    const char *s = str_of(req, key), *p = str_of(req, fkey);
 
-    snprintf(fkey, sizeof fkey, "%s_file", key);
-    p = str_of(req, fkey);
+    free(fkey);
     if (s && p) {
         die("both inline and _file given for \"%s\"", key);
     }
@@ -198,12 +213,12 @@ code_json(LY_ERR err)
 {
     cJSON *c = cJSON_CreateObject();
     unsigned base = err & ~LY_EPLUGIN;
-    char name[64];
-
-    snprintf(name, sizeof name, "%s%s", (err & LY_EPLUGIN) ? "LY_EPLUGIN|" : "",
+    char *name = xprintf("%s%s", (err & LY_EPLUGIN) ? "LY_EPLUGIN|" : "",
             base < sizeof err_names / sizeof *err_names ? err_names[base] : "?");
+
     cJSON_AddNumberToObject(c, "err", err);
     cJSON_AddStringToObject(c, "name", name);
+    free(name);
     return c;
 }
 
@@ -302,6 +317,39 @@ add_type_ref(cJSON *o, const struct lysc_type *t)
     add_opt_str(o, "typedef", t->name);
 }
 
+/*
+ * The union member that stored the value. libyang keeps only the stored realtype (a leafref member
+ * stores its target's type), so map it back the way lyplg_type_sort_union() does: the first member
+ * whose type, or leafref realtype, is that realtype. Unions are flattened at compile time.
+ */
+static cJSON *
+union_member_json(const struct lyd_value *v)
+{
+    struct lysc_type **types = ((const struct lysc_type_union *)v->realtype)->types;
+    const struct lysc_type *stored = v->subvalue->value.realtype;
+    cJSON *o = cJSON_CreateObject();
+    LY_ARRAY_COUNT_TYPE u;
+
+    LY_ARRAY_FOR(types, u) {
+        const struct lysc_type *t = types[u];
+
+        if (t->basetype == LY_TYPE_LEAFREF) {
+            t = ((const struct lysc_type_leafref *)t)->realtype;
+        }
+        if (t == stored) {
+            cJSON_AddNumberToObject(o, "index", u);
+            add_type_ref(o, types[u]);
+            add_type_ref(cJSON_AddObjectToObject(o, "realtype"), stored);
+            return o;
+        }
+    }
+    /* not expected: report the stored type only */
+    cJSON_AddNullToObject(o, "index");
+    add_type_ref(o, stored);
+    add_type_ref(cJSON_AddObjectToObject(o, "realtype"), stored);
+    return o;
+}
+
 static cJSON *
 value_json(const struct lyd_node *n)
 {
@@ -311,11 +359,31 @@ value_json(const struct lyd_node *n)
     add_opt_str(o, "canonical", lyd_get_value(n));
     add_type_ref(o, v->realtype);
     if (v->realtype->basetype == LY_TYPE_UNION) {
-        add_type_ref(cJSON_AddObjectToObject(o, "union_member"), v->subvalue->value.realtype);
+        cJSON_AddItemToObject(o, "union_member", union_member_json(v));
     } else {
         cJSON_AddNullToObject(o, "union_member");
     }
     return o;
+}
+
+/* Value/node hints of an opaque node (LYD_VALHINT_*, LYD_NODEHINT_*): the JSON type it was given as. */
+static cJSON *
+hints_json(uint32_t hints)
+{
+    static const struct flag names[] = {
+        {"string", LYD_VALHINT_STRING}, {"decnum", LYD_VALHINT_DECNUM}, {"octnum", LYD_VALHINT_OCTNUM},
+        {"hexnum", LYD_VALHINT_HEXNUM}, {"num64", LYD_VALHINT_NUM64}, {"boolean", LYD_VALHINT_BOOLEAN},
+        {"empty", LYD_VALHINT_EMPTY}, {"string_datatypes", LYD_VALHINT_STRING_DATATYPES},
+        {"list", LYD_NODEHINT_LIST}, {"leaflist", LYD_NODEHINT_LEAFLIST}, {NULL, 0}
+    };
+    cJSON *a = cJSON_CreateArray();
+
+    for (int i = 0; names[i].name; i++) {
+        if (hints & names[i].val) {
+            cJSON_AddItemToArray(a, cJSON_CreateString(names[i].name));
+        }
+    }
+    return a;
 }
 
 static void
@@ -358,6 +426,7 @@ typed_add(cJSON *arr, const struct lyd_node *n)
             cJSON_AddNullToObject(v, "type");
             cJSON_AddNullToObject(v, "typedef");
             cJSON_AddNullToObject(v, "union_member");
+            cJSON_AddItemToObject(v, "hints", hints_json(q->hints));
             for (const struct lyd_attr *a = q->attr; a; a = a->next) {
                 add_meta_item(meta, a->name.module_name, a->name.name, a->value);
             }
@@ -397,60 +466,69 @@ typed_json(const struct lyd_node *tree)
     return arr;
 }
 
-/* One range/length bound; unsigned for uint*, string and binary (see struct lysc_range). */
-static void
-fmt_bound(char *buf, size_t len, const struct lysc_type *t, int64_t s, uint64_t u)
+/* One range/length bound (malloc'ed); unsigned for uint*, string and binary (see struct lysc_range). */
+static char *
+fmt_bound(const struct lysc_type *t, int64_t s, uint64_t u)
 {
     if (t->basetype == LY_TYPE_DEC64) {
-        int fd = ((const struct lysc_type_dec *)t)->fraction_digits % 19;   /* 1..18 */
+        int fd = ((const struct lysc_type_dec *)t)->fraction_digits;
         uint64_t a = s < 0 ? -(uint64_t)s : (uint64_t)s, p = 1;
 
         for (int i = 0; i < fd; i++) {
             p *= 10;
         }
-        snprintf(buf, len, "%s%" PRIu64 ".%0*" PRIu64, s < 0 ? "-" : "", a / p, fd, a % p);
+        return xprintf("%s%" PRIu64 ".%0*" PRIu64, s < 0 ? "-" : "", a / p, fd, a % p);
     } else if (t->basetype < LY_TYPE_DEC64) {
-        snprintf(buf, len, "%" PRIu64, u);
-    } else {
-        snprintf(buf, len, "%" PRId64, s);
+        return xprintf("%" PRIu64, u);
     }
+    return xprintf("%" PRId64, s);
 }
 
 /* Compiled range/length as "a..b | c" (numbers, not the original text). */
 static void
 add_range(cJSON *o, const char *key, const struct lysc_type *t, const struct lysc_range *r)
 {
-    char out[1024] = "", lo[48], hi[48];
+    char *out = xprintf("%s", ""), *lo, *hi, *next;
     LY_ARRAY_COUNT_TYPE i;
 
     if (!r) {
         cJSON_AddNullToObject(o, key);
+        free(out);
         return;
     }
     LY_ARRAY_FOR(r->parts, i) {
-        size_t len = strlen(out);
-        int single;
-
-        fmt_bound(lo, sizeof lo, t, r->parts[i].min_64, r->parts[i].min_u64);
-        fmt_bound(hi, sizeof hi, t, r->parts[i].max_64, r->parts[i].max_u64);
-        single = !strcmp(lo, hi);
-        snprintf(out + len, sizeof out - len, "%s%s%s%s", i ? " | " : "", lo, single ? "" : "..", single ? "" : hi);
+        lo = fmt_bound(t, r->parts[i].min_64, r->parts[i].min_u64);
+        hi = fmt_bound(t, r->parts[i].max_64, r->parts[i].max_u64);
+        if (strcmp(lo, hi)) {
+            next = xprintf("%s%s%s..%s", out, i ? " | " : "", lo, hi);
+        } else {
+            next = xprintf("%s%s%s", out, i ? " | " : "", lo);
+        }
+        free(out);
+        free(lo);
+        free(hi);
+        out = next;
     }
     cJSON_AddStringToObject(o, key, out);
+    free(out);
 }
 
 static cJSON *
 ident_json(const struct lysc_ident *id)
 {
-    char buf[512];
+    char *name = xprintf("%s:%s", id->module->name, id->name);
+    cJSON *s = cJSON_CreateString(name);
 
-    snprintf(buf, sizeof buf, "%s:%s", id->module->name, id->name);
-    return cJSON_CreateString(buf);
+    free(name);
+    return s;
 }
 
-/* Compiled type. node is the leaf/leaf-list for the top-level type (leafref target), NULL in unions. */
+/*
+ * Compiled type. target is the resolved target of a leafref type (or NULL); utargets the targets of
+ * the leafref members of a union, in member order (or NULL).
+ */
 static cJSON *
-type_json(const struct lysc_type *t, const struct lysc_node *node)
+type_json(const struct lysc_type *t, const struct lysc_node *target, const struct ly_set *utargets)
 {
     cJSON *o = cJSON_CreateObject(), *a;
     const struct lysc_range *range = NULL, *length = NULL;
@@ -538,7 +616,6 @@ type_json(const struct lysc_type *t, const struct lysc_node *node)
 
     if (t->basetype == LY_TYPE_LEAFREF) {
         const struct lysc_type_leafref *lr = (const struct lysc_type_leafref *)t;
-        const struct lysc_node *target = node ? lysc_node_lref_target(node) : NULL;
         cJSON *l = cJSON_AddObjectToObject(o, "leafref");
 
         cJSON_AddStringToObject(l, "path", lyxp_get_expr(lr->path));
@@ -551,9 +628,16 @@ type_json(const struct lysc_type *t, const struct lysc_node *node)
     if (t->basetype == LY_TYPE_UNION) {
         struct lysc_type **types = ((const struct lysc_type_union *)t)->types;
 
+        uint32_t k = 0;
+
         a = cJSON_AddArrayToObject(o, "union");
         LY_ARRAY_FOR(types, i) {
-            cJSON_AddItemToArray(a, type_json(types[i], NULL));
+            const struct lysc_node *tg = NULL;
+
+            if ((types[i]->basetype == LY_TYPE_LEAFREF) && utargets) {
+                tg = utargets->snodes[k++];
+            }
+            cJSON_AddItemToArray(a, type_json(types[i], tg, NULL));
         }
     } else {
         cJSON_AddNullToObject(o, "union");
@@ -561,14 +645,52 @@ type_json(const struct lysc_type *t, const struct lysc_node *node)
     return o;
 }
 
-/* Canonical form of a schema default; the original text if it cannot be resolved without data. */
+/*
+ * Type of a leaf/leaf-list with its leafref target(s). lysc_node_lref_targets() lists the targets of
+ * union leafref members in member order but deduplicated and without unresolved ones, so they are
+ * attributed per member only when the counts match (otherwise each member target is null).
+ */
+static cJSON *
+leaf_type_json(const struct lysc_node *node)
+{
+    /* type is at the same offset in lysc_node_leaf and lysc_node_leaflist */
+    const struct lysc_type *t = ((const struct lysc_node_leaf *)node)->type;
+    struct lysc_type **types;
+    struct ly_set *set = NULL;
+    uint32_t nlref = 0;
+    LY_ARRAY_COUNT_TYPE i;
+    cJSON *o;
+
+    if (t->basetype == LY_TYPE_LEAFREF) {
+        return type_json(t, lysc_node_lref_target(node), NULL);
+    } else if (t->basetype != LY_TYPE_UNION) {
+        return type_json(t, NULL, NULL);
+    }
+    types = ((const struct lysc_type_union *)t)->types;
+    LY_ARRAY_FOR(types, i) {
+        nlref += types[i]->basetype == LY_TYPE_LEAFREF;
+    }
+    if (nlref && !lysc_node_lref_targets(node, &set) && (set->count != nlref)) {
+        ly_set_free(set, NULL);
+        set = NULL;
+    }
+    o = type_json(t, NULL, set);
+    ly_set_free(set, NULL);
+    return o;
+}
+
+/*
+ * Canonical form of a schema default. LY_EINCOMPLETE (leafref, instance-identifier: the instance
+ * check needs data) still yields the canonical value; any other failure gives the original text.
+ */
 static cJSON *
 dflt_json(const struct lysc_node *node, const struct lysc_value *v)
 {
     const char *canon = NULL;
+    LY_ERR rc = lyd_value_validate_dflt(node, v->str, v->prefixes, NULL, NULL, &canon);
     cJSON *s;
 
-    if (lyd_value_validate_dflt(node, v->str, v->prefixes, NULL, NULL, &canon)) {
+    if ((rc && (rc != LY_EINCOMPLETE)) || !canon) {
         ly_err_clean(node->module->ctx, NULL);
         return cJSON_CreateString(v->str);
     }
@@ -654,7 +776,7 @@ snode_cb(struct lysc_node *node, void *data, ly_bool *dfs_continue)
 
     if (nt & (LYS_LEAF | LYS_LEAFLIST)) {
         /* type is at the same offset in lysc_node_leaf and lysc_node_leaflist */
-        cJSON_AddItemToObject(o, "type", type_json(((struct lysc_node_leaf *)node)->type, node));
+        cJSON_AddItemToObject(o, "type", leaf_type_json(node));
     } else {
         cJSON_AddNullToObject(o, "type");
     }
@@ -1230,22 +1352,62 @@ op_diff(const cJSON *req)
 
 /* ---------- sequence: steps on one retained tree ---------- */
 
+/*
+ * Check one step's request fields (request-error on anything malformed), so a sequence never
+ * stops at a failing step before a later malformed one is noticed. Returns the step kind.
+ */
+static const char *
+check_step(const cJSON *step)
+{
+    const char *what = str_of(step, "do");
+    struct dparams p;
+
+    if (!what) {
+        die("step without \"do\"%s", NULL);
+    }
+    if (!strcmp(what, "parse")) {
+        dparams_of(step, &p);
+        if (p.optype != LYD_TYPE_DATA_YANG) {
+            die("sequence supports datastore data types only%s", NULL);
+        }
+        if (!input_of(step, "data")) {
+            die("parse step needs data%s", NULL);
+        }
+    } else if (!strcmp(what, "validate")) {
+        dparams_of(step, &p);
+    } else if (!strcmp(what, "edit")) {
+        const char *merge = input_of(step, "merge"), *del = str_of(step, "delete");
+        const cJSON *set = cJSON_GetObjectItemCaseSensitive(step, "set");
+
+        if (!!merge + !!del + !!set != 1) {
+            die("edit step needs exactly one of merge, merge_file, set, delete%s", NULL);
+        }
+        if (merge) {
+            dparams_of(step, &p);
+        }
+        if (set && (!cJSON_IsObject(set) || !str_of(set, "path"))) {
+            die("set needs an object with path%s", NULL);
+        }
+        if (set) {
+            str_of(set, "value");
+        }
+    } else if (!strcmp(what, "dump")) {
+        wd_of(step);
+    } else {
+        die("unknown step %s", what);
+    }
+    return what;
+}
+
 static LY_ERR
 step_parse(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *diag)
 {
     struct dparams p;
     struct lyd_node *t;
-    const char *data;
     LY_ERR rc;
 
     dparams_of(step, &p);
-    if (p.optype != LYD_TYPE_DATA_YANG) {
-        die("sequence supports datastore data types only%s", NULL);
-    }
-    if (!(data = input_of(step, "data"))) {
-        die("parse step needs data%s", NULL);
-    }
-    rc = parse_one(ctx, &p, data, NULL, &t, diag, "parse");
+    rc = parse_one(ctx, &p, input_of(step, "data"), NULL, &t, diag, "parse");
     if (!rc) {
         lyd_free_all(*tree);
         *tree = t;
@@ -1281,9 +1443,6 @@ step_edit(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *
     struct lyd_node *node = NULL;
     LY_ERR rc = LY_SUCCESS;
 
-    if (!!merge + !!del + !!set != 1) {
-        die("edit step needs exactly one of merge, merge_file, set, delete%s", NULL);
-    }
     if (merge) {
         /* parsed like data_type "edit" would be: parse-only, then merged */
         struct dparams p;
@@ -1298,12 +1457,7 @@ step_edit(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *
             rc = lyd_merge_siblings(tree, node, LYD_MERGE_DESTRUCT);
         }
     } else if (set) {
-        const char *path = str_of(set, "path"), *value = str_of(set, "value");
-
-        if (!path) {
-            die("set needs path%s", NULL);
-        }
-        rc = lyd_new_path(*tree, ctx, path, value, LYD_NEW_PATH_UPDATE, &node);
+        rc = lyd_new_path(*tree, ctx, str_of(set, "path"), str_of(set, "value"), LYD_NEW_PATH_UPDATE, &node);
         if (!rc && !*tree && node) {
             while (node->parent) {
                 node = node->parent;
@@ -1319,6 +1473,7 @@ step_edit(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *
             if (node == *tree) {
                 *tree = node->next;
             }
+            /* void: refuses list keys with an LY_EINVAL error item, see op_sequence() */
             lyd_free_tree(node);
         }
     }
@@ -1344,14 +1499,14 @@ op_sequence(const cJSON *req)
     if (!cJSON_IsArray(steps)) {
         die("sequence needs a steps array%s", NULL);
     }
+    cJSON_ArrayForEach(step, steps) {
+        check_step(step);
+    }
     out = cJSON_AddArrayToObject(resp, "steps");
     cJSON_ArrayForEach(step, steps) {
         const char *what = str_of(step, "do");
-        cJSON *s = cJSON_CreateObject(), *diag;
+        cJSON *s = cJSON_CreateObject(), *diag, *d;
 
-        if (!what) {
-            die("step without \"do\"%s", NULL);
-        }
         cJSON_AddItemToArray(out, s);
         cJSON_AddStringToObject(s, "do", what);
         if (rc) {
@@ -1366,10 +1521,15 @@ op_sequence(const cJSON *req)
             rc = step_validate(ctx, step, &tree, diag, s);
         } else if (!strcmp(what, "edit")) {
             rc = step_edit(ctx, step, &tree, diag);
-        } else if (!strcmp(what, "dump")) {
-            cJSON_AddItemToObject(s, "tree", print_tree(tree, wd_of(step), 1));
         } else {
-            die("unknown step %s", what);
+            cJSON_AddItemToObject(s, "tree", print_tree(tree, wd_of(step), 1));
+        }
+        /* an error-level item means failure even if the call returned success (void APIs such as
+         * lyd_free_tree refusing a list key) */
+        cJSON_ArrayForEach(d, diag) {
+            if (!rc && !strcmp(cJSON_GetObjectItemCaseSensitive(d, "level")->valuestring, "error")) {
+                rc = (LY_ERR)cJSON_GetObjectItemCaseSensitive(cJSON_GetObjectItemCaseSensitive(d, "code"), "err")->valueint;
+            }
         }
         cJSON_AddItemToObject(s, "rc", code_json(rc));
         cJSON_AddItemToObject(s, "typed", typed_json(tree));
