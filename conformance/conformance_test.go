@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -213,9 +214,15 @@ func TestCompareUnsupportedAndMarkdown(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	n := len(m.Fixtures)
+	n, nval := len(m.Fixtures), 0
+	for _, f := range m.Fixtures {
+		if slices.Contains(f.Areas, "validation") {
+			nval++
+		}
+	}
 	md := rep.Markdown()
-	if !strings.Contains(md, fmt.Sprintf("| **fixtures** | 0 | 0 | 0 | %d |", n)) || !strings.Contains(md, "| validation | 0 | 0 | 0 | 4 |") {
+	if !strings.Contains(md, fmt.Sprintf("| **fixtures** | 0 | 0 | 0 | %d |", n)) ||
+		!strings.Contains(md, fmt.Sprintf("| validation | 0 | 0 | 0 | %d |", nval)) {
 		t.Errorf("unexpected report:\n%s", md)
 	}
 	rep, _ = m.Compare(fixed{errors.New("boom")})

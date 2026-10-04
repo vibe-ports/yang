@@ -179,3 +179,147 @@ fixtures:
       first_file: data/valid.json
       second_file: data/valid2.json
     golden: golden/diff.json
+
+  # ---- protocol-v2: oracle v2 dumps (typed tree, schema_tree, sequence, unknown policy) ----
+
+  - id: protocol-v2/when-auto-delete
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#7.21.5", "RFC7950#8.2"]
+    areas: [validation]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      steps:
+        - {do: parse, format: json, data_type: config, data_file: data/valid.json}
+        - {do: edit, set: {path: /pv2:c/mode, value: "off"}}
+        - {do: validate, data_type: config}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/when-auto-delete.json
+
+  - id: protocol-v2/implicit-defaults
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#7.6.1", "RFC7950#7.7.2", "RFC7950#7.9.3"]
+    areas: [defaults]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      format: json
+      data_type: config
+      data_file: data/valid.json
+      with_defaults: explicit
+    golden: golden/implicit-defaults.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.6.1"]
+      deviation: null
+
+  - id: protocol-v2/union-member
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      steps:
+        - {do: parse, format: json, data_type: config, data: '{"pv2:c": {"u": "abc"}}'}
+        - {do: edit, set: {path: /pv2:c/u, value: "-5"}}
+        - {do: edit, set: {path: /pv2:c/u, value: "42"}}
+        - {do: validate, data_type: config}
+    golden: golden/union-member.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: protocol-v2/choice-default-case
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#7.9.3", "RFC7950#7.9.1"]
+    areas: [defaults, validation]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      steps:
+        - {do: validate, data_type: config}
+        - {do: edit, merge: '{"pv2:c": {"s": "picked"}}', data_type: config}
+        - {do: validate, data_type: config}
+        - {do: dump, with_defaults: all}
+    golden: golden/choice-default-case.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.9.3"]
+      deviation: null
+
+  - id: protocol-v2/unknown-reject
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#8.3.1"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      format: json
+      data_type: config
+      parse_only: true
+      unknown: reject
+      data_file: data/unknown.json
+    golden: golden/unknown-reject.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#8.3.1"]
+      deviation: null
+
+  - id: protocol-v2/unknown-skip
+    dir: protocol-v2
+    source: *own
+    rfc: []   # libyang lenient parse (no LYD_PARSE_STRICT): unknown data dropped; no RFC mode
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      format: json
+      data_type: config
+      parse_only: true
+      unknown: skip
+      data_file: data/unknown.json
+    golden: golden/unknown-skip.json
+
+  - id: protocol-v2/unknown-opaque
+    dir: protocol-v2
+    source: *own
+    rfc: []   # libyang LYD_PARSE_OPAQ: unknown data kept as opaque nodes; no RFC mode
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      format: json
+      data_type: config
+      parse_only: true
+      unknown: opaque
+      data_file: data/unknown.json
+    golden: golden/unknown-opaque.json
+
+  - id: protocol-v2/schema-tree
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#7.9", "RFC7950#7.16", "RFC7950#7.18", "RFC7950#9.12", "RFC7950#7.21.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: ["*"]}]
+    golden: golden/schema-tree.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.9"]
+      deviation: null

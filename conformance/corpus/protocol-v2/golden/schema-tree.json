@@ -1,0 +1,775 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module pv2 {\n  namespace \"urn:vibe-ports:yang:conformance:pv2\";\n  prefix p;\n\n  description\n    \"Hand-written module exercising oracle protocol v2 dumps: when auto-delete,\n     implicit defaults, choice default case, unions, anydata, identities.\";\n\n  identity base-id {\n    derived one;\n  }\n\n  identity one {\n    derived two;\n  }\n\n  identity two {\n  }\n\n  container c {\n    config true;\n    status current;\n    leaf mode {\n      type enumeration {\n        enum \"on\" {\n          value 0;\n          status current;\n        }\n        enum \"off\" {\n          value 5;\n          status current;\n        }\n      }\n      config true;\n      status current;\n    }\n    leaf x {\n      when \"../mode = 'on'\";\n      type string;\n      config true;\n      status current;\n    }\n    leaf u {\n      type union {\n        type int8;\n        type uint8 {\n          range \"0..100\";\n        }\n        type string {\n          length \"1..8\";\n          pattern \"[a-z]+\";\n        }\n      }\n      config true;\n      status current;\n    }\n    leaf d {\n      type uint8 {\n        range \"0..100\";\n      }\n      default \"07\";\n      config true;\n      status current;\n    }\n    leaf dec {\n      type decimal64 {\n        fraction-digits 2;\n        range \"-150..1000 | 2000\";\n      }\n      config true;\n      status current;\n    }\n    leaf id {\n      type identityref {\n        base base-id;\n      }\n      config true;\n      status current;\n    }\n    choice ch {\n      default \"first\";\n      config true;\n      status current;\n      case first {\n        config true;\n        status current;\n        leaf f {\n          type string;\n          default \"ff\";\n          config true;\n          status current;\n        }\n      }\n      case second {\n        config true;\n        status current;\n        leaf s {\n          type string;\n          config true;\n          status current;\n        }\n      }\n    }\n    list l {\n      key \"k\";\n      config true;\n      min-elements 0;\n      max-elements 3;\n      ordered-by user;\n      status current;\n      leaf k {\n        type string;\n        config true;\n        status current;\n      }\n    }\n    leaf ref {\n      type leafref {\n        path \"../l/k\";\n        require-instance true;\n        type string;\n      }\n      config true;\n      status current;\n    }\n    leaf-list ll {\n      type string;\n      default \"a\";\n      default \"b\";\n      config true;\n      min-elements 0;\n      max-elements 4294967295;\n      ordered-by system;\n      status current;\n    }\n    leaf flags {\n      type bits {\n        bit \"x\" {\n          position 0;\n          status current;\n        }\n        bit \"y\" {\n          position 3;\n          status current;\n        }\n      }\n      config true;\n      status current;\n    }\n    anydata any {\n      config true;\n      status current;\n    }\n  }\n\n  rpc ping {\n    status current;\n\n    input {\n      leaf n {\n        type uint8;\n        must \". < 10\" {\n          error-message\n            \"too many\";\n          error-app-tag \"too-many\";\n        }\n        status current;\n      }\n    }\n\n    output {\n      leaf rtt {\n        type uint32;\n        status current;\n      }\n    }\n  }\n\n  notification alarm {\n    status current;\n    leaf sev {\n      type uint8;\n      status current;\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": true,
+          "name": "extra"
+        }
+      ],
+      "identities": [
+        {
+          "bases": [],
+          "derived": [
+            "pv2:one"
+          ],
+          "name": "pv2:base-id"
+        },
+        {
+          "bases": [
+            "pv2:base-id"
+          ],
+          "derived": [
+            "pv2:two"
+          ],
+          "name": "pv2:one"
+        },
+        {
+          "bases": [
+            "pv2:one"
+          ],
+          "derived": [],
+          "name": "pv2:two"
+        }
+      ],
+      "name": "pv2",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pv2",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/pv2:c",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pv2",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/pv2:c/mode",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "on",
+                "value": 0
+              },
+              {
+                "name": "off",
+                "value": 5
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pv2",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/pv2:c/x",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/pv2:c/x",
+              "expr": "../mode = 'on'",
+              "module": "pv2"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pv2",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/pv2:c/u",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": [
+              {
+                "base": "int8",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              },
+              {
+                "base": "uint8",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": "0..100",
+                "typedefs": [
+                  "percent"
+                ],
+                "union": null
+              },
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": "1..8",
+                "patterns": [
+                  {
+                    "expr": "[a-z]+",
+                    "invert": false
+                  }
+                ],
+                "range": null,
+                "typedefs": null,
+                "union": null
+              }
+            ]
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "7"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pv2",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/pv2:c/d",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "0..100",
+            "typedefs": [
+              "percent"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pv2",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/pv2:c/dec",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "decimal64",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": 2,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "-1.50..10.00 | 20.00",
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pv2",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/pv2:c/id",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "identityref",
+            "bases": [
+              "pv2:base-id"
+            ],
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "first"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pv2",
+          "musts": null,
+          "nodetype": "choice",
+          "ordered_by": null,
+          "path": "/pv2:c/ch",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pv2",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/pv2:c/ch/first",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "ff"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pv2",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/pv2:c/ch/first/f",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pv2",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/pv2:c/ch/second",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pv2",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/pv2:c/ch/second/s",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "k"
+          ],
+          "mandatory": false,
+          "max_elements": 3,
+          "min_elements": 0,
+          "module": "pv2",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "user",
+          "path": "/pv2:c/l",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pv2",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/pv2:c/l/k",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pv2",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/pv2:c/ref",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "../l/k",
+              "require_instance": true,
+              "target": "/pv2:c/l/k"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "a",
+            "b"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "pv2",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "system",
+          "path": "/pv2:c/ll",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pv2",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/pv2:c/flags",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "bits",
+            "bases": null,
+            "bits": [
+              {
+                "name": "x",
+                "position": 0
+              },
+              {
+                "name": "y",
+                "position": 3
+              }
+            ],
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pv2",
+          "musts": null,
+          "nodetype": "anydata",
+          "ordered_by": null,
+          "path": "/pv2:c/any",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pv2",
+          "musts": null,
+          "nodetype": "rpc",
+          "ordered_by": null,
+          "path": "/pv2:ping",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pv2",
+          "musts": null,
+          "nodetype": "input",
+          "ordered_by": null,
+          "path": "/pv2:ping/input",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pv2",
+          "musts": [
+            {
+              "apptag": "too-many",
+              "expr": ". < 10",
+              "message": "too many"
+            }
+          ],
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/pv2:ping/input/n",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pv2",
+          "musts": null,
+          "nodetype": "output",
+          "ordered_by": null,
+          "path": "/pv2:ping/output",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pv2",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/pv2:ping/output/rtt",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pv2",
+          "musts": null,
+          "nodetype": "notif",
+          "ordered_by": null,
+          "path": "/pv2:alarm",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pv2",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/pv2:alarm/sev",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}
