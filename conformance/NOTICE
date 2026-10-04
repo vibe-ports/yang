@@ -1,0 +1,47 @@
+Third-party notice: libyang test material
+=========================================
+
+Parts of this repository's conformance material are derived from the test suite of libyang
+(https://github.com/CESNET/libyang, tag v5.8.6, files under tests/), which is distributed under
+the BSD 3-Clause License:
+
+Copyright (c) 2015 - 2025, CESNET
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+
+* Neither the name of CESNET nor the names of
+  contributors may be used to endorse or promote products derived from
+  this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Derived material (every fixture also carries a `source:` entry in conformance/corpus/manifest.yaml
+with the libyang file, tag/commit and license):
+
+- conformance/tools/extract-utests/ reads tests/utests/**/*.c and writes schemas, data and expected
+  outcomes derived from them. The tool contains no libyang code; its output does.
+- Any conformance/corpus/<set>/ directory whose manifest `source` points at libyang tests/
+  (tests/utests extractions, tests/yanglint modules and data, tests/modules, tests/fuzz seeds).
+  None exist yet; each set is listed here when it lands.
+- docs/conformance/utests-inventory.md quotes counts and file names from that suite.
+
+The names of CESNET and of its contributors are not used to endorse or promote anything here.

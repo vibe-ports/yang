@@ -8,7 +8,7 @@ from a clean checkout.
 `tests/yanglint/**`, `tests/modules/**`). Every schema, data document, asserted outcome and message
 extracted from them is derived from those files: each extracted fixture must carry
 `source: {url: <libyang file @ v5.8.6>, commit: 47351e59…, license: BSD-3-Clause}` in the manifest,
-the CESNET copyright/licence text must be reproduced in `conformance/NOTICE` (PLAN §5), and the
+the CESNET copyright/licence text is reproduced in `conformance/NOTICE` (PLAN §5), which also lists the derived directories and tools, and the
 prototype already stamps `libyang_tag`, `license`, `copyright` and `file:func:line` into every
 `case.json`. Nothing here endorses or is endorsed by CESNET.
 
@@ -18,7 +18,7 @@ prototype already stamps `libyang_tag`, `license`, `copyright` and `file:func:li
 |---|--:|---|
 | `tests/utests/**/*.c` (cmocka) | 57 files, 525 test functions, 46,268 LOC | tests are *functions*; one function holds 1 to ~400 checks, so function counts understate volume. Unit of work below is the **case** (one schema-load or data-parse step with an asserted outcome). |
 | `tests/yanglint/non-interactive/*.test` (Tcl) | 15 files, 87 tests | CLI behaviour: `ly_cmd "args" "regexp"`. Backed by `tests/yanglint/{modules,data}` (28 + 42 files). |
-| `tests/yanglint/interactive/*.test` | 20 files, 112 tests | REPL of yanglint: not applicable (we ship a non-interactive `cmd/yanglint-go`). |
+| `tests/yanglint/interactive/*.test` | 18 files, 112 tests | REPL of yanglint: not applicable (we ship a non-interactive `cmd/yanglint-go`). |
 | `tests/yangre/*.test` | 4 files, 21 tests | `yangre` regex CLI; overlaps `internal/xsdre` work (pattern semantics reusable). |
 | `tests/fuzz/corpus` | 78 seed files (json 16, xml 11, yang 51) | Ready seeds for our M1 fuzz targets. |
 | `tests/modules/yang` | 23 modules | used by utests via search dir; public, reusable as-is. |
@@ -54,7 +54,7 @@ work must fix* (multi-module ordering for `deviation`/`augment`, non-verdict res
 | File | Tests | LOC | Area | Milestone | v1 | Tier | Prototype cases (agree/verifiable) | libyang target |
 |---|--:|--:|---|---|---|---|--:|---|
 | `basic/test_common.c` | 6 | 416 | internal helpers | - | out | N | - | common.c (ly_getutf8, ly_strcat, path/prefix helpers) |
-| `basic/test_context.c` | 10 | 1052 | context | M2 | in | C | 10 (8/10) | context.c (ly_ctx_new, searchdirs, options, import callback, module lookup) |
+| `basic/test_context.c` | 10 | 1052 | context | M2 | in | C | - | context.c (ly_ctx_new, searchdirs, options, import callback, module lookup) |
 | `basic/test_hash_table.c` | 5 | 262 | internal helpers | - | out | N | - | hash_table.c |
 | `basic/test_inout.c` | 9 | 407 | internal helpers | - | out | N | - | in.c, out.c (ly_in/ly_out) |
 | `basic/test_json.c` | 5 | 773 | codec lexer | M5 | in | C | - | json.c (lyjson_ctx_*): token stream + error message per input string |
@@ -63,42 +63,42 @@ work must fix* (multi-module ordering for `deviation`/`augment`, non-verdict res
 | `basic/test_xml.c` | 6 | 691 | codec lexer | M5 | in | C | - | xml.c (lyxml_ctx_*): token stream + error message per input string |
 | `basic/test_xpath.c` | 16 | 1353 | xpath | M3 | in | B | 32 (1/32) | xpath.c (lyxp_eval, lyxp_atomize), plugins_types xpath1.0 canonical form |
 | `basic/test_yanglib.c` | 1 | 144 | yang-library | M6 | in | C | - | context.c (ly_ctx_new_yldata), yanglib.c |
-| `data/test_diff.c` | 25 | 1768 | diff | M6 | in | B | 59 (2/2) | diff.c (lyd_diff_siblings/tree, lyd_diff_apply_all, lyd_diff_merge_*, lyd_diff_reverse_all) |
+| `data/test_diff.c` | 25 | 1768 | diff | M6 | in | B | 57 (2/2) | diff.c (lyd_diff_siblings/tree, lyd_diff_apply_all, lyd_diff_merge_*, lyd_diff_reverse_all) |
 | `data/test_lyb.c` | 13 | 2905 | lyb | - | out | N | - | parser_lyb.c, printer_lyb.c |
-| `data/test_merge.c` | 11 | 756 | merge | M6 | in | B | 27 (26/26) | tree_data.c (lyd_merge_siblings/module/tree) |
-| `data/test_new.c` | 4 | 580 | data tree API | M4 | in | C | 1 (0/1) | tree_data_new.c (lyd_new_*, lyd_new_path) |
+| `data/test_merge.c` | 11 | 756 | merge | M6 | in | B | 27 (22/26) | tree_data.c (lyd_merge_siblings/module/tree) |
+| `data/test_new.c` | 4 | 580 | data tree API | M4 | in | C | - | tree_data_new.c (lyd_new_*, lyd_new_path) |
 | `data/test_parser_json.c` | 18 | 1084 | codec json | M5 | in | B | 71 (41/60) | parser_json.c |
 | `data/test_parser_xml.c` | 20 | 1132 | codec xml | M5 | in | B | 35 (20/30) | parser_xml.c |
 | `data/test_printer_json.c` | 4 | 170 | codec json | M5 | in | B | 8 (8/8) | printer_json.c |
-| `data/test_printer_xml.c` | 2 | 347 | codec xml | M5 | in | B | 13 (13/13) | printer_xml.c |
-| `data/test_tree_data.c` | 11 | 856 | data tree API | M4 | in | C | 56 (48/49) | tree_data.c, tree_data_common.c, tree_data_hash.c (find, dup, insert, path) |
+| `data/test_printer_xml.c` | 2 | 347 | codec xml | M5 | in | B | 10 (10/10) | printer_xml.c |
+| `data/test_tree_data.c` | 11 | 856 | data tree API | M4 | in | C | 36 (35/35) | tree_data.c, tree_data_common.c, tree_data_hash.c (find, dup, insert, path) |
 | `data/test_tree_data_sorted.c` | 38 | 1691 | data tree sorted index | - | out | N | - | tree_data_sorted.c (sorted/hash child index: perf trick, PLAN 1 out until profiling) |
-| `data/test_validation.c` | 21 | 1905 | validation | M4 | in | B | 78 (65/70) | validation.c (mandatory, min/max, unique, when, must, leafref, dup, choice, defaults, operational) |
-| `extensions/test_metadata.c` | 2 | 205 | extensions | M5 | in | B | 7 (7/7) | plugins_exts/metadata.c (RFC 7952) |
+| `data/test_validation.c` | 21 | 1905 | validation | M4 | in | B | 62 (59/59) | validation.c (mandatory, min/max, unique, when, must, leafref, dup, choice, defaults, operational) |
+| `extensions/test_metadata.c` | 2 | 205 | extensions | M5 | in | B | 7 (6/6) | plugins_exts/metadata.c (RFC 7952) |
 | `extensions/test_nacm.c` | 2 | 124 | ext plugin nacm | - | out | N | - | plugins_exts/nacm.c (extension plugin outside yang-data/structure/metadata) |
 | `extensions/test_openconfig.c` | 3 | 186 | ext plugin openconfig | - | out | N | - | plugins_exts/openconfig.c (extension plugin outside yang-data/structure/metadata) |
 | `extensions/test_schema_mount.c` | 10 | 1966 | schema-mount | - | out | N | - | plugins_exts/schema_mount.c (RFC 8528) |
-| `extensions/test_structure.c` | 4 | 462 | extensions | M2 | in | B | 16 (16/16) | plugins_exts/structure.c (RFC 8791) |
+| `extensions/test_structure.c` | 4 | 462 | extensions | M2 | in | B | 15 (15/15) | plugins_exts/structure.c (RFC 8791) |
 | `extensions/test_yangdata.c` | 3 | 266 | extensions | M2 | in | B | 13 (8/13) | plugins_exts/yangdata.c (RFC 8040 yang-data) |
-| `node/list.c` | 7 | 1625 | list node | M4 | in | B | 62 (62/62) | schema_compile_node.c (lys_compile_node_list), parser_xml/json.c, validation.c (keys, unique, order) |
+| `node/list.c` | 7 | 1625 | list node | M4 | in | B | 61 (61/61) | schema_compile_node.c (lys_compile_node_list), parser_xml/json.c, validation.c (keys, unique, order) |
 | `restriction/test_pattern.c` | 4 | 394 | types: restrictions | M2 | in | A | 9 (9/9) | plugins_types/string.c, schema_compile_amend.c (pattern, invert-match) |
 | `restriction/test_range.c` | 4 | 424 | types: restrictions | M2 | in | A | 15 (15/15) | plugins_types/{integer,decimal64}.c, schema_compile_node.c (range/length) |
 | `schema/test_printer_tree.c` | 32 | 2338 | tree printer | - | out | N | - | printer_tree.c (RFC 8340) |
-| `schema/test_schema.c` | 20 | 2325 | schema API + printers | M2 | in | B | 30 (27/30) | tree_schema.c, tree_schema_common.c, printer_yang.c/yin/info (debug only), schema_features.c |
-| `schema/test_tree_schema_compile.c` | 32 | 4182 | schema compile | M2 | in | B | 408 (315/408) | schema_compile.c, schema_compile_node.c, schema_compile_amend.c (uses/grouping/augment/refine/deviation/identity/feature) |
+| `schema/test_schema.c` | 20 | 2325 | schema API + printers | M2 | in | B | 7 (7/7) | tree_schema.c, tree_schema_common.c, printer_yang.c/yin/info (debug only), schema_features.c |
+| `schema/test_tree_schema_compile.c` | 32 | 4182 | schema compile | M2 | in | B | 151 (151/151) | schema_compile.c, schema_compile_node.c, schema_compile_amend.c (uses/grouping/augment/refine/deviation/identity/feature) |
 | `schema/test_yang.c` | 24 | 1744 | yang parser (internal fns) | M1 | in | C | 2 (2/2) | parser_yang.c (parse_* helpers; fragments, not whole modules) |
 | `schema/test_yin.c` | 57 | 3579 | yin parser | - | out | N | - | parser_yin.c |
 | `types/binary.c` | 5 | 359 | types: binary | M2 | in | A | 7 (5/5) | plugins_types/binary.c |
-| `types/bits.c` | 13 | 1111 | types: bits | M2 | in | A | 62 (59/59) | plugins_types/bits.c |
+| `types/bits.c` | 13 | 1111 | types: bits | M2 | in | A | 62 (58/58) | plugins_types/bits.c |
 | `types/boolean.c` | 2 | 109 | types: boolean | M2 | in | A | 9 (7/7) | plugins_types/boolean.c |
 | `types/decimal64.c` | 2 | 130 | types: decimal64 | M2 | in | A | 14 (12/12) | plugins_types/decimal64.c |
 | `types/empty.c` | 2 | 106 | types: empty | M2 | in | A | 7 (6/6) | plugins_types/empty.c |
-| `types/enumeration.c` | 4 | 140 | types: enumeration | M2 | in | A | 10 (7/8) | plugins_types/enumeration.c |
+| `types/enumeration.c` | 4 | 140 | types: enumeration | M2 | in | A | 10 (8/8) | plugins_types/enumeration.c |
 | `types/identityref.c` | 2 | 134 | types: identityref | M2 | in | A | 10 (9/9) | plugins_types/identityref.c |
-| `types/inet_types.c` | 4 | 338 | types: inet_types | M2 | in | A | 34 (25/25) | plugins_types/ietf_inet_types.c |
-| `types/instanceid.c` | 2 | 292 | types: instance-identifier | M2 | in | A | 33 (32/33) | plugins_types/instanceid.c |
+| `types/inet_types.c` | 4 | 338 | types: inet_types | M2 | in | A | 30 (22/22) | plugins_types/ietf_inet_types.c |
+| `types/instanceid.c` | 2 | 292 | types: instance-identifier | M2 | in | A | 32 (32/32) | plugins_types/instanceid.c |
 | `types/instanceid_keys.c` | 1 | 76 | types: instanceid_keys | M2 | in | A | 5 (5/5) | plugins_types/instanceid_keys.c |
-| `types/int8.c` | 12 | 1762 | types: int8 | M2 | in | A | 121 (117/117) | plugins_types/integer.c |
+| `types/int8.c` | 12 | 1762 | types: int8 | M2 | in | A | 120 (116/116) | plugins_types/integer.c |
 | `types/int16.c` | 1 | 74 | types: int16 | M2 | in | A | 2 (2/2) | plugins_types/integer.c |
 | `types/int32.c` | 1 | 74 | types: int32 | M2 | in | A | 2 (2/2) | plugins_types/integer.c |
 | `types/int64.c` | 1 | 80 | types: int64 | M2 | in | A | 4 (4/4) | plugins_types/integer.c |
@@ -106,10 +106,10 @@ work must fix* (multi-module ordering for `deviation`/`augment`, non-verdict res
 | `types/uint16.c` | 1 | 74 | types: uint16 | M2 | in | A | 2 (2/2) | plugins_types/integer.c |
 | `types/uint32.c` | 1 | 74 | types: uint32 | M2 | in | A | 2 (2/2) | plugins_types/integer.c |
 | `types/uint64.c` | 1 | 80 | types: uint64 | M2 | in | A | 4 (4/4) | plugins_types/integer.c |
-| `types/leafref.c` | 7 | 368 | types: leafref | M2 | in | A | 29 (24/28) | plugins_types/leafref.c |
-| `types/string.c` | 12 | 1441 | types: string | M2 | in | A | 135 (132/132) | plugins_types/string.c |
+| `types/leafref.c` | 7 | 368 | types: leafref | M2 | in | A | 22 (21/21) | plugins_types/leafref.c |
+| `types/string.c` | 12 | 1441 | types: string | M2 | in | A | 134 (131/131) | plugins_types/string.c |
 | `types/union.c` | 6 | 370 | types: union | M2 | in | A | 21 (18/18) | plugins_types/union.c |
-| `types/yang_types.c` | 5 | 369 | types: yang_types | M2 | in | A | 45 (36/37) | plugins_types/ietf_yang_types.c |
+| `types/yang_types.c` | 5 | 369 | types: yang_types | M2 | in | A | 43 (34/35) | plugins_types/ietf_yang_types.c |
 
 Most type files run three encodings of each value (schema, XML, JSON) and a LYB round trip; the LYB legs
 are out of v1 and are skipped by the extractor (they show up as `n/a`, not as failures).
@@ -121,12 +121,12 @@ Test functions (`UTEST`), v1 status as in PLAN §1.
 | Milestone | Test fns | Tier A fns | Tier B fns | Tier C fns | Prototype cases A | Prototype cases B |
 |---|--:|--:|--:|--:|--:|--:|
 | M1 (parser internals; slice draws its fixtures from the M2 rows below) | 24 | 0 | 0 | 24 | 0 | 0 |
-| M2 schema, types, restrictions, yang-data/structure, context | 163 | 94 | 59 | 10 | 586 | 467 |
+| M2 schema, types, restrictions, yang-data/structure, context | 163 | 94 | 59 | 10 | 570 | 186 |
 | M3 xpath | 16 | 0 | 16 | 0 | 0 | 32 |
-| M4 validation, list, data-tree API | 43 | 0 | 28 | 15 | 0 | 140 |
-| M5 codecs (json/xml parse+print, lexers, metadata) | 57 | 0 | 46 | 11 | 0 | 134 |
-| M6 diff, merge, yang-library | 37 | 0 | 36 | 1 | 0 | 86 |
-| **In v1** | **340** | 94 | 185 | 61 | **586** | **859** |
+| M4 validation, list, data-tree API | 43 | 0 | 28 | 15 | 0 | 123 |
+| M5 codecs (json/xml parse+print, lexers, metadata) | 57 | 0 | 46 | 11 | 0 | 131 |
+| M6 diff, merge, yang-library | 37 | 0 | 36 | 1 | 0 | 84 |
+| **In v1** | **340** | 94 | 185 | 61 | **570** | **556** |
 | Out of v1 | 185 | - | - | - | - | - |
 | **Total** | **525** | | | | | |
 
@@ -138,18 +138,18 @@ Per area:
 
 | Area | Test fns | Prototype cases (tier A/B) | v1 | Milestone |
 |---|--:|--:|---|---|
-| types (+restrictions) | 94 | 586 | in | M2 |
+| types (+restrictions) | 94 | 570 | in | M2 |
 | yin parser | 57 | - | out | - |
 | data tree sorted index | 38 | - | out | - |
 | tree printer | 32 | - | out | - |
-| schema compile | 32 | 408 | in | M2 |
+| schema compile | 32 | 151 | in | M2 |
 | internal helpers | 26 | - | out | - |
-| diff | 25 | 59 | in | M6 |
+| diff | 25 | 57 | in | M6 |
 | yang parser (internal fns) | 24 | - | in | M1 |
 | codec json | 22 | 79 | in | M5 |
-| codec xml | 22 | 48 | in | M5 |
-| validation | 21 | 78 | in | M4 |
-| schema API + printers | 20 | 30 | in | M2 |
+| codec xml | 22 | 45 | in | M5 |
+| validation | 21 | 62 | in | M4 |
+| schema API + printers | 20 | 7 | in | M2 |
 | xpath | 16 | 32 | in | M3 |
 | data tree API | 15 | - | in | M4 |
 | lyb | 13 | - | out | - |
@@ -157,14 +157,14 @@ Per area:
 | merge | 11 | 27 | in | M6 |
 | context | 10 | - | in | M2 |
 | schema-mount | 10 | - | out | - |
-| extensions (metadata, structure, yang-data) | 9 | 36 | in | M2/M5 |
-| list node | 7 | 62 | in | M4 |
+| extensions (metadata, structure, yang-data) | 9 | 35 | in | M2/M5 |
+| list node | 7 | 61 | in | M4 |
 | plugins | 4 | - | out | - |
 | ext plugins nacm/openconfig | 5 | - | out | - |
 | yang-library | 1 | - | in | M6 |
 
 Reading the numbers: **340 of 525 test functions (65 %) are in v1**; of those 279 (82 %) are tier A/B,
-i.e. reachable by extraction, and they hold **about 1,445 candidate cases** (586 tier A, 859 tier B,
+i.e. reachable by extraction, and they hold **about 1,126 candidate cases** (570 tier A, 556 tier B,
 generic mode, before dedupe; expect 10-20 % to collapse or be waived: identical schema+data appear
 in several files, and stateful ones need the `sequence` op). Tier C is 61 functions (18 %): reuse
 their input strings in Go unit tests of the owning package (`internal/parser`, `internal/xpath`,
@@ -177,18 +177,18 @@ directly usable as `xsdre` cases).
 
 ## 4. Coverage targets
 
-Measured on a fixed denominator: the in-scope tier A+B candidate cases above (1,445 today, frozen
+Measured on a fixed denominator: the in-scope tier A+B candidate cases above (1,126 today, frozen
 when the first full extraction lands, then re-counted in this file). A case counts as *converted* when
 it is a manifest fixture with golden **and** an `assert` block (verdict + diagnostics subset) copied
 from the C test and the oracle agrees with that assert (section 6 gate).
 
 | End of | Cumulative in-scope A+B cases converted | What must be in |
 |---|--:|---|
-| M1 | >= 15 % (~220) | integer types (int8..uint64 = 141 cases), boolean, enumeration, empty (26), basic string, plus slice-relevant `list.c` and `test_validation.c` (when/must/mandatory/leafref) |
-| M2 | >= 69 % (~1,000) | >= 95 % of all types/restriction cases, >= 90 % of `test_tree_schema_compile` (needs the multi-module `schema` step), structure, yang-data |
-| M3 | >= 71 % | >= 95 % of `test_xpath` expressions (needs a result-carrying extractor, section 5.4) |
-| M4 | >= 80 % | >= 95 % of `test_validation` and `list.c`; tier C data-tree API dispositioned |
-| M5 | >= 89 % | >= 95 % of json/xml parser+printer cases and metadata |
+| M1 | >= 20 % (~225) | integer types (int8..uint64 = 141 cases), boolean, enumeration, empty (26), basic string, plus slice-relevant `list.c` and `test_validation.c` (when/must/mandatory/leafref) |
+| M2 | >= 67 % (~755) | >= 95 % of all types/restriction cases, >= 90 % of `test_tree_schema_compile` (needs the multi-module `schema` step), structure, yang-data |
+| M3 | >= 70 % | >= 95 % of `test_xpath` expressions (needs a result-carrying extractor, section 5.4) |
+| M4 | >= 81 % | >= 95 % of `test_validation` and `list.c`; tier C data-tree API dispositioned |
+| M5 | >= 93 % | >= 95 % of json/xml parser+printer cases and metadata |
 | M6 | >= 95 % | diff/merge cases; every skipped case has a reason in `conformance/utests-waivers.md` |
 
 Rules that go with the numbers:
@@ -254,34 +254,47 @@ asserted log entries (`msg`, `path`, `line`, `apptag`) + an **oracle request dra
 compares valid/invalid to the C test's assertion; that is how precision is measured without the
 container.
 
-### 5.3 Prototype results (chosen file: `types/int8.c`, the richest type test)
+### 5.3 Prototype results (measured against the pinned oracle yanglint)
 
-Independent accounting from `grep` of the call sites vs. what was extracted:
+Measured inside the dev container (`./dev`; its `yanglint --version` is 5.8.6, the pinned build)
+with the hardened extractor of 5.6. These numbers replace an earlier run that used a host yanglint
+and a looser extractor.
 
-| Item | In the C file | Extracted | Skipped, with reason |
-|---|--:|--:|---|
-| schema load steps (`UTEST_ADD_MODULE` 54 + `UTEST_INVALID_MODULE` 32) | 86 | 59 | 25 YIN (out of v1), 2 `LY_EEXIST` (context-state dependent) |
-| data parse call sites (5 direct + 57 through `TEST_*`/`LYD_TREE_CREATE` macros; the 6 further textual hits are inside `#define` bodies) | 62 | 62 | 0 |
-| `CHECK_LOG_CTX` | 55 | 41 attached to their case | 14 belong to skipped steps (dropped on purpose, not mis-attached) |
-| `lyd_parse_data_mem(..., LYD_LYB, ...)` round trips | 4 | 0 | out of v1 (LYB) |
+`types/int8.c` (richest type test): **120 cases**. Skipped, with reasons: 25 YIN loads (YIN is out
+of v1; after the first one the rest of that test function is skipped as "context incomplete", which
+also removes cases that were previously emitted against a wrong module set), 1 `LY_EEXIST`, 4 LYB.
+Verdict check: **116 agree, 0 differ, 4 n/a**.
 
-Result: **121 cases extracted (59 schema + 62 data), 0 lost or mis-attributed by call-site
-accounting; 41/41 invalid cases carry their asserted diagnostic.** Semantic check against libyang
-v5.8.6 `yanglint`: **117/117 verifiable cases agree with the verdict asserted in the C test**
-(4 n/a: parse-only LYB round trip legs). Precision on this file: 100 % structural, 100 % verdict.
+All 24 files under `types/` and `restriction/` (tier A): 570 cases, **527 agree, 1 differ, 42 n/a**
+(n/a = parse-only/store-only flags, per-module feature lists, LYB legs).
+- The earlier `enumeration` difference was a verifier bug, not libyang: yanglint enables every
+  feature unless `-F <module>:` is given, while the C tests load with none. The verifier now passes
+  `-F <module>:` for modules loaded with a NULL feature list, and that case agrees.
+- The one remaining difference, `yang_types.c:162`, injects namespaces through a macro argument and
+  imports ietf-yang-library / ietf-datastores data. Root cause not confirmed: **unverified**.
 
-Same tool, unchanged, over all 24 files under `tests/utests/types` and `restriction`
-(tier A, 586 cases): **537/544 verifiable cases agree (98.7 %)**, 42 n/a. The 7 disagreements were not
-root-caused one by one; the one inspected (`enumeration`, an `if-feature`-disabled enum) depends on the
-`features` argument of `UTEST_ADD_MODULE`, which `-verify` extracts but does not pass to yanglint.
-Over tier B files in generic mode the same check gives 607/777 (78 %): expected, because those tests
-need multi-module ordering (`deviation`, `augment`, imports through `ly_ctx_set_module_imp_clb`),
-non-verdict results (xpath value, diff text) or several parses on one tree; this is the extension
-backlog, not noise.
+Tier B files, same extractor, verdicts vs yanglint (agree/differ/n/a): `test_validation` 59/0/3,
+`list.c` 61/0/0, `test_tree_schema_compile` 151/0/0 (151 cases; the earlier 408 included cases built
+on a wrong module set), `test_structure` 15/0/0, `test_printer_json` 8/0/0, `test_printer_xml`
+10/0/0, `test_merge` 22/4/1, `test_parser_json` 41/19/11, `test_parser_xml` 20/10/5,
+`test_yangdata` 8/5/0, `test_xpath` 1/31/0.
+
+**Not root-caused, treat as unverified**: the 4 `test_merge`, 29 `test_parser_*`, 5 `test_yangdata`
+and 31 `test_xpath` disagreements. Reading the C shows these files use
+their own wrapper macros (`PARSER_CHECK_ERROR`, `CHECK_PARSE_LYD`, `LYD_TREE_CREATE`) or assert
+results that are not verdicts (xpath values), which the generic extractor does not model, so they
+are the extension backlog (5.4) and not evidence of a libyang disagreement. This is a reading of
+the sources, not a proof. Out-of-v1 files (`test_nacm`, `test_schema_mount`, `test_lyb`) also
+differ and are ignored.
+
+Interpretation: tier A verdict agreement is 527/528 (99.8 %) of verifiable cases. That checks the
+extractor, not conformance; the real gate is the oracle (5.5). The extractor never claims more than
+it resolved: a case with C-side semantics the request cannot carry (feature lists, unknown flags)
+gets `needs_extension` and no `oracle_request`.
 
 Caveat on the verifier: yanglint `-t data` is operational (violations become warnings), so the check
 uses `-t config -e [-n]` as the closest match to `lyd_parse_data` without `LYD_VALIDATE_OPERATIONAL`;
-state-data cases can mis-verify. The real gate is the oracle (5.5), not yanglint.
+state-data cases can mis-verify.
 
 ### 5.4 Extension backlog (what tier B needs)
 
@@ -318,3 +331,21 @@ golden and reviewed, never from the C message text alone.
   case; keep the per-file `skipped` report in CI.
 - Candidate counts are an upper bound (dedupe, waivers); re-baseline the denominator when the first
   full extraction is committed.
+
+### 5.6 Extractor safety rules (from the review of PR #2)
+
+- Verification distinguishes yanglint exit 0 (valid) and 1 (libyang error) from anything else (n/a);
+  a yanglint that cannot be run, or reports another libyang version than `-tag`, aborts the run.
+- Full C escape set (`\a \b \f \v \? \" \\ \' \n \t \r`, `\x..`, octal); `\0`, over-long `\x`,
+  `\u` and unknown escapes make the literal unresolvable, so the case is skipped.
+- Variables: a failed or conditional `ident = expr;` deletes the variable, `+=` deletes it;
+  everything after `if/else/for/while/switch/goto` in a test function is skipped; `#define`s inside
+  `#if` blocks, or defined twice, are not used.
+- A skipped module load (YIN, unresolvable, context option/callback calls, wrong macro arity) taints
+  the rest of the test function: its later cases would run against an unknown context.
+- A rejected load restores a cloned module list; submodules are written as search-dir files but
+  never listed as implemented modules; module names are unquoted and validated.
+- `-out` inside a git work tree is refused (`-allow-in-repo` overrides); marshal and write errors
+  are fatal; the libyang tag is one constant and a flag.
+- Covered by table tests in `main_test.go`: escapes, stale variables, failed-load restore, skip
+  paths, request building, verify exit codes, golden `case.json`.
