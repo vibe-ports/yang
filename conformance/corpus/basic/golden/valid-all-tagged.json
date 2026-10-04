@@ -17,6 +17,7 @@
     }
   ],
   "op": "data",
+  "protocol": 2,
   "rc": {
     "err": 0,
     "name": "LY_SUCCESS"
@@ -25,5 +26,257 @@
     "json": "{\n  \"basic:sys\": {\n    \"mtu\": 9000,\n    \"iface\": [\n      {\n        \"name\": \"eth0\",\n        \"type\": \"eth\"\n      },\n      {\n        \"name\": \"lo\",\n        \"type\": \"loopback\"\n      }\n    ],\n    \"primary\": \"eth0\",\n    \"jumbo-frames\": true,\n    \"min\": 1,\n    \"max\": 5,\n    \"user\": {\n      \"name\": \"admin\",\n      \"shell\": \"/bin/sh\",\n      \"@shell\": {\n        \"ietf-netconf-with-defaults:default\": true\n      }\n    }\n  }\n}\n",
     "xml": "<sys xmlns=\"urn:vibe-ports:yang:conformance:basic\">\n  <mtu>9000</mtu>\n  <iface>\n    <name>eth0</name>\n    <type>eth</type>\n  </iface>\n  <iface>\n    <name>lo</name>\n    <type>loopback</type>\n  </iface>\n  <primary>eth0</primary>\n  <jumbo-frames>true</jumbo-frames>\n  <min>1</min>\n  <max>5</max>\n  <user>\n    <name>admin</name>\n    <shell xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">/bin/sh</shell>\n  </user>\n</sys>\n"
   },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "path": "/basic:sys",
+      "schema": "/basic:sys",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "path": "/basic:sys/mtu",
+      "schema": "/basic:sys/mtu",
+      "value": {
+        "canonical": "9000",
+        "type": "uint16",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "path": "/basic:sys/iface[name='eth0']",
+      "schema": "/basic:sys/iface",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "path": "/basic:sys/iface[name='eth0']/name",
+      "schema": "/basic:sys/iface/name",
+      "value": {
+        "canonical": "eth0",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "path": "/basic:sys/iface[name='eth0']/type",
+      "schema": "/basic:sys/iface/type",
+      "value": {
+        "canonical": "eth",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "path": "/basic:sys/iface[name='lo']",
+      "schema": "/basic:sys/iface",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "path": "/basic:sys/iface[name='lo']/name",
+      "schema": "/basic:sys/iface/name",
+      "value": {
+        "canonical": "lo",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "path": "/basic:sys/iface[name='lo']/type",
+      "schema": "/basic:sys/iface/type",
+      "value": {
+        "canonical": "loopback",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "path": "/basic:sys/primary",
+      "schema": "/basic:sys/primary",
+      "value": {
+        "canonical": "eth0",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": true
+      },
+      "kind": "leaf",
+      "meta": [],
+      "path": "/basic:sys/jumbo-frames",
+      "schema": "/basic:sys/jumbo-frames",
+      "value": {
+        "canonical": "true",
+        "type": "boolean",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "path": "/basic:sys/min",
+      "schema": "/basic:sys/min",
+      "value": {
+        "canonical": "1",
+        "type": "uint8",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "path": "/basic:sys/max",
+      "schema": "/basic:sys/max",
+      "value": {
+        "canonical": "5",
+        "type": "uint8",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "path": "/basic:sys/user",
+      "schema": "/basic:sys/user",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "path": "/basic:sys/user/name",
+      "schema": "/basic:sys/user/name",
+      "value": {
+        "canonical": "admin",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "path": "/basic:sys/user/shell",
+      "schema": "/basic:sys/user/shell",
+      "value": {
+        "canonical": "/bin/sh",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
   "verdict": "valid"
 }

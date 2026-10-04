@@ -27,6 +27,7 @@
     }
   ],
   "op": "data",
+  "protocol": 2,
   "rc": {
     "err": 7,
     "name": "LY_EVALID"

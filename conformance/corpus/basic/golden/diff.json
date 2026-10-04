@@ -15,9 +15,221 @@
     }
   ],
   "op": "diff",
+  "protocol": 2,
   "rc": {
     "err": 0,
     "name": "LY_SUCCESS"
   },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [
+        {
+          "module": "yang",
+          "name": "operation",
+          "value": "none"
+        }
+      ],
+      "path": "/basic:sys",
+      "schema": "/basic:sys",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [
+        {
+          "module": "yang",
+          "name": "operation",
+          "value": "replace"
+        },
+        {
+          "module": "yang",
+          "name": "orig-default",
+          "value": "false"
+        },
+        {
+          "module": "yang",
+          "name": "orig-value",
+          "value": "9000"
+        }
+      ],
+      "path": "/basic:sys/mtu",
+      "schema": "/basic:sys/mtu",
+      "value": {
+        "canonical": "1500",
+        "type": "uint16",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [
+        {
+          "module": "yang",
+          "name": "operation",
+          "value": "delete"
+        }
+      ],
+      "path": "/basic:sys/iface[name='lo']",
+      "schema": "/basic:sys/iface",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "path": "/basic:sys/iface[name='lo']/name",
+      "schema": "/basic:sys/iface/name",
+      "value": {
+        "canonical": "lo",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "path": "/basic:sys/iface[name='lo']/type",
+      "schema": "/basic:sys/iface/type",
+      "value": {
+        "canonical": "loopback",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": true
+      },
+      "kind": "leaf",
+      "meta": [
+        {
+          "module": "yang",
+          "name": "operation",
+          "value": "delete"
+        }
+      ],
+      "path": "/basic:sys/jumbo-frames",
+      "schema": "/basic:sys/jumbo-frames",
+      "value": {
+        "canonical": "true",
+        "type": "boolean",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [
+        {
+          "module": "yang",
+          "name": "operation",
+          "value": "replace"
+        },
+        {
+          "module": "yang",
+          "name": "orig-default",
+          "value": "false"
+        },
+        {
+          "module": "yang",
+          "name": "orig-value",
+          "value": "5"
+        }
+      ],
+      "path": "/basic:sys/max",
+      "schema": "/basic:sys/max",
+      "value": {
+        "canonical": "7",
+        "type": "uint8",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [
+        {
+          "module": "yang",
+          "name": "operation",
+          "value": "none"
+        }
+      ],
+      "path": "/basic:sys/user",
+      "schema": "/basic:sys/user",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [
+        {
+          "module": "yang",
+          "name": "operation",
+          "value": "create"
+        }
+      ],
+      "path": "/basic:sys/user/shell",
+      "schema": "/basic:sys/user/shell",
+      "value": {
+        "canonical": "/bin/zsh",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
   "verdict": "valid"
 }

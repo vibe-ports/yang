@@ -11,6 +11,7 @@
     }
   ],
   "op": "xpath",
+  "protocol": 2,
   "rc": {
     "err": 0,
     "name": "LY_SUCCESS"
