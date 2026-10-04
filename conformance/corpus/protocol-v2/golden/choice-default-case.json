@@ -20,7 +20,7 @@
     {
       "diagnostics": [],
       "do": "validate",
-      "implicit_diff": "{\n  \"pv2:c\": {\n    \"@\": {\n      \"yang:operation\": \"create\"\n    },\n    \"d\": 7,\n    \"@d\": {\n      \"yang:operation\": \"create\"\n    },\n    \"f\": \"ff\",\n    \"@f\": {\n      \"yang:operation\": \"create\"\n    },\n    \"ll\": [\n      \"a\",\n      \"b\"\n    ],\n    \"@ll\": [\n      {\n        \"yang:operation\": \"create\"\n      },\n      {\n        \"yang:operation\": \"create\"\n      }\n    ]\n  }\n}\n",
+      "implicit_diff": "{\n  \"pv2:c\": {\n    \"@\": {\n      \"yang:operation\": \"create\"\n    },\n    \"d\": 7,\n    \"@d\": {\n      \"yang:operation\": \"create\"\n    },\n    \"f\": \"ff\",\n    \"@f\": {\n      \"yang:operation\": \"create\"\n    },\n    \"dref\": 7,\n    \"@dref\": {\n      \"yang:operation\": \"create\"\n    },\n    \"ll\": [\n      \"a\",\n      \"b\"\n    ],\n    \"@ll\": [\n      {\n        \"yang:operation\": \"create\"\n      },\n      {\n        \"yang:operation\": \"create\"\n      }\n    ]\n  }\n}\n",
       "rc": {
         "err": 0,
         "name": "LY_SUCCESS"
@@ -72,6 +72,24 @@
             "canonical": "ff",
             "type": "string",
             "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/dref",
+          "schema": "/pv2:c/dref",
+          "value": {
+            "canonical": "7",
+            "type": "uint8",
+            "typedef": "percent",
             "union_member": null
           }
         },
@@ -195,6 +213,24 @@
             "new": false,
             "when_true": false
           },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/dref",
+          "schema": "/pv2:c/dref",
+          "value": {
+            "canonical": "7",
+            "type": "uint8",
+            "typedef": "percent",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
           "kind": "leaflist",
           "meta": [],
           "path": "/pv2:c/ll[.='a']",
@@ -291,6 +327,24 @@
             "new": false,
             "when_true": false
           },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/dref",
+          "schema": "/pv2:c/dref",
+          "value": {
+            "canonical": "7",
+            "type": "uint8",
+            "typedef": "percent",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
           "kind": "leaflist",
           "meta": [],
           "path": "/pv2:c/ll[.='a']",
@@ -330,8 +384,8 @@
         "name": "LY_SUCCESS"
       },
       "tree": {
-        "json": "{\n  \"pv2:c\": {\n    \"d\": 7,\n    \"s\": \"picked\",\n    \"ll\": [\n      \"a\",\n      \"b\"\n    ]\n  }\n}\n",
-        "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2\">\n  <d>7</d>\n  <s>picked</s>\n  <ll>a</ll>\n  <ll>b</ll>\n</c>\n"
+        "json": "{\n  \"pv2:c\": {\n    \"d\": 7,\n    \"s\": \"picked\",\n    \"dref\": 7,\n    \"ll\": [\n      \"a\",\n      \"b\"\n    ]\n  }\n}\n",
+        "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2\">\n  <d>7</d>\n  <s>picked</s>\n  <dref>7</dref>\n  <ll>a</ll>\n  <ll>b</ll>\n</c>\n"
       },
       "typed": [
         {
@@ -380,6 +434,24 @@
             "canonical": "picked",
             "type": "string",
             "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/dref",
+          "schema": "/pv2:c/dref",
+          "value": {
+            "canonical": "7",
+            "type": "uint8",
+            "typedef": "percent",
             "union_member": null
           }
         },

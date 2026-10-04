@@ -227,9 +227,10 @@ fixtures:
       searchdirs: [schemas]
       modules: [{name: pv2}]
       steps:
-        - {do: parse, format: json, data_type: config, data: '{"pv2:c": {"u": "abc"}}'}
+        # u: int8 | percent (typedef) | string; u2: percent | leafref ../l/k
+        - {do: parse, format: json, data_type: config, data: '{"pv2:c": {"u": "abc", "l": [{"k": "a"}], "u2": "a"}}'}
         - {do: edit, set: {path: /pv2:c/u, value: "-5"}}
-        - {do: edit, set: {path: /pv2:c/u, value: "42"}}
+        - {do: edit, set: {path: /pv2:c/u2, value: "50"}}
         - {do: validate, data_type: config}
     golden: golden/union-member.json
     assert:
@@ -275,6 +276,8 @@ fixtures:
     assert:
       verdict: invalid
       rfc: ["RFC7950#8.3.1"]
+      diagnostics:
+        - {level: error, vecode_name: LYVE_REFERENCE, data_path: /pv2:c}
       deviation: null
 
   - id: protocol-v2/unknown-skip
@@ -312,14 +315,68 @@ fixtures:
   - id: protocol-v2/schema-tree
     dir: protocol-v2
     source: *own
-    rfc: ["RFC7950#7.9", "RFC7950#7.16", "RFC7950#7.18", "RFC7950#9.12", "RFC7950#7.21.5"]
+    rfc: ["RFC7950#7.9", "RFC7950#7.13", "RFC7950#7.14", "RFC7950#7.15", "RFC7950#7.16", "RFC7950#7.17",
+          "RFC7950#7.18", "RFC7950#7.19", "RFC7950#9.12", "RFC7950#7.21.5"]
     areas: [schema]
     request:
       op: schema
       searchdirs: [schemas]
-      modules: [{name: pv2, features: ["*"]}]
+      modules: [{name: pv2, features: ["*"]}, {name: pv2-aug}]
     golden: golden/schema-tree.json
     assert:
       verdict: valid
       rfc: ["RFC7950#7.9"]
+      deviation: null
+
+  - id: protocol-v2/unknown-opaque-validated
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#8.3.1"]
+    areas: [codecs, validation]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      format: json
+      data_type: config
+      unknown: opaque
+      data_file: data/unknown.json
+    golden: golden/unknown-opaque-validated.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#8.3.1"]
+      deviation: null
+
+  - id: protocol-v2/sequence-edits
+    dir: protocol-v2
+    source: *own
+    rfc: []   # oracle sequence mechanics (merge_file, delete, implicit_diff null, stop at a refused key delete)
+    areas: [validation, diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      steps:
+        - {do: parse, format: json, data_type: config, parse_only: true, data_file: data/valid.json}
+        - {do: edit, merge_file: data/merge.json}
+        - {do: edit, delete: "/pv2:c/l[k='a']"}
+        - {do: validate, data_type: config}
+        - {do: validate, data_type: config}
+        - {do: edit, delete: "/pv2:c/l[k='b']/k"}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/sequence-edits.json
+
+  - id: protocol-v2/schema-limits
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#9.2.4", "RFC7950#7.18"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{name: pv2-big}]
+    golden: golden/schema-limits.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2.4"]
       deviation: null

@@ -1,6 +1,6 @@
 {
   "context_diagnostics": [],
-  "failed_step": null,
+  "failed_step": 5,
   "libyang": "5.8.6",
   "modules": [
     {
@@ -13,13 +13,603 @@
   "op": "sequence",
   "protocol": 2,
   "rc": {
-    "err": 0,
-    "name": "LY_SUCCESS"
+    "err": 3,
+    "name": "LY_EINVAL"
   },
   "steps": [
     {
       "diagnostics": [],
       "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "path": "/pv2:c",
+          "schema": "/pv2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/mode",
+          "schema": "/pv2:c/mode",
+          "value": {
+            "canonical": "on",
+            "type": "enumeration",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/x",
+          "schema": "/pv2:c/x",
+          "value": {
+            "canonical": "hi",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/u",
+          "schema": "/pv2:c/u",
+          "value": {
+            "canonical": "abc",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 2,
+              "realtype": {
+                "type": "string",
+                "typedef": null
+              },
+              "type": "string",
+              "typedef": null
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/dec",
+          "schema": "/pv2:c/dec",
+          "value": {
+            "canonical": "2.5",
+            "type": "decimal64",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/id",
+          "schema": "/pv2:c/id",
+          "value": {
+            "canonical": "pv2:two",
+            "type": "identityref",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "path": "/pv2:c/l[k='a']",
+          "schema": "/pv2:c/l",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/l[k='a']/k",
+          "schema": "/pv2:c/l/k",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/ref",
+          "schema": "/pv2:c/ref",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": {
+            "text": "{\n  \"pv2:c\": {\n    \"mode\": \"off\"\n  }\n}\n",
+            "value_type": "datatree"
+          },
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "anydata",
+          "meta": [],
+          "path": "/pv2:c/any",
+          "schema": "/pv2:c/any",
+          "value": null
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "edit",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "path": "/pv2:c",
+          "schema": "/pv2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/mode",
+          "schema": "/pv2:c/mode",
+          "value": {
+            "canonical": "on",
+            "type": "enumeration",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/x",
+          "schema": "/pv2:c/x",
+          "value": {
+            "canonical": "hi",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/u",
+          "schema": "/pv2:c/u",
+          "value": {
+            "canonical": "abc",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 2,
+              "realtype": {
+                "type": "string",
+                "typedef": null
+              },
+              "type": "string",
+              "typedef": null
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/dec",
+          "schema": "/pv2:c/dec",
+          "value": {
+            "canonical": "2.5",
+            "type": "decimal64",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/id",
+          "schema": "/pv2:c/id",
+          "value": {
+            "canonical": "pv2:two",
+            "type": "identityref",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "path": "/pv2:c/l[k='a']",
+          "schema": "/pv2:c/l",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/l[k='a']/k",
+          "schema": "/pv2:c/l/k",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "path": "/pv2:c/l[k='b']",
+          "schema": "/pv2:c/l",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/l[k='b']/k",
+          "schema": "/pv2:c/l/k",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/ref",
+          "schema": "/pv2:c/ref",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": {
+            "text": "{\n  \"pv2:c\": {\n    \"mode\": \"off\"\n  }\n}\n",
+            "value_type": "datatree"
+          },
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "anydata",
+          "meta": [],
+          "path": "/pv2:c/any",
+          "schema": "/pv2:c/any",
+          "value": null
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "edit",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "path": "/pv2:c",
+          "schema": "/pv2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/mode",
+          "schema": "/pv2:c/mode",
+          "value": {
+            "canonical": "on",
+            "type": "enumeration",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/x",
+          "schema": "/pv2:c/x",
+          "value": {
+            "canonical": "hi",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/u",
+          "schema": "/pv2:c/u",
+          "value": {
+            "canonical": "abc",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 2,
+              "realtype": {
+                "type": "string",
+                "typedef": null
+              },
+              "type": "string",
+              "typedef": null
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/dec",
+          "schema": "/pv2:c/dec",
+          "value": {
+            "canonical": "2.5",
+            "type": "decimal64",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/id",
+          "schema": "/pv2:c/id",
+          "value": {
+            "canonical": "pv2:two",
+            "type": "identityref",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "path": "/pv2:c/l[k='b']",
+          "schema": "/pv2:c/l",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/l[k='b']/k",
+          "schema": "/pv2:c/l/k",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/ref",
+          "schema": "/pv2:c/ref",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": {
+            "text": "{\n  \"pv2:c\": {\n    \"mode\": \"off\"\n  }\n}\n",
+            "value_type": "datatree"
+          },
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "anydata",
+          "meta": [],
+          "path": "/pv2:c/any",
+          "schema": "/pv2:c/any",
+          "value": null
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "validate",
+      "implicit_diff": "{\n  \"pv2:c\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"d\": 7,\n    \"@d\": {\n      \"yang:operation\": \"create\"\n    },\n    \"f\": \"ff\",\n    \"@f\": {\n      \"yang:operation\": \"create\"\n    },\n    \"dref\": 7,\n    \"@dref\": {\n      \"yang:operation\": \"create\"\n    },\n    \"ll\": [\n      \"a\",\n      \"b\"\n    ],\n    \"@ll\": [\n      {\n        \"yang:operation\": \"create\"\n      },\n      {\n        \"yang:operation\": \"create\"\n      }\n    ]\n  }\n}\n",
       "rc": {
         "err": 0,
         "name": "LY_SUCCESS"
@@ -181,7 +771,7 @@
           },
           "kind": "list",
           "meta": [],
-          "path": "/pv2:c/l[k='a']",
+          "path": "/pv2:c/l[k='b']",
           "schema": "/pv2:c/l",
           "value": null
         },
@@ -194,10 +784,10 @@
           },
           "kind": "leaf",
           "meta": [],
-          "path": "/pv2:c/l[k='a']/k",
+          "path": "/pv2:c/l[k='b']/k",
           "schema": "/pv2:c/l/k",
           "value": {
-            "canonical": "a",
+            "canonical": "b",
             "type": "string",
             "typedef": null,
             "union_member": null
@@ -215,7 +805,7 @@
           "path": "/pv2:c/ref",
           "schema": "/pv2:c/ref",
           "value": {
-            "canonical": "a",
+            "canonical": "b",
             "type": "string",
             "typedef": null,
             "union_member": null
@@ -295,7 +885,8 @@
     },
     {
       "diagnostics": [],
-      "do": "edit",
+      "do": "validate",
+      "implicit_diff": null,
       "rc": {
         "err": 0,
         "name": "LY_SUCCESS"
@@ -318,7 +909,7 @@
           "any": null,
           "flags": {
             "default": false,
-            "new": true,
+            "new": false,
             "when_true": false
           },
           "kind": "leaf",
@@ -326,7 +917,7 @@
           "path": "/pv2:c/mode",
           "schema": "/pv2:c/mode",
           "value": {
-            "canonical": "off",
+            "canonical": "on",
             "type": "enumeration",
             "typedef": null,
             "union_member": null
@@ -457,7 +1048,7 @@
           },
           "kind": "list",
           "meta": [],
-          "path": "/pv2:c/l[k='a']",
+          "path": "/pv2:c/l[k='b']",
           "schema": "/pv2:c/l",
           "value": null
         },
@@ -470,10 +1061,10 @@
           },
           "kind": "leaf",
           "meta": [],
-          "path": "/pv2:c/l[k='a']/k",
+          "path": "/pv2:c/l[k='b']/k",
           "schema": "/pv2:c/l/k",
           "value": {
-            "canonical": "a",
+            "canonical": "b",
             "type": "string",
             "typedef": null,
             "union_member": null
@@ -491,7 +1082,7 @@
           "path": "/pv2:c/ref",
           "schema": "/pv2:c/ref",
           "value": {
-            "canonical": "a",
+            "canonical": "b",
             "type": "string",
             "typedef": null,
             "union_member": null
@@ -570,12 +1161,27 @@
       ]
     },
     {
-      "diagnostics": [],
-      "do": "validate",
-      "implicit_diff": "{\n  \"pv2:c\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"x\": \"hi\",\n    \"@x\": {\n      \"yang:operation\": \"delete\"\n    }\n  }\n}\n",
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 3,
+            "name": "LY_EINVAL"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Cannot free a list key \"k\", free the list instance instead.",
+          "phase": "edit",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "do": "edit",
       "rc": {
-        "err": 0,
-        "name": "LY_SUCCESS"
+        "err": 3,
+        "name": "LY_EINVAL"
       },
       "typed": [
         {
@@ -603,8 +1209,26 @@
           "path": "/pv2:c/mode",
           "schema": "/pv2:c/mode",
           "value": {
-            "canonical": "off",
+            "canonical": "on",
             "type": "enumeration",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": true
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/x",
+          "schema": "/pv2:c/x",
+          "value": {
+            "canonical": "hi",
+            "type": "string",
             "typedef": null,
             "union_member": null
           }
@@ -716,7 +1340,7 @@
           },
           "kind": "list",
           "meta": [],
-          "path": "/pv2:c/l[k='a']",
+          "path": "/pv2:c/l[k='b']",
           "schema": "/pv2:c/l",
           "value": null
         },
@@ -729,10 +1353,10 @@
           },
           "kind": "leaf",
           "meta": [],
-          "path": "/pv2:c/l[k='a']/k",
+          "path": "/pv2:c/l[k='b']/k",
           "schema": "/pv2:c/l/k",
           "value": {
-            "canonical": "a",
+            "canonical": "b",
             "type": "string",
             "typedef": null,
             "union_member": null
@@ -750,7 +1374,7 @@
           "path": "/pv2:c/ref",
           "schema": "/pv2:c/ref",
           "value": {
-            "canonical": "a",
+            "canonical": "b",
             "type": "string",
             "typedef": null,
             "union_member": null
@@ -829,267 +1453,9 @@
       ]
     },
     {
-      "diagnostics": [],
       "do": "dump",
-      "rc": {
-        "err": 0,
-        "name": "LY_SUCCESS"
-      },
-      "tree": {
-        "json": "{\n  \"pv2:c\": {\n    \"mode\": \"off\",\n    \"u\": \"abc\",\n    \"dec\": \"2.5\",\n    \"id\": \"two\",\n    \"l\": [\n      {\n        \"k\": \"a\"\n      }\n    ],\n    \"ref\": \"a\",\n    \"any\": {\n      \"c\": {\n        \"mode\": \"off\"\n      }\n    }\n  }\n}\n",
-        "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2\">\n  <mode>off</mode>\n  <u>abc</u>\n  <dec>2.5</dec>\n  <id>two</id>\n  <l>\n    <k>a</k>\n  </l>\n  <ref>a</ref>\n  <any>\n    <c>\n      <mode>off</mode>\n    </c>\n  </any>\n</c>\n"
-      },
-      "typed": [
-        {
-          "any": null,
-          "flags": {
-            "default": false,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "container",
-          "meta": [],
-          "path": "/pv2:c",
-          "schema": "/pv2:c",
-          "value": null
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": false,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaf",
-          "meta": [],
-          "path": "/pv2:c/mode",
-          "schema": "/pv2:c/mode",
-          "value": {
-            "canonical": "off",
-            "type": "enumeration",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": false,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaf",
-          "meta": [],
-          "path": "/pv2:c/u",
-          "schema": "/pv2:c/u",
-          "value": {
-            "canonical": "abc",
-            "type": "union",
-            "typedef": null,
-            "union_member": {
-              "index": 2,
-              "realtype": {
-                "type": "string",
-                "typedef": null
-              },
-              "type": "string",
-              "typedef": null
-            }
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaf",
-          "meta": [],
-          "path": "/pv2:c/d",
-          "schema": "/pv2:c/d",
-          "value": {
-            "canonical": "7",
-            "type": "uint8",
-            "typedef": "percent",
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": false,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaf",
-          "meta": [],
-          "path": "/pv2:c/dec",
-          "schema": "/pv2:c/dec",
-          "value": {
-            "canonical": "2.5",
-            "type": "decimal64",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": false,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaf",
-          "meta": [],
-          "path": "/pv2:c/id",
-          "schema": "/pv2:c/id",
-          "value": {
-            "canonical": "pv2:two",
-            "type": "identityref",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaf",
-          "meta": [],
-          "path": "/pv2:c/f",
-          "schema": "/pv2:c/ch/first/f",
-          "value": {
-            "canonical": "ff",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": false,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "list",
-          "meta": [],
-          "path": "/pv2:c/l[k='a']",
-          "schema": "/pv2:c/l",
-          "value": null
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": false,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaf",
-          "meta": [],
-          "path": "/pv2:c/l[k='a']/k",
-          "schema": "/pv2:c/l/k",
-          "value": {
-            "canonical": "a",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": false,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaf",
-          "meta": [],
-          "path": "/pv2:c/ref",
-          "schema": "/pv2:c/ref",
-          "value": {
-            "canonical": "a",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaf",
-          "meta": [],
-          "path": "/pv2:c/dref",
-          "schema": "/pv2:c/dref",
-          "value": {
-            "canonical": "7",
-            "type": "uint8",
-            "typedef": "percent",
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaflist",
-          "meta": [],
-          "path": "/pv2:c/ll[.='a']",
-          "schema": "/pv2:c/ll",
-          "value": {
-            "canonical": "a",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaflist",
-          "meta": [],
-          "path": "/pv2:c/ll[.='b']",
-          "schema": "/pv2:c/ll",
-          "value": {
-            "canonical": "b",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": {
-            "text": "{\n  \"pv2:c\": {\n    \"mode\": \"off\"\n  }\n}\n",
-            "value_type": "datatree"
-          },
-          "flags": {
-            "default": false,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "anydata",
-          "meta": [],
-          "path": "/pv2:c/any",
-          "schema": "/pv2:c/any",
-          "value": null
-        }
-      ]
+      "skipped": true
     }
   ],
-  "verdict": "valid"
+  "verdict": "invalid"
 }

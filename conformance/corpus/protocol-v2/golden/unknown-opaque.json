@@ -65,6 +65,9 @@
       "schema": null,
       "value": {
         "canonical": "1",
+        "hints": [
+          "decnum"
+        ],
         "type": null,
         "typedef": null,
         "union_member": null

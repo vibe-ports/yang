@@ -54,6 +54,11 @@
             "type": "union",
             "typedef": null,
             "union_member": {
+              "index": 2,
+              "realtype": {
+                "type": "string",
+                "typedef": null
+              },
               "type": "string",
               "typedef": null
             }
@@ -93,6 +98,81 @@
             "type": "string",
             "typedef": null,
             "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "path": "/pv2:c/l[k='a']",
+          "schema": "/pv2:c/l",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/l[k='a']/k",
+          "schema": "/pv2:c/l/k",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/dref",
+          "schema": "/pv2:c/dref",
+          "value": {
+            "canonical": "7",
+            "type": "uint8",
+            "typedef": "percent",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/u2",
+          "schema": "/pv2:c/u2",
+          "value": {
+            "canonical": "a",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": null
+              },
+              "type": "leafref",
+              "typedef": null
+            }
           }
         },
         {
@@ -170,6 +250,11 @@
             "type": "union",
             "typedef": null,
             "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "int8",
+                "typedef": null
+              },
               "type": "int8",
               "typedef": null
             }
@@ -209,6 +294,81 @@
             "type": "string",
             "typedef": null,
             "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "path": "/pv2:c/l[k='a']",
+          "schema": "/pv2:c/l",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/l[k='a']/k",
+          "schema": "/pv2:c/l/k",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/dref",
+          "schema": "/pv2:c/dref",
+          "value": {
+            "canonical": "7",
+            "type": "uint8",
+            "typedef": "percent",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/u2",
+          "schema": "/pv2:c/u2",
+          "value": {
+            "canonical": "a",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": null
+              },
+              "type": "leafref",
+              "typedef": null
+            }
           }
         },
         {
@@ -282,10 +442,15 @@
           "path": "/pv2:c/u",
           "schema": "/pv2:c/u",
           "value": {
-            "canonical": "42",
+            "canonical": "-5",
             "type": "union",
             "typedef": null,
             "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "int8",
+                "typedef": null
+              },
               "type": "int8",
               "typedef": null
             }
@@ -325,6 +490,81 @@
             "type": "string",
             "typedef": null,
             "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "path": "/pv2:c/l[k='a']",
+          "schema": "/pv2:c/l",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/l[k='a']/k",
+          "schema": "/pv2:c/l/k",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/dref",
+          "schema": "/pv2:c/dref",
+          "value": {
+            "canonical": "7",
+            "type": "uint8",
+            "typedef": "percent",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/u2",
+          "schema": "/pv2:c/u2",
+          "value": {
+            "canonical": "50",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "uint8",
+                "typedef": "percent"
+              },
+              "type": "uint8",
+              "typedef": "percent"
+            }
           }
         },
         {
@@ -399,10 +639,15 @@
           "path": "/pv2:c/u",
           "schema": "/pv2:c/u",
           "value": {
-            "canonical": "42",
+            "canonical": "-5",
             "type": "union",
             "typedef": null,
             "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "int8",
+                "typedef": null
+              },
               "type": "int8",
               "typedef": null
             }
@@ -442,6 +687,81 @@
             "type": "string",
             "typedef": null,
             "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "path": "/pv2:c/l[k='a']",
+          "schema": "/pv2:c/l",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/l[k='a']/k",
+          "schema": "/pv2:c/l/k",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/dref",
+          "schema": "/pv2:c/dref",
+          "value": {
+            "canonical": "7",
+            "type": "uint8",
+            "typedef": "percent",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "path": "/pv2:c/u2",
+          "schema": "/pv2:c/u2",
+          "value": {
+            "canonical": "50",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "uint8",
+                "typedef": "percent"
+              },
+              "type": "uint8",
+              "typedef": "percent"
+            }
           }
         },
         {

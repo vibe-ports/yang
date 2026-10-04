@@ -86,6 +86,11 @@
         "type": "union",
         "typedef": null,
         "union_member": {
+          "index": 2,
+          "realtype": {
+            "type": "string",
+            "typedef": null
+          },
           "type": "string",
           "typedef": null
         }
@@ -209,6 +214,24 @@
         "canonical": "a",
         "type": "string",
         "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "path": "/pv2:c/dref",
+      "schema": "/pv2:c/dref",
+      "value": {
+        "canonical": "7",
+        "type": "uint8",
+        "typedef": "percent",
         "union_member": null
       }
     },

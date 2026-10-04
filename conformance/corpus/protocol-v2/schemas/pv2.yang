@@ -9,6 +9,16 @@ module pv2 {
 
   feature extra;
 
+  extension note {
+    argument text;
+  }
+
+  grouping from-group {
+    leaf grouped {
+      type string;
+    }
+  }
+
   identity base-id;
 
   identity one {
@@ -27,6 +37,7 @@ module pv2 {
 
   container c {
     leaf mode {
+      p:note "switches x";
       type enumeration {
         enum on;
         enum off {
@@ -84,10 +95,55 @@ module pv2 {
       leaf k {
         type string;
       }
+      action reset {
+        input {
+          leaf why {
+            type string;
+          }
+        }
+        output {
+          leaf done {
+            type boolean;
+          }
+        }
+      }
+      notification changed {
+        leaf what {
+          type string;
+        }
+      }
     }
+    list stats {
+      config false;
+      leaf hits {
+        type uint32;
+      }
+    }
+    container pres {
+      presence "enables the name";
+      leaf name {
+        type string;
+        mandatory true;
+      }
+    }
+    uses from-group;
     leaf ref {
       type leafref {
         path "../l/k";
+      }
+    }
+    leaf dref {
+      type leafref {
+        path "../d";
+      }
+      default "007";
+    }
+    leaf u2 {
+      type union {
+        type percent;
+        type leafref {
+          path "../l/k";
+        }
       }
     }
     leaf-list ll {
