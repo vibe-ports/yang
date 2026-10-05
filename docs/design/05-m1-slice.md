@@ -24,8 +24,10 @@ data              → schema, types, xpath      tree (design 02), JSON/XML codec
 yang (root)       → parser, compile, schema   Context: load modules (fs.FS), compile; aliases for schema types
 cmd/yanglint-go, conformance engine → yang, data
 ```
-Public types of `internal/schema` are re-exported from `yang` with type aliases, so the compiled
-schema API is public without an import cycle.
+The compiled schema is exposed from `yang` through **read-only handles** (accessor methods,
+iterators, copies) over `internal/schema` — never type aliases with writable fields — so the
+compiled Context stays immutable for concurrent readers (PLAN §2). An external-package test proves
+returned collections cannot mutate the schema.
 
 ## Minimal API per package (M1; may grow, never by exporting internals "just in case")
 - **parser**: `Parse(name string, src []byte, b *Budget) (*Stmt, error)`;
@@ -34,12 +36,15 @@ schema API is public without an import cycle.
   errors `*Error{Pos, Code, Msg}` with libyang-compatible codes (LYVE_SYNTAX_YANG, …).
 - **schema**: plain structs, no behaviour beyond lookups: `Module{Name, Revision, Namespace,
   Prefix, Features, Identities, Top []*Node}`; `Node{Kind, Name, Module, Parent, Children,
-  Config, Mandatory, Presence, Keys, Min, Max, OrderedBy, Default []string, Type *Type, Musts,
+  Config, Mandatory, Presence, Keys, Min, Max, OrderedBy, Defaults []DefaultValue{Lex, NS}, Type *Type, Musts,
   Whens, Status}`; `Type{Base, Typedef, Range, Length, Patterns, FracDigits, Enums, Bits, Bases,
   Path, RequireInstance, Union []*Type}`; `Must{Src, AppTag, Msg, Ctx NSCtx, Compiled any}`,
   `When{Src, Ctx NSCtx, ContextNode *Node, Compiled any}` — `Compiled` holds the `*xpath.Expr` set by
   compile; schema stays stdlib-only because xpath imports schema, not the other way round.
-- **types**: design 01 `Value`; `Store(t *schema.Type, lex string, f Format, h Hints, pc
+- Defaults keep the original lexical text + prefix context (libyang `schema_compile.c:976`); the
+  canonical value is derived by `types` at use time, because a union default (e.g. "01" for
+  `union { leafref→uint8; string }`) resolves differently depending on data.
+- **types**: design 01 `Value` (answers which union member was selected and which identity); `Store(t *schema.Type, lex string, f Format, h Hints, pc
   PrefixCtx, ctx *schema.Node) (Value, *Diag)`; `Canonical`, `Equal`; union keeps original.
 - **xpath**: `Compile(src string, ns NamespaceCtx) (*Expr, error)`; `(*Expr).Eval(ctx
   EvalContext) (Result, error)`; `Node` interface + `EvalContext` per design 03. M1 subset:
@@ -54,7 +59,8 @@ schema API is public without an import cycle.
   Diagnostics, error)`; `(*Tree).Validate(opts) (Diagnostics, error)` (design 02 flags, defaults,
   when history); `Print(w, f, wd WithDefaults)`. M1: config + data types, unknown reject/skip.
 - **conformance engine** (in the conformance module): adapter implementing `conformance.Engine`
-  for ops `schema` (schema_tree subset) and `data`, so `go run ./cmd/report -engine go` reports
+  for ops `schema` (schema_tree subset), `data` and `sequence` (retained tree, edits, validation
+  implicit diff, per-step `typed` flags — M1-6 provides the tree API, M1-7 the adapter), so `go run ./cmd/report -engine go` reports
   agreement on the m1 fixtures.
 
 ## Task split (each ≤ ~1.5k Go lines, own branch + PR + reviews)
@@ -69,4 +75,9 @@ schema API is public without an import cycle.
 | M1-7 | Context API + conformance engine + report in CI summary | 5, 6 | Sonnet |
 
 Wave 1 = M1-1…M1-4 in parallel. Exit criterion (PLAN): every m1 fixture agrees (or is a recorded
-deviation); design notes 01–03 revised from what the slice taught us.
+deviation) — **including the sequence fixtures with intermediate flags and the deletion diff**;
+design notes 01–03 revised from what the slice taught us.
+
+Plan review (astra, 2026-10-05): 6 findings, all accepted — raw defaults, typed XPath values,
+default materialise-then-resolve (03), per-constraint operational severity (PLAN), read-only schema
+handles, sequence in the M1 exit criterion.

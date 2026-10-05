@@ -9,6 +9,13 @@ libyang v5.8.6 `LYXP_NODE_ROOT` / `LYXP_NODE_ROOT_CONFIG` (`src/xpath.h:168`),
 value string, schema node) and evaluates over it; `data` implements that interface and calls the
 evaluator during validation. `internal/xpath` never imports `data`.
 
+## Typed values
+YANG functions read the **stored** value, not its string: `derived-from[-or-self]()` uses the
+selected union member's identity (libyang `xpath.c:4278`), `enum-value()`/`bit-is-set()` the stored
+enum/bits. `xpath.Node` therefore exposes a read-only typed value (canonical string, identity of the
+selected member, enum, bits). Fixture: union {identityref; string} with identical canonical text
+but different selected members → different `derived-from-or-self()` results.
+
 ## The context is an explicit value, never implicit
 ```go
 type EvalContext struct {
@@ -33,7 +40,13 @@ type EvalContext struct {
    - RPC/action input/output, notification → the operation tree plus the whole datastore
      (libyang takes the external operational tree for this, `-O` in yanglint);
    - NMDA (RFC 8342 §6.1): for `<operational>` the accessible tree is the operational datastore.
-3. **`when` on a node that does not exist yet** (deciding whether to create implicit defaults /
+3. **Default creation follows libyang's phases** (`tree_data_new.c:1952,1980`): implicit defaults and
+   non-presence containers are **materialised first** (flag `Default`, `WhenTrue` seeded per
+   libyang), **then** their `when` conditions are resolved together with the rest; nodes whose
+   `when` is false are removed. Pre-checking each absent default in isolation is wrong (it hides
+   sibling defaults a later `when` depends on). Fixtures: false-`when` implicit default vs the same
+   value given explicitly; a default whose `when` depends on another default declared later.
+   **`when` on a node that does not exist yet** (deciding whether to create implicit defaults /
    non-presence containers): evaluate on a temporary dummy node inserted at the would-be position,
    exactly like `lyd_validate_dummy_when`. The dummy is never visible to callers.
    Open (M1): the full temporary evaluation view — whether an existing instance is replaced by the
