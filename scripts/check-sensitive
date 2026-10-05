@@ -71,11 +71,15 @@ commits() {
   git log "$@" -z --format='%h%x09%an <%ae>%x09%cn <%ce>%x09%B' |
     LC_ALL=C perl -0 -ne 'chomp; my ($c, $a, $m, $b) = split /\t/, $_, 4;
       print "$c:author\t$a\n$c:committer\t$m\n"; print "$c:message\t$_\n" for split /\n/, $b // ""'
+  # Every path each commit touches, NUL-delimited and independent of patch hunks (an empty file
+  # has none). Records: "\x01<commit>" then "\n<path>", "<path>", …
+  git log "$@" -z --name-only --no-renames --diff-merges=first-parent --format='%x01%h' |
+    LC_ALL=C perl -0 -ne 'chomp; if (s/^\x01//) { $c = $_; next } s/^\n//; s/[\t\n]/ /g; print "$c:$_ (path)\t$_\n" if length'
   git -c core.quotePath=false log "$@" -p --text --diff-merges=first-parent --no-color --no-ext-diff --format='commit %h' |
     LC_ALL=C perl -ne '
       if (/^commit (\w+)$/) { $c = $1; next }
       if (/^diff --git /) { $h = 1; next }
-      if ($h) { if (/^@@/) { $h = 0 } elsif (/^(?:\+\+\+ b\/|--- a\/|rename to |copy to )(.*)/) { $f = $1; print "$c:$1 (path)\t$1\n" } next }
+      if ($h) { if (/^@@/) { $h = 0 } elsif (/^(?:\+\+\+ b\/|--- a\/|rename to |copy to )(.*)/) { $f = $1 } next }
       print "$c:$f\t$1\n" if /^\+(.*)/'
 }
 
@@ -91,8 +95,8 @@ case $mode in
     # NUL-delimited names; contents come from the index (git objects), so symlinks aren't followed.
     if [[ $mode == --staged ]]; then list=(git diff --cached --name-only -z --diff-filter=ACMR); else list=(git ls-files -z); fi
     hits=$("${list[@]}" | while IFS= read -r -d '' f; do
-      printf '%s (path)\t%s\n' "$f" "$f"
-      git cat-file blob ":$f" 2>/dev/null | CS_FILE=$f LC_ALL=C perl -ne 'print "$ENV{CS_FILE}:$.\t$_"' || true
+      n=${f//[$'\t\n']/ }; printf '%s (path)\t%s\n' "$n" "$n"
+      git cat-file blob ":$f" 2>/dev/null | CS_FILE=$n LC_ALL=C perl -ne 'print "$ENV{CS_FILE}:$.\t$_"' || true
     done | scan | sort -u) ;;
   --history)
     tagobjs=$(git for-each-ref refs/tags --format='%(objecttype) %(objectname)' | awk '$1 == "tag" {print $2}')
