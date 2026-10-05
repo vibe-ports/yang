@@ -41,7 +41,7 @@ The context first loads libyang's **internal modules** in this order with these 
 (CTX:58-69): ietf-inet-types@2025-12-22 (no), ietf-yang-types@2025-12-22 (no), ietf-yang-metadata
 (yes), yang@2025-01-29 (yes), default@2025-06-18 (yes), ietf-yang-schema-mount (yes),
 ietf-yang-structure-ext (no), ietf-datastores (yes), ietf-yang-library (yes). Their texts are
-embedded (`internal/models`, copied from libyang `models/`, licence per file in `conformance/NOTICE`
+embedded (`internal/models`, copied from libyang's `modules/` directory, licence per file in `conformance/NOTICE`
 style). The oracle reads them from `ly_yang_module_dir()` and m1 imports the bundled RFC 9911
 revisions from there, so without this step nothing in m1 compiles. `LY_CTX_NO_YANGLIBRARY` drops the
 last two (CTX:322).
@@ -231,7 +231,8 @@ inheriting `units` and `default` from the nearest typedef that has them (SCN:197
 chains: local chain + the context-wide stack used by nested unions (SCN:2009-2031, `Invalid "%s" type
 reference - circular chain of types detected.` LYVE_REFERENCE). Unknown base → `Referenced type
 "%s" not found.` Then compile from the built-in outwards (SCN:2059-2112); each typedef's compiled
-type is cached **per compile run** (`map[*parser.Node]*schema.Type`) and reused by every user.
+type is cached on the parsed typedef with a **holder count** (§ "Typedef cache" below) and reused by
+every user while it is held by someone besides the cache.
 Rules that shape `schema.Type.Typedef` (= libyang `lysc_type.name`, which the types registry and the
 oracle `typedefs` field read):
 - a typedef that adds nothing (no restriction, no extension, same plugin, not leafref) **reuses its
@@ -242,25 +243,41 @@ oracle `typedefs` field read):
   `pluginFor` walks `From`, which gives the same answer only if compile keeps the reused pointer;
 - the leaf's own `type` statement creates a new type only if it has restrictions/extensions, no base,
   or a leafref anywhere (SCN:2135); that type is named after the nearest typedef (SCN:2147);
-  otherwise the leaf shares the typedef's type. A top-level leafref type is never shared (each
-  instantiation resolves its own target) — but see the two leafref-typedef quirks below.
+  otherwise the leaf shares the typedef's type.
 
-**Leafref typedef quirks** (both verified in source, both pinned by fixtures):
-1. *Prefix binding.* A leafref path's `Prefixes[""]` is set to `ctx->cur_mod` when the type that
-   carries the `path` statement is compiled (SCN:1830-1841). For a typedef that type is compiled once
-   and cached on the parsed typedef (SCN:2110; reused while cached, SCN:1993-2007, dropped only when
-   its refcount fell back to 1 on recompilation, SCN:1986-1991). Every later user copies path **and
-   prefixes** from that cached base (SCN:1842-1846). So unprefixed names in a typedef's leafref path
-   bind to the module that compiled the typedef **first** in this compile run, not to each
-   instantiating module. Our cache is keyed by the parsed typedef (`map[*parser.Node]*schema.Type`,
-   one per compile run of a dep set) and mirrors this; order = dep-set compile order (§1.7). Fixture
-   lref/typedef-prefix-binding (module A's typedef with unprefixed path used from A and from B).
-2. *Shared union member.* A union typedef with a leafref member: the leaf gets a new union type
-   (`has_leafref`, SCN:2123-2131) whose `types` array copies the member **pointers** of the cached
-   base (SCN:1887-1897), so the leafref member object is shared by all users; unres resolves it once,
-   for the first node (SC:875-878 "already resolved ... shared union typedef with a leafref"), and the
-   other users inherit that `Realtype`. Fixture lref/union-typedef-shared-member (two leaves of the
-   union typedef whose relative paths point to targets of different types).
+**Typedef cache = libyang's refcount, mirrored.** libyang caches a typedef's compiled type on the
+parsed typedef (`tpdf->type.compiled`, SCN:2110) and **frees and recompiles it whenever its refcount
+is 1**, i.e. when nothing but the cache holds it (SCN:1986-1991) — not only "on recompilation". The
+increments that make a second holder are: storing the cache (SCN:2111), an unchanged derived typedef
+reusing it (SCN:2088), a union member slot (SCN:1438, nested-union members SCN:1449, members copied
+from a union base SCN:1895), and a leaf/leaf-list taking a type unchanged (SCN:2804 after SCN:2153).
+A leaf whose type contains a leafref always gets its own new type (SCN:2135) that *copies* the
+base's path and prefixes (SCN:1842-1846) or member pointers (SCN:1887-1897) but never holds the base
+itself. Our cache: `map[*parser.Node]*cachedType{t *schema.Type; holders int}`, incremented at
+exactly those points and decremented when a holder's module is dropped from the snapshot at
+recompilation (`lysc_module_free` of the modules of a recompiled dep set, SC:1539); lookup with
+`holders == 1` discards and recompiles, as SCN:1986. Lifetime = the context **snapshot**, not one
+compile run: types held by modules of other, not recompiled dep sets survive a later `Load`.
+
+**Leafref typedef consequences** (all conditional on a second holder; verified in source):
+1. *Direct use — no quirk.* `typedef ref { type leafref { path "../x"; } }` used by leaves in A and B:
+   the cache holds `ref`'s type alone (the leaves hold their own copies), so every use recompiles it
+   and `Prefixes[""]` = each instantiating `cur_mod` (SCN:1841). Same for a union typedef with a
+   leafref member used directly: each leaf recompiles the base and gets fresh members. A derived
+   typedef of a leafref is never reused (`basetype != LY_TYPE_LEAFREF`, SCN:2084), so it does not
+   create a holder either. Fixtures lref/typedef-prefix-direct, lref/union-typedef-direct (positive:
+   per-module binding, per-leaf targets).
+2. *Via an unchanged derived union typedef — shared.* `typedef d { type u; }` with `u` a union
+   containing a leafref: `d` reuses `u`'s compiled type (SCN:2088, holders 2), so `u` is not
+   recompiled; leaves of type `d` copy the **same member pointers** (SCN:1895), the leafref member is
+   resolved once, for the first node (SC:875-878 "already resolved ... shared union typedef with a
+   leafref"), and its `Prefixes[""]` is the module that compiled `u` first. Fixture
+   lref/union-typedef-via-derived-typedef (two leaves, in two modules, whose relative paths point to
+   targets of different types and namespaces).
+3. *Across Loads.* A holder created in an earlier `Load` whose dep set is not recompiled now keeps the
+   cached type alive, so case 2 can bind to a module compiled in a previous `Load`. Fixture
+   lref/typedef-across-loads (a `sequence`-style two-module `schema` request where the second module
+   lands in another dep set).
 Per base type (`lys_compile_type_`, SCN:1573): range/length parsed and intersected with the base
 (SCN:859; must be a subset, inherited via `lysc_range_dup` SCN:356), patterns appended to the base's
 (SCN:1139, compiled by `types.CompilePattern`/xsdre), enum/bit values and positions assigned and
@@ -379,13 +396,18 @@ are ported — no deviation; a schema fixture that triggers a not-yet-ported war
 
 API (internal/xpath, still no import of schema/types):
 `(*Expr).Atomize(ac AtomizeContext) ([]Atom, error)`; `Atom{Node SchemaNode; Use AtomUse}`,
-`AtomUse` ∈ {start-unused, start-used, atom-ctx, atom-node, atom-val} = `LYXP_SET_SCNODE_*`;
+`AtomUse int32` with libyang's values (xpath.h:268-277): `START` -2, `START_USED` -1, `ATOM_NODE` 0,
+`ATOM_VAL` 1, `ATOM_CTX` 2, `ATOM_NEW_CTX` 3, and `ATOM_PRED_CTX` 4 **and above** (one level per
+nested predicate) — the cycle check and "own value" check compare these numbers;
 `AtomizeContext{Node, Root (all|config), Output bool, Schema SchemaInfo, Warn func(msg string),
 MaxSteps}`. `SchemaNode` grows what the schema branches read: `Parent()`, `Status()`,
 `InOutput()`/`IsInput()`, `NodeType` incl. choice/case/input/output, `Path()` (LYSC_PATH_LOG, for
 the warning texts), `BaseType()` (+ member base types for unions), and a value-check callback
-`CheckValue(lexical string) (errMsg string, ok bool)` implemented by compile over `types.Store`
-(`LY_EINCOMPLETE` counts as ok, xpath.c:3670) so xpath never imports types. The existing narrow
+`CheckValue(lexical string, pc NamespaceCtx) (errMsg string, ok bool)` implemented by compile over
+`types.Store(t, lex, <expression format>, HintData, <the expression's prefix context>, node)` —
+exactly `store(..., set->format, set->prefix_data, LYD_HINT_DATA, scnode, ...)` at xpath.c:3666-3667,
+not the schema hint of defaults; identityref leaves are skipped (xpath.c:3664); `LY_EINCOMPLETE`
+counts as ok (xpath.c:3668) so xpath never imports types. The existing narrow
 schema walk in `eval.go` (`walkAtoms`/`atomsOK`, the dependency check of
 `eval_name_test_try_compile_predicate*`) is reimplemented on top of `Atomize` in C2a, so there is
 one schema walker (and D-0013 may shrink — re-measure). Split: **C2a** atomize core (sets with
@@ -520,7 +542,7 @@ otherwise negative; most are new and owned by stream F):
 | implement, phases, dep sets (§1.5-1.7) | m1/schema-tree (augment targets implemented) | load/two-failures, load/warning-once, load/lref-implements-augmenter +, load/lref-implements-target +, load/when-check-skipped-warning, load/feature-not-satisfied (phase compile), load/feature-not-found (phase parse), load/deviation-import-only + |
 | features, if-feature (§2.2) | basic/schema-dump, m1/schema-tree{,-no-features} | iff/feature-cycle, iff/err-after-false (VERIFY), iff/unknown-feature, iff/grouping-prefix + |
 | identities (P0) | m1 identities | ident/cycle, ident/unknown-base, errpath/submodule-identity |
-| typedefs (§2.3) | m1 (`counter64`, `date-and-time`, `ipv4-address-no-zone`), types/* | types/unchanged-typedef-reuse +, types/typedef-cycle, types/restriction-wrong-type, lref/typedef-prefix-binding, lref/union-typedef-shared-member |
+| typedefs (§2.3) | m1 (`counter64`, `date-and-time`, `ipv4-address-no-zone`), types/* | types/unchanged-typedef-reuse +, types/typedef-cycle, types/restriction-wrong-type, lref/typedef-prefix-direct +, lref/union-typedef-direct +, lref/union-typedef-via-derived-typedef, lref/typedef-across-loads |
 | unions (§2.4) | m1 `weight`, types/union-* | types/union-nested-index (VERIFY), budget test (Go unit test, not a fixture) |
 | groupings, uses, refine (§2.5-2.6, P4) | m1 `limits` | grp/self-ref, grp/unused-local-warning, grp/nested-unused-not-validated +, grp/used-elsewhere-first +, refine/nested-same-target (VERIFY), refine/target-missing, refine/config-in-rpc-warning |
 | augments (§2.7) | m1 (two augmenters), protocol-v2/schema-tree | order/two-augmenters (VERIFY), aug/mandatory-without-when, aug/mandatory-own-module + (SCA:1994), aug/target-missing, aug/of-augment + |
@@ -556,7 +578,7 @@ compiled)" in their own column, so a skipped field is visible, never silent.
 ## 7. Task split (≤ ~1.5k Go lines incl. tests each; own branch + PR + astra review)
 
 Re-estimated against the libyang LOC each PR ports (≈ 0.7–0.8 Go per C line + tests ≈ 1:1);
-total ≈ 13k incl. tests.
+total ≈ 14.5k incl. tests (sum of the table: 14.55k).
 
 | # | PR | ~LOC | Depends | Worker |
 |---|---|---|---|---|
@@ -569,13 +591,13 @@ total ≈ 13k incl. tests.
 | C3b | `ly_path_compile_leafref` in `types/path.go` | 0.6k | C3 | Sonnet |
 | C4a | compile core I: node walk P3, `lys_compile_node_` order, connect order, config/ordered-by, container/leaf/leaf-list/list (keys, uniques)/choice/case/any/action/notif, mandatory propagation, error-path builder | 1.5k | C0, C1b | Opus |
 | C4b | compile core II: if-feature eval + disabled/obsolete sets, status (§2.11), ext instances, P4 grouping validation scope, P5 | 1.0k | C4a | Opus |
-| C5 | types compile: typedef chain + reuse rule + leafref typedef quirks, range/length/pattern/enum/bits/dec64/identityref, union flattening, `MaxTypes` | 1.4k | C0 (driven by a test harness; joins C4a's walk at merge) | Opus |
+| C5 | types compile: typedef chain + reuse rule + leafref typedef quirks, range/length/pattern/enum/bits/dec64/identityref, union flattening, `MaxTypes` | 1.4k | C0 only (driven by a test harness; joins C4a's walk at merge) | Opus |
 | C6 | groupings/uses/refine/uses-augment/top-level augment | 1.4k | C4b, C5 | Opus |
 | C7 | unres P6: leafref targets/realtype, when/must checks + cycles, bit/enum removal, defaults via types, disabled removal | 1.3k | C2a, C3b, C6 | Opus |
 | C8 | public handles + immutability/race tests + engine adapter op `schema` + `FieldSkipper` | 1.0k | C7 | Sonnet |
 | F | fixtures of §6 (from libyang tests + hand-written), independent of the code | — | — | codex sol / Sonnet |
 
-Waves: **1** {C0, C1a, C2a, C3, F} → **2** {C1b, C2b, C3b, C5} → **3** C4a → C4b → C6 → C7 → C8.
+Waves: **1** {C0, C1a, C2a, C3, C5, F} → **2** {C1b, C2b, C3b} → **3** C4a → C4b → C6 → C7 → C8.
 Exit: all `schema` fixtures agree (warnings included); m1 `schema-tree` and
 `schema-tree-no-features` identical after normalization.
 
@@ -583,7 +605,7 @@ Exit: all `schema` fixtures agree (warnings included); m1 `schema-tree` and
 1. Target-driven compile (§0) — a merge-based design silently breaks node order and error paths.
 2. Dep sets + `LY_ERECOMPILE` (§1.7): compile order is observable (warnings, typedef binding).
 3. Schema-mode XPath (§2.13): a second evaluator with 81 warning sites that the comparator checks.
-4. Leafref typedef quirks: first-compiler prefix binding, shared union leafref member (§2.3).
+4. Typedef cache holder counts (§2.3): leafref binding/sharing only with a second holder.
 5. Phase boundary (§1.6): leafref path syntax and `lys_implement` are `parse`; check_features is `compile`.
 6. Typedef reuse rule (SCN:2084-2088) vs internal/types plugin lookup through `From`.
 7. Unres LIFO/FIFO order decides the first reported error.
