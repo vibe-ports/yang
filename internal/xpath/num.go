@@ -35,10 +35,10 @@ func cStrtod(s string) float64 {
 	return f // in long double range but not in float64: ±Inf / 0 (D-0010)
 }
 
-// inLongDouble: s (valid, outside float64) is a normal binary128 value, the
-// golden host's long double; strtold sets ERANGE otherwise.
+// inLongDouble: s (valid, outside float64) is a normal x87 80-bit value, the
+// canonical oracle host's long double; strtold sets ERANGE otherwise.
 func inLongDouble(s string) bool {
-	x, _, err := big.ParseFloat(s, 0, 113, big.ToNearestEven)
+	x, _, err := big.ParseFloat(s, 0, 64, big.ToNearestEven)
 	if err != nil {
 		return false
 	}
@@ -61,19 +61,29 @@ func numToString(f float64) string {
 	case f >= -(1<<63) && f < 1<<63 && f == math.Trunc(f):
 		return strconv.FormatInt(int64(f), 10)
 	}
-	return strconv.FormatFloat(f, 'f', 1, 64)
+	return x87(f).Text('f', 1)
 }
 
 // ctrunc is the C (long long) conversion. Out of range is UB in C; we pin the
-// golden host (arm64, soft-float long double): saturating, NaN → MaxInt64 (D-0011).
+// canonical oracle host (amd64, x87 fistp): NaN and out of range give the
+// "integer indefinite" math.MinInt64 (D-0011).
 func ctrunc(f float64) int64 {
-	switch {
-	case math.IsNaN(f) || f >= 1<<63:
-		return math.MaxInt64
-	case f < -(1 << 63):
+	if math.IsNaN(f) || f >= 1<<63 || f < -(1<<63) {
 		return math.MinInt64
 	}
 	return int64(f)
+}
+
+// x87 is the 80-bit long double nearest to f's shortest decimal form, i.e.
+// what strtold made of the text f came from; printing it like printf("%Lf")
+// does on amd64 reproduces libyang's rounding (string(0.15) = "0.2").
+// ponytail: computed results differ from x87 arithmetic in the last bits (D-0010).
+func x87(f float64) *big.Float {
+	x, _, err := big.ParseFloat(strconv.FormatFloat(f, 'g', -1, 64), 10, 64, big.ToNearestEven)
+	if err != nil {
+		return new(big.Float).SetFloat64(f)
+	}
+	return x
 }
 
 // cfmt is printf("%0*Lf", width, f): zero-padded for numbers, space-padded inf/nan.
@@ -85,7 +95,7 @@ func cfmt(f float64, width int) string {
 	case math.IsInf(f, 0):
 		s = "inf"
 	default:
-		s = strconv.FormatFloat(math.Abs(f), 'f', 6, 64)
+		s = x87(math.Abs(f)).Text('f', 6)
 	}
 	sign := ""
 	if math.Signbit(f) && !math.IsNaN(f) {

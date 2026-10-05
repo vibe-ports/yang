@@ -4179,22 +4179,6 @@ fixtures:
       xpath: "bit-is-set(flags/text(), 'x')"
     golden: golden/xpath-bit-is-set-flags-text-x.json
 
-  - id: protocol-v2/xpath-floor-number-1e30
-    dir: protocol-v2
-    source: *own
-    rfc: ["XPath1.0#4.4"]
-    areas: [xpath]
-    request:
-      op: xpath
-      searchdirs: [schemas]
-      modules: [{name: pv2, features: [extra]}]
-      format: json
-      data_type: get
-      data_file: data/xpath.json
-      context_path: /pv2:c
-      xpath: "floor(number('1e30'))"
-    golden: golden/xpath-floor-number-1e30.json
-
   - id: protocol-v2/xpath-ceiling-number-1e30-0-5
     dir: protocol-v2
     source: *own

@@ -397,8 +397,10 @@ func fnSubstring(ev *evaluator, a []value, _ value) (value, error) {
 		switch f := round(ev.toNum(a[2])); {
 		case math.IsNaN(f) || math.Signbit(f):
 			length = 0
+		case f >= 1<<31 && !math.IsInf(f, 0):
+			length = math.MinInt32 // C (int32_t) out of range: x86 integer indefinite (D-0011)
 		case !math.IsInf(f, 0):
-			length = ctrunc(min(f, math.MaxInt32)) // C: (int32_t) conversion
+			length = ctrunc(f)
 		}
 	}
 	from := min(max(start, 0), int64(len(s)))
