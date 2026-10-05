@@ -92,8 +92,8 @@ func fnBoolean(ev *evaluator, a []value, _ value) (value, error) { return boolV(
 // ceiling(NaN) = -9223372036854775807.
 func fnCeiling(ev *evaluator, a []value, _ value) (value, error) {
 	f := ev.toNum(a[0])
-	if t := ctrunc(f); float64(t) != f {
-		return numV(float64(t + 1)), nil
+	if t := ctrunc(f); !ldInt(t).eq(f) {
+		return numV(ldInt(t + 1)), nil // wraps like the C long long
 	}
 	return numV(f), nil
 }
@@ -114,7 +114,7 @@ func fnCount(_ *evaluator, a []value, _ value) (value, error) {
 	if a[0].t != vNodes {
 		return value{}, argType(1, a[0], "count(node-set)")
 	}
-	return numV(float64(len(a[0].nodes))), nil
+	return intV(len(a[0].nodes)), nil
 }
 
 func fnCurrent(ev *evaluator, _ []value, _ value) (value, error) {
@@ -192,10 +192,10 @@ func fnEnumValue(_ *evaluator, a []value, _ value) (value, error) {
 	}
 	if n := firstTerm(a[0]); n != nil {
 		if e, ok := valueOf(n).Enum(); ok {
-			return numV(float64(e)), nil
+			return intV(e), nil
 		}
 	}
-	return numV(math.NaN()), nil
+	return numV(ldNaN), nil
 }
 
 func fnFalse(*evaluator, []value, value) (value, error) { return boolV(false), nil }
@@ -206,10 +206,10 @@ func fnTrue(*evaluator, []value, value) (value, error) { return boolV(true), nil
 // the context set unchanged.
 func fnFloor(ev *evaluator, a []value, set value) (value, error) {
 	f := ev.toNum(a[0])
-	if math.IsNaN(f) || math.IsInf(f, 0) {
+	if f.isNaN() || f.isInf() {
 		return set, nil
 	}
-	return numV(float64(ctrunc(f))), nil
+	return numV(ldInt(ctrunc(f))), nil
 }
 
 // fnLang: xml:lang is metadata, which Node does not expose, so never true.
@@ -225,9 +225,9 @@ func fnLast(_ *evaluator, _ []value, set value) (value, error) {
 		return value{}, xpErr("Invalid context type %s in last().", typeNames[set.t])
 	}
 	if len(set.nodes) == 0 {
-		return numV(0), nil
+		return intV(0), nil
 	}
-	return numV(float64(set.size)), nil
+	return intV(set.size), nil
 }
 
 func fnPosition(_ *evaluator, _ []value, set value) (value, error) {
@@ -235,9 +235,9 @@ func fnPosition(_ *evaluator, _ []value, set value) (value, error) {
 		return value{}, xpErr("Invalid context type %s in position().", typeNames[set.t])
 	}
 	if len(set.nodes) == 0 {
-		return numV(0), nil
+		return intV(0), nil
 	}
-	return numV(float64(set.pos)), nil
+	return intV(set.pos), nil
 }
 
 // nameArg picks the node of local-name/name/namespace-uri: ok=false → "".
@@ -351,19 +351,16 @@ func fnRound(ev *evaluator, a []value, _ value) (value, error) {
 	return numV(round(ev.toNum(a[0]))), nil
 }
 
-func round(f float64) float64 {
-	if f == 0 || f < 0 && f >= -0.5 {
-		return math.Copysign(0, -1)
+// round is xpath_round in long double: -0 for [-0.5, 0], else floor(x + 0.5)
+// where floor truncates (and leaves NaN/Infinity).
+func round(f ld) ld {
+	if c, ok := f.cmp(ldFloat(-0.5)); f.isZero() || f.sign() < 0 && ok && c >= 0 {
+		return ld{f: newF().Neg(newF())}
 	}
-	if math.IsNaN(f) || math.IsInf(f, 0) {
+	if f = ldOp("+", f, ldFloat(0.5)); f.isNaN() || f.isInf() {
 		return f
 	}
-	// (long long)(f + 0.5) computed exactly: long double does not round the sum
-	t := math.Trunc(f)
-	if frac := f - t; f > 0 && frac >= 0.5 || f < 0 && frac > -0.5 {
-		t++
-	}
-	return float64(ctrunc(t))
+	return ldInt(ctrunc(f))
 }
 
 func fnStartsWith(ev *evaluator, a []value, _ value) (value, error) {
@@ -376,7 +373,7 @@ func fnString(ev *evaluator, a []value, set value) (value, error) {
 
 // fnStringLength counts bytes, as libyang (strlen).
 func fnStringLength(ev *evaluator, a []value, set value) (value, error) {
-	return numV(float64(len(strArg(ev, a, set)))), nil
+	return intV(len(strArg(ev, a, set))), nil
 }
 
 // fnSubstring works on bytes, as libyang.
@@ -384,10 +381,10 @@ func fnSubstring(ev *evaluator, a []value, _ value) (value, error) {
 	s := ev.toString(a[0])
 	start := int64(math.MaxInt32)
 	switch f := round(ev.toNum(a[1])); {
-	case math.IsInf(f, -1):
+	case f.isInf() && f.sign() < 0:
 		start = math.MinInt32
-	case !math.IsNaN(f) && !math.IsInf(f, 0):
-		start = ctrunc(f - 1)
+	case !f.isNaN() && !f.isInf():
+		start = ctrunc(ldOp("-", f, ldInt(1)))
 	}
 	if start >= int64(len(s)) {
 		return strV(""), nil
@@ -395,11 +392,12 @@ func fnSubstring(ev *evaluator, a []value, _ value) (value, error) {
 	length := int64(math.MaxInt32)
 	if len(a) == 3 {
 		switch f := round(ev.toNum(a[2])); {
-		case math.IsNaN(f) || math.Signbit(f):
+		case f.isNaN() || f.big().Signbit():
 			length = 0
-		case f >= 1<<31 && !math.IsInf(f, 0):
+		case f.isInf():
+		case ctrunc(f) >= 1<<31 || ctrunc(f) < 0:
 			length = math.MinInt32 // C (int32_t) out of range: x86 integer indefinite (D-0011)
-		case !math.IsInf(f, 0):
+		default:
 			length = ctrunc(f)
 		}
 	}
@@ -428,9 +426,9 @@ func fnSum(ev *evaluator, a []value, _ value) (value, error) {
 	if a[0].t != vNodes {
 		return value{}, argType(1, a[0], "sum(node-set)")
 	}
-	var sum float64
+	var sum ld
 	for _, it := range a[0].nodes {
-		sum += cStrtod(ev.stringValue(it))
+		sum = ldOp("+", sum, cStrtod(ev.stringValue(it)))
 	}
 	return numV(sum), nil
 }

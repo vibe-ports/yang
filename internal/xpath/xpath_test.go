@@ -199,9 +199,11 @@ func TestNumbers(t *testing.T) {
 			t.Errorf("cStrtod(%q) = %s, want %s", in, got, want)
 		}
 	}
-	for f, want := range map[float64]string{0.25: "0.2", 0.35: "0.3", 2.5: "2.5", -0.5: "-0.5", 1e20: "100000000000000000000.0", 3: "3"} {
-		if got := numToString(f); got != want {
-			t.Errorf("numToString(%v) = %s, want %s", f, got, want)
+	for in, want := range map[string]string{"0.25": "0.2", "0.15": "0.2", "0.14999999999999999": "0.1", "2.5": "2.5",
+		"-0.5": "-0.5", "100000000000000000000": "100000000000000000000.0", "3": "3",
+		"9223372036854775807": "9223372036854775807", "9007199254740993": "9007199254740993"} {
+		if got := numToString(cStrtod(in)); got != want {
+			t.Errorf("numToString(%s) = %s, want %s", in, got, want)
 		}
 	}
 }

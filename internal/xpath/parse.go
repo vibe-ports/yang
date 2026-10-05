@@ -5,7 +5,6 @@ package xpath
 
 import (
 	"math"
-	"strconv"
 )
 
 // maxDepth is LYXP_MAX_BLOCK_DEPTH: nesting of OrExpr (parentheses, predicates, arguments).
@@ -60,7 +59,7 @@ type (
 	}
 	negExpr  struct{ x ast } // odd number of unary '-'
 	litExpr  string
-	numExpr  float64
+	numExpr  struct{ v ld } // Number token, as C long double
 	varExpr  string
 	callExpr struct {
 		name string
@@ -251,7 +250,7 @@ func (p *parser) pathExpr(depth int) (ast, error) {
 		pe.prim = litExpr(p.src[t.pos+1 : t.pos+t.len-1])
 		p.i++
 	case tNumber:
-		pe.prim = numExpr(parseNumberToken(p.text(p.i)))
+		pe.prim = numExpr{parseNumberToken(p.text(p.i))}
 		p.i++
 	default:
 		return nil, p.unexpected()
@@ -378,11 +377,4 @@ func (p *parser) call(depth int) (ast, error) {
 		return nil, xpErr("Invalid number of arguments (%d) for the XPath function %s.", len(c.args), name)
 	}
 	return c, nil
-}
-
-// parseNumberToken converts a Number token (eval_number) to float64, where
-// libyang uses long double (D-0010); beyond ±1.8e308 it is ±Inf.
-func parseNumberToken(s string) float64 {
-	f, _ := strconv.ParseFloat(s, 64) // digits with an optional '.', always valid syntax
-	return f
 }

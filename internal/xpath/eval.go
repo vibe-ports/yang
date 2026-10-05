@@ -5,7 +5,6 @@ package xpath
 
 import (
 	"context"
-	"math"
 	"slices"
 	"strings"
 )
@@ -37,16 +36,17 @@ type value struct {
 	t         valType
 	nodes     []item
 	b         bool
-	f         float64
+	f         ld
 	s         string
 	pos, size int // context position and size, set inside predicates
 }
 
 var typeNames = [...]string{"node set", "boolean", "number", "string"} // print_set_type
 
-func boolV(b bool) value   { return value{t: vBool, b: b} }
-func numV(f float64) value { return value{t: vNum, f: f} }
-func strV(s string) value  { return value{t: vStr, s: s} }
+func boolV(b bool) value  { return value{t: vBool, b: b} }
+func numV(f ld) value     { return value{t: vNum, f: f} }
+func intV(i int) value    { return numV(ldInt(int64(i))) }
+func strV(s string) value { return value{t: vStr, s: s} }
 
 // nodesV builds a node set; like set_insert_node, a non-empty one has context position and size 1.
 func nodesV(n []item) value {
@@ -136,11 +136,11 @@ func (ev *evaluator) eval1(a ast, ctx value) (value, error) {
 		return ev.chain(a, ctx)
 	case negExpr:
 		v, err := ev.eval(a.x, ctx)
-		return numV(-ev.toNum(v)), err
+		return numV(ldNeg(ev.toNum(v))), err
 	case litExpr:
 		return strV(string(a)), nil
 	case numExpr:
-		return numV(float64(a)), nil
+		return numV(a.v), nil
 	case varExpr:
 		return value{}, &Error{Err: "LY_ENOTFOUND", Msg: "Variable \"" + string(a) + "\" not defined."}
 	case callExpr:
@@ -193,28 +193,13 @@ func (ev *evaluator) chain(a chainExpr, ctx value) (value, error) {
 		case "=", "!=", "<", "<=", ">", ">=":
 			acc = boolV(ev.compare(acc, r, op))
 		default:
-			acc = numV(mathOp(op, ev.toNum(acc), ev.toNum(r)))
+			acc = numV(ldOp(op, ev.toNum(acc), ev.toNum(r)))
 		}
 	}
 	if union != nil {
 		acc = nodesV(ev.sortUnique(union))
 	}
 	return acc, nil
-}
-
-// mathOp is moveto_op_math.
-func mathOp(op string, x, y float64) float64 {
-	switch op {
-	case "+":
-		return x + y
-	case "-":
-		return x - y
-	case "*":
-		return x * y
-	case "div":
-		return x / y
-	}
-	return math.Mod(x, y)
 }
 
 // path is eval_path_expr / eval_absolute_location_path / eval_relative_location_path.
@@ -948,22 +933,22 @@ func (ev *evaluator) toBool(v value) bool {
 	case vBool:
 		return v.b
 	case vNum:
-		return v.f != 0 && !math.IsNaN(v.f)
+		return !v.f.isZero() && !v.f.isNaN()
 	case vStr:
 		return v.s != ""
 	}
 	return len(v.nodes) > 0
 }
 
-func (ev *evaluator) toNum(v value) float64 {
+func (ev *evaluator) toNum(v value) ld {
 	switch v.t {
 	case vNum:
 		return v.f
 	case vBool:
 		if v.b {
-			return 1
+			return ldInt(1)
 		}
-		return 0
+		return ld{}
 	}
 	return cStrtod(ev.toString(v))
 }

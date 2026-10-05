@@ -224,7 +224,7 @@ func (e *Expr) Eval(ec EvalContext) (Result, error) {
 	case vBool:
 		return Result{Type: Boolean, Bool: v.b}, nil
 	case vNum:
-		return Result{Type: Number, Num: v.f}, nil
+		return Result{Type: Number, Num: v.f.float()}, nil
 	case vStr:
 		return Result{Type: String, Str: v.s}, nil
 	}

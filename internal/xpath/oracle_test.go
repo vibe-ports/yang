@@ -122,8 +122,7 @@ func TestOracleLive(t *testing.T) {
 		if *update {
 			t.Fatalf("regenerate on %s: DEV_PLATFORM=linux/%s ./dev go test -tags oracle ./internal/xpath/ -run Oracle -update", oracleArch, oracleArch)
 		}
-		t.Logf("live libyang comparison skipped: the canonical oracle runs on %s, this is %s (stored results are replayed by TestCompileOracle)", oracleArch, runtime.GOARCH)
-		return
+		t.Skipf("live libyang comparison skipped: the canonical oracle runs on %s, this is %s (stored results are replayed by TestCompileOracle)", oracleArch, runtime.GOARCH)
 	}
 	bin := lyoracle(t)
 	var live []oracleCase

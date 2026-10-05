@@ -54,11 +54,7 @@ func readCases(t *testing.T, name string) []oracleCase {
 const oracleArch = "amd64"
 
 // knownDiff lists oracle cases we intentionally do not reproduce.
-var knownDiff = map[string]string{
-	"string(9007199254740993)":    "D-0010", // integer beyond 2^53
-	"string(9223372036854775807)": "D-0010",
-	"string(number('1e-400'))":    "D-0010", // underflows float64, not long double
-}
+var knownDiff = map[string]string{}
 
 // crashAnswers are the defined results we give where libyang crashes (D-0012):
 // a result JSON, or "error: <message>".
