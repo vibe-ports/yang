@@ -4,16 +4,20 @@
 # (never in the repo, never in CI):
 #   denylist   ${SENSITIVE_DENYLIST:-$HOME/.config/vibe-ports/denylist}  one Perl regex per line
 #   allowlist  <same directory>/allowlist   exceptions to personal rules: Perl regexes matched
-#              against "<where>\t<line>" (where = path:line, commit:path or commit:message)
-# Usage: scripts/check-sensitive [--staged | --all | --history | --range <git-log revs>...]
+#              against "<where>\t<line>" (where = path:line, commit:path, commit:message,
+#              commit:author, commit:committer or tag:tag)
+# Usage: scripts/check-sensitive [--staged | --all | --history | --range <revs>... | --tag <obj>...]
 #   --staged  index entries about to be committed (pre-commit hook)   --all  every tracked file
-#   --history every commit                    --range  given commits (pre-push hook)
+#   --history every commit and annotated tag    --range  given commits (git log revs, pre-push)
+#   --tag     given annotated tag objects (pre-push)
 # Scans file contents from git objects (symlinks are not followed), file names, and in
-# --history/--range also commit messages. Matching is case-insensitive.
+# --history/--range also commit messages and author/committer identities. Case-insensitive.
 # A line containing "sensitive:allow" is exempt from the GENERIC rules only; personal rules can
 # be waived only via the allowlist, so committed text can't switch them off.
-# If the denylist exists but is unreadable, empty or has an invalid regex: fail (exit 2).
-# Matched text and patterns are never printed. Perl, not grep: regex dialects differ by platform.
+# If the denylist exists but is unreadable, empty or has an invalid regex: fail (exit 2). A
+# missing denylist also fails when `git config vibe.requireDenylist` is true (maintainer clones).
+# Patterns are never printed; matched text neither, except that a file-name hit names the file.
+# Perl, not grep: regex dialects differ by platform.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 mode=${1:---staged}; [[ $# -gt 0 ]] && shift
@@ -36,6 +40,8 @@ allow=$(read_list "$allowlist")
 if [[ -e $denylist ]]; then
   grep -qv '^[[:space:]]*\(#.*\)\{0,1\}$' <<<"$personal" ||
     { echo "check-sensitive: $denylist has no patterns" >&2; exit 2; }
+elif [[ $(git config --type=bool --get vibe.requireDenylist || true) == true ]]; then
+  echo "check-sensitive: vibe.requireDenylist is set but $denylist is missing" >&2; exit 2
 else
   echo "check-sensitive: no personal denylist ($denylist) - generic rules only" >&2
 fi
@@ -60,16 +66,24 @@ scan() {
     print "$where\n" if $hit;'
 }
 
-# Commit messages and added lines/paths of every commit in "$@" (git log revision arguments).
+# Identities, messages and added lines/paths of every commit in "$@" (git log revision arguments).
 commits() {
-  git log "$@" -z --format='%h%x09%B' |
-    LC_ALL=C perl -0 -ne 'chomp; my ($c, $b) = split /\t/, $_, 2; print "$c:message\t$_\n" for split /\n/, $b // ""'
+  git log "$@" -z --format='%h%x09%an <%ae>%x09%cn <%ce>%x09%B' |
+    LC_ALL=C perl -0 -ne 'chomp; my ($c, $a, $m, $b) = split /\t/, $_, 4;
+      print "$c:author\t$a\n$c:committer\t$m\n"; print "$c:message\t$_\n" for split /\n/, $b // ""'
   git -c core.quotePath=false log "$@" -p --text --diff-merges=first-parent --no-color --no-ext-diff --format='commit %h' |
     LC_ALL=C perl -ne '
       if (/^commit (\w+)$/) { $c = $1; next }
       if (/^diff --git /) { $h = 1; next }
       if ($h) { if (/^@@/) { $h = 0 } elsif (/^(?:\+\+\+ b\/|--- a\/|rename to |copy to )(.*)/) { $f = $1; print "$c:$1 (path)\t$1\n" } next }
       print "$c:$f\t$1\n" if /^\+(.*)/'
+}
+
+# Tagger line and message of annotated tag objects.
+tags() {
+  for o in "$@"; do
+    git cat-file tag "$o" | CS_TAG=${o:0:12} LC_ALL=C perl -ne 'print "$ENV{CS_TAG}:tag\t$_"'
+  done
 }
 
 case $mode in
@@ -80,11 +94,17 @@ case $mode in
       printf '%s (path)\t%s\n' "$f" "$f"
       git cat-file blob ":$f" 2>/dev/null | CS_FILE=$f LC_ALL=C perl -ne 'print "$ENV{CS_FILE}:$.\t$_"' || true
     done | scan | sort -u) ;;
-  --history) hits=$(commits --all | scan | sort -u) ;;
+  --history)
+    tagobjs=$(git for-each-ref refs/tags --format='%(objecttype) %(objectname)' | awk '$1 == "tag" {print $2}')
+    # shellcheck disable=SC2086 # hex object names, split on purpose
+    hits=$( { commits --all; tags $tagobjs; } | scan | sort -u) ;;
   --range)
     [[ $# -gt 0 ]] || { echo "usage: $0 --range <revs>..." >&2; exit 2; }
     hits=$(commits "$@" | scan | sort -u) ;;
-  *) echo "usage: $0 [--staged|--all|--history|--range <revs>...]" >&2; exit 2 ;;
+  --tag)
+    [[ $# -gt 0 ]] || { echo "usage: $0 --tag <tag object>..." >&2; exit 2; }
+    hits=$(tags "$@" | scan | sort -u) ;;
+  *) echo "usage: $0 [--staged|--all|--history|--range <revs>...|--tag <obj>...]" >&2; exit 2 ;;
 esac
 
 if [[ -n $hits ]]; then

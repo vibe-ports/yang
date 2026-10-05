@@ -10,7 +10,9 @@ The repo will be public. Anything committed — including in old commits — bec
 1. **Run the checks** (inside or outside the container):
    - `scripts/check-sensitive --staged` (also the pre-commit hook), `--all`, `--history`
    - `./dev make secrets` (gitleaks: credentials/tokens across history)
-   - `.githooks/pre-push` scans every outgoing commit (lines, file names, messages)
+   - `.githooks/pre-push` scans every outgoing commit (lines, file names, messages, author and
+     committer) and annotated tag messages; `git config vibe.requireDenylist true` in maintainer
+     clones makes a missing denylist fail
    Personal patterns (host names, employer, e-mails, IP ranges) come only from
    `~/.config/vibe-ports/denylist` on the maintainer's host — not CI, not the dev container, so run
    the script on the host for the full check. **Never add such patterns to the repo or to CI** —
