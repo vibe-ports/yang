@@ -82,7 +82,7 @@ Do not comment on style that gofmt/golangci-lint already enforce.
 - Merge gate (Free private plan: no branch protection, so this is a rule enforced by a script,
   not a setting): for the PR's **full head SHA**, `ci.yml` concluded success and the latest
   maintainer-authored, never-edited attestation line `VERDICT: approve <full sha> (codex-…)` —
-  posted by `scripts/astra review --trusted`, or by the lead as `(claude-opus…)` after a
+  posted by `scripts/astra review --trusted`, or by the lead as `(port-reviewer-opus)` after a
   `port-reviewer` review — names that SHA. Bot verdicts (Claude `ai-review`, Codex app) are
   advisory.
 - **Policy files** — `AGENTS.md`, `CLAUDE.md`, `.claude/`, `Makefile`, `dev`, `Dockerfile`,

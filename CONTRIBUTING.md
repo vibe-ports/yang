@@ -59,8 +59,8 @@ ai-review publisher and `review-tier` against a stubbed `gh`/`curl` and throwawa
 ## Policy files
 
 These files decide what runs, what is checked and what reviewers are told:
-`AGENTS.md` (any directory), `CLAUDE.md`, `.claude/`, `Makefile`, `dev`, `Dockerfile`,
-`.devcontainer/`, `scripts/`, `.github/`, `.githooks/`. A PR touching them changes its own gate,
+`AGENTS.md` (any directory), `CLAUDE.md`, `.claude/`, `.codex/` and `.agents/` (any directory),
+`Makefile`, `dev`, `Dockerfile`, `.devcontainer/`, `scripts/`, `.github/`, `.githooks/`. A PR touching them changes its own gate,
 so it always needs a human read, `review-tier` sends it to the deep reviewer, and the gate tools
 never run the PR's copy: `merge-pr` and `astra review --trusted` run main's version with main's
 rules (see Merge gate).
@@ -73,8 +73,10 @@ Every non-draft PR by the maintainer is reviewed automatically:
 - **Codex** (Codex GitHub app, automatic reviews).
 - **astra** by the lead, on a checkout of the PR head, running main's copy:
   `ASTRA_PR=<n> bash <(git show origin/main:scripts/astra) review --trusted` — the merge-gate
-  review. `--trusted` reads the rules (`AGENTS.md`) and output schema from `origin/main` and stops
-  codex from loading the checkout's `AGENTS.md`; only `--trusted` runs post an attestation.
+  review. `--trusted` reads the rules (`AGENTS.md`) and output schema from `origin/main`, stops
+  codex from loading the checkout's `AGENTS.md` and execpolicy rules (`--ignore-rules`), and
+  refuses to run when the PR or checkout contains `.codex/` or `.agents/` (codex configuration a
+  PR could plant — review those by hand); only `--trusted` runs post an attestation.
 
 `ai-review` spends the maintainer's Claude plan token, so it never runs PR code:
 - `pull_request_target`: the workflow and scripts come from `main`;
@@ -115,9 +117,11 @@ It fast-forwards `main` to the PR head only if, for the PR's current **full** he
 - the PR is open, not a draft, and targets `main` of `vibe-ports/yang` (= `origin`);
 - the latest line `VERDICT: <approve|changes> <full sha> (<reviewer>)` naming that SHA says
   `approve`, counting only never-edited PR comments **authored by the maintainer's account**,
-  lines outside code fences, and reviewers `codex-*` or `claude-opus*`. `scripts/astra review
-  --trusted` posts it; a later `changes` revokes; bot comments, quoted or fenced lines, edited
-  comments and short SHAs don't count;
+  lines outside code fences, and reviewers `codex-*` or `port-reviewer-*`. `scripts/astra review
+  --trusted` posts `(codex-<model>)`; after a local Opus `port-reviewer` review the lead posts the
+  line signed `(port-reviewer-opus)`. `claude-*` is never accepted: it is the ai-review bot's
+  signature, so a pasted bot line can't count. A later `changes` revokes; bot comments, quoted or
+  fenced lines, edited comments and short SHAs don't count;
 - the latest run of `.github/workflows/ci.yml` for exactly that SHA concluded `success`
   (CI checks out the PR head, not the merge commit);
 - every commit has `+0000` dates and the head is a descendant of `main`.
@@ -139,8 +143,11 @@ updates.
 regenerates goldens (each golden diff = upstream behaviour change to port or record); upstream
 `master` drift is summarised in one issue labelled `upstream-drift`. Upstream tag names and SHAs
 are validated (`vX.Y.Z`, 40-hex) before any use. The upstream build runs in a job with a
-read-only token; a separate job with the write token runs no build, only applies the uploaded
-patch (pin and golden paths only) and opens the PR.
+read-only token and hands over only a tarball of golden JSON files. A separate job with the write
+token runs no build: it writes the pins itself from the validated tag/SHA, imports only regular,
+non-executable files at `conformance/corpus/<group>/golden/<name>.json` from the tarball
+(`scripts/import-goldens`; any other member, rename, deletion or mode change aborts) and opens the
+PR. Still read the first libyang-sync PR after this change by hand.
 
 ## Licensing and provenance
 
