@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Independent review by codex (default gpt-6-astra) with structured JSON output.
-#   scripts/astra review [--trusted] [BASE]   review BASE...HEAD (default origin/main)
+#   scripts/astra review [BASE]               review BASE...HEAD (default origin/main)
+#   scripts/astra review --trusted            review fetched origin/main...HEAD (no other base)
 #   scripts/astra design FILE...              critique a design note / task plan
 # Env: ASTRA_MODEL (gpt-6-astra), ASTRA_EFFORT (xhigh), ASTRA_PR (PR number → post as comment).
 # Exit 1 if any high finding or verdict "changes" — usable as a gate.
@@ -16,7 +17,7 @@
 # That verdict is computed here from the validated JSON, never copied from model text.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
-cmd=${1:?usage: scripts/astra review [--trusted] [BASE] | design FILE...}; shift
+cmd=${1:?usage: scripts/astra review [BASE] | review --trusted | design FILE...}; shift
 trusted=
 if [[ $cmd == review && ${1:-} == --trusted ]]; then trusted=1; shift; fi
 model=${ASTRA_MODEL:-gpt-6-astra}
@@ -27,8 +28,15 @@ rules="Follow AGENTS.md (goals: no cgo, libyang v5.8.6 compatibility, auditabili
 against libyang v5.8.6 source where relevant (clone of tag v5.8.6 in .cache/libyang if present).
 Report only real problems; no style nits unless they hide a bug. Be terse."
 codex_opts=(-c project_doc_max_bytes=32768)
+label=$sha
 if [[ -n $trusted ]]; then
+  # The attestation covers HEAD, so the review must cover everything HEAD adds to main.
+  [[ $# -eq 0 ]] || { echo "astra --trusted: always reviews origin/main...HEAD; no custom base" >&2; exit 2; }
   git fetch -q origin main
+  mb=$(git merge-base refs/remotes/origin/main HEAD)
+  [[ -n $(git diff --name-only "$mb" HEAD) ]] || { echo "astra --trusted: origin/main...HEAD is empty; nothing to attest" >&2; exit 2; }
+  set -- "$mb"
+  label="origin/main...HEAD = $mb..$sha"
   # codex reads its own config/rules from .codex/ and .agents/ in the working directory: a PR must
   # not be able to configure its reviewer (MCP servers, rules), so refuse rather than review.
   agent_cfg='(^|/)\.(codex|agents)(/|$)'
@@ -66,15 +74,15 @@ codex exec -m "$model" -c model_reasoning_effort="${ASTRA_EFFORT:-xhigh}" "${cod
   -s read-only --ephemeral --output-schema "$schema" -o "$out" "$prompt" </dev/null >"$out.log" 2>&1 ||
   { echo "codex failed:" >&2; tail -20 "$out.log" >&2; exit 2; }
 
-report=$(python3 - "$out" "$model" "$sha" "$cmd" "$trusted" <<'PY'
+report=$(python3 - "$out" "$model" "$sha" "$cmd" "$trusted" "$label" <<'PY'
 import json, re, sys
-r = json.load(open(sys.argv[1])); model, sha, cmd, trusted = sys.argv[2:6]
+r = json.load(open(sys.argv[1])); model, sha, cmd, trusted, label = sys.argv[2:7]
 if r.get("verdict") not in ("approve", "changes") or not isinstance(r.get("findings"), list):
     sys.exit("invalid codex answer")
 n = lambda s: re.sub(r"(?im)^(\s*)VERDICT\s*:", r"\1verdict -", str(s))  # no forged attestations
 bad = r["verdict"] != "approve" or any(f["severity"] == "high" for f in r["findings"])
 verdict = "changes" if bad else "approve"
-print(f"### {model} {cmd} of `{sha}`: **{verdict}**\n\n{n(r['summary'])}\n")
+print(f"### {model} {cmd} of `{label}`: **{verdict}**\n\n{n(r['summary'])}\n")
 for f in r["findings"]:
     print(f"- **{f['severity']}** `{n(f['file'])}:{f['line']}` — {n(f['problem'])} → {n(f['fix'])}")
 if cmd == "review" and trusted:
