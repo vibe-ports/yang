@@ -73,22 +73,30 @@ func (c *Context) prefixModule(pm *pmod, main *Module, prefix string) *Module {
 	return nil
 }
 
-// findExtension looks for the extension statement in the module, then in its submodules.
+// findExtension looks for the extension statement in the module, then in its
+// submodules. In the submodules the break of lysp_ext_find_definition only
+// leaves the inner loop, so the last submodule defining it wins.
 func findExtension(m *Module, name string) *parser.Stmt {
-	roots := []*parser.Stmt{m.Parsed.Stmt}
-	for _, inc := range m.Includes {
-		if inc.Sub != nil {
-			roots = append(roots, inc.Sub.Parsed.Stmt)
-		}
-	}
-	for _, r := range roots {
+	first := func(r *parser.Stmt) *parser.Stmt {
 		for _, s := range r.Subs {
 			if s.ExtPrefix == "" && s.Keyword == "extension" && s.Arg == name {
 				return s
 			}
 		}
+		return nil
 	}
-	return nil
+	if d := first(m.Parsed.Stmt); d != nil {
+		return d
+	}
+	var def *parser.Stmt
+	for _, inc := range m.Includes {
+		if inc.Sub != nil {
+			if d := first(inc.Sub.Parsed.Stmt); d != nil {
+				def = d
+			}
+		}
+	}
+	return def
 }
 
 // nodeKw are the statements of LY_STMT_NODE_MASK, and their lysp_path_until segment.

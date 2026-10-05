@@ -30,6 +30,33 @@ func TestReadBudget(t *testing.T) {
 	}
 }
 
+// TestFindExtensionLastSubmodule: a definition in the module wins; among
+// submodules the last one does (lysp_ext_find_definition).
+func TestFindExtensionLastSubmodule(t *testing.T) {
+	st := func(src string) *parser.Stmt {
+		s, err := parser.Parse("", []byte(src), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return s
+	}
+	sub := func(src string) *Include {
+		return &Include{Sub: &Submodule{pmod: pmod{Parsed: &parser.Module{Node: parser.Node{Stmt: st(src)}}}}}
+	}
+	m := &Module{pmod: pmod{Parsed: &parser.Module{Node: parser.Node{Stmt: st("module m { namespace u; prefix m; }")}},
+		Includes: []*Include{
+			sub("submodule a { belongs-to m { prefix m; } extension e { argument x; } }"),
+			sub("submodule b { belongs-to m { prefix m; } extension e; }"),
+		}}}
+	if d := findExtension(m, "e"); d == nil || len(d.Subs) != 0 {
+		t.Fatalf("got %+v, want b's definition", d)
+	}
+	m.Parsed.Stmt = st("module m { namespace u; prefix m; extension e { argument y; } }")
+	if d := findExtension(m, "e"); d == nil || d.Subs[0].Arg != "y" {
+		t.Fatalf("got %+v, want the module's definition", d)
+	}
+}
+
 const corpus = "../../conformance/corpus"
 
 type goldenDiag struct {
