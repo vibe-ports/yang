@@ -13,7 +13,8 @@ short=${head:0:7}
 
 fail() { echo "merge-pr: $*" >&2; exit 1; }
 
-checks=$(gh pr view "$pr" --json statusCheckRollup --jq '[.statusCheckRollup[] | select(.name=="ci")] | map(.conclusion) | join(",")')
+# A head SHA can have several ci runs (re-runs, reopen); all of them must have succeeded.
+checks=$(gh pr view "$pr" --json statusCheckRollup --jq '[.statusCheckRollup[] | select(.name=="ci")] | map(.conclusion) | unique | join(",")')
 [[ $checks == SUCCESS ]] || fail "CI on $short is '${checks:-missing}', need SUCCESS"
 
 gh pr view "$pr" --json comments --jq '.comments[].body' | grep -q "VERDICT: approve.*$short" ||
