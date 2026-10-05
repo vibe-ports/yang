@@ -8,8 +8,10 @@ import "github.com/vibe-ports/yang/internal/schema"
 // plugin is a type-specific handler for a typedef of a standard module (libyang
 // lyplg_type_record), e.g. ietf-inet-types:ipv4-address.
 type plugin struct {
-	id    string // libyang plugin id without the "ly2 " prefix
-	store func(*storeArgs) (Value, *Diag)
+	id      string // libyang plugin id without the "ly2 " prefix
+	store   func(*storeArgs) (Value, *Diag)
+	equal   func(a, b Value) bool // nil: canonical strings (lyplg_type_compare_simple)
+	compare func(a, b Value) int  // nil: canonical strings (lyplg_type_sort_simple)
 }
 
 // pluginKey is (module, revision, typedef); revision "" matches every revision.

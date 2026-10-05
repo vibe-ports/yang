@@ -1,0 +1,59 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ty3",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"ty3:c\": {\n    \"dt\": \"2021-03-01T00:00:00Z\"\n  }\n}\n",
+    "xml": "<c xmlns=\"urn:vibe-ports:ty3\">\n  <dt>2021-03-01T00:00:00Z</dt>\n</c>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c",
+      "schema": "/ty3:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c/dt",
+      "schema": "/ty3:c/dt",
+      "value": {
+        "canonical": "2021-03-01T00:00:00Z",
+        "type": "string",
+        "typedef": "date-and-time",
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

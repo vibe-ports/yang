@@ -24,6 +24,7 @@ type Value struct {
 	ident *schema.Identity
 	path  Path
 	union *UnionValue
+	ext   any // type-specific storage of an ietf-* plugin (ipValue, dateTime)
 
 	needsTree bool // leafref/instance-identifier with require-instance: ValidateTree pending
 }
@@ -89,6 +90,12 @@ func Equal(a, b Value) bool {
 	if a.typ != b.typ || a.typ == nil {
 		return a.typ == b.typ
 	}
+	if p := pluginFor(a.typ); p != nil {
+		if p.equal == nil {
+			return a.canon == b.canon
+		}
+		return p.equal(a, b)
+	}
 	switch a.typ.Base {
 	case schema.Int8, schema.Int16, schema.Int32, schema.Int64, schema.Dec64, schema.Bool:
 		return a.i == b.i
@@ -112,6 +119,12 @@ func Equal(a, b Value) bool {
 func Compare(a, b Value) int {
 	if a.typ == nil || b.typ == nil || a.typ.Base != b.typ.Base {
 		return strings.Compare(a.canon, b.canon)
+	}
+	if p := pluginFor(a.typ); p != nil && a.typ == b.typ {
+		if p.compare == nil {
+			return strings.Compare(a.canon, b.canon)
+		}
+		return p.compare(a, b)
 	}
 	switch a.typ.Base {
 	case schema.Int8, schema.Int16, schema.Int32, schema.Int64, schema.Dec64, schema.Bool:

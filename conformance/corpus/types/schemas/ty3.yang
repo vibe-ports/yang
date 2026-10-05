@@ -1,0 +1,23 @@
+module ty3 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:ty3";
+  prefix t3;
+
+  import ietf-inet-types { prefix inet; }
+  import ietf-yang-types { prefix yang; }
+
+  description "ietf-inet-types / ietf-yang-types handlers for internal/types (M1-4).";
+
+  container c {
+    leaf ip { type inet:ip-address; }
+    leaf v4 { type inet:ipv4-address; }
+    leaf v6 { type inet:ipv6-address; }
+    leaf v6nz { type inet:ipv6-address-no-zone; }
+    leaf p4 { type inet:ipv4-prefix; }
+    leaf p6 { type inet:ipv6-prefix; }
+    leaf ipp { type inet:ip-prefix; }
+    leaf dt { type yang:date-and-time; }
+    leaf mac { type yang:mac-address; }
+    leaf uuid { type yang:uuid; }
+  }
+}

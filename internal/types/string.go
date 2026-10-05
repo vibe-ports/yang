@@ -20,10 +20,16 @@ func storeString(a *storeArgs) (Value, *Diag) {
 	if _, d := checkHints(a.h, a.lex, a.t.Base); d != nil {
 		return Value{}, d
 	}
-	v := Value{typ: a.t, canon: a.lex}
 	if a.only {
-		return v, nil
+		return Value{typ: a.t, canon: a.lex}, nil
 	}
+	return storeStringRestrictions(a)
+}
+
+// storeStringRestrictions ports lyplg_type_validate_value_string: length in characters, then
+// patterns.
+func storeStringRestrictions(a *storeArgs) (Value, *Diag) {
+	v := Value{typ: a.t, canon: a.lex}
 	if a.t.Length != nil {
 		n := int64(utf8.RuneCountInString(a.lex))
 		if d := checkRange(schema.String, a.t.Length, n, a.lex); d != nil {

@@ -1,0 +1,189 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ty3",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"ty3:c\": {\n    \"ip\": \"2008:15::feac:1\",\n    \"v4\": \"192.168.0.1%12\",\n    \"v6\": \"faac:21:11:da85::87:daaf%1\",\n    \"v6nz\": \"::1.2.3.4\",\n    \"p4\": \"12.0.0.0/8\",\n    \"p6\": \"::c:d:e:c:0/110\",\n    \"ipp\": \"2000::/16\"\n  }\n}\n",
+    "xml": "<c xmlns=\"urn:vibe-ports:ty3\">\n  <ip>2008:15::feac:1</ip>\n  <v4>192.168.0.1%12</v4>\n  <v6>faac:21:11:da85::87:daaf%1</v6>\n  <v6nz>::1.2.3.4</v6nz>\n  <p4>12.0.0.0/8</p4>\n  <p6>::c:d:e:c:0/110</p6>\n  <ipp>2000::/16</ipp>\n</c>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c",
+      "schema": "/ty3:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c/ip",
+      "schema": "/ty3:c/ip",
+      "value": {
+        "canonical": "2008:15::feac:1",
+        "type": "union",
+        "typedef": "ip-address",
+        "union_member": {
+          "index": 1,
+          "realtype": {
+            "type": "string",
+            "typedef": "ipv6-address"
+          },
+          "type": "string",
+          "typedef": "ipv6-address"
+        }
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c/v4",
+      "schema": "/ty3:c/v4",
+      "value": {
+        "canonical": "192.168.0.1%12",
+        "type": "string",
+        "typedef": "ipv4-address",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c/v6",
+      "schema": "/ty3:c/v6",
+      "value": {
+        "canonical": "faac:21:11:da85::87:daaf%1",
+        "type": "string",
+        "typedef": "ipv6-address",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c/v6nz",
+      "schema": "/ty3:c/v6nz",
+      "value": {
+        "canonical": "::1.2.3.4",
+        "type": "string",
+        "typedef": "ipv6-address-no-zone",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c/p4",
+      "schema": "/ty3:c/p4",
+      "value": {
+        "canonical": "12.0.0.0/8",
+        "type": "string",
+        "typedef": "ipv4-prefix",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c/p6",
+      "schema": "/ty3:c/p6",
+      "value": {
+        "canonical": "::c:d:e:c:0/110",
+        "type": "string",
+        "typedef": "ipv6-prefix",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c/ipp",
+      "schema": "/ty3:c/ipp",
+      "value": {
+        "canonical": "2000::/16",
+        "type": "union",
+        "typedef": "ip-prefix",
+        "union_member": {
+          "index": 1,
+          "realtype": {
+            "type": "string",
+            "typedef": "ipv6-prefix"
+          },
+          "type": "string",
+          "typedef": "ipv6-prefix"
+        }
+      }
+    }
+  ],
+  "verdict": "valid"
+}

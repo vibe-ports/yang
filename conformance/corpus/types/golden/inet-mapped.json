@@ -1,0 +1,78 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ty3",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"ty3:c\": {\n    \"v6\": \"1::2:0:0:3:4\",\n    \"v6nz\": \"::ffff:1.2.3.4\"\n  }\n}\n",
+    "xml": "<c xmlns=\"urn:vibe-ports:ty3\">\n  <v6>1::2:0:0:3:4</v6>\n  <v6nz>::ffff:1.2.3.4</v6nz>\n</c>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c",
+      "schema": "/ty3:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c/v6",
+      "schema": "/ty3:c/v6",
+      "value": {
+        "canonical": "1::2:0:0:3:4",
+        "type": "string",
+        "typedef": "ipv6-address",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c/v6nz",
+      "schema": "/ty3:c/v6nz",
+      "value": {
+        "canonical": "::ffff:1.2.3.4",
+        "type": "string",
+        "typedef": "ipv6-address-no-zone",
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

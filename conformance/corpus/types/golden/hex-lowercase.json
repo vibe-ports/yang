@@ -1,0 +1,78 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ty3",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"ty3:c\": {\n    \"mac\": \"db:ba:12:54:fa:00\",\n    \"uuid\": \"f81d4fae-7dec-11d0-a765-00a0c91e6bf6\"\n  }\n}\n",
+    "xml": "<c xmlns=\"urn:vibe-ports:ty3\">\n  <mac>db:ba:12:54:fa:00</mac>\n  <uuid>f81d4fae-7dec-11d0-a765-00a0c91e6bf6</uuid>\n</c>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c",
+      "schema": "/ty3:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c/mac",
+      "schema": "/ty3:c/mac",
+      "value": {
+        "canonical": "db:ba:12:54:fa:00",
+        "type": "string",
+        "typedef": "mac-address",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c/uuid",
+      "schema": "/ty3:c/uuid",
+      "value": {
+        "canonical": "f81d4fae-7dec-11d0-a765-00a0c91e6bf6",
+        "type": "string",
+        "typedef": "uuid",
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

@@ -76,3 +76,13 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | src/plugins_types/union.c | lyplg_type_validate_tree_union | types.ValidateTree | ported | types/union-fallback | |
 | src/plugins_types/union.c | lyplg_type_compare_union, lyplg_type_sort_union | types.Equal, types.compareUnion | ported | — | |
 | src/plugins.c | lyplg_type_plugin_find | types.pluginFor | replaced | — | registry keyed by (module, revision, typedef) |
+| src/plugins_types/ipv4_address.c | lyplg_type_store_ipv4_address, ipv4address_str2ip, lyplg_type_compare_ipv4_address, lyplg_type_sort_ipv4_address | types.storeIPAddr, types.equalIP, types.compareIP | ported | types/inet-* | inet_pton via net/netip |
+| src/plugins_types/ipv4_address_no_zone.c | lyplg_type_store_ipv4_address_no_zone (+ compare, sort) | types.storeIPNoZone | ported | types/inet-bad-v4 | |
+| src/plugins_types/ipv4_address_prefix.c | lyplg_type_store_ipv4_address_prefix, ipv4prefix_str2ip, ipv4prefix_zero_host (+ compare, sort, print) | types.storeIPPrefix | ported | types/inet-canonical | |
+| src/plugins_types/ipv6_address.c | lyplg_type_store_ipv6_address, ipv6address_str2ip, lyplg_type_print_ipv6_address (+ compare, sort) | types.storeIPAddr, types.ntop6 | ported | types/inet-* | glibc inet_ntop6 algorithm |
+| src/plugins_types/ipv6_address_no_zone.c | lyplg_type_store_ipv6_address_no_zone, ipv6addressnozone_str2ip (+ compare, sort, print) | types.storeIPNoZone | ported | types/inet-mapped | |
+| src/plugins_types/ipv6_address_prefix.c | lyplg_type_store_ipv6_address_prefix, ipv6prefix_str2ip, ipv6prefix_zero_host (+ compare, sort, print) | types.storeIPPrefix | ported | types/inet-canonical | |
+| src/plugins_types/date_and_time.c | lyplg_type_store_date_and_time (old/new revision), lyplg_type_print_date_and_time, lyplg_type_compare_date_and_time, lyplg_type_sort_date_and_time | types.storeDateAndTime, types.equalDateAndTime, types.compareDateAndTime | ported | types/dt-* | known offsets print in the host's local zone, as libyang |
+| src/tree_data_common.c | ly_time_str2time, ly_time_time2str, ly_time_tz_offset_at | types.timeStr2Time, types.storeDateAndTime | ported | types/dt-* | |
+| src/plugins_types/hex_string.c | lyplg_type_store_hex_string | types.storeHexString | ported | types/hex-lowercase | phys-address, mac-address, hex-string, uuid |
+| src/plugins_types/date.c, time.c, time_period.c, xpath1.0.c, node_instanceid.c, instanceid_keys.c | (all) | — | skipped | — | not in the M1 corpus; date/time/xpath1.0 next |
