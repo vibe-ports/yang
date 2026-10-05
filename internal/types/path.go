@@ -28,6 +28,15 @@ type leafrefCompiler struct {
 	prefixes schema.NSCtx
 	output   bool
 	extended bool
+	// logged are the errors libyang logs for deref() union members it then skips.
+	logged []*PathError
+	// active are the (target, leafref type) pairs being expanded, to reject deref cycles.
+	active map[derefKey]bool
+}
+
+type derefKey struct {
+	target *schema.Node
+	t      *schema.Type
 }
 
 // CompileLeafref ports ly_path_compile_leafref: the path of a parsed leafref path expression e
@@ -36,11 +45,14 @@ type leafrefCompiler struct {
 // in an output). Predicates are only checked, so segments carry none. The target is the last
 // segment. Nodes provided by extension instances are not found (extensions are unsupported).
 //
-// libyang logs the message of a failing union member of a deref() even though the member is then
-// skipped; here a skipped member's error is dropped.
-func CompileLeafref(ctxNode *schema.Node, e *lyxp.Expr, prefixes schema.NSCtx, output, extended bool) (Path, *PathError) {
-	c := &leafrefCompiler{prefixes: prefixes, output: output, extended: extended}
-	return c.compile(ctxNode, e)
+// Return contract: logged are the errors libyang logs at error level for union members of a
+// deref() that it then skips; they are emitted whether or not the compile succeeds, in order, and
+// before the returned error (if any). A deref cycle (a dereferencing b dereferencing a) is
+// rejected with an error; libyang 5.8.6 crashes on it (D-0042).
+func CompileLeafref(ctxNode *schema.Node, e *lyxp.Expr, prefixes schema.NSCtx, output, extended bool) (path Path, logged []*PathError, err *PathError) {
+	c := &leafrefCompiler{prefixes: prefixes, output: output, extended: extended, active: map[derefKey]bool{}}
+	path, err = c.compile(ctxNode, e)
+	return path, c.logged, err
 }
 
 func isOp(n *schema.Node) bool {
@@ -235,8 +247,10 @@ func (c *leafrefCompiler) derefType(cur, target *schema.Node, t *schema.Type, e 
 	case schema.Union:
 		ok := false
 		for _, m := range t.Union {
-			if c.derefType(cur, target, m, e, i, false, path) == nil {
+			if err := c.derefType(cur, target, m, e, i, false, path); err == nil {
 				ok = true
+			} else if err.Msg != "" {
+				c.logged = append(c.logged, err)
 			}
 		}
 		if ok {
@@ -253,7 +267,13 @@ func (c *leafrefCompiler) derefType(cur, target *schema.Node, t *schema.Type, e 
 		}
 		return &PathError{}
 	}
-	// libyang compiles the nested leafref's own path with the outer prefix data.
+	k := derefKey{target, t}
+	if c.active[k] {
+		return xpErr(cur, "Deref function target node \"%s\" is part of a dereference cycle.", target.Name)
+	}
+	c.active[k] = true
+	defer delete(c.active, k)
+	// libyang compiles the nested leafref's own path with the outer prefix data (D-0043).
 	le, msg := lyxp.ParsePath(t.Path, lyxp.Opts{Begin: lyxp.BeginEither, Prefix: lyxp.PrefixOptional,
 		Pred: lyxp.PredLeafref, Leafref: true, Extended: c.extended})
 	if msg != "" {

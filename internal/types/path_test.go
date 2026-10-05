@@ -49,6 +49,9 @@ func lrefFixture() (m *schema.Module, n map[string]*schema.Node, ns schema.NSCtx
 	add("out", add("output", r, schema.Output), schema.Leaf)
 	add("r2", nil, schema.RPC)
 	add("str", nil, schema.Leaf)
+	add("kl", nil, schema.List)
+	add("da", nil, schema.Leaf).Type = &schema.Type{Base: schema.Leafref, Path: "deref(../db)/../top"}
+	add("db", nil, schema.Leaf).Type = &schema.Type{Base: schema.Leafref, Path: "deref(../da)/../top"}
 	add("ol", nil, schema.Leaf) // in module o's namespace, below
 	n["ol"].Module = o
 	o.Top = []*schema.Node{n["ol"]}
@@ -58,11 +61,19 @@ func lrefFixture() (m *schema.Module, n map[string]*schema.Node, ns schema.NSCtx
 	r2 := add("ref2", nil, schema.Leaf)
 	r2.Type = &schema.Type{Base: schema.Union, Union: []*schema.Type{{Base: schema.String}, {Base: schema.Leafref, Path: "/c/a"}}}
 	add("ref3", nil, schema.Leaf).Type = &schema.Type{Base: schema.Union, Union: []*schema.Type{{Base: schema.String}}}
+	add("ref4", nil, schema.Leaf).Type = &schema.Type{Base: schema.Union, Union: []*schema.Type{
+		{Base: schema.Leafref, Path: "/c/zz"}, {Base: schema.Leafref, Path: "/c/a"}}}
 	n["str"].Type = &schema.Type{Base: schema.String}
 	return
 }
 
 func lrefCompile(t *testing.T, ctx *schema.Node, src string, ns schema.NSCtx, output, ext bool) (Path, *PathError) {
+	t.Helper()
+	p, _, err := lrefCompileLogged(t, ctx, src, ns, output, ext)
+	return p, err
+}
+
+func lrefCompileLogged(t *testing.T, ctx *schema.Node, src string, ns schema.NSCtx, output, ext bool) (Path, []*PathError, *PathError) {
 	t.Helper()
 	e, msg := lyxp.ParsePath(src, lyxp.Opts{Begin: lyxp.BeginEither, Prefix: lyxp.PrefixOptional,
 		Pred: lyxp.PredLeafref, Leafref: true, Extended: ext})
@@ -107,6 +118,7 @@ func TestCompileLeafref(t *testing.T) {
 		{"top", "/c", schema.NSCtx{}, false, "!No module connected with the prefix \"\" found (prefix format schema stored mapping)."},
 		{"top", "/c/a[k=current()/../k]", ns, false, "!List predicate defined for leaf \"a\" in path."},
 		{"top", "/c[k=current()/../k]", ns, false, "!List predicate defined for container \"c\" in path."},
+		{"top", "/kl[k=current()/../top]", ns, false, "!List predicate defined for keyless list \"kl\" in path."},
 		{"top", "/c/l[v=current()/../top]", ns, false, "!Key expected instead of leaf \"v\" in path."},
 		{"top", "/c/l[ll=current()/../top]", ns, false, "!Key expected instead of leaf-list \"ll\" in path."},
 		{"top", "/c/l[k=current()/../../../../top]", ns, false, "!Too many parent references in path."},
@@ -157,9 +169,53 @@ func TestCompileLeafrefDeref(t *testing.T) {
 		got := names(p)
 		if err != nil {
 			got = "!" + err.Msg
+			if err.Node != n[c.ctx] {
+				t.Errorf("%s %q: error node %v, want the context node", c.ctx, c.path, err.Node)
+			}
 		}
 		if got != c.want {
 			t.Errorf("%s %q: got %q, want %q", c.ctx, c.path, got, c.want)
 		}
+	}
+}
+
+// A union member failing after deref() is skipped but its error is returned for logging.
+func TestCompileLeafrefDerefLogged(t *testing.T) {
+	_, n, ns := lrefFixture()
+	p, logged, err := lrefCompileLogged(t, n["top"], "deref(../ref4)/../any", ns, false, true)
+	if err != nil || names(p) != "ref4/c/a/any" {
+		t.Fatalf("got %q %v", names(p), err)
+	}
+	if len(logged) != 1 || logged[0].Msg != `Not found node "zz" in path.` || logged[0].Node != n["ref4"] {
+		t.Fatalf("logged %+v", logged)
+	}
+}
+
+func TestCompileLeafrefDerefCycle(t *testing.T) { // D-0042
+	_, n, ns := lrefFixture()
+	_, _, err := lrefCompileLogged(t, n["top"], "deref(../da)/../top", ns, false, true)
+	if err == nil || !strings.Contains(err.Msg, "dereference cycle") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+// D-0043: the leafref reached through deref() is compiled with the outer prefix data.
+func TestCompileLeafrefDerefOuterPrefix(t *testing.T) {
+	a := &schema.Module{Name: "a", Prefix: "a", Implemented: true}
+	b := &schema.Module{Name: "b", Prefix: "b", Implemented: true}
+	nsA := schema.NSCtx{"": a, "a": a, "b": b}
+	nsB := schema.NSCtx{"": b, "b": b}
+	cb := &schema.Node{Kind: schema.Container, Name: "cb", Module: b}
+	x := &schema.Node{Kind: schema.Leaf, Name: "x", Module: b, Parent: cb}
+	cb.Children = []*schema.Node{x}
+	ref := &schema.Node{Kind: schema.Leaf, Name: "ref", Module: b,
+		Type: &schema.Type{Base: schema.Leafref, Path: "/cb/x", Prefixes: nsB}}
+	b.Top = []*schema.Node{cb, ref}
+	r := &schema.Node{Kind: schema.Leaf, Name: "r", Module: a}
+	r.Type = &schema.Type{Base: schema.Leafref, Path: "deref(/b:ref)/../x", Prefixes: nsA}
+	a.Top = []*schema.Node{r}
+	_, _, err := lrefCompileLogged(t, r, "deref(/b:ref)/../x", nsA, false, true)
+	if err == nil || err.Msg != `Not found node "cb" in path.` || err.Node != ref {
+		t.Fatalf("got %v", err)
 	}
 }
