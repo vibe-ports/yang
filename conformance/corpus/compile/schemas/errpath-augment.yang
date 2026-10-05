@@ -5,5 +5,5 @@ module errpath-augment {
   namespace "urn:vibe-ports:yang:conformance:errpath-augment";
   prefix errpath-augment;
   import aug-base { prefix b; }
-  augment /b:c { leaf x { type string; mandatory true; default "a"; } }
+  augment /b:c { leaf x { type no-such-type; } }
 }

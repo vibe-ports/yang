@@ -16,12 +16,12 @@
           "line": 0,
           "msg": "Key \"k\" is disabled.",
           "phase": "compile",
-          "schema_path": "/obsolete-key-iffeature:l/k",
+          "schema_path": "/list-key-iffeature:l/k",
           "vecode": 4,
           "vecode_name": "LYVE_REFERENCE"
         }
       ],
-      "name": "obsolete-key-iffeature",
+      "name": "list-key-iffeature",
       "phase": "compile",
       "rc": {
         "err": 7,

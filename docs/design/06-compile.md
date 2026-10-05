@@ -213,7 +213,7 @@ which decides which error is reported first:
 | g | remove disabled enums/bits; none left → error | LIFO | SC:1416, SC:775 |
 | h | defaults through `types.Store` | LIFO | SC:1428 |
 | i | new items from h (implemented modules) → back to a | — | SC:1445 |
-| j | free disabled nodes: `Key "%s" is disabled.`, fix `unique` | FIFO | SC:1451, SC:1245 |
+| j | free disabled nodes: `Key "%s" is disabled.` (only a key removed by if-feature; an obsolete key already failed the status check, §2.11), fix `unique` | FIFO | SC:1451, SC:1245 |
 | k | leafref target must not be disabled | FIFO | SC:1462 |
 
 **2.1 Per node** `lys_compile_node_` (SCN:2510), order matters: apply refines (and M2
@@ -236,8 +236,9 @@ children (they are dumped right after their parent, before its children — see 
 
 **Connect order** (SCN:2330-2370) is observable in every dump: keys first; a child of the parent's
 module goes after the last same-module child; children added by augments go after the module's own
-children, grouped per augmenting module, groups sorted by `strcmp` of module names. VERIFY(order/
-two-augmenters): two modules augmenting one container, loaded in reverse name order.
+children, grouped per augmenting module, groups sorted by `strcmp` of module names (SCN:2350-2366). Observed (order/two-augmenters): modules
+loaded base, z, a give `own`, `a:aa`, `z:zz`; the control order/two-augmenters-sorted-load (base, a, z)
+gives the same order, so load order never matters.
 
 **2.2 Features and if-feature.** Node, uses, augment, enum/bit, identity if-features are evaluated by
 `lys_eval_iffeatures` (SF:520): expressions in order, **stop at the first false one** — so the parse
@@ -344,8 +345,11 @@ unapplied is an error: `Augment target node "%s" in grouping "%s" was not found.
 the refine's module: default (leaf 1, leaf-list 1.1 only, choice), description, reference, config
 (warning inside rpc/notification), mandatory (leaf/choice/any), presence, must (appended), min/max,
 if-feature (appended), extensions. Refines with the same target collected from nested uses are
-merged into one record and applied in collection order (outer uses first, SCA:372-399,
-SCA:1913) — VERIFY(refine/nested-same-target) which value wins. A failure adds a trailing
+merged into one record, keyed by node-id text and module (SCA:297-326), and applied in collection
+order; observed (refine/nested-same-target): **the innermost uses' refine wins** (SCA:363-399,
+1913-1915), so the compile must apply the outer refine first and let the inner overwrite. The merge
+is by text, but it is per target: refine/same-text pins that an inner refine of `x` and an outer
+refine of a different node also spelled `x` each reach their own node. A failure adds a trailing
 `Compilation of a deviated and/or refined node failed.` LYVE_OTHER (SCN:2605).
 
 **2.7 Augments.** Top-level augments are applied when their target finishes its own children:
@@ -382,7 +386,7 @@ one **and `mod1 == mod2`** (SC:567) — a reference into another module is never
 says "within the same module"). The identity compared differs per call site, which matters for
 submodules: uses→grouping compares **parsed modules** (`ctx->pmod` vs grouping's pmod, SCN:3879), so
 main module ↔ submodule (or submodule ↔ submodule) references are not checked; type→typedef also
-compares pmods (SCN:1968); list→key compares compiled modules (SCN:3310); leafref→target compares
+compares pmods (SCN:1968); list→key compares compiled modules (SCN:3310; an **obsolete key of a current list fails here**, `A current definition "l" is not allowed to reference obsolete definition "k".`, before step j — fixture obsolete/key; `Key "k" is disabled.` is only reachable through an if-feature, fixture list/key-iffeature-disabled); leafref→target compares
 `local_mod->mod` with `target->module`, with "current" forced for a foreign definition (SC:901-910).
 when/must use the same rule but only **warn** (`When|Must condition "%s" may be referencing %s node
 "%s".`, SC:627-631, SC:711-724). Fixtures: status/same-module-error, status/cross-module-ok
@@ -594,9 +598,9 @@ otherwise negative; most are new and owned by stream F):
 | identities (P0) | m1 identities | ident/cycle, ident/unknown-base, errpath/submodule-identity |
 | typedefs (§2.3) | m1 (`counter64`, `date-and-time`, `ipv4-address-no-zone`), types/* | types/unchanged-typedef-reuse +, types/typedef-cycle, types/restriction-wrong-type, lref/typedef-prefix-direct +, lref/union-typedef-direct +, lref/union-typedef-via-derived-typedef, lref/typedef-across-loads |
 | unions (§2.4) | m1 `weight`, types/union-* | types/union-nested-index (VERIFY), budget test (Go unit test, not a fixture) |
-| groupings, uses, refine (§2.5-2.6, P4) | m1 `limits` | grp/self-ref, grp/unused-local-warning, grp/nested-unused-not-validated +, grp/used-elsewhere-first +, refine/nested-same-target (VERIFY), refine/target-missing, refine/config-in-rpc-warning |
-| augments (§2.7) | m1 (two augmenters), protocol-v2/schema-tree | order/two-augmenters (VERIFY), aug/mandatory-without-when, aug/mandatory-own-module + (SCA:1994), aug/target-missing, aug/of-augment + |
-| choice/case, config, mandatory, status (§2.1, 2.8-2.11) | m1, protocol-v2 | choice/default-case-mandatory, config/under-state, mand/disabled-child-propagates +, obsolete/removed +, obsolete/key (`Key "%s" is disabled.`), status/same-module-error, status/cross-module-ok +, status/submodule-uses-ok +, status/when-warning |
+| groupings, uses, refine (§2.5-2.6, P4) | m1 `limits` | grp/unused-top-level-invalid (control), grp/self-ref, grp/unused-local-warning, grp/nested-unused-not-validated +, grp/used-elsewhere-first +, refine/nested-same-target (innermost wins), refine/same-text, refine/target-missing, refine/config-in-rpc-warning |
+| augments (§2.7) | m1 (two augmenters), protocol-v2/schema-tree | order/two-augmenters + order/two-augmenters-sorted-load (control), aug/mandatory-without-when, aug/mandatory-own-module + (SCA:1994), aug/target-missing, aug/of-augment + |
+| choice/case, config, mandatory, status (§2.1, 2.8-2.11) | m1, protocol-v2 | choice/default-case-mandatory, config/under-state, mand/disabled-child-propagates +, obsolete/removed +, obsolete/key (status check, SCN:3310), obsolete/list-and-key +, list/key-iffeature-disabled (`Key "%s" is disabled.`), list/key-iffeature-enabled +, status/same-module-error, status/cross-module-ok +, status/submodule-uses-ok +, status/when-warning |
 | defaults (§2.12) | m1, protocol-v2/schema-limits | dflt/invalid, dflt/union-leafref + , dflt/llist-dup-noncanon (VERIFY) |
 | must/when (§2.13-2.14) | m1 `boost`/`mtu-limit`, protocol-v2 | when/cycle (design 03), when/own-children, when/invalid-condition, when/func-arg-warning, must/unknown-node-warning, must/value-not-fit-warning |
 | leafref (§2.15) | m1 `peer`, ietf `interface-ref` | lref/path-syntax-parse-phase (U-0005), lref/non-leaf-target, lref/config-to-state, lref/circular, lref/disabled-target |

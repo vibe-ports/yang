@@ -2316,7 +2316,7 @@ fixtures:
       modules: [{"name": "grp-shared-b"}, {"name": "grp-shared-a"}]
     golden: golden/grp-used-elsewhere-first.json
 
-  # VERIFY: which default wins when nested uses refine the same leaf
+  # VERIFIED: the innermost uses refine wins (SCA:363-399, 1913-1915)
   - id: refine/nested-same-target
     dir: compile
     source: *own
@@ -2327,6 +2327,18 @@ fixtures:
       searchdirs: [schemas]
       modules: [{"name": "refine-nested-same-target"}]
     golden: golden/refine-nested-same-target.json
+
+  # VERIFIED: an inner refine of x and an outer refine of a different node also spelled x each hit their own node (outer leaf x = top-refine, k/x = inner-refine); no leak through the text merge (SCA:297-326)
+  - id: refine/same-text
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.13.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "refine-same-text"}]
+    golden: golden/refine-same-text.json
 
   - id: refine/target-missing
     dir: compile
@@ -2348,7 +2360,7 @@ fixtures:
   - id: refine/config-in-rpc-warning
     dir: compile
     source: *own
-    rfc: ["RFC7950#7.13.2", "RFC7950#7.19"]
+    rfc: ["RFC7950#7.14.2"]
     areas: ["schema"]
     request:
       op: schema
@@ -2356,7 +2368,7 @@ fixtures:
       modules: [{"name": "refine-config-in-rpc"}]
     golden: golden/refine-config-in-rpc-warning.json
 
-  # VERIFY: sibling order of nodes added by two augmenting modules loaded in reverse name order
+  # VERIFIED: children of augmenting modules are grouped per module and sorted by module name (SCN:2350-2366), modules loaded in reverse name order
   - id: order/two-augmenters
     dir: compile
     source: *own
@@ -2367,6 +2379,18 @@ fixtures:
       searchdirs: [schemas]
       modules: [{"name": "ord-base"}, {"name": "ord-z"}, {"name": "ord-a"}]
     golden: golden/order-two-augmenters.json
+
+  # control for order/two-augmenters: same modules loaded in name order, same result expected
+  - id: order/two-augmenters-sorted-load
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.17"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ord-base"}, {"name": "ord-a"}, {"name": "ord-z"}]
+    golden: golden/order-two-augmenters-sorted-load.json
 
   - id: aug/mandatory-without-when
     dir: compile
@@ -2467,7 +2491,7 @@ fixtures:
   - id: mand/disabled-child-propagates
     dir: compile
     source: *own
-    rfc: ["RFC7950#7.5.7", "RFC7950#7.20.2"]
+    rfc: ["RFC7950#3", "RFC7950#7.20.2"]
     areas: ["schema"]
     request:
       op: schema
@@ -2487,7 +2511,7 @@ fixtures:
       modules: [{"name": "obsolete-removed"}]
     golden: golden/obsolete-removed.json
 
-  # VERIFY: design expected 'Key is disabled'; libyang's status check fires first
+  # VERIFIED: the status check (SCN:3310) rejects an obsolete key of a current list before step j; design expected 'Key is disabled'
   - id: obsolete/key
     dir: compile
     source: *own
@@ -2498,9 +2522,14 @@ fixtures:
       searchdirs: [schemas]
       modules: [{"name": "obsolete-key"}]
     golden: golden/obsolete-key.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.21.2"]
+      diagnostics: [{"vecode_name": "LYVE_REFERENCE"}]
+      deviation: null
 
-  # libyang: Key is disabled (key removed by if-feature)
-  - id: obsolete/key-disabled-iffeature
+  # libyang: Key is disabled (key removed by if-feature, feature off)
+  - id: list/key-iffeature-disabled
     dir: compile
     source: *own
     rfc: ["RFC7950#7.8.2", "RFC7950#7.20.2"]
@@ -2508,8 +2537,24 @@ fixtures:
     request:
       op: schema
       searchdirs: [schemas]
-      modules: [{"name": "obsolete-key-iffeature"}]
-    golden: golden/obsolete-key-disabled-iffeature.json
+      modules: [{"name": "list-key-iffeature"}]
+    golden: golden/list-key-iffeature-disabled.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.8.2"]
+      deviation: null
+
+  # VERIFIED: with the feature on the key is kept and the module is accepted (companion of key-iffeature-disabled; RFC 7950 s7.8.2 only says a key must not be if-feature'd, so libyang accepting is a deviation candidate)
+  - id: list/key-iffeature-enabled
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.8.2", "RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "list-key-iffeature", "features": ["f"]}]
+    golden: golden/list-key-iffeature-enabled.json
 
   # obsolete list with obsolete key: whole list dropped, no error
   - id: obsolete/list-and-key
@@ -2589,6 +2634,11 @@ fixtures:
       searchdirs: [schemas]
       modules: [{"name": "when-cycle"}]
     golden: golden/when-cycle.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.21.5"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
 
   # libyang-specific: when on a node reading its own children
   - id: when/own-children
@@ -2605,7 +2655,7 @@ fixtures:
   - id: when/invalid-condition
     dir: compile
     source: *own
-    rfc: ["RFC7950#7.21.5", "XPath1.0#4.1"]
+    rfc: ["RFC7950#6.4.1"]
     areas: ["schema"]
     request:
       op: schema
@@ -2617,7 +2667,7 @@ fixtures:
   - id: when/func-arg-warning
     dir: compile
     source: *own
-    rfc: ["XPath1.0#4.1"]
+    rfc: ["XPath1.0#4.4"]
     areas: ["schema"]
     request:
       op: schema
@@ -2691,7 +2741,7 @@ fixtures:
   - id: ext/annotation-not-top-level
     dir: compile
     source: *own
-    rfc: ["RFC7952#3"]
+    rfc: ["RFC7952#7"]
     areas: ["schema"]
     request:
       op: schema
@@ -2700,7 +2750,7 @@ fixtures:
     golden: golden/ext-annotation-not-top-level.json
     assert:
       verdict: "invalid"
-      rfc: ["RFC7952#3"]
+      rfc: ["RFC7952#7"]
       deviation: null
 
   - id: ext/annotation-twice
@@ -2717,8 +2767,8 @@ fixtures:
   # libyang NACM plugin warning: default-deny-write not allowed in rpc
   - id: ext/nacm-placement-warning
     dir: compile
-    source: {url: "hand-written (this repo); extension definitions reduced from RFC 8341 (IETF Trust)", commit: null, license: "BSD-3-Clause AND BSD-2-Clause"}
-    rfc: ["RFC8341#3.4.3"]
+    source: {url: "hand-written (this repo); extension definitions reduced from RFC 8341 (IETF Trust), see compile/SOURCE.md", commit: null, license: "BSD-3-Clause AND BSD-2-Clause"}
+    rfc: ["RFC8341#3.5.2"]
     areas: ["schema"]
     request:
       op: schema
@@ -2729,8 +2779,8 @@ fixtures:
   # libyang NACM plugin: same extension twice on one node
   - id: ext/nacm-twice
     dir: compile
-    source: {url: "hand-written (this repo); extension definitions reduced from RFC 8341 (IETF Trust)", commit: null, license: "BSD-3-Clause AND BSD-2-Clause"}
-    rfc: ["RFC8341#3.4.3"]
+    source: {url: "hand-written (this repo); extension definitions reduced from RFC 8341 (IETF Trust), see compile/SOURCE.md", commit: null, license: "BSD-3-Clause AND BSD-2-Clause"}
+    rfc: ["RFC8341#3.5.2"]
     areas: ["schema"]
     request:
       op: schema
@@ -2741,7 +2791,7 @@ fixtures:
   # engine-only: libyang accepts, our engine returns ErrUnsupported (U-0023)
   - id: ext/yang-data-unsupported
     dir: compile
-    source: {url: "hand-written (this repo); extension definitions reduced from RFC 8040 (IETF Trust)", commit: null, license: "BSD-3-Clause AND BSD-2-Clause"}
+    source: {url: "hand-written (this repo); extension definitions reduced from RFC 8040 (IETF Trust), see compile/SOURCE.md", commit: null, license: "BSD-3-Clause AND BSD-2-Clause"}
     rfc: ["RFC8040#8"]
     areas: ["schema"]
     request:
@@ -2762,11 +2812,11 @@ fixtures:
       modules: [{"name": "errpath-uses"}]
     golden: golden/errpath-uses.json
 
-  # error path segment {augment='...'}
+  # error path segment {augment='...'} with a leaf-local error (unknown type)
   - id: errpath/augment
     dir: compile
     source: *own
-    rfc: []   # error path segment {augment='...'}
+    rfc: []   # error path segment {augment='...'} with a leaf-local error (unknown type)
     areas: ["schema"]
     request:
       op: schema
