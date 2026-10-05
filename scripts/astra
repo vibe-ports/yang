@@ -4,12 +4,15 @@
 #   scripts/astra design FILE...     critique a design note / task plan before implementation
 # Env: ASTRA_MODEL (gpt-6-astra), ASTRA_EFFORT (xhigh), ASTRA_PR (PR number → post as comment).
 # Exit 1 if any high finding or verdict "changes" — usable as a gate.
+# `review` ends with the canonical attestation scripts/merge-pr checks (posted under the
+# maintainer's gh identity):  VERDICT: <approve|changes> <full HEAD sha> (codex-<model>)
+# That verdict is computed here from the validated JSON, never copied from model text.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 cmd=${1:?usage: scripts/astra review [BASE] | design FILE...}; shift
 model=${ASTRA_MODEL:-gpt-6-astra}
 out=$(mktemp); trap 'rm -f "$out" "$out.log"' EXIT
-sha=$(git rev-parse --short HEAD)
+sha=$(git rev-parse HEAD)
 
 rules="Follow AGENTS.md (goals: no cgo, libyang v5.8.6 compatibility, auditability). Check behaviour
 against libyang v5.8.6 source where relevant (clone of tag v5.8.6 in .cache/libyang if present).
@@ -32,12 +35,18 @@ codex exec -m "$model" -c model_reasoning_effort="${ASTRA_EFFORT:-xhigh}" -s rea
   { echo "codex failed:" >&2; tail -20 "$out.log" >&2; exit 2; }
 
 report=$(python3 - "$out" "$model" "$sha" "$cmd" <<'PY'
-import json, sys
+import json, re, sys
 r = json.load(open(sys.argv[1])); model, sha, cmd = sys.argv[2:5]
-print(f"### {model} {cmd} of `{sha}`: **{r['verdict']}**\n\n{r['summary']}\n")
-for f in r["findings"]:
-    print(f"- **{f['severity']}** `{f['file']}:{f['line']}` — {f['problem']} → {f['fix']}")
+if r.get("verdict") not in ("approve", "changes") or not isinstance(r.get("findings"), list):
+    sys.exit("invalid codex answer")
+n = lambda s: re.sub(r"(?im)^(\s*)VERDICT\s*:", r"\1verdict -", str(s))  # no forged attestations
 bad = r["verdict"] != "approve" or any(f["severity"] == "high" for f in r["findings"])
+verdict = "changes" if bad else "approve"
+print(f"### {model} {cmd} of `{sha}`: **{verdict}**\n\n{n(r['summary'])}\n")
+for f in r["findings"]:
+    print(f"- **{f['severity']}** `{n(f['file'])}:{f['line']}` — {n(f['problem'])} → {n(f['fix'])}")
+if cmd == "review":
+    print(f"\nVERDICT: {verdict} {sha} (codex-{model})")
 sys.exit(1 if bad else 0)
 PY
 ) && rc=0 || rc=$?
