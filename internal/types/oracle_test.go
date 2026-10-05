@@ -54,6 +54,7 @@ func TestOracleGoldens(t *testing.T) {
 		"dec64-canonical":           {c("d1", " +8.00 ", xmlH)},
 		"string-invert-match":       {c("s", "xab", xmlH)},
 		"string-length":             {c("s", "abcdef", xmlH)},
+		"string-length-multibyte":   {c("s", "äää", xmlH)},
 		"bits-duplicate":            {c("bt", "ten two ten", xmlH)},
 		"bits-canonical":            {c("bt", " ten  two ", xmlH)},
 		"binary-padding":            {c("bin", "Y===", xmlH)},
@@ -75,7 +76,7 @@ func TestOracleGoldens(t *testing.T) {
 				v, d := Store(oc.t, oc.lex, FormatXML, oc.h, nil, nil)
 				if g.Verdict == "invalid" {
 					want := g.Diagnostics[0]
-					if d == nil || d.Msg != want.Msg || d.AppTag != want.AppTag || want.DataPath != oc.leaf {
+					if d == nil || d.Msg != want.Msg || d.AppTag != want.AppTag || d.Code != want.VecodeName || want.DataPath != oc.leaf {
 						t.Fatalf("%s %q: got %+v, golden %+v", oc.leaf, oc.lex, d, want)
 					}
 					continue
@@ -94,9 +95,10 @@ func TestOracleGoldens(t *testing.T) {
 type golden struct {
 	Verdict     string `json:"verdict"`
 	Diagnostics []struct {
-		Msg      string `json:"msg"`
-		DataPath string `json:"data_path"`
-		AppTag   string `json:"apptag"`
+		Msg        string `json:"msg"`
+		DataPath   string `json:"data_path"`
+		VecodeName string `json:"vecode_name"`
+		AppTag     string `json:"apptag"`
 	} `json:"diagnostics"`
 	Typed []struct {
 		Path  string `json:"path"`

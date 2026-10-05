@@ -39,6 +39,8 @@ func TestOracleGoldensDerived(t *testing.T) {
 	}})
 	xmlPC := XMLNamespaces{Set: set, NS: map[string]string{"": m.Namespace, "x": m.Namespace}}
 
+	leaves["un2"] = node(m, c, schema.Leaf, "un2", &schema.Type{Base: schema.Union,
+		Union: []*schema.Type{typ(schema.Int8), typ(schema.String)}})
 	cases := []struct {
 		id, leaf, lex string
 		f             Format
@@ -56,7 +58,9 @@ func TestOracleGoldensDerived(t *testing.T) {
 		{"union-no-member", "un", "123456789012345678901", FormatXML, fakeTree{}, -1},
 		{"union-fallback", "un", "15", FormatXML, fakeTree{targets: map[string][]string{"../i8": {"12"}}}, 3},
 		{"union-leafref", "un", "12", FormatXML, fakeTree{targets: map[string][]string{"../i8": {"12"}}}, 0},
-		{"union-json-number", "un", "der", FormatJSON, fakeTree{}, 1},
+		{"union-json-ident", "un", "der", FormatJSON, fakeTree{}, 1},
+		{"union-json-number", "un2", "5", FormatJSON, fakeTree{}, 0}, // RFC 7951 §6.10: a number selects int8
+		{"union-json-string", "un2", "5", FormatJSON, fakeTree{}, 1}, // ... a string never does
 	}
 	for _, tc := range cases {
 		t.Run(tc.id, func(t *testing.T) {
@@ -66,15 +70,18 @@ func TestOracleGoldensDerived(t *testing.T) {
 			h := HintData
 			if tc.f == FormatJSON {
 				pc, h = ModuleNames{set}, JSONHints("string")
+				if tc.id == "union-json-number" {
+					h = JSONHints("number")
+				}
 			}
 			v, d := Store(leaf.Type, tc.lex, tc.f, h, pc, leaf)
-			if d == nil && (v.NeedsTree() || leaf.Type.Base == schema.Union) {
+			if d == nil && v.NeedsTree() {
 				v, d = ValidateTree(leaf.Type, v, tc.tree)
 			}
 			path := "/ty2:c/" + tc.leaf
 			if g.Verdict == "invalid" {
 				want := g.Diagnostics[0]
-				if d == nil || d.Msg != want.Msg || d.AppTag != want.AppTag || want.DataPath != path {
+				if d == nil || d.Msg != want.Msg || d.AppTag != want.AppTag || d.Code != want.VecodeName || want.DataPath != path {
 					t.Fatalf("got %+v, golden %+v", d, want)
 				}
 				return

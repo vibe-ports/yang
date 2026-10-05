@@ -1925,7 +1925,7 @@ fixtures:
       data: '<c xmlns="urn:vibe-ports:ty2"><i8>12</i8><un>12</un></c>'
     golden: golden/union-leafref.json
 
-  - id: types/union-json-number
+  - id: types/union-json-ident
     dir: types
     source: *own
     rfc: ["RFC7951#6.10"]
@@ -1937,4 +1937,46 @@ fixtures:
       format: json
       data_type: config
       data: '{"ty2:c":{"un":"der"}}'
+    golden: golden/union-json-ident.json
+
+  - id: types/union-json-number
+    dir: types
+    source: *own
+    rfc: ["RFC7951#6.10"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty2}]
+      format: json
+      data_type: config
+      data: '{"ty2:c":{"un2":5}}'
     golden: golden/union-json-number.json
+
+  - id: types/union-json-string
+    dir: types
+    source: *own
+    rfc: ["RFC7951#6.10"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty2}]
+      format: json
+      data_type: config
+      data: '{"ty2:c":{"un2":"5"}}'
+    golden: golden/union-json-string.json
+
+  - id: types/string-length-multibyte
+    dir: types
+    source: *own
+    rfc: ["RFC7950#9.4.4"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty"><s>äää</s></c>'
+    golden: golden/string-length-multibyte.json

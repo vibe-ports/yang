@@ -8,6 +8,7 @@ package types
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -65,6 +66,18 @@ func (p Path) String() string {
 		}
 	}
 	return b.String()
+}
+
+// clone copies the segments and predicate lists (the schema nodes are shared).
+func (p Path) clone() Path {
+	if p == nil {
+		return nil
+	}
+	c := make(Path, len(p))
+	for i, s := range p {
+		c[i] = PathSegment{Node: s.Node, Preds: slices.Clone(s.Preds)}
+	}
+	return c
 }
 
 func quoteXP(s string) string {

@@ -343,8 +343,13 @@ func TestUnion(t *testing.T) {
 		if d != nil {
 			t.Fatalf("%s: %v", src, d)
 		}
-		if v, d = ValidateTree(un1, v, tree); d != nil {
-			t.Fatalf("%s: %v", src, d)
+		if _, i := v.Union().Member(); v.NeedsTree() != (i <= 1 || i == 3) {
+			t.Fatalf("%s: NeedsTree %v for member %d", src, v.NeedsTree(), i)
+		}
+		if v.NeedsTree() { // libyang: validate_tree only after LY_EINCOMPLETE
+			if v, d = ValidateTree(un1, v, tree); d != nil {
+				t.Fatalf("%s: %v", src, d)
+			}
 		}
 		m, idx := v.Union().Member()
 		if idx != wantIdx || v.Canonical() != wantCanon || m.Canonical() != wantCanon {
@@ -431,4 +436,22 @@ func FuzzInstanceID(f *testing.F) {
 			t.Fatalf("canonical %q of %q: %v", v.Canonical(), lex, d)
 		}
 	})
+}
+
+// TestAccessorsCopy: slices handed out by Value never alias its storage.
+func TestAccessorsCopy(t *testing.T) {
+	bt := typ(schema.Bits, bits("a", 0, "b", 1))
+	v, _ := Store(bt, "a b", FormatXML, HintData, nil, nil)
+	v.Bits()[0] = nil
+	bin, _ := Store(typ(schema.Binary), "YQ==", FormatXML, HintString, nil, nil)
+	bin.Bytes()[0] = 'z'
+	f := newInstFixture()
+	p, d := Store(f.l2.Type, "/a:list[a:id='x']/a:value", FormatXML, HintData, f.xml(map[string]string{"a": "defs"}), f.l2)
+	if d != nil {
+		t.Fatal(d)
+	}
+	p.Path()[0].Preds[0].Key = nil
+	if v.Bits()[0] == nil || bin.Bytes()[0] != 'a' || p.Path()[0].Preds[0].Key == nil {
+		t.Fatal("accessor returned shared storage")
+	}
 }

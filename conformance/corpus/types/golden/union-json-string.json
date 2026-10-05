@@ -17,7 +17,7 @@
     "name": "LY_SUCCESS"
   },
   "tree": {
-    "json": "{\n  \"ty2:c\": {\n    \"un2\": 5\n  }\n}\n",
+    "json": "{\n  \"ty2:c\": {\n    \"un2\": \"5\"\n  }\n}\n",
     "xml": "<c xmlns=\"urn:vibe-ports:ty2\">\n  <un2>5</un2>\n</c>\n"
   },
   "typed": [
@@ -52,12 +52,12 @@
         "type": "union",
         "typedef": null,
         "union_member": {
-          "index": 0,
+          "index": 1,
           "realtype": {
-            "type": "int8",
+            "type": "string",
             "typedef": null
           },
-          "type": "int8",
+          "type": "string",
           "typedef": null
         }
       }

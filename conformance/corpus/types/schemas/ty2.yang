@@ -28,5 +28,6 @@ module ty2 {
         type string { length "1 .. 20"; }
       }
     }
+    leaf un2 { type union { type int8; type string; } }
   }
 }

@@ -292,7 +292,9 @@ type Type struct {
 	// Typedef is the name of the typedef this type was compiled from ("" for a built-in used
 	// directly); TypedefModule is the module defining it; From is the compiled type of that
 	// typedef's own type, nil when the typedef's type is a built-in. The chain selects
-	// type-specific handlers such as ietf-inet-types:ipv4-address.
+	// type-specific handlers such as ietf-inet-types:ipv4-address. Typedef must be the nearest
+	// typedef's own name (libyang lysc_type.name): some handlers key on it, e.g. host bits are
+	// zeroed only for the ipv4-prefix/ipv6-prefix typedefs themselves, not ones derived from them.
 	Typedef       string
 	TypedefModule *Module
 	From          *Type
@@ -313,6 +315,8 @@ type Type struct {
 	Realtype        *Type
 	RequireInstance bool // leafref, instance-identifier
 
+	// Union holds the member types with nested unions flattened into this list (libyang
+	// lys_compile_type_union does it): member indexes and the union error text depend on it.
 	Union []*Type
 }
 
@@ -345,7 +349,8 @@ type Enum struct {
 	Status Status
 }
 
-// Bit is one bits item.
+// Bit is one bits item. A value's bitmap has Position/8+1 bytes of the highest position, so
+// compile must bound positions by a resource budget (YANG allows up to 4294967295).
 type Bit struct {
 	Name     string
 	Position uint32

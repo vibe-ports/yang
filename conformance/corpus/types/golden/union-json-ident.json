@@ -17,8 +17,8 @@
     "name": "LY_SUCCESS"
   },
   "tree": {
-    "json": "{\n  \"ty2:c\": {\n    \"un2\": 5\n  }\n}\n",
-    "xml": "<c xmlns=\"urn:vibe-ports:ty2\">\n  <un2>5</un2>\n</c>\n"
+    "json": "{\n  \"ty2:c\": {\n    \"un\": \"der\"\n  }\n}\n",
+    "xml": "<c xmlns=\"urn:vibe-ports:ty2\">\n  <un>der</un>\n</c>\n"
   },
   "typed": [
     {
@@ -45,19 +45,19 @@
       "kind": "leaf",
       "meta": [],
       "opaque": null,
-      "path": "/ty2:c/un2",
-      "schema": "/ty2:c/un2",
+      "path": "/ty2:c/un",
+      "schema": "/ty2:c/un",
       "value": {
-        "canonical": "5",
+        "canonical": "ty2:der",
         "type": "union",
         "typedef": null,
         "union_member": {
-          "index": 0,
+          "index": 1,
           "realtype": {
-            "type": "int8",
+            "type": "identityref",
             "typedef": null
           },
-          "type": "int8",
+          "type": "identityref",
           "typedef": null
         }
       }

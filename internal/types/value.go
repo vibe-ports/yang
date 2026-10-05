@@ -5,6 +5,7 @@ package types
 
 import (
 	"bytes"
+	"slices"
 	"strings"
 
 	"github.com/vibe-ports/yang/internal/schema"
@@ -60,16 +61,16 @@ func (v Value) Bool() bool { return v.leaf().i != 0 }
 func (v Value) Enum() *schema.Enum { return v.leaf().enum }
 
 // Bits returns the set bits of a bits value in position order.
-func (v Value) Bits() []*schema.Bit { return v.leaf().bits }
+func (v Value) Bits() []*schema.Bit { return slices.Clone(v.leaf().bits) }
 
 // Bytes returns a binary value's decoded bytes.
-func (v Value) Bytes() []byte { return v.leaf().bin }
+func (v Value) Bytes() []byte { return slices.Clone(v.leaf().bin) }
 
 // Ident returns an identityref value's identity.
 func (v Value) Ident() *schema.Identity { return v.leaf().ident }
 
 // Path returns an instance-identifier value's compiled target path.
-func (v Value) Path() Path { return v.leaf().path }
+func (v Value) Path() Path { return v.leaf().path.clone() }
 
 // Union returns the union details of a union value, nil otherwise. Typed getters of a union
 // value already answer for the selected member.
@@ -80,7 +81,10 @@ func (v Value) Union() *UnionValue { return v.union }
 func (v Value) NeedsTree() bool { return v.needsTree }
 
 // Equal reports whether two values of the same type are equal (libyang compare callbacks).
-// Values stored by different types are never equal.
+// Values stored by different types are never equal: libyang's callers check the realtype first
+// (lyd_compare_single, tree_data.c:1736; lyplg_type_compare_int, integer.c:217;
+// lyplg_type_compare_union, union.c:578; lyplg_type_resolve_leafref, plugins_types.c:1039), so
+// only lyplg_type_compare_simple on its own would compare canonical strings across types.
 func Equal(a, b Value) bool {
 	if a.typ != b.typ || a.typ == nil {
 		return a.typ == b.typ
@@ -103,7 +107,8 @@ func Equal(a, b Value) bool {
 }
 
 // Compare orders two values of the same type like libyang's sort callbacks (user-ordered lists
-// excluded): negative, zero or positive.
+// excluded): negative, zero or positive. Values of different base types order by canonical
+// string; a union orders its members as lyplg_type_sort_union (union.c).
 func Compare(a, b Value) int {
 	if a.typ == nil || b.typ == nil || a.typ.Base != b.typ.Base {
 		return strings.Compare(a.canon, b.canon)

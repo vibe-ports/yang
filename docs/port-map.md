@@ -65,10 +65,10 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | src/tree_schema.c | lys_find_module (ly_resolve_prefix and per-format resolvers) | types.resolveModule, types.PrefixCtx implementations | replaced | types/ident-json | prefix data as an interface |
 | src/plugins_types/instanceid.c | lyplg_type_store_instanceid, instanceid_path2str | types.storeInstanceID, types.Path.String | ported | types/instid-* | canonical = JSON form |
 | src/plugins_types/instanceid.c | lyplg_type_validate_tree_instanceid | types.ValidateTree | ported | types/instid-no-instance | existence via types.Tree |
-| src/plugins_types.c | lyplg_type_lypath_new | types.lypathNew | ported | types/instid-* | |
+| src/plugins_types.c | lyplg_type_lypath_new | types.lypathNew | partial | types/instid-* | LYPLG_TYPE_STORE_IMPLEMENT (lys_compile_expr_implement of referenced modules) left to compile |
 | src/path.c | ly_path_parse, ly_path_check_predicate | types.pathParse, types.checkPredicate | partial | types/instid-* | absolute paths, simple predicates (what instance-identifiers use) |
 | src/path.c | _ly_path_compile, ly_path_compile_snode, ly_path_compile_predicate | types.pathCompile, types.compileSNode, types.compilePredicate | partial | types/instid-* | not leafref, single target; no extension nodes |
-| src/xpath.c | lyxp_expr_parse (tokenizer), parse_ncname, expr_parse_axis, lyxp_check_token | types.xpLex, types.parseNCName, types.xpExpr.check | partial | types/instid-* | lexer only, for instance-identifiers |
+| src/xpath.c | lyxp_expr_parse (tokenizer), parse_ncname, expr_parse_axis, lyxp_check_token | types.xpLex, types.parseNCName, types.xpExpr.check | partial | types/instid-* | lexer only, for instance-identifiers; duplicates internal/xpath's lexer (#15) — follow-up: switch instance-identifiers to it once merged |
 | src/plugins_types/leafref.c | lyplg_type_store_leafref | types.storeLeafref | ported | types/leafref-missing | |
 | src/plugins_types/leafref.c | lyplg_type_validate_tree_leafref | types.ValidateTree | ported | types/leafref-missing | target lookup via types.Tree |
 | src/plugins_types.c | lyplg_type_resolve_leafref (messages) | types.ValidateTree | partial | types/leafref-missing | XPath evaluation is the data layer's |
