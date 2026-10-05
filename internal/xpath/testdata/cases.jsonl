@@ -653,6 +653,13 @@
 {"set": "aug", "cp": "/pv2:c", "x": "count(l[k=/c/ref])"}
 {"set": "aug", "cp": "/pv2:c", "x": "count(l[k=current()/../c/ref])"}
 {"set": "aug", "cp": "/pv2:c", "x": "count(l[k=current()/l[2]/k])"}
+{"set": "aug", "cp": "/pv2:c", "x": "count(l[k=(../ref)])"}
+{"set": "aug", "cp": "/pv2:c", "x": "count(l[k=string(../ref)])"}
+{"set": "aug", "cp": "/pv2:c", "x": "count(l[k=../ref[. = 'b']])"}
+{"set": "aug", "cp": "/pv2:c", "x": "count(l[k=//ref])"}
+{"set": "aug", "cp": "/pv2:c", "x": "count(l[k=//k])"}
+{"set": "aug", "cp": "/pv2:c", "x": "count(l[k=(../ref or ../mode)])"}
+{"set": "aug", "cp": "/pv2:c", "x": "count(l[k=concat(../ref, substring(../l[1]/k, 9))])"}
 {"set": "aug", "cp": "/pv2:c", "x": "count(l)"}
 {"set": "aug", "cp": "/pv2:c", "x": "count(pv2-xp:l[k='b'])"}
 {"set": "anydata", "cp": "/pv2:c", "x": "string(any)"}

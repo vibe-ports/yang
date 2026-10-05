@@ -5,6 +5,7 @@ package xpath
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"strings"
 )
@@ -362,7 +363,7 @@ func (ev *evaluator) schemaTarget(set value, nt nameTest, s step) SchemaNode {
 			found = cand
 		}
 	}
-	if found != nil && (found.Kind() == KindList || found.Kind() == KindLeafList) && !ev.hashPredicates(set, found, s.preds) {
+	if found != nil && (found.Kind() == KindList || found.Kind() == KindLeafList) && !ev.hashPredicates(found, s.preds) {
 		return nil
 	}
 	return found
@@ -371,7 +372,7 @@ func (ev *evaluator) schemaTarget(set value, nt nameTest, s step) SchemaNode {
 // hashPredicates is eval_name_test_try_compile_predicates: whether the step
 // starts with "[key = value]" for every list key in order (leaf-list:
 // "[. = value]") whose values do not depend on the instance.
-func (ev *evaluator) hashPredicates(set value, sn SchemaNode, preds []ast) bool {
+func (ev *evaluator) hashPredicates(sn SchemaNode, preds []ast) bool {
 	keys := sn.Keys()
 	if sn.Kind() == KindLeafList {
 		keys = []string{"."}
@@ -379,13 +380,6 @@ func (ev *evaluator) hashPredicates(set value, sn SchemaNode, preds []ast) bool 
 	if len(keys) == 0 || len(preds) < len(keys) {
 		return false
 	}
-	base := []SchemaNode{nil} // schema path of the predicate context: ... / sn
-	if it := set.nodes[0]; it.t != itRoot {
-		if base = schemaChain(it.n); base == nil {
-			return false
-		}
-	}
-	base = append(base, sn)
 	for i, k := range keys {
 		c, ok := preds[i].(chainExpr)
 		if !ok || c.ops[0] != "=" {
@@ -413,134 +407,67 @@ func (ev *evaluator) hashPredicates(set value, sn SchemaNode, preds []ast) bool 
 				return false
 			}
 		}
-		val := ast(chainExpr{ops: c.ops[1:], args: c.args[1:]})
-		if len(c.ops) == 1 {
-			val = c.args[1]
-		}
-		if !ev.atomsOK(val, base) {
+		if slices.ContainsFunc(c.args[1:], hasLogOp) || !ev.atomsOK(c.args[1], sn) {
 			return false
 		}
 	}
 	return true
 }
 
-// schemaChain is the schema path of a data node: nil (the root), then its
-// ancestors' schema nodes down to its own; nil for an opaque node.
-func schemaChain(n Node) []SchemaNode {
-	var c []SchemaNode
-	for ; n != nil; n = n.Parent() {
-		sn := n.Schema()
-		if sn == nil {
-			return nil
-		}
-		c = append(c, sn)
-	}
-	c = append(c, nil)
-	slices.Reverse(c)
-	return c
-}
-
-// atomsOK is the dependency check of eval_name_test_try_compile_predicate_append
-// on a key value: no top-level or/and, and none of its paths (walked over the
-// schema like lyxp_atomize) reaches a list or leaf-list other than current()'s
-// node, nor a child of the looked-up node (the last element of base).
-func (ev *evaluator) atomsOK(a ast, base []SchemaNode) bool {
+// hasLogOp reports an 'or'/'and' token outside nested brackets, which makes
+// eval_name_test_try_compile_predicates give up on a value.
+func hasLogOp(a ast) bool {
 	switch a := a.(type) {
-	case litExpr, numExpr:
-		return true
-	case negExpr:
-		return ev.atomsOK(a.x, base)
 	case chainExpr:
-		for i, op := range a.ops {
-			if op == "or" || op == "and" || !ev.atomsOK(a.args[i], base) {
-				return false
-			}
-		}
-		return ev.atomsOK(a.args[len(a.args)-1], base)
+		return a.ops[0] == "or" || a.ops[0] == "and" || slices.ContainsFunc(a.args, hasLogOp)
+	case negExpr:
+		return hasLogOp(a.x)
 	case callExpr:
-		for _, x := range a.args {
-			if !ev.atomsOK(x, base) {
-				return false
-			}
-		}
-		return true
+		return slices.ContainsFunc(a.args, hasLogOp)
 	case pathExpr:
-		var stack []SchemaNode
-		switch c, ok := a.prim.(callExpr); {
-		case a.abs:
-			stack = []SchemaNode{nil}
-		case a.prim == nil:
-			stack = slices.Clone(base)
-		case ok && c.name == "current" && len(a.preds) == 0:
-			stack = []SchemaNode{nil}
-			if ev.cur.t == itElem {
-				stack = schemaChain(ev.cur.n)
-			}
-		default:
-			return false // ponytail: other primary expressions are not analysed (D-0013)
-		}
-		return stack != nil && ev.walkAtoms(stack, a.steps, base[len(base)-1])
+		return a.prim != nil && hasLogOp(a.prim)
 	}
 	return false
 }
 
-func (ev *evaluator) walkAtoms(stack []SchemaNode, steps []step, target SchemaNode) bool {
+// atomsOK is the dependency check of eval_name_test_try_compile_predicate_append:
+// the key value val, atomized with the list sn as its context node (libyang
+// atomizes the value's tokens, whose copied repeat info covers only the first
+// operand of an '=' chain), reaches no child of sn, no descendant of sn on a
+// descendant axis and no list/leaf-list other than current()'s schema node.
+func (ev *evaluator) atomsOK(val ast, sn SchemaNode) bool {
+	if ev.tick() != nil {
+		return false
+	}
 	var cur SchemaNode
 	if ev.cur.t == itElem {
 		cur = ev.cur.n.Schema()
 	}
-	multi := func(sn SchemaNode) bool {
-		return sn != nil && sn != cur && (sn.Kind() == KindList || sn.Kind() == KindLeafList)
+	a := newAtomizer(ev.ns, ev.ec.Schema, cur, sn, nRoot, false, nil, ev.steps)
+	set, err := a.run(ev.e.src, val)
+	ev.steps = a.steps
+	if errors.Is(err, ErrBudget) {
+		ev.err = err
 	}
-	for _, s := range steps {
-		if s.allDesc || s.explicit || len(s.preds) > 0 {
-			return false // ponytail: only plain child, '.' and '..' steps are analysed (D-0013)
+	if err != nil {
+		return false
+	}
+	for _, x := range set.n {
+		if x.t != nElem || x.use < AtomNode {
+			continue // the root and the context node
 		}
-		top := stack[len(stack)-1]
-		switch s.test {
-		case tDot:
-			if multi(top) {
-				return false
-			}
-		case tDDot:
-			if len(stack) > 1 {
-				stack = stack[:len(stack)-1]
-			}
-			if multi(stack[len(stack)-1]) {
-				return false
-			}
-		case tNameTest:
-			nt, err := ev.resolveName(s.name)
-			if err != nil || nt.name == "" {
-				return false
-			}
-			var next []SchemaNode
-			switch {
-			case top != nil:
-				if top == target {
-					return false // a child of the looked-up node: depends on the instance
-				}
-				mod := nt.mod
-				if mod == "" {
-					mod = top.Module()
-				}
-				if c := top.Child(mod, nt.name); c != nil {
-					next = []SchemaNode{c}
-				}
-			case ev.ec.Schema != nil:
-				next = ev.ec.Schema.TopLevel(nt.mod, nt.name)
-			}
-			for _, n := range next {
-				if multi(n) {
-					return false
+		if x.axis == "child" && x.n.Parent() == sn {
+			return false // a child of the list: certain dependency
+		}
+		if x.axis == "descendant" || x.axis == "descendant-or-self" {
+			for p := x.n.Parent(); p != nil; p = p.Parent() {
+				if p == sn {
+					return false // probable dependency
 				}
 			}
-			if len(next) != 1 {
-				return true // no such schema node: libyang stops atomizing the path
-			}
-			stack = append(stack, next[0])
-		default:
-			return false // node(), text()
+		}
+		if (x.n.Kind() == KindList || x.n.Kind() == KindLeafList) && x.n != cur {
+			return false
 		}
 	}
 	return true

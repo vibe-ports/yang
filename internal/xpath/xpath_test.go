@@ -124,7 +124,7 @@ func TestLibyangPredicate(t *testing.T) {
 // (union member) value, never the text (oracle: protocol-v2/xpath-union).
 func TestStoredValue(t *testing.T) {
 	tree := unionTree()
-	ec := EvalContext{Tree: tree, Node: tree[0], Schema: tinfo{tree}}
+	ec := EvalContext{Tree: tree, Node: tree[0], Schema: tinfo{tree: tree}}
 	for x, want := range map[string]any{
 		"derived-from-or-self(id-first, 'pv2:two')":  true,
 		"derived-from-or-self(str-first, 'pv2:two')": false,
@@ -219,6 +219,6 @@ func FuzzEval(f *testing.F) {
 			return
 		}
 		tree := pv2Tree()
-		_, _ = e.Eval(EvalContext{Tree: tree, Node: tree[0], Schema: tinfo{tree}, Deref: pv2Deref(tree), MaxSteps: 100_000})
+		_, _ = e.Eval(EvalContext{Tree: tree, Node: tree[0], Schema: tinfo{tree: tree}, Deref: pv2Deref(tree), MaxSteps: 100_000})
 	})
 }

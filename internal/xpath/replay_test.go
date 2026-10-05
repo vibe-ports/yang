@@ -82,7 +82,7 @@ func replay(t *testing.T, cases []oracleCase) {
 		case "anydata":
 			tree = top(cont("pv2:c", mk(KindAnydata, "any", &tval{})))
 		}
-		schema = tinfo{tree}
+		schema = tinfo{tree: tree}
 		ec := EvalContext{Tree: tree, IgnoreWhen: true, Schema: schema, Deref: pv2Deref(tree)}
 		if c.CP != "" {
 			ec.Node = tree[0]

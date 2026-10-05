@@ -78,6 +78,7 @@ type (
 		explicit bool   // axis written out (AxisName '::' or '@')
 		test     tokKind
 		name     string // NameTest text, NodeType name, "." or ".."
+		end      int    // offset just past the name in the source (schema warnings)
 		preds    []ast
 	}
 )
@@ -309,7 +310,7 @@ func (p *parser) relPath(depth int, allDesc bool) ([]step, error) {
 			if err := p.check(tNone); err != nil {
 				return nil, err
 			}
-			s.test, s.name = p.toks[p.i].k, p.text(p.i)
+			s.test, s.name, s.end = p.toks[p.i].k, p.text(p.i), p.toks[p.i].pos+p.toks[p.i].len
 			switch s.test {
 			case tNameTest:
 				p.i++

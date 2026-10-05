@@ -654,6 +654,13 @@
 {"set":"aug","cp":"/pv2:c","x":"count(l[k=/c/ref])","result":{"type":"number","value":1}}
 {"set":"aug","cp":"/pv2:c","x":"count(l[k=current()/../c/ref])","result":{"type":"number","value":1}}
 {"set":"aug","cp":"/pv2:c","x":"count(l[k=current()/l[2]/k])","result":{"type":"number","value":2}}
+{"set":"aug","cp":"/pv2:c","x":"count(l[k=(../ref)])","result":{"type":"number","value":1}}
+{"set":"aug","cp":"/pv2:c","x":"count(l[k=string(../ref)])","result":{"type":"number","value":1}}
+{"set":"aug","cp":"/pv2:c","x":"count(l[k=../ref[. = 'b']])","result":{"type":"number","value":1}}
+{"set":"aug","cp":"/pv2:c","x":"count(l[k=//ref])","result":{"type":"number","value":1}}
+{"set":"aug","cp":"/pv2:c","x":"count(l[k=//k])","result":{"type":"number","value":4}}
+{"set":"aug","cp":"/pv2:c","x":"count(l[k=(../ref or ../mode)])","result":{"type":"number","value":4}}
+{"set":"aug","cp":"/pv2:c","x":"count(l[k=concat(../ref, substring(../l[1]/k, 9))])","result":{"type":"number","value":2}}
 {"set":"aug","cp":"/pv2:c","x":"count(l)","result":{"type":"number","value":4}}
 {"set":"aug","cp":"/pv2:c","x":"count(pv2-xp:l[k='b'])","result":{"type":"number","value":1}}
 {"set":"anydata","cp":"/pv2:c","x":"string(any)","crash":true}

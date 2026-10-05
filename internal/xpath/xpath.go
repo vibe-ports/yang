@@ -33,6 +33,10 @@ const (
 	KindRPC
 	KindAction
 	KindNotif
+	KindChoice // schema-only kinds, seen only by Atomize
+	KindCase
+	KindInput
+	KindOutput
 )
 
 // WhenState is the when-condition status of a data node.
@@ -74,13 +78,14 @@ type Node interface {
 	When() WhenState
 }
 
-// SchemaNode is what the evaluator needs from a data node's schema node.
-// Implementations must be comparable: all instances of one schema node
-// return the same (==) SchemaNode.
+// SchemaNode is what the evaluator needs from a data node's schema node and
+// Atomize from the compiled schema (lysc_node). Implementations must be
+// comparable: all instances of one schema node return the same (==) SchemaNode.
 type SchemaNode interface {
 	Kind() Kind
+	Name() string
 	Module() string    // module name
-	Config() bool      // config true
+	Config() bool      // false only for config false (LYS_CONFIG_R) nodes
 	Namespace() string // module namespace URI
 	Keys() []string    // list key names in order; nil for other nodes and keyless lists
 	// Child is the data child (through choice/case, incl. augments) of module
@@ -90,6 +95,19 @@ type SchemaNode interface {
 	// Canonical returns the canonical form of lexical for this node's type,
 	// ok=false if the value is invalid or needs no canonization.
 	Canonical(lexical string) (canon string, ok bool)
+
+	// Parent is lysc_node.parent (choice, case, input and output included); nil at the top level.
+	Parent() SchemaNode
+	// Children is the lysc_node_child list: data children in schema order
+	// with choices as nodes; a choice's cases; an RPC/action's input and output.
+	Children() []SchemaNode
+	Actions() []SchemaNode       // lysc_node_actions
+	Notifications() []SchemaNode // lysc_node_notifs
+	Path() string                // lysc_path(LYSC_PATH_LOG), for warnings
+	// LeafrefTarget is the target of a leaf/leaf-list whose type is a leafref
+	// (path compiled for the node's input/output); nil otherwise or when the
+	// target is disabled.
+	LeafrefTarget() SchemaNode
 }
 
 // SchemaInfo is the schema-wide hook: identities for derived-from[-or-self]()
@@ -100,6 +118,11 @@ type SchemaInfo interface {
 	// TopLevel lists the top-level data nodes named name of the implemented
 	// module (of all implemented modules when module is "").
 	TopLevel(module, name string) []SchemaNode
+	// Modules lists the compiled modules in context order (ly_ctx_get_module_iter).
+	Modules() []string
+	// ModuleNodes is a compiled module's top-level data nodes (choices as
+	// nodes), RPCs and notifications.
+	ModuleNodes(module string) (data, rpcs, notifs []SchemaNode)
 }
 
 // NamespaceCtx binds prefixes for one expression (design 03, rule 1).

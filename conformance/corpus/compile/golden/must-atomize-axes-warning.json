@@ -1,0 +1,813 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module must-atomize-axes {\n  namespace \"urn:vibe-ports:yang:conformance:must-atomize-axes\";\n  prefix ma;\n\n  container top {\n    must \"descendant::s2\";\n    must \"descendant::z\";\n    must \"descendant::input\";\n    must \"descendant::zz\";\n    must \"following-sibling::st2\";\n    must \"preceding-sibling::ll\";\n    must \"child::x\";\n    must \"../ma:top/y/z\";\n    must \"deref(b)/../l/v\";\n    must \"//top\";\n    must \"zzz/bad:x\";\n    must \"a/ma:* = 1 or true()\";\n    must \"count(q) and ma:a/../r\";\n    must \"l[k = current()/a]/v | nope\";\n    config true;\n    status current;\n    leaf a {\n      type string;\n      config true;\n      status current;\n    }\n    leaf b {\n      type leafref {\n        path \"../a\";\n        require-instance true;\n        type string;\n      }\n      config true;\n      status current;\n    }\n    list l {\n      key \"k\";\n      config true;\n      min-elements 0;\n      max-elements 4294967295;\n      ordered-by system;\n      status current;\n      leaf k {\n        type string;\n        config true;\n        status current;\n      }\n      leaf v {\n        type string;\n        config true;\n        status current;\n      }\n    }\n    choice ch {\n      config true;\n      status current;\n      case c1 {\n        config true;\n        status current;\n        leaf x {\n          type string;\n          config true;\n          status current;\n        }\n      }\n      case c2 {\n        config true;\n        status current;\n        container y {\n          config true;\n          status current;\n          leaf z {\n            type string;\n            config true;\n            status current;\n          }\n        }\n      }\n    }\n    action act {\n      status current;\n\n      input {\n        leaf i {\n          type string;\n          must \"../o\";\n          must \"../i\";\n          status current;\n        }\n      }\n\n      output {\n        leaf o {\n          type string;\n          must \"../i\";\n          must \"zzz\";\n          status current;\n        }\n      }\n    }\n    notification ev {\n      status current;\n      leaf n {\n        type string;\n        status current;\n      }\n    }\n  }\n  leaf-list ll {\n    type string;\n    config true;\n    min-elements 0;\n    max-elements 4294967295;\n    ordered-by system;\n    status current;\n  }\n  container st2 {\n    config true;\n    status current;\n    leaf s2 {\n      type string;\n      config true;\n      status current;\n    }\n  }\n}\n",
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Schema node \"i\" for parent \"/must-atomize-axes:top/act\" not found; in expr \"../i\" with context node \"/must-atomize-axes:top/act/output/o\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Schema node \"zzz\" not found; in expr \"zzz\" with context node \"/must-atomize-axes:top/act/output/o\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Schema node \"o\" for parent \"/must-atomize-axes:top/act\" not found; in expr \"../o\" with context node \"/must-atomize-axes:top/act/input/i\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Schema node \"zz\" not found; in expr \"descendant::zz\" with context node \"/must-atomize-axes:top\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Schema node \"ll\" not found; in expr \"preceding-sibling::ll\" with context node \"/must-atomize-axes:top\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Schema node \"top\" for parent \"<config-root>\" not found; in expr \"//top\" with context node \"/must-atomize-axes:top\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Schema node \"zzz\" not found; in expr \"zzz\" with context node \"/must-atomize-axes:top\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Schema node \"\" for parent \"/must-atomize-axes:top/a\" not found; in expr \"a/ma:* = 1 or true()\" with context node \"/must-atomize-axes:top\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Schema node \"q\" not found; in expr \"count(q\" with context node \"/must-atomize-axes:top\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Schema node \"r\" for parent \"/must-atomize-axes:top\" not found; in expr \"count(q) and ma:a/../r\" with context node \"/must-atomize-axes:top\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Schema node \"nope\" not found; in expr \"l[k = current()/a]/v | nope\" with context node \"/must-atomize-axes:top\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "features": [],
+      "identities": [],
+      "name": "must-atomize-axes",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "must-atomize-axes",
+          "musts": [
+            {
+              "apptag": null,
+              "expr": "descendant::s2",
+              "message": null
+            },
+            {
+              "apptag": null,
+              "expr": "descendant::z",
+              "message": null
+            },
+            {
+              "apptag": null,
+              "expr": "descendant::input",
+              "message": null
+            },
+            {
+              "apptag": null,
+              "expr": "descendant::zz",
+              "message": null
+            },
+            {
+              "apptag": null,
+              "expr": "following-sibling::st2",
+              "message": null
+            },
+            {
+              "apptag": null,
+              "expr": "preceding-sibling::ll",
+              "message": null
+            },
+            {
+              "apptag": null,
+              "expr": "child::x",
+              "message": null
+            },
+            {
+              "apptag": null,
+              "expr": "../ma:top/y/z",
+              "message": null
+            },
+            {
+              "apptag": null,
+              "expr": "deref(b)/../l/v",
+              "message": null
+            },
+            {
+              "apptag": null,
+              "expr": "//top",
+              "message": null
+            },
+            {
+              "apptag": null,
+              "expr": "zzz/bad:x",
+              "message": null
+            },
+            {
+              "apptag": null,
+              "expr": "a/ma:* = 1 or true()",
+              "message": null
+            },
+            {
+              "apptag": null,
+              "expr": "count(q) and ma:a/../r",
+              "message": null
+            },
+            {
+              "apptag": null,
+              "expr": "l[k = current()/a]/v | nope",
+              "message": null
+            }
+          ],
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/must-atomize-axes:top",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "must-atomize-axes",
+          "musts": null,
+          "nodetype": "action",
+          "ordered_by": null,
+          "path": "/must-atomize-axes:top/act",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "must-atomize-axes",
+          "musts": null,
+          "nodetype": "input",
+          "ordered_by": null,
+          "path": "/must-atomize-axes:top/act/input",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "must-atomize-axes",
+          "musts": [
+            {
+              "apptag": null,
+              "expr": "../o",
+              "message": null
+            },
+            {
+              "apptag": null,
+              "expr": "../i",
+              "message": null
+            }
+          ],
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/must-atomize-axes:top/act/input/i",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "must-atomize-axes",
+          "musts": null,
+          "nodetype": "output",
+          "ordered_by": null,
+          "path": "/must-atomize-axes:top/act/output",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "must-atomize-axes",
+          "musts": [
+            {
+              "apptag": null,
+              "expr": "../i",
+              "message": null
+            },
+            {
+              "apptag": null,
+              "expr": "zzz",
+              "message": null
+            }
+          ],
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/must-atomize-axes:top/act/output/o",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "must-atomize-axes",
+          "musts": null,
+          "nodetype": "notif",
+          "ordered_by": null,
+          "path": "/must-atomize-axes:top/ev",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "must-atomize-axes",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/must-atomize-axes:top/ev/n",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "must-atomize-axes",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/must-atomize-axes:top/a",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "must-atomize-axes",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/must-atomize-axes:top/b",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "../a",
+              "require_instance": true,
+              "target": "/must-atomize-axes:top/a"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "k"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "must-atomize-axes",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "system",
+          "path": "/must-atomize-axes:top/l",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "must-atomize-axes",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/must-atomize-axes:top/l/k",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "must-atomize-axes",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/must-atomize-axes:top/l/v",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "must-atomize-axes",
+          "musts": null,
+          "nodetype": "choice",
+          "ordered_by": null,
+          "path": "/must-atomize-axes:top/ch",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "must-atomize-axes",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/must-atomize-axes:top/ch/c1",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "must-atomize-axes",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/must-atomize-axes:top/ch/c1/x",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "must-atomize-axes",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/must-atomize-axes:top/ch/c2",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "must-atomize-axes",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/must-atomize-axes:top/ch/c2/y",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "must-atomize-axes",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/must-atomize-axes:top/ch/c2/y/z",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "must-atomize-axes",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "system",
+          "path": "/must-atomize-axes:ll",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "must-atomize-axes",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/must-atomize-axes:st2",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "must-atomize-axes",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/must-atomize-axes:st2/s2",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

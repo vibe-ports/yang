@@ -28,6 +28,10 @@ type tschema struct {
 	keys      []string
 	canon     func(string) (string, bool)
 	kids      map[[2]string]*tschema
+	parent    *tschema
+	order     []SchemaNode // Children()
+	ops       [2][]SchemaNode
+	lref      *tschema
 }
 
 type tval struct {
@@ -70,6 +74,49 @@ func (s *tschema) Child(mod, name string) SchemaNode {
 	}
 	return nil
 }
+func (s *tschema) Name() string { return s.name }
+func (s *tschema) Parent() SchemaNode {
+	if s.parent == nil {
+		return nil
+	}
+	return s.parent
+}
+func (s *tschema) Children() []SchemaNode      { return s.order }
+func (s *tschema) Actions() []SchemaNode       { return s.ops[0] }
+func (s *tschema) Notifications() []SchemaNode { return s.ops[1] }
+func (s *tschema) LeafrefTarget() SchemaNode {
+	if s.lref == nil {
+		return nil
+	}
+	return s.lref
+}
+
+// Path is lysc_path(LYSC_PATH_LOG): choice/case and input/output included.
+func (s *tschema) Path() string {
+	if s.parent == nil {
+		return "/" + s.mod + ":" + s.name
+	}
+	seg := "/"
+	if s.parent.mod != s.mod {
+		seg += s.mod + ":"
+	}
+	return s.parent.Path() + seg + s.name
+}
+
+// add links c under s as a data child, action or notification.
+func (s *tschema) add(c *tschema) *tschema {
+	c.parent = s
+	switch c.kind {
+	case KindAction:
+		s.ops[0] = append(s.ops[0], c)
+	case KindNotif:
+		s.ops[1] = append(s.ops[1], c)
+	default:
+		s.order = append(s.order, c)
+	}
+	return c
+}
+
 func (s *tschema) Namespace() string { return "urn:vibe-ports:yang:conformance:pv2" }
 func (s *tschema) Canonical(v string) (string, bool) {
 	if s.canon == nil {
@@ -116,8 +163,8 @@ func keyed(n *tnode, keys ...string) *tnode { n.sch.keys = keys; return n }
 // instances (first wins), returns the top-level siblings.
 func top(roots ...*tnode) []Node {
 	tops := map[[2]string]*tschema{}
-	var fix func(n *tnode, mod string, reg map[[2]string]*tschema)
-	fix = func(n *tnode, mod string, reg map[[2]string]*tschema) {
+	var fix func(n *tnode, mod string, reg map[[2]string]*tschema, parent *tschema)
+	fix = func(n *tnode, mod string, reg map[[2]string]*tschema, parent *tschema) {
 		if n.mod == "" {
 			n.mod = mod
 		}
@@ -127,14 +174,17 @@ func top(roots ...*tnode) []Node {
 		} else {
 			n.sch.mod, n.sch.name, n.sch.kids = n.mod, n.name, map[[2]string]*tschema{}
 			reg[k] = n.sch
+			if parent != nil {
+				parent.add(n.sch)
+			}
 		}
 		for _, c := range n.kids {
-			fix(c.(*tnode), n.mod, n.sch.kids)
+			fix(c.(*tnode), n.mod, n.sch.kids, n.sch)
 		}
 	}
 	out := make([]Node, len(roots))
 	for i, r := range roots {
-		fix(r, "", tops)
+		fix(r, "", tops, nil)
 		out[i] = r
 	}
 	return out
@@ -210,7 +260,10 @@ func (m jsonNS) Prefix(mod string) string        { return mod }
 func (m jsonNS) Default() string                 { return "" }
 
 // tinfo is SchemaInfo over the pv2 identities and the tree's top-level nodes.
-type tinfo struct{ tree []Node }
+type tinfo struct {
+	tree   []Node
+	schema []SchemaNode // top-level schema nodes (Atomize tests); nil = those of tree
+}
 
 var pv2Idents = map[Ident]Ident{{"pv2", "base-id"}: {}, {"pv2", "one"}: {"pv2", "base-id"}, {"pv2", "two"}: {"pv2", "one"}}
 
@@ -231,6 +284,45 @@ func (t tinfo) TopLevel(mod, name string) []SchemaNode {
 		}
 	}
 	return out
+}
+
+// tops is the top-level schema nodes: of the tree, or t.schema when set.
+func (t tinfo) tops() []SchemaNode {
+	if t.schema != nil {
+		return t.schema
+	}
+	var out []SchemaNode
+	for _, n := range t.tree {
+		if sn := n.Schema(); sn != nil && !slices.Contains(out, sn) {
+			out = append(out, sn)
+		}
+	}
+	return out
+}
+
+func (t tinfo) Modules() []string {
+	var out []string
+	for _, sn := range t.tops() {
+		if !slices.Contains(out, sn.Module()) {
+			out = append(out, sn.Module())
+		}
+	}
+	return out
+}
+
+func (t tinfo) ModuleNodes(mod string) (data, rpcs, notifs []SchemaNode) {
+	for _, sn := range t.tops() {
+		switch {
+		case sn.Module() != mod:
+		case sn.Kind() == KindRPC:
+			rpcs = append(rpcs, sn)
+		case sn.Kind() == KindNotif:
+			notifs = append(notifs, sn)
+		default:
+			data = append(data, sn)
+		}
+	}
+	return data, rpcs, notifs
 }
 
 func uintCanon(s string) (string, bool) {

@@ -1,0 +1,39 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+// Schema-mode XPath walk (lyxp_atomize): which nodes each axis reaches is
+// observable through the "not found" warnings.
+module must-atomize-axes {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:must-atomize-axes";
+  prefix ma;
+  container top {
+    must "descendant::s2";
+    must "descendant::z";
+    must "descendant::input";
+    must "descendant::zz";
+    must "following-sibling::st2";
+    must "preceding-sibling::ll";
+    must "child::x";
+    must "../ma:top/y/z";
+    must "deref(b)/../l/v";
+    must "//top";
+    must "zzz/bad:x";
+    must "a/ma:* = 1 or true()";
+    must "count(q) and ma:a/../r";
+    must "l[k = current()/a]/v | nope";
+    leaf a { type string; }
+    leaf b { type leafref { path "../a"; } }
+    list l { key k; leaf k { type string; } leaf v { type string; } }
+    choice ch {
+      case c1 { leaf x { type string; } }
+      case c2 { container y { leaf z { type string; } } }
+    }
+    action act {
+      input { leaf i { type string; must "../o"; must "../i"; } }
+      output { leaf o { type string; must "../i"; must "zzz"; } }
+    }
+    notification ev { leaf n { type string; } }
+  }
+  leaf-list ll { type string; }
+  container st2 { leaf s2 { type string; } }
+}

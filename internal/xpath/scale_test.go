@@ -38,7 +38,7 @@ func BenchmarkScaling(b *testing.B) {
 		}
 		b.Run(strconv.Itoa(n), func(b *testing.B) {
 			for b.Loop() {
-				if _, err := e.Eval(EvalContext{Tree: tree, Schema: tinfo{tree}}); err != nil {
+				if _, err := e.Eval(EvalContext{Tree: tree, Schema: tinfo{tree: tree}}); err != nil {
 					b.Fatal(err)
 				}
 			}

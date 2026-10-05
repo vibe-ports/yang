@@ -2711,6 +2711,19 @@ fixtures:
       modules: [{"name": "must-value-nofit"}]
     golden: golden/must-value-not-fit-warning.json
 
+  # libyang schema-mode XPath walk (lyxp_atomize): axes, choice/case, input/output,
+  # deref(), skipped path rests, observed through the node-not-found warnings
+  - id: must/atomize-axes-warning
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.5.3", "XPath1.0#2.2"]
+    areas: ["schema", "xpath"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "must-atomize-axes"}]
+    golden: golden/must-atomize-axes-warning.json
+
   # libyang: when check skipped, referenced module is import-only
   - id: load/when-check-skipped-warning
     dir: compile
