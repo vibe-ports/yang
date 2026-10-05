@@ -19,7 +19,9 @@ VS Code / any devcontainer-aware editor: "Reopen in Container" uses the same ima
 ## Making a change
 
 1. Pick or open an issue; porting tasks use the **Port task** template (≈ one libyang file,
-   ≤ ~500 Go lines).
+   ≤ ~500 Go lines). Queue tasks use the **Agent task** template; claim one labelled
+   `agent-ready` + `up-for-grabs` with `scripts/claim <n> <name>` and branch `issue-<n>-<slug>`
+   (docs/agent-workflow.md "Agent task queue").
 2. Branch from `main`: `feat/…`, `fix/…`, `port/<file>`.
 3. For ported code: provenance header, `docs/port-map.md` row, oracle fixtures
    (`conformance/AGENTS.md`), deviations recorded. The `port-libyang-file` skill lists the steps.
@@ -54,7 +56,7 @@ mistakes, not from a malicious branch or a compromised workstation. Installing t
 checkout would close the first gap at the cost of a second copy to keep in sync. CI cannot replace
 them because it must not see the personal patterns.
 
-`scripts/test-gates` (part of `make ci`) self-tests the scanner, the hooks, `merge-pr`, the
+`scripts/test-gates` (part of `make ci`, with `scripts/test-claim` for the task queue) self-tests the scanner, the hooks, `merge-pr`, the
 ai-review publisher and `review-tier` against a stubbed `gh`/`curl` and throwaway repos.
 
 ## Policy files
