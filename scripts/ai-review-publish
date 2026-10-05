@@ -1,0 +1,158 @@
+#!/usr/bin/env python3
+"""Trusted publisher for the ai-review workflow (runs from main, never from the PR).
+
+  ai-review-publish publish   validate Claude's JSON answer, check it for leaks, post one PR
+                              comment ending with the canonical attestation line
+  ai-review-publish scan      after publishing: delete/redact any PR comment or review that
+                              contains the secret (secondary; fails the job if anything is found)
+
+Env: REPO (owner/name), PR (number), SECRET (the Claude token; compared in-process, never on argv
+or printed); publish also needs EXEC_FILE (claude-code-action execution_file), HEAD_SHA (full
+SHA the diff was taken from) and MODEL (model id, e.g. claude-opus-5-5). GitHub calls go through
+`gh api` (GH_TOKEN); every call is checked.
+"""
+import json
+import os
+import re
+import subprocess
+import sys
+
+SEVERITIES = ("high", "med", "low")
+# Credential shapes that must never appear in a published review, whoever's they are.
+TOKEN_SHAPES = re.compile(r"sk-ant-[A-Za-z0-9_-]{8,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}")
+
+
+def die(msg, code=1):
+    print(f"::error::ai-review-publish: {msg}", file=sys.stderr)
+    sys.exit(code)
+
+
+def gh(*args, data=None):
+    """Runs `gh api ...`; JSON body via stdin. Any failure aborts the job."""
+    cmd = ["gh", "api", *args] + (["--input", "-"] if data is not None else [])
+    r = subprocess.run(cmd, input=None if data is None else json.dumps(data), capture_output=True, text=True)
+    if r.returncode != 0:
+        die(f"gh api {args[0]} {args[1] if len(args) > 1 else ''} failed: {r.stderr.strip()[:300]}", 2)
+    return r.stdout
+
+
+def gh_list(path):
+    pages = json.loads(gh("--paginate", "--slurp", path) or "[]")
+    return [item for page in pages for item in page]
+
+
+def leaks(text, secret):
+    return bool(secret and secret in text) or bool(TOKEN_SHAPES.search(text))
+
+
+def final_text(exec_file):
+    """The text of the last successful result message in the SDK transcript."""
+    with open(exec_file, encoding="utf-8") as f:
+        messages = json.load(f)
+    results = [m for m in messages if isinstance(m, dict) and m.get("type") == "result"]
+    if not results or results[-1].get("subtype") != "success" or results[-1].get("is_error"):
+        die("no successful result message in the execution file")
+    text = results[-1].get("result")
+    if not isinstance(text, str):
+        die("result message has no text")
+    return text
+
+
+def parse_review(text):
+    """Strict validation of {"verdict","summary","findings":[…]} (scripts/review-schema.json)."""
+    s = text.strip()
+    m = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", s, re.S)
+    if m:
+        s = m.group(1)
+    try:
+        r = json.loads(s)
+    except ValueError:
+        die("model answer is not a JSON object")
+
+    def check(ok, what):
+        if not ok:
+            die(f"model answer: invalid {what}")
+
+    check(isinstance(r, dict) and set(r) == {"verdict", "summary", "findings"}, "top-level keys")
+    check(r["verdict"] in ("approve", "changes"), "verdict")
+    check(isinstance(r["summary"], str) and len(r["summary"]) <= 4000, "summary")
+    check(isinstance(r["findings"], list) and len(r["findings"]) <= 50, "findings")
+    for f in r["findings"]:
+        check(isinstance(f, dict) and set(f) == {"severity", "file", "line", "problem", "fix"}, "finding keys")
+        check(f["severity"] in SEVERITIES, "severity")
+        check(isinstance(f["line"], int) and not isinstance(f["line"], bool) and f["line"] >= 0, "line")
+        for k in ("file", "problem", "fix"):
+            check(isinstance(f[k], str) and len(f[k]) <= 2000, k)
+    return r
+
+
+def neutral(s):
+    """Model text must not be able to forge an attestation line or ping people."""
+    return re.sub(r"(?im)^(\s*)VERDICT\s*:", r"\1verdict -", s).replace("@", "@​")
+
+
+def render(r, sha, model):
+    verdict = "changes" if r["verdict"] != "approve" or any(f["severity"] == "high" for f in r["findings"]) else "approve"
+    out = [f"### {model} review of `{sha}`: **{verdict}**", "", neutral(r["summary"]), ""]
+    order = {s: i for i, s in enumerate(SEVERITIES)}
+    for f in sorted(r["findings"], key=lambda f: order[f["severity"]]):
+        file = neutral(f["file"]).replace("`", "'")
+        out.append(f"- **{f['severity']}** `{file}:{f['line']}` — {neutral(f['problem'])} → {neutral(f['fix'])}")
+    out += ["", f"VERDICT: {verdict} {sha} ({model})"]
+    return "\n".join(out) + "\n"
+
+
+def publish(env):
+    sha, model = env["HEAD_SHA"], env["MODEL"]
+    if not re.fullmatch(r"[0-9a-f]{40}", sha):
+        die("HEAD_SHA is not a full SHA")
+    if not re.fullmatch(r"claude-[a-z0-9.-]+", model):
+        die("MODEL is not a claude model id")
+    text = final_text(env["EXEC_FILE"])
+    secret = env.get("SECRET", "")
+    # Pre-publication check on the raw answer and on what would be posted.
+    body = render(parse_review(text), sha, model)
+    if leaks(text, secret) or leaks(body, secret):
+        die("the review contains the token or a credential-shaped string; NOT published. "
+            "Rotate CLAUDE_CODE_OAUTH_TOKEN (claude setup-token) and update the secret.")
+    gh("-X", "POST", f"repos/{env['REPO']}/issues/{env['PR']}/comments", data={"body": body})
+    print(body.splitlines()[-1])
+
+
+def scan(env):
+    repo, pr, secret = env["REPO"], env["PR"], env.get("SECRET", "")
+    if not secret:
+        return
+    found = 0
+    for c in gh_list(f"repos/{repo}/issues/{pr}/comments"):
+        if secret in (c.get("body") or ""):
+            gh("-X", "DELETE", f"repos/{repo}/issues/comments/{c['id']}")
+            found += 1
+    for c in gh_list(f"repos/{repo}/pulls/{pr}/comments"):
+        if secret in (c.get("body") or ""):
+            gh("-X", "DELETE", f"repos/{repo}/pulls/comments/{c['id']}")
+            found += 1
+    for rv in gh_list(f"repos/{repo}/pulls/{pr}/reviews"):
+        if secret in (rv.get("body") or ""):
+            # Submitted reviews can't be deleted; overwrite the body.
+            gh("-X", "PUT", f"repos/{repo}/pulls/{pr}/reviews/{rv['id']}", data={"body": "[removed: contained a credential]"})
+            found += 1
+    if found:
+        die(f"{found} PR comment(s)/review(s) contained the token and were removed. "
+            "ROTATE CLAUDE_CODE_OAUTH_TOKEN now (claude setup-token) and update the secret.")
+
+
+def main():
+    if len(sys.argv) != 2 or sys.argv[1] not in ("publish", "scan"):
+        die("usage: ai-review-publish publish|scan", 2)
+    env = os.environ
+    for k in ("REPO", "PR"):
+        if k not in env:
+            die(f"{k} not set", 2)
+    if not re.fullmatch(r"[\w.-]+/[\w.-]+", env["REPO"]) or not re.fullmatch(r"[1-9][0-9]*", env["PR"]):
+        die("bad REPO/PR", 2)
+    (publish if sys.argv[1] == "publish" else scan)(env)
+
+
+if __name__ == "__main__":
+    main()
