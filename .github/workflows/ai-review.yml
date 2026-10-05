@@ -5,15 +5,20 @@ name: ai-review
 #
 # The OAuth token is the maintainer's Claude plan, so nothing from the PR ever executes here:
 #  1. trigger pull_request_target → this file and every script come from main; the checkout is
-#     main only (persist-credentials: false). The PR head is never checked out or run.
-#  2. who: PR author's numeric id == vars.MAINTAINER_ID (default 1056050) and head repo == this
-#     repo; label `no-ai-review` skips.
+#     main only. The PR head is never checked out or run. (checkout doesn't persist credentials,
+#     but claude-code-action itself writes the workflow token into the checkout's git config;
+#     harmless only because of 3.)
+#  2. who: PR author AND event sender (who pushed/reopened) have the numeric id
+#     vars.MAINTAINER_ID (default 1056050), head repo == this repo; label `no-ai-review` skips.
 #  3. the exact head SHA's diff is fetched with `gh api` and handed to Claude as prompt text.
-#     Claude runs with NO tools (--disallowedTools "*": no Bash, no file reads, no MCP), so it
-#     can't read the runner, the checkout or the environment; it only answers with JSON.
-#  4. scripts/ai-review-publish (from main) validates that JSON, refuses to post anything that
-#     contains the token or a credential-shaped string, and posts one comment ending with
-#     `VERDICT: <approve|changes> <head sha> (<model>)`. A post-publication scan is a second net.
+#     Claude runs with NO tools (--disallowedTools "*": no Bash, no file reads, no MCP;
+#     --strict-mcp-config, --setting-sources user), so it can't read the runner, the checkout or
+#     the environment; it only answers with JSON. Verified with the pinned CLI 2.1.285.
+#  4. scripts/ai-review-publish (from main) requires the session's init message to list no tools
+#     and no MCP servers, validates the JSON, refuses to post anything that contains the token or
+#     a credential-shaped string, neutralises links/images/HTML/mentions in model text, and posts
+#     one comment ending with `VERDICT: <approve|changes> <head sha> (<model>)`. A
+#     post-publication scan is a second net.
 #  5. cost: 20 min timeout, 2 turns, one run per PR at a time.
 # Limits: the prompt (diff) is logged by the action; a prompt-injected diff can still bias the
 # verdict, which is why merge-pr only trusts maintainer-authored attestations.
@@ -32,6 +37,7 @@ jobs:
     if: >-
       github.event.pull_request.draft == false &&
       github.event.pull_request.user.id == fromJSON(vars.MAINTAINER_ID || '1056050') &&
+      github.event.sender.id == fromJSON(vars.MAINTAINER_ID || '1056050') &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       !contains(github.event.pull_request.labels.*.name, 'no-ai-review')
     runs-on: ubuntu-24.04
@@ -98,12 +104,15 @@ jobs:
           # The step summary would publish unvalidated model output.
           display_report: "false"
           # "*" removes every tool, MCP included (verified with the pinned CLI 2.1.285: init lists
-          # no tools). --json-schema can't be used: it needs the StructuredOutput tool, which "*"
-          # denies, so the JSON answer is read from the execution file instead.
+          # no tools and, with --strict-mcp-config, no MCP servers). --json-schema can't be used:
+          # it needs the StructuredOutput tool, which "*" denies, so the JSON answer is read from
+          # the execution file instead.
           claude_args: >-
             --model ${{ steps.input.outputs.model }}
             --max-turns 2
             --disallowedTools "*"
+            --strict-mcp-config
+            --setting-sources user
       - name: Validate and publish
         if: steps.claude.outcome == 'success'
         env:

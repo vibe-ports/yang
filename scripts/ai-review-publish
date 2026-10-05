@@ -49,6 +49,11 @@ def final_text(exec_file):
     """The text of the last successful result message in the SDK transcript."""
     with open(exec_file, encoding="utf-8") as f:
         messages = json.load(f)
+    # The run must prove it had no tools and no MCP servers (--disallowedTools "*",
+    # --strict-mcp-config); otherwise the answer may come from a session that could read things.
+    inits = [m for m in messages if isinstance(m, dict) and m.get("type") == "system" and m.get("subtype") == "init"]
+    if len(inits) != 1 or inits[0].get("tools") != [] or inits[0].get("mcp_servers") != []:
+        die("the Claude session was not tool-free (init tools/mcp_servers not empty); NOT published")
     results = [m for m in messages if isinstance(m, dict) and m.get("type") == "result"]
     if not results or results[-1].get("subtype") != "success" or results[-1].get("is_error"):
         die("no successful result message in the execution file")
@@ -87,8 +92,17 @@ def parse_review(text):
 
 
 def neutral(s):
-    """Model text must not be able to forge an attestation line or ping people."""
-    return re.sub(r"(?im)^(\s*)VERDICT\s*:", r"\1verdict -", s).replace("@", "@​")
+    """Model text must not forge an attestation line, ping people, or render links, images or
+    HTML (an image URL is fetched by every viewer, so it could carry data out)."""
+    s = re.sub(r"(?im)^(\s*)VERDICT\s*:", r"\1verdict -", s)
+    s = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    s = re.sub(r"([\[\]])", r"\\\1", s)
+    return s.replace("@", "@​")
+
+
+def code(s):
+    """Text for inside a `code span`: markdown is inert there; keep it on one line, one span."""
+    return re.sub(r"\s", " ", s).replace("`", "'")
 
 
 def render(r, sha, model):
@@ -96,7 +110,7 @@ def render(r, sha, model):
     out = [f"### {model} review of `{sha}`: **{verdict}**", "", neutral(r["summary"]), ""]
     order = {s: i for i, s in enumerate(SEVERITIES)}
     for f in sorted(r["findings"], key=lambda f: order[f["severity"]]):
-        file = neutral(f["file"]).replace("`", "'")
+        file = code(f["file"])
         out.append(f"- **{f['severity']}** `{file}:{f['line']}` — {neutral(f['problem'])} → {neutral(f['fix'])}")
     out += ["", f"VERDICT: {verdict} {sha} ({model})"]
     return "\n".join(out) + "\n"
@@ -111,8 +125,8 @@ def publish(env):
     text = final_text(env["EXEC_FILE"])
     secret = env.get("SECRET", "")
     # Pre-publication check on the raw answer and on what would be posted.
-    body = render(parse_review(text), sha, model)
-    if leaks(text, secret) or leaks(body, secret):
+    body = "" if leaks(text, secret) else render(parse_review(text), sha, model)
+    if not body or leaks(body, secret):
         die("the review contains the token or a credential-shaped string; NOT published. "
             "Rotate CLAUDE_CODE_OAUTH_TOKEN (claude setup-token) and update the secret.")
     gh("-X", "POST", f"repos/{env['REPO']}/issues/{env['PR']}/comments", data={"body": body})
