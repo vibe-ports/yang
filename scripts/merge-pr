@@ -8,7 +8,8 @@
 #  - the PR is open, not a draft, targets main of this repository (origin);
 #  - review: the LATEST canonical attestation line naming that SHA — in a never-edited PR comment
 #    authored by the maintainer (numeric id MAINTAINER_ID, default 1056050), outside code fences —
-#    is   VERDICT: approve <40-hex head sha> (<reviewer>)   with reviewer codex-* or claude-opus*
+#    is   VERDICT: approve <40-hex head sha> (<reviewer>)   with reviewer codex-* or port-reviewer-*
+#    (not claude-*: that is the ai-review bot's signature, and a pasted bot line must not count)
 #    (scripts/astra emits it; a later "VERDICT: changes <sha> …" revokes an earlier approve);
 #  - CI: the latest run of .github/workflows/ci.yml for exactly that SHA concluded success;
 #  - every branch commit has +0000 author/committer dates and the head fast-forwards main.
@@ -54,7 +55,7 @@ verdict=$(gh api --paginate --slurp "repos/$repo/issues/$pr/comments" | jq -r --
     elif .fence then . else .out += [$l] end) | .out[];
   [ .[][] | select(.user.id == $uid and .updated_at == .created_at) | . as $c
     | (.body // "" | unfenced
-       | capture("^VERDICT: (?<v>approve|changes) (?<s>[0-9a-f]{40}) \\((codex-[A-Za-z0-9_.-]+|claude-opus[A-Za-z0-9_.-]*)\\)$"))
+       | capture("^VERDICT: (?<v>approve|changes) (?<s>[0-9a-f]{40}) \\((codex-[A-Za-z0-9_.-]+|port-reviewer-[A-Za-z0-9_.-]+)\\)$"))
     | select(.s == $sha) | {t: $c.created_at, id: $c.id, v} ]
   | sort_by([.t, .id]) | last | .v // "none"')
 [[ $verdict == approve ]] || fail "latest maintainer attestation for $head is '$verdict', need 'VERDICT: approve $head (codex-…)'"
