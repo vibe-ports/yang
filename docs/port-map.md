@@ -127,3 +127,5 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | src/xpath.c | xpath_derived_, xpath_derived_from(_or_self), xpath_derived_ident_module | derived | ported | protocol-v2/xpath-* | stored value via Value.Identity, identities via SchemaInfo |
 | src/xpath.c | xpath_enum_value, xpath_bit_is_set, xpath_re_match | fnEnumValue, fnBitIsSet, fnReMatch | ported | protocol-v2/xpath-* | stored value, text() arguments as libyang; re-match via internal/xsdre (D-0002…D-0008), patterns cached per Expr |
 | src/xpath.c | xpath_lang, moveto_attr, moveto_attr_alldesc | fnLang | partial |  | no metadata in Node yet (U-0002) |
+| src/schema_compile_node.c | lys_compile_type_range, range_part_minmax, range_part_check_value_syntax, range_part_check_ascendancy | compile.compileRange, rangeBound, rangeValueSyntax, ascending, moreLimiting | ported | internal/compile range_test; types/compile-errors (with the type compiler) | |
+| src/ly_common.c | ly_parse_int, ly_parse_uint | compile.parseRangeInt, parseRangeUint | ported | internal/compile range_test | range/length bounds (decimal digits only) |
