@@ -104,7 +104,7 @@ golden = `deviation`; not matching the assert = `differ`.
 ## 6. Go harness (separate module `github.com/vibe-ports/yang/conformance`)
 - `go run ./cmd/golden [-check] [-run REGEX]` — runs lyoracle per fixture (replaces run_corpus.py):
   manifest validation (version, unique ids, required fields, files exist), 60 s timeout, fails on
-  non-zero exit / `request-error` / missing `protocol` (flag `-require-protocol`; `make oracle-check`/`oracle-golden` pass it since oracle v2), writes or compares goldens byte-exactly.
+  non-zero exit / `request-error` / missing `protocol` / oracle `arch` (`uname -m`, additive field, protocol stays 2) differing from the Go process's (writing goldens additionally requires `x86_64`) (flag `-require-protocol`; `make oracle-check`/`oracle-golden` pass it since oracle v2), writes or compares goldens byte-exactly.
 - `go test ./...` — manifest well-formed, every assert consistent with its golden (or deviation).
 - `Engine` interface (`Run(Request) (Response, error)`) + `Compare(e Engine) Report`; per-area report
   (agree / differ / deviation / unsupported) as Markdown for the CI job summary. No engine exists yet;

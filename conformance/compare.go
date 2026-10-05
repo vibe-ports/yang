@@ -190,6 +190,7 @@ func normalize(r Response) map[string]any {
 	stripDiags(o, "context_diagnostics")
 	mapItems(o, "modules", func(m map[string]any) { stripDiags(m, "diagnostics") })
 	delete(o, "libyang")
+	delete(o, "arch")
 	dropXML(o)
 	mapItems(o, "steps", func(s map[string]any) {
 		stripDiags(s, "diagnostics")

@@ -1,3 +1,2 @@
-lyoracle
-lyoracle.dSYM/
-.arch-*
+lyoracle-*
+*.dSYM/

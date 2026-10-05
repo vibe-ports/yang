@@ -342,7 +342,7 @@ func TestOpaqueNamespaceDiffers(t *testing.T) {
 // Malformed sequence requests are request-errors (exit 2), found before any step runs. Needs the
 // built oracle (oracle/lyoracle, i.e. make oracle-check); skipped without it.
 func TestOracleRequestErrors(t *testing.T) {
-	oracle, err := filepath.Abs("oracle/lyoracle")
+	oracle, err := filepath.Abs(OracleBinary("oracle"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -372,6 +372,9 @@ func TestOracleRequestErrors(t *testing.T) {
 		if err != nil {
 			t.Errorf("%s: %v", tc.name, err)
 			continue
+		}
+		if err := CheckOracleArch(r, false); err != nil {
+			t.Fatal(err)
 		}
 		if msg, _ := r["request_error"].(string); r.Verdict() != "request-error" || !strings.Contains(msg, tc.want) {
 			t.Errorf("%s: verdict %q, request_error %q, want %q", tc.name, r.Verdict(), msg, tc.want)

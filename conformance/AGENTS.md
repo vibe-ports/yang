@@ -1,6 +1,6 @@
 # conformance/ — oracle rules
 
-- `oracle/lyoracle` (C, links libyang) is the reference. It is built and run **only** in the dev
+- `oracle/lyoracle-$(uname -m)` (C, links libyang) is the reference. It is built and run **only** in the dev
   container: `./dev make oracle-check`, `./dev make oracle-golden`.
 - The harness is a separate Go module (`conformance/go.mod`, only dependency: `go.yaml.in/yaml/v3`).
   `go run ./cmd/golden [-check] [-run REGEX] [-oracle PATH]` (from `conformance/`) generates/compares

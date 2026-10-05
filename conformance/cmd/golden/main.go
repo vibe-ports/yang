@@ -24,7 +24,7 @@ const timeout = 60 * time.Second
 func main() {
 	check := flag.Bool("check", false, "compare with the committed goldens instead of writing")
 	run := flag.String("run", "", "only fixtures whose id matches this regexp")
-	oracle := flag.String("oracle", "oracle/lyoracle", "path to the lyoracle binary")
+	oracle := flag.String("oracle", conformance.OracleBinary("oracle"), "path to the lyoracle binary")
 	manifest := flag.String("manifest", "corpus/manifest.yaml", "fixture manifest")
 	reqProto := flag.Bool("require-protocol", false, "fail unless the response has protocol == 2 (oracle v2)")
 	flag.Parse()
@@ -55,7 +55,7 @@ func do(check bool, run, oracle, manifest string, reqProto bool) error {
 		if !re.MatchString(f.ID) {
 			continue
 		}
-		resp, err := runOracle(oracle, m.Corpus(), f, reqProto)
+		resp, err := runOracle(oracle, m.Corpus(), f, reqProto, !check)
 		if err != nil {
 			return fmt.Errorf("harness failure on %s: %w", f.ID, err)
 		}
@@ -87,7 +87,7 @@ func do(check bool, run, oracle, manifest string, reqProto bool) error {
 	return nil
 }
 
-func runOracle(oracle, corpus string, f conformance.Fixture, reqProto bool) (conformance.Response, error) {
+func runOracle(oracle, corpus string, f conformance.Fixture, reqProto, write bool) (conformance.Response, error) {
 	req := map[string]any{"base_dir": f.Dir}
 	for k, v := range f.Request {
 		req[k] = v
@@ -115,6 +115,10 @@ func runOracle(oracle, corpus string, f conformance.Fixture, reqProto bool) (con
 	if v := resp.Verdict(); v == "" || v == "request-error" {
 		return nil, fmt.Errorf("verdict %q: %.300s", v, stdout.String())
 	}
+	if err := conformance.CheckOracleArch(resp, write); err != nil {
+		return nil, err
+	}
+	delete(resp, "arch") // goldens must not depend on the oracle build
 	if p, _ := resp["protocol"].(json.Number); reqProto && p != "2" {
 		return nil, fmt.Errorf("protocol %q, want 2: %.300s", p, stdout.String())
 	}

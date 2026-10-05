@@ -32,6 +32,9 @@ var oracleSets = map[string]string{
 	"aug":   `"modules":[{"name":"pv2","features":["extra"]},{"name":"pv2-aug"}],"data_file":"data/xpath-aug.json"`,
 }
 
+// oracleUname is oracleArch (GOARCH) as `uname -m`, the suffix of the lyoracle binary.
+const oracleUname = "x86_64"
+
 func lyoracle(t *testing.T) string {
 	if p := os.Getenv("LYORACLE"); p != "" {
 		return p
@@ -47,7 +50,7 @@ func lyoracle(t *testing.T) string {
 		}
 		t.Skipf("lyoracle not available: %v", err)
 	}
-	p, _ := filepath.Abs("../../conformance/oracle/lyoracle")
+	p, _ := filepath.Abs("../../conformance/oracle/lyoracle-" + oracleUname)
 	return p
 }
 
@@ -68,6 +71,7 @@ func runOracle(t *testing.T, bin string, c oracleCase) oracleCase {
 	r := oracleCase{Set: c.Set, CP: c.CP, X: c.X}
 	var resp struct {
 		Verdict     string
+		Arch        string
 		Result      json.RawMessage
 		Diagnostics []struct {
 			Level string
@@ -79,6 +83,9 @@ func runOracle(t *testing.T, bin string, c oracleCase) oracleCase {
 	if err != nil || json.Unmarshal(out, &resp) != nil || resp.Verdict == "" {
 		r.Crash = true
 		return r
+	}
+	if resp.Arch != oracleUname {
+		t.Fatalf("oracle arch %q, want %s: foreign or stale lyoracle, rebuild with make oracle", resp.Arch, oracleUname)
 	}
 	if resp.Verdict == "valid" {
 		r.Res = compact(t, resp.Result)

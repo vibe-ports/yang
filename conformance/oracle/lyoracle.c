@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/utsname.h>
 #include <unistd.h>
 
 #include <libyang/libyang.h>
@@ -1638,6 +1639,10 @@ main(void)
     resp = cJSON_CreateObject();
     cJSON_AddStringToObject(resp, "libyang", ly_version_proj_str());
     cJSON_AddNumberToObject(resp, "protocol", 2);
+    {
+        struct utsname un;
+        cJSON_AddStringToObject(resp, "arch", uname(&un) == 0 ? un.machine : "unknown");
+    }
     if (!(req = cJSON_Parse(buf))) {
         die("request is not valid JSON%s", NULL);
     }

@@ -14,13 +14,15 @@ Authoritative (dev container, repo root; builds lyoracle against /opt/libyang):
 # = cd conformance && go run ./cmd/golden [-check] -require-protocol [-run REGEX] [-oracle PATH]
 # one ad-hoc request (./dev passes stdin through):
 echo '{"op":"schema","base_dir":"basic","searchdirs":["schemas"],"modules":[{"name":"basic"}]}' \
-  | ./dev sh -c 'cd conformance/corpus && ../oracle/lyoracle'
+  | ./dev sh -c 'cd conformance/corpus && ../oracle/lyoracle-$(uname -m)'
 ```
 
 Native (manual poking only; macOS brew libyang 5.8.6):
 
 ```sh
 make -C conformance/oracle                         # LIBYANG_PREFIX=/opt/homebrew by default
+# builds lyoracle-$(uname -m): one binary per architecture, so containers of different
+# DEV_PLATFORMs sharing the checkout never run each other's binary
 ```
 
 ## Pinned versions
@@ -39,6 +41,8 @@ The pins live in the repo-root `Dockerfile` (stage `libyang`), which records the
 `/opt/libyang/BUILDINFO` inside the dev image.
 The canonical architecture is **linux/amd64** (CI and typical deployments): libyang computes XPath
 numbers in C `long double`, 80-bit x87 on amd64 but 128-bit on arm64, so e.g. `string(0.15)` differs.
+`cmd/golden` refuses to write goldens from a non-x86_64 oracle and to `-check` when the oracle's
+`arch` differs from the Go process's; conformance tests that exec the oracle check it too.
 Produce goldens and `internal/xpath/testdata/oracle-pv2.jsonl` with
 `DEV_PLATFORM=linux/amd64 ./dev make oracle-golden` (and `… ./dev go test -tags oracle ./internal/xpath/
 -run Oracle -update`); on Apple silicon this runs under emulation.
@@ -55,7 +59,8 @@ Produce goldens and `internal/xpath/testdata/oracle-pv2.jsonl` with
 
 Any input `X` can be given inline (`"X": "<text>"`) or as a file (`"X_file": "path"`).
 
-Every response has `libyang`, `protocol` (`2`; contract: `docs/design/04-oracle-protocol.md`),
+Every response has `libyang`, `arch` (`uname -m` of the oracle; additive, ignored by the comparator and
+not stored in goldens), `protocol` (`2`; contract: `docs/design/04-oracle-protocol.md`),
 `op`, `verdict`, `modules` (per module: `name`, `accepted`,
 `phase` if rejected, `revision`, `diagnostics`) and `context_diagnostics`.
 `verdict: "request-error"` + `request_error` means the request itself was bad (exit code 2).
