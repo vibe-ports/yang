@@ -1,0 +1,38 @@
+{
+  "ietf-interfaces:interfaces": {
+    "interface": [
+      {
+        "name": "eth0",
+        "type": "iana-if-type:ethernetCsmacd",
+        "enabled": true,
+        "description": "uplink",
+        "ietf-ip:ipv4": {
+          "address": [
+            {
+              "ip": "192.0.2.1",
+              "prefix-length": 24
+            }
+          ]
+        },
+        "m1-ext:m1": {
+          "burst": 10,
+          "rate": 200,
+          "shared-weight": 7,
+          "fast": true,
+          "boost": 3,
+          "mtu-limit": 1500,
+          "peer": "eth1",
+          "weight": "node-3",
+          "gain": "10.50",
+          "kind": "m1-ext:m1-eth",
+          "hw": "00:11:22:33:44:55",
+          "site": "example.com"
+        }
+      },
+      {
+        "name": "eth1",
+        "type": "iana-if-type:ethernetCsmacd"
+      }
+    ]
+  }
+}

@@ -1,0 +1,573 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ietf-interfaces",
+      "revision": "2018-02-20"
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "iana-if-type",
+      "revision": "2026-03-17"
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ietf-ip",
+      "revision": "2018-02-22"
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "m1-ext",
+      "revision": "2026-10-05"
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"ietf-interfaces:interfaces\": {\n    \"interface\": [\n      {\n        \"name\": \"eth0\",\n        \"description\": \"uplink\",\n        \"type\": \"iana-if-type:ethernetCsmacd\",\n        \"enabled\": true,\n        \"ietf-ip:ipv4\": {\n          \"address\": [\n            {\n              \"ip\": \"192.0.2.1\",\n              \"prefix-length\": 24\n            }\n          ]\n        },\n        \"m1-ext:m1\": {\n          \"rate\": 200,\n          \"burst\": 10,\n          \"shared-weight\": 7,\n          \"fast\": true,\n          \"boost\": 3,\n          \"mtu-limit\": 1500,\n          \"peer\": \"eth1\",\n          \"weight\": \"node-3\",\n          \"gain\": \"2.5\",\n          \"kind\": \"m1-eth\",\n          \"site\": \"example.com\",\n          \"hw\": \"00:11:22:33:44:55\"\n        }\n      },\n      {\n        \"name\": \"eth1\",\n        \"type\": \"iana-if-type:ethernetCsmacd\"\n      }\n    ]\n  }\n}\n",
+    "xml": "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">\n  <interface>\n    <name>eth0</name>\n    <description>uplink</description>\n    <type xmlns:ianaift=\"urn:ietf:params:xml:ns:yang:iana-if-type\">ianaift:ethernetCsmacd</type>\n    <enabled>true</enabled>\n    <ipv4 xmlns=\"urn:ietf:params:xml:ns:yang:ietf-ip\">\n      <address>\n        <ip>192.0.2.1</ip>\n        <prefix-length>24</prefix-length>\n      </address>\n    </ipv4>\n    <m1 xmlns=\"urn:example:m1-ext\">\n      <rate>200</rate>\n      <burst>10</burst>\n      <shared-weight>7</shared-weight>\n      <fast>true</fast>\n      <boost>3</boost>\n      <mtu-limit>1500</mtu-limit>\n      <peer>eth1</peer>\n      <weight>node-3</weight>\n      <gain>2.5</gain>\n      <kind>m1-eth</kind>\n      <site>example.com</site>\n      <hw>00:11:22:33:44:55</hw>\n    </m1>\n  </interface>\n  <interface>\n    <name>eth1</name>\n    <type xmlns:ianaift=\"urn:ietf:params:xml:ns:yang:iana-if-type\">ianaift:ethernetCsmacd</type>\n  </interface>\n</interfaces>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces",
+      "schema": "/ietf-interfaces:interfaces",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces/interface[name='eth0']",
+      "schema": "/ietf-interfaces:interfaces/interface",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces/interface[name='eth0']/name",
+      "schema": "/ietf-interfaces:interfaces/interface/name",
+      "value": {
+        "canonical": "eth0",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces/interface[name='eth0']/description",
+      "schema": "/ietf-interfaces:interfaces/interface/description",
+      "value": {
+        "canonical": "uplink",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces/interface[name='eth0']/type",
+      "schema": "/ietf-interfaces:interfaces/interface/type",
+      "value": {
+        "canonical": "iana-if-type:ethernetCsmacd",
+        "type": "identityref",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces/interface[name='eth0']/enabled",
+      "schema": "/ietf-interfaces:interfaces/interface/enabled",
+      "value": {
+        "canonical": "true",
+        "type": "boolean",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces/interface[name='eth0']/ietf-ip:ipv4",
+      "schema": "/ietf-interfaces:interfaces/interface/ietf-ip:ipv4",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces/interface[name='eth0']/ietf-ip:ipv4/enabled",
+      "schema": "/ietf-interfaces:interfaces/interface/ietf-ip:ipv4/enabled",
+      "value": {
+        "canonical": "true",
+        "type": "boolean",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces/interface[name='eth0']/ietf-ip:ipv4/forwarding",
+      "schema": "/ietf-interfaces:interfaces/interface/ietf-ip:ipv4/forwarding",
+      "value": {
+        "canonical": "false",
+        "type": "boolean",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces/interface[name='eth0']/ietf-ip:ipv4/address[ip='192.0.2.1']",
+      "schema": "/ietf-interfaces:interfaces/interface/ietf-ip:ipv4/address",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces/interface[name='eth0']/ietf-ip:ipv4/address[ip='192.0.2.1']/ip",
+      "schema": "/ietf-interfaces:interfaces/interface/ietf-ip:ipv4/address/ip",
+      "value": {
+        "canonical": "192.0.2.1",
+        "type": "string",
+        "typedef": "ipv4-address-no-zone",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces/interface[name='eth0']/ietf-ip:ipv4/address[ip='192.0.2.1']/prefix-length",
+      "schema": "/ietf-interfaces:interfaces/interface/ietf-ip:ipv4/address/subnet/prefix-length/prefix-length",
+      "value": {
+        "canonical": "24",
+        "type": "uint8",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1",
+      "schema": "/ietf-interfaces:interfaces/interface/m1-ext:m1",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1/rate",
+      "schema": "/ietf-interfaces:interfaces/interface/m1-ext:m1/rate",
+      "value": {
+        "canonical": "200",
+        "type": "uint32",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1/burst",
+      "schema": "/ietf-interfaces:interfaces/interface/m1-ext:m1/burst",
+      "value": {
+        "canonical": "10",
+        "type": "uint16",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1/shared-weight",
+      "schema": "/ietf-interfaces:interfaces/interface/m1-ext:m1/mode/shared/shared-weight",
+      "value": {
+        "canonical": "7",
+        "type": "uint8",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1/fast",
+      "schema": "/ietf-interfaces:interfaces/interface/m1-ext:m1/fast",
+      "value": {
+        "canonical": "true",
+        "type": "boolean",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": true
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1/boost",
+      "schema": "/ietf-interfaces:interfaces/interface/m1-ext:m1/boost",
+      "value": {
+        "canonical": "3",
+        "type": "uint8",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1/mtu-limit",
+      "schema": "/ietf-interfaces:interfaces/interface/m1-ext:m1/mtu-limit",
+      "value": {
+        "canonical": "1500",
+        "type": "uint16",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1/peer",
+      "schema": "/ietf-interfaces:interfaces/interface/m1-ext:m1/peer",
+      "value": {
+        "canonical": "eth1",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1/weight",
+      "schema": "/ietf-interfaces:interfaces/interface/m1-ext:m1/weight",
+      "value": {
+        "canonical": "node-3",
+        "type": "union",
+        "typedef": null,
+        "union_member": {
+          "index": 2,
+          "realtype": {
+            "type": "string",
+            "typedef": null
+          },
+          "type": "string",
+          "typedef": null
+        }
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1/gain",
+      "schema": "/ietf-interfaces:interfaces/interface/m1-ext:m1/gain",
+      "value": {
+        "canonical": "2.5",
+        "type": "decimal64",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1/kind",
+      "schema": "/ietf-interfaces:interfaces/interface/m1-ext:m1/kind",
+      "value": {
+        "canonical": "m1-ext:m1-eth",
+        "type": "identityref",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1/site",
+      "schema": "/ietf-interfaces:interfaces/interface/m1-ext:m1/site",
+      "value": {
+        "canonical": "example.com",
+        "type": "string",
+        "typedef": "domain-name",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1/hw",
+      "schema": "/ietf-interfaces:interfaces/interface/m1-ext:m1/hw",
+      "value": {
+        "canonical": "00:11:22:33:44:55",
+        "type": "string",
+        "typedef": "mac-address",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces/interface[name='eth1']",
+      "schema": "/ietf-interfaces:interfaces/interface",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces/interface[name='eth1']/name",
+      "schema": "/ietf-interfaces:interfaces/interface/name",
+      "value": {
+        "canonical": "eth1",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces/interface[name='eth1']/type",
+      "schema": "/ietf-interfaces:interfaces/interface/type",
+      "value": {
+        "canonical": "iana-if-type:ethernetCsmacd",
+        "type": "identityref",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-interfaces:interfaces/interface[name='eth1']/enabled",
+      "schema": "/ietf-interfaces:interfaces/interface/enabled",
+      "value": {
+        "canonical": "true",
+        "type": "boolean",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

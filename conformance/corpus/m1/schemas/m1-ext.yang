@@ -1,0 +1,147 @@
+module m1-ext {
+  yang-version 1.1;
+  namespace "urn:example:m1-ext";
+  prefix m1;
+
+  import ietf-interfaces {
+    prefix if;
+  }
+  import ietf-inet-types {
+    prefix inet;
+  }
+  import ietf-yang-types {
+    prefix yang;
+  }
+
+  organization "yang port conformance corpus";
+  description
+    "M1 slice module (hand-written, this repo; BSD-3-Clause). Augments
+     ietf-interfaces with one node per rule the M1 fixtures exercise.";
+
+  revision 2026-10-05 {
+    description
+      "Initial revision.";
+  }
+
+  feature fast-path {
+    description
+      "Enables the fast leaf.";
+  }
+
+  identity m1-kind {
+    base if:interface-type;
+    description
+      "Interface types defined by this module.";
+  }
+  identity m1-eth {
+    base m1-kind;
+  }
+  identity unrelated {
+    description
+      "Not derived from interface-type (negative identityref test).";
+  }
+
+  grouping limits {
+    leaf rate {
+      type uint32;
+      description
+        "Rate limit; the using site refines the default.";
+    }
+    leaf burst {
+      type uint16;
+      description
+        "Burst size; the using site makes it mandatory.";
+    }
+  }
+
+  augment "/if:interfaces/if:interface" {
+    container m1 {
+      presence "m1 settings exist";
+      description
+        "Per-interface m1 settings (presence: it holds a mandatory leaf,
+         which an augment may only add below a presence container).";
+      uses limits {
+        refine rate {
+          default 100;
+        }
+        refine burst {
+          mandatory true;
+        }
+      }
+      choice mode {
+        default shared;
+        case shared {
+          leaf shared-weight {
+            type uint8;
+            default 5;
+          }
+        }
+        case dedicated {
+          leaf dedicated-slot {
+            type uint8;
+          }
+        }
+      }
+      leaf fast {
+        if-feature fast-path;
+        type boolean;
+      }
+      leaf boost {
+        when "../rate > 100";
+        type uint8;
+      }
+      leaf mtu-limit {
+        type uint16;
+        must ". >= 68 and . <= 9000" {
+          error-app-tag "m1-mtu-range";
+          error-message "mtu-limit must be within 68..9000";
+        }
+      }
+      leaf peer {
+        type leafref {
+          path "/if:interfaces/if:interface/if:name";
+          require-instance true;
+        }
+      }
+      leaf weight {
+        type union {
+          type uint8;
+          type enumeration {
+            enum auto;
+          }
+          type string {
+            pattern "[a-z]+-[0-9]+";
+          }
+        }
+      }
+      leaf gain {
+        type decimal64 {
+          fraction-digits 2;
+          range "-10.00..10.00";
+        }
+      }
+      leaf kind {
+        type identityref {
+          base if:interface-type;
+        }
+      }
+      leaf site {
+        type inet:domain-name;
+      }
+      leaf hw {
+        type yang:mac-address;
+      }
+      list samples {
+        config false;
+        leaf at {
+          type yang:date-and-time;
+        }
+        leaf value {
+          type decimal64 {
+            fraction-digits 3;
+          }
+        }
+      }
+    }
+  }
+}

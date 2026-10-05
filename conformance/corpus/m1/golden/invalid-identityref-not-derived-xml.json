@@ -1,0 +1,55 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [
+    {
+      "apptag": null,
+      "code": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "data_path": "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1/kind",
+      "level": "error",
+      "line": 1,
+      "msg": "Invalid identityref \"m1:unrelated\" value - identity not derived from the base \"ietf-interfaces:interface-type\".",
+      "phase": "data",
+      "schema_path": null,
+      "vecode": 9,
+      "vecode_name": "LYVE_DATA"
+    }
+  ],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ietf-interfaces",
+      "revision": "2018-02-20"
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "iana-if-type",
+      "revision": "2026-03-17"
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ietf-ip",
+      "revision": "2018-02-22"
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "m1-ext",
+      "revision": "2026-10-05"
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 7,
+    "name": "LY_EVALID"
+  },
+  "tree": null,
+  "verdict": "invalid"
+}
