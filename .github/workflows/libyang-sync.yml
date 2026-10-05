@@ -20,28 +20,41 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: check
+        # Upstream data (tag names, SHAs) is untrusted: validated here before it is written to
+        # outputs, and later steps read it through env, never through ${{ }} in shell source.
         run: |
           cur=$(sed -n 's/^ARG LIBYANG_REF=//p' Dockerfile)
           tag=$(gh api repos/CESNET/libyang/releases/latest --jq .tag_name)
+          ver='^v[0-9]+\.[0-9]+\.[0-9]+$'
+          [[ $cur =~ $ver ]] || { echo "::error::Dockerfile LIBYANG_REF is not vX.Y.Z"; exit 1; }
+          [[ $tag =~ $ver ]] || { echo "::error::upstream latest release tag is not vX.Y.Z"; exit 1; }
           sha=$(gh api "repos/CESNET/libyang/commits/$tag" --jq .sha)
+          [[ $sha =~ ^[0-9a-f]{40}$ ]] || { echo "::error::upstream commit is not a 40-hex SHA"; exit 1; }
           echo "cur=$cur tag=$tag sha=$sha"
           { echo "cur=$cur"; echo "tag=$tag"; echo "sha=$sha"; } >> "$GITHUB_OUTPUT"
       - name: Tracking issue for upstream master drift
+        env:
+          CUR: ${{ steps.check.outputs.cur }}
         run: |
-          cur=${{ steps.check.outputs.cur }}
-          list=$(gh api "repos/CESNET/libyang/compare/$cur...master" --paginate \
+          [[ $CUR =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+          list=$(gh api "repos/CESNET/libyang/compare/$CUR...master" --paginate \
             --jq '.commits[] | "- [`\(.sha[0:7])`](\(.html_url)) \(.commit.message | split("\n")[0])"' | tail -n 200)
-          files=$(gh api "repos/CESNET/libyang/compare/$cur...master" --jq '[.files[].filename | select(startswith("src/"))] | unique | join(", ")')
-          body=$(printf 'Upstream libyang commits on master since pinned **%s** (updated weekly by libyang-sync).\n\nTouched src/ files: %s\n\nCross-check with docs/port-map.md before porting further.\n\n%s\n' "$cur" "${files:-none}" "${list:-none}")
+          files=$(gh api "repos/CESNET/libyang/compare/$CUR...master" --jq '[.files[].filename | select(startswith("src/"))] | unique | join(", ")')
+          body=$(printf 'Upstream libyang commits on master since pinned **%s** (updated weekly by libyang-sync).\n\nTouched src/ files: %s\n\nCross-check with docs/port-map.md before porting further.\n\n%s\n' "$CUR" "${files:-none}" "${list:-none}")
           num=$(gh issue list --state open --label upstream-drift --json number --jq '.[0].number // empty')
           gh label create upstream-drift --color BFD4F2 --force >/dev/null
-          if [ -n "$num" ]; then gh issue edit "$num" --body "$body"; else gh issue create --title "upstream libyang drift since $cur" --label upstream-drift --body "$body"; fi
+          if [ -n "$num" ]; then gh issue edit "$num" --body "$body"; else gh issue create --title "upstream libyang drift since $CUR" --label upstream-drift --body "$body"; fi
       - if: steps.check.outputs.cur != steps.check.outputs.tag
         name: Bump pins
+        env:
+          LIBYANG_TAG: ${{ steps.check.outputs.tag }}
+          LIBYANG_SHA: ${{ steps.check.outputs.sha }}
         run: |
-          sed -i "s/^ARG LIBYANG_REF=.*/ARG LIBYANG_REF=${{ steps.check.outputs.tag }}/; s/^ARG LIBYANG_COMMIT=.*/ARG LIBYANG_COMMIT=${{ steps.check.outputs.sha }}/" Dockerfile
+          [[ $LIBYANG_TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+          [[ $LIBYANG_SHA =~ ^[0-9a-f]{40}$ ]] || exit 1
+          sed -i "s/^ARG LIBYANG_REF=.*/ARG LIBYANG_REF=$LIBYANG_TAG/; s/^ARG LIBYANG_COMMIT=.*/ARG LIBYANG_COMMIT=$LIBYANG_SHA/" Dockerfile
           # Only the oracle pin moves. Provenance headers/docs keep the version code was ported from.
-          sed -i "s/^  libyang: .*/  libyang: ${{ steps.check.outputs.tag }}/; s/^  libyang_commit: .*/  libyang_commit: ${{ steps.check.outputs.sha }}/" conformance/corpus/manifest.yaml
+          sed -i "s/^  libyang: .*/  libyang: $LIBYANG_TAG/; s/^  libyang_commit: .*/  libyang_commit: $LIBYANG_SHA/" conformance/corpus/manifest.yaml
       - if: steps.check.outputs.cur != steps.check.outputs.tag
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
