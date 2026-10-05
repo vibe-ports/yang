@@ -950,7 +950,25 @@ func (ev *evaluator) toNum(v value) ld {
 		}
 		return ld{}
 	}
-	return cStrtod(ev.toString(v))
+	str := ev.toString(v)
+	ev.charge(len(str) / 1024)
+	return cStrtod(str)
+}
+
+// numCmp charges the %Lf renderings moveto_num_cmp compares.
+func (ev *evaluator) numCmp(a, b ld) int {
+	ev.charge((a.digits() + b.digits()) / 64)
+	return numCmp(a, b)
+}
+
+// charge takes n steps from the budget at once (work proportional to digits).
+func (ev *evaluator) charge(n int) {
+	if n <= 0 || ev.err != nil {
+		return
+	}
+	if ev.steps -= n; ev.steps < 0 {
+		ev.err = ErrBudget
+	}
 }
 
 func (ev *evaluator) toString(v value) string {
@@ -958,6 +976,7 @@ func (ev *evaluator) toString(v value) string {
 	case vStr:
 		return v.s
 	case vNum:
+		ev.charge(v.f.digits() / 64)
 		return numToString(v.f)
 	case vBool:
 		if v.b {
@@ -1048,11 +1067,11 @@ func (ev *evaluator) compare(a, b value, op string) bool {
 		case a.t == vBool || b.t == vBool:
 			return ev.toBool(a) == ev.toBool(b) == (op == "=")
 		case a.t == vNum || b.t == vNum:
-			return (numCmp(ev.toNum(a), ev.toNum(b)) == 0) == (op == "=")
+			return (ev.numCmp(ev.toNum(a), ev.toNum(b)) == 0) == (op == "=")
 		}
 		return (a.s == b.s) == (op == "=")
 	}
-	c := numCmp(ev.toNum(a), ev.toNum(b))
+	c := ev.numCmp(ev.toNum(a), ev.toNum(b))
 	switch op {
 	case "<":
 		return c < 0

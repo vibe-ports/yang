@@ -154,27 +154,89 @@ func ldMod(a, b *big.Float) ld {
 	return ld{f: r}
 }
 
-// parseLD is strtold on a whole (pre-checked) number text; erange as errno.
+// sigDigits bounds the mantissa big.ParseFloat sees (its cost grows ~quadratically
+// with the digits). Rounding stays exact (RNE): a tie between two neighbouring x87
+// values is a 65-bit odd m·2^e with e ≥ -16446 (denormal ties included), whose
+// decimal expansion has at most 20 + 0.7·16446 < 11530 significant digits (a hex
+// one at most 17), so keeping 20000 digits and replacing the rest by one sticky
+// nonzero digit never moves the value across a tie or onto one.
+const sigDigits = 20000
+
+// parseLD is strtold on a whole (syntax-checked) number text; erange as errno.
 func parseLD(s string) (x ld, erange bool) {
-	l := strings.ToLower(strings.TrimLeft(s, "+-"))
 	neg := strings.HasPrefix(s, "-")
-	switch l {
+	body := strings.TrimLeft(s, "+-")
+	switch strings.ToLower(body) {
 	case "inf", "infinity":
 		return ld{f: newF().SetInf(neg)}, false
 	case "nan":
 		return ldNaN, false
 	}
-	if strings.HasPrefix(l, "0x") && !strings.Contains(l, "p") {
-		s += "p0"
+	hex := len(body) > 1 && body[0] == '0' && (body[1]|0x20) == 'x'
+	expCh := "eE"
+	if hex {
+		body, expCh = body[2:], "pP"
 	}
-	f, _, err := big.ParseFloat(s, 0, ldPrec, big.ToNearestEven)
-	if err != nil {
-		return ldNaN, true
+	mant, exp := body, 0
+	if i := strings.IndexAny(body, expCh); i >= 0 {
+		mant = body[:i]
+		e, err := strconv.Atoi(body[i+1:])
+		if err != nil { // out of int range: saturate, the value is then out of range anyway
+			e = 1 << 30
+			if strings.HasPrefix(body[i+1:], "-") {
+				e = -e
+			}
+		}
+		exp = max(min(e, 1<<30), -(1 << 30))
 	}
-	if f.Sign() != 0 { // strtold: ERANGE beyond the range and for denormal results
-		if exp := f.MantExp(nil); exp > ldMaxExp || exp < -16381 {
+	ip, fp, _ := strings.Cut(mant, ".")
+	ds, point := ip+fp, len(ip) // value = 0.ds × base^point × (10 or 2)^exp
+	lead := len(ds) - len(strings.TrimLeft(ds, "0"))
+	ds, point = strings.TrimRight(ds[lead:], "0"), point-lead
+	if ds == "" {
+		z := newF()
+		if neg {
+			z.Neg(z)
+		}
+		return ld{f: z}, false
+	}
+	// cheap range checks before any big arithmetic; the exact one follows
+	if hex {
+		if t := 4*point + exp; t-4 >= ldMaxExp || t <= -16382 {
+			return ldNaN, true // value ≥ 2^16384, or < 2^-16382 (denormal / underflow)
+		}
+	} else if t := point + exp; t-1 >= 4933 || t <= -4932 {
+		return ldNaN, true // ≥ 1e4932 > LDBL_MAX, or < 1e-4932 < LDBL_MIN
+	}
+	if len(ds) > sigDigits {
+		sticky := strings.TrimRight(ds[sigDigits:], "0") != ""
+		ds = ds[:sigDigits]
+		if sticky {
+			ds += "1"
+		}
+	}
+	t := "0." + ds + "e" + strconv.Itoa(point+exp)
+	if hex {
+		t = "0x0." + ds + "p" + strconv.Itoa(4*point+exp)
+	}
+	if neg {
+		t = "-" + t
+	}
+	var f *big.Float
+	if hex { // power-of-two scaling: exact
+		var err error
+		if f, _, err = big.ParseFloat(t, 0, ldPrec, big.ToNearestEven); err != nil {
 			return ldNaN, true
 		}
+	} else { // big.ParseFloat is not correctly rounded on decimal ties; a rational is
+		r, ok := new(big.Rat).SetString(t)
+		if !ok {
+			return ldNaN, true
+		}
+		f = newF().SetRat(r)
+	}
+	if exp := f.MantExp(nil); exp > ldMaxExp || exp < -16381 { // strtold: ERANGE, also for denormals
+		return ldNaN, true
 	}
 	return ld{f: f}, false
 }
@@ -242,7 +304,29 @@ func numToString(x ld) string {
 	case x.isIntVal():
 		return strconv.FormatInt(ctrunc(x), 10)
 	}
-	return x.big().Text('f', 1)
+	return textF(x.big(), 1)
+}
+
+// textF is printf("%.*Lf"): the exact decimal expansion rounded to prec digits.
+// Below 2^-30 (< 0.5e-6 ≤ half of the last printed digit) it is all zeros, which
+// spares expanding a tiny or denormal value digit by digit.
+func textF(f *big.Float, prec int) string {
+	if f.Sign() != 0 && f.MantExp(nil) < -29 {
+		sign := ""
+		if f.Signbit() {
+			sign = "-"
+		}
+		return sign + "0." + strings.Repeat("0", prec)
+	}
+	return f.Text('f', prec)
+}
+
+// digits estimates the length of x's %Lf rendering, for the step budget.
+func (x ld) digits() int {
+	if x.nan || x.isInf() || x.isZero() {
+		return 1
+	}
+	return max(1, x.f.MantExp(nil)*3/10)
 }
 
 // cfmt is printf("%0*Lf", width, x): zero-padded for numbers, space-padded inf/nan.
@@ -254,7 +338,7 @@ func cfmt(x ld, width int) string {
 	case x.isInf():
 		s = "inf"
 	default:
-		s = new(big.Float).Abs(x.big()).Text('f', 6)
+		s = textF(new(big.Float).Abs(x.big()), 6)
 	}
 	sign := ""
 	if !x.nan && x.big().Signbit() {
