@@ -40,9 +40,12 @@ VS Code / any devcontainer-aware editor: "Reopen in Container" uses the same ima
   against `<where><TAB><line>`); text in the repo cannot waive a personal rule.
 
 The hooks in `.githooks/` apply both: `pre-commit` scans the staged files, `pre-push` every
-outgoing commit (added lines, file names, commit messages). If the denylist exists but is
-unreadable, empty or has an invalid regex, they fail closed; patterns and matched text are never
-printed. Without a denylist (other contributors, CI) only the generic rules apply.
+outgoing commit (added lines, file names, commit messages, author/committer) and annotated tag
+messages. If the denylist exists but is unreadable, empty or has an invalid regex, they fail
+closed; so does a missing denylist in a clone with `git config vibe.requireDenylist true` (set it
+in every maintainer clone). Patterns are never printed, and neither is matched text — except that
+a hit in a file name prints that file name, since the name is the location. Without a denylist
+(other contributors, CI) only the generic rules apply.
 
 Trade-off, accepted on purpose: hooks and scanner run from the working tree, so a checked-out
 branch can change what they do, and `--no-verify` skips them. They protect the maintainer from
@@ -50,8 +53,17 @@ mistakes, not from a malicious branch or a compromised workstation. Installing t
 checkout would close the first gap at the cost of a second copy to keep in sync. CI cannot replace
 them because it must not see the personal patterns.
 
-`scripts/test-gates` (host) self-tests the scanner, the hooks, `merge-pr` and the ai-review
-publisher with a stubbed `gh`; run it after changing any of them.
+`scripts/test-gates` (part of `make ci`) self-tests the scanner, the hooks, `merge-pr`, the
+ai-review publisher and `review-tier` against a stubbed `gh`/`curl` and throwaway repos.
+
+## Policy files
+
+These files decide what runs, what is checked and what reviewers are told:
+`AGENTS.md` (any directory), `CLAUDE.md`, `.claude/`, `Makefile`, `dev`, `Dockerfile`,
+`.devcontainer/`, `scripts/`, `.github/`, `.githooks/`. A PR touching them changes its own gate,
+so it always needs a human read, `review-tier` sends it to the deep reviewer, and the gate tools
+never run the PR's copy: `merge-pr` and `astra review --trusted` run main's version with main's
+rules (see Merge gate).
 
 ## Review
 
@@ -59,31 +71,53 @@ Every non-draft PR by the maintainer is reviewed automatically:
 - **Claude** (`ai-review` workflow): Opus for risky changes, Sonnet otherwise (`scripts/review-tier`
   on file paths + line counts; the optional Jev escalation sends only those).
 - **Codex** (Codex GitHub app, automatic reviews).
-- **astra** by the lead: `ASTRA_PR=<n> scripts/astra review` — this is the merge-gate review.
+- **astra** by the lead, on a checkout of the PR head, running main's copy:
+  `ASTRA_PR=<n> bash <(git show origin/main:scripts/astra) review --trusted` — the merge-gate
+  review. `--trusted` reads the rules (`AGENTS.md`) and output schema from `origin/main` and stops
+  codex from loading the checkout's `AGENTS.md`; only `--trusted` runs post an attestation.
 
 `ai-review` spends the maintainer's Claude plan token, so it never runs PR code:
-`pull_request_target` (workflow and scripts come from `main`); only PRs authored by the
-maintainer's numeric id (`vars.MAINTAINER_ID`, default 1056050) from this repository; checkout of
-`main` only, without persisted credentials; the head SHA's diff is fetched with `gh api` and given
-to Claude as text; Claude runs with **no tools** (`--disallowedTools "*"`). Trusted code
-(`scripts/ai-review-publish`) validates the JSON answer, refuses to post anything that contains
-the token or a credential-shaped string, and posts one comment ending with
-`VERDICT: <approve|changes> <head sha> (<model>)`. A post-publication scan deletes or redacts any
-PR comment or review containing the token. Label `no-ai-review` skips the review.
-Limits: the diff appears in the job log, and a diff can still try to talk the model into a
-verdict, so the Claude verdict is advisory and not part of the merge gate. Rotate
-`CLAUDE_CODE_OAUTH_TOKEN` every 90 days and immediately if the publisher or scan reports a leak.
+- `pull_request_target`: the workflow and scripts come from `main`;
+- only PRs whose author **and** triggering sender have the maintainer's numeric id
+  (`vars.MAINTAINER_ID`, default 1056050), from this repository;
+- checkout of `main` only. `actions/checkout` persists no credentials, but claude-code-action
+  itself writes the workflow token (`contents: read`, `pull-requests: write`) into the checkout's
+  git config — acceptable only because the model can't read files;
+- the head SHA's diff is fetched with `gh api` and given to Claude as text; Claude runs with
+  **no tools and no MCP servers** (`--disallowedTools "*"`, `--strict-mcp-config`,
+  `--setting-sources user`);
+- trusted code (`scripts/ai-review-publish`) requires the session's init record to show no tools
+  and no MCP servers, validates the JSON answer, refuses to post anything that contains the token
+  or a credential-shaped string, neutralises links, images, HTML and @mentions in model text, and
+  posts one comment ending with `VERDICT: <approve|changes> <head sha> (<model>)`. A
+  post-publication scan deletes or redacts any PR comment or review containing the token.
+
+Label `no-ai-review` skips the review. Limits: the diff appears in the job log, and a diff can
+still try to talk the model into a verdict, so the Claude verdict is advisory and not part of the
+merge gate. Rotate `CLAUDE_CODE_OAUTH_TOKEN` every 90 days and immediately if the publisher or
+scan reports a leak.
 
 All reviewers apply "Code review rules" in AGENTS.md. Findings are fixed or answered in the PR.
 
 ## Merge gate
 
-`scripts/merge-pr <n>` (run by the maintainer) fast-forwards `main` to the PR head only if, for
-the PR's current **full** head SHA:
+Run by the maintainer, always as main's copy from a checkout of `origin/main`:
+
+```sh
+git fetch origin main && git switch --detach origin/main
+scripts/merge-pr <n>                                  # or: bash <(git show origin/main:scripts/merge-pr) <n>
+```
+
+It refuses to run when the checkout's `HEAD` is not `origin/main`, when `scripts/` or `.githooks/`
+have local changes, or when the script file differs from `origin/main:scripts/merge-pr`, so a
+PR's own copy (or its hooks, which the push runs) can't stand in for the gate.
+It fast-forwards `main` to the PR head only if, for the PR's current **full** head SHA:
 - the PR is open, not a draft, and targets `main` of `vibe-ports/yang` (= `origin`);
-- the latest line `VERDICT: <approve|changes> <full sha> (<reviewer>)` naming that SHA, in a PR
-  comment **authored by the maintainer's account**, says `approve`. `scripts/astra` posts it; a
-  later `changes` revokes; bot comments, quoted lines and short SHAs don't count;
+- the latest line `VERDICT: <approve|changes> <full sha> (<reviewer>)` naming that SHA says
+  `approve`, counting only never-edited PR comments **authored by the maintainer's account**,
+  lines outside code fences, and reviewers `codex-*` or `claude-opus*`. `scripts/astra review
+  --trusted` posts it; a later `changes` revokes; bot comments, quoted or fenced lines, edited
+  comments and short SHAs don't count;
 - the latest run of `.github/workflows/ci.yml` for exactly that SHA concluded `success`
   (CI checks out the PR head, not the merge commit);
 - every commit has `+0000` dates and the head is a descendant of `main`.
@@ -94,7 +128,7 @@ It re-checks the PR head just before pushing and pushes with
 What this does **not** guarantee: it is a script, not server-side enforcement. A private
 repository on the Free plan has no branch protection or rulesets, so anyone with write access can
 push to `main` directly or skip the script. A PR can modify `ci.yml` or the `make ci` it runs, so
-changes to CI, workflows, hooks or `scripts/` need a human read. The API checks and the push are
+changes to policy files need a human read. The API checks and the push are
 not one transaction (the lease protects `main` only). Once the repository is public, enable a
 ruleset on `main`: required `ci` status, linear history, no force pushes or deletion, restricted
 updates.
@@ -104,7 +138,9 @@ updates.
 `libyang-sync` runs weekly: a new libyang release opens a PR that bumps the oracle pin and
 regenerates goldens (each golden diff = upstream behaviour change to port or record); upstream
 `master` drift is summarised in one issue labelled `upstream-drift`. Upstream tag names and SHAs
-are validated (`vX.Y.Z`, 40-hex) before any use.
+are validated (`vX.Y.Z`, 40-hex) before any use. The upstream build runs in a job with a
+read-only token; a separate job with the write token runs no build, only applies the uploaded
+patch (pin and golden paths only) and opens the PR.
 
 ## Licensing and provenance
 
@@ -115,6 +151,13 @@ are validated (`vX.Y.Z`, 40-hex) before any use.
   the personal rules in the maintainer's hooks.
 
 ## Maintainer setup (once)
+
+In every maintainer clone, with the denylist in place:
+
+```sh
+git config core.hooksPath .githooks
+git config vibe.requireDenylist true   # hooks fail if the personal denylist is missing
+```
 
 Repository secrets and variables:
 | Name | Kind | Purpose | Required |

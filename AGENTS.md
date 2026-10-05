@@ -63,7 +63,7 @@ Plan and rationale: `PLAN.md`. Decisions: `docs/decisions/`. Designs: `docs/desi
 
 ## Workflow
 Claude/porter implement, codex writes independent fixtures in parallel, astra reviews every PR
-(`scripts/astra review`), the oracle arbitrates. Details: `docs/agent-workflow.md`.
+(`scripts/astra review --trusted`, main's copy), the oracle arbitrates. Details: `docs/agent-workflow.md`.
 
 ## Code review rules
 (Used by every reviewer: Claude `ai-review` workflow, Codex GitHub reviews, `scripts/astra`.)
@@ -81,14 +81,18 @@ Do not comment on style that gofmt/golangci-lint already enforce.
 - Work on a branch, open a PR to `main`. Small PRs (≈ one C file or one feature).
 - Merge gate (Free private plan: no branch protection, so this is a rule enforced by a script,
   not a setting): for the PR's **full head SHA**, `ci.yml` concluded success and the latest
-  maintainer-authored attestation line `VERDICT: approve <full sha> (<reviewer>)` — posted by
-  `scripts/astra review`, or by the lead after a `port-reviewer` review — names that SHA. Bot
-  verdicts (Claude `ai-review`, Codex app) are advisory. Changes to CI, workflows, hooks or
-  `scripts/` need a human read: a PR can change what its own CI runs.
+  maintainer-authored, never-edited attestation line `VERDICT: approve <full sha> (codex-…)` —
+  posted by `scripts/astra review --trusted`, or by the lead as `(claude-opus…)` after a
+  `port-reviewer` review — names that SHA. Bot verdicts (Claude `ai-review`, Codex app) are
+  advisory.
+- **Policy files** — `AGENTS.md`, `CLAUDE.md`, `.claude/`, `Makefile`, `dev`, `Dockerfile`,
+  `.devcontainer/`, `scripts/`, `.github/`, `.githooks/` — decide what runs and what reviewers are
+  told. A PR touching them needs a human read; gate tools run main's copy, never the PR's.
   Only the lead merges; worker agents never push to `main` or hold merge rights.
-- Merging is `scripts/merge-pr <n>` only (checks the gate, requires UTC dates, fast-forwards the
-  reviewed head SHA with a lease on `main`). Never the GitHub merge button — it records the local
-  time zone. Details and limits: CONTRIBUTING.md "Merge gate".
+- Merging is `scripts/merge-pr <n>` only, run as main's copy from a checkout of `origin/main`
+  (checks the gate, requires UTC dates, fast-forwards the reviewed head SHA with a lease on
+  `main`). Never the GitHub merge button — it records the local time zone. Details and limits:
+  CONTRIBUTING.md "Merge gate".
 - Conventional-commit subjects (`feat(xpath): …`, `fix:`, `docs:`, `test:`, `build:`).
 - Commit with `TZ=UTC` (`git ci` alias) as the configured author. **No AI trailers**
   (`Co-Authored-By`, `Assisted-by`) — AI assistance is disclosed once, in README.

@@ -30,13 +30,15 @@ family → less correlated blind spots). **codex gpt-5.6-sol/luna** writes indep
      Goldens come from `./dev make oracle-golden`, so neither model decides expected behaviour.
    (A) must pass (B)'s fixtures; disagreements are resolved by the oracle or recorded in
    `conformance/deviations.md` with an RFC reason.
-3. **Review.** `ASTRA_PR=<n> scripts/astra review` posts a structured review of `main...HEAD` to
-   the PR, ending with `VERDICT: <approve|changes> <full HEAD sha> (codex-<model>)` (run it on a
-   checkout of the PR head, under the maintainer's `gh` login). Claude fixes or rebuts each finding
+3. **Review.** On a checkout of the PR head, under the maintainer's `gh` login,
+   `ASTRA_PR=<n> bash <(git show origin/main:scripts/astra) review --trusted` posts a structured
+   review of `main...HEAD` ending with `VERDICT: <approve|changes> <full HEAD sha> (codex-<model>)`.
+   `--trusted` takes the rules from main's `AGENTS.md`, so a PR can't rewrite its own review rules. Claude fixes or rebuts each finding
    **in the PR**. Re-run until no `high` and verdict `approve`; after 3 rounds without convergence
    the maintainer decides. The automatic Claude (`ai-review`) and Codex-app reviews are extra
    eyes; their verdicts are advisory.
-4. **Merge gate** (AGENTS.md, CONTRIBUTING.md "Merge gate"): `scripts/merge-pr <n>` checks that
+4. **Merge gate** (AGENTS.md, CONTRIBUTING.md "Merge gate"): `scripts/merge-pr <n>`, run as
+   main's copy from a checkout of `origin/main`, checks that
    `ci.yml` succeeded on the PR's full head SHA and that the latest maintainer-authored attestation
    for that SHA is `approve`, then fast-forwards `main` with a lease. Only the lead merges. This is
    a script, not branch protection (Free private plan); rulesets get enabled when the repo is
