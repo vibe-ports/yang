@@ -65,7 +65,7 @@ func TestManyLongParses(t *testing.T) {
 			ls[i] = keyed(list("l", leaf("k", strconv.Itoa(i)), leaf("v", v)), "k")
 		}
 		tree := top(cont("pv2:c", ls...))
-		for _, src := range []string{"count(/c/l[number(v) > 0])", "count(/c/l[k < number('0." + digits + "')])"} {
+		for _, src := range []string{"count(/c/l[number(v) > 0])", "count(/c/l[k < number('0." + digits + "')])", "sum(/c/l/v)"} {
 			start := time.Now()
 			_, err := eval(src, EvalContext{Tree: tree})
 			if d := time.Since(start); !errors.Is(err, ErrBudget) && d > time.Second {

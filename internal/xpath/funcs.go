@@ -428,7 +428,7 @@ func fnSum(ev *evaluator, a []value, _ value) (value, error) {
 	}
 	var sum ld
 	for _, it := range a[0].nodes {
-		sum = ldOp("+", sum, cStrtod(ev.stringValue(it)))
+		sum = ldOp("+", sum, ev.toNum(strV(ev.stringValue(it)))) // charged and memoized
 	}
 	return numV(sum), nil
 }
