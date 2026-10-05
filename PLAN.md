@@ -84,8 +84,10 @@ In:
 - XPath 1.0 + YANG function library (`current`, `deref`, `derived-from[-or-self]`, `re-match`,
   `enum-value`, `bit-is-set`) with prefix/module-name resolution.
 - Datastores (NMDA, RFC 8342): per-datastore validation policy — running/candidate/intended:
-  config only, full constraints; operational: config true + config false, semantic violations
-  reported as **warnings** (libyang `LYD_VALIDATE_OPERATIONAL`), `origin` metadata with inheritance.
+  config only, full constraints; operational: config true + config false; severity is **per
+  constraint**, as libyang does — e.g. a failed `must` becomes a warning (`LYD_VALIDATE_OPERATIONAL`),
+  but unresolved require-instance leafrefs / instance-identifiers stay errors (`lyd_validate_unres`,
+  validation.c:587); `origin` metadata with inheritance. Fixtures pin each constraint's severity.
 - Three separate edit/diff representations, never conflated: NETCONF `edit-config` operations
   (`nc:operation`), YANG Patch (RFC 8072) is out of v1, and libyang-style diff trees
   (`yang:operation`, may violate schema constraints by design). v1: diff + apply-diff + merge with a
