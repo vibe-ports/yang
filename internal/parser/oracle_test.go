@@ -109,6 +109,14 @@ func TestOracleErrors(t *testing.T) {
 		}
 	}
 	for _, c := range iffErrors {
+		if strings.HasSuffix(c.msg, "processing error.") {
+			// D-0021: libyang rejects, but its message is architecture-dependent
+			// ("processing error." on arm64, empty on x86_64), so compare the verdict only.
+			if out, ok := yanglint(t, c.src); ok {
+				t.Errorf("%q: libyang accepted, we reject (D-0021): %s", c.src, out)
+			}
+			continue
+		}
 		oracleError(t, c.src, 0, c.msg)
 	}
 }
