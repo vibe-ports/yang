@@ -406,6 +406,9 @@ type Enum struct {
 	Name   string
 	Value  int32
 	Status Status
+	// Disabled is set by compile when an if-feature of the item is false (libyang LYS_DISABLED);
+	// such items are removed at the end of compilation and never seen by readers.
+	Disabled bool
 }
 
 // Bit is one bits item. A value's bitmap has Position/8+1 bytes of the highest position, so
@@ -414,6 +417,7 @@ type Bit struct {
 	Name     string
 	Position uint32
 	Status   Status
+	Disabled bool // as Enum.Disabled
 }
 
 // NSCtx resolves the prefixes of an expression written in schema text (libyang lysc_prefix
