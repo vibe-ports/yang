@@ -202,11 +202,11 @@ func parseLD(s string) (x ld, erange bool) {
 	}
 	// cheap range checks before any big arithmetic; the exact one follows
 	if hex {
-		if t := 4*point + exp; t-4 >= ldMaxExp || t <= -16382 {
-			return ldNaN, true // value ≥ 2^16384, or < 2^-16382 (denormal / underflow)
+		if t := 4*point + exp; t-4 >= ldMaxExp || t <= ldMinExp-1 {
+			return ldNaN, true // value ≥ 2^16384, or < 2^-16445 (below the smallest denormal)
 		}
-	} else if t := point + exp; t-1 >= 4933 || t <= -4932 {
-		return ldNaN, true // ≥ 1e4932 > LDBL_MAX, or < 1e-4932 < LDBL_MIN
+	} else if t := point + exp; t-1 >= 4933 || t <= -4951 {
+		return ldNaN, true // ≥ 1e4932 > LDBL_MAX, or < 1e-4951 < 2^-16445
 	}
 	if len(ds) > sigDigits {
 		sticky := strings.TrimRight(ds[sigDigits:], "0") != ""
@@ -222,21 +222,21 @@ func parseLD(s string) (x ld, erange bool) {
 	if neg {
 		t = "-" + t
 	}
-	var f *big.Float
-	if hex { // power-of-two scaling: exact
-		var err error
-		if f, _, err = big.ParseFloat(t, 0, ldPrec, big.ToNearestEven); err != nil {
-			return ldNaN, true
-		}
-	} else { // big.ParseFloat is not correctly rounded on decimal ties; a rational is
-		r, ok := new(big.Rat).SetString(t)
-		if !ok {
-			return ldNaN, true
-		}
-		f = newF().SetRat(r)
-	}
-	if exp := f.MantExp(nil); exp > ldMaxExp || exp < -16381 { // strtold: ERANGE, also for denormals
+	// exact rational, then one correct rounding (big.ParseFloat is not
+	// correctly rounded on decimal ties)
+	r, ok := new(big.Rat).SetString(t)
+	if !ok {
 		return ldNaN, true
+	}
+	f := newF().SetRat(r)
+	switch exp := f.MantExp(nil); {
+	case exp > ldMaxExp:
+		return ldNaN, true // overflow: ERANGE
+	case exp < -16381: // below LDBL_MIN: glibc sets ERANGE only if the denormal is inexact
+		q := new(big.Rat).Mul(r, new(big.Rat).SetInt(new(big.Int).Lsh(big.NewInt(1), -ldMinExp+1)))
+		if !q.IsInt() {
+			return ldNaN, true // not a multiple of 2^-16445
+		}
 	}
 	return ld{f: f}, false
 }
