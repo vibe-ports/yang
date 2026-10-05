@@ -130,6 +130,7 @@ EOF
 cat >"$t/bin/curl" <<'EOF'
 #!/usr/bin/env bash
 # Stub for review-tier's Jev call: records the request body, answers $FX/jev.
+[[ -t 0 ]] || cat >"$FX/jev-stdin"; printf "%s\n" "$@" >"$FX/jev-argv"
 while (($#)); do [[ $1 == -d ]] && { printf '%s' "$2" >"$FX/jev-request"; shift; }; shift; done
 n=$(( $(cat "$FX/jevn" 2>/dev/null || echo 0) + 1 )); echo $n >"$FX/jevn"; echo x >"$FX/jev-called"
 [[ -f $FX/jev.$n ]] && { cat "$FX/jev.$n"; exit 0; }  # per-call answers when present
@@ -387,7 +388,7 @@ rm "$FX/jev"
 
 # ---------------------------------------------------------------- jev-triage
 jt() { (export TYPESAFE_API_KEY=k GH_REPO=vibe-ports/yang; "$src/jev-triage" "$@"); }
-reset() { rm -f "$FX"/jev "$FX"/jev.* "$FX"/jevn "$FX"/jev-called "$FX"/jev-request "$FX"/calls "$FX"/issue.json; }
+reset() { rm -f "$FX"/jev "$FX"/jev.* "$FX"/jev-argv "$FX"/jev-stdin "$FX"/jevn "$FX"/jev-called "$FX"/jev-request "$FX"/calls "$FX"/issue.json; }
 # drift: touches_ported is deterministic, from a port map with one ported function
 cat >"$t/pm.md" <<'EOF'
 | libyang file | C function | Go symbol | Status | Fixtures | Notes |
@@ -433,7 +434,7 @@ reset; mkissue 1056050 "$(head -c 6000 /dev/zero | tr '\0' 'a')END"; ans 0.9 0.8
 jt issue 7; rc=$?
 [[ $rc == 0 ]] && grep -q 'issue edit 7 --add-label area:validation,size:M,worker:sonnet' "$FX/calls" && ok "jev: labels applied at >= 0.6" || no "jev: labels applied at >= 0.6"
 hasnt "jev: no needs-human when all confident" 'needs-human' "$FX/calls"
-has "jev: labels created if missing" 'label create area:validation .*--force' "$FX/calls"
+has "jev: labels created if missing" 'label create area:validation --color' "$FX/calls"
 jq -e '(.state.body | length) == 4096 and (.state.body | endswith("END") | not) and .state.title == "Port lyd_validate" and (.state | keys) == ["body","title"] and (.questions | keys) == ["area","size","worker"] and (.questions.area.criteria | keys | length) == 9' "$FX/jev-request" >/dev/null &&
   ok "jev: issue payload = title + body truncated to 4 KB" || no "jev: issue payload = title + body truncated to 4 KB"
 reset; mkissue 1056050 b; ans 0.9 0.59 0.7 >"$FX/jev"; jt issue 7
@@ -449,5 +450,27 @@ reset; mkissue 1056050 b; echo '{"answers":{"area":{"choice":"docs"}}}' >"$FX/je
 reset; mkissue 1056050 b; ans 0.9 0.9 0.9 >"$FX/jev"; (unset TYPESAFE_API_KEY; GH_REPO=vibe-ports/yang "$src/jev-triage" issue 7); rc=$?
 [[ $rc == 0 && ! -e $FX/jev-called ]] && hasnt "jev: no key → nothing" 'issue edit|label create' "$FX/calls" || no "jev: no key → nothing"
 reset; unset PORT_MAP
+
+# review fixes: budget, consecutive failures, bad key, key off argv, per-row errors, labels
+reset; a 0.5 1.0 >"$FX/jev"
+jt drift "$t/cm.json" >"$t/o"
+hasnt "jev: key not in curl argv" 'Bearer|^k$' "$FX/jev-argv"
+has "jev: key arrives on curl stdin" 'Authorization: Bearer k' "$FX/jev-stdin"
+reset; many=$(jq -nc '[range(10) | {sha:"abcdef\(.)", url:"u", subject:"s\(.)", files:["src/x.c"]}]')
+echo "$many" >"$t/many.json"
+jt drift "$t/many.json" >"$t/o"; rc=$?
+[[ $rc == 0 && $(grep -c '' "$t/o") == 10 && $(cat "$FX/jevn") == 3 ]] && ok "jev: stops after 3 consecutive failures, list intact" || no "jev: stops after 3 consecutive failures, list intact"
+reset; a 0.5 1.0 >"$FX/jev"
+(export JEV_BUDGET=0; jt drift "$t/many.json") >"$t/o"
+[[ ! -e $FX/jev-called && $(grep -c '' "$t/o") == 10 ]] && ok "jev: exhausted budget → no calls, plain list" || no "jev: exhausted budget → no calls, plain list"
+reset; a 0.5 1.0 >"$FX/jev"
+for k in 'a"b' 'a\b' 'a b'; do (export TYPESAFE_API_KEY="$k"; "$src/jev-triage" drift "$t/cm.json") >"$t/o"; done
+[[ ! -e $FX/jev-called ]] && ok "jev: malformed key → skipped, no call" || no "jev: malformed key → skipped, no call"
+echo '[{"sha":"aaaaaaa1","url":"u","subject":"ok","files":["src/x.c"]}, 5, {"sha":"bbbbbbb2","url":"u","subject":"two","files":"notalist"}]' >"$t/row.json"
+reset; jt drift "$t/row.json" >"$t/o"; rc=$?
+[[ $rc == 0 ]] && has "jev: bad row skipped, others kept" 'ok' "$t/o" || no "jev: bad row skipped, others kept"
+reset; mkissue 1056050 b; ans 0.9 0.9 0.9 >"$FX/jev"; jt issue 7
+hasnt "jev: labels created without --force" '\-\-force' "$FX/calls"
+reset
 
 echo; (( fails == 0 )) && echo "all gate tests passed" || { echo "$fails gate test(s) failed"; exit 1; }

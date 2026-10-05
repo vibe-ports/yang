@@ -167,10 +167,14 @@ on it. Everything lives in `scripts/jev-triage` (and `review-tier`), run from th
   maintainer** (`vars.MAINTAINER_ID`), Jev proposes `area:*`, `size:*` and `worker:*` labels. A
   label is applied only when its top probability is at least 0.6; if any is lower the issue also
   gets `triage:needs-human`. Labels are created when missing; nothing else is posted. Re-edits
-  only add labels, they never remove ones set by hand.
-- **Data sent** (public data only, never repository code): drift = upstream commit subject +
-  touched `src/` paths; issues = title + first 4 KB of the body, only for maintainer-authored
-  issues, so outsiders can't feed it; `review-tier` = file paths + line counts.
+  only add labels, they never remove earlier ones, and edits by anyone else don't re-run triage,
+  so labels can go stale: fix them by hand. Existing labels are never recoloured.
+- **Data sent** (never repository code): drift = public upstream commit subject + touched `src/`
+  paths; issues = title + first 4 KB of the body, exactly as the maintainer wrote it (so it can be
+  non-public text: keep secrets and private details out of issues), only for maintainer-authored
+  issues so outsiders can't feed it; `review-tier` = file paths + line counts.
+  The drift pass has a total time budget (`JEV_BUDGET`, 300 s) and stops after 3 consecutive
+  failed calls; the plain list is always the fallback.
 - **Failure-safe**: no key, API error or malformed answer = exit 0 with no labels or annotations.
 - **Disable**: delete the `TYPESAFE_API_KEY` secret; every Jev step becomes a no-op.
 

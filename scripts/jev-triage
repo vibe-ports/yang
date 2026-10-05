@@ -12,11 +12,13 @@ malformed answer it exits 0 and adds nothing. Sends public data only, never repo
       sent to Jev. Labels applied only when the top probability >= JEV_MIN (default 0.6); any
       lower one adds triage:needs-human. Needs gh (GH_TOKEN, GH_REPO).
 """
-import json, os, re, subprocess, sys
+import json, os, re, subprocess, sys, time
 
 API = "https://api.typesafe.ai/v1/systemone"
 MIN = float(os.environ.get("JEV_MIN", "0.6"))
 BODY_MAX = 4096
+BUDGET = float(os.environ.get("JEV_BUDGET", "300"))  # total seconds for all drift calls
+MAX_FAILS = 3  # consecutive failed calls before drift stops asking
 CHOICES = {
     "area": {"parser": "YANG text parsing", "schema": "schema compilation and tree", "types": "built-in and derived types, patterns",
              "xpath": "XPath and when/must evaluation", "validation": "data validation", "codecs": "JSON/XML data parsing and printing",
@@ -30,7 +32,7 @@ CHOICES = {
 def ask(state, questions):
     """Return Jev's answers dict, or None on any failure."""
     key = os.environ.get("TYPESAFE_API_KEY")
-    if not key:
+    if not re.fullmatch(r"[A-Za-z0-9._-]+", key or ""):  # also keeps the curl config line intact
         return None
     body = json.dumps({"model": "jev-latest", "state": state, "questions": questions})
     cfg = 'header = "Authorization: Bearer %s"\n' % key  # via stdin: not in argv
@@ -39,7 +41,7 @@ def ask(state, questions):
                            input=cfg, capture_output=True, text=True, timeout=30)
         a = json.loads(r.stdout)["answers"]
         return a if r.returncode == 0 and isinstance(a, dict) else None
-    except Exception:
+    except (subprocess.SubprocessError, OSError, ValueError, KeyError, TypeError):
         return None
 
 
@@ -74,22 +76,27 @@ def drift(commits):
     qs = {"behaviour": {"type": "noul", "instructions": "Judging only from the commit subject and the touched paths of this upstream YANG library commit: does it change observable behaviour (validation results, diagnostics, printed output, accepted input) rather than being a refactor, test, build or documentation change?"},
           "priority": {"type": "score", "instructions": "How urgently should a pure-Go port of this library mirror this upstream commit? Judge only from the subject and touched paths.",
                        "criteria": ["later: refactor, tests, docs or build only", "next milestone: behaviour change in a less central area", "now: user-visible bug fix or behaviour change in core parsing, validation or XPath"]}}
-    rows, answered = [], False
+    rows, answered, fails, t0 = [], False, 0, time.monotonic()
     for c in commits:
-        files = [f for f in c.get("files", []) if isinstance(f, str)]
-        t = touches(pm, files, c.get("functions", []))
-        a = ask({"subject": str(c.get("subject", ""))[:300], "paths": files[:50]}, qs)
-        b = pr = None
         try:
-            b, pr = num(a["behaviour"]["noul"]), num(a["priority"]["score"])
-        except Exception:
-            pass
-        note = ""
-        if b is not None and pr is not None:
-            answered = True
-            lvl = "now" if pr >= 1.5 else "next-milestone" if pr >= 0.5 else "later"
-            note = f" — behaviour: {'yes' if b >= 0.5 else 'no'} ({b:.0%}) · touches_ported: {t} · priority: {lvl}"
-        rows.append((-(pr if pr is not None else -1), f"- [`{str(c.get('sha', ''))[:7]}`]({c.get('url', '')}) {c.get('subject', '')}{note}"))
+            files = [f for f in c.get("files", []) if isinstance(f, str)]
+            t = touches(pm, files, c.get("functions", []))
+            line = f"- [`{str(c.get('sha', ''))[:7]}`]({c.get('url', '')}) {c.get('subject', '')}"
+            b = pr = None
+            if fails < MAX_FAILS and time.monotonic() - t0 < BUDGET:
+                a = ask({"subject": str(c.get("subject", ""))[:300], "paths": files[:50]}, qs)
+                try:
+                    b, pr = num(a["behaviour"]["noul"]), num(a["priority"]["score"])
+                except (KeyError, TypeError):
+                    pass
+                fails = 0 if b is not None and pr is not None else fails + 1
+            if b is not None and pr is not None:
+                answered = True
+                lvl = "now" if pr >= 1.5 else "next-milestone" if pr >= 0.5 else "later"
+                line += f" — behaviour: {'yes' if b >= 0.5 else 'no'} ({b:.0%}) · touches_ported: {t} · priority: {lvl}"
+            rows.append((-(pr if pr is not None else -1), line))
+        except Exception as e:  # one bad row never costs the list
+            print(f"jev-triage: skipped a row: {e}", file=sys.stderr)
     if answered:
         rows.sort(key=lambda r: r[0])  # stable: ties keep upstream order
     print("\n".join(r[1] for r in rows))
@@ -126,7 +133,7 @@ def issue(n):
     if low:
         labels.append("triage:needs-human")
     for lb in labels:
-        gh("label", "create", lb, "--color", "C5DEF5", "--force", "-R", repo)
+        gh("label", "create", lb, "--color", "C5DEF5", "-R", repo)  # fails if it exists: never recoloured
     if labels:
         gh("issue", "edit", n, "--add-label", ",".join(labels), "-R", repo)
 
