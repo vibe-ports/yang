@@ -1,0 +1,5 @@
+# Append-only registries: concurrent PRs append rows/fixtures at the end.
+# The union driver keeps both sides; reviewers still check the result.
+conformance/corpus/manifest.yaml merge=union
+docs/port-map.md merge=union
+conformance/deviations.md merge=union
