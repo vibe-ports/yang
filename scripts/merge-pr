@@ -1,17 +1,20 @@
 #!/usr/bin/env bash
 # Merge gate + fast-forward merge (never the GitHub merge button: it records the local time zone).
-#   scripts/merge-pr <pr-number>
+# Run the TRUSTED copy from main, never a PR's version, in a checkout of origin/main:
+#   git fetch origin main && git switch --detach origin/main
+#   scripts/merge-pr <pr-number>        (refuses unless identical to origin/main:scripts/merge-pr)
+#   bash <(git show origin/main:scripts/merge-pr) <pr-number>      (same, without the file)
 # Merges only if, for the PR's current FULL head SHA:
 #  - the PR is open, not a draft, targets main of this repository (origin);
-#  - review: the LATEST canonical attestation line naming that SHA, in a PR comment authored by the
-#    maintainer (numeric id MAINTAINER_ID, default 1056050), is
-#      VERDICT: approve <40-hex head sha> (<reviewer>)
+#  - review: the LATEST canonical attestation line naming that SHA — in a never-edited PR comment
+#    authored by the maintainer (numeric id MAINTAINER_ID, default 1056050), outside code fences —
+#    is   VERDICT: approve <40-hex head sha> (<reviewer>)   with reviewer codex-* or claude-opus*
 #    (scripts/astra emits it; a later "VERDICT: changes <sha> …" revokes an earlier approve);
 #  - CI: the latest run of .github/workflows/ci.yml for exactly that SHA concluded success;
 #  - every branch commit has +0000 author/committer dates and the head fast-forwards main.
 # Then pushes <head>:main with a lease on the main SHA it checked; GitHub marks the PR merged.
 # Limits: an advisory gate, not branch protection (Free private plan: anyone with write access can
-# push to main directly); a PR can change ci.yml itself, so CI/workflow changes need human review.
+# push to main directly); a PR can change ci.yml itself, so policy-file changes need human review.
 set -euo pipefail
 fail() { echo "merge-pr: $*" >&2; exit 1; }
 pr=${1:?usage: scripts/merge-pr <pr-number>}
@@ -26,6 +29,18 @@ repo=$(gh repo view --json nameWithOwner --jq .nameWithOwner)
 url=$(git remote get-url origin)
 [[ $url =~ github\.com[:/]${expected_repo}(\.git)?$ ]] || fail "origin is not $expected_repo"
 
+# Trusted code only: this script, the hooks the push runs and everything else in the checkout
+# must be main's. (Run as a file it must equal main's copy; via `bash <(git show …)` it is.)
+git fetch -q origin "+refs/heads/main:refs/remotes/origin/main"
+base=$(git rev-parse refs/remotes/origin/main)
+if [[ -f ${BASH_SOURCE[0]} ]]; then
+  git show "$base:scripts/merge-pr" | cmp -s - "${BASH_SOURCE[0]}" ||
+    fail "this merge-pr differs from origin/main's; run: bash <(git show origin/main:scripts/merge-pr) $pr"
+fi
+[[ $(git rev-parse HEAD) == "$base" ]] ||
+  fail "checkout HEAD is not origin/main ($base): git switch --detach origin/main"
+git diff --quiet HEAD -- scripts .githooks || fail "local changes under scripts/ or .githooks/"
+
 pr_state() { gh api "repos/$repo/pulls/$pr" --jq '[.state, .draft, .base.ref, .base.repo.full_name, .head.sha] | @tsv'; }
 IFS=$'\t' read -r state draft base_ref base_repo head < <(pr_state)
 [[ $state == open && $draft == false ]] || fail "PR is $state (draft=$draft)"
@@ -34,12 +49,15 @@ IFS=$'\t' read -r state draft base_ref base_repo head < <(pr_state)
 short=${head:0:7}
 
 verdict=$(gh api --paginate --slurp "repos/$repo/issues/$pr/comments" | jq -r --argjson uid "$maintainer" --arg sha "$head" '
-  [ .[][] | select(.user.id == $uid) | . as $c
-    | (.body // "" | split("\n") | .[] | rtrimstr("\r")
-       | capture("^VERDICT: (?<v>approve|changes) (?<s>[0-9a-f]{40}) \\([A-Za-z0-9._-]+\\)$"))
+  def unfenced: reduce (split("\n")[] | rtrimstr("\r")) as $l ({fence: false, out: []};
+    if ($l | test("^ {0,3}(```|~~~)")) then .fence = (.fence | not)
+    elif .fence then . else .out += [$l] end) | .out[];
+  [ .[][] | select(.user.id == $uid and .updated_at == .created_at) | . as $c
+    | (.body // "" | unfenced
+       | capture("^VERDICT: (?<v>approve|changes) (?<s>[0-9a-f]{40}) \\((codex-[A-Za-z0-9_.-]+|claude-opus[A-Za-z0-9_.-]*)\\)$"))
     | select(.s == $sha) | {t: $c.created_at, id: $c.id, v} ]
   | sort_by([.t, .id]) | last | .v // "none"')
-[[ $verdict == approve ]] || fail "latest maintainer attestation for $head is '$verdict', need 'VERDICT: approve $head (<reviewer>)'"
+[[ $verdict == approve ]] || fail "latest maintainer attestation for $head is '$verdict', need 'VERDICT: approve $head (codex-…)'"
 
 ci=$(gh api "repos/$repo/actions/workflows/ci.yml/runs?head_sha=$head&per_page=100" | jq -r --arg sha "$head" --arg repo "$repo" '
   [ .workflow_runs[] | select(.path == ".github/workflows/ci.yml" and .head_sha == $sha and .repository.full_name == $repo) ]
@@ -48,8 +66,6 @@ ci=$(gh api "repos/$repo/actions/workflows/ci.yml/runs?head_sha=$head&per_page=1
 
 git fetch -q origin "refs/pull/$pr/head"
 [[ $(git rev-parse FETCH_HEAD) == "$head" ]] || fail "fetched PR head differs from $head (PR moved?)"
-git fetch -q origin "+refs/heads/main:refs/remotes/origin/main"
-base=$(git rev-parse refs/remotes/origin/main)
 git merge-base --is-ancestor "$base" "$head" || fail "$short does not fast-forward main: rebase (UTC dates) and re-review"
 bad=$(git log --format='%h %ad %cd' --date=format:%z "$base..$head" | awk '$2!="+0000" || $3!="+0000"')
 [[ -z $bad ]] || fail "commits with non-UTC dates:"$'\n'"$bad"
@@ -58,6 +74,7 @@ bad=$(git log --format='%h %ad %cd' --date=format:%z "$base..$head" | awk '$2!="
 IFS=$'\t' read -r state draft _ _ head2 < <(pr_state)
 [[ $state == open && $draft == false && $head2 == "$head" ]] || fail "PR changed while checking (head $head2)"
 
-git push --force-with-lease="refs/heads/main:$base" origin "$head:refs/heads/main"
+git push --force-with-lease="refs/heads/main:$base" origin "$head:refs/heads/main" ||
+  fail "push rejected (main moved since $base?)"
 git fetch -q origin "+refs/heads/main:refs/remotes/origin/main"
 echo "merged #$pr as $head"
