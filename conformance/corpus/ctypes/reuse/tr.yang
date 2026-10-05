@@ -1,0 +1,42 @@
+module tr {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:tr";
+  prefix tr;
+
+  import tr-base { prefix trb; }
+
+  description
+    "Typedef reuse rule (libyang schema_compile_node.c lys_compile_type): a typedef that adds
+     nothing reuses its base's compiled type and name; one with restrictions gets its own name;
+     a leaf type with restrictions is named after the nearest typedef.";
+
+  typedef my-pct { type trb:pct; }
+  typedef my-pct2 { type my-pct; }
+  typedef small { type my-pct2 { range "1..10"; } }
+  typedef small2 { type small; units "tiny"; }
+  typedef str { type string { length "1..8"; pattern "[a-z]*"; } }
+  typedef str2 { type str { pattern "a.*"; } }
+  typedef d2 { type decimal64 { fraction-digits 2; range "-1.5..10 | 20"; } }
+  typedef my-color { type trb:color { enum blue; enum green; } }
+  typedef flags { type bits { bit a; bit b { position 7; } bit c; } }
+
+  container c {
+    typedef local { type my-pct; }
+    leaf a { type my-pct; }
+    leaf b { type my-pct2; }
+    leaf s { type small; }
+    leaf s2 { type small2; }
+    leaf r { type my-pct2 { range "2..3"; } }
+    leaf l { type local; }
+    leaf st { type str2; }
+    leaf st2 { type str2 { length "2..3"; } }
+    leaf d { type d2; }
+    leaf d3 { type d2 { range "1..2"; } }
+    leaf col { type my-color; }
+    leaf col2 { type trb:color; }
+    leaf fl { type flags; }
+    leaf fl2 { type flags { bit c; bit b; } }
+    leaf u { type union { type my-pct; type union { type str; type boolean; } type d2; } }
+    leaf plain { type uint8; units "own"; }
+  }
+}

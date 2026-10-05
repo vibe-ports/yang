@@ -1,0 +1,7 @@
+module e07 {
+  namespace "urn:vibe-ports:e07";
+  prefix e07;
+
+  identity i;
+  leaf l { type identityref { base j; } }
+}

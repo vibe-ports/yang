@@ -1,0 +1,676 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module tr {\n  namespace \"urn:vibe-ports:tr\";\n  prefix tr;\n\n  description\n    \"Typedef reuse rule (libyang schema_compile_node.c lys_compile_type): a typedef that adds\n     nothing reuses its base's compiled type and name; one with restrictions gets its own name;\n     a leaf type with restrictions is named after the nearest typedef.\";\n\n  container c {\n    config true;\n    status current;\n    leaf a {\n      type uint8 {\n        range \"0..100\";\n      }\n      units \"percent\";\n      config true;\n      status current;\n    }\n    leaf b {\n      type uint8 {\n        range \"0..100\";\n      }\n      units \"percent\";\n      config true;\n      status current;\n    }\n    leaf s {\n      type uint8 {\n        range \"1..10\";\n      }\n      units \"percent\";\n      config true;\n      status current;\n    }\n    leaf s2 {\n      type uint8 {\n        range \"1..10\";\n      }\n      units \"tiny\";\n      config true;\n      status current;\n    }\n    leaf r {\n      type uint8 {\n        range \"2..3\";\n      }\n      units \"percent\";\n      config true;\n      status current;\n    }\n    leaf l {\n      type uint8 {\n        range \"0..100\";\n      }\n      units \"percent\";\n      config true;\n      status current;\n    }\n    leaf st {\n      type string {\n        length \"1..8\";\n        pattern \"[a-z]*\";\n        pattern \"a.*\";\n      }\n      config true;\n      status current;\n    }\n    leaf st2 {\n      type string {\n        length \"2..3\";\n        pattern \"[a-z]*\";\n        pattern \"a.*\";\n      }\n      config true;\n      status current;\n    }\n    leaf d {\n      type decimal64 {\n        fraction-digits 2;\n        range \"-150..1000 | 2000\";\n      }\n      config true;\n      status current;\n    }\n    leaf d3 {\n      type decimal64 {\n        fraction-digits 2;\n        range \"100..200\";\n      }\n      config true;\n      status current;\n    }\n    leaf col {\n      type enumeration {\n        enum \"blue\" {\n          value 6;\n          status current;\n        }\n        enum \"green\" {\n          value 5;\n          status current;\n        }\n      }\n      default \"green\";\n      config true;\n      status current;\n    }\n    leaf col2 {\n      type enumeration {\n        enum \"red\" {\n          value 0;\n          status current;\n        }\n        enum \"green\" {\n          value 5;\n          status current;\n        }\n        enum \"blue\" {\n          value 6;\n          status current;\n        }\n      }\n      default \"green\";\n      config true;\n      status current;\n    }\n    leaf fl {\n      type bits {\n        bit \"a\" {\n          position 0;\n          status current;\n        }\n        bit \"b\" {\n          position 7;\n          status current;\n        }\n        bit \"c\" {\n          position 8;\n          status current;\n        }\n      }\n      config true;\n      status current;\n    }\n    leaf fl2 {\n      type bits {\n        bit \"b\" {\n          position 7;\n          status current;\n        }\n        bit \"c\" {\n          position 8;\n          status current;\n        }\n      }\n      config true;\n      status current;\n    }\n    leaf u {\n      type union {\n        type uint8 {\n          range \"0..100\";\n        }\n        type string {\n          length \"1..8\";\n          pattern \"[a-z]*\";\n        }\n        type boolean;\n        type decimal64 {\n          fraction-digits 2;\n          range \"-150..1000 | 2000\";\n        }\n      }\n      config true;\n      status current;\n    }\n    leaf plain {\n      type uint8;\n      units \"own\";\n      config true;\n      status current;\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "tr",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "tr",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/tr:c",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "tr",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/tr:c/a",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "0..100",
+            "typedefs": [
+              "pct"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "tr",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/tr:c/b",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "0..100",
+            "typedefs": [
+              "pct"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "tr",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/tr:c/s",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "1..10",
+            "typedefs": [
+              "small"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "tr",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/tr:c/s2",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "1..10",
+            "typedefs": [
+              "small"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "tr",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/tr:c/r",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "2..3",
+            "typedefs": [
+              "my-pct2"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "tr",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/tr:c/l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "0..100",
+            "typedefs": [
+              "pct"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "tr",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/tr:c/st",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": "1..8",
+            "patterns": [
+              {
+                "expr": "[a-z]*",
+                "invert": false
+              },
+              {
+                "expr": "a.*",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "str2"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "tr",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/tr:c/st2",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": "2..3",
+            "patterns": [
+              {
+                "expr": "[a-z]*",
+                "invert": false
+              },
+              {
+                "expr": "a.*",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "str2"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "tr",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/tr:c/d",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "decimal64",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": 2,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "-1.50..10.00 | 20.00",
+            "typedefs": [
+              "d2"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "tr",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/tr:c/d3",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "decimal64",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": 2,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "1.00..2.00",
+            "typedefs": [
+              "d2"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "green"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "tr",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/tr:c/col",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "blue",
+                "value": 6
+              },
+              {
+                "name": "green",
+                "value": 5
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "my-color"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "green"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "tr",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/tr:c/col2",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "red",
+                "value": 0
+              },
+              {
+                "name": "green",
+                "value": 5
+              },
+              {
+                "name": "blue",
+                "value": 6
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "color"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "tr",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/tr:c/fl",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "bits",
+            "bases": null,
+            "bits": [
+              {
+                "name": "a",
+                "position": 0
+              },
+              {
+                "name": "b",
+                "position": 7
+              },
+              {
+                "name": "c",
+                "position": 8
+              }
+            ],
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "flags"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "tr",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/tr:c/fl2",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "bits",
+            "bases": null,
+            "bits": [
+              {
+                "name": "b",
+                "position": 7
+              },
+              {
+                "name": "c",
+                "position": 8
+              }
+            ],
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "flags"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "tr",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/tr:c/u",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": [
+              {
+                "base": "uint8",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": "0..100",
+                "typedefs": [
+                  "pct"
+                ],
+                "union": null
+              },
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": "1..8",
+                "patterns": [
+                  {
+                    "expr": "[a-z]*",
+                    "invert": false
+                  }
+                ],
+                "range": null,
+                "typedefs": [
+                  "str"
+                ],
+                "union": null
+              },
+              {
+                "base": "boolean",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              },
+              {
+                "base": "decimal64",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": 2,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": "-1.50..10.00 | 20.00",
+                "typedefs": [
+                  "d2"
+                ],
+                "union": null
+              }
+            ]
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "tr",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/tr:c/plain",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

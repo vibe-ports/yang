@@ -19,20 +19,52 @@ type pluginKey struct{ module, revision, name string }
 
 var plugins = map[pluginKey]*plugin{}
 
-// pluginFor returns the handler of the nearest typedef in t's derivation chain that has one,
-// like lys_compile_type inheriting the plugin of the base typedef.
-func pluginFor(t *schema.Type) *plugin {
-	for c := t; c != nil; c = c.From {
-		m := c.TypedefModule
-		if m == nil || c.Typedef == "" {
-			continue
-		}
-		if p := plugins[pluginKey{m.Name, m.Revision, c.Typedef}]; p != nil {
-			return p
-		}
-		if p := plugins[pluginKey{m.Name, "", c.Typedef}]; p != nil {
-			return p
-		}
+// TypedefPlugin returns the identity of the handler record registered for the typedef name of
+// module@revision, nil if there is none (lyplg_type_plugin_find). Compile compares identities for
+// libyang's typedef reuse rule: a typedef with its own record is never merged into its base type.
+// As libyang's records are per name, so are identities, also where names share one handler
+// (hex-string, phys-address, …).
+func TypedefPlugin(module, revision, name string) any {
+	if k, _ := lookup(module, revision, name); k != nil {
+		return *k
 	}
 	return nil
+}
+
+// Plugin returns the identity (as TypedefPlugin) of the record Store uses for t, nil for the
+// built-in one of t.Base.
+func Plugin(t *schema.Type) any {
+	if k, _ := find(t); k != nil {
+		return *k
+	}
+	return nil
+}
+
+// lookup finds the record of module@revision name, then the one for every revision.
+func lookup(module, revision, name string) (*pluginKey, *plugin) {
+	for _, k := range [...]pluginKey{{module, revision, name}, {module, "", name}} {
+		if p := plugins[k]; p != nil {
+			return &k, p
+		}
+	}
+	return nil, nil
+}
+
+// find returns the record of the nearest typedef in t's derivation chain that has one, like
+// lys_compile_type inheriting the plugin of the base typedef.
+func find(t *schema.Type) (*pluginKey, *plugin) {
+	for c := t; c != nil; c = c.From {
+		if m := c.TypedefModule; m != nil && c.Typedef != "" {
+			if k, p := lookup(m.Name, m.Revision, c.Typedef); p != nil {
+				return k, p
+			}
+		}
+	}
+	return nil, nil
+}
+
+// pluginFor returns the handler Store uses for t, nil for the built-in one of t.Base.
+func pluginFor(t *schema.Type) *plugin {
+	_, p := find(t)
+	return p
 }

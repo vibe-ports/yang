@@ -1,0 +1,6 @@
+module e21 {
+  namespace "urn:vibe-ports:e21";
+  prefix e21;
+
+  leaf l { type uint16 { range "1..70000"; } }
+}

@@ -1,0 +1,6 @@
+module e20 {
+  namespace "urn:vibe-ports:e20";
+  prefix e20;
+
+  leaf l { type int8 { range "min..10 | 5..max"; } }
+}

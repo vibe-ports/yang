@@ -1,0 +1,11 @@
+module rw2 {
+  namespace "urn:vibe-ports:rw2";
+  prefix rw2;
+
+  description "A leaf type with a restriction its built-in base does not allow.";
+
+  typedef s { type string; }
+  container c {
+    leaf l { type s { range "1..2"; } }
+  }
+}

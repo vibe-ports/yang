@@ -1,0 +1,9 @@
+module rw {
+  namespace "urn:vibe-ports:rw";
+  prefix rw;
+
+  description "A typedef with a restriction its base type does not allow.";
+
+  typedef t { type int8 { length "1"; } }
+  leaf l { type t; }
+}

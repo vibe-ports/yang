@@ -1,0 +1,8 @@
+module e01 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:e01";
+  prefix e01;
+
+  typedef t { type uint8 { range "10..100"; } }
+  leaf l { type t { range "1..11"; } }
+}

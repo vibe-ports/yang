@@ -17,6 +17,7 @@ import (
 	"github.com/vibe-ports/yang/internal/ly"
 	"github.com/vibe-ports/yang/internal/models"
 	"github.com/vibe-ports/yang/internal/parser"
+	"github.com/vibe-ports/yang/internal/schema"
 )
 
 var (
@@ -38,6 +39,7 @@ type Options struct {
 	Loader        func(module, revision, submodule, subRevision string) (src []byte, ok bool)
 	MaxSearchDirs int           // directories opened per search, default 10 000 (U-0022)
 	Parse         parser.Budget // per (sub)module text; MaxBytes also bounds reading a file
+	Budget        Budget        // compile limits per Load (design 06 §5)
 }
 
 // Level is a diagnostic's log level.
@@ -97,6 +99,7 @@ type pmod struct {
 	Imports  []*Module // per Parsed.Imports
 	Includes []*Include
 	parsing  bool
+	mod      *schema.Module // the compiled module it belongs to (lysp_module.mod), bound by compile
 }
 
 // Module is a module in the context (struct lys_module).

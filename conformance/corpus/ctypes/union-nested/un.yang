@@ -1,0 +1,14 @@
+module un {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:un";
+  prefix un;
+
+  description "Nested unions are flattened in member order; a nested leafref member keeps its index.";
+
+  typedef inner { type union { type int8; type leafref { path "../x"; } } }
+  typedef outer { type union { type string { length "1"; } type inner; type boolean; } }
+
+  leaf x { type uint16; }
+  leaf n { type union { type outer; type inner; type empty; } }
+  leaf n2 { type outer; }
+}

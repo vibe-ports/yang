@@ -1,0 +1,11 @@
+module tc {
+  namespace "urn:vibe-ports:tc";
+  prefix tc;
+
+  description "Typedef chain a -> b -> a: circular chain of types.";
+
+  typedef a { type b; }
+  typedef b { type a; }
+  leaf ok { type string; }
+  leaf l { type a; }
+}

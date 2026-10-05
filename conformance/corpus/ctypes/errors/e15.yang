@@ -1,0 +1,7 @@
+module e15 {
+  namespace "urn:vibe-ports:e15";
+  prefix e15;
+
+  typedef t { type string; status deprecated; }
+  leaf l { type t; }
+}

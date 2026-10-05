@@ -1,0 +1,6 @@
+module e02 {
+  namespace "urn:vibe-ports:e02";
+  prefix e02;
+
+  leaf l { type string { length "50 | 10"; } }
+}

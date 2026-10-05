@@ -1,0 +1,7 @@
+module e09 {
+  namespace "urn:vibe-ports:e09";
+  prefix e09;
+
+  leaf x { type string; }
+  leaf l { type leafref { path "/x"; require-instance false; } }
+}

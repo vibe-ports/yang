@@ -1,0 +1,10 @@
+module le {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:le";
+  prefix le;
+
+  import lt2 { prefix lt2; }
+
+  leaf x { type string; }
+  leaf rd { type lt2:d; }
+}

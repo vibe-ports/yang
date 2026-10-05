@@ -1,0 +1,7 @@
+module e08 {
+  namespace "urn:vibe-ports:e08";
+  prefix e08;
+
+  typedef t { type leafref; }
+  leaf l { type t; }
+}

@@ -1,0 +1,7 @@
+module e12 {
+  namespace "urn:vibe-ports:e12";
+  prefix e12;
+
+  typedef u { type union { type int8; } }
+  leaf l { type u { type string; } }
+}

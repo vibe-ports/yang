@@ -1,0 +1,9 @@
+module tc3 {
+  namespace "urn:vibe-ports:tc3";
+  prefix tc3;
+
+  description "Unknown base type of a typedef.";
+
+  typedef a { type nope; }
+  leaf l { type a; }
+}

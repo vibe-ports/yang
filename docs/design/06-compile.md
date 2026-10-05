@@ -281,11 +281,15 @@ reusing it (SCN:2088), a union member slot (SCN:1438, nested-union members SCN:1
 from a union base SCN:1895), and a leaf/leaf-list taking a type unchanged (SCN:2804 after SCN:2153).
 A leaf whose type contains a leafref always gets its own new type (SCN:2135) that *copies* the
 base's path and prefixes (SCN:1842-1846) or member pointers (SCN:1887-1897) but never holds the base
-itself. Our cache: `map[*parser.Node]*cachedType{t *schema.Type; holders int}`, incremented at
-exactly those points and decremented when a holder's module is dropped from the snapshot at
-recompilation (`lysc_module_free` of the modules of a recompiled dep set, SC:1539); lookup with
-`holders == 1` discards and recompiles, as SCN:1986. Lifetime = the context **snapshot**, not one
-compile run: types held by modules of other, not recompiled dep sets survive a later `Load`.
+itself. A leafref's `realtype` is one more holder (SC:936, SC:1382). Our cache (`compile.typeCache`):
+`compiled map[*parser.Node]*schema.Type` plus `refs map[*schema.Type]int` — the count is **per type
+object**, not per typedef, because an unchanged derived typedef stores its base's object (so `u` and
+`d` above share one count, which never drops below 2 again). Incremented at exactly those points and
+decremented when a holder's module is dropped from the snapshot at recompilation
+(`lysc_module_free` of the modules of a recompiled dep set, SC:1539), cascading to union members
+and realtype like `lysc_type_free`; lookup with `refs == 1` discards and recompiles, as SCN:1986.
+Lifetime = the context **snapshot**, not one compile run: types held by modules of other, not
+recompiled dep sets survive a later `Load`.
 
 **Leafref typedef consequences** (all conditional on a second holder; verified in source):
 1. *Direct use — no quirk.* `typedef ref { type leafref { path "../x"; } }` used by leaves in A and B:
@@ -320,8 +324,9 @@ in place by its members (recursively already flat) — `schema.Type.Union` is fl
 and the union error text depend on it. A union typedef used unchanged copies the member pointers
 (SCN:1887). VERIFY(types/union-nested-index) for a nested union with a leafref member.
 Flattening is **exponential** in the text: `typedef u1 { type union { type u0; type u0; } }` …
-`u30` has 2^30 members although each typedef is compiled once. Every member slot counts against
-`Budget.MaxTypes` (§5), checked before the array grows (SCN:1443).
+`u30` has 2^30 members from 31 lines of text. Every member slot counts against
+`Budget.MaxTypes` and the union's width against `Budget.MaxUnionMembers` (§5), checked before the
+array grows (SCN:1443).
 
 **2.5 Groupings and uses** (SCN:3838). Find the grouping (SCN:3676): unprefixed or own prefix →
 scoped groupings up the parsed parents, then top-level groupings of the main module and every
@@ -570,13 +575,19 @@ readers during `Load`.
 
 libyang has none of these limits, so each becomes a `U-00xx` entry in deviations.md
 ("Unsupported") in the PR that implements it — not before (same for U-0020/U-0021).
+The compile limits are one struct, `compile.Options.Budget` (`MaxTypes`, `MaxUnionMembers`,
+`MaxBitPosition`; later `MaxNodes`, `MaxDepth`), next to the loader's `Options.MaxSearchDirs` and
+`Options.Parse`; every limit wraps the package's single `ErrBudget`.
 - **Grouping expansion:** `g(n)` using `g(n-1)` twice gives 2^n nodes from linear text. Cap total
   compiled nodes per `Load` (`MaxNodes`, default 1<<20) and check `context.Context` every 1k nodes.
 - **Recursion:** compile recursion = nesting through uses/augment chains, not bounded by the parser's
   500-block depth; cap `MaxDepth` (default 10 000 levels) — the Go stack itself is not a budget.
-- **Types:** `MaxTypes` (default 1<<16) caps compiled type objects plus union member slots per
-  `Load` — union flattening is 2^n from linear text (§2.4) even with every typedef compiled once.
-  Test: the `u0…u30` chain fails with `ErrBudget` in < 1 s and bounded memory.
+- **Types:** `MaxTypes` (default 1<<20, the order of `MaxNodes`: new types scale with compiled
+  leaves) caps compiled type objects plus union member slots per `Load` — union flattening is 2^n
+  from linear text (§2.4), and a union typedef held by the cache only is recompiled at every use.
+  `MaxUnionMembers` (default 1<<16) caps the flattened width of one union, checked before its array
+  grows. Test: the `u0…u30` chain fails with `ErrBudget` after at most `MaxTypes` units of work
+  (< 1 s at `MaxTypes` 1<<16; ~0.3 s at the default, several seconds under `-race`).
 - **IffExpr:** explicit-stack evaluation; `Err` from the parser already bounds pathological input.
 - **Cycles** (all detected without recursion): imports/includes (`parsing` flag), groupings (uses
   stack), typedefs (chain sets), identities and features (BFS as SC:246/SF:655), leafref chains,

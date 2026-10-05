@@ -1,0 +1,6 @@
+module e14 {
+  namespace "urn:vibe-ports:e14";
+  prefix e14;
+
+  leaf l { type enumeration { enum x { value 1; } enum y { value 1; } } }
+}

@@ -1,0 +1,8 @@
+module e04 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:e04";
+  prefix e04;
+
+  typedef t { type enumeration { enum one; } }
+  leaf l { type t { enum two; } }
+}

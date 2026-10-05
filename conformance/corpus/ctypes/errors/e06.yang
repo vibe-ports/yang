@@ -1,0 +1,6 @@
+module e06 {
+  namespace "urn:vibe-ports:e06";
+  prefix e06;
+
+  leaf l { type bits; }
+}

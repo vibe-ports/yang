@@ -1,0 +1,7 @@
+module e11 {
+  namespace "urn:vibe-ports:e11";
+  prefix e11;
+
+  typedef t { type decimal64 { fraction-digits 2; } }
+  leaf l { type t { fraction-digits 3; } }
+}

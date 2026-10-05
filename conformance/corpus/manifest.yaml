@@ -4276,3 +4276,136 @@ fixtures:
       context_path: /pv2:c
       xpath: "count(l[k=../ref])"
     golden: golden/xpath-aug-key-relative-leaf.json
+  # ---- ctypes: type compilation (design 06 §2.3-2.4, C5); Go side: internal/compile type tests ----
+
+  - id: types/unchanged-typedef-reuse
+    dir: ctypes
+    source: *own
+    rfc: ["RFC7950#7.3", "RFC7950#7.3.4", "RFC7950#9.2.4", "RFC7950#9.4.5", "RFC7950#9.6.4", "RFC7950#9.7.4", "RFC7950#9.12"]
+    areas: [schema, types]
+    request:
+      op: schema
+      searchdirs: [reuse]
+      modules: [{name: tr}]
+    golden: golden/unchanged-typedef-reuse.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.3"]
+      deviation: null
+
+  - id: types/typedef-cycle
+    dir: ctypes
+    source: *own
+    rfc: ["RFC7950#7.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [cycle]
+      modules: [{name: tc}, {name: tc2}, {name: tc3}]
+    golden: golden/typedef-cycle.json
+    assert:
+      verdict: invalid
+      diagnostics:
+        - {vecode_name: LYVE_REFERENCE, schema_path: /tc:l}
+        - {vecode_name: LYVE_REFERENCE, schema_path: /tc2:c/l}
+        - {vecode_name: LYVE_REFERENCE, schema_path: /tc3:l}
+      deviation: null
+
+  - id: types/restriction-wrong-type
+    dir: ctypes
+    source: *own
+    rfc: ["RFC7950#9.2.4", "RFC7950#9.4.4"]
+    areas: [schema, types]
+    request:
+      op: schema
+      searchdirs: [wrongtype]
+      modules: [{name: rw}, {name: rw2}]
+    golden: golden/restriction-wrong-type.json
+    assert:
+      verdict: invalid
+      diagnostics:
+        - {vecode_name: LYVE_SYNTAX_YANG, schema_path: /rw:l}
+        - {vecode_name: LYVE_SYNTAX_YANG, schema_path: /rw2:c/l}
+      deviation: null
+
+  - id: types/compile-errors
+    dir: ctypes
+    source: *own
+    rfc: ["RFC7950#9.2.4", "RFC7950#9.2.5", "RFC7950#9.3.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.6.4", "RFC7950#9.7.4", "RFC7950#9.9.2", "RFC7950#9.9.3", "RFC7950#9.10.2", "RFC7950#9.11", "RFC7950#9.12", "RFC7950#7.3.4", "RFC7950#7.21.2"]
+    areas: [schema, types]
+    request:
+      op: schema
+      searchdirs: [errors]
+      modules: [{name: e01}, {name: e02}, {name: e03}, {name: e04}, {name: e05}, {name: e06}, {name: e07}, {name: e08}, {name: e09}, {name: e10}, {name: e11}, {name: e12}, {name: e13}, {name: e14}, {name: e15}, {name: e16}, {name: e17}, {name: e18}, {name: e19}, {name: e20}, {name: e21}, {name: e22}]
+    golden: golden/compile-errors.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2.4"]
+      deviation: null
+
+  - id: types/union-nested-index
+    dir: ctypes
+    source: *own
+    rfc: ["RFC7950#9.12", "RFC7950#9.9"]
+    areas: [schema, types]
+    request:
+      op: schema
+      searchdirs: [union-nested]
+      modules: [{name: un}]
+    golden: golden/union-nested-index.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: lref/typedef-prefix-direct
+    dir: ctypes
+    source: *own
+    rfc: ["RFC7950#9.9.2", "RFC7950#6.4.1"]
+    areas: [schema, types]
+    request:
+      op: schema
+      searchdirs: [lref-direct]
+      modules: [{name: la}, {name: lb}]
+    golden: golden/lref-typedef-prefix-direct.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.9.2"]
+      deviation: null
+
+  - id: lref/union-typedef-direct
+    dir: ctypes
+    source: *own
+    rfc: ["RFC7950#9.9.2", "RFC7950#9.12", "RFC7950#6.4.1"]
+    areas: [schema, types]
+    request:
+      op: schema
+      searchdirs: [lref-union-direct]
+      modules: [{name: ua}, {name: ub}]
+    golden: golden/lref-union-typedef-direct.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.9.2"]
+      deviation: null
+
+  - id: lref/union-typedef-via-derived-typedef
+    dir: ctypes
+    source: *own
+    rfc: []   # libyang shares the compiled union of an unchanged derived typedef; no RFC counterpart
+    areas: [schema, types]
+    request:
+      op: schema
+      searchdirs: [lref-via-derived]
+      modules: [{name: lc}, {name: ld}]
+    golden: golden/lref-union-typedef-via-derived-typedef.json
+
+  - id: lref/typedef-across-loads
+    dir: ctypes
+    source: *own
+    rfc: []   # libyang typedef cache lifetime across loads; no RFC counterpart
+    areas: [schema, types]
+    request:
+      op: schema
+      searchdirs: [lref-across]
+      modules: [{name: le}, {name: lf}]
+    golden: golden/lref-typedef-across-loads.json

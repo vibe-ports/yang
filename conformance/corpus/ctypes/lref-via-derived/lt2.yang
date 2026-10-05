@@ -1,0 +1,12 @@
+module lt2 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:lt2";
+  prefix lt2;
+
+  description
+    "u is a union with a leafref member; d derives from u without changes, so d reuses u's
+     compiled type and every user of d copies the same member pointers.";
+
+  typedef u { type union { type leafref { path "../x"; } type boolean; } }
+  typedef d { type u; }
+}

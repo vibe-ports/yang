@@ -1,0 +1,10 @@
+module ub {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:ub";
+  prefix ub;
+
+  import lt { prefix lt; }
+
+  leaf x { type int8; }
+  leaf ru { type lt:u; }
+}

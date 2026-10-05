@@ -1,0 +1,7 @@
+module e10 {
+  namespace "urn:vibe-ports:e10";
+  prefix e10;
+
+  typedef t { type empty; default "x"; }
+  leaf l { type t; }
+}

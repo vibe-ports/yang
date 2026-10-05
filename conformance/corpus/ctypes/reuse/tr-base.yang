@@ -1,0 +1,16 @@
+module tr-base {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:tr-base";
+  prefix trb;
+
+  description "Typedefs of another module for types/unchanged-typedef-reuse.";
+
+  typedef pct {
+    type uint8 { range "0..100"; }
+    units "percent";
+  }
+  typedef color {
+    type enumeration { enum red; enum green { value 5; } enum blue; }
+    default "green";
+  }
+}

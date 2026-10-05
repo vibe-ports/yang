@@ -1,0 +1,8 @@
+module e17 {
+  namespace "urn:vibe-ports:e17";
+  prefix e17;
+
+  identity i;
+  identity j;
+  leaf l { type identityref { base i; base j; } }
+}

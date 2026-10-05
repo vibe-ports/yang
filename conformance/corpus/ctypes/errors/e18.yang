@@ -1,0 +1,6 @@
+module e18 {
+  namespace "urn:vibe-ports:e18";
+  prefix e18;
+
+  leaf l { type union { type int8; type nope; } }
+}

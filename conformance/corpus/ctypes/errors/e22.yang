@@ -1,0 +1,7 @@
+module e22 {
+  namespace "urn:vibe-ports:e22";
+  prefix e22;
+
+  typedef t { type string { length "2..10"; } }
+  leaf l { type t { length "1..3"; } }
+}

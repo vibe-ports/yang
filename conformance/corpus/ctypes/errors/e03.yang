@@ -1,0 +1,6 @@
+module e03 {
+  namespace "urn:vibe-ports:e03";
+  prefix e03;
+
+  leaf l { type decimal64 { fraction-digits 2; range "3.142..4"; } }
+}

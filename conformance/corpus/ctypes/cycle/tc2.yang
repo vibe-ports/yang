@@ -1,0 +1,13 @@
+module tc2 {
+  namespace "urn:vibe-ports:tc2";
+  prefix tc2;
+
+  description
+    "A union typedef naming itself as a member: found through the context-wide typedef stack
+     of nested union compilation, not the local chain.";
+
+  container c {
+    typedef u { type union { type string; type u; } }
+    leaf l { type u; }
+  }
+}

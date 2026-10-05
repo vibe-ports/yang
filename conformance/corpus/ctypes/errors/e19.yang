@@ -1,0 +1,8 @@
+module e19 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:e19";
+  prefix e19;
+
+  typedef b { type bits { bit a; bit b; } }
+  leaf l { type b { bit b { position 3; } } }
+}

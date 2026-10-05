@@ -1,0 +1,14 @@
+module lc {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:lc";
+  prefix lc;
+
+  import lt2 { prefix lt2; }
+  import ld { prefix ld; }
+
+  description "The prefixed leafref p implements ld in the same load (compiled after lc).";
+
+  leaf x { type string; }
+  leaf rd { type lt2:d; }
+  leaf p { type leafref { path "/ld:x"; } }
+}

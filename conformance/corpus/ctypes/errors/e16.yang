@@ -1,0 +1,9 @@
+module e16 {
+  namespace "urn:vibe-ports:e16";
+  prefix e16;
+
+  container c {
+    typedef t { type string; status obsolete; }
+    leaf l { type t; }
+  }
+}
