@@ -45,6 +45,15 @@ family → less correlated blind spots). **codex gpt-5.6-sol/luna** writes indep
    a script, not branch protection (Free private plan); rulesets get enabled when the repo is
    public.
 
+## Triage hints (Jev, advisory)
+
+`scripts/jev-triage` annotates the weekly `upstream-drift` issue (behaviour change?, touches a
+ported file/function?, priority: now / next-milestone / later; sorted by priority) and, for
+maintainer-authored issues, suggests `area:*`, `size:*` and suggested-worker `worker:*` labels
+(`opus`, `sonnet`, `codex-sol`, `codex-luna`) when confidence is at least 0.6, else
+`triage:needs-human`. Use them to pick the next task and the worker; they gate nothing. No
+`TYPESAFE_API_KEY` = no hints. Data sent and details: CONTRIBUTING.md "Jev triage".
+
 ## Per milestone
 
 - `scripts/astra review <previous-milestone-tag>` over the milestone diff, with the list of

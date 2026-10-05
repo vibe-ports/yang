@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Self-test of the security gates with stubbed `gh`/`curl` and throwaway git repos (no network, no
 # real merges): check-sensitive + pre-push hook, merge-pr, import-goldens, astra --trusted
-# (stubbed codex), ai-review-publish, review-tier.
+# (stubbed codex), ai-review-publish, review-tier, jev-triage.
 #   scripts/test-gates        (part of `make ci`; needs bash, git, perl, python3, jq)
 set -uo pipefail
 src=$(cd "$(dirname "$0")" && pwd)
@@ -106,6 +106,7 @@ cat >"$t/bin/gh" <<'EOF'
 # Stub: logs calls, answers from $FX fixtures; --jq is applied with jq.
 echo "$*" >>"$FX/calls"
 [[ $1 == repo ]] && { echo vibe-ports/yang; exit 0; }
+[[ $1 == label || $1 == issue ]] && exit 0  # jev-triage: only the call log matters
 shift  # api
 method=GET jqx= input= path=
 while (($#)); do case $1 in
@@ -121,7 +122,7 @@ case $path in
   */pulls/*) f=pull
     # Lease-race hook: runs on the 2nd PR lookup (merge-pr's re-check before pushing).
     if [[ -x $FX/on_pull2 && $(grep -c '/pulls/[0-9]* --jq' "$FX/calls") == 2 ]]; then "$FX/on_pull2"; fi ;;
-  */issues/*/comments) f=comments ;; */actions/*) f=runs ;; *) f=none ;;
+  */issues/*/comments) f=comments ;; */issues/[0-9]*) f=issue ;; */actions/*) f=runs ;; *) f=none ;;
 esac
 [[ -f $FX/$f.json ]] || { echo "no fixture for $path" >&2; exit 1; }
 if [[ -n $jqx ]]; then jq -r "$jqx" "$FX/$f.json"; else cat "$FX/$f.json"; fi
@@ -130,6 +131,8 @@ cat >"$t/bin/curl" <<'EOF'
 #!/usr/bin/env bash
 # Stub for review-tier's Jev call: records the request body, answers $FX/jev.
 while (($#)); do [[ $1 == -d ]] && { printf '%s' "$2" >"$FX/jev-request"; shift; }; shift; done
+n=$(( $(cat "$FX/jevn" 2>/dev/null || echo 0) + 1 )); echo $n >"$FX/jevn"; echo x >"$FX/jev-called"
+[[ -f $FX/jev.$n ]] && { cat "$FX/jev.$n"; exit 0; }  # per-call answers when present
 [[ -f $FX/jev ]] || exit 7
 cat "$FX/jev"
 EOF
@@ -381,5 +384,70 @@ echo '{"answers":{"deep":{"noul":0.1}}}' >"$FX/jev"
 [[ $(jev) == light ]] && ok "tier: Jev low score keeps light" || no "tier: Jev low score keeps light"
 rm "$FX/jev"
 [[ $(jev) == light ]] && ok "tier: Jev failure keeps light" || no "tier: Jev failure keeps light"
+
+# ---------------------------------------------------------------- jev-triage
+jt() { (export TYPESAFE_API_KEY=k GH_REPO=vibe-ports/yang; "$src/jev-triage" "$@"); }
+reset() { rm -f "$FX"/jev "$FX"/jev.* "$FX"/jevn "$FX"/jev-called "$FX"/jev-request "$FX"/calls "$FX"/issue.json; }
+# drift: touches_ported is deterministic, from a port map with one ported function
+cat >"$t/pm.md" <<'EOF'
+| libyang file | C function | Go symbol | Status | Fixtures | Notes |
+|---|---|---|---|---|---|
+| src/tree_schema.c | lys_parse | schema.Parse | ported | x | |
+| src/xpath.c | xpath_old | x | skipped | | |
+EOF
+cat >"$t/cm.json" <<'EOF'
+[{"sha":"aaaaaaaa11","url":"https://x/a","subject":"docs: typo","files":["src/xpath.c"]},
+ {"sha":"bbbbbbbb22","url":"https://x/b","subject":"fix: parse crash","files":["src/tree_schema.c","tests/t.c"],"functions":["lys_parse"]},
+ {"sha":"cccccccc33","url":"https://x/c","subject":"refactor: names","files":["src/tree_schema.c"]}]
+EOF
+export PORT_MAP=$t/pm.md
+reset
+(unset TYPESAFE_API_KEY; "$src/jev-triage" drift "$t/cm.json") >"$t/o"
+[[ $(grep -c "" "$t/o") == 3 && $(sed -n 1p "$t/o") == *"docs: typo" ]] && hasnt "jev: no key → plain list, original order" 'priority' "$t/o" || no "jev: no key → plain list, original order"
+[[ ! -e $FX/jev-called ]] && ok "jev: no key → no API call" || no "jev: no key → no API call"
+a() { echo "{\"answers\":{\"behaviour\":{\"noul\":$1},\"priority\":{\"score\":$2}}}"; }
+a 0.1 0.2 >"$FX/jev.1"; a 0.9 1.8 >"$FX/jev.2"; a 0.7 0.9 >"$FX/jev.3"
+jt drift "$t/cm.json" >"$t/o"
+[[ $(sed -n 1p "$t/o") == *"fix: parse crash"* ]] && ok "jev: sorted by priority" || no "jev: sorted by priority"
+has "jev: annotated, function-level touch" 'parse crash — behaviour: yes \(90%\) · touches_ported: function · priority: now' "$t/o"
+has "jev: file-level touch when no function names" 'refactor: names — behaviour: yes \(70%\) · touches_ported: file · priority: next-milestone' "$t/o"
+has "jev: skipped port-map rows don't count" 'docs: typo — behaviour: no \(10%\) · touches_ported: no · priority: later' "$t/o"
+jq -e '(.state | keys) == ["paths","subject"] and .state.subject == "refactor: names" and .state.paths == ["src/tree_schema.c"] and .model == "jev-latest" and (.questions.priority.type == "score") and (.questions.behaviour.type == "noul")' "$FX/jev-request" >/dev/null &&
+  ok "jev: drift payload = subject + paths only" || no "jev: drift payload = subject + paths only"
+reset; echo '{"answers":{"behaviour":{"noul":"x"}}}' >"$FX/jev"
+jt drift "$t/cm.json" >"$t/o"; rc=$?
+[[ $rc == 0 && $(sed -n 1p "$t/o") == *"docs: typo" ]] && hasnt "jev: malformed answer → plain list, exit 0" 'priority' "$t/o" || no "jev: malformed answer → plain list, exit 0"
+reset
+jt drift "$t/cm.json" >"$t/o"; rc=$?
+[[ $rc == 0 && $(grep -c "" "$t/o") == 3 ]] && hasnt "jev: API error → plain list, exit 0" 'priority' "$t/o" || no "jev: API error → plain list, exit 0"
+echo 'not json' >"$t/bad.json"
+expect 0 "jev: unreadable input → exit 0" - jt drift "$t/bad.json"
+
+# issue: maintainer only, title + body[:4 KB], threshold, labels
+mkissue() { jq -nc --argjson id "$1" --arg body "$2" '{user:{id:$id},title:"Port lyd_validate",body:$body}' >"$FX/issue.json"; }
+ans() { jq -nc --argjson a "$1" --argjson s "$2" --argjson w "$3" '{answers:{
+  area:{type:"choice",choice:"validation",probabilities:{parser:0,schema:0,types:0,xpath:0,validation:$a,codecs:0,diff:0,infra:0,docs:(1-$a)},confidence:0.5},
+  size:{type:"choice",choice:"M",probabilities:{S:(1-$s),M:$s,L:0},confidence:0.5},
+  worker:{type:"choice",choice:"sonnet",probabilities:{opus:(1-$w),sonnet:$w,"codex-sol":0,"codex-luna":0},confidence:0.5}}}'; }
+reset; mkissue 1056050 "$(head -c 6000 /dev/zero | tr '\0' 'a')END"; ans 0.9 0.8 0.7 >"$FX/jev"
+jt issue 7; rc=$?
+[[ $rc == 0 ]] && grep -q 'issue edit 7 --add-label area:validation,size:M,worker:sonnet' "$FX/calls" && ok "jev: labels applied at >= 0.6" || no "jev: labels applied at >= 0.6"
+hasnt "jev: no needs-human when all confident" 'needs-human' "$FX/calls"
+has "jev: labels created if missing" 'label create area:validation .*--force' "$FX/calls"
+jq -e '(.state.body | length) == 4096 and (.state.body | endswith("END") | not) and .state.title == "Port lyd_validate" and (.state | keys) == ["body","title"] and (.questions | keys) == ["area","size","worker"] and (.questions.area.criteria | keys | length) == 9' "$FX/jev-request" >/dev/null &&
+  ok "jev: issue payload = title + body truncated to 4 KB" || no "jev: issue payload = title + body truncated to 4 KB"
+reset; mkissue 1056050 b; ans 0.9 0.59 0.7 >"$FX/jev"; jt issue 7
+grep -q 'issue edit 7 --add-label area:validation,worker:sonnet,triage:needs-human' "$FX/calls" && ok "jev: below 0.6 → needs-human, no label for it" || no "jev: below 0.6 → needs-human, no label for it"
+reset; mkissue 1056050 b; ans 0.6 0.6 0.6 >"$FX/jev"; jt issue 7
+grep -q 'add-label area:validation,size:M,worker:sonnet -R' "$FX/calls" && ok "jev: threshold is inclusive at 0.6" || no "jev: threshold is inclusive at 0.6"
+reset; mkissue 4242 b; ans 0.9 0.9 0.9 >"$FX/jev"; jt issue 7; rc=$?
+[[ $rc == 0 && ! -e $FX/jev-called ]] && hasnt "jev: outsider issue → no API call, no labels" 'issue edit|label create' "$FX/calls" || no "jev: outsider issue → no API call, no labels"
+reset; mkissue 1056050 b; jt issue 7; rc=$?
+[[ $rc == 0 ]] && hasnt "jev: API error → no labels, exit 0" 'issue edit|label create' "$FX/calls" || no "jev: API error → no labels, exit 0"
+reset; mkissue 1056050 b; echo '{"answers":{"area":{"choice":"docs"}}}' >"$FX/jev"; jt issue 7; rc=$?
+[[ $rc == 0 ]] && hasnt "jev: malformed answer → no labels, exit 0" 'issue edit|label create' "$FX/calls" || no "jev: malformed answer → no labels, exit 0"
+reset; mkissue 1056050 b; ans 0.9 0.9 0.9 >"$FX/jev"; (unset TYPESAFE_API_KEY; GH_REPO=vibe-ports/yang "$src/jev-triage" issue 7); rc=$?
+[[ $rc == 0 && ! -e $FX/jev-called ]] && hasnt "jev: no key → nothing" 'issue edit|label create' "$FX/calls" || no "jev: no key → nothing"
+reset; unset PORT_MAP
 
 echo; (( fails == 0 )) && echo "all gate tests passed" || { echo "$fails gate test(s) failed"; exit 1; }

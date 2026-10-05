@@ -44,21 +44,39 @@ jobs:
   drift:
     needs: check
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 15
     permissions:
+      contents: read
       issues: write
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
       CUR: ${{ needs.check.outputs.cur }}
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Tracking issue for upstream master drift
+        env:
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
         run: |
           [[ $CUR =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
-          list=$(gh api "repos/CESNET/libyang/compare/$CUR...master" --paginate \
-            --jq '.commits[] | "- [`\(.sha[0:7])`](\(.html_url)) \(.commit.message | split("\n")[0])"' | tail -n 200)
-          files=$(gh api "repos/CESNET/libyang/compare/$CUR...master" --jq '[.files[].filename | select(startswith("src/"))] | unique | join(", ")')
-          body=$(printf 'Upstream libyang commits on master since pinned **%s** (updated weekly by libyang-sync).\n\nTouched src/ files: %s\n\nCross-check with docs/port-map.md before porting further.\n\n%s\n' "$CUR" "${files:-none}" "${list:-none}")
+          cmp="repos/CESNET/libyang/compare/$CUR...master"
+          # Newest 200 commits: sha, url, subject, touched src/ files and function names from the
+          # hunk headers (public upstream data only; one API call per commit). scripts/jev-triage
+          # is advisory: without a key or on any Jev failure it prints the plain list.
+          gh api "$cmp" --paginate --jq '.commits[] | [.sha, .html_url, (.commit.message | split("\n")[0])] | @tsv' | tail -n 200 > "$RUNNER_TEMP/commits.tsv"
+          : > "$RUNNER_TEMP/commits.ndjson"
+          while IFS=$'\t' read -r sha url subject; do
+            [[ $sha =~ ^[0-9a-f]{40}$ ]] || continue
+            gh api "repos/CESNET/libyang/commits/$sha" --jq '[.files[]? | select(.filename | startswith("src/"))] as $f
+              | {files: [$f[].filename],
+                 functions: ([$f[] | (.patch // "") | scan("(?m)^@@[^@]*@@[^\n]*?([A-Za-z_][A-Za-z0-9_]*)\\(") | .[0]] | unique)}' > "$RUNNER_TEMP/one.json" || echo '{}' > "$RUNNER_TEMP/one.json"
+            jq -c --arg sha "$sha" --arg url "$url" --arg subject "$subject" '. + {sha: $sha, url: $url, subject: $subject}' "$RUNNER_TEMP/one.json" >> "$RUNNER_TEMP/commits.ndjson"
+          done < "$RUNNER_TEMP/commits.tsv"
+          list=$(jq -s . "$RUNNER_TEMP/commits.ndjson" | scripts/jev-triage drift - || true)
+          files=$(gh api "$cmp" --jq '[.files[].filename | select(startswith("src/"))] | unique | join(", ")')
+          body=$(printf 'Upstream libyang commits on master since pinned **%s** (updated weekly by libyang-sync).\n\nTouched src/ files: %s\n\nCross-check with docs/port-map.md before porting further.\nWith TYPESAFE_API_KEY set, lines carry advisory Jev annotations (behaviour, priority; touches_ported is computed from docs/port-map.md) and are sorted by priority.\n\n%s\n' "$CUR" "${files:-none}" "${list:-none}")
           num=$(gh issue list --state open --label upstream-drift --json number --jq '.[0].number // empty')
           gh label create upstream-drift --color BFD4F2 --force >/dev/null
           if [ -n "$num" ]; then gh issue edit "$num" --body "$body"; else gh issue create --title "upstream libyang drift since $CUR" --label upstream-drift --body "$body"; fi

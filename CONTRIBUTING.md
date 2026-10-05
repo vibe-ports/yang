@@ -155,6 +155,25 @@ non-executable files at `conformance/corpus/<group>/golden/<name>.json` from the
 (`scripts/import-goldens`; any other member, rename, deletion or mode change aborts) and opens the
 PR. Still read the first libyang-sync PR after this change by hand.
 
+## Jev triage (advisory)
+
+Jev (TypeSafe) adds hints, never decisions: it is not part of the merge gate and no check depends
+on it. Everything lives in `scripts/jev-triage` (and `review-tier`), run from the default branch.
+- **Upstream drift** (`libyang-sync`): each commit line in the `upstream-drift` issue gets
+  `behaviour` (Jev: changes observable behaviour vs refactor/test/doc), `touches_ported` (computed
+  from `docs/port-map.md`, not by Jev; file level when no function names are known) and
+  `priority` (Jev: now / next-milestone / later); the list is sorted by priority.
+- **Issues** (`issue-triage` workflow, `issues: write` only): for issues **authored by the
+  maintainer** (`vars.MAINTAINER_ID`), Jev proposes `area:*`, `size:*` and `worker:*` labels. A
+  label is applied only when its top probability is at least 0.6; if any is lower the issue also
+  gets `triage:needs-human`. Labels are created when missing; nothing else is posted. Re-edits
+  only add labels, they never remove ones set by hand.
+- **Data sent** (public data only, never repository code): drift = upstream commit subject +
+  touched `src/` paths; issues = title + first 4 KB of the body, only for maintainer-authored
+  issues, so outsiders can't feed it; `review-tier` = file paths + line counts.
+- **Failure-safe**: no key, API error or malformed answer = exit 0 with no labels or annotations.
+- **Disable**: delete the `TYPESAFE_API_KEY` secret; every Jev step becomes a no-op.
+
 ## Licensing and provenance
 
 - Contributions are accepted under BSD-3-Clause (the project license).
@@ -177,7 +196,7 @@ Repository secrets and variables:
 |---|---|---|---|
 | `CLAUDE_CODE_OAUTH_TOKEN` | secret | Claude reviews (`claude setup-token`, uses the maintainer's Claude plan) | for ai-review |
 | `SYNC_TOKEN` | secret | fine-grained PAT (this repo: Contents + Pull requests write) so bot PRs trigger CI | optional |
-| `TYPESAFE_API_KEY` | secret | Jev escalation in `review-tier` (sees file paths + line counts only) | optional |
+| `TYPESAFE_API_KEY` | secret | Jev (advisory only): `review-tier` escalation, upstream-drift annotations, issue labels; see "Jev triage" | optional |
 | `MAINTAINER_ID` | variable | numeric GitHub user id whose PRs ai-review reviews (default 1056050) | optional |
 
 Personal sensitive-data patterns are deliberately **not** a secret (see Private-data checks);

@@ -1,0 +1,41 @@
+name: issue-triage
+# Advisory labels from Jev (TypeSafe) for issues written by the maintainer: area:*, size:*,
+# worker:* (a label only when the top probability >= 0.6, otherwise triage:needs-human).
+# Nothing else is posted. Never a gate: no TYPESAFE_API_KEY, an API error or a malformed answer
+# means no labels. Issues by anyone else never reach Jev, so outsiders can't spend the key or
+# steer the labels. The workflow and scripts/jev-triage come from the default branch (an `issues`
+# event always runs the default branch's workflow; the checkout is pinned to it as well); no PR
+# code is involved. Jev sees only the issue title and the first 4 KB of the body.
+on:
+  issues:
+    types: [opened, edited]
+permissions: {}
+concurrency:
+  group: issue-triage-${{ github.event.issue.number }}
+  cancel-in-progress: true
+jobs:
+  triage:
+    if: >-
+      github.event.issue.user.id == fromJSON(vars.MAINTAINER_ID || '1056050') &&
+      github.event.sender.id == fromJSON(vars.MAINTAINER_ID || '1056050')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    env:
+      HAS_KEY: ${{ secrets.TYPESAFE_API_KEY != '' }}
+    steps:
+      - if: env.HAS_KEY == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - if: env.HAS_KEY == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          MAINTAINER_ID: ${{ vars.MAINTAINER_ID || '1056050' }}
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+          ISSUE: ${{ github.event.issue.number }}
+        run: scripts/jev-triage issue "$ISSUE"
