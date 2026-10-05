@@ -1,0 +1,37 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [
+    {
+      "apptag": null,
+      "code": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "data_path": "/pv2:c",
+      "level": "error",
+      "line": 0,
+      "msg": "Wrong type of argument #1 (number) for the XPath function count(node-set).",
+      "phase": "xpath",
+      "schema_path": null,
+      "vecode": 5,
+      "vecode_name": "LYVE_XPATH"
+    }
+  ],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2",
+      "revision": null
+    }
+  ],
+  "op": "xpath",
+  "protocol": 2,
+  "rc": {
+    "err": 7,
+    "name": "LY_EVALID"
+  },
+  "result": null,
+  "verdict": "invalid"
+}

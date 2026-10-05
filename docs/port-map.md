@@ -86,3 +86,10 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | src/tree_data_common.c | ly_time_str2time, ly_time_time2str, ly_time_tz_offset_at | types.timeStr2Time, types.storeDateAndTime | ported | types/dt-* | |
 | src/plugins_types/hex_string.c | lyplg_type_store_hex_string | types.storeHexString | ported | types/hex-lowercase | phys-address, mac-address, hex-string, uuid |
 | src/plugins_types/date.c, time.c, time_period.c, xpath1.0.c, node_instanceid.c, instanceid_keys.c | (all) | — | skipped | — | U-0010 |
+| src/xpath.c | lyxp_expr_parse, eval_number | xpath.Compile, lex, parseNumberToken | ported | protocol-v2/xpath-* | number tokens in float64 (D-0010); tokenizer incl. NodeType/FunctionName disambiguation and its error messages; truncates at NUL like the C string |
+| src/xpath.c | parse_ncname, ly_getutf8 (ly_common.c), is_xmlqname*char (xml.h) | parseNCName, getUTF8, isQNameStart, isQNameChar | ported | protocol-v2/xpath-* |  |
+| src/xpath.c | expr_parse_axis | axisNames | ported | protocol-v2/xpath-* | `namespace::` rejected as invalid character, as libyang |
+| src/xpath.c | reparse_or_expr … reparse_unary_expr | parser.orExpr … parser.unaryExpr | replaced | protocol-v2/xpath-* | recursive descent building an AST instead of the token `repeat` array; each precedence level is an operand list (chainExpr) evaluated iteratively; same errors, depth limit LYXP_MAX_BLOCK_DEPTH = 100, token cap MaxTokens (U-0003) |
+| src/xpath.c | reparse_path_expr, reparse_relative_location_path, reparse_absolute_location_path, reparse_predicate | parser.pathExpr, parser.relPath, parser.predicates | replaced | protocol-v2/xpath-* |  |
+| src/xpath.c | reparse_function_call | parser.call | ported | protocol-v2/xpath-* | unknown function and arity are compile-time errors |
+| src/xpath.c | lyxp_check_token, exp_check_token2, lyxp_token2str | parser.check, parser.peek, tokNames | ported | protocol-v2/xpath-* |  |

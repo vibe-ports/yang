@@ -1,0 +1,577 @@
+{"cp":"","x":"//*","result":{"type":"node-set","nodes":["/pv2:c","/pv2:c/mode","/pv2:c/x","/pv2:c/u","/pv2:c/dec","/pv2:c/id","/pv2:c/l[k='a']","/pv2:c/l[k='a']/k","/pv2:c/l[k='b']","/pv2:c/l[k='b']/k","/pv2:c/l[k='c']","/pv2:c/l[k='c']/k","/pv2:c/stats[1]","/pv2:c/stats[1]/hits","/pv2:c/stats[2]","/pv2:c/stats[2]/hits","/pv2:c/grouped","/pv2:c/ref","/pv2:c/u2","/pv2:c/ll[.='x']","/pv2:c/ll[.='y']","/pv2:c/ll[.='z']","/pv2:c/flags"]}}
+{"cp":"","x":"count(//*)","result":{"type":"number","value":23}}
+{"cp":"","x":"count(//.)","result":{"type":"number","value":24}}
+{"cp":"","x":"count(/descendant::*)","result":{"type":"number","value":23}}
+{"cp":"","x":"/","result":{"type":"node-set","nodes":[]}}
+{"cp":"","x":"count(/)","result":{"type":"number","value":1}}
+{"cp":"","x":"string(/)","result":{"type":"string","value":"\n\n    on\n    hi\n    abc\n    2.5\n    pv2:two\n\n      a\n\n      b\n\n      c\n\n      5\n\n      7\n    g1\n    b\n    50\n    x\n    y\n    z\n    x y\n\n"}}
+{"cp":"","x":"name(/)","result":{"type":"string","value":""}}
+{"cp":"","x":"name(/*)","result":{"type":"string","value":"pv2:c"}}
+{"cp":"","x":"/pv2:*","result":{"type":"node-set","nodes":["/pv2:c"]}}
+{"cp":"","x":"/c/l/k","result":{"type":"node-set","nodes":["/pv2:c/l[k='a']/k","/pv2:c/l[k='b']/k","/pv2:c/l[k='c']/k"]}}
+{"cp":"","x":"/nope:c","error":{"err":"LY_EVALID","msg":"Unknown/non-implemented module \"nope\".","vecode":"LYVE_XPATH"}}
+{"cp":"","x":"count(descendant-or-self::node())","result":{"type":"number","value":24}}
+{"cp":"","x":"local-name()","result":{"type":"string","value":""}}
+{"cp":"","x":".","result":{"type":"node-set","nodes":[]}}
+{"cp":"","x":"count(..)","result":{"type":"number","value":0}}
+{"cp":"/pv2:c","x":"*","result":{"type":"node-set","nodes":["/pv2:c/mode","/pv2:c/x","/pv2:c/u","/pv2:c/dec","/pv2:c/id","/pv2:c/l[k='a']","/pv2:c/l[k='b']","/pv2:c/l[k='c']","/pv2:c/stats[1]","/pv2:c/stats[2]","/pv2:c/grouped","/pv2:c/ref","/pv2:c/u2","/pv2:c/ll[.='x']","/pv2:c/ll[.='y']","/pv2:c/ll[.='z']","/pv2:c/flags"]}}
+{"cp":"/pv2:c","x":"l","result":{"type":"node-set","nodes":["/pv2:c/l[k='a']","/pv2:c/l[k='b']","/pv2:c/l[k='c']"]}}
+{"cp":"/pv2:c","x":"l[2]","result":{"type":"node-set","nodes":["/pv2:c/l[k='b']"]}}
+{"cp":"/pv2:c","x":"l[last()]","result":{"type":"node-set","nodes":["/pv2:c/l[k='c']"]}}
+{"cp":"/pv2:c","x":"l[position() = 2]/k","result":{"type":"node-set","nodes":["/pv2:c/l[k='b']/k"]}}
+{"cp":"/pv2:c","x":"l[1.5]","result":{"type":"node-set","nodes":["/pv2:c/l[k='a']"]}}
+{"cp":"/pv2:c","x":"l[k='b']","result":{"type":"node-set","nodes":["/pv2:c/l[k='b']"]}}
+{"cp":"/pv2:c","x":"l/k","result":{"type":"node-set","nodes":["/pv2:c/l[k='a']/k","/pv2:c/l[k='b']/k","/pv2:c/l[k='c']/k"]}}
+{"cp":"/pv2:c","x":"l/k[2]","result":{"type":"node-set","nodes":["/pv2:c/l[k='b']/k"]}}
+{"cp":"/pv2:c","x":"ll","result":{"type":"node-set","nodes":["/pv2:c/ll[.='x']","/pv2:c/ll[.='y']","/pv2:c/ll[.='z']"]}}
+{"cp":"/pv2:c","x":"ll[2]","result":{"type":"node-set","nodes":["/pv2:c/ll[.='y']"]}}
+{"cp":"/pv2:c","x":"ll[. = 'y']","result":{"type":"node-set","nodes":["/pv2:c/ll[.='y']"]}}
+{"cp":"/pv2:c","x":"x/following-sibling::*","result":{"type":"node-set","nodes":["/pv2:c/u","/pv2:c/dec","/pv2:c/id","/pv2:c/l[k='a']","/pv2:c/l[k='b']","/pv2:c/l[k='c']","/pv2:c/stats[1]","/pv2:c/stats[2]","/pv2:c/grouped","/pv2:c/ref","/pv2:c/u2","/pv2:c/ll[.='x']","/pv2:c/ll[.='y']","/pv2:c/ll[.='z']","/pv2:c/flags"]}}
+{"cp":"/pv2:c","x":"x/following-sibling::*[1]","result":{"type":"node-set","nodes":["/pv2:c/u"]}}
+{"cp":"/pv2:c","x":"x/preceding-sibling::*","result":{"type":"node-set","nodes":["/pv2:c/mode"]}}
+{"cp":"/pv2:c","x":"x/preceding-sibling::*[1]","result":{"type":"node-set","nodes":["/pv2:c/mode"]}}
+{"cp":"/pv2:c","x":"l[2]/following::*","result":{"type":"node-set","nodes":["/pv2:c/l[k='c']","/pv2:c/l[k='c']/k","/pv2:c/stats[1]","/pv2:c/stats[1]/hits","/pv2:c/stats[2]","/pv2:c/stats[2]/hits","/pv2:c/grouped","/pv2:c/ref","/pv2:c/u2","/pv2:c/ll[.='x']","/pv2:c/ll[.='y']","/pv2:c/ll[.='z']","/pv2:c/flags"]}}
+{"cp":"/pv2:c","x":"l[1]/following::k","result":{"type":"node-set","nodes":["/pv2:c/l[k='b']/k","/pv2:c/l[k='c']/k"]}}
+{"cp":"/pv2:c","x":"l[2]/preceding::*","result":{"type":"node-set","nodes":["/pv2:c","/pv2:c/mode","/pv2:c/x","/pv2:c/u","/pv2:c/dec","/pv2:c/id","/pv2:c/l[k='a']","/pv2:c/l[k='a']/k"]}}
+{"cp":"/pv2:c","x":"l[2]/preceding::*[1]","result":{"type":"node-set","nodes":["/pv2:c/l[k='a']/k"]}}
+{"cp":"/pv2:c","x":"l[1]/k/preceding::*","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"l/k/following::*","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"flags/following::*","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"mode/preceding::*","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"l/k/ancestor::*","result":{"type":"node-set","nodes":["/pv2:c","/pv2:c/l[k='a']","/pv2:c/l[k='b']","/pv2:c/l[k='c']"]}}
+{"cp":"/pv2:c","x":"l/k/ancestor-or-self::*","result":{"type":"node-set","nodes":["/pv2:c","/pv2:c/l[k='a']","/pv2:c/l[k='a']/k","/pv2:c/l[k='b']","/pv2:c/l[k='b']/k","/pv2:c/l[k='c']","/pv2:c/l[k='c']/k"]}}
+{"cp":"/pv2:c","x":"count(l/k/ancestor::node())","result":{"type":"number","value":5}}
+{"cp":"/pv2:c","x":"count(ancestor::*)","result":{"type":"number","value":1}}
+{"cp":"/pv2:c","x":"count(descendant-or-self::node())","result":{"type":"number","value":23}}
+{"cp":"/pv2:c","x":"descendant::k","result":{"type":"node-set","nodes":["/pv2:c/l[k='a']/k","/pv2:c/l[k='b']/k","/pv2:c/l[k='c']/k"]}}
+{"cp":"/pv2:c","x":"self::c","result":{"type":"node-set","nodes":["/pv2:c"]}}
+{"cp":"/pv2:c","x":"self::*","result":{"type":"node-set","nodes":["/pv2:c"]}}
+{"cp":"/pv2:c","x":"self::node()","result":{"type":"node-set","nodes":["/pv2:c"]}}
+{"cp":"/pv2:c","x":"..","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"count(..)","result":{"type":"number","value":1}}
+{"cp":"/pv2:c","x":"name(..)","result":{"type":"string","value":""}}
+{"cp":"/pv2:c","x":"../c/mode","result":{"type":"node-set","nodes":["/pv2:c/mode"]}}
+{"cp":"/pv2:c","x":"/pv2:c/l/k","result":{"type":"node-set","nodes":["/pv2:c/l[k='a']/k","/pv2:c/l[k='b']/k","/pv2:c/l[k='c']/k"]}}
+{"cp":"/pv2:c","x":"l/k/text()","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"count(l/k/text())","result":{"type":"number","value":3}}
+{"cp":"/pv2:c","x":"string(l[2]/k/text())","result":{"type":"string","value":"b"}}
+{"cp":"/pv2:c","x":"count(.//text())","result":{"type":"number","value":0}}
+{"cp":"/pv2:c","x":"count(//k)","result":{"type":"number","value":3}}
+{"cp":"/pv2:c","x":"l//k","result":{"type":"node-set","nodes":["/pv2:c/l[k='a']/k","/pv2:c/l[k='b']/k","/pv2:c/l[k='c']/k"]}}
+{"cp":"/pv2:c","x":"count(stats)","result":{"type":"number","value":2}}
+{"cp":"/pv2:c","x":"sum(stats/hits)","result":{"type":"number","value":12}}
+{"cp":"/pv2:c","x":"stats[hits \u003e 5]/hits","result":{"type":"node-set","nodes":["/pv2:c/stats[2]/hits"]}}
+{"cp":"/pv2:c","x":"@*","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"count(@*)","result":{"type":"number","value":0}}
+{"cp":"/pv2:c","x":"(l | ll)[3]","result":{"type":"node-set","nodes":["/pv2:c/l[k='c']"]}}
+{"cp":"/pv2:c","x":"count(l | ll | l)","result":{"type":"number","value":6}}
+{"cp":"/pv2:c","x":"l | 1","error":{"err":"LY_EVALID","msg":"Cannot apply XPath operation union on node set and number.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"(l/k)[2]","result":{"type":"node-set","nodes":["/pv2:c/l[k='b']/k"]}}
+{"cp":"/pv2:c","x":"l[k = ../ref]/k","result":{"type":"node-set","nodes":["/pv2:c/l[k='b']/k"]}}
+{"cp":"/pv2:c","x":"l[k = current()/ref]/k","result":{"type":"node-set","nodes":["/pv2:c/l[k='b']/k"]}}
+{"cp":"/pv2:c","x":"current()","result":{"type":"node-set","nodes":["/pv2:c"]}}
+{"cp":"/pv2:c","x":"current()/mode","result":{"type":"node-set","nodes":["/pv2:c/mode"]}}
+{"cp":"/pv2:c","x":"count(current())","result":{"type":"number","value":1}}
+{"cp":"/pv2:c","x":"l[2]/k/ancestor::*[1]","result":{"type":"node-set","nodes":["/pv2:c/l[k='b']"]}}
+{"cp":"/pv2:c","x":"l/k/../../mode","result":{"type":"node-set","nodes":["/pv2:c/mode"]}}
+{"cp":"/pv2:c","x":"child::l/child::k","result":{"type":"node-set","nodes":["/pv2:c/l[k='a']/k","/pv2:c/l[k='b']/k","/pv2:c/l[k='c']/k"]}}
+{"cp":"/pv2:c","x":"descendant-or-self::k","result":{"type":"node-set","nodes":["/pv2:c/l[k='a']/k","/pv2:c/l[k='b']/k","/pv2:c/l[k='c']/k"]}}
+{"cp":"/pv2:c","x":"l[k='a']/following-sibling::l[1]/k","result":{"type":"node-set","nodes":["/pv2:c/l[k='b']/k"]}}
+{"cp":"/pv2:c","x":"l[k='c']/preceding-sibling::l[1]/k","result":{"type":"node-set","nodes":["/pv2:c/l[k='b']/k"]}}
+{"cp":"/pv2:c","x":"l[k='c']/preceding-sibling::l","result":{"type":"node-set","nodes":["/pv2:c/l[k='a']","/pv2:c/l[k='b']"]}}
+{"cp":"/pv2:c","x":"ll/self::ll[2]","result":{"type":"node-set","nodes":["/pv2:c/ll[.='y']"]}}
+{"cp":"/pv2:c","x":"l[k][2]/k","result":{"type":"node-set","nodes":["/pv2:c/l[k='b']/k"]}}
+{"cp":"/pv2:c","x":"l[count(k) = 1][last()]/k","result":{"type":"node-set","nodes":["/pv2:c/l[k='c']/k"]}}
+{"cp":"/pv2:c","x":"*[3]","result":{"type":"node-set","nodes":["/pv2:c/u"]}}
+{"cp":"/pv2:c","x":"*[last()]","result":{"type":"node-set","nodes":["/pv2:c/flags"]}}
+{"cp":"/pv2:c","x":"//l[2]/k","result":{"type":"node-set","nodes":["/pv2:c/l[k='b']/k"]}}
+{"cp":"/pv2:c","x":".//l[2]/k","result":{"type":"node-set","nodes":["/pv2:c/l[k='b']/k"]}}
+{"cp":"/pv2:c","x":"l[k='b']/ancestor-or-self::*[2]","result":{"type":"node-set","nodes":["/pv2:c"]}}
+{"cp":"/pv2:c","x":"deref(ref)","result":{"type":"node-set","nodes":["/pv2:c/l[k='b']/k"]}}
+{"cp":"/pv2:c","x":"deref(ref)/..","result":{"type":"node-set","nodes":["/pv2:c/l[k='b']"]}}
+{"cp":"/pv2:c","x":"deref(u2)","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"deref(mode)","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"deref(nothing)","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"derived-from(id, 'pv2:one')","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"derived-from(id, 'one')","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"derived-from(id, 'pv2:two')","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"derived-from-or-self(id, 'pv2:two')","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"derived-from(id, 'pv2:nope')","error":{"err":"LY_EVALID","msg":"Identity \"nope\" not found in module \"pv2\".","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"derived-from(id, 'nope:one')","error":{"err":"LY_EVALID","msg":"Unknown/non-implemented module \"nope\".","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"derived-from(mode, 'pv2:one')","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"derived-from('x', 'pv2:one')","error":{"err":"LY_EVALID","msg":"Wrong type of argument #1 (string) for the XPath function derived-from(-or-self)(node-set, string).","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"derived-from(id, 'pv2:base-id')","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"derived-from-or-self(id, 'pv2:base-id')","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"enum-value(mode)","result":{"type":"number","value":0}}
+{"cp":"/pv2:c","x":"enum-value(x)","result":{"type":"number","value":"NaN"}}
+{"cp":"/pv2:c","x":"enum-value(u)","result":{"type":"number","value":"NaN"}}
+{"cp":"/pv2:c","x":"enum-value(nothing)","result":{"type":"number","value":"NaN"}}
+{"cp":"/pv2:c","x":"bit-is-set(flags, 'x')","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"bit-is-set(flags, 'y')","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"bit-is-set(flags, 'z')","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"bit-is-set(mode, 'x')","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"bit-is-set('a', 'x')","error":{"err":"LY_EVALID","msg":"Wrong type of argument #1 (string) for the XPath function bit-is-set(node-set, string).","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"re-match(x, 'h.*')","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"re-match('abc', '[a-z]+')","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"re-match('1', '\\d')","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"re-match('a', '[')","error":{"err":"LY_EVALID","msg":"Regular expression \"[\" is not valid (\"\": missing terminating ] for character class).","vecode":"LYVE_SUCCESS"}}
+{"cp":"/pv2:c","x":"re-match('ab', 'a')","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"1 div 3","result":{"type":"number","value":0.33333333333333331}}
+{"cp":"/pv2:c","x":"10 div 4","result":{"type":"number","value":2.5}}
+{"cp":"/pv2:c","x":"1.25 + 0","result":{"type":"number","value":1.25}}
+{"cp":"/pv2:c","x":"2.5 * 3","result":{"type":"number","value":7.5}}
+{"cp":"/pv2:c","x":"-0","result":{"type":"number","value":0}}
+{"cp":"/pv2:c","x":"0 div 0","result":{"type":"number","value":"NaN"}}
+{"cp":"/pv2:c","x":"1 div 0","result":{"type":"number","value":"Infinity"}}
+{"cp":"/pv2:c","x":"-1 div 0","result":{"type":"number","value":"-Infinity"}}
+{"cp":"/pv2:c","x":"7 mod 3","result":{"type":"number","value":1}}
+{"cp":"/pv2:c","x":"-7 mod 3","result":{"type":"number","value":-1}}
+{"cp":"/pv2:c","x":"7.5 mod 2","result":{"type":"number","value":1.5}}
+{"cp":"/pv2:c","x":"1e3","error":{"err":"LY_EVALID","msg":"Invalid character 'e'[2] of expression '1e3'.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":".5 + 5.","result":{"type":"number","value":5.5}}
+{"cp":"/pv2:c","x":"number('1e3')","result":{"type":"number","value":1000}}
+{"cp":"/pv2:c","x":"number(' 12')","result":{"type":"number","value":12}}
+{"cp":"/pv2:c","x":"number('12 ')","result":{"type":"number","value":"NaN"}}
+{"cp":"/pv2:c","x":"number('0x1A')","result":{"type":"number","value":26}}
+{"cp":"/pv2:c","x":"number('inf')","result":{"type":"number","value":"Infinity"}}
+{"cp":"/pv2:c","x":"number('-Infinity')","result":{"type":"number","value":"-Infinity"}}
+{"cp":"/pv2:c","x":"number('abc')","result":{"type":"number","value":"NaN"}}
+{"cp":"/pv2:c","x":"number('')","result":{"type":"number","value":"NaN"}}
+{"cp":"/pv2:c","x":"number(true())","result":{"type":"number","value":1}}
+{"cp":"/pv2:c","x":"number(dec)","result":{"type":"number","value":2.5}}
+{"cp":"/pv2:c","x":"number(mode)","result":{"type":"number","value":"NaN"}}
+{"cp":"/pv2:c","x":"number()","result":{"type":"number","value":"NaN"}}
+{"cp":"/pv2:c","x":"number('-.5')","result":{"type":"number","value":-0.5}}
+{"cp":"/pv2:c","x":"string(1 div 3)","result":{"type":"string","value":"0.3"}}
+{"cp":"/pv2:c","x":"string(100000000000000000000)","result":{"type":"string","value":"100000000000000000000.0"}}
+{"cp":"/pv2:c","x":"string(-0.5)","result":{"type":"string","value":"-0.5"}}
+{"cp":"/pv2:c","x":"string(0.25)","result":{"type":"string","value":"0.2"}}
+{"cp":"/pv2:c","x":"string(0.35)","result":{"type":"string","value":"0.3"}}
+{"cp":"/pv2:c","x":"string(2.5)","result":{"type":"string","value":"2.5"}}
+{"cp":"/pv2:c","x":"string(1 div 0)","result":{"type":"string","value":"Infinity"}}
+{"cp":"/pv2:c","x":"string(0 div 0)","result":{"type":"string","value":"NaN"}}
+{"cp":"/pv2:c","x":"string(123456789012)","result":{"type":"string","value":"123456789012"}}
+{"cp":"/pv2:c","x":"string(-0)","result":{"type":"string","value":"0"}}
+{"cp":"/pv2:c","x":"string(0.05)","result":{"type":"string","value":"0.1"}}
+{"cp":"/pv2:c","x":"string(1.96)","result":{"type":"string","value":"2.0"}}
+{"cp":"/pv2:c","x":"floor(2.7)","result":{"type":"number","value":2}}
+{"cp":"/pv2:c","x":"floor(-1.5)","result":{"type":"number","value":-1}}
+{"cp":"/pv2:c","x":"ceiling(2.1)","result":{"type":"number","value":3}}
+{"cp":"/pv2:c","x":"ceiling(-1.5)","result":{"type":"number","value":0}}
+{"cp":"/pv2:c","x":"ceiling(3)","result":{"type":"number","value":3}}
+{"cp":"/pv2:c","x":"round(2.5)","result":{"type":"number","value":3}}
+{"cp":"/pv2:c","x":"round(-2.5)","result":{"type":"number","value":-2}}
+{"cp":"/pv2:c","x":"round(-2.7)","result":{"type":"number","value":-2}}
+{"cp":"/pv2:c","x":"round(-0.3)","result":{"type":"number","value":0}}
+{"cp":"/pv2:c","x":"string(round(-0.3))","result":{"type":"string","value":"0"}}
+{"cp":"/pv2:c","x":"floor(0 div 0)","result":{"type":"node-set","nodes":["/pv2:c"]}}
+{"cp":"/pv2:c","x":"round(0 div 0)","result":{"type":"number","value":"NaN"}}
+{"cp":"/pv2:c","x":"round(1 div 0)","result":{"type":"number","value":"Infinity"}}
+{"cp":"/pv2:c","x":"1.0000001 = 1.0000002","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"0.0000001 = 0.0000002","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"0 div 0 = 0 div 0","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"0 div 0 != 0 div 0","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"0 div 0 \u003c 1","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"0 div 0 \u003e 1","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"1 div 0 \u003e 1000","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"-1 div 0 \u003c 0","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"-0 = 0","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"25.200 = 25.2","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"-25.2 \u003c -1.0","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"'abc' \u003c 'abd'","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"'2' \u003c '10'","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"true() = 'x'","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"true() = 1","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"false() = ''","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"1 = '1.0'","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"'1' = '1.0'","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"true() \u003e false()","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"1 \u003c 2 \u003c 3","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"3 \u003e 2 \u003e 1","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"1 = 1 = 1","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"l/k = 'b'","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"l/k != 'b'","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"ll = l/k","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"ll != l/k","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"stats/hits \u003e 6","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"stats/hits = 5","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"d = '07'","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"d = 7","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"dec = '2.50'","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"dec = 2.5","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"id = 'pv2:two'","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"id = 'two'","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"mode = 'on'","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"u = 'abc'","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"u2 = '050'","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"ll = 'y'","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"'y' = ll","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"l = 'a'","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"l/k = true()","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"nothing = false()","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"stats/hits \u003c l","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"2 \u003e stats/hits","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"concat('a', 1, true())","result":{"type":"string","value":"a1true"}}
+{"cp":"/pv2:c","x":"contains(x, 'i')","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"starts-with(x, 'h')","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"substring('12345', 2, 3)","result":{"type":"string","value":"234"}}
+{"cp":"/pv2:c","x":"substring('12345', 1.5, 2.6)","result":{"type":"string","value":"234"}}
+{"cp":"/pv2:c","x":"substring('12345', 0, 3)","result":{"type":"string","value":"12"}}
+{"cp":"/pv2:c","x":"substring('12345', 0 div 0, 3)","result":{"type":"string","value":""}}
+{"cp":"/pv2:c","x":"substring('12345', 1, 0 div 0)","result":{"type":"string","value":""}}
+{"cp":"/pv2:c","x":"substring('12345', -42, 1 div 0)","result":{"type":"string","value":"12345"}}
+{"cp":"/pv2:c","x":"substring('12345', -1 div 0, 1 div 0)","result":{"type":"string","value":""}}
+{"cp":"/pv2:c","x":"substring('12345', 2)","result":{"type":"string","value":"2345"}}
+{"cp":"/pv2:c","x":"substring-before('1999/04/01', '/')","result":{"type":"string","value":"1999"}}
+{"cp":"/pv2:c","x":"substring-after('1999/04/01', '/')","result":{"type":"string","value":"04/01"}}
+{"cp":"/pv2:c","x":"substring-after('abc', '')","result":{"type":"string","value":"abc"}}
+{"cp":"/pv2:c","x":"substring-before('abc', '')","result":{"type":"string","value":""}}
+{"cp":"/pv2:c","x":"substring-after('abc', 'x')","result":{"type":"string","value":""}}
+{"cp":"/pv2:c","x":"string-length('abc')","result":{"type":"number","value":3}}
+{"cp":"/pv2:c","x":"string-length('жж')","result":{"type":"number","value":4}}
+{"cp":"/pv2:c","x":"string-length()","result":{"type":"number","value":100}}
+{"cp":"/pv2:c","x":"normalize-space('  a \t b  ')","result":{"type":"string","value":"a b"}}
+{"cp":"/pv2:c","x":"translate('bar', 'abc', 'ABC')","result":{"type":"string","value":"BAr"}}
+{"cp":"/pv2:c","x":"translate('--aaa--', 'abc-', 'ABC')","result":{"type":"string","value":"AAA"}}
+{"cp":"/pv2:c","x":"string()","result":{"type":"string","value":"\n  on\n  hi\n  abc\n  2.5\n  pv2:two\n\n    a\n\n    b\n\n    c\n\n    5\n\n    7\n  g1\n  b\n  50\n  x\n  y\n  z\n  x y\n"}}
+{"cp":"/pv2:c","x":"string(l)","result":{"type":"string","value":"\n  a\n"}}
+{"cp":"/pv2:c","x":"string(.)","result":{"type":"string","value":"\n  on\n  hi\n  abc\n  2.5\n  pv2:two\n\n    a\n\n    b\n\n    c\n\n    5\n\n    7\n  g1\n  b\n  50\n  x\n  y\n  z\n  x y\n"}}
+{"cp":"/pv2:c","x":"string(l/k)","result":{"type":"string","value":"a"}}
+{"cp":"/pv2:c","x":"string(stats)","result":{"type":"string","value":"\n  5\n"}}
+{"cp":"/pv2:c","x":"normalize-space()","result":{"type":"string","value":"on hi abc 2.5 pv2:two a b c 5 7 g1 b 50 x y z x y"}}
+{"cp":"/pv2:c","x":"concat(l/k, ll)","result":{"type":"string","value":"ax"}}
+{"cp":"/pv2:c","x":"name()","result":{"type":"string","value":"pv2:c"}}
+{"cp":"/pv2:c","x":"local-name()","result":{"type":"string","value":"c"}}
+{"cp":"/pv2:c","x":"namespace-uri()","result":{"type":"string","value":"urn:vibe-ports:yang:conformance:pv2"}}
+{"cp":"/pv2:c","x":"name(l)","result":{"type":"string","value":"pv2:l"}}
+{"cp":"/pv2:c","x":"name(nothing)","result":{"type":"string","value":""}}
+{"cp":"/pv2:c","x":"namespace-uri(l/k)","result":{"type":"string","value":"urn:vibe-ports:yang:conformance:pv2"}}
+{"cp":"/pv2:c","x":"last()","result":{"type":"number","value":1}}
+{"cp":"/pv2:c","x":"position()","result":{"type":"number","value":1}}
+{"cp":"/pv2:c","x":"count(l[last()])","result":{"type":"number","value":1}}
+{"cp":"/pv2:c","x":"'a'[last()]","error":{"err":"LY_EVALID","msg":"Invalid context type string in last().","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"1[2]","result":{"type":"number","value":1}}
+{"cp":"/pv2:c","x":"'a'[true()]","result":{"type":"string","value":"a"}}
+{"cp":"/pv2:c","x":"lang('en')","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"boolean(l)","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"boolean('')","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"boolean(0 div 0)","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"not(l)","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"true() and false()","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"false() or 1","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"l and ll","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"1 or nope:x","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"0 or nope:x","error":{"err":"LY_EVALID","msg":"Unknown/non-implemented module \"nope\".","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"0 and nope:x","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"boolean(nothing)","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"--'5'","result":{"type":"string","value":"5"}}
+{"cp":"/pv2:c","x":"-'5'","result":{"type":"number","value":-5}}
+{"cp":"/pv2:c","x":"- - -1","result":{"type":"number","value":-1}}
+{"cp":"/pv2:c","x":"-(1)","result":{"type":"number","value":-1}}
+{"cp":"/pv2:c","x":"-ll","result":{"type":"number","value":"NaN"}}
+{"cp":"/pv2:c","x":"-1 | 2","error":{"err":"LY_EVALID","msg":"Cannot apply XPath operation union on number and number.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"1 - -1","result":{"type":"number","value":2}}
+{"cp":"/pv2:c","x":"count(1)","error":{"err":"LY_EVALID","msg":"Wrong type of argument #1 (number) for the XPath function count(node-set).","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"1/k","error":{"err":"LY_EVALID","msg":"Cannot apply XPath operation path operator on number.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"'a'/text()","error":{"err":"LY_EVALID","msg":"Invalid context type string in text().","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"'a'/node()","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"'a'//self::x","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"'a'//x","error":{"err":"LY_EVALID","msg":"Cannot apply XPath operation path operator on string.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"sum('a')","error":{"err":"LY_EVALID","msg":"Wrong type of argument #1 (string) for the XPath function sum(node-set).","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"$x","error":{"err":"LY_ENOTFOUND","msg":"Variable \"x\" not defined.","vecode":"LYVE_SUCCESS"}}
+{"cp":"/pv2:c","x":"'a'/..","error":{"err":"LY_EVALID","msg":"Cannot apply XPath operation path operator on string.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"local-name(1)","error":{"err":"LY_EVALID","msg":"Wrong type of argument #1 (number) for the XPath function local-name(node-set?).","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"","error":{"err":"LY_EVALID","msg":"Unexpected XPath expression end.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"l[","error":{"err":"LY_EVALID","msg":"Unexpected XPath expression end.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"l[1","error":{"err":"LY_EVALID","msg":"Unexpected XPath expression end.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"l]","error":{"err":"LY_EVALID","msg":"Unparsed characters \"]\" left at the end of an XPath expression.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"1 +","error":{"err":"LY_EVALID","msg":"Unexpected XPath expression end.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"foo(","error":{"err":"LY_EVALID","msg":"Unknown XPath function \"foo\".","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"foo()","error":{"err":"LY_EVALID","msg":"Unknown XPath function \"foo\".","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"count()","error":{"err":"LY_EVALID","msg":"Invalid number of arguments (0) for the XPath function count.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"count(1, 2)","error":{"err":"LY_EVALID","msg":"Invalid number of arguments (2) for the XPath function count.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"current(1)","error":{"err":"LY_EVALID","msg":"Invalid number of arguments (1) for the XPath function current.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"concat('a')","error":{"err":"LY_EVALID","msg":"Invalid number of arguments (1) for the XPath function concat.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"'abc","error":{"err":"LY_EVALID","msg":"Unterminated string delimited with ' ('abc).","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"\"abc","error":{"err":"LY_EVALID","msg":"Unterminated string delimited with \" (\"abc).","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"1 2","error":{"err":"LY_EVALID","msg":"Unparsed characters \"2\" left at the end of an XPath expression.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"l l","error":{"err":"LY_EVALID","msg":"Invalid character 0x6c ('l'), perhaps \"l\" is supposed to be a function call.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"@","error":{"err":"LY_EVALID","msg":"Unexpected XPath expression end.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"child::","error":{"err":"LY_EVALID","msg":"Invalid character '","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"child::1","error":{"err":"LY_EVALID","msg":"Invalid character '1'[8] of expression 'child::1'.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"nope::x","error":{"err":"LY_EVALID","msg":"Invalid character 'n'[1] of expression 'nope::x'.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"l/","error":{"err":"LY_EVALID","msg":"Unexpected XPath expression end.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"l//","error":{"err":"LY_EVALID","msg":"Unexpected XPath expression end.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"/a:","error":{"err":"LY_EVALID","msg":"Invalid character 'a'[2] of expression '/a:'.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"$p:var","error":{"err":"LY_EVALID","msg":"Variable with prefix is not supported.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"l[.=]","error":{"err":"LY_EVALID","msg":"Unexpected XPath token \"]\" (\"]\").","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":")","error":{"err":"LY_EVALID","msg":"Unexpected XPath token \")\" (\")\").","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"node","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"node()","result":{"type":"node-set","nodes":["/pv2:c/mode","/pv2:c/x","/pv2:c/u","/pv2:c/dec","/pv2:c/id","/pv2:c/l[k='a']","/pv2:c/l[k='b']","/pv2:c/l[k='c']","/pv2:c/stats[1]","/pv2:c/stats[2]","/pv2:c/grouped","/pv2:c/ref","/pv2:c/u2","/pv2:c/ll[.='x']","/pv2:c/ll[.='y']","/pv2:c/ll[.='z']","/pv2:c/flags"]}}
+{"cp":"/pv2:c","x":"comment()","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"text","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"processing-instruction()","error":{"err":"LY_EVALID","msg":"Unknown XPath function \"processing-instruction\".","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"a:b:c","error":{"err":"LY_EVALID","msg":"Invalid character ':'[4] of expression 'a:b:c'.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"1..2","error":{"err":"LY_EVALID","msg":"Unparsed characters \".2\" left at the end of an XPath expression.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"l order","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"l ord","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(1)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))","error":{"err":"LY_EVALID","msg":"The maximum nesting of expressions has been exceeded.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(1)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))","error":{"err":"LY_EVALID","msg":"Wrong type of argument #1 (number) for the XPath function count(node-set).","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"pv2:l/k","result":{"type":"node-set","nodes":["/pv2:c/l[k='a']/k","/pv2:c/l[k='b']/k","/pv2:c/l[k='c']/k"]}}
+{"cp":"/pv2:c","x":"pv2:*","result":{"type":"node-set","nodes":["/pv2:c/mode","/pv2:c/x","/pv2:c/u","/pv2:c/dec","/pv2:c/id","/pv2:c/l[k='a']","/pv2:c/l[k='b']","/pv2:c/l[k='c']","/pv2:c/stats[1]","/pv2:c/stats[2]","/pv2:c/grouped","/pv2:c/ref","/pv2:c/u2","/pv2:c/ll[.='x']","/pv2:c/ll[.='y']","/pv2:c/ll[.='z']","/pv2:c/flags"]}}
+{"cp":"/pv2:c","x":"l[k=\"b\"]","result":{"type":"node-set","nodes":["/pv2:c/l[k='b']"]}}
+{"cp":"/pv2:c","x":"  l  [ 2 ] ","result":{"type":"node-set","nodes":["/pv2:c/l[k='b']"]}}
+{"cp":"/pv2:c","x":"child::l[2]/k","result":{"type":"node-set","nodes":["/pv2:c/l[k='b']/k"]}}
+{"cp":"/pv2:c","x":"@x","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"attribute::*","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"text()","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"l/text()","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"x(1)","error":{"err":"LY_EVALID","msg":"Unknown XPath function \"x\".","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"l/k()","error":{"err":"LY_EVALID","msg":"Unexpected XPath token \"FunctionName\" (\"k()\").","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"pv2:k()","error":{"err":"LY_EVALID","msg":"Unparsed characters \"()\" left at the end of an XPath expression.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"1 = ","error":{"err":"LY_EVALID","msg":"Unexpected XPath expression end.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"| l","error":{"err":"LY_EVALID","msg":"Unexpected XPath token \"Operator(Union)\" (\"| l\").","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"l | ","error":{"err":"LY_EVALID","msg":"Unexpected XPath expression end.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"-","error":{"err":"LY_EVALID","msg":"Unexpected XPath expression end.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"l and","error":{"err":"LY_EVALID","msg":"Unexpected XPath expression end.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"and","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"*","result":{"type":"node-set","nodes":["/pv2:c/mode","/pv2:c/x","/pv2:c/u","/pv2:c/dec","/pv2:c/id","/pv2:c/l[k='a']","/pv2:c/l[k='b']","/pv2:c/l[k='c']","/pv2:c/stats[1]","/pv2:c/stats[2]","/pv2:c/grouped","/pv2:c/ref","/pv2:c/u2","/pv2:c/ll[.='x']","/pv2:c/ll[.='y']","/pv2:c/ll[.='z']","/pv2:c/flags"]}}
+{"cp":"/pv2:c","x":"* * *","result":{"type":"number","value":"NaN"}}
+{"cp":"/pv2:c","x":"l div l","result":{"type":"number","value":"NaN"}}
+{"cp":"/pv2:c","x":"count(l) div 2","result":{"type":"number","value":1.5}}
+{"cp":"/pv2:c","x":"count(l)mod 2","result":{"type":"number","value":1}}
+{"cp":"/pv2:c","x":"lé","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"é","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"string(1 div 3 * 3)","result":{"type":"string","value":"1"}}
+{"cp":"/pv2:c","x":"string(0.1 + 0.2)","result":{"type":"string","value":"0.3"}}
+{"cp":"/pv2:c","x":"string(0.00001)","result":{"type":"string","value":"0.0"}}
+{"cp":"/pv2:c","x":"string(-123.456)","result":{"type":"string","value":"-123.5"}}
+{"cp":"/pv2:c","x":"string(9007199254740993)","result":{"type":"string","value":"9007199254740993"}}
+{"cp":"/pv2:c","x":"string(0.15)","result":{"type":"string","value":"0.1"}}
+{"cp":"/pv2:c","x":"string(0.45)","result":{"type":"string","value":"0.5"}}
+{"cp":"/pv2:c","x":"string(1.05)","result":{"type":"string","value":"1.1"}}
+{"cp":"/pv2:c","x":"string(2.675)","result":{"type":"string","value":"2.7"}}
+{"cp":"/pv2:c","x":"string(99.95)","result":{"type":"string","value":"100.0"}}
+{"cp":"/pv2:c","x":"string(-0.05)","result":{"type":"string","value":"-0.1"}}
+{"cp":"/pv2:c","x":"string(1000000000000000000000000)","result":{"type":"string","value":"1000000000000000000000000.0"}}
+{"cp":"/pv2:c","x":"string(9223372036854775807)","result":{"type":"string","value":"9223372036854775807"}}
+{"cp":"/pv2:c","x":"string(-9223372036854775808)","result":{"type":"string","value":"-9223372036854775808"}}
+{"cp":"/pv2:c","x":"ceiling(0 div 0)","result":{"type":"number","value":-9.2233720368547758e+18}}
+{"cp":"/pv2:c","x":"ceiling(1 div 0)","result":{"type":"number","value":-9.2233720368547758e+18}}
+{"cp":"/pv2:c","x":"ceiling(-1 div 0)","result":{"type":"number","value":-9.2233720368547758e+18}}
+{"cp":"/pv2:c","x":"floor(1 div 0)","result":{"type":"node-set","nodes":["/pv2:c"]}}
+{"cp":"/pv2:c","x":"round(-1 div 0)","result":{"type":"number","value":"-Infinity"}}
+{"cp":"/pv2:c","x":"ceiling(-0.5)","result":{"type":"number","value":1}}
+{"cp":"/pv2:c","x":"round(0.49999999999999994)","result":{"type":"number","value":0}}
+{"cp":"/pv2:c","x":"round(-0.5)","result":{"type":"number","value":0}}
+{"cp":"/pv2:c","x":"round(-0.51)","result":{"type":"number","value":0}}
+{"cp":"/pv2:c","x":"string(round(-0.5))","result":{"type":"string","value":"0"}}
+{"cp":"/pv2:c","x":"1 div -0","result":{"type":"number","value":"-Infinity"}}
+{"cp":"/pv2:c","x":"string(-0 * 1)","result":{"type":"string","value":"0"}}
+{"cp":"/pv2:c","x":"boolean(-0)","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"0.0000004 = 0","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"0.0000005 = 0","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"0.0000006 = 0.000001","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"1000000.0000001 = 1000000","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"1e3 = 1000","error":{"err":"LY_EVALID","msg":"Invalid character 'e'[2] of expression '1e3 = 1000'.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"100000000000000000000 = 100000000000000000001","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"sum(ll)","result":{"type":"number","value":"NaN"}}
+{"cp":"/pv2:c","x":"number(l)","result":{"type":"number","value":"NaN"}}
+{"cp":"/pv2:c","x":"count(//ll | //l)","result":{"type":"number","value":6}}
+{"cp":"/pv2:c","x":"l[k='b']/preceding::k","result":{"type":"node-set","nodes":["/pv2:c/l[k='a']/k"]}}
+{"cp":"/pv2:c","x":"name(l/k)","result":{"type":"string","value":"pv2:k"}}
+{"cp":"/pv2:c","x":"l[k='b']/preceding::node()","result":{"type":"node-set","nodes":["/pv2:c","/pv2:c/mode","/pv2:c/x","/pv2:c/u","/pv2:c/dec","/pv2:c/id","/pv2:c/l[k='a']","/pv2:c/l[k='a']/k"]}}
+{"cp":"/pv2:c","x":"count(l[2]/preceding::node())","result":{"type":"number","value":8}}
+{"cp":"/pv2:c","x":"l[2]/k/preceding::*","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"stats[2]/hits/preceding::*","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"ll[2]/preceding-sibling::*[1]","result":{"type":"node-set","nodes":["/pv2:c/ll[.='x']"]}}
+{"cp":"/pv2:c","x":"ll[2]/following::*","result":{"type":"node-set","nodes":["/pv2:c/ll[.='z']","/pv2:c/flags"]}}
+{"cp":"/pv2:c","x":"count(l[1]/following::node())","result":{"type":"number","value":15}}
+{"cp":"/pv2:c","x":"l[k][k='a' or k='c']/k","result":{"type":"node-set","nodes":["/pv2:c/l[k='a']/k","/pv2:c/l[k='c']/k"]}}
+{"cp":"/pv2:c","x":"l[not(k='b')][2]/k","result":{"type":"node-set","nodes":["/pv2:c/l[k='c']/k"]}}
+{"cp":"/pv2:c","x":"l[k=../ll]","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"ll[.=../l/k]","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"l[1][1][1]/k","result":{"type":"node-set","nodes":["/pv2:c/l[k='a']/k"]}}
+{"cp":"/pv2:c","x":"(//k)[last()]","result":{"type":"node-set","nodes":["/pv2:c/l[k='c']/k"]}}
+{"cp":"/pv2:c","x":"(l | stats)[4]","result":{"type":"node-set","nodes":["/pv2:c/stats[1]"]}}
+{"cp":"/pv2:c","x":"(stats | l)[1]","result":{"type":"node-set","nodes":["/pv2:c/l[k='a']"]}}
+{"cp":"/pv2:c","x":"count((l | ll)[position() \u003e 2])","result":{"type":"number","value":4}}
+{"cp":"/pv2:c","x":"ll[position() = last() - 1]","result":{"type":"node-set","nodes":["/pv2:c/ll[.='y']"]}}
+{"cp":"/pv2:c","x":"ll[last() - 1]","result":{"type":"node-set","nodes":["/pv2:c/ll[.='y']"]}}
+{"cp":"/pv2:c","x":"ll[0.9]","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"ll[-1]","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"ll[true()]","result":{"type":"node-set","nodes":["/pv2:c/ll[.='x']","/pv2:c/ll[.='y']","/pv2:c/ll[.='z']"]}}
+{"cp":"/pv2:c","x":"ll['']","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"ll[l]","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"ll[nothing]","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"l/k[. = 'b'] | ll[. = 'x']","result":{"type":"node-set","nodes":["/pv2:c/l[k='b']/k","/pv2:c/ll[.='x']"]}}
+{"cp":"/pv2:c","x":"string(ll[2] | ll[1])","result":{"type":"string","value":"x"}}
+{"cp":"/pv2:c","x":"substring('12345', 1.5)","result":{"type":"string","value":"2345"}}
+{"cp":"/pv2:c","x":"substring('12345', 2.5, 1.5)","result":{"type":"string","value":"34"}}
+{"cp":"/pv2:c","x":"substring('abc', 0)","result":{"type":"string","value":"abc"}}
+{"cp":"/pv2:c","x":"substring('abc', 4)","result":{"type":"string","value":""}}
+{"cp":"/pv2:c","x":"substring('abc', 3, 1)","result":{"type":"string","value":"c"}}
+{"cp":"/pv2:c","x":"substring('abc', 2, -1)","result":{"type":"string","value":""}}
+{"cp":"/pv2:c","x":"substring('жabc', 2, 2)","result":{"type":"string","value":"�a"}}
+{"cp":"/pv2:c","x":"translate('abc', 'abca', 'xyzw')","result":{"type":"string","value":"xyz"}}
+{"cp":"/pv2:c","x":"translate('ж', 'ж', 'ab')","result":{"type":"string","value":"ab"}}
+{"cp":"/pv2:c","x":"normalize-space('\n\na\n')","result":{"type":"string","value":"a"}}
+{"cp":"/pv2:c","x":"concat('', '')","result":{"type":"string","value":""}}
+{"cp":"/pv2:c","x":"string-length(.)","result":{"type":"number","value":100}}
+{"cp":"/pv2:c","x":"string-length(l)","result":{"type":"number","value":5}}
+{"cp":"/pv2:c","x":"contains('abc', '')","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"starts-with('', '')","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"re-match('', '')","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"re-match('aaa', 'a*')","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"re-match('a\nb', '.*')","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"re-match('é', '\\w')","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"number('+5')","result":{"type":"number","value":5}}
+{"cp":"/pv2:c","x":"number('- 5')","result":{"type":"number","value":"NaN"}}
+{"cp":"/pv2:c","x":"number('.')","result":{"type":"number","value":"NaN"}}
+{"cp":"/pv2:c","x":"number('5.')","result":{"type":"number","value":5}}
+{"cp":"/pv2:c","x":"number('1E2')","result":{"type":"number","value":100}}
+{"cp":"/pv2:c","x":"number('0x')","result":{"type":"number","value":"NaN"}}
+{"cp":"/pv2:c","x":"number('nan')","result":{"type":"number","value":"NaN"}}
+{"cp":"/pv2:c","x":"number('1e400')","result":{"type":"number","value":"Infinity"}}
+{"cp":"/pv2:c","x":"number('1e-400')","result":{"type":"number","value":0}}
+{"cp":"/pv2:c","x":"number('0X1p4')","result":{"type":"number","value":16}}
+{"cp":"/pv2:c","x":"number('\t5')","result":{"type":"number","value":5}}
+{"cp":"/pv2:c","x":"number(' ')","result":{"type":"number","value":"NaN"}}
+{"cp":"/pv2:c","x":"-number('1e400')","result":{"type":"number","value":"-Infinity"}}
+{"cp":"/pv2:c","x":"d = ''","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"dec \u003e 2","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"dec \u003c '3'","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"dec = '2.5000'","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"dec = 'abc'","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"u2 = 50","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"u2 \u003e '049'","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"u2 = '0x32'","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"id = 'pv2:one'","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"id != 'pv2:two'","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"mode = 'ON'","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"mode != 'off'","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"ll \u003e 'a'","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"'x' = ll","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"ll = ll","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"ll != ll","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"l/k = ll","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"count(ll[. \u003e 0])","result":{"type":"number","value":0}}
+{"cp":"/pv2:c","x":"stats/hits = '05'","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"stats/hits = ../stats/hits","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"true() = l","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"false() = nothing","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"l = true()","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"0 = nothing","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"'' = nothing","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"nothing != nothing","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"nothing = nothing","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"count(self::node()/self::node())","result":{"type":"number","value":1}}
+{"cp":"/pv2:c","x":"count(./.)","result":{"type":"number","value":1}}
+{"cp":"/pv2:c","x":"count(.//.)","result":{"type":"number","value":23}}
+{"cp":"/pv2:c","x":"count(..//.)","result":{"type":"number","value":24}}
+{"cp":"/pv2:c","x":"count(.//*)","result":{"type":"number","value":22}}
+{"cp":"/pv2:c","x":"count(//node())","result":{"type":"number","value":1}}
+{"cp":"/pv2:c","x":"count(descendant::node())","result":{"type":"number","value":22}}
+{"cp":"/pv2:c","x":"count(//text())","result":{"type":"number","value":0}}
+{"cp":"/pv2:c","x":"count(/descendant-or-self::node()/text())","result":{"type":"number","value":17}}
+{"cp":"/pv2:c","x":"l/k/self::text()","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"count(l/k/descendant-or-self::text())","result":{"type":"number","value":0}}
+{"cp":"/pv2:c","x":"count(l/k/child::text())","result":{"type":"number","value":3}}
+{"cp":"/pv2:c","x":"l/k/text()/..","result":{"type":"node-set","nodes":["/pv2:c/l[k='a']/k","/pv2:c/l[k='b']/k","/pv2:c/l[k='c']/k"]}}
+{"cp":"/pv2:c","x":"count(l/k/text()/ancestor::*)","result":{"type":"number","value":8}}
+{"cp":"/pv2:c","x":"string(l/k/text())","result":{"type":"string","value":"a"}}
+{"cp":"/pv2:c","x":"name(l/k/text())","result":{"type":"string","value":""}}
+{"cp":"/pv2:c","x":"count(l/k/text() | l/k)","result":{"type":"number","value":6}}
+{"cp":"/pv2:c","x":"(l/k/text() | l/k)[2]","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"l/k[text()='b']","result":{"type":"node-set","nodes":["/pv2:c/l[k='b']/k"]}}
+{"cp":"/pv2:c","x":"l[k/text()='b']/k","result":{"type":"node-set","nodes":["/pv2:c/l[k='b']/k"]}}
+{"cp":"/pv2:c","x":"text()/..","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"count(l/node())","result":{"type":"number","value":3}}
+{"cp":"/pv2:c","x":"count(l/*/node())","result":{"type":"number","value":0}}
+{"cp":"/pv2:c","x":"count(comment())","result":{"type":"number","value":0}}
+{"cp":"/pv2:c","x":"count(l/k/comment())","result":{"type":"number","value":3}}
+{"cp":"/pv2:c","x":"local-name(*)","result":{"type":"string","value":"mode"}}
+{"cp":"/pv2:c","x":"local-name(*[2])","result":{"type":"string","value":"x"}}
+{"cp":"/pv2:c","x":"namespace-uri(.)","result":{"type":"string","value":"urn:vibe-ports:yang:conformance:pv2"}}
+{"cp":"/pv2:c","x":"namespace-uri(..)","result":{"type":"string","value":""}}
+{"cp":"/pv2:c","x":"name(current())","result":{"type":"string","value":"pv2:c"}}
+{"cp":"/pv2:c","x":"string(current())","result":{"type":"string","value":"\n  on\n  hi\n  abc\n  2.5\n  pv2:two\n\n    a\n\n    b\n\n    c\n\n    5\n\n    7\n  g1\n  b\n  50\n  x\n  y\n  z\n  x y\n"}}
+{"cp":"/pv2:c","x":"count(current()/..)","result":{"type":"number","value":1}}
+{"cp":"/pv2:c","x":"current()/../c/l[2]/k","result":{"type":"node-set","nodes":["/pv2:c/l[k='b']/k"]}}
+{"cp":"/pv2:c","x":"l[k = current()/l[3]/k]/k","result":{"type":"node-set","nodes":["/pv2:c/l[k='c']/k"]}}
+{"cp":"/pv2:c","x":"l[current()/ref = k]/k","result":{"type":"node-set","nodes":["/pv2:c/l[k='b']/k"]}}
+{"cp":"/pv2:c","x":"count(l[current() = .])","result":{"type":"number","value":0}}
+{"cp":"/pv2:c","x":"derived-from(l, 'pv2:one')","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"derived-from(ll, 'pv2:one')","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"derived-from(*, 'pv2:one')","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"derived-from(id, '')","error":{"err":"LY_EVALID","msg":"Identity \"\" not found in module \"pv2\".","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"derived-from(id, ':one')","error":{"err":"LY_EINVAL","msg":"Invalid argument prefix_len (ly_resolve_prefix()).","vecode":"LYVE_SUCCESS"}}
+{"cp":"/pv2:c","x":"derived-from(id, 'pv2:')","error":{"err":"LY_EVALID","msg":"Identity \"\" not found in module \"pv2\".","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"derived-from-or-self(*, 'pv2:two')","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"derived-from-or-self(nothing, 'pv2:two')","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"derived-from-or-self(id, concat('pv2', ':', 'two'))","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"derived-from(id, 1)","error":{"err":"LY_EVALID","msg":"Identity \"1\" not found in module \"pv2\".","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"enum-value(*)","result":{"type":"number","value":0}}
+{"cp":"/pv2:c","x":"enum-value(l)","result":{"type":"number","value":"NaN"}}
+{"cp":"/pv2:c","x":"enum-value(1)","error":{"err":"LY_EVALID","msg":"Wrong type of argument #1 (number) for the XPath function enum-value(node-set).","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"bit-is-set(*, 'x')","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"bit-is-set(flags, 1)","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"bit-is-set(flags, 'x y')","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"deref(ref)/k","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"deref(l)","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"deref(ref | mode)","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"deref(1)","error":{"err":"LY_EVALID","msg":"Wrong type of argument #1 (number) for the XPath function deref(node-set).","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"count(deref(ref))","result":{"type":"number","value":1}}
+{"cp":"/pv2:c","x":"deref(.)","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"1 | 2","error":{"err":"LY_EVALID","msg":"Cannot apply XPath operation union on number and number.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"l | 'a'","error":{"err":"LY_EVALID","msg":"Cannot apply XPath operation union on node set and string.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"-l/k","result":{"type":"number","value":"NaN"}}
+{"cp":"/pv2:c","x":"-(l/k)","result":{"type":"number","value":"NaN"}}
+{"cp":"/pv2:c","x":"--l","result":{"type":"node-set","nodes":["/pv2:c/l[k='a']","/pv2:c/l[k='b']","/pv2:c/l[k='c']"]}}
+{"cp":"/pv2:c","x":"- - 'x'","result":{"type":"string","value":"x"}}
+{"cp":"/pv2:c","x":"1--1","result":{"type":"number","value":2}}
+{"cp":"/pv2:c","x":"1 - - - 1","result":{"type":"number","value":0}}
+{"cp":"/pv2:c","x":"-'x' = -'y'","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"count(l) = 3 and count(ll) = 3","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"1 and 0 or 1","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"0 or 0 and 1","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"1 = 1 and 2","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"1 + 2 * 3","result":{"type":"number","value":7}}
+{"cp":"/pv2:c","x":"(1 + 2) * 3","result":{"type":"number","value":9}}
+{"cp":"/pv2:c","x":"10 - 2 - 3","result":{"type":"number","value":5}}
+{"cp":"/pv2:c","x":"2 * 3 mod 4","result":{"type":"number","value":2}}
+{"cp":"/pv2:c","x":"8 div 2 div 2","result":{"type":"number","value":2}}
+{"cp":"/pv2:c","x":"7 mod 0","result":{"type":"number","value":"NaN"}}
+{"cp":"/pv2:c","x":"-7 mod -3","result":{"type":"number","value":-1}}
+{"cp":"/pv2:c","x":"1.5 mod 1","result":{"type":"number","value":0.5}}
+{"cp":"/pv2:c","x":"1 \u003c 2 = true()","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"1 = 2 \u003c 3","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"1 != 2 != 3","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"'a' | l","error":{"err":"LY_EVALID","msg":"Cannot apply XPath operation union on string and node set.","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"l[1]/k/following-sibling::*","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"count(/pv2:c/following::*)","result":{"type":"number","value":0}}
+{"cp":"/pv2:c","x":"count(/pv2:c/preceding::*)","result":{"type":"number","value":0}}
+{"cp":"/pv2:c","x":"count(following::*)","result":{"type":"number","value":0}}
+{"cp":"/pv2:c","x":"count(preceding-sibling::node())","result":{"type":"number","value":0}}
+{"cp":"/pv2:c","x":"count(ancestor-or-self::node())","result":{"type":"number","value":2}}
+{"cp":"/pv2:c","x":"ancestor-or-self::*","result":{"type":"node-set","nodes":["/pv2:c"]}}
+{"cp":"/pv2:c","x":"count(ancestor::node())","result":{"type":"number","value":1}}
+{"cp":"/pv2:c","x":"self::pv2:c","result":{"type":"node-set","nodes":["/pv2:c"]}}
+{"cp":"/pv2:c","x":"self::pv2:*","result":{"type":"node-set","nodes":["/pv2:c"]}}
+{"cp":"/pv2:c","x":"self::nope:*","error":{"err":"LY_EVALID","msg":"Unknown/non-implemented module \"nope\".","vecode":"LYVE_XPATH"}}
+{"cp":"/pv2:c","x":"pv2:l[2]/pv2:k","result":{"type":"node-set","nodes":["/pv2:c/l[k='b']/k"]}}
+{"cp":"/pv2:c","x":"child::pv2:*[1]","result":{"type":"node-set","nodes":["/pv2:c/mode"]}}
+{"cp":"/pv2:c","x":"*/k","result":{"type":"node-set","nodes":["/pv2:c/l[k='a']/k","/pv2:c/l[k='b']/k","/pv2:c/l[k='c']/k"]}}
+{"cp":"/pv2:c","x":"*/*","result":{"type":"node-set","nodes":["/pv2:c/l[k='a']/k","/pv2:c/l[k='b']/k","/pv2:c/l[k='c']/k","/pv2:c/stats[1]/hits","/pv2:c/stats[2]/hits"]}}
+{"cp":"/pv2:c","x":"count(*/*/*)","result":{"type":"number","value":0}}
+{"cp":"/pv2:c","x":"attribute::k","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"@pv2:x","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"l/@*","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"count(l/@*)","result":{"type":"number","value":0}}
+{"cp":"/pv2:c","x":"l[@x]","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"l[1]/@*/..","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"//@*","result":{"type":"node-set","nodes":[]}}
+{"cp":"/pv2:c","x":"deref(..)","crash":true}
+{"cp":"/pv2:c","x":"bit-is-set(.., 'x')","crash":true}
+{"cp":"/pv2:c","x":"enum-value(..)","crash":true}
+{"cp":"","x":"derived-from(c/id, 'one')","crash":true}

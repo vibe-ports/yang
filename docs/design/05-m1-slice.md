@@ -17,7 +17,7 @@ each rule, schema-tree dump, a `sequence` with when auto-delete.
 internal/parser   (stdlib only)               YANG text → statement tree → typed parsed module
 internal/schema   (stdlib only)               compiled schema types: Module, Node, Type, Must, When, Identity
 internal/xsdre    (stdlib)                    done
-internal/xpath    → schema                    parse + evaluate over xpath.Node (interface it owns)
+internal/xpath    → xsdre                     parse + evaluate over xpath.Node / SchemaNode / Value (interfaces it owns; no schema import)
 internal/types    → schema, xsdre             value model (design 01): Store/Canonical/Compare/Resolve
 internal/compile  → parser, schema, types, xpath   parsed modules → compiled schema
 data              → schema, types, xpath      tree (design 02), JSON/XML codecs, defaults, validation
@@ -40,7 +40,7 @@ returned collections cannot mutate the schema.
   Whens, Status}`; `Type{Base, Typedef, Range, Length, Patterns, FracDigits, Enums, Bits, Bases,
   Path, RequireInstance, Union []*Type}`; `Must{Src, AppTag, Msg, Ctx NSCtx, Compiled any}`,
   `When{Src, Ctx NSCtx, ContextNode *Node, Compiled any}` — `Compiled` holds the `*xpath.Expr` set by
-  compile; schema stays stdlib-only because xpath imports schema, not the other way round.
+  compile; schema stays stdlib-only, and xpath does not import schema either (compile adapts schema to xpath.SchemaNode).
 - Defaults keep the original lexical text + prefix context (libyang `schema_compile.c:976`); the
   canonical value is derived by `types` at use time, because a union default (e.g. "01" for
   `union { leafref→uint8; string }`) resolves differently depending on data.

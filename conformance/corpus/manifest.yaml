@@ -2108,3 +2108,132 @@ fixtures:
       data_type: config
       data: '<c xmlns="urn:vibe-ports:ty3"><dt>2005-05-25T12:00:00-00:30</dt></c>'
     golden: golden/dt-minus-half-hour.json
+  # ---- protocol-v2: XPath (op xpath) over data/xpath.json, parse-only (no implicit defaults) ----
+
+  - id: protocol-v2/xpath-l
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "l[.=]"
+    golden: golden/xpath-l.json
+
+  - id: protocol-v2/xpath-foo
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "foo()"
+    golden: golden/xpath-foo.json
+
+  - id: protocol-v2/xpath-count-1-2
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "count(1, 2)"
+    golden: golden/xpath-count-1-2.json
+
+  - id: protocol-v2/xpath-1e3
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "1e3"
+    golden: golden/xpath-1e3.json
+
+  - id: protocol-v2/xpath-nope-c
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "/nope:c"
+    golden: golden/xpath-nope-c.json
+
+  - id: protocol-v2/xpath-x
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "$x"
+    golden: golden/xpath-x.json
+
+  - id: protocol-v2/xpath-count-1
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "count(1)"
+    golden: golden/xpath-count-1.json
+
+  - id: protocol-v2/xpath-a-text
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "'a'/text()"
+    golden: golden/xpath-a-text.json

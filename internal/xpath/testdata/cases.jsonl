@@ -1,0 +1,577 @@
+{"cp": "", "x": "//*"}
+{"cp": "", "x": "count(//*)"}
+{"cp": "", "x": "count(//.)"}
+{"cp": "", "x": "count(/descendant::*)"}
+{"cp": "", "x": "/"}
+{"cp": "", "x": "count(/)"}
+{"cp": "", "x": "string(/)"}
+{"cp": "", "x": "name(/)"}
+{"cp": "", "x": "name(/*)"}
+{"cp": "", "x": "/pv2:*"}
+{"cp": "", "x": "/c/l/k"}
+{"cp": "", "x": "/nope:c"}
+{"cp": "", "x": "count(descendant-or-self::node())"}
+{"cp": "", "x": "local-name()"}
+{"cp": "", "x": "."}
+{"cp": "", "x": "count(..)"}
+{"cp": "/pv2:c", "x": "*"}
+{"cp": "/pv2:c", "x": "l"}
+{"cp": "/pv2:c", "x": "l[2]"}
+{"cp": "/pv2:c", "x": "l[last()]"}
+{"cp": "/pv2:c", "x": "l[position() = 2]/k"}
+{"cp": "/pv2:c", "x": "l[1.5]"}
+{"cp": "/pv2:c", "x": "l[k='b']"}
+{"cp": "/pv2:c", "x": "l/k"}
+{"cp": "/pv2:c", "x": "l/k[2]"}
+{"cp": "/pv2:c", "x": "ll"}
+{"cp": "/pv2:c", "x": "ll[2]"}
+{"cp": "/pv2:c", "x": "ll[. = 'y']"}
+{"cp": "/pv2:c", "x": "x/following-sibling::*"}
+{"cp": "/pv2:c", "x": "x/following-sibling::*[1]"}
+{"cp": "/pv2:c", "x": "x/preceding-sibling::*"}
+{"cp": "/pv2:c", "x": "x/preceding-sibling::*[1]"}
+{"cp": "/pv2:c", "x": "l[2]/following::*"}
+{"cp": "/pv2:c", "x": "l[1]/following::k"}
+{"cp": "/pv2:c", "x": "l[2]/preceding::*"}
+{"cp": "/pv2:c", "x": "l[2]/preceding::*[1]"}
+{"cp": "/pv2:c", "x": "l[1]/k/preceding::*"}
+{"cp": "/pv2:c", "x": "l/k/following::*"}
+{"cp": "/pv2:c", "x": "flags/following::*"}
+{"cp": "/pv2:c", "x": "mode/preceding::*"}
+{"cp": "/pv2:c", "x": "l/k/ancestor::*"}
+{"cp": "/pv2:c", "x": "l/k/ancestor-or-self::*"}
+{"cp": "/pv2:c", "x": "count(l/k/ancestor::node())"}
+{"cp": "/pv2:c", "x": "count(ancestor::*)"}
+{"cp": "/pv2:c", "x": "count(descendant-or-self::node())"}
+{"cp": "/pv2:c", "x": "descendant::k"}
+{"cp": "/pv2:c", "x": "self::c"}
+{"cp": "/pv2:c", "x": "self::*"}
+{"cp": "/pv2:c", "x": "self::node()"}
+{"cp": "/pv2:c", "x": ".."}
+{"cp": "/pv2:c", "x": "count(..)"}
+{"cp": "/pv2:c", "x": "name(..)"}
+{"cp": "/pv2:c", "x": "../c/mode"}
+{"cp": "/pv2:c", "x": "/pv2:c/l/k"}
+{"cp": "/pv2:c", "x": "l/k/text()"}
+{"cp": "/pv2:c", "x": "count(l/k/text())"}
+{"cp": "/pv2:c", "x": "string(l[2]/k/text())"}
+{"cp": "/pv2:c", "x": "count(.//text())"}
+{"cp": "/pv2:c", "x": "count(//k)"}
+{"cp": "/pv2:c", "x": "l//k"}
+{"cp": "/pv2:c", "x": "count(stats)"}
+{"cp": "/pv2:c", "x": "sum(stats/hits)"}
+{"cp": "/pv2:c", "x": "stats[hits > 5]/hits"}
+{"cp": "/pv2:c", "x": "@*"}
+{"cp": "/pv2:c", "x": "count(@*)"}
+{"cp": "/pv2:c", "x": "(l | ll)[3]"}
+{"cp": "/pv2:c", "x": "count(l | ll | l)"}
+{"cp": "/pv2:c", "x": "l | 1"}
+{"cp": "/pv2:c", "x": "(l/k)[2]"}
+{"cp": "/pv2:c", "x": "l[k = ../ref]/k"}
+{"cp": "/pv2:c", "x": "l[k = current()/ref]/k"}
+{"cp": "/pv2:c", "x": "current()"}
+{"cp": "/pv2:c", "x": "current()/mode"}
+{"cp": "/pv2:c", "x": "count(current())"}
+{"cp": "/pv2:c", "x": "l[2]/k/ancestor::*[1]"}
+{"cp": "/pv2:c", "x": "l/k/../../mode"}
+{"cp": "/pv2:c", "x": "child::l/child::k"}
+{"cp": "/pv2:c", "x": "descendant-or-self::k"}
+{"cp": "/pv2:c", "x": "l[k='a']/following-sibling::l[1]/k"}
+{"cp": "/pv2:c", "x": "l[k='c']/preceding-sibling::l[1]/k"}
+{"cp": "/pv2:c", "x": "l[k='c']/preceding-sibling::l"}
+{"cp": "/pv2:c", "x": "ll/self::ll[2]"}
+{"cp": "/pv2:c", "x": "l[k][2]/k"}
+{"cp": "/pv2:c", "x": "l[count(k) = 1][last()]/k"}
+{"cp": "/pv2:c", "x": "*[3]"}
+{"cp": "/pv2:c", "x": "*[last()]"}
+{"cp": "/pv2:c", "x": "//l[2]/k"}
+{"cp": "/pv2:c", "x": ".//l[2]/k"}
+{"cp": "/pv2:c", "x": "l[k='b']/ancestor-or-self::*[2]"}
+{"cp": "/pv2:c", "x": "deref(ref)"}
+{"cp": "/pv2:c", "x": "deref(ref)/.."}
+{"cp": "/pv2:c", "x": "deref(u2)"}
+{"cp": "/pv2:c", "x": "deref(mode)"}
+{"cp": "/pv2:c", "x": "deref(nothing)"}
+{"cp": "/pv2:c", "x": "derived-from(id, 'pv2:one')"}
+{"cp": "/pv2:c", "x": "derived-from(id, 'one')"}
+{"cp": "/pv2:c", "x": "derived-from(id, 'pv2:two')"}
+{"cp": "/pv2:c", "x": "derived-from-or-self(id, 'pv2:two')"}
+{"cp": "/pv2:c", "x": "derived-from(id, 'pv2:nope')"}
+{"cp": "/pv2:c", "x": "derived-from(id, 'nope:one')"}
+{"cp": "/pv2:c", "x": "derived-from(mode, 'pv2:one')"}
+{"cp": "/pv2:c", "x": "derived-from('x', 'pv2:one')"}
+{"cp": "/pv2:c", "x": "derived-from(id, 'pv2:base-id')"}
+{"cp": "/pv2:c", "x": "derived-from-or-self(id, 'pv2:base-id')"}
+{"cp": "/pv2:c", "x": "enum-value(mode)"}
+{"cp": "/pv2:c", "x": "enum-value(x)"}
+{"cp": "/pv2:c", "x": "enum-value(u)"}
+{"cp": "/pv2:c", "x": "enum-value(nothing)"}
+{"cp": "/pv2:c", "x": "bit-is-set(flags, 'x')"}
+{"cp": "/pv2:c", "x": "bit-is-set(flags, 'y')"}
+{"cp": "/pv2:c", "x": "bit-is-set(flags, 'z')"}
+{"cp": "/pv2:c", "x": "bit-is-set(mode, 'x')"}
+{"cp": "/pv2:c", "x": "bit-is-set('a', 'x')"}
+{"cp": "/pv2:c", "x": "re-match(x, 'h.*')"}
+{"cp": "/pv2:c", "x": "re-match('abc', '[a-z]+')"}
+{"cp": "/pv2:c", "x": "re-match('1', '\\d')"}
+{"cp": "/pv2:c", "x": "re-match('a', '[')"}
+{"cp": "/pv2:c", "x": "re-match('ab', 'a')"}
+{"cp": "/pv2:c", "x": "1 div 3"}
+{"cp": "/pv2:c", "x": "10 div 4"}
+{"cp": "/pv2:c", "x": "1.25 + 0"}
+{"cp": "/pv2:c", "x": "2.5 * 3"}
+{"cp": "/pv2:c", "x": "-0"}
+{"cp": "/pv2:c", "x": "0 div 0"}
+{"cp": "/pv2:c", "x": "1 div 0"}
+{"cp": "/pv2:c", "x": "-1 div 0"}
+{"cp": "/pv2:c", "x": "7 mod 3"}
+{"cp": "/pv2:c", "x": "-7 mod 3"}
+{"cp": "/pv2:c", "x": "7.5 mod 2"}
+{"cp": "/pv2:c", "x": "1e3"}
+{"cp": "/pv2:c", "x": ".5 + 5."}
+{"cp": "/pv2:c", "x": "number('1e3')"}
+{"cp": "/pv2:c", "x": "number(' 12')"}
+{"cp": "/pv2:c", "x": "number('12 ')"}
+{"cp": "/pv2:c", "x": "number('0x1A')"}
+{"cp": "/pv2:c", "x": "number('inf')"}
+{"cp": "/pv2:c", "x": "number('-Infinity')"}
+{"cp": "/pv2:c", "x": "number('abc')"}
+{"cp": "/pv2:c", "x": "number('')"}
+{"cp": "/pv2:c", "x": "number(true())"}
+{"cp": "/pv2:c", "x": "number(dec)"}
+{"cp": "/pv2:c", "x": "number(mode)"}
+{"cp": "/pv2:c", "x": "number()"}
+{"cp": "/pv2:c", "x": "number('-.5')"}
+{"cp": "/pv2:c", "x": "string(1 div 3)"}
+{"cp": "/pv2:c", "x": "string(100000000000000000000)"}
+{"cp": "/pv2:c", "x": "string(-0.5)"}
+{"cp": "/pv2:c", "x": "string(0.25)"}
+{"cp": "/pv2:c", "x": "string(0.35)"}
+{"cp": "/pv2:c", "x": "string(2.5)"}
+{"cp": "/pv2:c", "x": "string(1 div 0)"}
+{"cp": "/pv2:c", "x": "string(0 div 0)"}
+{"cp": "/pv2:c", "x": "string(123456789012)"}
+{"cp": "/pv2:c", "x": "string(-0)"}
+{"cp": "/pv2:c", "x": "string(0.05)"}
+{"cp": "/pv2:c", "x": "string(1.96)"}
+{"cp": "/pv2:c", "x": "floor(2.7)"}
+{"cp": "/pv2:c", "x": "floor(-1.5)"}
+{"cp": "/pv2:c", "x": "ceiling(2.1)"}
+{"cp": "/pv2:c", "x": "ceiling(-1.5)"}
+{"cp": "/pv2:c", "x": "ceiling(3)"}
+{"cp": "/pv2:c", "x": "round(2.5)"}
+{"cp": "/pv2:c", "x": "round(-2.5)"}
+{"cp": "/pv2:c", "x": "round(-2.7)"}
+{"cp": "/pv2:c", "x": "round(-0.3)"}
+{"cp": "/pv2:c", "x": "string(round(-0.3))"}
+{"cp": "/pv2:c", "x": "floor(0 div 0)"}
+{"cp": "/pv2:c", "x": "round(0 div 0)"}
+{"cp": "/pv2:c", "x": "round(1 div 0)"}
+{"cp": "/pv2:c", "x": "1.0000001 = 1.0000002"}
+{"cp": "/pv2:c", "x": "0.0000001 = 0.0000002"}
+{"cp": "/pv2:c", "x": "0 div 0 = 0 div 0"}
+{"cp": "/pv2:c", "x": "0 div 0 != 0 div 0"}
+{"cp": "/pv2:c", "x": "0 div 0 < 1"}
+{"cp": "/pv2:c", "x": "0 div 0 > 1"}
+{"cp": "/pv2:c", "x": "1 div 0 > 1000"}
+{"cp": "/pv2:c", "x": "-1 div 0 < 0"}
+{"cp": "/pv2:c", "x": "-0 = 0"}
+{"cp": "/pv2:c", "x": "25.200 = 25.2"}
+{"cp": "/pv2:c", "x": "-25.2 < -1.0"}
+{"cp": "/pv2:c", "x": "'abc' < 'abd'"}
+{"cp": "/pv2:c", "x": "'2' < '10'"}
+{"cp": "/pv2:c", "x": "true() = 'x'"}
+{"cp": "/pv2:c", "x": "true() = 1"}
+{"cp": "/pv2:c", "x": "false() = ''"}
+{"cp": "/pv2:c", "x": "1 = '1.0'"}
+{"cp": "/pv2:c", "x": "'1' = '1.0'"}
+{"cp": "/pv2:c", "x": "true() > false()"}
+{"cp": "/pv2:c", "x": "1 < 2 < 3"}
+{"cp": "/pv2:c", "x": "3 > 2 > 1"}
+{"cp": "/pv2:c", "x": "1 = 1 = 1"}
+{"cp": "/pv2:c", "x": "l/k = 'b'"}
+{"cp": "/pv2:c", "x": "l/k != 'b'"}
+{"cp": "/pv2:c", "x": "ll = l/k"}
+{"cp": "/pv2:c", "x": "ll != l/k"}
+{"cp": "/pv2:c", "x": "stats/hits > 6"}
+{"cp": "/pv2:c", "x": "stats/hits = 5"}
+{"cp": "/pv2:c", "x": "d = '07'"}
+{"cp": "/pv2:c", "x": "d = 7"}
+{"cp": "/pv2:c", "x": "dec = '2.50'"}
+{"cp": "/pv2:c", "x": "dec = 2.5"}
+{"cp": "/pv2:c", "x": "id = 'pv2:two'"}
+{"cp": "/pv2:c", "x": "id = 'two'"}
+{"cp": "/pv2:c", "x": "mode = 'on'"}
+{"cp": "/pv2:c", "x": "u = 'abc'"}
+{"cp": "/pv2:c", "x": "u2 = '050'"}
+{"cp": "/pv2:c", "x": "ll = 'y'"}
+{"cp": "/pv2:c", "x": "'y' = ll"}
+{"cp": "/pv2:c", "x": "l = 'a'"}
+{"cp": "/pv2:c", "x": "l/k = true()"}
+{"cp": "/pv2:c", "x": "nothing = false()"}
+{"cp": "/pv2:c", "x": "stats/hits < l"}
+{"cp": "/pv2:c", "x": "2 > stats/hits"}
+{"cp": "/pv2:c", "x": "concat('a', 1, true())"}
+{"cp": "/pv2:c", "x": "contains(x, 'i')"}
+{"cp": "/pv2:c", "x": "starts-with(x, 'h')"}
+{"cp": "/pv2:c", "x": "substring('12345', 2, 3)"}
+{"cp": "/pv2:c", "x": "substring('12345', 1.5, 2.6)"}
+{"cp": "/pv2:c", "x": "substring('12345', 0, 3)"}
+{"cp": "/pv2:c", "x": "substring('12345', 0 div 0, 3)"}
+{"cp": "/pv2:c", "x": "substring('12345', 1, 0 div 0)"}
+{"cp": "/pv2:c", "x": "substring('12345', -42, 1 div 0)"}
+{"cp": "/pv2:c", "x": "substring('12345', -1 div 0, 1 div 0)"}
+{"cp": "/pv2:c", "x": "substring('12345', 2)"}
+{"cp": "/pv2:c", "x": "substring-before('1999/04/01', '/')"}
+{"cp": "/pv2:c", "x": "substring-after('1999/04/01', '/')"}
+{"cp": "/pv2:c", "x": "substring-after('abc', '')"}
+{"cp": "/pv2:c", "x": "substring-before('abc', '')"}
+{"cp": "/pv2:c", "x": "substring-after('abc', 'x')"}
+{"cp": "/pv2:c", "x": "string-length('abc')"}
+{"cp": "/pv2:c", "x": "string-length('жж')"}
+{"cp": "/pv2:c", "x": "string-length()"}
+{"cp": "/pv2:c", "x": "normalize-space('  a \t b  ')"}
+{"cp": "/pv2:c", "x": "translate('bar', 'abc', 'ABC')"}
+{"cp": "/pv2:c", "x": "translate('--aaa--', 'abc-', 'ABC')"}
+{"cp": "/pv2:c", "x": "string()"}
+{"cp": "/pv2:c", "x": "string(l)"}
+{"cp": "/pv2:c", "x": "string(.)"}
+{"cp": "/pv2:c", "x": "string(l/k)"}
+{"cp": "/pv2:c", "x": "string(stats)"}
+{"cp": "/pv2:c", "x": "normalize-space()"}
+{"cp": "/pv2:c", "x": "concat(l/k, ll)"}
+{"cp": "/pv2:c", "x": "name()"}
+{"cp": "/pv2:c", "x": "local-name()"}
+{"cp": "/pv2:c", "x": "namespace-uri()"}
+{"cp": "/pv2:c", "x": "name(l)"}
+{"cp": "/pv2:c", "x": "name(nothing)"}
+{"cp": "/pv2:c", "x": "namespace-uri(l/k)"}
+{"cp": "/pv2:c", "x": "last()"}
+{"cp": "/pv2:c", "x": "position()"}
+{"cp": "/pv2:c", "x": "count(l[last()])"}
+{"cp": "/pv2:c", "x": "'a'[last()]"}
+{"cp": "/pv2:c", "x": "1[2]"}
+{"cp": "/pv2:c", "x": "'a'[true()]"}
+{"cp": "/pv2:c", "x": "lang('en')"}
+{"cp": "/pv2:c", "x": "boolean(l)"}
+{"cp": "/pv2:c", "x": "boolean('')"}
+{"cp": "/pv2:c", "x": "boolean(0 div 0)"}
+{"cp": "/pv2:c", "x": "not(l)"}
+{"cp": "/pv2:c", "x": "true() and false()"}
+{"cp": "/pv2:c", "x": "false() or 1"}
+{"cp": "/pv2:c", "x": "l and ll"}
+{"cp": "/pv2:c", "x": "1 or nope:x"}
+{"cp": "/pv2:c", "x": "0 or nope:x"}
+{"cp": "/pv2:c", "x": "0 and nope:x"}
+{"cp": "/pv2:c", "x": "boolean(nothing)"}
+{"cp": "/pv2:c", "x": "--'5'"}
+{"cp": "/pv2:c", "x": "-'5'"}
+{"cp": "/pv2:c", "x": "- - -1"}
+{"cp": "/pv2:c", "x": "-(1)"}
+{"cp": "/pv2:c", "x": "-ll"}
+{"cp": "/pv2:c", "x": "-1 | 2"}
+{"cp": "/pv2:c", "x": "1 - -1"}
+{"cp": "/pv2:c", "x": "count(1)"}
+{"cp": "/pv2:c", "x": "1/k"}
+{"cp": "/pv2:c", "x": "'a'/text()"}
+{"cp": "/pv2:c", "x": "'a'/node()"}
+{"cp": "/pv2:c", "x": "'a'//self::x"}
+{"cp": "/pv2:c", "x": "'a'//x"}
+{"cp": "/pv2:c", "x": "sum('a')"}
+{"cp": "/pv2:c", "x": "$x"}
+{"cp": "/pv2:c", "x": "'a'/.."}
+{"cp": "/pv2:c", "x": "local-name(1)"}
+{"cp": "/pv2:c", "x": ""}
+{"cp": "/pv2:c", "x": "l["}
+{"cp": "/pv2:c", "x": "l[1"}
+{"cp": "/pv2:c", "x": "l]"}
+{"cp": "/pv2:c", "x": "1 +"}
+{"cp": "/pv2:c", "x": "foo("}
+{"cp": "/pv2:c", "x": "foo()"}
+{"cp": "/pv2:c", "x": "count()"}
+{"cp": "/pv2:c", "x": "count(1, 2)"}
+{"cp": "/pv2:c", "x": "current(1)"}
+{"cp": "/pv2:c", "x": "concat('a')"}
+{"cp": "/pv2:c", "x": "'abc"}
+{"cp": "/pv2:c", "x": "\"abc"}
+{"cp": "/pv2:c", "x": "1 2"}
+{"cp": "/pv2:c", "x": "l l"}
+{"cp": "/pv2:c", "x": "@"}
+{"cp": "/pv2:c", "x": "child::"}
+{"cp": "/pv2:c", "x": "child::1"}
+{"cp": "/pv2:c", "x": "nope::x"}
+{"cp": "/pv2:c", "x": "l/"}
+{"cp": "/pv2:c", "x": "l//"}
+{"cp": "/pv2:c", "x": "/a:"}
+{"cp": "/pv2:c", "x": "$p:var"}
+{"cp": "/pv2:c", "x": "l[.=]"}
+{"cp": "/pv2:c", "x": ")"}
+{"cp": "/pv2:c", "x": "node"}
+{"cp": "/pv2:c", "x": "node()"}
+{"cp": "/pv2:c", "x": "comment()"}
+{"cp": "/pv2:c", "x": "text"}
+{"cp": "/pv2:c", "x": "processing-instruction()"}
+{"cp": "/pv2:c", "x": "a:b:c"}
+{"cp": "/pv2:c", "x": "1..2"}
+{"cp": "/pv2:c", "x": "l order"}
+{"cp": "/pv2:c", "x": "l ord"}
+{"cp": "/pv2:c", "x": "count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(1)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))"}
+{"cp": "/pv2:c", "x": "count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(count(1)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))"}
+{"cp": "/pv2:c", "x": "pv2:l/k"}
+{"cp": "/pv2:c", "x": "pv2:*"}
+{"cp": "/pv2:c", "x": "l[k=\"b\"]"}
+{"cp": "/pv2:c", "x": "  l  [ 2 ] "}
+{"cp": "/pv2:c", "x": "child::l[2]/k"}
+{"cp": "/pv2:c", "x": "@x"}
+{"cp": "/pv2:c", "x": "attribute::*"}
+{"cp": "/pv2:c", "x": "text()"}
+{"cp": "/pv2:c", "x": "l/text()"}
+{"cp": "/pv2:c", "x": "x(1)"}
+{"cp": "/pv2:c", "x": "l/k()"}
+{"cp": "/pv2:c", "x": "pv2:k()"}
+{"cp": "/pv2:c", "x": "1 = "}
+{"cp": "/pv2:c", "x": "| l"}
+{"cp": "/pv2:c", "x": "l | "}
+{"cp": "/pv2:c", "x": "-"}
+{"cp": "/pv2:c", "x": "l and"}
+{"cp": "/pv2:c", "x": "and"}
+{"cp": "/pv2:c", "x": "*"}
+{"cp": "/pv2:c", "x": "* * *"}
+{"cp": "/pv2:c", "x": "l div l"}
+{"cp": "/pv2:c", "x": "count(l) div 2"}
+{"cp": "/pv2:c", "x": "count(l)mod 2"}
+{"cp": "/pv2:c", "x": "lé"}
+{"cp": "/pv2:c", "x": "é"}
+{"cp": "/pv2:c", "x": "string(1 div 3 * 3)"}
+{"cp": "/pv2:c", "x": "string(0.1 + 0.2)"}
+{"cp": "/pv2:c", "x": "string(0.00001)"}
+{"cp": "/pv2:c", "x": "string(-123.456)"}
+{"cp": "/pv2:c", "x": "string(9007199254740993)"}
+{"cp": "/pv2:c", "x": "string(0.15)"}
+{"cp": "/pv2:c", "x": "string(0.45)"}
+{"cp": "/pv2:c", "x": "string(1.05)"}
+{"cp": "/pv2:c", "x": "string(2.675)"}
+{"cp": "/pv2:c", "x": "string(99.95)"}
+{"cp": "/pv2:c", "x": "string(-0.05)"}
+{"cp": "/pv2:c", "x": "string(1000000000000000000000000)"}
+{"cp": "/pv2:c", "x": "string(9223372036854775807)"}
+{"cp": "/pv2:c", "x": "string(-9223372036854775808)"}
+{"cp": "/pv2:c", "x": "ceiling(0 div 0)"}
+{"cp": "/pv2:c", "x": "ceiling(1 div 0)"}
+{"cp": "/pv2:c", "x": "ceiling(-1 div 0)"}
+{"cp": "/pv2:c", "x": "floor(1 div 0)"}
+{"cp": "/pv2:c", "x": "round(-1 div 0)"}
+{"cp": "/pv2:c", "x": "ceiling(-0.5)"}
+{"cp": "/pv2:c", "x": "round(0.49999999999999994)"}
+{"cp": "/pv2:c", "x": "round(-0.5)"}
+{"cp": "/pv2:c", "x": "round(-0.51)"}
+{"cp": "/pv2:c", "x": "string(round(-0.5))"}
+{"cp": "/pv2:c", "x": "1 div -0"}
+{"cp": "/pv2:c", "x": "string(-0 * 1)"}
+{"cp": "/pv2:c", "x": "boolean(-0)"}
+{"cp": "/pv2:c", "x": "0.0000004 = 0"}
+{"cp": "/pv2:c", "x": "0.0000005 = 0"}
+{"cp": "/pv2:c", "x": "0.0000006 = 0.000001"}
+{"cp": "/pv2:c", "x": "1000000.0000001 = 1000000"}
+{"cp": "/pv2:c", "x": "1e3 = 1000"}
+{"cp": "/pv2:c", "x": "100000000000000000000 = 100000000000000000001"}
+{"cp": "/pv2:c", "x": "sum(ll)"}
+{"cp": "/pv2:c", "x": "number(l)"}
+{"cp": "/pv2:c", "x": "count(//ll | //l)"}
+{"cp": "/pv2:c", "x": "l[k='b']/preceding::k"}
+{"cp": "/pv2:c", "x": "name(l/k)"}
+{"cp": "/pv2:c", "x": "l[k='b']/preceding::node()"}
+{"cp": "/pv2:c", "x": "count(l[2]/preceding::node())"}
+{"cp": "/pv2:c", "x": "l[2]/k/preceding::*"}
+{"cp": "/pv2:c", "x": "stats[2]/hits/preceding::*"}
+{"cp": "/pv2:c", "x": "ll[2]/preceding-sibling::*[1]"}
+{"cp": "/pv2:c", "x": "ll[2]/following::*"}
+{"cp": "/pv2:c", "x": "count(l[1]/following::node())"}
+{"cp": "/pv2:c", "x": "l[k][k='a' or k='c']/k"}
+{"cp": "/pv2:c", "x": "l[not(k='b')][2]/k"}
+{"cp": "/pv2:c", "x": "l[k=../ll]"}
+{"cp": "/pv2:c", "x": "ll[.=../l/k]"}
+{"cp": "/pv2:c", "x": "l[1][1][1]/k"}
+{"cp": "/pv2:c", "x": "(//k)[last()]"}
+{"cp": "/pv2:c", "x": "(l | stats)[4]"}
+{"cp": "/pv2:c", "x": "(stats | l)[1]"}
+{"cp": "/pv2:c", "x": "count((l | ll)[position() > 2])"}
+{"cp": "/pv2:c", "x": "ll[position() = last() - 1]"}
+{"cp": "/pv2:c", "x": "ll[last() - 1]"}
+{"cp": "/pv2:c", "x": "ll[0.9]"}
+{"cp": "/pv2:c", "x": "ll[-1]"}
+{"cp": "/pv2:c", "x": "ll[true()]"}
+{"cp": "/pv2:c", "x": "ll['']"}
+{"cp": "/pv2:c", "x": "ll[l]"}
+{"cp": "/pv2:c", "x": "ll[nothing]"}
+{"cp": "/pv2:c", "x": "l/k[. = 'b'] | ll[. = 'x']"}
+{"cp": "/pv2:c", "x": "string(ll[2] | ll[1])"}
+{"cp": "/pv2:c", "x": "substring('12345', 1.5)"}
+{"cp": "/pv2:c", "x": "substring('12345', 2.5, 1.5)"}
+{"cp": "/pv2:c", "x": "substring('abc', 0)"}
+{"cp": "/pv2:c", "x": "substring('abc', 4)"}
+{"cp": "/pv2:c", "x": "substring('abc', 3, 1)"}
+{"cp": "/pv2:c", "x": "substring('abc', 2, -1)"}
+{"cp": "/pv2:c", "x": "substring('жabc', 2, 2)"}
+{"cp": "/pv2:c", "x": "translate('abc', 'abca', 'xyzw')"}
+{"cp": "/pv2:c", "x": "translate('ж', 'ж', 'ab')"}
+{"cp": "/pv2:c", "x": "normalize-space('\n\na\n')"}
+{"cp": "/pv2:c", "x": "concat('', '')"}
+{"cp": "/pv2:c", "x": "string-length(.)"}
+{"cp": "/pv2:c", "x": "string-length(l)"}
+{"cp": "/pv2:c", "x": "contains('abc', '')"}
+{"cp": "/pv2:c", "x": "starts-with('', '')"}
+{"cp": "/pv2:c", "x": "re-match('', '')"}
+{"cp": "/pv2:c", "x": "re-match('aaa', 'a*')"}
+{"cp": "/pv2:c", "x": "re-match('a\nb', '.*')"}
+{"cp": "/pv2:c", "x": "re-match('é', '\\w')"}
+{"cp": "/pv2:c", "x": "number('+5')"}
+{"cp": "/pv2:c", "x": "number('- 5')"}
+{"cp": "/pv2:c", "x": "number('.')"}
+{"cp": "/pv2:c", "x": "number('5.')"}
+{"cp": "/pv2:c", "x": "number('1E2')"}
+{"cp": "/pv2:c", "x": "number('0x')"}
+{"cp": "/pv2:c", "x": "number('nan')"}
+{"cp": "/pv2:c", "x": "number('1e400')"}
+{"cp": "/pv2:c", "x": "number('1e-400')"}
+{"cp": "/pv2:c", "x": "number('0X1p4')"}
+{"cp": "/pv2:c", "x": "number('\t5')"}
+{"cp": "/pv2:c", "x": "number(' ')"}
+{"cp": "/pv2:c", "x": "-number('1e400')"}
+{"cp": "/pv2:c", "x": "d = ''"}
+{"cp": "/pv2:c", "x": "dec > 2"}
+{"cp": "/pv2:c", "x": "dec < '3'"}
+{"cp": "/pv2:c", "x": "dec = '2.5000'"}
+{"cp": "/pv2:c", "x": "dec = 'abc'"}
+{"cp": "/pv2:c", "x": "u2 = 50"}
+{"cp": "/pv2:c", "x": "u2 > '049'"}
+{"cp": "/pv2:c", "x": "u2 = '0x32'"}
+{"cp": "/pv2:c", "x": "id = 'pv2:one'"}
+{"cp": "/pv2:c", "x": "id != 'pv2:two'"}
+{"cp": "/pv2:c", "x": "mode = 'ON'"}
+{"cp": "/pv2:c", "x": "mode != 'off'"}
+{"cp": "/pv2:c", "x": "ll > 'a'"}
+{"cp": "/pv2:c", "x": "'x' = ll"}
+{"cp": "/pv2:c", "x": "ll = ll"}
+{"cp": "/pv2:c", "x": "ll != ll"}
+{"cp": "/pv2:c", "x": "l/k = ll"}
+{"cp": "/pv2:c", "x": "count(ll[. > 0])"}
+{"cp": "/pv2:c", "x": "stats/hits = '05'"}
+{"cp": "/pv2:c", "x": "stats/hits = ../stats/hits"}
+{"cp": "/pv2:c", "x": "true() = l"}
+{"cp": "/pv2:c", "x": "false() = nothing"}
+{"cp": "/pv2:c", "x": "l = true()"}
+{"cp": "/pv2:c", "x": "0 = nothing"}
+{"cp": "/pv2:c", "x": "'' = nothing"}
+{"cp": "/pv2:c", "x": "nothing != nothing"}
+{"cp": "/pv2:c", "x": "nothing = nothing"}
+{"cp": "/pv2:c", "x": "count(self::node()/self::node())"}
+{"cp": "/pv2:c", "x": "count(./.)"}
+{"cp": "/pv2:c", "x": "count(.//.)"}
+{"cp": "/pv2:c", "x": "count(..//.)"}
+{"cp": "/pv2:c", "x": "count(.//*)"}
+{"cp": "/pv2:c", "x": "count(//node())"}
+{"cp": "/pv2:c", "x": "count(descendant::node())"}
+{"cp": "/pv2:c", "x": "count(//text())"}
+{"cp": "/pv2:c", "x": "count(/descendant-or-self::node()/text())"}
+{"cp": "/pv2:c", "x": "l/k/self::text()"}
+{"cp": "/pv2:c", "x": "count(l/k/descendant-or-self::text())"}
+{"cp": "/pv2:c", "x": "count(l/k/child::text())"}
+{"cp": "/pv2:c", "x": "l/k/text()/.."}
+{"cp": "/pv2:c", "x": "count(l/k/text()/ancestor::*)"}
+{"cp": "/pv2:c", "x": "string(l/k/text())"}
+{"cp": "/pv2:c", "x": "name(l/k/text())"}
+{"cp": "/pv2:c", "x": "count(l/k/text() | l/k)"}
+{"cp": "/pv2:c", "x": "(l/k/text() | l/k)[2]"}
+{"cp": "/pv2:c", "x": "l/k[text()='b']"}
+{"cp": "/pv2:c", "x": "l[k/text()='b']/k"}
+{"cp": "/pv2:c", "x": "text()/.."}
+{"cp": "/pv2:c", "x": "count(l/node())"}
+{"cp": "/pv2:c", "x": "count(l/*/node())"}
+{"cp": "/pv2:c", "x": "count(comment())"}
+{"cp": "/pv2:c", "x": "count(l/k/comment())"}
+{"cp": "/pv2:c", "x": "local-name(*)"}
+{"cp": "/pv2:c", "x": "local-name(*[2])"}
+{"cp": "/pv2:c", "x": "namespace-uri(.)"}
+{"cp": "/pv2:c", "x": "namespace-uri(..)"}
+{"cp": "/pv2:c", "x": "name(current())"}
+{"cp": "/pv2:c", "x": "string(current())"}
+{"cp": "/pv2:c", "x": "count(current()/..)"}
+{"cp": "/pv2:c", "x": "current()/../c/l[2]/k"}
+{"cp": "/pv2:c", "x": "l[k = current()/l[3]/k]/k"}
+{"cp": "/pv2:c", "x": "l[current()/ref = k]/k"}
+{"cp": "/pv2:c", "x": "count(l[current() = .])"}
+{"cp": "/pv2:c", "x": "derived-from(l, 'pv2:one')"}
+{"cp": "/pv2:c", "x": "derived-from(ll, 'pv2:one')"}
+{"cp": "/pv2:c", "x": "derived-from(*, 'pv2:one')"}
+{"cp": "/pv2:c", "x": "derived-from(id, '')"}
+{"cp": "/pv2:c", "x": "derived-from(id, ':one')"}
+{"cp": "/pv2:c", "x": "derived-from(id, 'pv2:')"}
+{"cp": "/pv2:c", "x": "derived-from-or-self(*, 'pv2:two')"}
+{"cp": "/pv2:c", "x": "derived-from-or-self(nothing, 'pv2:two')"}
+{"cp": "/pv2:c", "x": "derived-from-or-self(id, concat('pv2', ':', 'two'))"}
+{"cp": "/pv2:c", "x": "derived-from(id, 1)"}
+{"cp": "/pv2:c", "x": "enum-value(*)"}
+{"cp": "/pv2:c", "x": "enum-value(l)"}
+{"cp": "/pv2:c", "x": "enum-value(1)"}
+{"cp": "/pv2:c", "x": "bit-is-set(*, 'x')"}
+{"cp": "/pv2:c", "x": "bit-is-set(flags, 1)"}
+{"cp": "/pv2:c", "x": "bit-is-set(flags, 'x y')"}
+{"cp": "/pv2:c", "x": "deref(ref)/k"}
+{"cp": "/pv2:c", "x": "deref(l)"}
+{"cp": "/pv2:c", "x": "deref(ref | mode)"}
+{"cp": "/pv2:c", "x": "deref(1)"}
+{"cp": "/pv2:c", "x": "count(deref(ref))"}
+{"cp": "/pv2:c", "x": "deref(.)"}
+{"cp": "/pv2:c", "x": "1 | 2"}
+{"cp": "/pv2:c", "x": "l | 'a'"}
+{"cp": "/pv2:c", "x": "-l/k"}
+{"cp": "/pv2:c", "x": "-(l/k)"}
+{"cp": "/pv2:c", "x": "--l"}
+{"cp": "/pv2:c", "x": "- - 'x'"}
+{"cp": "/pv2:c", "x": "1--1"}
+{"cp": "/pv2:c", "x": "1 - - - 1"}
+{"cp": "/pv2:c", "x": "-'x' = -'y'"}
+{"cp": "/pv2:c", "x": "count(l) = 3 and count(ll) = 3"}
+{"cp": "/pv2:c", "x": "1 and 0 or 1"}
+{"cp": "/pv2:c", "x": "0 or 0 and 1"}
+{"cp": "/pv2:c", "x": "1 = 1 and 2"}
+{"cp": "/pv2:c", "x": "1 + 2 * 3"}
+{"cp": "/pv2:c", "x": "(1 + 2) * 3"}
+{"cp": "/pv2:c", "x": "10 - 2 - 3"}
+{"cp": "/pv2:c", "x": "2 * 3 mod 4"}
+{"cp": "/pv2:c", "x": "8 div 2 div 2"}
+{"cp": "/pv2:c", "x": "7 mod 0"}
+{"cp": "/pv2:c", "x": "-7 mod -3"}
+{"cp": "/pv2:c", "x": "1.5 mod 1"}
+{"cp": "/pv2:c", "x": "1 < 2 = true()"}
+{"cp": "/pv2:c", "x": "1 = 2 < 3"}
+{"cp": "/pv2:c", "x": "1 != 2 != 3"}
+{"cp": "/pv2:c", "x": "'a' | l"}
+{"cp": "/pv2:c", "x": "l[1]/k/following-sibling::*"}
+{"cp": "/pv2:c", "x": "count(/pv2:c/following::*)"}
+{"cp": "/pv2:c", "x": "count(/pv2:c/preceding::*)"}
+{"cp": "/pv2:c", "x": "count(following::*)"}
+{"cp": "/pv2:c", "x": "count(preceding-sibling::node())"}
+{"cp": "/pv2:c", "x": "count(ancestor-or-self::node())"}
+{"cp": "/pv2:c", "x": "ancestor-or-self::*"}
+{"cp": "/pv2:c", "x": "count(ancestor::node())"}
+{"cp": "/pv2:c", "x": "self::pv2:c"}
+{"cp": "/pv2:c", "x": "self::pv2:*"}
+{"cp": "/pv2:c", "x": "self::nope:*"}
+{"cp": "/pv2:c", "x": "pv2:l[2]/pv2:k"}
+{"cp": "/pv2:c", "x": "child::pv2:*[1]"}
+{"cp": "/pv2:c", "x": "*/k"}
+{"cp": "/pv2:c", "x": "*/*"}
+{"cp": "/pv2:c", "x": "count(*/*/*)"}
+{"cp": "/pv2:c", "x": "attribute::k"}
+{"cp": "/pv2:c", "x": "@pv2:x"}
+{"cp": "/pv2:c", "x": "l/@*"}
+{"cp": "/pv2:c", "x": "count(l/@*)"}
+{"cp": "/pv2:c", "x": "l[@x]"}
+{"cp": "/pv2:c", "x": "l[1]/@*/.."}
+{"cp": "/pv2:c", "x": "//@*"}
+{"cp":"/pv2:c","x":"deref(..)"}
+{"cp":"/pv2:c","x":"bit-is-set(.., 'x')"}
+{"cp":"/pv2:c","x":"enum-value(..)"}
+{"cp":"","x":"derived-from(c/id, 'one')"}
