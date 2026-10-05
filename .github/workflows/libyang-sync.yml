@@ -68,7 +68,7 @@ jobs:
           gh api "$cmp" --paginate --jq '.commits[] | [.sha, .html_url, (.commit.message | split("\n")[0])] | @tsv' | tail -n 200 > "$RUNNER_TEMP/commits.tsv"
           # Plain list first: the fallback whenever Jev or the enrichment below fails.
           plain=$(while IFS=$'\t' read -r sha url subject; do
-            [[ $sha =~ ^[0-9a-f]{40}$ ]] && printf '%s\n' "- [\`${sha:0:7}\`]($url) $subject"
+            if [[ $sha =~ ^[0-9a-f]{40}$ ]]; then printf '%s\n' "- [\`${sha:0:7}\`]($url) $subject"; fi
           done < "$RUNNER_TEMP/commits.tsv")
           list=$plain
           if [[ -n $TYPESAFE_API_KEY ]]; then  # per-commit API calls only when Jev will be asked
