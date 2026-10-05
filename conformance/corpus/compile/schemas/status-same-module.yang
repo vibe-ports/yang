@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module status-same-module {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:status-same-module";
+  prefix status-same-module;
+  grouping g { status obsolete; leaf x { type string; } }
+  container c { uses g; }
+}

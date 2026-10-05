@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module errpath-ext-inst {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:errpath-ext-inst";
+  prefix errpath-ext-inst;
+  import ietf-yang-metadata { prefix md; }
+  md:annotation foo { type no-such-type; }
+}

@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module refine-target-missing {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:refine-target-missing";
+  prefix refine-target-missing;
+  grouping g { leaf x { type string; } }
+  container c { uses g { refine nope { description "d"; } } }
+}

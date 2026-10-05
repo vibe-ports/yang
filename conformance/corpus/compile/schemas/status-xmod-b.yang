@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module status-xmod-b {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:status-xmod-b";
+  prefix status-xmod-b;
+  import status-xmod-a { prefix a; }
+  container c { uses a:g; }
+}

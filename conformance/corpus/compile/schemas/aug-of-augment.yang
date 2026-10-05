@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module aug-of-augment {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:aug-of-augment";
+  prefix aug-of-augment;
+  import aug-base { prefix b; }
+  augment /b:c/d { leaf e { type string; } }
+  augment /b:c { container d { leaf f { type string; } } }
+}

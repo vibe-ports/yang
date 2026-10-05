@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module when-order-a-after-b {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:when-order-a-after-b";
+  prefix when-order-a-after-b;
+  container c {
+    leaf sel { type string; }
+    leaf b { when "../sel = 'on'"; type string; default "bv"; }
+    leaf a { when "../b"; type string; default "av"; }
+  }
+}

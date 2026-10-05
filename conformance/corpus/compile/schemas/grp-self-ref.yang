@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module grp-self-ref {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:grp-self-ref";
+  prefix grp-self-ref;
+  grouping g {
+    uses g;
+    leaf x { type string; }
+  }
+  container top { uses g; }
+}

@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module aug-mandatory-no-when {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:aug-mandatory-no-when";
+  prefix aug-mandatory-no-when;
+  import aug-base { prefix b; }
+  augment /b:c { leaf m { type string; mandatory true; } }
+}

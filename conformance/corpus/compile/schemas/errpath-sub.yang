@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+submodule errpath-sub {
+  yang-version 1.1;
+  belongs-to errpath-submodule-identity { prefix m; }
+  identity i { base no-such-base; }
+}

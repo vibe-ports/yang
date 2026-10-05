@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module status-when {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:status-when";
+  prefix status-when;
+  container c {
+    leaf a { status deprecated; type string; }
+    leaf b { when "../a = 'x'"; type string; }
+  }
+}

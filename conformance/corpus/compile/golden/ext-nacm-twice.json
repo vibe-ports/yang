@@ -1,0 +1,41 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ietf-netconf-acm {\n  namespace \"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\";\n  prefix nacm;\n\n  revision 2018-02-14;\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "ietf-netconf-acm",
+      "revision": "2018-02-14",
+      "schema_tree": []
+    },
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 135,
+            "name": "LY_EPLUGIN|LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Ext plugin \"ly2 NACM\": Extension nacm:default-deny-write is instantiated multiple times.",
+          "phase": "parse",
+          "schema_path": "/ext-nacm-twice:x/{ext-inst='nacm:default-deny-write'}",
+          "vecode": 10,
+          "vecode_name": "LYVE_OTHER"
+        }
+      ],
+      "name": "ext-nacm-twice",
+      "phase": "parse"
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

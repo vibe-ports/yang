@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Reduced to the two extension definitions the plugin keys on; names, namespace and
+// revision follow RFC 8341 (public IETF module).
+module ietf-netconf-acm {
+  yang-version 1.1;
+  namespace "urn:ietf:params:xml:ns:yang:ietf-netconf-acm";
+  prefix nacm;
+  revision 2018-02-14;
+  extension default-deny-write { description "Reduced from RFC 8341."; }
+  extension default-deny-all { description "Reduced from RFC 8341."; }
+}

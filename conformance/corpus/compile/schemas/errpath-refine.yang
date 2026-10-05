@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module errpath-refine {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:errpath-refine";
+  prefix errpath-refine;
+  grouping g { leaf x { type string; } }
+  container c { uses g { refine x { presence "p"; } } }
+}

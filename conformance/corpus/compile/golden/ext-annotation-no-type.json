@@ -1,0 +1,31 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 135,
+            "name": "LY_EPLUGIN|LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Ext plugin \"ly2 metadata\": Missing mandatory keyword \"type\" as a child of \"md:annotation foo\".",
+          "phase": "parse",
+          "schema_path": "/ext-annotation-no-type:{ext-inst='md:annotation'}/foo",
+          "vecode": 10,
+          "vecode_name": "LYVE_OTHER"
+        }
+      ],
+      "name": "ext-annotation-no-type",
+      "phase": "parse"
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

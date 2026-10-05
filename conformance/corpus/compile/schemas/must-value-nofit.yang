@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module must-value-nofit {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:must-value-nofit";
+  prefix must-value-nofit;
+  container c {
+    leaf n { type uint8; }
+    must "n = 'abc'";
+  }
+}

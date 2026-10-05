@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module choice-default-mandatory {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:choice-default-mandatory";
+  prefix choice-default-mandatory;
+  choice ch {
+    default a;
+    case a { leaf x { type string; mandatory true; } }
+    case b { leaf y { type string; } }
+  }
+}

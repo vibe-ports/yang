@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module when-func-arg {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:when-func-arg";
+  prefix when-func-arg;
+  container c {
+    leaf s { type string; }
+    leaf a { when "sum(../s) = 1"; type string; }
+  }
+}

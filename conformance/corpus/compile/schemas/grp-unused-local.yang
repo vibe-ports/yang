@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module grp-unused-local {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:grp-unused-local";
+  prefix grp-unused-local;
+  container top {
+    grouping g { leaf x { type string; } }
+    leaf y { type string; }
+  }
+}

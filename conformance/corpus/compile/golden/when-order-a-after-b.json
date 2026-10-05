@@ -1,0 +1,137 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "when-order-a-after-b",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/when-order-a-after-b:c",
+          "schema": "/when-order-a-after-b:c",
+          "value": null
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "validate",
+      "implicit_diff": "{\n  \"when-order-a-after-b:c\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"a\": \"av\",\n    \"@a\": {\n      \"yang:operation\": \"create\"\n    }\n  }\n}\n",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/when-order-a-after-b:c",
+          "schema": "/when-order-a-after-b:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": true
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/when-order-a-after-b:c/a",
+          "schema": "/when-order-a-after-b:c/a",
+          "value": {
+            "canonical": "av",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "dump",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "tree": {
+        "json": "{\n  \"when-order-a-after-b:c\": {\n    \"a\": \"av\"\n  }\n}\n",
+        "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:when-order-a-after-b\">\n  <a>av</a>\n</c>\n"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/when-order-a-after-b:c",
+          "schema": "/when-order-a-after-b:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": true
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/when-order-a-after-b:c/a",
+          "schema": "/when-order-a-after-b:c/a",
+          "value": {
+            "canonical": "av",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

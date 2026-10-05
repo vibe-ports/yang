@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module errpath-uses {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:errpath-uses";
+  prefix errpath-uses;
+  grouping g { leaf x { type string; mandatory true; default "a"; } }
+  container c { uses g; }
+}

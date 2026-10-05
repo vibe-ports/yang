@@ -2251,3 +2251,617 @@ fixtures:
       context_path: /pv2:c
       xpath: "'a'/text()"
     golden: golden/xpath-a-text.json
+
+  - id: grp/self-ref
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.12"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "grp-self-ref"}]
+    golden: golden/grp-self-ref.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.12"]
+      diagnostics: [{"vecode_name": "LYVE_REFERENCE"}]
+      deviation: null
+
+  # libyang warning for a locally scoped grouping nobody uses; not an RFC rule
+  - id: grp/unused-local-warning
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.12"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "grp-unused-local"}]
+    golden: golden/grp-unused-local-warning.json
+
+  # control for grp/used-elsewhere-first: libyang validates an unused top-level grouping on its own
+  - id: grp/unused-top-level-invalid
+    dir: compile
+    source: *own
+    rfc: []   # control for grp/used-elsewhere-first: libyang validates an unused top-level grouping on its own
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "grp-unused-top-level-invalid"}]
+    golden: golden/grp-unused-top-level-invalid.json
+
+  # libyang does not validate an unused grouping nested in another grouping (design 06 s2.4 P4 scope)
+  - id: grp/nested-unused-not-validated
+    dir: compile
+    source: *own
+    rfc: []   # libyang does not validate an unused grouping nested in another grouping (design 06 s2.4 P4 scope)
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "grp-nested-unused"}]
+    golden: golden/grp-nested-unused-not-validated.json
+
+  # libyang LYS_USED_GRP: a grouping used by a module compiled earlier is not validated in its own module; refine in the user fixes the grouping
+  - id: grp/used-elsewhere-first
+    dir: compile
+    source: *own
+    rfc: []   # libyang LYS_USED_GRP: a grouping used by a module compiled earlier is not validated in its own module; refine in the user fixes the grouping
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "grp-shared-b"}, {"name": "grp-shared-a"}]
+    golden: golden/grp-used-elsewhere-first.json
+
+  # VERIFY: which default wins when nested uses refine the same leaf
+  - id: refine/nested-same-target
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.13.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "refine-nested-same-target"}]
+    golden: golden/refine-nested-same-target.json
+
+  - id: refine/target-missing
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.13.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "refine-target-missing"}]
+    golden: golden/refine-target-missing.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.13.2"]
+      diagnostics: [{"vecode_name": "LYVE_REFERENCE"}]
+      deviation: null
+
+  # libyang-specific warning: refine config inside rpc has no effect
+  - id: refine/config-in-rpc-warning
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.13.2", "RFC7950#7.19"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "refine-config-in-rpc"}]
+    golden: golden/refine-config-in-rpc-warning.json
+
+  # VERIFY: sibling order of nodes added by two augmenting modules loaded in reverse name order
+  - id: order/two-augmenters
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.17"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ord-base"}, {"name": "ord-z"}, {"name": "ord-a"}]
+    golden: golden/order-two-augmenters.json
+
+  - id: aug/mandatory-without-when
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.17"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "aug-base"}, {"name": "aug-mandatory-no-when"}]
+    golden: golden/aug-mandatory-without-when.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.17"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  - id: aug/mandatory-own-module
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.17"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "aug-mandatory-own"}]
+    golden: golden/aug-mandatory-own-module.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.17"]
+      deviation: null
+
+  - id: aug/target-missing
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.17"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "aug-base"}, {"name": "aug-target-missing"}]
+    golden: golden/aug-target-missing.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.17"]
+      diagnostics: [{"vecode_name": "LYVE_REFERENCE"}]
+      deviation: null
+
+  # augment of a node added by a later augment statement
+  - id: aug/of-augment
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.17"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "aug-base"}, {"name": "aug-of-augment"}]
+    golden: golden/aug-of-augment.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.17"]
+      deviation: null
+
+  - id: choice/default-case-mandatory
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.9.3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "choice-default-mandatory"}]
+    golden: golden/choice-default-case-mandatory.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.9.3"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  - id: config/under-state
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.21.1"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "config-under-state"}]
+    golden: golden/config-under-state.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.21.1"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  # libyang propagates mandatory to the NP container even from an if-feature-disabled child (design 06 s2.1)
+  - id: mand/disabled-child-propagates
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.5.7", "RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "mand-disabled-child"}]
+    golden: golden/mand-disabled-child-propagates.json
+
+  # libyang drops obsolete nodes from the compiled tree
+  - id: obsolete/removed
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.21.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "obsolete-removed"}]
+    golden: golden/obsolete-removed.json
+
+  # VERIFY: design expected 'Key is disabled'; libyang's status check fires first
+  - id: obsolete/key
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.21.2", "RFC7950#7.8.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "obsolete-key"}]
+    golden: golden/obsolete-key.json
+
+  # libyang: Key is disabled (key removed by if-feature)
+  - id: obsolete/key-disabled-iffeature
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.8.2", "RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "obsolete-key-iffeature"}]
+    golden: golden/obsolete-key-disabled-iffeature.json
+
+  # obsolete list with obsolete key: whole list dropped, no error
+  - id: obsolete/list-and-key
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.21.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "obsolete-list-and-key"}]
+    golden: golden/obsolete-list-and-key.json
+
+  - id: status/same-module-error
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.21.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "status-same-module"}]
+    golden: golden/status-same-module-error.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.21.2"]
+      diagnostics: [{"vecode_name": "LYVE_REFERENCE"}]
+      deviation: null
+
+  - id: status/cross-module-ok
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.21.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "status-xmod-a"}, {"name": "status-xmod-b"}]
+    golden: golden/status-cross-module-ok.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.21.2"]
+      deviation: null
+
+  # libyang compares parsed modules: main<->submodule reference is not checked (RFC text says same module, so no assert)
+  - id: status/submodule-uses-ok
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.21.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "status-main"}]
+    golden: golden/status-submodule-uses-ok.json
+
+  # libyang-specific warning: when may be referencing a deprecated node
+  - id: status/when-warning
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.21.2", "RFC7950#7.21.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "status-when"}]
+    golden: golden/status-when-warning.json
+
+  # libyang rejects circular when at compile time (design 03 rule 5)
+  - id: when/cycle
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.21.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "when-cycle"}]
+    golden: golden/when-cycle.json
+
+  # libyang-specific: when on a node reading its own children
+  - id: when/own-children
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.21.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "when-own-children"}]
+    golden: golden/when-own-children.json
+
+  - id: when/invalid-condition
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.21.5", "XPath1.0#4.1"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "when-invalid"}]
+    golden: golden/when-invalid-condition.json
+
+  # libyang schema-mode XPath warning, function argument type
+  - id: when/func-arg-warning
+    dir: compile
+    source: *own
+    rfc: ["XPath1.0#4.1"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "when-func-arg"}]
+    golden: golden/when-func-arg-warning.json
+
+  # libyang schema-mode XPath warning, node not found
+  - id: must/unknown-node-warning
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.5.3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "must-unknown-node"}]
+    golden: golden/must-unknown-node-warning.json
+
+  # libyang schema-mode XPath warning, literal does not fit the node type
+  - id: must/value-not-fit-warning
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.5.3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "must-value-nofit"}]
+    golden: golden/must-value-not-fit-warning.json
+
+  # libyang: when check skipped, referenced module is import-only
+  - id: load/when-check-skipped-warning
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.21.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "when-skipped"}]
+    golden: golden/load-when-check-skipped-warning.json
+
+  - id: ext/annotation-no-type
+    dir: compile
+    source: *own
+    rfc: ["RFC7952#3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ext-annotation-no-type"}]
+    golden: golden/ext-annotation-no-type.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7952#3"]
+      deviation: null
+
+  # annotation error in an import-only module still fails the load (parse phase)
+  - id: ext/annotation-no-type-import-only
+    dir: compile
+    source: *own
+    rfc: ["RFC7952#3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ext-annotation-user"}]
+    golden: golden/ext-annotation-no-type-import-only.json
+
+  - id: ext/annotation-not-top-level
+    dir: compile
+    source: *own
+    rfc: ["RFC7952#3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ext-annotation-nested"}]
+    golden: golden/ext-annotation-not-top-level.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7952#3"]
+      deviation: null
+
+  - id: ext/annotation-twice
+    dir: compile
+    source: *own
+    rfc: ["RFC7952#3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ext-annotation-twice"}]
+    golden: golden/ext-annotation-twice.json
+
+  # libyang NACM plugin warning: default-deny-write not allowed in rpc
+  - id: ext/nacm-placement-warning
+    dir: compile
+    source: {url: "hand-written (this repo); extension definitions reduced from RFC 8341 (IETF Trust)", commit: null, license: "BSD-3-Clause AND BSD-2-Clause"}
+    rfc: ["RFC8341#3.4.3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ietf-netconf-acm"}, {"name": "ext-nacm-rpc"}]
+    golden: golden/ext-nacm-placement-warning.json
+
+  # libyang NACM plugin: same extension twice on one node
+  - id: ext/nacm-twice
+    dir: compile
+    source: {url: "hand-written (this repo); extension definitions reduced from RFC 8341 (IETF Trust)", commit: null, license: "BSD-3-Clause AND BSD-2-Clause"}
+    rfc: ["RFC8341#3.4.3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ietf-netconf-acm"}, {"name": "ext-nacm-twice"}]
+    golden: golden/ext-nacm-twice.json
+
+  # engine-only: libyang accepts, our engine returns ErrUnsupported (U-0023)
+  - id: ext/yang-data-unsupported
+    dir: compile
+    source: {url: "hand-written (this repo); extension definitions reduced from RFC 8040 (IETF Trust)", commit: null, license: "BSD-3-Clause AND BSD-2-Clause"}
+    rfc: ["RFC8040#8"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ietf-restconf"}, {"name": "ext-yang-data"}]
+    golden: golden/ext-yang-data-unsupported.json
+
+  # error path segment {uses='g'}
+  - id: errpath/uses
+    dir: compile
+    source: *own
+    rfc: []   # error path segment {uses='g'}
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "errpath-uses"}]
+    golden: golden/errpath-uses.json
+
+  # error path segment {augment='...'}
+  - id: errpath/augment
+    dir: compile
+    source: *own
+    rfc: []   # error path segment {augment='...'}
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "aug-base"}, {"name": "errpath-augment"}]
+    golden: golden/errpath-augment.json
+
+  # error path segment {refine='x'}
+  - id: errpath/refine
+    dir: compile
+    source: *own
+    rfc: []   # error path segment {refine='x'}
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "errpath-refine"}]
+    golden: golden/errpath-refine.json
+
+  # error path segment {grouping='g'} (unused-grouping validation)
+  - id: errpath/grouping
+    dir: compile
+    source: *own
+    rfc: []   # error path segment {grouping='g'} (unused-grouping validation)
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "errpath-grouping"}]
+    golden: golden/errpath-grouping.json
+
+  # error path segment {ext-inst='...'}
+  - id: errpath/ext-inst
+    dir: compile
+    source: *own
+    rfc: []   # error path segment {ext-inst='...'}
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "errpath-ext-inst"}]
+    golden: golden/errpath-ext-inst.json
+
+  # unres-phase error: lysc_path of the node
+  - id: errpath/unres-node
+    dir: compile
+    source: *own
+    rfc: []   # unres-phase error: lysc_path of the node
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "errpath-unres"}]
+    golden: golden/errpath-unres-node.json
+
+  # error path segment {submodule='s'}/{identity='i'}
+  - id: errpath/submodule-identity
+    dir: compile
+    source: *own
+    rfc: []   # error path segment {submodule='s'}/{identity='i'}
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "errpath-submodule-identity"}]
+    golden: golden/errpath-submodule-identity.json
+
+  # data when evaluation order (design 03 rule 5): libyang queue order, not a fixpoint
+  - id: when/order-a-after-b
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.21.5"]
+    areas: ["validation", "defaults"]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{"name": "when-order-a-after-b"}]
+      steps:
+        - {"do": "parse", "format": "json", "data_type": "config", "parse_only": true, "data_file": "data/when-order-a-after-b.json"}
+        - {"do": "validate", "data_type": "config"}
+        - {"do": "dump", "with_defaults": "all"}
+    golden: golden/when-order-a-after-b.json
+
+  # data when evaluation order (design 03 rule 5): libyang queue order, not a fixpoint
+  - id: when/order-b-after-a
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.21.5"]
+    areas: ["validation", "defaults"]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{"name": "when-order-b-after-a"}]
+      steps:
+        - {"do": "parse", "format": "json", "data_type": "config", "parse_only": true, "data_file": "data/when-order-b-after-a.json"}
+        - {"do": "validate", "data_type": "config"}
+        - {"do": "dump", "with_defaults": "all"}
+    golden: golden/when-order-b-after-a.json

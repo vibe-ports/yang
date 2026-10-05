@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module grp-shared-b {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:grp-shared-b";
+  prefix grp-shared-b;
+  import grp-shared-a { prefix a; }
+  container top {
+    uses a:g { refine x { mandatory false; } }
+  }
+}

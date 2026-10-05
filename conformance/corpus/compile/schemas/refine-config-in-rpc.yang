@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module refine-config-in-rpc {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:refine-config-in-rpc";
+  prefix refine-config-in-rpc;
+  grouping g { leaf x { type string; } }
+  rpc r { input { uses g { refine x { config false; } } } }
+}

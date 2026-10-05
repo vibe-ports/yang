@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module when-cycle {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:when-cycle";
+  prefix when-cycle;
+  container c {
+    leaf a { when "../b"; type string; }
+    leaf b { when "../a"; type string; }
+  }
+}

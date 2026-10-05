@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Reduced to the yang-data extension definition; names, namespace and revision follow
+// RFC 8040 (public IETF module).
+module ietf-restconf {
+  yang-version 1.1;
+  namespace "urn:ietf:params:xml:ns:yang:ietf-restconf";
+  prefix rc;
+  revision 2017-01-26;
+  extension yang-data { argument name { yin-element true; } description "Reduced from RFC 8040."; }
+}

@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module ext-nacm-rpc {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:ext-nacm-rpc";
+  prefix ext-nacm-rpc;
+  import ietf-netconf-acm { prefix nacm; }
+  rpc r {
+    nacm:default-deny-write;
+    input { leaf x { type string; } }
+  }
+}

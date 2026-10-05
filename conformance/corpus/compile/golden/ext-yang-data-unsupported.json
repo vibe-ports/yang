@@ -1,0 +1,29 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ietf-restconf {\n  namespace \"urn:ietf:params:xml:ns:yang:ietf-restconf\";\n  prefix rc;\n\n  revision 2017-01-26;\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "ietf-restconf",
+      "revision": "2017-01-26",
+      "schema_tree": []
+    },
+    {
+      "accepted": true,
+      "compiled": "module ext-yang-data {\n  namespace \"urn:vibe-ports:yang:conformance:ext-yang-data\";\n  prefix ext-yang-data;\n\n  ietf-restconf:yang-data \"my-data\" {\n    container top {\n      status current;\n      leaf x {\n        type string;\n        status current;\n      }\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "ext-yang-data",
+      "revision": null,
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

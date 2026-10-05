@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module ord-a {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:ord-a";
+  prefix ord-a;
+  import ord-base { prefix b; }
+  augment /b:c { leaf aa { type string; } }
+}

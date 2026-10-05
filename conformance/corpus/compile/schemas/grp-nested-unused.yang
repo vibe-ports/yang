@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module grp-nested-unused {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:grp-nested-unused";
+  prefix grp-nested-unused;
+  grouping outer {
+    grouping inner { leaf x { type string; mandatory true; default "a"; } }
+    leaf y { type string; }
+  }
+  container top { uses outer; }
+}

@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+submodule status-sub {
+  yang-version 1.1;
+  belongs-to status-main { prefix m; }
+  grouping g { status obsolete; leaf x { type string; } }
+}
