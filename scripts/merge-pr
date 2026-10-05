@@ -50,9 +50,19 @@ IFS=$'\t' read -r state draft base_ref base_repo head < <(pr_state)
 short=${head:0:7}
 
 verdict=$(gh api --paginate --slurp "repos/$repo/issues/$pr/comments" | jq -r --argjson uid "$maintainer" --arg sha "$head" '
-  def unfenced: reduce (split("\n")[] | rtrimstr("\r")) as $l ({fence: false, out: []};
-    if ($l | test("^ {0,3}(```|~~~)")) then .fence = (.fence | not)
-    elif .fence then . else .out += [$l] end) | .out[];
+  # Lines outside fenced code blocks, per CommonMark: an opening fence is 3+ backticks or tildes
+  # (indent <= 3; a backtick fence info string has no backticks); only a fence of the SAME char,
+  # at least as long, with nothing after it, closes it. An unclosed fence runs to the end.
+  def unfenced: reduce (split("\n")[] | rtrimstr("\r")) as $l ({f: null, out: []};
+    if .f == null then
+      (($l | capture("^ {0,3}(?<m>`{3,}|~{3,})(?<rest>.*)$")) // null) as $o
+      | if $o != null and ($o.m[0:1] == "~" or ($o.rest | test("`") | not)) then .f = $o.m
+        else .out += [$l] end
+    else
+      (($l | capture("^ {0,3}(?<m>`{3,}|~{3,})[ \t]*$")) // null) as $c
+      | if $c != null and $c.m[0:1] == .f[0:1] and ($c.m | length) >= (.f | length) then .f = null
+        else . end
+    end) | .out[];
   [ .[][] | select(.user.id == $uid and .updated_at == .created_at) | . as $c
     | (.body // "" | unfenced
        | capture("^VERDICT: (?<v>approve|changes) (?<s>[0-9a-f]{40}) \\((codex-[A-Za-z0-9_.-]+|port-reviewer-[A-Za-z0-9_.-]+)\\)$"))
