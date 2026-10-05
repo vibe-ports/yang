@@ -55,8 +55,21 @@ type EvalContext struct {
 4. **`when` context node** (RFC 7950 §7.21.5): under `augment` → the augment's target node if it is a
    data node, else its closest data-node ancestor; under `uses`/`choice`/`case` → the closest data-node
    ancestor of the statement's node; otherwise the node itself.
-5. **Evaluation order**: auto-deleting a node can make another `when` false, so conditions are
-   re-evaluated until no change. Circular `when` dependencies must not be "accepted because stable":
+5. **Evaluation order** — libyang's ordered unresolved-`when` queue, **not** a fixpoint
+   (`lyd_validate_unres_when`, validation.c:461-524, driven by `lyd_validate_unres`,
+   validation.c:556-565). The queue holds the nodes whose `when` is still unresolved, in the order they
+   were collected; one pass walks it from the **end** to the start. Per node, `lyd_validate_node_when`
+   evaluates every `when` affecting it: if evaluation hits a node whose own `when` is unresolved it
+   returns `LY_EINCOMPLETE` and the node stays queued for the next pass; otherwise the condition is
+   **resolved** — true sets `WhenTrue`, false auto-deletes (node had `WhenTrue`), warns (operational)
+   or errors — and the node leaves the queue for good (`ly_set_rm_index_ordered`, validation.c:517).
+   Passes repeat only while the queue shrinks. A resolved condition is never re-evaluated in the same
+   validation, even if a later auto-delete changes what it read. Example (reported by astra, to be
+   pinned): defaults `b` (false `when`) and `a` declared after `b` with `when "../b"`: `a` is
+   evaluated first (queue end), sees `b` and is resolved true; `b` is then deleted; `a` **stays**.
+   Fixtures when/order-a-after-b and when/order-b-after-a (both declaration orders), op `sequence`
+   with a `validate` step, checking the output tree, `WhenTrue`/`Default` flags and the implicit
+   (deletion) diff. Circular `when` dependencies must not be "accepted because stable":
    libyang rejects them at **schema compile** time (`lys_compile_unres_when_cyclic`,
    `src/schema_compile.c:457`, LYVE_SEMANTICS) — we do the same in `internal/compile`, so data
    evaluation never sees a cycle. M1 fixture: two leaves with mutually dependent `when`.

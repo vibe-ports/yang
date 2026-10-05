@@ -9,7 +9,7 @@ Status: design for M1-5 (2026-10-06). Builds on 01–05. Reference: libyang v5.8
 registry keyed by (module, revision, typedef)), `internal/xpath` (`Compile`, `Eval`, `Node`,
 `SchemaNode`, `Value`, `NamespaceCtx`).
 
-Scope M1: everything below except deviations, extension plugins (instances kept generic, §2.17) and
+Scope M1: everything below except deviations, the extension plugins listed as unsupported in §2.17 and
 YIN. Deviations are parsed but applied in M2. libyang applies a module's deviations only when that
 module becomes **implemented** (`lys_implement` → `lys_precompile_augments_deviations`, SC:2098,
 SCA:2526-2541); an import-only module with `deviation` statements is harmless. So `Load` returns
@@ -53,8 +53,19 @@ U-0021). With a revision: the first exact
 `lysp_load_module_data_check` (TS:2019: "Module \"%s\" parsed with the wrong revision" LY_EINVAL).
 Without a revision: the newest valid `@REV` across all dirs; a plain `name.yang` only when no dated
 file exists. libyang pops directories LIFO (TS:3083) and depends on `readdir` order for ties; we walk
-`fs.WalkDir` (lexical) and treat any tie (same module+revision in two places) as a VERIFY(load/tie)
-case — goldens must not depend on it. Order of sources: `Loader` first unless
+the directories in lexical order and treat any tie (same module+revision in two places) as a
+VERIFY(load/tie) case — goldens must not depend on it. **Symlinks:** libyang follows them — an entry
+with `d_type` `DT_LNK`/`DT_UNKNOWN` is `stat`ed (target type), so a symlinked directory is descended
+into and a symlinked file is a candidate (TS:2957-3020); there is no cycle detection, a symlink loop
+only ends when `opendir` fails on an over-long path (`LOGWRN(NULL, …)`, not stored, TS:3091-3095).
+`fs.WalkDir` does not follow symlinks, so the search is our own walk: `fs.ReadDir`, and for
+`ModeSymlink` entries `fs.Stat` to get the target type (works for `os.DirFS`; an `fs.FS` without
+symlinks is unaffected). Bounds: a directory path longer than 4096 bytes (`PATH_MAX`) is skipped
+silently like libyang's failing `opendir`, and `Budget.MaxSearchDirs` (default 10 000 directories
+per search) turns a symlink cycle into `ErrBudget` instead of 4096-byte-deep churn — **U-0022**,
+added with the code. Fixtures: load/symlink-dir (+, module only reachable through a symlinked
+directory; corpus symlink committed to git), load/symlink-file (+); a Go test builds a symlink cycle
+in `t.TempDir()` and checks the budget error and its run time. Order of sources: `Loader` first unless
 `PreferSearchdirs` (TSC:834-865). Not found: `Loading "%s@%s" module failed, not found.`
 LYVE_REFERENCE (TSC:868). A module read from a file is checked by `ly_check_module_filename`
 (TS:1970, called at TS:2744 and TS:2066): warnings `File name "%s" does not match module name "%s".`
@@ -118,7 +129,8 @@ augment/deviation target modules implemented (SCA:2577), `lys_has_compiled_impor
 `compile`** = `ly_ctx_compile` (CTX:568): dep sets, `lys_check_features` (SC:1584, SF:552:
 `Feature "%s" cannot be enabled because its "if-feature" is not satisfied.` LY_EDENIED), `lys_compile`,
 unres. Our `Load` keeps the two steps separate internally (`loadParsed`, then `compileDepSets`) and
-tags each diagnostic with its phase; an error in either reverts both (CTX:257-260, CTX:584-587).
+tags each diagnostic with its phase; an error in either runs libyang's revert (CTX:257-260,
+CTX:584-587), which is not fully atomic (§1.7).
 
 **1.7 Dependency sets and recompilation** — ported, not approximated (recompiling everything would
 re-emit compile warnings of untouched modules and change compile order). `lys_unres_dep_sets_create`
@@ -133,8 +145,23 @@ global unres; `LY_ERECOMPILE` (raised when unres implements a module that augmen
 already compiled one, SCA:2620-2624, or that imports a compiled implemented module, SC:2035-2057)
 restarts the whole set; a newly implemented module that needs no recompilation is compiled and unres
 re-run (SC:1560-1567). Dep-set order is observable (§2.3 leafref typedef binding; first error).
-Snapshots: a `Load` works on a copy (parsed set + flags + compiled `schema.Set`); any error drops the
-copy = `lys_unres_glob_revert` (TS:1293). Fixtures: load/two-failures (an older module that now fails
+**Rollback is not atomic in libyang, and we mirror it.** `lys_unres_glob_revert` (TS:1293-1343)
+undoes exactly two things: modules *newly implemented* by the failed operation become import-only
+again (compiled freed, `to_compile` cleared, augment/deviation links reverted), and modules *newly
+created* are removed from the context; then the previous state is recompiled with logging suppressed
+(an error there is logged as `LOGINT` after logging is restored, TS:1336-1341). It does **not** undo
+`lys_set_features` on an already implemented module (`_lys_set_implemented`, TS:998-1010, which also
+sets `to_compile`). Reproduced by astra with three loads of one module `m` (features `a` with
+`if-feature b`, and `b`): (1) `features: []` → accepted, all off; (2) `features: [a]` → compile fails
+`Feature "a" cannot be enabled …` — `a` stays enabled in the parsed module and `m` stays `to_compile`;
+(3) `features: null` ("untouched") → fails again with the same error. Our snapshot model therefore
+copies on write everything *except* the parsed feature flags (and `to_compile`) of modules that were
+already implemented before the failed `Load`: those changes survive the rollback, exactly as above.
+Whether the revert's own recompilation logs an internal error, and what the feature dump of `m`
+shows after (2), is VERIFY(load/feature-rollback-3load) — the fixture is a three-module-entry
+`schema` request (`m` three times) comparing per-entry verdict, diagnostics and the final dump. An
+atomic rollback would be friendlier, but it changes observable verdicts, so it is not done (no
+deviation). Fixtures: load/two-failures (an older module that now fails
 is reported under the new module's load), load/warning-once (a "Locally scoped grouping not used"
 warning of module A is not repeated when unrelated module B is loaded later),
 load/lref-implements-augmenter (a leafref prefix implements an import-only module whose augment then
@@ -447,13 +474,36 @@ pointer identity (fix the `tree.go` comment that says "target leaf's own type").
 `lysc_unres_{when,must,leafref,leaf_dflt,llist_dflts,bitenum}_add`, all skipped in groupings and
 disabled subtrees, defaults *replaced* when added twice for one node). No other deferred work.
 
-**2.17 Extension instances** stay generic: the parse-phase record (§1.4 step 1) is bound to its
-definition, compiled by `lys_compile_ext` (SC:114: argument, module = `cur_mod`, parent, nested
-instances, path segment `{ext-inst}` + name) without the plugin `compile` callback, and stored as
-`schema.ExtInstance{Def *Module, Name, Argument, Exts}`. Unknown definition at compile
-(`lysc_ext_find_definition`) is an error as in libyang. Placement as libyang (node, uses+grouping → parent, augment → target,
-type exts incl. typedef chain SCN:1915-1927). No plugin `compile` callbacks in M1
-(yang-data/structure/metadata come with their consumers).
+**2.17 Extension instances.** The parse-phase record (§1.4 step 1) is bound to its definition,
+compiled by `lys_compile_ext` (SC:114: argument, module = `cur_mod`, parent, nested instances, path
+segment `{ext-inst}` + name) and stored as `schema.ExtInstance{Def *Module, Name, Argument, Exts}`.
+Unknown definition at compile (`lysc_ext_find_definition`) is an error as in libyang. Placement as
+libyang (node, uses+grouping → parent, augment → target, type exts incl. typedef chain
+SCN:1915-1927). An instance whose definition has **no** plugin stays generic — that is all libyang
+does with it too.
+
+**Built-in extension plugins** (registered unconditionally, plugins.c:600-634) are not "generic":
+their `parse` callbacks run in the parse phase for **every** parsed module, import-only included
+(TS:1919-1950, error → the load fails), their `compile` callbacks during compile of implemented
+modules. Their errors are logged as `LY_EPLUGIN | err` with LYVE_OTHER (log.c:769) at the
+ext-instance path (`lysp_ext_instance_path`, TS:1929). Silent acceptance of an instance libyang
+rejects is never allowed, so each plugin is either ported (checks + effect) or makes `Load` fail
+with `ErrUnsupported` as soon as an instance of it is parsed (in any module, before compile):
+
+| plugin (module / extension) | libyang | M1 |
+|---|---|---|
+| ietf-yang-metadata `annotation` | metadata.c:49-121 parse: only at module/submodule top level, not instantiated twice with one name, allowed substatements, **mandatory `type`** (`Missing mandatory keyword "type" as a child of "%s %s".`, metadata.c:111); compile: type compiled | **ported** (C4b) — the internal modules `yang`, `default` and ietf-netconf-with-defaults use it, and `data/` needs annotations |
+| ietf-netconf-acm `default-deny-write` / `default-deny-all` (2012-02-22, 2018-02-14) | nacm.c:82-126 parse: placement (warnings), multiple instances (error); compile: inherited flags | **ported** (C4b): small, and NACM models are common |
+| ietf-restconf `yang-data` | yangdata.c parse/compile: top-level only, one container, schema compiled into the extension | `ErrUnsupported` (**U-0023**) until its consumer (PLAN §1 lists yang-data for v1, later milestone) |
+| ietf-yang-structure-ext `structure`, `augment-structure` | structure.c parse/compile, own data trees | `ErrUnsupported` (**U-0023**), same reason |
+| ietf-yang-schema-mount `mount-point` | schema_mount.c | `ErrUnsupported` (**U-0024**): out of v1 (PLAN §1) |
+| openconfig-extensions `regexp-posix`, `posix-pattern` | openconfig.c; changes pattern semantics (SCN:1106) | `ErrUnsupported` (**U-0025**) |
+
+Definitions alone (the internal modules define `mount-point`, `structure`, `annotation`) are fine;
+only instances trigger the rule. Fixtures ext/annotation-no-type (implemented),
+ext/annotation-no-type-import-only (the error still fails the load: parse phase),
+ext/annotation-not-top-level, ext/annotation-twice, ext/nacm-placement-warning,
+ext/nacm-twice; engine-only (no golden comparison of the Go error): ext/yang-data-unsupported.
 
 ## 3. Error reporting
 
@@ -538,8 +588,8 @@ otherwise negative; most are new and owned by stream F):
 
 | Phase | Existing | To add |
 |---|---|---|
-| loading (§1.2-1.4) | m1/* (internal modules), basic/schema-dump | load/import-cycle, load/include-cycle, load/wrong-revision-file, load/imported-rev-binding +, load/tie (VERIFY), load/filename-warning, load/dup-typedef-scopes, load/yin-unsupported (engine-only) |
-| implement, phases, dep sets (§1.5-1.7) | m1/schema-tree (augment targets implemented) | load/two-failures, load/warning-once, load/lref-implements-augmenter +, load/lref-implements-target +, load/when-check-skipped-warning, load/feature-not-satisfied (phase compile), load/feature-not-found (phase parse), load/deviation-import-only + |
+| loading (§1.2-1.4) | m1/* (internal modules), basic/schema-dump | load/import-cycle, load/include-cycle, load/wrong-revision-file, load/imported-rev-binding +, load/tie (VERIFY), load/filename-warning, load/dup-typedef-scopes, load/symlink-dir +, load/symlink-file +, load/yin-unsupported (engine-only); Go test: symlink-cycle budget |
+| implement, phases, dep sets (§1.5-1.7) | m1/schema-tree (augment targets implemented) | load/two-failures, load/warning-once, load/lref-implements-augmenter +, load/lref-implements-target +, load/when-check-skipped-warning, load/feature-not-satisfied (phase compile), load/feature-not-found (phase parse), load/deviation-import-only +, load/feature-rollback-3load (VERIFY) |
 | features, if-feature (§2.2) | basic/schema-dump, m1/schema-tree{,-no-features} | iff/feature-cycle, iff/err-after-false (VERIFY), iff/unknown-feature, iff/grouping-prefix + |
 | identities (P0) | m1 identities | ident/cycle, ident/unknown-base, errpath/submodule-identity |
 | typedefs (§2.3) | m1 (`counter64`, `date-and-time`, `ipv4-address-no-zone`), types/* | types/unchanged-typedef-reuse +, types/typedef-cycle, types/restriction-wrong-type, lref/typedef-prefix-direct +, lref/union-typedef-direct +, lref/union-typedef-via-derived-typedef, lref/typedef-across-loads |
@@ -550,6 +600,8 @@ otherwise negative; most are new and owned by stream F):
 | defaults (§2.12) | m1, protocol-v2/schema-limits | dflt/invalid, dflt/union-leafref + , dflt/llist-dup-noncanon (VERIFY) |
 | must/when (§2.13-2.14) | m1 `boost`/`mtu-limit`, protocol-v2 | when/cycle (design 03), when/own-children, when/invalid-condition, when/func-arg-warning, must/unknown-node-warning, must/value-not-fit-warning |
 | leafref (§2.15) | m1 `peer`, ietf `interface-ref` | lref/path-syntax-parse-phase (U-0005), lref/non-leaf-target, lref/config-to-state, lref/circular, lref/disabled-target |
+| extension plugins (§2.17) | — | ext/annotation-no-type, ext/annotation-no-type-import-only, ext/annotation-not-top-level, ext/annotation-twice, ext/nacm-placement-warning, ext/nacm-twice, ext/yang-data-unsupported (engine-only) |
+| data `when` order (design 03 rule 5, op `sequence`) | — | when/order-a-after-b, when/order-b-after-a |
 | errors (§3) | — | errpath/uses, errpath/augment, errpath/refine, errpath/grouping, errpath/ext-inst, errpath/unres-node |
 
 libyang utests: `test_tree_schema_compile.c` (151 tier-B cases) maps by function: `test_module`,
@@ -578,19 +630,19 @@ compiled)" in their own column, so a skipped field is visible, never silent.
 ## 7. Task split (≤ ~1.5k Go lines incl. tests each; own branch + PR + astra review)
 
 Re-estimated against the libyang LOC each PR ports (≈ 0.7–0.8 Go per C line + tests ≈ 1:1);
-total ≈ 14.5k incl. tests (sum of the table: 14.55k).
+total ≈ 15k incl. tests (sum of the table: 14.95k).
 
 | # | PR | ~LOC | Depends | Worker |
 |---|---|---|---|---|
 | C0 | `internal/schema` additions (§4) + invariant comments | 250 | — | Sonnet |
-| C1a | loader I: `yang.Context` skeleton, embedded internal modules, fs.FS search (+ `.yin` → U-0021), revision selection + `IMPORTED_REV`, imports/includes + cycles + submodule injection, filename warnings, dup checks | 1.4k | parser #13/#14 | Opus |
+| C1a | loader I: `yang.Context` skeleton, embedded internal modules, symlink-aware fs.FS search (+ `.yin` → U-0021, `MaxSearchDirs`), revision selection + `IMPORTED_REV`, imports/includes + cycles + submodule injection, filename warnings, dup checks | 1.4k | parser #13/#14 | Opus |
 | C1b | loader II: ext-instance records, P0 (feature if-features + cycles, identities + derived), `lys_implement` (features, augment-target implementation, deviation → U-0020), phase tagging, dep sets + `lys_compile_depset_r` restart, snapshot/revert | 1.4k | C0, C1a | Opus |
 | C2a | xpath `Atomize` core (+ `SchemaNode` extension, walkAtoms/atomsOK rebased on it) | 1.3k | xpath-eval | Opus |
 | C2b | xpath compile warnings: not-found, operands, value-fit callback, ~65 function-argument sites, subexpression trailer | 0.9k | C2a | Sonnet (mechanical, port map per site) |
 | C3 | `internal/lyxp` leaf package: tokenizer + `ly_path_parse` (all modes) + `ly_path_check_predicate`; hook in `parser.Build`; types/xpath switched to it | 1.1k | parser-build #14 | Sonnet |
 | C3b | `ly_path_compile_leafref` in `types/path.go` | 0.6k | C3 | Sonnet |
 | C4a | compile core I: node walk P3, `lys_compile_node_` order, connect order, config/ordered-by, container/leaf/leaf-list/list (keys, uniques)/choice/case/any/action/notif, mandatory propagation, error-path builder | 1.5k | C0, C1b | Opus |
-| C4b | compile core II: if-feature eval + disabled/obsolete sets, status (§2.11), ext instances, P4 grouping validation scope, P5 | 1.0k | C4a | Opus |
+| C4b | compile core II: if-feature eval + disabled/obsolete sets, status (§2.11), ext instances + metadata/NACM plugins + `ErrUnsupported` for the others, P4 grouping validation scope, P5 | 1.4k | C4a | Opus |
 | C5 | types compile: typedef chain + reuse rule + leafref typedef quirks, range/length/pattern/enum/bits/dec64/identityref, union flattening, `MaxTypes` | 1.4k | C0 only (driven by a test harness; joins C4a's walk at merge) | Opus |
 | C6 | groupings/uses/refine/uses-augment/top-level augment | 1.4k | C4b, C5 | Opus |
 | C7 | unres P6: leafref targets/realtype, when/must checks + cycles, bit/enum removal, defaults via types, disabled removal | 1.3k | C2a, C3b, C6 | Opus |
@@ -611,4 +663,5 @@ Exit: all `schema` fixtures agree (warnings included); m1 `schema-tree` and
 7. Unres LIFO/FIFO order decides the first reported error.
 8. Disabled/obsolete nodes: compiled, removed, but their mandatory flag stays on ancestors.
 9. Grouping validation scope and the sticky `LYS_USED_GRP`.
-10. Error paths: special segments + log.c path concatenation (VERIFY fixtures first).
+10. Error paths (special segments, log.c concatenation) and non-atomic rollback of feature changes (§1.7).
+11. Built-in extension plugins (§2.17): checks run at parse time for import-only modules too.
