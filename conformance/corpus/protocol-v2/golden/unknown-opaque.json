@@ -30,6 +30,7 @@
       },
       "kind": "container",
       "meta": [],
+      "opaque": null,
       "path": "/pv2:c",
       "schema": "/pv2:c",
       "value": null
@@ -43,6 +44,7 @@
       },
       "kind": "leaf",
       "meta": [],
+      "opaque": null,
       "path": "/pv2:c/mode",
       "schema": "/pv2:c/mode",
       "value": {
@@ -61,6 +63,13 @@
       },
       "kind": "opaque",
       "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "pv2",
+        "name": "bogus",
+        "namespace": null,
+        "prefix": null
+      },
       "path": "/pv2:c/bogus",
       "schema": null,
       "value": {

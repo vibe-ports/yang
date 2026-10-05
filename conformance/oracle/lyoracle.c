@@ -374,7 +374,8 @@ hints_json(uint32_t hints)
         {"string", LYD_VALHINT_STRING}, {"decnum", LYD_VALHINT_DECNUM}, {"octnum", LYD_VALHINT_OCTNUM},
         {"hexnum", LYD_VALHINT_HEXNUM}, {"num64", LYD_VALHINT_NUM64}, {"boolean", LYD_VALHINT_BOOLEAN},
         {"empty", LYD_VALHINT_EMPTY}, {"string_datatypes", LYD_VALHINT_STRING_DATATYPES},
-        {"list", LYD_NODEHINT_LIST}, {"leaflist", LYD_NODEHINT_LEAFLIST}, {NULL, 0}
+        {"list", LYD_NODEHINT_LIST}, {"leaflist", LYD_NODEHINT_LEAFLIST},
+        {"container", LYD_NODEHINT_CONTAINER}, {NULL, 0}
     };
     cJSON *a = cJSON_CreateArray();
 
@@ -395,6 +396,25 @@ add_meta_item(cJSON *arr, const char *module, const char *name, const char *valu
     cJSON_AddStringToObject(m, "name", name);
     add_opt_str(m, "value", value);
     cJSON_AddItemToArray(arr, m);
+}
+
+/*
+ * Identity of an opaque node as libyang stores it (struct ly_opaq_name): the format decides whether
+ * the union holds the XML namespace or the (inherited) JSON module name. lyd_path() shows neither
+ * for XML, so without this two namespaces would dump identically.
+ */
+static cJSON *
+opaq_name_json(const struct ly_opaq_name *name, LY_VALUE_FORMAT format)
+{
+    cJSON *o = cJSON_CreateObject();
+    int xml = format == LY_VALUE_XML;
+
+    cJSON_AddStringToObject(o, "name", name->name);
+    add_opt_str(o, "prefix", name->prefix);
+    cJSON_AddStringToObject(o, "format", xml ? "xml" : (format == LY_VALUE_JSON ? "json" : "other"));
+    add_opt_str(o, "namespace", xml ? name->module_ns : NULL);
+    add_opt_str(o, "module", xml ? NULL : name->module_name);
+    return o;
 }
 
 /* Append n and its following siblings, each followed by its subtree (pre-order). */
@@ -427,11 +447,16 @@ typed_add(cJSON *arr, const struct lyd_node *n)
             cJSON_AddNullToObject(v, "typedef");
             cJSON_AddNullToObject(v, "union_member");
             cJSON_AddItemToObject(v, "hints", hints_json(q->hints));
+            cJSON_AddItemToObject(o, "opaque", opaq_name_json(&q->name, q->format));
             for (const struct lyd_attr *a = q->attr; a; a = a->next) {
+                /* module_ns and module_name share a union: the namespace for XML */
                 add_meta_item(meta, a->name.module_name, a->name.name, a->value);
             }
         } else {
             cJSON_AddNullToObject(o, "value");
+        }
+        if (n->schema) {
+            cJSON_AddNullToObject(o, "opaque");
         }
         for (const struct lyd_meta *m = n->meta; m; m = m->next) {
             if (lyd_meta_is_internal(m)) {
@@ -647,8 +672,8 @@ type_json(const struct lysc_type *t, const struct lysc_node *target, const struc
 
 /*
  * Type of a leaf/leaf-list with its leafref target(s). lysc_node_lref_targets() lists the targets of
- * union leafref members in member order but deduplicated and without unresolved ones, so they are
- * attributed per member only when the counts match (otherwise each member target is null).
+ * union leafref members in member order, skipping members whose target does not resolve, so they
+ * are attributed per member only when the counts match (otherwise each member target is null).
  */
 static cJSON *
 leaf_type_json(const struct lysc_node *node)
@@ -1352,9 +1377,29 @@ op_diff(const cJSON *req)
 
 /* ---------- sequence: steps on one retained tree ---------- */
 
+/* request-error unless every key of o is in the space-separated list allowed */
+static void
+keys_only(const cJSON *o, const char *allowed, const char *what)
+{
+    const cJSON *it;
+
+    cJSON_ArrayForEach(it, o) {
+        const char *k = it->string, *p = allowed;
+        size_t n = strlen(k);
+
+        /* a whole word: "data" must not match inside "data_type" */
+        while ((p = strstr(p, k)) && (((p != allowed) && (p[-1] != ' ')) || ((p[n] != ' ') && p[n]))) {
+            p += n;
+        }
+        if (!p) {
+            die(what, k);
+        }
+    }
+}
+
 /*
- * Check one step's request fields (request-error on anything malformed), so a sequence never
- * stops at a failing step before a later malformed one is noticed. Returns the step kind.
+ * Check one step's request fields (request-error on anything malformed or unknown keys), so a
+ * sequence never stops at a failing step before a later malformed one is noticed.
  */
 static const char *
 check_step(const cJSON *step)
@@ -1362,9 +1407,13 @@ check_step(const cJSON *step)
     const char *what = str_of(step, "do");
     struct dparams p;
 
-    if (!what) {
+    if (!cJSON_IsObject(step) || !what) {
         die("step without \"do\"%s", NULL);
     }
+    keys_only(step, !strcmp(what, "parse") ? "do format data_type data data_file unknown parse_only "
+            "parse_options validate_options" : !strcmp(what, "validate") ? "do data_type validate_options" :
+            !strcmp(what, "edit") ? "do merge merge_file set delete format data_type unknown parse_options" :
+            !strcmp(what, "dump") ? "do with_defaults" : "do", "unknown key \"%s\" in a sequence step");
     if (!strcmp(what, "parse")) {
         dparams_of(step, &p);
         if (p.optype != LYD_TYPE_DATA_YANG) {
@@ -1389,6 +1438,7 @@ check_step(const cJSON *step)
             die("set needs an object with path%s", NULL);
         }
         if (set) {
+            keys_only(set, "path value", "unknown key \"%s\" in set");
             str_of(set, "value");
         }
     } else if (!strcmp(what, "dump")) {

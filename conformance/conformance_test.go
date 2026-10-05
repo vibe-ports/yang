@@ -307,6 +307,32 @@ func TestSequenceSteps(t *testing.T) {
 	}
 }
 
+// Two opaque XML elements that differ only in namespace must not compare equal (tree.xml, the
+// only rendering with the namespace, is not compared; typed[].opaque carries it).
+func TestOpaqueNamespaceDiffers(t *testing.T) {
+	m := load(t)
+	golden := func(id string) Response {
+		for _, f := range m.Fixtures {
+			if f.ID == id {
+				r, err := LoadGolden(m.GoldenPath(f))
+				if err != nil {
+					t.Fatal(err)
+				}
+				return r
+			}
+		}
+		t.Fatalf("fixture %s missing", id)
+		return nil
+	}
+	a, b := golden("protocol-v2/opaque-xml-ns-a"), golden("protocol-v2/opaque-xml-ns-b")
+	if diffResponses(a, b) == "" {
+		t.Error("opaque nodes in different XML namespaces compare equal")
+	}
+	if diffResponses(withoutAsserted(a), withoutAsserted(b)) == "" {
+		t.Error("a deviation must not waive the opaque namespace")
+	}
+}
+
 func TestParseResponseTrailing(t *testing.T) {
 	if _, err := ParseResponse([]byte(`{"a":1} {"b":2}`)); err == nil {
 		t.Error("trailing data accepted")

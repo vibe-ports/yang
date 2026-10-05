@@ -34,6 +34,7 @@
           },
           "kind": "container",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c",
           "schema": "/pv2:c",
           "value": null
@@ -47,6 +48,7 @@
           },
           "kind": "leaf",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/u",
           "schema": "/pv2:c/u",
           "value": {
@@ -73,6 +75,7 @@
           },
           "kind": "leaf",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/d",
           "schema": "/pv2:c/d",
           "value": {
@@ -91,6 +94,7 @@
           },
           "kind": "leaf",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/f",
           "schema": "/pv2:c/ch/first/f",
           "value": {
@@ -109,6 +113,7 @@
           },
           "kind": "list",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/l[k='a']",
           "schema": "/pv2:c/l",
           "value": null
@@ -122,6 +127,7 @@
           },
           "kind": "leaf",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/l[k='a']/k",
           "schema": "/pv2:c/l/k",
           "value": {
@@ -140,6 +146,7 @@
           },
           "kind": "leaf",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/dref",
           "schema": "/pv2:c/dref",
           "value": {
@@ -158,6 +165,7 @@
           },
           "kind": "leaf",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/u2",
           "schema": "/pv2:c/u2",
           "value": {
@@ -184,6 +192,7 @@
           },
           "kind": "leaflist",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/ll[.='a']",
           "schema": "/pv2:c/ll",
           "value": {
@@ -202,6 +211,7 @@
           },
           "kind": "leaflist",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/ll[.='b']",
           "schema": "/pv2:c/ll",
           "value": {
@@ -230,6 +240,7 @@
           },
           "kind": "container",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c",
           "schema": "/pv2:c",
           "value": null
@@ -243,6 +254,7 @@
           },
           "kind": "leaf",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/u",
           "schema": "/pv2:c/u",
           "value": {
@@ -269,6 +281,7 @@
           },
           "kind": "leaf",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/d",
           "schema": "/pv2:c/d",
           "value": {
@@ -287,6 +300,7 @@
           },
           "kind": "leaf",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/f",
           "schema": "/pv2:c/ch/first/f",
           "value": {
@@ -305,6 +319,7 @@
           },
           "kind": "list",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/l[k='a']",
           "schema": "/pv2:c/l",
           "value": null
@@ -318,6 +333,7 @@
           },
           "kind": "leaf",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/l[k='a']/k",
           "schema": "/pv2:c/l/k",
           "value": {
@@ -336,6 +352,7 @@
           },
           "kind": "leaf",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/dref",
           "schema": "/pv2:c/dref",
           "value": {
@@ -354,6 +371,7 @@
           },
           "kind": "leaf",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/u2",
           "schema": "/pv2:c/u2",
           "value": {
@@ -380,6 +398,7 @@
           },
           "kind": "leaflist",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/ll[.='a']",
           "schema": "/pv2:c/ll",
           "value": {
@@ -398,6 +417,7 @@
           },
           "kind": "leaflist",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/ll[.='b']",
           "schema": "/pv2:c/ll",
           "value": {
@@ -426,6 +446,7 @@
           },
           "kind": "container",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c",
           "schema": "/pv2:c",
           "value": null
@@ -439,6 +460,7 @@
           },
           "kind": "leaf",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/u",
           "schema": "/pv2:c/u",
           "value": {
@@ -465,6 +487,7 @@
           },
           "kind": "leaf",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/d",
           "schema": "/pv2:c/d",
           "value": {
@@ -483,6 +506,7 @@
           },
           "kind": "leaf",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/f",
           "schema": "/pv2:c/ch/first/f",
           "value": {
@@ -501,6 +525,7 @@
           },
           "kind": "list",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/l[k='a']",
           "schema": "/pv2:c/l",
           "value": null
@@ -514,6 +539,7 @@
           },
           "kind": "leaf",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/l[k='a']/k",
           "schema": "/pv2:c/l/k",
           "value": {
@@ -532,6 +558,7 @@
           },
           "kind": "leaf",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/dref",
           "schema": "/pv2:c/dref",
           "value": {
@@ -550,6 +577,7 @@
           },
           "kind": "leaf",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/u2",
           "schema": "/pv2:c/u2",
           "value": {
@@ -576,6 +604,7 @@
           },
           "kind": "leaflist",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/ll[.='a']",
           "schema": "/pv2:c/ll",
           "value": {
@@ -594,6 +623,7 @@
           },
           "kind": "leaflist",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/ll[.='b']",
           "schema": "/pv2:c/ll",
           "value": {
@@ -623,6 +653,7 @@
           },
           "kind": "container",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c",
           "schema": "/pv2:c",
           "value": null
@@ -636,6 +667,7 @@
           },
           "kind": "leaf",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/u",
           "schema": "/pv2:c/u",
           "value": {
@@ -662,6 +694,7 @@
           },
           "kind": "leaf",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/d",
           "schema": "/pv2:c/d",
           "value": {
@@ -680,6 +713,7 @@
           },
           "kind": "leaf",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/f",
           "schema": "/pv2:c/ch/first/f",
           "value": {
@@ -698,6 +732,7 @@
           },
           "kind": "list",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/l[k='a']",
           "schema": "/pv2:c/l",
           "value": null
@@ -711,6 +746,7 @@
           },
           "kind": "leaf",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/l[k='a']/k",
           "schema": "/pv2:c/l/k",
           "value": {
@@ -729,6 +765,7 @@
           },
           "kind": "leaf",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/dref",
           "schema": "/pv2:c/dref",
           "value": {
@@ -747,6 +784,7 @@
           },
           "kind": "leaf",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/u2",
           "schema": "/pv2:c/u2",
           "value": {
@@ -773,6 +811,7 @@
           },
           "kind": "leaflist",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/ll[.='a']",
           "schema": "/pv2:c/ll",
           "value": {
@@ -791,6 +830,7 @@
           },
           "kind": "leaflist",
           "meta": [],
+          "opaque": null,
           "path": "/pv2:c/ll[.='b']",
           "schema": "/pv2:c/ll",
           "value": {

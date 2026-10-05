@@ -36,6 +36,7 @@
       },
       "kind": "container",
       "meta": [],
+      "opaque": null,
       "path": "/basic:sys",
       "schema": "/basic:sys",
       "value": null
@@ -49,6 +50,7 @@
       },
       "kind": "leaf",
       "meta": [],
+      "opaque": null,
       "path": "/basic:sys/mtu",
       "schema": "/basic:sys/mtu",
       "value": {
@@ -67,6 +69,7 @@
       },
       "kind": "list",
       "meta": [],
+      "opaque": null,
       "path": "/basic:sys/iface[name='eth0']",
       "schema": "/basic:sys/iface",
       "value": null
@@ -80,6 +83,7 @@
       },
       "kind": "leaf",
       "meta": [],
+      "opaque": null,
       "path": "/basic:sys/iface[name='eth0']/name",
       "schema": "/basic:sys/iface/name",
       "value": {
@@ -98,6 +102,7 @@
       },
       "kind": "leaf",
       "meta": [],
+      "opaque": null,
       "path": "/basic:sys/iface[name='eth0']/type",
       "schema": "/basic:sys/iface/type",
       "value": {
@@ -116,6 +121,7 @@
       },
       "kind": "list",
       "meta": [],
+      "opaque": null,
       "path": "/basic:sys/iface[name='lo']",
       "schema": "/basic:sys/iface",
       "value": null
@@ -129,6 +135,7 @@
       },
       "kind": "leaf",
       "meta": [],
+      "opaque": null,
       "path": "/basic:sys/iface[name='lo']/name",
       "schema": "/basic:sys/iface/name",
       "value": {
@@ -147,6 +154,7 @@
       },
       "kind": "leaf",
       "meta": [],
+      "opaque": null,
       "path": "/basic:sys/iface[name='lo']/type",
       "schema": "/basic:sys/iface/type",
       "value": {
@@ -165,6 +173,7 @@
       },
       "kind": "leaf",
       "meta": [],
+      "opaque": null,
       "path": "/basic:sys/primary",
       "schema": "/basic:sys/primary",
       "value": {
@@ -183,6 +192,7 @@
       },
       "kind": "leaf",
       "meta": [],
+      "opaque": null,
       "path": "/basic:sys/jumbo-frames",
       "schema": "/basic:sys/jumbo-frames",
       "value": {
@@ -201,6 +211,7 @@
       },
       "kind": "leaf",
       "meta": [],
+      "opaque": null,
       "path": "/basic:sys/min",
       "schema": "/basic:sys/min",
       "value": {
@@ -219,6 +230,7 @@
       },
       "kind": "leaf",
       "meta": [],
+      "opaque": null,
       "path": "/basic:sys/max",
       "schema": "/basic:sys/max",
       "value": {
@@ -237,6 +249,7 @@
       },
       "kind": "container",
       "meta": [],
+      "opaque": null,
       "path": "/basic:sys/user",
       "schema": "/basic:sys/user",
       "value": null
@@ -250,6 +263,7 @@
       },
       "kind": "leaf",
       "meta": [],
+      "opaque": null,
       "path": "/basic:sys/user/name",
       "schema": "/basic:sys/user/name",
       "value": {
@@ -268,6 +282,7 @@
       },
       "kind": "leaf",
       "meta": [],
+      "opaque": null,
       "path": "/basic:sys/user/shell",
       "schema": "/basic:sys/user/shell",
       "value": {

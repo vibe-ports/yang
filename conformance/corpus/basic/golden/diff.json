@@ -36,6 +36,7 @@
           "value": "none"
         }
       ],
+      "opaque": null,
       "path": "/basic:sys",
       "schema": "/basic:sys",
       "value": null
@@ -65,6 +66,7 @@
           "value": "9000"
         }
       ],
+      "opaque": null,
       "path": "/basic:sys/mtu",
       "schema": "/basic:sys/mtu",
       "value": {
@@ -89,6 +91,7 @@
           "value": "delete"
         }
       ],
+      "opaque": null,
       "path": "/basic:sys/iface[name='lo']",
       "schema": "/basic:sys/iface",
       "value": null
@@ -102,6 +105,7 @@
       },
       "kind": "leaf",
       "meta": [],
+      "opaque": null,
       "path": "/basic:sys/iface[name='lo']/name",
       "schema": "/basic:sys/iface/name",
       "value": {
@@ -120,6 +124,7 @@
       },
       "kind": "leaf",
       "meta": [],
+      "opaque": null,
       "path": "/basic:sys/iface[name='lo']/type",
       "schema": "/basic:sys/iface/type",
       "value": {
@@ -144,6 +149,7 @@
           "value": "delete"
         }
       ],
+      "opaque": null,
       "path": "/basic:sys/jumbo-frames",
       "schema": "/basic:sys/jumbo-frames",
       "value": {
@@ -178,6 +184,7 @@
           "value": "5"
         }
       ],
+      "opaque": null,
       "path": "/basic:sys/max",
       "schema": "/basic:sys/max",
       "value": {
@@ -202,6 +209,7 @@
           "value": "none"
         }
       ],
+      "opaque": null,
       "path": "/basic:sys/user",
       "schema": "/basic:sys/user",
       "value": null
@@ -221,6 +229,7 @@
           "value": "create"
         }
       ],
+      "opaque": null,
       "path": "/basic:sys/user/shell",
       "schema": "/basic:sys/user/shell",
       "value": {

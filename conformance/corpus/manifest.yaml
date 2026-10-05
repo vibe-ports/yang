@@ -380,3 +380,35 @@ fixtures:
       verdict: valid
       rfc: ["RFC7950#9.2.4"]
       deviation: null
+
+  - id: protocol-v2/opaque-xml-ns-a
+    dir: protocol-v2
+    source: *own
+    rfc: []   # libyang LYD_PARSE_OPAQ: unknown XML element kept with its namespace; no RFC mode
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      format: xml
+      data_type: config
+      parse_only: true
+      unknown: opaque
+      data: '<c xmlns="urn:vibe-ports:yang:conformance:pv2"><mode>on</mode><foo xmlns="urn:a">1</foo></c>'
+    golden: golden/opaque-xml-ns-a.json
+
+  - id: protocol-v2/opaque-xml-ns-b
+    dir: protocol-v2
+    source: *own
+    rfc: []   # libyang LYD_PARSE_OPAQ: unknown XML element kept with its namespace; no RFC mode
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      format: xml
+      data_type: config
+      parse_only: true
+      unknown: opaque
+      data: '<c xmlns="urn:vibe-ports:yang:conformance:pv2"><mode>on</mode><foo xmlns="urn:b">1</foo></c>'
+    golden: golden/opaque-xml-ns-b.json

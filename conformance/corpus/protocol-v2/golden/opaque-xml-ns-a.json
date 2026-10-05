@@ -17,8 +17,8 @@
     "name": "LY_SUCCESS"
   },
   "tree": {
-    "json": "{\n  \"pv2:c\": {\n    \"mode\": \"on\"\n  }\n}\n",
-    "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2\">\n  <mode>on</mode>\n</c>\n"
+    "json": "{\n  \"pv2:c\": {\n    \"mode\": \"on\",\n    \"foo\": 1\n  }\n}\n",
+    "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2\">\n  <mode>on</mode>\n  <foo xmlns=\"urn:a\">1</foo>\n</c>\n"
   },
   "typed": [
     {
@@ -50,6 +50,34 @@
       "value": {
         "canonical": "on",
         "type": "enumeration",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "foo",
+        "namespace": "urn:a",
+        "prefix": null
+      },
+      "path": "/pv2:c/foo",
+      "schema": null,
+      "value": {
+        "canonical": "1",
+        "hints": [
+          "decnum"
+        ],
+        "type": null,
         "typedef": null,
         "union_member": null
       }

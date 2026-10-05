@@ -28,7 +28,9 @@ libyang v5 anydata holds only a data tree or a string, so `value_type` has no xm
 `union_member` is the first union member whose type (leafref: its realtype) is the stored realtype
 — libyang does not record the member, this is its own ordering rule (`lyplg_type_sort_union`);
 two members with the same realtype report the earlier one. Opaque nodes: `value.canonical` is the
-original text, type fields null, `value.hints` the parser's JSON type hints, attributes in `meta`.
+original text, type fields null, `value.hints` the parser's JSON type hints, attributes in `meta`,
+and `"opaque": {"name", "prefix", "format", "namespace" (XML), "module" (JSON)}` (null for
+schema-bound nodes) so XML namespaces are compared.
 `typed` is omitted for `verdict != valid` unless the tree exists (parse_only / operational warnings).
 
 ## 3. Structured compiled schema (op `schema`)
@@ -52,7 +54,7 @@ plus `identities`: `[{"name": "m:id", "bases": [...], "derived": [...]}]` and `f
 `lysc_path(LYSC_PATH_LOG)`; `typedefs` holds only the nearest typedef (compiled types keep no
 chain); `range`/`length` are the compiled intervals, not the original text; `max_elements: null`
 = unbounded; a choice's `defaults` is its default case name; a leafref member of a union gets its
-target only when `lysc_node_lref_targets` resolves one per leafref member.
+target only when `lysc_node_lref_targets` resolves one per leafref member (it skips unresolved).
 
 ## 4. op `sequence` — stateful runs on one retained tree
 ```json
@@ -66,7 +68,7 @@ target only when `lysc_node_lref_targets` resolves one per leafref member.
    {"do": "validate", "data_type": "config"},
    {"do": "dump", "with_defaults": "all-tagged"}]}
 ```
-All steps are checked (request-error) before any runs. Response: `steps`: one object per step with `rc`, `diagnostics`, and for `validate` the
+All steps are checked (request-error, also for keys a step kind does not take) before any runs. Response: `steps`: one object per step with `rc`, `diagnostics`, and for `validate` the
 `implicit_diff` (lyd_validate_all's diff: defaults added, nodes auto-deleted by `when`, printed as
 JSON with `yang:operation`), for every step the resulting `typed` dump. The sequence stops at the
 first failing step — rc not LY_SUCCESS or an error-level diagnostic logged (e.g. `lyd_free_tree`

@@ -117,9 +117,9 @@ func MatchAssert(a *Assert, resp Response) string {
 	return ""
 }
 
-// withoutAsserted drops the fields an assert (and so a deviation) speaks about: the verdict and
-// its rc/failed_step and every diagnostic list, also per sequence step (where a deviating step
-// changes everything after it, so the steps' rc and diagnostics are waived too).
+// withoutAsserted drops what a deviation waives: the verdict with its rc and failed_step, every
+// diagnostic list, and each sequence step's rc and diagnostics. Step trees and `skipped` stay
+// compared.
 func withoutAsserted(r Response) Response {
 	o := maps.Clone(map[string]any(r))
 	for _, k := range []string{"verdict", "rc", "failed_step", "diagnostics", "context_diagnostics"} {

@@ -121,7 +121,7 @@ Per accepted module (protocol 2) also:
   `[{"name", "position"}]`; `bases` `["mod:id"]`; `leafref` `{"path", "require_instance",
   "target"}` (`lysc_node_lref_target`; for leafref members of a union the targets of
   `lysc_node_lref_targets`, attributed in member order, null for every member when that list
-  is shorter than the leafref members — it is deduplicated and skips unresolved paths); `union` =
+  is shorter than the leafref members — it skips members whose target does not resolve); `union` =
   member types.
 - `identities`: `[{"name": "pv2:one", "bases": ["pv2:base-id"], "derived": ["pv2:two"]}]` —
   `derived` as libyang links it (direct only); `bases` found by scanning every context module.
@@ -211,8 +211,11 @@ pre-order (siblings in libyang order, list keys first), one object per node. Pre
 `value` is null for inner nodes. Opaque nodes: `canonical` is the original text, the type fields
 are null, `hints` lists the parser's value/node hints (the JSON type the value came as:
 `string`, `decnum`, `octnum`, `hexnum`, `num64`, `boolean`, `empty`, `string_datatypes`, `list`,
-`leaflist`; `1` → `["decnum"]`, `"1"` → `["string"]`), attributes are listed in `meta` (`module` =
-module name for JSON input, namespace for XML). `any.text` is `lyd_any_value_str(LYD_JSON)`;
+`leaflist`, `container`; `1` → `["decnum"]`, `"1"` → `["string"]`), attributes are listed in
+`meta` (`module` = module name for JSON input, namespace for XML). Opaque nodes also carry
+`"opaque": {"name", "prefix", "format": "xml"|"json", "namespace" (XML), "module" (JSON, inherited)}`
+— `struct ly_opaq_name` as libyang stores it; `path` alone does not show an XML namespace (fixtures
+`protocol-v2/opaque-xml-ns-a` / `-b` differ only there). Schema-bound nodes have `"opaque": null`. `any.text` is `lyd_any_value_str(LYD_JSON)`;
 anydata content is not listed as separate nodes.
 
 `union_member` = `{"index", "type", "typedef", "realtype": {"type", "typedef"}}`: `index`, `type`
@@ -270,13 +273,13 @@ becomes observable. Context fields as in `schema`; step fields are per step (not
 |---|---|---|
 | `parse` | `format`, `data_type` (datastore types only), `data`/`data_file`, `unknown`, `parse_only`, `parse_options`, `validate_options` | as op `data`; on success replaces the tree |
 | `validate` | `data_type`, `validate_options` (validate flags of the preset) | `lyd_validate_all(&tree, ctx, opts, &diff)` |
-| `edit` | exactly one of `merge` / `merge_file` (+ `format`, `data_type`, `unknown`) | `lyd_parse_data(… LYD_PARSE_ONLY …)` + `lyd_merge_siblings(LYD_MERGE_DESTRUCT)` |
+| `edit` | exactly one of `merge` / `merge_file` (+ `format`, `data_type`, `unknown`, `parse_options`) | `lyd_parse_data(… LYD_PARSE_ONLY …)` + `lyd_merge_siblings(LYD_MERGE_DESTRUCT)` |
 | | `set: {"path", "value"}` (value in JSON format, omit for containers/lists) | `lyd_new_path(tree, ctx, path, value, LYD_NEW_PATH_UPDATE)` |
 | | `delete: "<path>"` | `lyd_find_path` + `lyd_free_tree` (`LY_EINCOMPLETE` if only a parent exists; a list key is refused, see below) |
 | `dump` | `with_defaults` | `tree` = `{"json", "xml"}` as op `data` |
 
-All steps are checked before the first runs (unknown `do`, missing/extra edit fields, bad enums,
-unreadable files → request-error), so a run that stops early never hides a malformed later step.
+All steps are checked before the first runs (unknown `do`, keys not listed in the table for that
+step or in `set`, missing/extra edit fields, bad enums, unreadable files → request-error), so a run that stops early never hides a malformed later step.
 A step fails when its call returns an error **or** it logged an error-level diagnostic (void
 APIs: `lyd_free_tree` refuses a list key with `LY_EINVAL` "Cannot free a list key"); its `rc` is
 then that item's code.
