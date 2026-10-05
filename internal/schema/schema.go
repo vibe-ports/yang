@@ -7,6 +7,8 @@
 // internal readers only; the public yang package wraps them in read-only handles.
 package schema
 
+import "iter"
+
 // Set is every module of one context, in load order (libyang ly_ctx module list).
 type Set struct {
 	Modules []*Module
@@ -34,6 +36,18 @@ func (s *Set) Module(name, revision string) *Module {
 		}
 	}
 	return best
+}
+
+// All yields every module with the name, import-only ones included, in load order (several
+// revisions of one module may coexist; at most one is implemented).
+func (s *Set) All(name string) iter.Seq[*Module] {
+	return func(yield func(*Module) bool) {
+		for _, m := range s.Modules {
+			if m.Name == name && !yield(m) {
+				return
+			}
+		}
+	}
 }
 
 // Implemented returns the implemented module with the name, nil if there is none.
@@ -70,11 +84,28 @@ func (s *Set) ByPrefix(prefix string) *Module {
 // Module is a compiled module (lys_module + lysc_module).
 type Module struct {
 	Name, Revision, Namespace, Prefix string
+	Version                           uint8 // Version1 (also when yang-version is absent) or Version11
 	Implemented                       bool
 	Imports                           []Import
+	Submodules                        []Submodule // included submodules (lys_compile_submodules), in include order
 	Features                          []*Feature
 	Identities                        []*Identity
-	Top                               []*Node // top-level data nodes, rpcs and notifications in schema order
+	// Top holds the top-level data nodes, then the rpcs, then the notifications, each group in
+	// compile order (libyang lysc_module data, rpcs, notifs). Nodes that augments of this module
+	// add to other modules live in their targets, never here.
+	Top  []*Node
+	Exts []*ExtInstance // extension instances of the module statement
+}
+
+// Module.Version values (libyang LYS_VERSION_1_0, LYS_VERSION_1_1).
+const (
+	Version1  uint8 = 1 // YANG 1.0 (RFC 6020)
+	Version11 uint8 = 2 // YANG 1.1 (RFC 7950)
+)
+
+// Submodule is an included submodule; its content is compiled into the main module.
+type Submodule struct {
+	Name, Revision string
 }
 
 // Import is one import statement resolved to its module.
@@ -174,22 +205,35 @@ const (
 
 // Node is a compiled schema node (lysc_node and its subtypes).
 type Node struct {
-	Kind     Kind
-	Name     string
-	Module   *Module // module whose namespace the node is in (the augmenting module for augments)
-	Parent   *Node
-	Children []*Node // for choice: its cases; for rpc/action: input and output
+	Kind   Kind
+	Name   string
+	Module *Module // module whose namespace the node is in (the augmenting module for augments)
+	Parent *Node
+	// Children are the data children (for a choice its cases, for an rpc/action its input and
+	// output). Actions and notifications defined in a container or list are kept apart in
+	// Actions and Notifs (libyang lysc_node_container.actions/notifs), so Child and XPath never
+	// see them; their Parent is still this node.
+	Children []*Node
+	Actions  []*Node
+	Notifs   []*Node
 
 	Config, Mandatory, Presence bool
 	UserOrdered                 bool           // ordered-by user
-	Keys                        []*Node        // list keys in key order
+	Keys                        []*Node        // list keys in key order; nil for a keyless list
+	Uniques                     [][]*Node      // list: the leaves of each unique statement, in statement order
 	Min, Max                    uint32         // min-elements, max-elements; Max 0 = unbounded
-	Default                     []DefaultValue // leaf, leaf-list; a choice keeps its default case in Children order
+	Default                     []DefaultValue // leaf, leaf-list
+	DefaultCase                 *Node          // choice: the default case, nil if none
 	Type                        *Type          // leaf, leaf-list
+	Units                       string         // leaf, leaf-list: own units, else inherited from the typedef chain
 	Musts                       []*Must
 	Whens                       []*When
 	Status                      Status
+	Exts                        []*ExtInstance
 }
+
+// Keyless reports whether n is a list without keys (libyang LYS_KEYLESS).
+func (n *Node) Keyless() bool { return n.Kind == List && n.Keys == nil }
 
 // Child returns the data child of module mod with the name, looking through choice and case
 // like libyang lys_find_child. mod nil means n.Module.
@@ -287,14 +331,23 @@ func (b BaseType) String() string {
 }
 
 // Type is a compiled type (lysc_type and its subtypes); only the fields of its Base are set.
+//
+// Compiled types are shared, and pointer identity is meaningful (Realtype, union members): a
+// typedef's compiled type is cached and reused by its users, a typedef that adds nothing reuses
+// its base's type, and a leaf whose type adds nothing shares the typedef's type. A Type is
+// never written after compile returns.
 type Type struct {
 	Base BaseType
-	// Typedef is the name of the typedef this type was compiled from ("" for a built-in used
-	// directly); TypedefModule is the module defining it; From is the compiled type of that
-	// typedef's own type, nil when the typedef's type is a built-in. The chain selects
-	// type-specific handlers such as ietf-inet-types:ipv4-address. Typedef must be the nearest
-	// typedef's own name (libyang lysc_type.name): some handlers key on it, e.g. host bits are
-	// zeroed only for the ipv4-prefix/ipv6-prefix typedefs themselves, not ones derived from them.
+	// Typedef is libyang lysc_type.name: the name of the nearest typedef compiled into this type,
+	// "" for a built-in used directly. A typedef that adds nothing (no restriction, no extension,
+	// not a leafref) reuses its base's type, name included, so `typedef my-addr { type
+	// inet:ipv4-address; }` yields Typedef "ipv4-address"; a leaf type with own restrictions is
+	// named after the nearest typedef. TypedefModule is the module defining that typedef. From is
+	// libyang's base: the compiled type this one was derived from, nil when derived from a
+	// built-in. Type-specific handlers such as ietf-inet-types:ipv4-address are found through this
+	// chain (the same answer as libyang's plugin inheritance only because compile keeps the reused
+	// pointers); some handlers key on the name itself, e.g. host bits are zeroed only for the
+	// ipv4-prefix/ipv6-prefix typedefs, not ones derived from them.
 	Typedef       string
 	TypedefModule *Module
 	From          *Type
@@ -308,7 +361,10 @@ type Type struct {
 	Bases      []*Identity
 
 	// Leafref: Path is the path source, Prefixes resolves its prefixes, PathCompiled holds what
-	// compile parsed it into, Realtype is the first non-leafref type in the chain.
+	// compile parsed it into. Prefixes[""] is the module that *instantiates* the leafref type
+	// (libyang ctx->cur_mod), not the one where the path is written, unlike Must/When.Ctx[""].
+	// Realtype is the first non-leafref type of the target chain: the same pointer as the
+	// target leaf's Type when that is not a leafref.
 	Path            string
 	Prefixes        NSCtx
 	PathCompiled    any
@@ -317,7 +373,10 @@ type Type struct {
 
 	// Union holds the member types with nested unions flattened into this list (libyang
 	// lys_compile_type_union does it): member indexes and the union error text depend on it.
+	// A union typedef used unchanged shares its member pointers with its users.
 	Union []*Type
+
+	Exts []*ExtInstance // instances on the type statement and on its typedef chain
 }
 
 // Range is a compiled range or length restriction. Parts are sorted and disjoint; signed bases
@@ -358,7 +417,8 @@ type Bit struct {
 }
 
 // NSCtx resolves the prefixes of an expression written in schema text (libyang lysc_prefix
-// array); the key "" is the module the expression is defined in.
+// array). The key "" is the module of unprefixed names: the defining module for must and when,
+// the instantiating module for a leafref path (see Type.Prefixes).
 type NSCtx map[string]*Module
 
 // Resolve returns the module bound to prefix.
@@ -380,4 +440,13 @@ type When struct {
 	ContextNode *Node
 	Status      Status
 	Compiled    any
+}
+
+// ExtInstance is a compiled extension instance (lysc_ext_instance). An instance whose extension
+// has no ported plugin stays generic: its substatements are not interpreted.
+type ExtInstance struct {
+	Def      *Module // module defining the extension
+	Name     string  // extension name in Def
+	Argument string
+	Exts     []*ExtInstance // nested instances
 }
