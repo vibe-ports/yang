@@ -10,9 +10,12 @@
 set -euo pipefail
 files=$(jq -c '[.[] | {path: (.path | tostring), additions: (.additions | tonumber), deletions: (.deletions | tonumber)}]')
 lines=$(jq '[.[] | .additions + .deletions] | add // 0' <<<"$files")
-risky=$(jq -r '.[].path' <<<"$files" | grep -cE '^(internal/(parser|compile|xpath|types)/|data/|[^/]+\.go$|go\.(mod|sum)$|Dockerfile$|\.github/|\.githooks/|scripts/|conformance/oracle/|LICENSE$)' || true)
+# Risky = code paths + policy files (rules, CI, hooks, scripts, dev environment).
+risky=$(jq -r '.[].path' <<<"$files" | grep -cE '^(internal/(parser|compile|xpath|types)/|data/|[^/]+\.go$|go\.(mod|sum)$|Dockerfile$|\.github/|\.githooks/|\.claude/|\.devcontainer/|scripts/|conformance/oracle/|LICENSE$|Makefile$|dev$)|(^|/)(AGENTS|CLAUDE)\.md$' || true)
+count=$(jq length <<<"$files")
 
-if (( lines > 400 || risky > 0 )); then echo deep; exit 0; fi
+# The compare API lists at most 300 files: a list that long may be truncated.
+if (( lines > 400 || risky > 0 || count >= 300 )); then echo deep; exit 0; fi
 if [[ -z ${TYPESAFE_API_KEY:-} ]]; then echo light; exit 0; fi
 
 body=$(jq -n --argjson files "$files" --argjson lines "$lines" '{
