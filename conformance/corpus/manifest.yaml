@@ -1768,3 +1768,173 @@ fixtures:
       data_type: config
       data: '{"ty:c":{"i8":5,"i64":"-9223372036854775808","u64":"18446744073709551615","d18":"-9.223372036854775808","b":true,"e":[null],"en":"black","bt":"ten two","bin":"YQ=="}}'
     golden: golden/json-valid.json
+
+  # ---- types: derived types (identityref, instance-identifier, leafref, union; M1-4) ----
+
+  - id: types/ident-not-derived
+    dir: types
+    source: *own
+    rfc: ["RFC7950#9.10.2"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty2}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty2"><id xmlns:x="urn:vibe-ports:ty2">x:other</id></c>'
+    golden: golden/ident-not-derived.json
+
+  - id: types/ident-json
+    dir: types
+    source: *own
+    rfc: ["RFC7951#6.8"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty2}]
+      format: json
+      data_type: config
+      data: '{"ty2:c":{"id":"der"}}'
+    golden: golden/ident-json.json
+
+  - id: types/instid-canonical
+    dir: types
+    source: *own
+    rfc: ["RFC7950#9.13.2"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty2}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty2"><l><k>a</k></l><ii xmlns:x="urn:vibe-ports:ty2">/x:c/x:l[x:k="a"]/x:v</ii></c>'
+    golden: golden/instid-canonical.json
+
+  - id: types/instid-pos-config
+    dir: types
+    source: *own
+    rfc: ["RFC7950#9.13.2"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty2}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty2"><iif xmlns:x="urn:vibe-ports:ty2">/x:c/x:l[2]</iif></c>'
+    golden: golden/instid-pos-config.json
+
+  - id: types/instid-key-type
+    dir: types
+    source: *own
+    rfc: ["RFC7950#9.13.2"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty2}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty2"><iif xmlns:x="urn:vibe-ports:ty2">/x:c/x:ll[.=''x'']</iif></c>'
+    golden: golden/instid-key-type.json
+
+  - id: types/instid-no-instance
+    dir: types
+    source: *own
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty2}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty2"><ll>1</ll><ii xmlns:x="urn:vibe-ports:ty2">/x:c/x:ll[.=''3'']</ii></c>'
+    golden: golden/instid-no-instance.json
+
+  - id: types/instid-json-redundant
+    dir: types
+    source: *own
+    rfc: ["RFC7951#6.11"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty2}]
+      format: json
+      data_type: config
+      data: '{"ty2:c":{"iif":"/ty2:c/ty2:ll[.=''1'']"}}'
+    golden: golden/instid-json-redundant.json
+
+  - id: types/leafref-missing
+    dir: types
+    source: *own
+    rfc: ["RFC7950#9.9"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty2}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty2"><ll>1</ll><lr>2</lr></c>'
+    golden: golden/leafref-missing.json
+
+  - id: types/union-no-member
+    dir: types
+    source: *own
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty2}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty2"><un>123456789012345678901</un></c>'
+    golden: golden/union-no-member.json
+
+  - id: types/union-fallback
+    dir: types
+    source: *own
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty2}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty2"><i8>12</i8><un>15</un></c>'
+    golden: golden/union-fallback.json
+
+  - id: types/union-leafref
+    dir: types
+    source: *own
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty2}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty2"><i8>12</i8><un>12</un></c>'
+    golden: golden/union-leafref.json
+
+  - id: types/union-json-number
+    dir: types
+    source: *own
+    rfc: ["RFC7951#6.10"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty2}]
+      format: json
+      data_type: config
+      data: '{"ty2:c":{"un":"der"}}'
+    golden: golden/union-json-number.json

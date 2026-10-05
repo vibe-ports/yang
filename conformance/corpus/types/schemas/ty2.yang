@@ -1,0 +1,32 @@
+module ty2 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:ty2";
+  prefix t2;
+
+  description "Derived-type edge cases for internal/types (M1-4): identityref,
+    instance-identifier, leafref, union.";
+
+  identity base;
+  identity der { base base; }
+  identity other;
+
+  container c {
+    leaf id { type identityref { base base; } }
+    leaf ii { type instance-identifier; }
+    leaf iif { type instance-identifier { require-instance false; } }
+    list l { key k; leaf k { type string; } leaf v { type string; } }
+    leaf-list ll { type uint32; }
+    leaf i8 { type int8 { range "10 .. 20"; } }
+    leaf lr { type leafref { path "../ll"; } }
+    leaf un {
+      type union {
+        type leafref { path "../i8"; }
+        type union {
+          type identityref { base base; }
+          type instance-identifier;
+        }
+        type string { length "1 .. 20"; }
+      }
+    }
+  }
+}

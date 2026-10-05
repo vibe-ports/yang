@@ -20,6 +20,19 @@ type Value struct {
 	bits  []*schema.Bit // set bits in position order
 	bmap  []byte        // bits bitmap, byte i holds positions 8i..8i+7 (libyang little-endian layout)
 	bin   []byte
+	ident *schema.Identity
+	path  Path
+	union *UnionValue
+
+	needsTree bool // leafref/instance-identifier with require-instance: ValidateTree pending
+}
+
+// leaf is the value that holds the data: the selected member for unions (recursively).
+func (v Value) leaf() Value {
+	for v.union != nil {
+		v = v.union.member
+	}
+	return v
 }
 
 // Type returns the type that stored the value (libyang realtype).
@@ -32,25 +45,39 @@ func (v Value) Canonical() string { return v.canon }
 func (v Value) String() string { return v.canon }
 
 // Int returns an int8..int64 value or the boolean as 0/1.
-func (v Value) Int() int64 { return v.i }
+func (v Value) Int() int64 { return v.leaf().i }
 
 // Uint returns a uint8..uint64 value.
-func (v Value) Uint() uint64 { return v.u }
+func (v Value) Uint() uint64 { return v.leaf().u }
 
 // Dec64 returns a decimal64 value as an integer scaled by 10^FracDigits of its type.
-func (v Value) Dec64() int64 { return v.i }
+func (v Value) Dec64() int64 { return v.leaf().i }
 
 // Bool returns a boolean value.
-func (v Value) Bool() bool { return v.i != 0 }
+func (v Value) Bool() bool { return v.leaf().i != 0 }
 
 // Enum returns an enumeration value's item.
-func (v Value) Enum() *schema.Enum { return v.enum }
+func (v Value) Enum() *schema.Enum { return v.leaf().enum }
 
 // Bits returns the set bits of a bits value in position order.
-func (v Value) Bits() []*schema.Bit { return v.bits }
+func (v Value) Bits() []*schema.Bit { return v.leaf().bits }
 
 // Bytes returns a binary value's decoded bytes.
-func (v Value) Bytes() []byte { return v.bin }
+func (v Value) Bytes() []byte { return v.leaf().bin }
+
+// Ident returns an identityref value's identity.
+func (v Value) Ident() *schema.Identity { return v.leaf().ident }
+
+// Path returns an instance-identifier value's compiled target path.
+func (v Value) Path() Path { return v.leaf().path }
+
+// Union returns the union details of a union value, nil otherwise. Typed getters of a union
+// value already answer for the selected member.
+func (v Value) Union() *UnionValue { return v.union }
+
+// NeedsTree reports whether the value still needs ValidateTree (libyang LY_EINCOMPLETE):
+// a require-instance leafref or instance-identifier, also as the selected union member.
+func (v Value) NeedsTree() bool { return v.needsTree }
 
 // Equal reports whether two values of the same type are equal (libyang compare callbacks).
 // Values stored by different types are never equal.
@@ -67,6 +94,10 @@ func Equal(a, b Value) bool {
 		return bytes.Equal(a.bmap, b.bmap)
 	case schema.Binary:
 		return bytes.Equal(a.bin, b.bin)
+	case schema.IdentityRef:
+		return a.ident == b.ident
+	case schema.Union: // lyplg_type_compare_union
+		return Equal(a.union.member, b.union.member)
 	}
 	return a.canon == b.canon // lyplg_type_compare_simple
 }
@@ -91,6 +122,10 @@ func Compare(a, b Value) int {
 			return cmp3(len(a.bin) < len(b.bin), true)
 		}
 		return bytes.Compare(a.bin, b.bin)
+	case schema.IdentityRef:
+		return strings.Compare(a.ident.Name, b.ident.Name) // lyplg_type_sort_identityref
+	case schema.Union:
+		return compareUnion(a, b)
 	}
 	return strings.Compare(a.canon, b.canon) // lyplg_type_sort_simple
 }

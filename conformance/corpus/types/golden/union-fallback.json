@@ -1,0 +1,86 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ty2",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"ty2:c\": {\n    \"i8\": 12,\n    \"un\": \"15\"\n  }\n}\n",
+    "xml": "<c xmlns=\"urn:vibe-ports:ty2\">\n  <i8>12</i8>\n  <un>15</un>\n</c>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty2:c",
+      "schema": "/ty2:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty2:c/i8",
+      "schema": "/ty2:c/i8",
+      "value": {
+        "canonical": "12",
+        "type": "int8",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty2:c/un",
+      "schema": "/ty2:c/un",
+      "value": {
+        "canonical": "15",
+        "type": "union",
+        "typedef": null,
+        "union_member": {
+          "index": 3,
+          "realtype": {
+            "type": "string",
+            "typedef": null
+          },
+          "type": "string",
+          "typedef": null
+        }
+      }
+    }
+  ],
+  "verdict": "valid"
+}

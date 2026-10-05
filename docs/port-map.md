@@ -58,3 +58,21 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | schema_features.c | `lys_compile_iffeature` (expression syntax) | `parseIfFeature`, `IfFeature.Err` | ported | internal/parser build_test, oracle_test | same two passes, iterative, builds an `IffExpr` tree; feature lookup is the compiler's; D-0020 |
 | tree_schema_common.c | `lysp_ext_instance_resolve_argument` | `checker.resolveExts` | partial | internal/parser build_test, oracle_test | YANG input only (no YIN); this module's definitions |
 | schema_features.c | `lysc_iffeature_value` | `IffExpr.Eval` | ported | internal/parser build_test | iterative |
+| src/plugins_types/identityref.c | lyplg_type_store_identityref, identityref_str2ident, identityref_check_ident, identityref_check_base | types.storeIdentityRef, types.checkBases | ported | types/ident-* | LYPLG_TYPE_STORE_IMPLEMENT left to compile |
+| src/plugins_types/identityref.c | lyplg_type_compare_identityref, lyplg_type_sort_identityref | types.Equal, types.Compare | ported | — | |
+| src/plugins_types.c | lyplg_type_identity_isderived | types.IsDerived | ported | types/ident-not-derived | |
+| src/plugins_types.c | lyplg_type_check_status, lyplg_type_lypath_check_status | types.checkStatus, types.checkPathStatus | ported | — | |
+| src/tree_schema.c | lys_find_module (ly_resolve_prefix and per-format resolvers) | types.resolveModule, types.PrefixCtx implementations | replaced | types/ident-json | prefix data as an interface |
+| src/plugins_types/instanceid.c | lyplg_type_store_instanceid, instanceid_path2str | types.storeInstanceID, types.Path.String | ported | types/instid-* | canonical = JSON form |
+| src/plugins_types/instanceid.c | lyplg_type_validate_tree_instanceid | types.ValidateTree | ported | types/instid-no-instance | existence via types.Tree |
+| src/plugins_types.c | lyplg_type_lypath_new | types.lypathNew | ported | types/instid-* | |
+| src/path.c | ly_path_parse, ly_path_check_predicate | types.pathParse, types.checkPredicate | partial | types/instid-* | absolute paths, simple predicates (what instance-identifiers use) |
+| src/path.c | _ly_path_compile, ly_path_compile_snode, ly_path_compile_predicate | types.pathCompile, types.compileSNode, types.compilePredicate | partial | types/instid-* | not leafref, single target; no extension nodes |
+| src/xpath.c | lyxp_expr_parse (tokenizer), parse_ncname, expr_parse_axis, lyxp_check_token | types.xpLex, types.parseNCName, types.xpExpr.check | partial | types/instid-* | lexer only, for instance-identifiers |
+| src/plugins_types/leafref.c | lyplg_type_store_leafref | types.storeLeafref | ported | types/leafref-missing | |
+| src/plugins_types/leafref.c | lyplg_type_validate_tree_leafref | types.ValidateTree | ported | types/leafref-missing | target lookup via types.Tree |
+| src/plugins_types.c | lyplg_type_resolve_leafref (messages) | types.ValidateTree | partial | types/leafref-missing | XPath evaluation is the data layer's |
+| src/plugins_types/union.c | lyplg_type_store_union, union_find_type, union_store_type, union_update_lref_err | types.storeUnion, types.unionFind, types.unionStoreType | ported | types/union-* | |
+| src/plugins_types/union.c | lyplg_type_validate_tree_union | types.ValidateTree | ported | types/union-fallback | |
+| src/plugins_types/union.c | lyplg_type_compare_union, lyplg_type_sort_union | types.Equal, types.compareUnion | ported | — | |
+| src/plugins.c | lyplg_type_plugin_find | types.pluginFor | replaced | — | registry keyed by (module, revision, typedef) |

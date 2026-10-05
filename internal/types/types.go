@@ -151,10 +151,20 @@ type storeArgs struct {
 	pc   PrefixCtx
 	ctx  *schema.Node
 	only bool
+	// quiet: inside a union libyang turns logging off, so messages built from the context log
+	// (instance-identifier details) are missing.
+	quiet bool
 }
 
 func store(t *schema.Type, lex string, f Format, h Hints, pc PrefixCtx, ctx *schema.Node, only bool) (Value, *Diag) {
-	a := &storeArgs{t, lex, f, h, pc, ctx, only}
+	return storeArgsDispatch(&storeArgs{t: t, lex: lex, f: f, h: h, pc: pc, ctx: ctx, only: only})
+}
+
+func storeArgsDispatch(a *storeArgs) (Value, *Diag) {
+	t := a.t
+	if p := pluginFor(t); p != nil {
+		return p.store(a)
+	}
 	switch t.Base {
 	case schema.Int8, schema.Int16, schema.Int32, schema.Int64:
 		return storeInt(a)
@@ -174,6 +184,14 @@ func store(t *schema.Type, lex string, f Format, h Hints, pc PrefixCtx, ctx *sch
 		return storeBits(a)
 	case schema.Binary:
 		return storeBinary(a)
+	case schema.IdentityRef:
+		return storeIdentityRef(a)
+	case schema.InstanceID:
+		return storeInstanceID(a)
+	case schema.Leafref:
+		return storeLeafref(a)
+	case schema.Union:
+		return storeUnion(a)
 	}
 	return Value{}, &Diag{Code: CodeData, Msg: fmt.Sprintf("Internal error: no handler for type %s.", t.Base)}
 }

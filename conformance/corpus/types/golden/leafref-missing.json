@@ -1,0 +1,37 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [
+    {
+      "apptag": "instance-required",
+      "code": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "data_path": "/ty2:c/lr",
+      "level": "error",
+      "line": 0,
+      "msg": "Invalid leafref value \"2\" - no target instance \"../ll\" with the same value.",
+      "phase": "data",
+      "schema_path": null,
+      "vecode": 9,
+      "vecode_name": "LYVE_DATA"
+    }
+  ],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ty2",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 7,
+    "name": "LY_EVALID"
+  },
+  "tree": null,
+  "verdict": "invalid"
+}
