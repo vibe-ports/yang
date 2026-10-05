@@ -66,6 +66,12 @@ expect 1 "cs: annotated tag message (--tag)" ":tag$" cs --tag "$(git -C "$r" rev
 expect 1 "cs: annotated tag message (--history)" ":tag$" cs --history
 git -C "$r" tag -d v0 >/dev/null
 expect 0 "cs: clean history after the fixes" - cs --history
+: >"$r/zorkhost-e.txt"; git -C "$r" add zorkhost-e.txt; git -C "$r" commit -qm add
+git -C "$r" rm -q zorkhost-e.txt; git -C "$r" commit -qm rm
+expect 1 "cs: empty denied-name file added+deleted (--range)" "zorkhost-e\.txt \(path\)$" cs --range HEAD~2..HEAD
+expect 1 "cs: empty denied-name file added+deleted (--history)" "zorkhost-e\.txt \(path\)$" cs --history
+expect 0 "cs: … but not in the tree (--all)" - cs --all
+git -C "$r" reset -q --hard HEAD~2
 echo 'zz[unclosed' >"$SENSITIVE_DENYLIST"
 expect 2 "cs: invalid regex fails closed" "invalid regex on line 1 of CS_PERSONAL" cs --all
 hasnt "cs: pattern not printed on regex error" 'zz\[unclosed' "$t/err"
@@ -162,6 +168,18 @@ comments 1056050 $D1 "$(printf 'review\n> %s' "$A")"
 expect 1 "merge-pr: quoted approval is ignored" "$NOAPP" mp
 comments 1056050 $D1 "$(printf 'pasted:\n```\n%s\n```' "$A")"
 expect 1 "merge-pr: approval inside a code fence is ignored" "$NOAPP" mp
+comments 1056050 $D1 "$(printf 'nested:\n````\n```\n%s\n```\n````' "$A")"
+expect 1 "merge-pr: approval inside a 4-backtick block holding a 3-backtick line is ignored" "$NOAPP" mp
+comments 1056050 $D1 "$(printf 'mixed:\n~~~\n```\n~~\n%s\n```\n~~~' "$A")"
+expect 1 "merge-pr: approval inside a tilde block holding backtick lines is ignored" "$NOAPP" mp
+comments 1056050 $D1 "$(printf 'unclosed:\n```json\n%s' "$A")"
+expect 1 "merge-pr: approval inside an unclosed fence is ignored" "$NOAPP" mp
+comments 1056050 $D1 "$(printf '``` x ` y\n%s' "$A")"
+runs failure
+expect 1 "merge-pr: inline backticks don't open a fence (approval counts, stops at CI)" "is 'completed/failure'" mp
+comments 1056050 $D1 "$(printf '````\n```\n````\n%s' "$A")"
+expect 1 "merge-pr: approval after a properly closed fence counts (stops at CI)" "is 'completed/failure'" mp
+runs success
 comments 1056050 $D1 "$A"; edit_last
 expect 1 "merge-pr: edited comment is ignored" "$NOAPP" mp
 comments 1056050 $D1 "VERDICT: approve $head (claude-sonnet-5-5)"
@@ -269,6 +287,11 @@ asha=$(git -C "$a" rev-parse HEAD)
 astra() { (cd "$a" && scripts/astra review "$@"); }
 expect 0 "astra --trusted: clean PR reviewed" - astra --trusted
 has "astra --trusted: canonical attestation with full SHA" "^VERDICT: approve $asha \(codex-gpt-6-astra\)$" "$t/out"
+has "astra --trusted: report names the reviewed range" "origin/main\.\.\.HEAD = $(git -C "$a" rev-parse origin/main)\.\.$asha" "$t/out"
+expect 2 "astra --trusted: refuses a custom base" "no custom base" astra --trusted HEAD
+git -C "$a" checkout -q --detach origin/main
+expect 2 "astra --trusted: refuses an empty diff" "is empty" astra --trusted
+git -C "$a" checkout -q pr
 has "astra --trusted: --ignore-rules passed" "^--ignore-rules$" "$FX/codex-args"
 has "astra --trusted: project AGENTS.md disabled" "^project_doc_max_bytes=0$" "$FX/codex-args"
 expect 0 "astra (untrusted): runs" - astra
