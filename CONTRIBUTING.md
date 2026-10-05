@@ -40,7 +40,8 @@ VS Code / any devcontainer-aware editor: "Reopen in Container" uses the same ima
   against `<where><TAB><line>`); text in the repo cannot waive a personal rule.
 
 The hooks in `.githooks/` apply both: `pre-commit` scans the staged files, `pre-push` every
-outgoing commit (added lines, file names, commit messages, author/committer) and annotated tag
+outgoing commit (added lines; every path a commit touches, including empty and later-deleted
+files; commit messages; author/committer) and annotated tag
 messages. If the denylist exists but is unreadable, empty or has an invalid regex, they fail
 closed; so does a missing denylist in a clone with `git config vibe.requireDenylist true` (set it
 in every maintainer clone). Patterns are never printed, and neither is matched text — except that
@@ -73,7 +74,9 @@ Every non-draft PR by the maintainer is reviewed automatically:
 - **Codex** (Codex GitHub app, automatic reviews).
 - **astra** by the lead, on a checkout of the PR head, running main's copy:
   `ASTRA_PR=<n> bash <(git show origin/main:scripts/astra) review --trusted` — the merge-gate
-  review. `--trusted` reads the rules (`AGENTS.md`) and output schema from `origin/main`, stops
+  review. `--trusted` always reviews the freshly fetched `origin/main...HEAD` (no custom base;
+  an empty diff is refused) and names that range in the report. It reads the rules
+  (`AGENTS.md`) and output schema from `origin/main`, stops
   codex from loading the checkout's `AGENTS.md` and execpolicy rules (`--ignore-rules`), and
   refuses to run when the PR or checkout contains `.codex/` or `.agents/` (codex configuration a
   PR could plant — review those by hand); only `--trusted` runs post an attestation.
@@ -117,7 +120,8 @@ It fast-forwards `main` to the PR head only if, for the PR's current **full** he
 - the PR is open, not a draft, and targets `main` of `vibe-ports/yang` (= `origin`);
 - the latest line `VERDICT: <approve|changes> <full sha> (<reviewer>)` naming that SHA says
   `approve`, counting only never-edited PR comments **authored by the maintainer's account**,
-  lines outside code fences, and reviewers `codex-*` or `port-reviewer-*`. `scripts/astra review
+  lines outside fenced code blocks (CommonMark rules: a fence closes only on the same character
+  at least as long), and reviewers `codex-*` or `port-reviewer-*`. `scripts/astra review
   --trusted` posts `(codex-<model>)`; after a local Opus `port-reviewer` review the lead posts the
   line signed `(port-reviewer-opus)`. `claude-*` is never accepted: it is the ai-review bot's
   signature, so a pasted bot line can't count. A later `changes` revokes; bot comments, quoted or

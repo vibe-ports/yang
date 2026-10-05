@@ -33,7 +33,8 @@ family → less correlated blind spots). **codex gpt-5.6-sol/luna** writes indep
 3. **Review.** On a checkout of the PR head, under the maintainer's `gh` login,
    `ASTRA_PR=<n> bash <(git show origin/main:scripts/astra) review --trusted` posts a structured
    review of `main...HEAD` ending with `VERDICT: <approve|changes> <full HEAD sha> (codex-<model>)`.
-   `--trusted` takes the rules from main's `AGENTS.md`, so a PR can't rewrite its own review rules. Claude fixes or rebuts each finding
+   `--trusted` always covers the fetched `origin/main...HEAD` and takes the rules from main's
+   `AGENTS.md`, so a PR can neither narrow its review nor rewrite its review rules. Claude fixes or rebuts each finding
    **in the PR**. Re-run until no `high` and verdict `approve`; after 3 rounds without convergence
    the maintainer decides. The automatic Claude (`ai-review`) and Codex-app reviews are extra
    eyes; their verdicts are advisory.
