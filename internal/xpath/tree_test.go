@@ -295,10 +295,13 @@ func unionTree() []Node {
 }
 
 // augTree mirrors protocol-v2/data/xpath-aug.json: pv2-aug augments c with
-// its own "grouped" and "extra".
+// its own "grouped" and "extra", pv2-xp with a keyed list "l".
 func augTree() []Node {
-	return top(cont("pv2:c", leaf("mode", "on"), keyed(list("l", leaf("k", "a")), "k"), leaf("grouped", "g1"),
-		leaf("pv2-aug:extra", "e"), leaf("pv2-aug:grouped", "g2")))
+	return top(cont("pv2:c", leaf("mode", "on"),
+		keyed(list("l", leaf("k", "a")), "k"), list("l", leaf("k", "b")),
+		leaf("grouped", "g1"), leaf("ref", "b"), leafl("ll", "b"), leafl("ll", "z"),
+		leaf("pv2-aug:extra", "e"), leaf("pv2-aug:grouped", "g2"),
+		keyed(list("pv2-xp:l", leaf("k", "b")), "k"), list("pv2-xp:l", leaf("k", "c"))))
 }
 
 // pv2Deref resolves the leafrefs of pv2 (ref → ../l/k; u2 holds a percent).

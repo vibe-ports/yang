@@ -64,9 +64,9 @@ type evaluator struct {
 	cur   item       // current()
 	op    SchemaNode // set->context_op: the RPC/action/notification of current()
 	steps int
-	err   error        // sticky budget / cancellation error
-	ord   map[Node]int // preorder position (document order), built once per Eval
-	sib   map[Node]int // index among the siblings
+	err   error                 // sticky budget / cancellation error
+	sib   map[Node]map[Node]int // per parent (nil: top level), index of each child; built lazily
+	keys  map[Node][]int        // sibling indexes from the top level down to the node
 }
 
 func newEvaluator(e *Expr, ec *EvalContext) *evaluator {
@@ -373,7 +373,7 @@ func (ev *evaluator) schemaTarget(set value, nt nameTest, s step) SchemaNode {
 			found = cand
 		}
 	}
-	if found != nil && (found.Kind() == KindList || found.Kind() == KindLeafList) && !hashPredicates(found, s.preds) {
+	if found != nil && (found.Kind() == KindList || found.Kind() == KindLeafList) && !ev.hashPredicates(set, found, s.preds) {
 		return nil
 	}
 	return found
@@ -381,11 +381,8 @@ func (ev *evaluator) schemaTarget(set value, nt nameTest, s step) SchemaNode {
 
 // hashPredicates is eval_name_test_try_compile_predicates: whether the step
 // starts with "[key = value]" for every list key in order (leaf-list:
-// "[. = value]") with values that do not depend on the instance.
-// ponytail: libyang atomizes the value over the schema (any list/leaf-list or
-// context-relative node rejects it); we accept only literals, numbers,
-// absolute paths and current()-rooted paths (D-0013).
-func hashPredicates(sn SchemaNode, preds []ast) bool {
+// "[. = value]") whose values do not depend on the instance.
+func (ev *evaluator) hashPredicates(set value, sn SchemaNode, preds []ast) bool {
 	keys := sn.Keys()
 	if sn.Kind() == KindLeafList {
 		keys = []string{"."}
@@ -393,46 +390,171 @@ func hashPredicates(sn SchemaNode, preds []ast) bool {
 	if len(keys) == 0 || len(preds) < len(keys) {
 		return false
 	}
+	base := []SchemaNode{nil} // schema path of the predicate context: ... / sn
+	if it := set.nodes[0]; it.t != itRoot {
+		if base = schemaChain(it.n); base == nil {
+			return false
+		}
+	}
+	base = append(base, sn)
 	for i, k := range keys {
 		c, ok := preds[i].(chainExpr)
-		if !ok || len(c.ops) != 1 || c.ops[0] != "=" || !instanceIndependent(c.args[1]) {
+		if !ok || c.ops[0] != "=" {
 			return false
 		}
 		p, ok := c.args[0].(pathExpr)
-		if !ok || p.abs || p.prim != nil || len(p.steps) != 1 || len(p.steps[0].preds) > 0 || p.steps[0].allDesc {
+		if !ok || p.abs || p.prim != nil || len(p.steps) != 1 {
 			return false
 		}
 		st := p.steps[0]
+		if st.allDesc || st.explicit || len(st.preds) > 0 {
+			return false // '[' NameTest '=' only
+		}
 		if k == "." {
 			if st.test != tDot {
 				return false
 			}
-		} else if _, local, _ := strings.Cut(st.name, ":"); st.test != tNameTest || st.axis != "child" || (local != k && st.name != k) {
+		} else {
+			// eval_name_test_try_compile_predicate_key: the key's module and name
+			nt, err := ev.resolveName(st.name)
+			if nt.mod == "" {
+				nt.mod = sn.Module() // JSON: the list's module
+			}
+			if st.test != tNameTest || err != nil || nt.name != k || nt.mod != sn.Module() {
+				return false
+			}
+		}
+		val := ast(chainExpr{ops: c.ops[1:], args: c.args[1:]})
+		if len(c.ops) == 1 {
+			val = c.args[1]
+		}
+		if !ev.atomsOK(val, base) {
 			return false
 		}
 	}
 	return true
 }
 
-func instanceIndependent(a ast) bool {
+// schemaChain is the schema path of a data node: nil (the root), then its
+// ancestors' schema nodes down to its own; nil for an opaque node.
+func schemaChain(n Node) []SchemaNode {
+	var c []SchemaNode
+	for ; n != nil; n = n.Parent() {
+		sn := n.Schema()
+		if sn == nil {
+			return nil
+		}
+		c = append(c, sn)
+	}
+	c = append(c, nil)
+	slices.Reverse(c)
+	return c
+}
+
+// atomsOK is the dependency check of eval_name_test_try_compile_predicate_append
+// on a key value: no top-level or/and, and none of its paths (walked over the
+// schema like lyxp_atomize) reaches a list or leaf-list other than current()'s
+// node, nor a child of the looked-up node (the last element of base).
+func (ev *evaluator) atomsOK(a ast, base []SchemaNode) bool {
 	switch a := a.(type) {
 	case litExpr, numExpr:
 		return true
 	case negExpr:
-		return instanceIndependent(a.x)
+		return ev.atomsOK(a.x, base)
+	case chainExpr:
+		for i, op := range a.ops {
+			if op == "or" || op == "and" || !ev.atomsOK(a.args[i], base) {
+				return false
+			}
+		}
+		return ev.atomsOK(a.args[len(a.args)-1], base)
 	case callExpr:
 		for _, x := range a.args {
-			if !instanceIndependent(x) {
+			if !ev.atomsOK(x, base) {
 				return false
 			}
 		}
 		return true
 	case pathExpr:
-		if c, ok := a.prim.(callExpr); a.abs || ok && c.name == "current" {
-			return true
+		var stack []SchemaNode
+		switch c, ok := a.prim.(callExpr); {
+		case a.abs:
+			stack = []SchemaNode{nil}
+		case a.prim == nil:
+			stack = slices.Clone(base)
+		case ok && c.name == "current" && len(a.preds) == 0:
+			stack = []SchemaNode{nil}
+			if ev.cur.t == itElem {
+				stack = schemaChain(ev.cur.n)
+			}
+		default:
+			return false // ponytail: other primary expressions are not analysed (D-0013)
 		}
+		return stack != nil && ev.walkAtoms(stack, a.steps, base[len(base)-1])
 	}
 	return false
+}
+
+func (ev *evaluator) walkAtoms(stack []SchemaNode, steps []step, target SchemaNode) bool {
+	var cur SchemaNode
+	if ev.cur.t == itElem {
+		cur = ev.cur.n.Schema()
+	}
+	multi := func(sn SchemaNode) bool {
+		return sn != nil && sn != cur && (sn.Kind() == KindList || sn.Kind() == KindLeafList)
+	}
+	for _, s := range steps {
+		if s.allDesc || s.explicit || len(s.preds) > 0 {
+			return false // ponytail: only plain child, '.' and '..' steps are analysed (D-0013)
+		}
+		top := stack[len(stack)-1]
+		switch s.test {
+		case tDot:
+			if multi(top) {
+				return false
+			}
+		case tDDot:
+			if len(stack) > 1 {
+				stack = stack[:len(stack)-1]
+			}
+			if multi(stack[len(stack)-1]) {
+				return false
+			}
+		case tNameTest:
+			nt, err := ev.resolveName(s.name)
+			if err != nil || nt.name == "" {
+				return false
+			}
+			var next []SchemaNode
+			switch {
+			case top != nil:
+				if top == target {
+					return false // a child of the looked-up node: depends on the instance
+				}
+				mod := nt.mod
+				if mod == "" {
+					mod = top.Module()
+				}
+				if c := top.Child(mod, nt.name); c != nil {
+					next = []SchemaNode{c}
+				}
+			case ev.ec.Schema != nil:
+				next = ev.ec.Schema.TopLevel(nt.mod, nt.name)
+			}
+			for _, n := range next {
+				if multi(n) {
+					return false
+				}
+			}
+			if len(next) != 1 {
+				return true // no such schema node: libyang stops atomizing the path
+			}
+			stack = append(stack, next[0])
+		default:
+			return false // node(), text()
+		}
+	}
+	return true
 }
 
 // hashChild is moveto_node_hash_child: the instances of sn under each context
@@ -601,26 +723,6 @@ func isTerm(n Node) bool {
 	return sn != nil && (sn.Kind() == KindLeaf || sn.Kind() == KindLeafList)
 }
 
-// number gives every node of the tree its document position and sibling index
-// in one walk (set_assign_pos), once per evaluation.
-func (ev *evaluator) number() {
-	if ev.ord != nil {
-		return
-	}
-	ev.ord, ev.sib = map[Node]int{}, map[Node]int{}
-	var walk func(ns []Node)
-	walk = func(ns []Node) {
-		for i, n := range ns {
-			if ev.tick() != nil {
-				return
-			}
-			ev.ord[n], ev.sib[n] = len(ev.ord), i
-			walk(n.Children())
-		}
-	}
-	walk(ev.ec.Tree)
-}
-
 func (ev *evaluator) siblings(n Node) []Node {
 	if p := n.Parent(); p != nil {
 		return p.Children()
@@ -628,14 +730,31 @@ func (ev *evaluator) siblings(n Node) []Node {
 	return ev.ec.Tree
 }
 
-// index returns n's siblings and its index among them.
+// index returns n's siblings and its index among them. Each sibling list is
+// numbered once per evaluation, and only when reached (set_assign_pos without
+// walking the whole tree).
 func (ev *evaluator) index(n Node) ([]Node, int) {
-	ev.number()
-	i, ok := ev.sib[n]
+	sib := ev.siblings(n)
+	p := n.Parent()
+	m, ok := ev.sib[p]
 	if !ok {
-		i = -1
+		if ev.sib == nil {
+			ev.sib = map[Node]map[Node]int{}
+		}
+		m = make(map[Node]int, len(sib))
+		for i, s := range sib {
+			if ev.tick() != nil {
+				break
+			}
+			m[s] = i
+		}
+		ev.sib[p] = m
 	}
-	return ev.siblings(n), i
+	i, ok := m[n]
+	if !ok {
+		i = -1 // not under Tree
+	}
+	return sib, i
 }
 
 // axis is moveto_axis_node_next: every node on axis from it, in any order
@@ -782,19 +901,28 @@ func (ev *evaluator) predicates(set value, preds []ast, axis string) (value, err
 	return set, nil
 }
 
-// key is the document-order key of an item (root first, text right after its element).
-func (ev *evaluator) key(it item) int {
+// key is the document-order key of an item: its sibling indexes from the top
+// level (root: empty, so first; text: right after its element).
+func (ev *evaluator) key(it item) []int {
 	if it.t == itRoot {
-		return -2
+		return nil
 	}
-	o, ok := ev.ord[it.n]
+	k, ok := ev.keys[it.n]
 	if !ok {
-		o = -1 // not under Tree
+		for n := it.n; n != nil && ev.tick() == nil; n = n.Parent() {
+			_, i := ev.index(n)
+			k = append(k, i)
+		}
+		slices.Reverse(k)
+		if ev.keys == nil {
+			ev.keys = map[Node][]int{}
+		}
+		ev.keys[it.n] = k
 	}
 	if it.t == itText {
-		return 2*o + 1
+		return append(slices.Clip(k), -1)
 	}
-	return 2 * o
+	return k
 }
 
 // sortUnique is set_sort + duplicate removal.
@@ -802,13 +930,14 @@ func (ev *evaluator) sortUnique(items []item) []item {
 	if len(items) < 2 {
 		return items
 	}
-	ev.number()
-	for range items {
+	keys := make(map[item][]int, len(items))
+	for _, it := range items {
 		if ev.tick() != nil {
 			return items
 		}
+		keys[it] = ev.key(it)
 	}
-	slices.SortStableFunc(items, func(a, b item) int { return ev.key(a) - ev.key(b) })
+	slices.SortStableFunc(items, func(a, b item) int { return slices.Compare(keys[a], keys[b]) })
 	return slices.Compact(items)
 }
 

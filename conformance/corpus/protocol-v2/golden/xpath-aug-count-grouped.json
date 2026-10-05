@@ -14,6 +14,12 @@
       "diagnostics": [],
       "name": "pv2-aug",
       "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-xp",
+      "revision": null
     }
   ],
   "op": "xpath",

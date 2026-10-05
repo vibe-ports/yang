@@ -619,7 +619,7 @@
 {"set":"union","cp":"/pv2-xp:xp","x":"enum-value(en)","result":{"type":"number","value":"NaN"}}
 {"set":"union","cp":"/pv2-xp:xp","x":"bit-is-set(bi, 'red')","result":{"type":"boolean","value":true}}
 {"set":"union","cp":"/pv2-xp:xp","x":"en = bi","result":{"type":"boolean","value":true}}
-{"set":"aug","cp":"/pv2:c","x":"//*","result":{"type":"node-set","nodes":["/pv2:c","/pv2:c/mode","/pv2:c/l[k='a']","/pv2:c/l[k='a']/k","/pv2:c/grouped","/pv2:c/pv2-aug:extra","/pv2:c/pv2-aug:grouped"]}}
+{"set":"aug","cp":"/pv2:c","x":"//*","result":{"type":"node-set","nodes":["/pv2:c","/pv2:c/mode","/pv2:c/l[k='a']","/pv2:c/l[k='a']/k","/pv2:c/l[k='b']","/pv2:c/l[k='b']/k","/pv2:c/grouped","/pv2:c/ref","/pv2:c/ll[.='b']","/pv2:c/ll[.='z']","/pv2:c/pv2-aug:extra","/pv2:c/pv2-aug:grouped","/pv2:c/pv2-xp:l[k='b']","/pv2:c/pv2-xp:l[k='b']/k","/pv2:c/pv2-xp:l[k='c']","/pv2:c/pv2-xp:l[k='c']/k"]}}
 {"set":"aug","cp":"/pv2:c","x":"count(grouped)","result":{"type":"number","value":1}}
 {"set":"aug","cp":"/pv2:c","x":"grouped","result":{"type":"node-set","nodes":["/pv2:c/grouped"]}}
 {"set":"aug","cp":"/pv2:c","x":"count(//grouped)","result":{"type":"number","value":2}}
@@ -635,3 +635,27 @@
 {"set":"aug","cp":"/pv2:c","x":"grouped = 'g2'","result":{"type":"boolean","value":false}}
 {"set":"aug","cp":"/pv2:c","x":"count(*[local-name() = 'grouped'])","result":{"type":"number","value":2}}
 {"set":"aug","cp":"/pv2:c","x":"count(grouped | extra)","result":{"type":"number","value":2}}
+{"cp":"/pv2:c","x":"string(floor(number('1e30')))","result":{"type":"string","value":"9223372036854775807"}}
+{"set":"aug","cp":"/pv2:c","x":"count(l[k='b'])","result":{"type":"number","value":1}}
+{"set":"aug","cp":"/pv2:c","x":"count(l[pv2-xp:k='b'])","result":{"type":"number","value":1}}
+{"set":"aug","cp":"/pv2:c","x":"count(l[pv2:k='b'])","result":{"type":"number","value":1}}
+{"set":"aug","cp":"/pv2:c","x":"count(l[child::k='b'])","result":{"type":"number","value":2}}
+{"set":"aug","cp":"/pv2:c","x":"count(l[k=/pv2:c/ll[1]])","result":{"type":"number","value":2}}
+{"set":"aug","cp":"/pv2:c","x":"count(l[k=/pv2:c/ref])","result":{"type":"number","value":1}}
+{"set":"aug","cp":"/pv2:c","x":"count(l[k=current()/ref])","result":{"type":"number","value":1}}
+{"set":"aug","cp":"/pv2:c","x":"count(l[k=../ref])","result":{"type":"number","value":1}}
+{"set":"aug","cp":"/pv2:c","x":"count(l[k=../ll])","result":{"type":"number","value":2}}
+{"set":"aug","cp":"/pv2:c","x":"count(l[k='b'][1])","result":{"type":"number","value":1}}
+{"set":"aug","cp":"/pv2:c","x":"l[k='b']","result":{"type":"node-set","nodes":["/pv2:c/l[k='b']"]}}
+{"set":"aug","cp":"/pv2:c","x":"count(l[k=concat('b', '')])","result":{"type":"number","value":1}}
+{"set":"aug","cp":"/pv2:c","x":"count(l[k=../l[2]/k])","result":{"type":"number","value":2}}
+{"set":"aug","cp":"/pv2:c","x":"count(l[k='b' or k='c'])","result":{"type":"number","value":3}}
+{"set":"aug","cp":"/pv2:c","x":"count(l[./k='b'])","result":{"type":"number","value":2}}
+{"set":"aug","cp":"/pv2:c","x":"count(l[k = 'b' = true()])","result":{"type":"number","value":1}}
+{"set":"aug","cp":"/pv2:c","x":"count(l[k=/c/ref])","result":{"type":"number","value":1}}
+{"set":"aug","cp":"/pv2:c","x":"count(l[k=current()/../c/ref])","result":{"type":"number","value":1}}
+{"set":"aug","cp":"/pv2:c","x":"count(l[k=current()/l[2]/k])","result":{"type":"number","value":2}}
+{"set":"aug","cp":"/pv2:c","x":"count(l)","result":{"type":"number","value":4}}
+{"set":"aug","cp":"/pv2:c","x":"count(pv2-xp:l[k='b'])","result":{"type":"number","value":1}}
+{"set":"anydata","cp":"/pv2:c","x":"string(any)","crash":true}
+{"set":"anydata","cp":"/pv2:c","x":"string(.)","crash":true}

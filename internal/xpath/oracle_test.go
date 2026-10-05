@@ -27,9 +27,10 @@ var update = flag.Bool("update", false, "regenerate testdata/oracle-pv2.jsonl fr
 
 // oracleSets are the lyoracle request bases of the case sets (dir conformance/corpus/protocol-v2).
 var oracleSets = map[string]string{
-	"":      `"modules":[{"name":"pv2","features":["extra"]}],"data_file":"data/xpath.json"`,
-	"union": `"modules":[{"name":"pv2"},{"name":"pv2-xp"}],"data_file":"data/xpath-union.json"`,
-	"aug":   `"modules":[{"name":"pv2","features":["extra"]},{"name":"pv2-aug"}],"data_file":"data/xpath-aug.json"`,
+	"":        `"data_type":"get","modules":[{"name":"pv2","features":["extra"]}],"data_file":"data/xpath.json"`,
+	"union":   `"data_type":"get","modules":[{"name":"pv2"},{"name":"pv2-xp"}],"data_file":"data/xpath-union.json"`,
+	"aug":     `"data_type":"get","modules":[{"name":"pv2","features":["extra"]},{"name":"pv2-aug"},{"name":"pv2-xp"}],"data_file":"data/xpath-aug.json"`,
+	"anydata": `"data_type":"get","modules":[{"name":"pv2"}],"data_file":"data/xpath-anydata.json"`,
 }
 
 // oracleUname is oracleArch (GOARCH) as `uname -m`, the suffix of the lyoracle binary.
@@ -56,7 +57,7 @@ func lyoracle(t *testing.T) string {
 
 // runOracle evaluates one case with libyang.
 func runOracle(t *testing.T, bin string, c oracleCase) oracleCase {
-	req := `{"op":"xpath","base_dir":"protocol-v2","searchdirs":["schemas"],"format":"json","data_type":"get",` +
+	req := `{"op":"xpath","base_dir":"protocol-v2","searchdirs":["schemas"],"format":"json",` +
 		oracleSets[c.Set]
 	if c.CP != "" {
 		cp, _ := json.Marshal(c.CP)

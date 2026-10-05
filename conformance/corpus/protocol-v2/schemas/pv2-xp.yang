@@ -45,4 +45,17 @@ module pv2-xp {
       }
     }
   }
+
+  augment "/p:c" {
+    description
+      "A keyed list with the same name as pv2's /c/l: which instances an
+       unprefixed child step l[...] selects depends on whether libyang can
+       compile its key predicates for a hash lookup.";
+    list l {
+      key "k";
+      leaf k {
+        type string;
+      }
+    }
+  }
 }

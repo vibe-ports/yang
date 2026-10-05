@@ -74,11 +74,12 @@ type (
 		steps []step
 	}
 	step struct {
-		axis    string // "" for '.' and '..'
-		allDesc bool   // preceded by '//'
-		test    tokKind
-		name    string // NameTest text, NodeType name, "." or ".."
-		preds   []ast
+		axis     string // "" for '.' and '..'
+		allDesc  bool   // preceded by '//'
+		explicit bool   // axis written out (AxisName '::' or '@')
+		test     tokKind
+		name     string // NameTest text, NodeType name, "." or ".."
+		preds    []ast
 	}
 )
 
@@ -300,10 +301,10 @@ func (p *parser) relPath(depth int, allDesc bool) ([]step, error) {
 			p.i++
 		case tAxisName, tAt, tNameTest, tNodeType:
 			if p.peek(tAxisName) {
-				s.axis = p.text(p.i)
+				s.axis, s.explicit = p.text(p.i), true
 				p.i += 2 // AxisName '::' (the lexer always pairs them)
 			} else if p.peek(tAt) {
-				s.axis = "attribute"
+				s.axis, s.explicit = "attribute", true
 				p.i++
 			}
 			if err := p.check(tNone); err != nil {

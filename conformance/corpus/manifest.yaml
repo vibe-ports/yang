@@ -4092,7 +4092,7 @@ fixtures:
     request:
       op: xpath
       searchdirs: [schemas]
-      modules: [{name: pv2, features: [extra]}, {name: pv2-aug}]
+      modules: [{name: pv2, features: [extra]}, {name: pv2-aug}, {name: pv2-xp}]
       format: json
       data_type: get
       data_file: data/xpath-aug.json
@@ -4108,7 +4108,7 @@ fixtures:
     request:
       op: xpath
       searchdirs: [schemas]
-      modules: [{name: pv2, features: [extra]}, {name: pv2-aug}]
+      modules: [{name: pv2, features: [extra]}, {name: pv2-aug}, {name: pv2-xp}]
       format: json
       data_type: get
       data_file: data/xpath-aug.json
@@ -4124,7 +4124,7 @@ fixtures:
     request:
       op: xpath
       searchdirs: [schemas]
-      modules: [{name: pv2, features: [extra]}, {name: pv2-aug}]
+      modules: [{name: pv2, features: [extra]}, {name: pv2-aug}, {name: pv2-xp}]
       format: json
       data_type: get
       data_file: data/xpath-aug.json
@@ -4140,7 +4140,7 @@ fixtures:
     request:
       op: xpath
       searchdirs: [schemas]
-      modules: [{name: pv2, features: [extra]}, {name: pv2-aug}]
+      modules: [{name: pv2, features: [extra]}, {name: pv2-aug}, {name: pv2-xp}]
       format: json
       data_type: get
       data_file: data/xpath-aug.json
@@ -4226,3 +4226,69 @@ fixtures:
       context_path: /pv2:c
       xpath: "number('1e-5000')"
     golden: golden/xpath-number-1e-5000.json
+
+  # key predicates of a same-named list (pv2:l / pv2-xp:l): hash lookup or name matching (D-0013)
+
+  - id: protocol-v2/xpath-aug-key-prefix
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7951#6.4", "RFC7950#6.4.1"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}, {name: pv2-aug}, {name: pv2-xp}]
+      format: json
+      data_type: get
+      data_file: data/xpath-aug.json
+      context_path: /pv2:c
+      xpath: "count(l[pv2-xp:k='b'])"
+    golden: golden/xpath-aug-key-prefix.json
+
+  - id: protocol-v2/xpath-aug-key-explicit-axis
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7951#6.4", "RFC7950#6.4.1"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}, {name: pv2-aug}, {name: pv2-xp}]
+      format: json
+      data_type: get
+      data_file: data/xpath-aug.json
+      context_path: /pv2:c
+      xpath: "count(l[child::k='b'])"
+    golden: golden/xpath-aug-key-explicit-axis.json
+
+  - id: protocol-v2/xpath-aug-key-abs-leaf-list
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7951#6.4", "RFC7950#6.4.1"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}, {name: pv2-aug}, {name: pv2-xp}]
+      format: json
+      data_type: get
+      data_file: data/xpath-aug.json
+      context_path: /pv2:c
+      xpath: "count(l[k=/pv2:c/ll[1]])"
+    golden: golden/xpath-aug-key-abs-leaf-list.json
+
+  - id: protocol-v2/xpath-aug-key-relative-leaf
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7951#6.4", "RFC7950#6.4.1"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}, {name: pv2-aug}, {name: pv2-xp}]
+      format: json
+      data_type: get
+      data_file: data/xpath-aug.json
+      context_path: /pv2:c
+      xpath: "count(l[k=../ref])"
+    golden: golden/xpath-aug-key-relative-leaf.json

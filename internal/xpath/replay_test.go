@@ -61,6 +61,18 @@ var knownDiff = map[string]string{
 	"100000000000000000000 = 100000000000000000001": "D-0010",
 	"string(number('1e30'))":                        "D-0010",
 	"string(number('1e-400'))":                      "D-0010",
+	"string(floor(number('1e30')))":                 "D-0010", // libyang: (long double)LLONG_MAX prints as %lld
+}
+
+// crashAnswers are the defined results we give where libyang crashes (D-0012):
+// a result JSON, or "error: <message>".
+var crashAnswers = map[string]string{
+	"deref(..)":                 `{"type":"node-set","nodes":[]}`,
+	"bit-is-set(.., 'x')":       `{"type":"boolean","value":false}`,
+	"enum-value(..)":            `{"type":"number","value":"NaN"}`,
+	"derived-from(c/id, 'one')": `error: Identity "one" not found in module "".`,
+	"string(any)":               `{"type":"string","value":""}`,
+	"string(.)":                 `{"type":"string","value":"\n"}`,
 }
 
 func replay(t *testing.T, cases []oracleCase) {
@@ -75,6 +87,8 @@ func replay(t *testing.T, cases []oracleCase) {
 			tree = unionTree()
 		case "aug":
 			tree = augTree()
+		case "anydata":
+			tree = top(cont("pv2:c", mk(KindAnydata, "any", &tval{})))
 		}
 		schema = tinfo{tree}
 		ec := EvalContext{Tree: tree, IgnoreWhen: true, Schema: schema, Deref: pv2Deref(tree)}
@@ -83,7 +97,20 @@ func replay(t *testing.T, cases []oracleCase) {
 		}
 		res, err := eval(c.X, ec)
 		switch {
-		case c.Crash: // D-0012: any defined answer
+		case c.Crash: // D-0012: our documented answer
+			want, ok := crashAnswers[c.X]
+			switch {
+			case !ok:
+				t.Errorf("%q: libyang crashes, add the answer to crashAnswers and D-0012", c.X)
+			case strings.HasPrefix(want, "error: "):
+				if err == nil || err.Error() != strings.TrimPrefix(want, "error: ") {
+					t.Errorf("%q (crash case): want %s, got %v", c.X, want, err)
+				}
+			default:
+				if msg := sameResult(json.RawMessage(want), res, err); msg != "" {
+					t.Errorf("%q (crash case): %s", c.X, msg)
+				}
+			}
 		case c.Error == nil:
 			if msg := sameResult(c.Res, res, err); msg != "" {
 				t.Errorf("%q (%s): %s", c.X, c.Set, msg)

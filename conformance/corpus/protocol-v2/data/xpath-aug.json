@@ -1,1 +1,1 @@
-{"pv2:c": {"mode": "on", "l": [{"k": "a"}], "grouped": "g1", "pv2-aug:grouped": "g2", "pv2-aug:extra": "e"}}
+{"pv2:c": {"mode": "on", "l": [{"k": "a"}, {"k": "b"}], "grouped": "g1", "ref": "b", "ll": ["b", "z"], "pv2-aug:grouped": "g2", "pv2-aug:extra": "e", "pv2-xp:l": [{"k": "b"}, {"k": "c"}]}}
