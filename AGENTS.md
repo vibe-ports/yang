@@ -49,8 +49,8 @@ Plan and rationale: `PLAN.md`. Decisions: `docs/decisions/`. Designs: `docs/desi
 - Do not hand-edit files under `conformance/corpus/**/golden/`.
 - Do not edit `LICENSE` or provenance headers of existing files.
 - Registries (`conformance/corpus/manifest.yaml`, `docs/port-map.md`, `conformance/deviations.md`)
-  merge with git's union driver: after every rebase check for duplicated ids/rows (an edited row
-  shows up twice). Deviation ids come from your stream's range below — never "next free".
+  merge with git's union driver: after every rebase run `scripts/check-registries` (also `make registries`, in `make ci` and the
+  pre-commit hook): an edited row shows up twice. Deviation ids come from your stream's range below — never "next free".
 
 | Stream | D-ids | U-ids |
 |---|---|---|

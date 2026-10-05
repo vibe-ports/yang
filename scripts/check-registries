@@ -1,0 +1,28 @@
+#!/bin/sh
+# Fail on rows duplicated by the union merge driver (an edited row shows up twice):
+#   conformance/deviations.md         duplicate D-/U- ids
+#   conformance/corpus/manifest.yaml  duplicate fixture ids
+#   docs/port-map.md                  same (file, C function, Go symbol) in two rows
+# Usage: scripts/check-registries [root]   (root defaults to the repo root)
+root=${1:-$(cd "$(dirname "$0")/.." && pwd)}
+rc=0
+# dups <label> <file> <awk program printing one key per line>
+dups() {
+  [ -f "$2" ] || { echo "check-registries: missing $2" >&2; rc=1; return; }
+  k=$(awk "$3" "$2") || { echo "check-registries: awk failed on $2" >&2; rc=1; return; }
+  [ -n "$k" ] || { echo "check-registries: no $1 found in $2 (format changed?)" >&2; rc=1; return; }
+  d=$(echo "$k" | sort | uniq -d)
+  [ -z "$d" ] || { echo "check-registries: duplicate $1 in $2 (union merge of an edited row? remove the stale copy):" >&2; echo "$d" | sed 's/^/  /' >&2; rc=1; }
+}
+dups 'deviation ids' "$root/conformance/deviations.md" '
+  /^\| *[DU]-[0-9]+/ { sub(/^\| */, ""); sub(/[ (|].*/, ""); print }'
+dups 'fixture ids' "$root/conformance/corpus/manifest.yaml" '
+  /^ *- id:/ { sub(/^ *- id: */, ""); sub(/ +#.*/, ""); gsub(/^["\047]|["\047] *$/, ""); print }'
+dups '(C function, Go symbol) pairs' "$root/docs/port-map.md" '
+  function trim(x) { gsub(/^ +| +$/, "", x); return x }
+  /^\|/ {
+    n = split($0, c, "|"); f = trim(c[2])
+    if (n < 5 || f ~ /^:?-+:?$/ || f == "libyang file") next
+    m = split(c[3], fn, ","); k = split(c[4], go, ",")
+    for (i = 1; i <= m; i++) for (j = 1; j <= k; j++) if (trim(fn[i]) != "") print f " " trim(fn[i]) " -> " trim(go[j]) }'
+exit $rc

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Self-test of the security gates with stubbed `gh`/`curl` and throwaway git repos (no network, no
 # real merges): check-sensitive + pre-push hook, merge-pr, import-goldens, astra --trusted
-# (stubbed codex), ai-review-publish, review-tier, jev-triage.
+# (stubbed codex), ai-review-publish, review-tier, jev-triage, check-registries.
 #   scripts/test-gates        (part of `make ci`; needs bash, git, perl, python3, jq)
 set -uo pipefail
 src=$(cd "$(dirname "$0")" && pwd)
@@ -472,5 +472,35 @@ reset; jt drift "$t/row.json" >"$t/o"; rc=$?
 reset; mkissue 1056050 b; ans 0.9 0.9 0.9 >"$FX/jev"; jt issue 7
 hasnt "jev: labels created without --force" '\-\-force' "$FX/calls"
 reset
+
+# ---------------------------------------------------------------- check-registries
+rg=$t/rg; mkdir -p "$rg/conformance/corpus" "$rg/docs"
+rgreset() {
+  printf '| D-0001 | a |\n| U-0001 | b |\n' >"$rg/conformance/deviations.md"
+  printf 'fixtures:\n  - id: a/x\n  - id: a/y\n' >"$rg/conformance/corpus/manifest.yaml"
+  printf '| libyang file | C function | Go symbol |\n|---|---|---|\n| src/x.c | f, g | p.F |\n| src/x.c | f | q.F |\n' >"$rg/docs/port-map.md"
+}
+rgreset
+printf '| parser_yang.c | f | p.F |\n' >>"$rg/docs/port-map.md"
+printf '  - id: "q/z"\n    - id: q/w # c\n' >>"$rg/conformance/corpus/manifest.yaml"
+expect 0 "registries: clean (quoted/indented ids, non-src rows)" - "$src/check-registries" "$rg"
+rgreset
+expect 0 "registries: clean" - "$src/check-registries" "$rg"
+printf '| D-0001 (edited) | a |\n' >>"$rg/conformance/deviations.md"
+expect 1 "registries: duplicate D-id" "duplicate deviation ids" "$src/check-registries" "$rg"
+has "registries: names the D-id" 'D-0001' "$t/err"
+rgreset; printf '| U-0001 | b |\n' >>"$rg/conformance/deviations.md"
+expect 1 "registries: duplicate U-id" 'U-0001' "$src/check-registries" "$rg"
+rgreset; printf '  - id: a/x\n' >>"$rg/conformance/corpus/manifest.yaml"
+expect 1 "registries: duplicate fixture id" 'a/x' "$src/check-registries" "$rg"
+rgreset; printf '| src/x.c | g, h | p.F |\n' >>"$rg/docs/port-map.md"
+expect 1 "registries: duplicate C function row" 'src/x.c g -> p.F' "$src/check-registries" "$rg"
+rgreset; printf '| parser_yang.c | f | p.F |\n| parser_yang.c | f | p.F |\n' >>"$rg/docs/port-map.md"
+expect 1 "registries: duplicate row outside src/" 'parser_yang.c f -> p.F' "$src/check-registries" "$rg"
+rgreset; printf '  - id: "a/x"\n' >>"$rg/conformance/corpus/manifest.yaml"
+expect 1 "registries: duplicate quoted fixture id" 'a/x' "$src/check-registries" "$rg"
+rgreset; : >"$rg/conformance/deviations.md"
+expect 1 "registries: empty registry fails" 'no deviation ids found' "$src/check-registries" "$rg"
+rgreset
 
 echo; (( fails == 0 )) && echo "all gate tests passed" || { echo "$fails gate test(s) failed"; exit 1; }

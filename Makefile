@@ -1,14 +1,18 @@
 # All targets are meant to run inside the dev container (./dev make <target>).
 FUZZTIME ?= 60s
 
-.PHONY: ci test-oracle fmt-check vet lint nocgo test test-386 vuln secrets sensitive fuzz oracle test-go-min oracle-check oracle-golden test-gates
+.PHONY: ci test-oracle fmt-check vet lint nocgo test test-386 vuln secrets sensitive fuzz oracle test-go-min oracle-check oracle-golden test-gates registries
 
-ci: fmt-check vet lint nocgo test test-386 test-go-min test-oracle test-gates vuln secrets sensitive oracle-check
+ci: fmt-check vet lint nocgo test test-386 test-go-min test-oracle test-gates vuln secrets sensitive oracle-check registries
 
 # Security gates (check-sensitive, hooks, merge-pr, ai-review publisher, review-tier) against
 # stubbed gh/curl and throwaway repos.
 test-gates:
 	scripts/test-gates
+
+# Duplicate ids/rows left by the union merge driver in the append-only registries.
+registries:
+	scripts/check-registries
 
 fmt-check:
 	@out=$$(git ls-files -z '*.go' | xargs -0 -r gofmt -l); [ -z "$$out" ] || { echo "gofmt needed:"; echo "$$out"; exit 1; }
