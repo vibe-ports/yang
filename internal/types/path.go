@@ -69,8 +69,9 @@ func xpErr(cur *schema.Node, format string, args ...any) *PathError {
 
 // compile ports _ly_path_compile for lref with is_xpath set.
 func (c *leafrefCompiler) compile(ctxNode *schema.Node, e *lyxp.Expr) (Path, *PathError) {
-	var op *schema.Node // the operation ctxNode is in, if any
-	for op = ctxNode; op != nil && !isOp(op); op = op.Parent {
+	op := ctxNode // the operation ctxNode is in, if any
+	for op != nil && !isOp(op) {
+		op = op.Parent
 	}
 	cur := ctxNode
 	if c.extended && e.Is(0, lyxp.TokFuncName) {
