@@ -11,7 +11,7 @@
 #    is   VERDICT: approve <40-hex head sha> (<reviewer>)   with reviewer codex-* or port-reviewer-*
 #    (not claude-*: that is the ai-review bot's signature, and a pasted bot line must not count)
 #    (scripts/astra emits it; a later "VERDICT: changes <sha> …" revokes an earlier approve);
-#  - CI: the latest run of .github/workflows/ci.yml for exactly that SHA concluded success;
+#  - CI: every (non-cancelled) run of .github/workflows/ci.yml for exactly that SHA succeeded;
 #  - every branch commit has +0000 author/committer dates and the head fast-forwards main.
 # Then pushes <head>:main with a lease on the main SHA it checked; GitHub marks the PR merged.
 # Limits: an advisory gate, not branch protection (Free private plan: anyone with write access can
@@ -70,10 +70,14 @@ verdict=$(gh api --paginate --slurp "repos/$repo/issues/$pr/comments" | jq -r --
   | sort_by([.t, .id]) | last | .v // "none"')
 [[ $verdict == approve ]] || fail "latest maintainer attestation for $head is '$verdict', need 'VERDICT: approve $head (codex-…)'"
 
+# A head SHA can have several ci.yml runs (push + pull_request, reopen); each run reports its
+# latest attempt. Every run must have succeeded; runs cancelled by a newer one don't count, but at
+# least one success is required.
 ci=$(gh api "repos/$repo/actions/workflows/ci.yml/runs?head_sha=$head&per_page=100" | jq -r --arg sha "$head" --arg repo "$repo" '
-  [ .workflow_runs[] | select(.path == ".github/workflows/ci.yml" and .head_sha == $sha and .repository.full_name == $repo) ]
-  | sort_by([.created_at, .run_attempt]) | last | if . == null then "missing" else "\(.status)/\(.conclusion)" end')
-[[ $ci == completed/success ]] || fail "ci.yml on $short is '$ci', need completed/success"
+  [ .workflow_runs[] | select(.path == ".github/workflows/ci.yml" and .head_sha == $sha and .repository.full_name == $repo)
+    | select(.conclusion != "cancelled") | "\(.status)/\(.conclusion)" ]
+  | unique | if length == 0 then "missing" else join(",") end')
+[[ $ci == completed/success ]] || fail "ci.yml runs on $short are '$ci', need completed/success"
 
 git fetch -q origin "refs/pull/$pr/head"
 [[ $(git rev-parse FETCH_HEAD) == "$head" ]] || fail "fetched PR head differs from $head (PR moved?)"

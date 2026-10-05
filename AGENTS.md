@@ -11,7 +11,7 @@ Plan and rationale: `PLAN.md`. Decisions: `docs/decisions/`. Designs: `docs/desi
 
 ## Commands (always inside the dev container)
 - `./dev make ci` — everything CI runs: fmt, tidy, vet, lint, nocgo, race tests, 386 tests,
-  govulncheck, oracle-check. **Must be green before you say "done".**
+  security-gate self-tests (test-gates), govulncheck, oracle-check. **Must be green before you say "done".**
 - `./dev make oracle-check` / `./dev make oracle-golden` — compare with / regenerate goldens.
 - `./dev make fuzz FUZZTIME=30s` — run all fuzz targets.
 - `./dev go test ./internal/xpath/ -run TestX` — any single command.
@@ -85,8 +85,9 @@ Do not comment on style that gofmt/golangci-lint already enforce.
   posted by `scripts/astra review --trusted`, or by the lead as `(port-reviewer-opus)` after a
   `port-reviewer` review — names that SHA. Bot verdicts (Claude `ai-review`, Codex app) are
   advisory.
-- **Policy files** — `AGENTS.md`, `CLAUDE.md`, `.claude/`, `Makefile`, `dev`, `Dockerfile`,
-  `.devcontainer/`, `scripts/`, `.github/`, `.githooks/` — decide what runs and what reviewers are
+- **Policy files** — `AGENTS.md`, `CLAUDE.md`, `.claude/`, `.codex/`, `.agents/`, `Makefile`,
+  `dev`, `Dockerfile`, `.devcontainer/`, `.gitattributes`, `scripts/`, `.github/`, `.githooks/` —
+  decide what runs and what reviewers are
   told. A PR touching them needs a human read; gate tools run main's copy, never the PR's.
   Only the lead merges; worker agents never push to `main` or hold merge rights.
 - Merging is `scripts/merge-pr <n>` only, run as main's copy from a checkout of `origin/main`

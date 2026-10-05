@@ -61,7 +61,8 @@ ai-review publisher and `review-tier` against a stubbed `gh`/`curl` and throwawa
 
 These files decide what runs, what is checked and what reviewers are told:
 `AGENTS.md` (any directory), `CLAUDE.md`, `.claude/`, `.codex/` and `.agents/` (any directory),
-`Makefile`, `dev`, `Dockerfile`, `.devcontainer/`, `scripts/`, `.github/`, `.githooks/`. A PR touching them changes its own gate,
+`Makefile`, `dev`, `Dockerfile`, `.devcontainer/`, `.gitattributes` (merge drivers), `scripts/`,
+`.github/`, `.githooks/`. A PR touching them changes its own gate,
 so it always needs a human read, `review-tier` sends it to the deep reviewer, and the gate tools
 never run the PR's copy: `merge-pr` and `astra review --trusted` run main's version with main's
 rules (see Merge gate).
@@ -126,7 +127,8 @@ It fast-forwards `main` to the PR head only if, for the PR's current **full** he
   line signed `(port-reviewer-opus)`. `claude-*` is never accepted: it is the ai-review bot's
   signature, so a pasted bot line can't count. A later `changes` revokes; bot comments, quoted or
   fenced lines, edited comments and short SHAs don't count;
-- the latest run of `.github/workflows/ci.yml` for exactly that SHA concluded `success`
+- every run of `.github/workflows/ci.yml` for exactly that SHA (cancelled ones aside, at least
+  one) concluded `success`, read from the Actions runs API
   (CI checks out the PR head, not the merge commit);
 - every commit has `+0000` dates and the head is a descendant of `main`.
 

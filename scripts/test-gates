@@ -154,8 +154,10 @@ comments() { # comments <uid> <created> <body> [<uid> <created> <body>]...
   jq -n --argjson a "$a" '[$a]' >"$FX/comments.json"
 }
 edit_last() { jq '.[0][-1].updated_at = "2026-02-01T00:00:00Z"' "$FX/comments.json" >"$FX/c.tmp" && mv "$FX/c.tmp" "$FX/comments.json"; }
-runs() { jq -n --arg h "$head" --arg p "${2:-.github/workflows/ci.yml}" --arg c "$1" \
-  '{workflow_runs:[{path:$p,head_sha:$h,repository:{full_name:"vibe-ports/yang"},created_at:"2026-01-01T00:00:00Z",run_attempt:1,status:"completed",conclusion:$c}]}' >"$FX/runs.json"; }
+runs() { # runs <conclusion>...   (one ci run per conclusion; RUNPATH overrides the workflow path)
+  jq -n --arg h "$head" --arg p "${RUNPATH:-.github/workflows/ci.yml}" '{workflow_runs: [$ARGS.positional[] |
+    {path:$p,head_sha:$h,repository:{full_name:"vibe-ports/yang"},created_at:"2026-01-01T00:00:00Z",run_attempt:1,status:"completed",conclusion:.}]}' \
+    --args "$@" >"$FX/runs.json"; }
 mp() { (cd "$m" && scripts/merge-pr 7); }
 mpw() { (cd "$m" && bash <(git show origin/main:scripts/merge-pr) 7); }
 A="VERDICT: approve $head (codex-gpt-6-astra)"
@@ -176,9 +178,9 @@ comments 1056050 $D1 "$(printf 'unclosed:\n```json\n%s' "$A")"
 expect 1 "merge-pr: approval inside an unclosed fence is ignored" "$NOAPP" mp
 comments 1056050 $D1 "$(printf '``` x ` y\n%s' "$A")"
 runs failure
-expect 1 "merge-pr: inline backticks don't open a fence (approval counts, stops at CI)" "is 'completed/failure'" mp
+expect 1 "merge-pr: inline backticks don't open a fence (approval counts, stops at CI)" "are 'completed/failure'" mp
 comments 1056050 $D1 "$(printf '````\n```\n````\n%s' "$A")"
-expect 1 "merge-pr: approval after a properly closed fence counts (stops at CI)" "is 'completed/failure'" mp
+expect 1 "merge-pr: approval after a properly closed fence counts (stops at CI)" "are 'completed/failure'" mp
 runs success
 comments 1056050 $D1 "$A"; edit_last
 expect 1 "merge-pr: edited comment is ignored" "$NOAPP" mp
@@ -192,11 +194,15 @@ comments 1056050 $D1 "$A" 1056050 $D2 "VERDICT: changes $head (port-reviewer-opu
 expect 1 "merge-pr: later 'changes' revokes approval" "$NOAPP .* is 'changes'" mp
 runs failure
 comments 1056050 $D1 "VERDICT: approve $head (port-reviewer-opus)"
-expect 1 "merge-pr: port-reviewer-* attestation accepted (stops at CI)" "is 'completed/failure'" mp
+expect 1 "merge-pr: port-reviewer-* attestation accepted (stops at CI)" "are 'completed/failure'" mp
 comments 1056050 $D1 "VERDICT: changes $head (codex-x)" 1056050 $D2 "$(printf 'text\r\n%s\r\n' "$A")"
-expect 1 "merge-pr: failed CI" "is 'completed/failure'" mp
-runs success .github/workflows/other.yml
-expect 1 "merge-pr: CI from another workflow is ignored" "is 'missing'" mp
+expect 1 "merge-pr: failed CI" "are 'completed/failure'" mp
+runs success failure
+expect 1 "merge-pr: one failed run among several fails the gate" "are 'completed/failure,completed/success'" mp
+runs cancelled
+expect 1 "merge-pr: only cancelled runs = no CI evidence" "are 'missing'" mp
+RUNPATH=.github/workflows/other.yml runs success
+expect 1 "merge-pr: CI from another workflow is ignored" "are 'missing'" mp
 runs success; pull true
 expect 1 "merge-pr: draft PR" "draft=true" mp
 pull
@@ -215,9 +221,9 @@ rm "$FX/on_pull2"
 git -C "$m" fetch -q origin; git -C "$m" checkout -q -b feat2 origin/main
 echo x >"$m/x"; git -C "$m" add x; git -C "$m" commit -qm feat; head=$(git -C "$m" rev-parse HEAD)
 git -C "$m" push -q -f origin HEAD:refs/pull/7/head
-A="VERDICT: approve $head (codex-gpt-6-astra)"; pull; runs success; comments 1056050 $D1 "$A"
+A="VERDICT: approve $head (codex-gpt-6-astra)"; pull; runs success cancelled; comments 1056050 $D1 "$A"
 onmain
-expect 0 "merge-pr: approved + CI green merges (trusted wrapper)" - mpw
+expect 0 "merge-pr: approved + CI green (+ a cancelled run) merges (trusted wrapper)" - mpw
 [[ $(git -C "$bare" rev-parse main) == "$head" ]] && ok "merge-pr: main == reviewed head" || no "merge-pr: main != head"
 git -C "$m" checkout -q -b tz "$head"; echo y >"$m/y"; git -C "$m" add y
 GIT_COMMITTER_DATE="1700000000 +0200" git -C "$m" commit -qm tz; head=$(git -C "$m" rev-parse HEAD)
@@ -359,7 +365,7 @@ rm "$FX/fail"
 tier() { (unset TYPESAFE_API_KEY; "$src/review-tier" <<<"$1"); }
 f1() { jq -nc --arg p "$1" --argjson a "${2:-1}" '[{path:$p,additions:$a,deletions:0}]'; }
 [[ $(tier "$(f1 docs/a.md 3)") == light ]] && ok "tier: docs → light" || no "tier: docs → light"
-for p in scripts/x AGENTS.md conformance/AGENTS.md CLAUDE.md .claude/skills/x/SKILL.md Makefile dev .devcontainer/devcontainer.json .githooks/pre-push .codex/config.toml x/.codex/rules .agents/a.md; do
+for p in scripts/x AGENTS.md conformance/AGENTS.md CLAUDE.md .claude/skills/x/SKILL.md Makefile dev .devcontainer/devcontainer.json .githooks/pre-push .codex/config.toml x/.codex/rules .agents/a.md .gitattributes; do
   [[ $(tier "$(f1 "$p")") == deep ]] && ok "tier: policy file $p → deep" || no "tier: policy file $p → deep"
 done
 [[ $(tier "$(f1 docs/a.md 500)") == deep ]] && ok "tier: size → deep" || no "tier: size → deep"

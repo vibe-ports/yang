@@ -11,7 +11,7 @@ set -euo pipefail
 files=$(jq -c '[.[] | {path: (.path | tostring), additions: (.additions | tonumber), deletions: (.deletions | tonumber)}]')
 lines=$(jq '[.[] | .additions + .deletions] | add // 0' <<<"$files")
 # Risky = code paths + policy files (rules, CI, hooks, scripts, dev environment).
-risky=$(jq -r '.[].path' <<<"$files" | grep -cE '^(internal/(parser|compile|xpath|types)/|data/|[^/]+\.go$|go\.(mod|sum)$|Dockerfile$|\.github/|\.githooks/|\.claude/|\.devcontainer/|scripts/|conformance/oracle/|LICENSE$|Makefile$|dev$)|(^|/)(AGENTS|CLAUDE)\.md$|(^|/)\.codex/|(^|/)\.agents/' || true)
+risky=$(jq -r '.[].path' <<<"$files" | grep -cE '^(internal/(parser|compile|xpath|types)/|data/|[^/]+\.go$|go\.(mod|sum)$|Dockerfile$|\.github/|\.githooks/|\.claude/|\.devcontainer/|scripts/|conformance/oracle/|LICENSE$|Makefile$|dev$|\.gitattributes$)|(^|/)(AGENTS|CLAUDE)\.md$|(^|/)\.codex/|(^|/)\.agents/' || true)
 count=$(jq length <<<"$files")
 
 # The compare API lists at most 300 files: a list that long may be truncated.
