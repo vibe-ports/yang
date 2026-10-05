@@ -13,9 +13,13 @@ questionable. Format: id · area · libyang behaviour · ours · RFC reference �
 | D-0006 | pattern: block names | prefix match (`IsGreekExtended` → Greek) | exact name | XSD Part 2 §F.1.1 | internal/xsdre oracle_test |
 | D-0007 | pattern: escaped `\^` / `\$` | never matches `^` / accepts `\$` | literal `^`; `\$` is a syntax error | XSD Part 2 §F.1.1 | internal/xsdre oracle_test |
 | D-0008 | pattern: invalid XSD | accepts PCRE-only syntax (`a+?`, `(?:`, `{`, `a{,3}`, `\b`, …) | `ErrSyntax` — **risk**: a public model libyang loads may fail; scan corpus before M2, opt-in compat mode if needed | XSD Part 2 App. F | internal/xsdre oracle_test |
+| D-0020 | if-feature expression `a)(` | `lys_compile_iffeature` pops an empty operator stack: yanglint 5.8.6 crashes | rejected: "Invalid value … of if-feature - processing error." | RFC 7950 §7.20.2 (`if-feature-expr` grammar) | internal/parser build_test (TestParseIfFeature, FuzzIfFeature); excluded from oracle runs |
+| D-0021 (candidate) | if-feature expression `not (not a)` | rejected ("processing error."): the first pass treats `not ( not` as a double `not`, the second does not | same as libyang (Goal 2), though RFC 7950 §7.20.2 allows it | RFC 7950 §7.20.2 | internal/parser build_test (iffErrors), oracle_test |
 
 ## Unsupported (our limits, not libyang deviations)
 
 | ID | Area | Limit | Reason |
 |---|---|---|---|
 | U-0001 | pattern | repeat count > 1000, nesting > 1000 → `ErrUnsupported` | Go RE2 limits; never approximated |
+| U-0005 | YANG parser: leafref `path` | the argument of `path` is not syntax-checked while parsing (libyang runs `ly_path_parse`, e.g. rejects `path "deref(../x)/."`) | needs the XPath lexer (M1-3); the compiler must check it. Corpus: libyang issue973.yang, modextleafref.yang |
+| U-0006 | YANG parser: warnings | libyang's parser warnings are not reported: empty argument (`CHECK_NONEMPTY`), control characters in enum names, revision order, includes in a YANG 1.1 submodule | no warning channel in `Parse`/`Build` yet; verdicts unaffected |

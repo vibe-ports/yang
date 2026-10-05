@@ -32,6 +32,9 @@ RUN cmake -S /src/libyang -B /src/build \
       grep -E '^CMAKE_(BUILD_TYPE|C_FLAGS[A-Z_]*):' /src/build/CMakeCache.txt; \
       grep -E '^(XXHASH|PCRE2)[A-Z_]*:' /src/build/CMakeCache.txt; } > /opt/libyang/BUILDINFO \
  && cat /opt/libyang/BUILDINFO
+# libyang's test modules and fuzz corpus: the parser oracle test compares on them (BSD-3-Clause, © CESNET).
+RUN mkdir -p /opt/libyang/src \
+ && cp -r /src/libyang/tests /src/libyang/modules /opt/libyang/src/
 
 FROM ${GO_IMAGE} AS dev
 ARG PCRE2_VERSION=10.46-1~deb13u3

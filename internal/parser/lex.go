@@ -2,14 +2,16 @@
 // Ported from libyang v5.8.6 src/parser_yang.c, src/tree_schema_common.c and
 // src/ly_common.c (BSD-3-Clause, © CESNET).
 
-// Package parser reads YANG 1.0/1.1 module text into a generic statement
+// Package parser reads YANG 1.0/1.1 module text into a checked statement
 // tree (Parse) and builds a typed parsed module from it (Build).
 //
 // Parse is a port of libyang's tokenizer (get_keyword, get_argument,
-// read_qstring, skip_comment): argument strings, escapes, indentation
-// trimming of multi-line double-quoted strings and the accepted character set
-// are byte-for-byte libyang's. Grammar checks (allowed substatements,
-// cardinality, argument values) are Build's job.
+// read_qstring, skip_comment) with the checks of parser_yang.c's typed
+// parse_* functions run while reading (allowed substatements, cardinality,
+// argument values, mandatory substatements), so that errors, messages and
+// lines are libyang's. Argument strings, escapes, indentation trimming of
+// multi-line double-quoted strings and the accepted character set are
+// byte-for-byte libyang's.
 package parser
 
 import (
@@ -111,12 +113,13 @@ type lexer struct {
 	file   string
 	line   int // libyang's in->line: also counts newlines substituted for '\r'
 	lineAt int // offset of the current line's first byte (for Pos.Col)
+	chk    *checker
 }
 
 // Parse reads one YANG module or submodule (yang_parse_module / yang_parse_submodule
 // without the context part). name is used only in error messages.
 func Parse(name string, src []byte, b *Budget) (*Stmt, error) {
-	l := &lexer{src: src, file: name, line: 1}
+	l := &lexer{src: src, file: name, line: 1, chk: &checker{imports: map[string]string{}, extDefs: map[string]*Stmt{}}}
 	if b != nil {
 		l.b = *b
 	}
@@ -151,7 +154,7 @@ func Parse(name string, src []byte, b *Budget) (*Stmt, error) {
 	if ext || (kw != "module" && kw != "submodule") {
 		return nil, l.errf(ly.Syntax, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".", kwName(kw, ext))
 	}
-	s, err := l.stmt(kw, false, start, "", false)
+	s, err := l.stmt(kw, false, start, nil, false)
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +168,7 @@ func Parse(name string, src []byte, b *Budget) (*Stmt, error) {
 		}
 		return nil, l.errf(ly.Syntax, "Trailing garbage \"%s%s\" after %s, expected end-of-input.", rest, more, kw)
 	}
-	return s, nil
+	return s, l.chk.resolveExts(name)
 }
 
 func kwName(kw string, ext bool) string {
@@ -204,8 +207,10 @@ func (l *lexer) budget(what string) *Error {
 	return e
 }
 
-// stmt reads the argument and substatements of a statement whose keyword was just read.
-func (l *lexer) stmt(kw string, ext bool, start Pos, parent string, inExt bool) (*Stmt, error) {
+// stmt reads the argument and substatements of a statement whose keyword was
+// just read; pf is the parent's frame (nil for the module). With l.chk set,
+// the grammar checks run where parser_yang.c makes them.
+func (l *lexer) stmt(kw string, ext bool, start Pos, pf *frame, inExt bool) (*Stmt, error) {
 	if l.nstmt++; l.nstmt > l.b.MaxStmts {
 		return nil, l.budget("statements")
 	}
@@ -213,6 +218,13 @@ func (l *lexer) stmt(kw string, ext bool, start Pos, parent string, inExt bool) 
 	if ext {
 		s.ExtPrefix, s.Keyword, _ = strings.Cut(kw, ":")
 	}
+	parent := ""
+	if pf != nil {
+		parent = pf.s.Keyword
+	}
+	// live: parsed by libyang's typed parser (YANG statements outside extension
+	// instances, and extension instances under live statements)
+	f := &frame{s: s, live: l.chk != nil && (ext || !inExt) && (pf == nil || pf.live), seen: map[string]bool{}}
 	if ak := argOf(kw, parent, inExt || ext); ak != argNone {
 		w, q, err := l.getArgument(ak)
 		if err != nil {
@@ -223,6 +235,11 @@ func (l *lexer) stmt(kw string, ext bool, start Pos, parent string, inExt bool) 
 		}
 		s.Arg, s.HasArg, s.Quote = string(w.buf), w.has || len(w.buf) > 0, q
 	}
+	if f.live && !ext {
+		if err := l.chk.arg(l, pf, s); err != nil {
+			return nil, err
+		}
+	}
 	inExt = inExt || ext
 	// YANG_READ_SUBSTMT_FOR_GOTO
 	k, e, _, err := l.getKeyword()
@@ -232,7 +249,7 @@ func (l *lexer) stmt(kw string, ext bool, start Pos, parent string, inExt bool) 
 	switch {
 	case k == ";" && !e:
 		s.End = l.pos(l.off - 1)
-		return s, nil
+		return s, l.close(pf, f)
 	case k != "{" || e:
 		return nil, l.errf(ly.SyntaxYang, "Invalid keyword \"%s\", expected \";\" or \"{\".", kwName(k, e))
 	}
@@ -243,17 +260,29 @@ func (l *lexer) stmt(kw string, ext bool, start Pos, parent string, inExt bool) 
 		}
 		if !e && k == "}" {
 			s.End = l.pos(l.off - 1)
-			return s, nil
+			return s, l.close(pf, f)
 		}
 		if !e && (k == ";" || k == "{") && !inExt { // parse_ext_substmt keeps them as statements
 			return nil, l.errf(ly.SyntaxYang, "Invalid keyword \"%s\" as a child of \"%s\".", k, kwName(kw, ext))
 		}
-		c, err := l.stmt(k, e, st, kw, inExt)
+		if f.live && !ext {
+			if err := l.chk.child(l, f, k, e); err != nil {
+				return nil, err
+			}
+		}
+		c, err := l.stmt(k, e, st, f, inExt)
 		if err != nil {
 			return nil, err
 		}
 		s.Subs = append(s.Subs, c)
 	}
+}
+
+func (l *lexer) close(pf, f *frame) error {
+	if !f.live {
+		return nil
+	}
+	return l.chk.close(l, pf, f)
 }
 
 // skipRedundant is skip_redundant_chars: whitespace and comments around the module.

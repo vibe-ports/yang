@@ -91,26 +91,70 @@ func TestOracleParseErrors(t *testing.T) {
 	}
 }
 
-// TestOracleCorpus: whatever Parse rejects in libyang's own modules and fuzz
-// corpus, libyang rejects with the same message and line.
+// TestOracleG1 checks the recorded yanglint verdicts of the G1 cases.
+func TestOracleG1(t *testing.T) {
+	for i, c := range g1Cases {
+		if out, ok := yanglint(t, c.src); ok != c.ok {
+			t.Errorf("G1 #%d %s: yanglint ok=%v, recorded %v: %s", i+1, c.name, ok, c.ok, out)
+		}
+	}
+}
+
+// TestOracleErrors: libyang rejects every buildErrors / iffErrors module with
+// the same message and line (0: libyang reports a schema path).
+func TestOracleErrors(t *testing.T) {
+	for _, c := range buildErrors {
+		if !strings.HasPrefix(c.src, "submodule") { // yanglint does not parse a submodule alone
+			oracleError(t, c.src, c.line, c.msg)
+		}
+	}
+	for _, c := range iffErrors {
+		oracleError(t, c.src, 0, c.msg)
+	}
+}
+
+// corpusKnown are corpus files libyang rejects at load time for a reason
+// Parse leaves to others: leafref path syntax (U-0005), the argument of an
+// extension defined in an imported module (the compiler).
+var corpusKnown = map[string]bool{"issue973.yang": true, "modextleafref.yang": true, "issue728.yang": true}
+
+// extResolution tells libyang's extension-resolution errors, reported with a
+// schema path (line 0) after parsing, which Parse makes too.
+func extResolution(msg string) bool {
+	return strings.Contains(msg, "used for extension instance identifier.") ||
+		strings.HasPrefix(msg, "Extension definition of extension instance ") ||
+		strings.HasPrefix(msg, "Extension instance ") && strings.Contains(msg, " missing argument ")
+}
+
+// TestOracleCorpus: on libyang's own modules and fuzz corpus (or $ORACLE_CORPUS), Parse rejects
+// exactly what libyang rejects while parsing, with the same message and line.
 func TestOracleCorpus(t *testing.T) {
-	root := filepath.Join("..", "..", ".cache", "libyang")
-	if _, err := os.Stat(root); err != nil {
-		t.Skip("no .cache/libyang (make libyang-src)")
+	root := libyangSrc()
+	if r := os.Getenv("ORACLE_CORPUS"); r != "" { // e.g. a YangModels checkout
+		root = r
+	}
+	if root == "" {
+		if os.Getenv("YANG_ORACLE_REQUIRED") != "" {
+			t.Fatal("no libyang corpus: .cache/libyang (make libyang-src) or the dev image's /opt/libyang/src")
+		}
+		t.Skip("no libyang corpus (make libyang-src)")
 	}
 	n := 0
 	_ = filepath.WalkDir(root, func(p string, d os.DirEntry, err error) error {
 		if err != nil || d.IsDir() || !strings.HasSuffix(p, ".yang") && !strings.Contains(p, "lys_parse_mem") {
 			return nil
 		}
-		src, _ := os.ReadFile(p)
+		src, _ := os.ReadFile(p) //nolint:gosec // local test corpus
 		_, err = Parse("", src, nil)
 		var e *Error
 		if errors.As(err, &e) {
 			n++
 			if d := oracleDiff(t, string(src), e.Pos.Line, e.Msg); d != "" {
-				// grammar checks come with Build; until then libyang may report one first
-				t.Logf("%s\n %s", p, d)
+				t.Errorf("%s\n %s", p, d)
+			}
+		} else if out, ok := yanglint(t, string(src)); !ok && !corpusKnown[filepath.Base(p)] {
+			if msg, line := lyError(out); line > 0 || extResolution(msg) { // what Parse checks
+				t.Errorf("%s: accepted, libyang line %d: %s", p, line, msg)
 			}
 		}
 		return nil

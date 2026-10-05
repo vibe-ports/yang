@@ -150,22 +150,22 @@ func TestGetKeyword(t *testing.T) { // [ly] test_stmts
 }
 
 func TestParseTree(t *testing.T) {
-	src := "module m {\n  m:e \"x\" + 'y' { m:f; leaf 1; }\n  container c {\n    leaf a { type string; }\n  }\n}\n"
+	src := "module m { namespace urn:m; prefix m; extension e; extension f;\n  m:e \"x\" + 'y' { m:f; leaf 1; }\n  container c {\n    leaf a { type string; }\n  }\n}\n"
 	s, err := Parse("m.yang", []byte(src), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	e := s.Subs[0]
+	e := s.Subs[4]
 	if e.ExtPrefix != "m" || e.Keyword != "e" || e.Arg != "xy" || e.Quote != '"' || len(e.Subs) != 2 ||
 		e.Subs[1].Keyword != "leaf" || e.Subs[1].Arg != "1" || e.Pos != (Pos{2, 3}) {
 		t.Errorf("ext: %+v", e)
 	}
-	leaf := s.Subs[1].Subs[0]
+	leaf := s.Subs[5].Subs[0]
 	if leaf.Keyword != "leaf" || leaf.Arg != "a" || leaf.Pos != (Pos{4, 5}) || leaf.End != (Pos{4, 27}) {
 		t.Errorf("leaf: %+v", leaf)
 	}
-	if s.Subs[1].Subs[0].Subs[0].Arg != "string" {
-		t.Errorf("type: %+v", s.Subs[1].Subs[0].Subs[0])
+	if leaf.Subs[0].Arg != "string" {
+		t.Errorf("type: %+v", leaf.Subs[0])
 	}
 }
 
@@ -219,7 +219,7 @@ func TestParseErrors(t *testing.T) {
 			t.Errorf("%q: got %v, want %d: %q", c.src, err, c.line, c.msg)
 		}
 	}
-	if s, err := Parse("", []byte("module m {}\x00garbage"), nil); err != nil || s.Keyword != "module" {
+	if s, err := Parse("", []byte("module m {namespace urn:m; prefix m;}\x00garbage"), nil); err != nil || s.Keyword != "module" {
 		t.Errorf("NUL ends input: %v", err)
 	}
 	// parse_ext_substmt keeps ';' and '{' as generic statements
@@ -229,7 +229,7 @@ func TestParseErrors(t *testing.T) {
 }
 
 func TestBudget(t *testing.T) {
-	deep := "module m {" + strings.Repeat("container c {", 10) + strings.Repeat("}", 11)
+	deep := "module m { namespace urn:m; prefix m;" + strings.Repeat("container c {", 10) + strings.Repeat("}", 11)
 	for _, c := range []struct {
 		src string
 		b   Budget
