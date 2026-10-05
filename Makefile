@@ -52,8 +52,9 @@ vuln:
 secrets:
 	gitleaks git --no-banner --redact .
 
-# Private details (infra, personal, employer, local paths). Personal patterns come from the
-# SENSITIVE_PATTERNS env (CI secret) or ~/.config/vibe-ports/denylist, never from the repo.
+# Private details (infra, personal, employer, local paths). Generic rules here and in CI; the
+# personal patterns (~/.config/vibe-ports/denylist) exist only on the maintainer's host and are
+# applied by the git hooks — run scripts/check-sensitive on the host for the full check.
 sensitive:
 	scripts/check-sensitive --all
 	scripts/check-sensitive --history

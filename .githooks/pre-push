@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Enable once per clone: git config core.hooksPath .githooks
+# Scans every commit about to be pushed — added lines, file names, commit messages — with the
+# generic rules and the local personal denylist (scripts/check-sensitive --range).
+set -euo pipefail
+cs="$(git rev-parse --show-toplevel)/scripts/check-sensitive"
+while read -r _ lsha _ rsha; do
+  [[ $lsha =~ ^0+$ ]] && continue  # branch deletion
+  if [[ $rsha =~ ^0+$ ]] || ! git cat-file -e "$rsha^{commit}" 2>/dev/null; then
+    "$cs" --range "$lsha" --not --remotes  # new branch / unknown remote tip: all unpushed commits
+  else
+    "$cs" --range "$rsha..$lsha"
+  fi
+done

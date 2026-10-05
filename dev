@@ -3,6 +3,8 @@
 # DEV_PLATFORM=linux/amd64 ./dev … runs the container for that platform (emulated on Apple
 # silicon). Canonical oracle output (goldens, internal/xpath/testdata) comes from linux/amd64:
 #   DEV_PLATFORM=linux/amd64 ./dev make oracle-golden
+# Personal sensitive-data patterns are deliberately NOT passed in: they stay on the host and are
+# checked by the git hooks (scripts/check-sensitive on the host, see CONTRIBUTING.md).
 set -euo pipefail
 cd "$(dirname "$0")"
 plat=() tag=yang-dev
@@ -11,9 +13,6 @@ if [ -n "${DEV_PLATFORM:-}" ]; then
 fi
 docker build -q "${plat[@]}" --target dev -t "$tag" . >/dev/null
 tty=(-i); [ -t 0 ] && tty=(-it)   # -i always: `echo … | ./dev cmd` passes stdin
-# Personal sensitive-data patterns stay outside the repo; hand them to the container as env.
-dl=${SENSITIVE_DENYLIST:-$HOME/.config/vibe-ports/denylist}
-[ -r "$dl" ] && export SENSITIVE_PATTERNS="$(cat "$dl")"
 exec docker run --rm "${tty[@]}" "${plat[@]}" \
   -v "$PWD":/workspaces/yang -v yang-gomod:/home/dev/go/pkg/mod -v "${tag/yang-dev/yang-gocache}":/home/dev/.cache \
-  -e FUZZTIME -e SENSITIVE_PATTERNS "$tag" "${@:-bash}"
+  -e FUZZTIME "$tag" "${@:-bash}"
