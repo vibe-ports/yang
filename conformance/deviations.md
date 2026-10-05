@@ -25,6 +25,44 @@ questionable. Format: id · area · libyang behaviour · ours · RFC reference �
 | D-0047 (candidate) | data `when` evaluation order | `when` conditions are resolved once, from the end of a queue; declaration order of leaves with dependent defaults decides the outcome (`a` kept vs both removed) | mirrored for now (design 03 rule 5) | RFC 7950 §7.21.5 | compile/when-order-a-after-b, when-order-b-after-a |
 | D-0048 (candidate) | refine of the same target from nested uses | refines are merged by node-id text and module; the innermost uses wins; the merge ignores the context node, so a same-text inner refine collected while an outer refine is pending is applied to the outer target and lost for its own (refine-same-text-leak) | mirrored for now; RFC 7950 §7.13.2 does not define the nested case | RFC 7950 §7.13.2 | compile/refine-nested-same-target, refine-same-text, refine-same-text-leak |
 | D-0049 (candidate) | list key with if-feature | a key leaf with `if-feature` is accepted when the feature is enabled (rejected only when disabled: `Key "k" is disabled.`) | mirrored for now | RFC 7950 §7.8.2 (a key MUST NOT have if-feature) | compile/list-key-iffeature-enabled |
+| D-0011 | xpath: C integer conversions | `(long long)` / `(int32_t)` of NaN, ±Infinity and out-of-range values is UB; results depend on the host (x86-64 gives LLONG_MIN) | pinned to the golden host (arm64, soft-float long double): saturating, NaN → LLONG_MAX, so `floor(number('1e30'))` = 9223372036854775807 and `ceiling(0 div 0)` wraps to -9223372036854775808 | C11 §6.3.1.4 (UB) | protocol-v2/xpath-floor-number-1e30, xpath-ceiling-number-1e30-0-5, xpath-ceiling-0-div-0 |
+| D-0012 | xpath: libyang crashes | see "libyang crash cases" below: lyoracle dies (NULL dereference) or fails internally | a defined answer, listed below | — | internal/xpath testdata `"crash": true` cases |
+| D-0013 | xpath: hash lookup of list instances | an unprefixed child step to a list / leaf-list is restricted to the context node's module when its predicates "compile" (`eval_name_test_try_compile_predicates`, decided by atomizing the key values over the schema) | the same restriction, but key values are accepted only when they are literals, numbers, absolute paths or `current()` paths; other values (e.g. `../ref`) fall back to name matching in every module — differs only when another module augments a same-named list/leaf-list under the same parent | RFC 7950 §6.4.1 | protocol-v2/xpath-aug-* (non-list rule) |
+
+## libyang crash cases (D-0012)
+
+| Input | libyang v5.8.6 | Ours |
+|---|---|---|
+| `deref(..)`, `enum-value(..)`, `bit-is-set(.., 'x')` (first node is the document root) | NULL dereference of `node->schema` | empty node-set / NaN / false |
+| `derived-from(x, 'id')` with an unprefixed identity, JSON format, `current()` = root and no current module | NULL module dereference | `Identity "id" not found in module "".` |
+| `string()` of an anydata/anyxml with empty content | `strlen(NULL)` after `strtok_r` | `""` |
+| `string()` of a subtree containing an action node | `LOGINT` (internal error) in `cast_string_recursive` | the action is dumped like a container |
+
+## Known libyang behaviour (mirrored)
+
+Questionable but reproduced on purpose, each confirmed by the oracle (fixtures `protocol-v2/xpath-*`,
+`internal/xpath/testdata/oracle-pv2.jsonl`).
+
+| Behaviour | Example |
+|---|---|
+| A predicate applies to the whole result of its step, not per context node | `l/k[2]` → one node |
+| A numeric predicate is truncated | `l[1.5]` = `l[1]` |
+| `following`/`preceding` are empty when the node has no sibling in that direction; `preceding` includes ancestors | `l[1]/k/preceding::*` = ∅ |
+| `//` before `node()` / `text()` is ignored; `comment()` is `text()` | `count(.//text())` = 0 |
+| `ancestor::*` matches the document root | `count(ancestor::*)` from `/pv2:c` = 1 |
+| Unprefixed JSON names: the context node's module when it has such a child schema node (and, for a list, key predicates compile), else every module | `count(grouped)` = 1, `count(//grouped)` = 2 |
+| Descendants of a when-false node stay reachable through `//name` (only the node itself is hidden) | — |
+| Numbers compare as `printf("%Lf")` text: equal to 6 decimals, NaN compares as text | `0.0000001 = 0.0000002`, `0 div 0 = 0 div 0`, `0 div 0 < 1` |
+| Number to string is `%lld` or `%03.1Lf` | `string(0.25)` = `0.2` |
+| String to number is `strtold` over the whole string | `number('0x1A')` = 26, `number(' 12')` = 12, `number('12 ')` = NaN |
+| `floor`, `round`, `ceiling` truncate; `floor` of NaN/Infinity returns the context set | `floor(-1.5)` = -1, `round(-2.7)` = -2, `ceiling(-1.5)` = 0 |
+| String functions count bytes | `string-length('жж')` = 4, `substring('жabc', 2, 2)` splits a character |
+| `normalize-space` changes nothing unless there is leading, trailing or repeated white space | `normalize-space('a\tb')` keeps the tab |
+| string-value is an indented dump of the subtree's term values | `string(stats)` = `"\n  5\n"` |
+| A literal compared with a node is canonized by the node's type first | `u2 = '050'`, `id = 'two'` |
+| An even number of unary `-` leaves the operand uncast | `--'5'` is the string `5` |
+| `deref()` returns targets in resolution order, unsorted (Release build) | — |
+| `enum-value()` is NaN for an enumeration member of a union; `derived-from()` skips `text()` items | `enum-value(en)` = NaN |
 
 ## Unsupported (our limits, not libyang deviations)
 
@@ -35,5 +73,6 @@ questionable. Format: id · area · libyang behaviour · ours · RFC reference �
 | U-0021 | loader: YIN | a `.yin` file chosen by the module search (`name.yin`, `name@rev.yin`) → `ErrUnsupported`; it is never skipped in favour of a `.yang` file, which would change the revision libyang loads. The `Loader` callback returns YANG text only | YIN parser out of v1 (PLAN §1); design 06 §1.2 |
 | U-0022 | loader: search directories | one module search opens at most `Options.MaxSearchDirs` directories (default 10 000), then `ErrBudget`; libyang follows symlinked directories without cycle detection until a path exceeds `PATH_MAX`. Directory paths longer than 4096 bytes are skipped silently as libyang's failing `opendir`, but the length is that of the path inside the `fs.FS`, not the absolute path | two looping symlinks make libyang's walk exponential; design 06 §1.2, Go test `TestSymlinkCycle` |
 | U-0010 | types: libyang type plugins not ported yet | `ietf-yang-types` `date`, `date-no-zone`, `time`, `time-no-zone`, `xpath1.0`; `libnetconf2-netconf-server` `time-period`; `ietf-netconf-acm` `node-instance-identifier`; `yang` `instance-identifier-keys`. These typedefs store as their base type (strings with the typedef's restrictions), so canonical forms and errors differ from libyang | not used by the M1 corpus; ported when a fixture needs them (xpath1.0 after internal/xpath) |
+| U-0002 | xpath: metadata | the attribute axis (`@x`) and `lang()` see no metadata: `xpath.Node` exposes none yet | added when `data/` carries RFC 7952 metadata (M2) |
 | U-0003 | xpath: expression size | more than `xpath.MaxTokens` (4 194 304) tokens → LYVE_XPATH error | libyang only limits the length to UINT32_MAX; the cap bounds AST memory |
 | U-0023 | extensions: `yang-data`, `structure`, `augment-structure` | an instance in any parsed module makes `Load` fail with `ErrUnsupported` | the consumers (RESTCONF yang-data, structure-ext data trees) are a later milestone; libyang accepts them (fixture ext/yang-data-unsupported) |

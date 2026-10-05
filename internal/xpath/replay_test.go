@@ -5,7 +5,11 @@ package xpath
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
+	"math"
 	"os"
+	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -18,7 +22,7 @@ type oracleCase struct {
 	X     string          `json:"x"`
 	Res   json.RawMessage `json:"result,omitempty"`
 	Error json.RawMessage `json:"error,omitempty"` // {"err","vecode","msg"} of the first error diagnostic
-	Crash bool            `json:"crash,omitempty"` // lyoracle died (libyang crashed)
+	Crash bool            `json:"crash,omitempty"` // lyoracle died (libyang crashed, D-0012)
 }
 
 func readCases(t *testing.T, name string) []oracleCase {
@@ -49,4 +53,149 @@ func readCases(t *testing.T, name string) []oracleCase {
 // oracleArch is where canonical libyang results come from (long double width).
 const oracleArch = "amd64"
 
-func replay(t *testing.T, cases []oracleCase) { replayCompile(t, cases) }
+// knownDiff lists oracle cases we intentionally do not reproduce.
+var knownDiff = map[string]string{
+	"string(9007199254740993)":                      "D-0010",
+	"string(1000000000000000000000000)":             "D-0010",
+	"string(9223372036854775807)":                   "D-0010",
+	"100000000000000000000 = 100000000000000000001": "D-0010",
+	"string(number('1e30'))":                        "D-0010",
+	"string(number('1e-400'))":                      "D-0010",
+}
+
+func replay(t *testing.T, cases []oracleCase) {
+	replayCompile(t, cases)
+	for _, c := range cases {
+		if knownDiff[c.X] != "" {
+			continue
+		}
+		tree, schema := pv2Tree(), SchemaInfo(nil)
+		switch c.Set {
+		case "union":
+			tree = unionTree()
+		case "aug":
+			tree = augTree()
+		}
+		schema = tinfo{tree}
+		ec := EvalContext{Tree: tree, IgnoreWhen: true, Schema: schema, Deref: pv2Deref(tree)}
+		if c.CP != "" {
+			ec.Node = tree[0]
+		}
+		res, err := eval(c.X, ec)
+		switch {
+		case c.Crash: // D-0012: any defined answer
+		case c.Error == nil:
+			if msg := sameResult(c.Res, res, err); msg != "" {
+				t.Errorf("%q (%s): %s", c.X, c.Set, msg)
+			}
+		default:
+			var want struct{ Err, Vecode string }
+			_ = json.Unmarshal(c.Error, &want)
+			var raw struct{ Msg json.RawMessage }
+			_ = json.Unmarshal(c.Error, &raw)
+			msg := jsonString(raw.Msg)
+			var xe *Error
+			if !errors.As(err, &xe) {
+				t.Errorf("%q: want error %q, got %v (err %v)", c.X, msg, res, err)
+				continue
+			}
+			vecode := xe.VECode
+			if vecode == "" {
+				vecode = "LYVE_SUCCESS"
+			}
+			msgOK := xe.Msg == msg || strings.HasPrefix(c.X, "re-match") // PCRE2 vs XSD error detail
+			if xe.Err != want.Err || vecode != want.Vecode || !msgOK {
+				t.Errorf("%q: want %s %s %q, got %s %s %q", c.X, want.Err, want.Vecode, msg, xe.Err, vecode, xe.Msg)
+			}
+		}
+	}
+}
+
+// sameResult compares with lyoracle's result JSON: strings byte for byte,
+// numbers by value, node-sets by data path.
+func sameResult(raw json.RawMessage, r Result, err error) string {
+	var want struct {
+		Type  string
+		Value json.RawMessage
+		Nodes []string
+	}
+	_ = json.Unmarshal(raw, &want)
+	got := ""
+	switch r.Type {
+	case Boolean:
+		got = "boolean " + strconv.FormatBool(r.Bool)
+		if string(want.Value) != strconv.FormatBool(r.Bool) {
+			return "want " + string(raw) + ", got " + got
+		}
+	case String:
+		if jsonString(want.Value) != r.Str {
+			return "want " + string(raw) + ", got string " + strconv.Quote(r.Str)
+		}
+	case Number:
+		var w any
+		_ = json.Unmarshal(want.Value, &w)
+		ok := false
+		switch w := w.(type) {
+		case float64:
+			ok = w == r.Num
+		case string:
+			ok = w == "NaN" && math.IsNaN(r.Num) || w == "Infinity" && math.IsInf(r.Num, 1) || w == "-Infinity" && math.IsInf(r.Num, -1)
+		}
+		if !ok {
+			return "want " + string(raw) + ", got number " + strconv.FormatFloat(r.Num, 'g', -1, 64)
+		}
+	default:
+		var ps []string
+		for _, n := range r.Nodes {
+			ps = append(ps, path(n))
+		}
+		if strings.Join(ps, " ") != strings.Join(want.Nodes, " ") {
+			return "want " + string(raw) + ", got " + strings.Join(ps, " ")
+		}
+	}
+	if err != nil || want.Type != [...]string{"node-set", "boolean", "number", "string"}[r.Type] {
+		return "want " + string(raw) + ", got error " + errString(err)
+	}
+	return ""
+}
+
+func errString(err error) string {
+	if err == nil {
+		return "<nil>"
+	}
+	return err.Error()
+}
+
+// jsonString decodes a cJSON string literal keeping raw bytes (cJSON does not
+// escape bytes >= 0x80, which need not be valid UTF-8).
+func jsonString(raw json.RawMessage) string {
+	s := strings.TrimSuffix(strings.TrimPrefix(string(raw), `"`), `"`)
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		if s[i] != '\\' || i+1 >= len(s) {
+			b.WriteByte(s[i])
+			continue
+		}
+		i++
+		switch c := s[i]; c {
+		case 'b':
+			b.WriteByte('\b')
+		case 'f':
+			b.WriteByte('\f')
+		case 'n':
+			b.WriteByte('\n')
+		case 'r':
+			b.WriteByte('\r')
+		case 't':
+			b.WriteByte('\t')
+		case 'u':
+			if v, err := strconv.ParseInt(s[i+1:min(i+5, len(s))], 16, 32); err == nil {
+				b.WriteRune(rune(v))
+				i += 4
+			}
+		default:
+			b.WriteByte(c)
+		}
+	}
+	return b.String()
+}

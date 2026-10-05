@@ -1,0 +1,48 @@
+module pv2-xp {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-xp";
+  prefix x;
+
+  import pv2 {
+    prefix p;
+  }
+
+  description
+    "Hand-written: unions whose members have identical canonical text, for XPath
+     functions that must inspect the stored value (derived-from, enum-value, bit-is-set).";
+
+  container xp {
+    leaf id-first {
+      type union {
+        type identityref {
+          base p:base-id;
+        }
+        type string;
+      }
+    }
+    leaf str-first {
+      type union {
+        type string;
+        type identityref {
+          base p:base-id;
+        }
+      }
+    }
+    leaf en {
+      type union {
+        type enumeration {
+          enum red;
+        }
+        type string;
+      }
+    }
+    leaf bi {
+      type union {
+        type bits {
+          bit red;
+        }
+        type string;
+      }
+    }
+  }
+}

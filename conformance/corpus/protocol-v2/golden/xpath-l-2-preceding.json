@@ -1,0 +1,33 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2",
+      "revision": null
+    }
+  ],
+  "op": "xpath",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "result": {
+    "nodes": [
+      "/pv2:c",
+      "/pv2:c/mode",
+      "/pv2:c/x",
+      "/pv2:c/u",
+      "/pv2:c/dec",
+      "/pv2:c/id",
+      "/pv2:c/l[k='a']",
+      "/pv2:c/l[k='a']/k"
+    ],
+    "type": "node-set"
+  },
+  "verdict": "valid"
+}

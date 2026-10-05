@@ -3072,3 +3072,1157 @@ fixtures:
       searchdirs: [two-failures]
       modules: [{name: tb}, {name: tc}]
     golden: golden/two-failures.json
+  - id: protocol-v2/xpath-l-2-preceding
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#2.2", "XPath1.0#2.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "l[2]/preceding::*"
+    golden: golden/xpath-l-2-preceding.json
+
+  - id: protocol-v2/xpath-l-1-k-preceding
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#2.2", "XPath1.0#2.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "l[1]/k/preceding::*"
+    golden: golden/xpath-l-1-k-preceding.json
+
+  - id: protocol-v2/xpath-x-following-sibling-1
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#2.2", "XPath1.0#2.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "x/following-sibling::*[1]"
+    golden: golden/xpath-x-following-sibling-1.json
+
+  - id: protocol-v2/xpath-l-2-following
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#2.2", "XPath1.0#2.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "l[2]/following::*"
+    golden: golden/xpath-l-2-following.json
+
+  - id: protocol-v2/xpath-l-k-ancestor-or-self
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#2.2", "XPath1.0#2.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "l/k/ancestor-or-self::*"
+    golden: golden/xpath-l-k-ancestor-or-self.json
+
+  - id: protocol-v2/xpath-count-descendant-or-self-node
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#2.2", "XPath1.0#2.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "count(descendant-or-self::node())"
+    golden: golden/xpath-count-descendant-or-self-node.json
+
+  - id: protocol-v2/xpath-l-k-2
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#2.2", "XPath1.0#2.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "l/k[2]"
+    golden: golden/xpath-l-k-2.json
+
+  - id: protocol-v2/xpath-l-1-5
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#2.2", "XPath1.0#2.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "l[1.5]"
+    golden: golden/xpath-l-1-5.json
+
+  - id: protocol-v2/xpath-count-text
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#2.2", "XPath1.0#2.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "count(.//text())"
+    golden: golden/xpath-count-text.json
+
+  - id: protocol-v2/xpath-count-l-k-text
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#2.2", "XPath1.0#2.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "count(l/k/text())"
+    golden: golden/xpath-count-l-k-text.json
+
+  - id: protocol-v2/xpath-count-ancestor
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#2.2", "XPath1.0#2.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "count(ancestor::*)"
+    golden: golden/xpath-count-ancestor.json
+
+  - id: protocol-v2/xpath-l-ll-3
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#2.2", "XPath1.0#2.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "(l | ll)[3]"
+    golden: golden/xpath-l-ll-3.json
+
+  - id: protocol-v2/xpath-l-k-current-ref-k
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#2.2", "XPath1.0#2.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "l[k = current()/ref]/k"
+    golden: golden/xpath-l-k-current-ref-k.json
+
+  - id: protocol-v2/xpath-1-2-3-10-div-4-mod-3
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3.4", "XPath1.0#3.5"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "1 + 2 * 3 - 10 div 4 mod 3"
+    golden: golden/xpath-1-2-3-10-div-4-mod-3.json
+
+  - id: protocol-v2/xpath-7-mod-3
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3.4", "XPath1.0#3.5"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "-7 mod 3"
+    golden: golden/xpath-7-mod-3.json
+
+  - id: protocol-v2/xpath-5
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3.4", "XPath1.0#3.5"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "--'5'"
+    golden: golden/xpath-5.json
+
+  - id: protocol-v2/xpath-l-1
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3.4", "XPath1.0#3.5"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "l | 1"
+    golden: golden/xpath-l-1.json
+
+  - id: protocol-v2/xpath-0-0000001-0-0000002
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3.4", "XPath1.0#3.5"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "0.0000001 = 0.0000002"
+    golden: golden/xpath-0-0000001-0-0000002.json
+
+  - id: protocol-v2/xpath-0-div-0-1
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3.4", "XPath1.0#3.5"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "0 div 0 < 1"
+    golden: golden/xpath-0-div-0-1.json
+
+  - id: protocol-v2/xpath-0-div-0-0-div-0
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3.4", "XPath1.0#3.5"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "0 div 0 = 0 div 0"
+    golden: golden/xpath-0-div-0-0-div-0.json
+
+  - id: protocol-v2/xpath-u2-050
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3.4", "XPath1.0#3.5"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "u2 = '050'"
+    golden: golden/xpath-u2-050.json
+
+  - id: protocol-v2/xpath-dec-2-50
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3.4", "XPath1.0#3.5"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "dec = '2.50'"
+    golden: golden/xpath-dec-2-50.json
+
+  - id: protocol-v2/xpath-id-two
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3.4", "XPath1.0#3.5"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "id = 'two'"
+    golden: golden/xpath-id-two.json
+
+  - id: protocol-v2/xpath-stats-hits-05
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3.4", "XPath1.0#3.5"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "stats/hits = '05'"
+    golden: golden/xpath-stats-hits-05.json
+
+  - id: protocol-v2/xpath-true-x
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3.4", "XPath1.0#3.5"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "true() = 'x'"
+    golden: golden/xpath-true-x.json
+
+  - id: protocol-v2/xpath-ll-l-k
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3.4", "XPath1.0#3.5"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "ll != l/k"
+    golden: golden/xpath-ll-l-k.json
+
+  - id: protocol-v2/xpath-2-10
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3.4", "XPath1.0#3.5"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "'2' < '10'"
+    golden: golden/xpath-2-10.json
+
+  - id: protocol-v2/xpath-1-2-3
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3.4", "XPath1.0#3.5"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "1 < 2 < 3"
+    golden: golden/xpath-1-2-3.json
+
+  - id: protocol-v2/xpath-string-1-div-3
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#4.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "string(1 div 3)"
+    golden: golden/xpath-string-1-div-3.json
+
+  - id: protocol-v2/xpath-string-0-25
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#4.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "string(0.25)"
+    golden: golden/xpath-string-0-25.json
+
+  - id: protocol-v2/xpath-string-0-5
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#4.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "string(-0.5)"
+    golden: golden/xpath-string-0-5.json
+
+  - id: protocol-v2/xpath-string-1-div-0
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#4.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "string(1 div 0)"
+    golden: golden/xpath-string-1-div-0.json
+
+  - id: protocol-v2/xpath-string-0-div-0
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#4.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "string(0 div 0)"
+    golden: golden/xpath-string-0-div-0.json
+
+  - id: protocol-v2/xpath-number-0x1a
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#4.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "number('0x1A')"
+    golden: golden/xpath-number-0x1a.json
+
+  - id: protocol-v2/xpath-number-12
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#4.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "number(' 12')"
+    golden: golden/xpath-number-12.json
+
+  - id: protocol-v2/xpath-number-12-2
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#4.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "number('12 ')"
+    golden: golden/xpath-number-12-2.json
+
+  - id: protocol-v2/xpath-floor-1-5
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#4.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "floor(-1.5)"
+    golden: golden/xpath-floor-1-5.json
+
+  - id: protocol-v2/xpath-ceiling-1-5
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#4.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "ceiling(-1.5)"
+    golden: golden/xpath-ceiling-1-5.json
+
+  - id: protocol-v2/xpath-round-2-7
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#4.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "round(-2.7)"
+    golden: golden/xpath-round-2-7.json
+
+  - id: protocol-v2/xpath-floor-0-div-0
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#4.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "floor(0 div 0)"
+    golden: golden/xpath-floor-0-div-0.json
+
+  - id: protocol-v2/xpath-ceiling-0-div-0
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#4.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "ceiling(0 div 0)"
+    golden: golden/xpath-ceiling-0-div-0.json
+
+  - id: protocol-v2/xpath-sum-stats-hits
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#4.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "sum(stats/hits)"
+    golden: golden/xpath-sum-stats-hits.json
+
+  - id: protocol-v2/xpath-string
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#4.2", "XPath1.0#5"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "string(.)"
+    golden: golden/xpath-string.json
+
+  - id: protocol-v2/xpath-substring-12345-1-5-2-6
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#4.2", "XPath1.0#5"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "substring('12345', 1.5, 2.6)"
+    golden: golden/xpath-substring-12345-1-5-2-6.json
+
+  - id: protocol-v2/xpath-string-length
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#4.2", "XPath1.0#5"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "string-length('\u0436\u0436')"
+    golden: golden/xpath-string-length.json
+
+  - id: protocol-v2/xpath-normalize-space-a-b
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#4.2", "XPath1.0#5"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "normalize-space('  a \t b  ')"
+    golden: golden/xpath-normalize-space-a-b.json
+
+  - id: protocol-v2/xpath-translate-aaa-abc-abc
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#4.2", "XPath1.0#5"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "translate('--aaa--', 'abc-', 'ABC')"
+    golden: golden/xpath-translate-aaa-abc-abc.json
+
+  - id: protocol-v2/xpath-name-l
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#4.2", "XPath1.0#5"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "name(l)"
+    golden: golden/xpath-name-l.json
+
+  - id: protocol-v2/xpath-namespace-uri
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#4.2", "XPath1.0#5"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "namespace-uri()"
+    golden: golden/xpath-namespace-uri.json
+
+  - id: protocol-v2/xpath-last
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#4.2", "XPath1.0#5"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "last()"
+    golden: golden/xpath-last.json
+
+  - id: protocol-v2/xpath-concat-l-k-ll
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#4.2", "XPath1.0#5"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "concat(l/k, ll)"
+    golden: golden/xpath-concat-l-k-ll.json
+
+  - id: protocol-v2/xpath-deref-ref
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#10.3.1", "RFC7950#10.4.1", "RFC7950#10.5.1", "RFC7950#10.6.1", "RFC7950#10.2.1", "RFC7950#10.1.1"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "deref(ref)"
+    golden: golden/xpath-deref-ref.json
+
+  - id: protocol-v2/xpath-derived-from-id-pv2-one
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#10.3.1", "RFC7950#10.4.1", "RFC7950#10.5.1", "RFC7950#10.6.1", "RFC7950#10.2.1", "RFC7950#10.1.1"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "derived-from(id, 'pv2:one')"
+    golden: golden/xpath-derived-from-id-pv2-one.json
+
+  - id: protocol-v2/xpath-derived-from-or-self-id-pv2-two
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#10.3.1", "RFC7950#10.4.1", "RFC7950#10.5.1", "RFC7950#10.6.1", "RFC7950#10.2.1", "RFC7950#10.1.1"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "derived-from-or-self(id, 'pv2:two')"
+    golden: golden/xpath-derived-from-or-self-id-pv2-two.json
+
+  - id: protocol-v2/xpath-derived-from-id-pv2-nope
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#10.3.1", "RFC7950#10.4.1", "RFC7950#10.5.1", "RFC7950#10.6.1", "RFC7950#10.2.1", "RFC7950#10.1.1"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "derived-from(id, 'pv2:nope')"
+    golden: golden/xpath-derived-from-id-pv2-nope.json
+
+  - id: protocol-v2/xpath-enum-value-mode
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#10.3.1", "RFC7950#10.4.1", "RFC7950#10.5.1", "RFC7950#10.6.1", "RFC7950#10.2.1", "RFC7950#10.1.1"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "enum-value(mode)"
+    golden: golden/xpath-enum-value-mode.json
+
+  - id: protocol-v2/xpath-bit-is-set-flags-y
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#10.3.1", "RFC7950#10.4.1", "RFC7950#10.5.1", "RFC7950#10.6.1", "RFC7950#10.2.1", "RFC7950#10.1.1"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "bit-is-set(flags, 'y')"
+    golden: golden/xpath-bit-is-set-flags-y.json
+
+  - id: protocol-v2/xpath-re-match-x-h
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#10.3.1", "RFC7950#10.4.1", "RFC7950#10.5.1", "RFC7950#10.6.1", "RFC7950#10.2.1", "RFC7950#10.1.1"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "re-match(x, 'h.*')"
+    golden: golden/xpath-re-match-x-h.json
+
+  - id: protocol-v2/xpath-current-c-l-2-k
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#10.3.1", "RFC7950#10.4.1", "RFC7950#10.5.1", "RFC7950#10.6.1", "RFC7950#10.2.1", "RFC7950#10.1.1"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "current()/../c/l[2]/k"
+    golden: golden/xpath-current-c-l-2-k.json
+
+  # union members with identical canonical text: functions read the stored value
+
+  - id: protocol-v2/xpath-union-derived-from-or-self-id-first-pv2
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#10.4.1", "RFC7950#9.12"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2}, {name: pv2-xp}]
+      format: json
+      data_type: get
+      data_file: data/xpath-union.json
+      context_path: /pv2-xp:xp
+      xpath: "derived-from-or-self(id-first, 'pv2:two')"
+    golden: golden/xpath-union-derived-from-or-self-id-first-pv2.json
+
+  - id: protocol-v2/xpath-union-derived-from-or-self-str-first-pv2
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#10.4.1", "RFC7950#9.12"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2}, {name: pv2-xp}]
+      format: json
+      data_type: get
+      data_file: data/xpath-union.json
+      context_path: /pv2-xp:xp
+      xpath: "derived-from-or-self(str-first, 'pv2:two')"
+    golden: golden/xpath-union-derived-from-or-self-str-first-pv2.json
+
+  - id: protocol-v2/xpath-union-enum-value-en
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#10.4.1", "RFC7950#9.12"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2}, {name: pv2-xp}]
+      format: json
+      data_type: get
+      data_file: data/xpath-union.json
+      context_path: /pv2-xp:xp
+      xpath: "enum-value(en)"
+    golden: golden/xpath-union-enum-value-en.json
+
+  - id: protocol-v2/xpath-union-bit-is-set-bi-red
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#10.4.1", "RFC7950#9.12"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2}, {name: pv2-xp}]
+      format: json
+      data_type: get
+      data_file: data/xpath-union.json
+      context_path: /pv2-xp:xp
+      xpath: "bit-is-set(bi, 'red')"
+    golden: golden/xpath-union-bit-is-set-bi-red.json
+
+  # unprefixed names, text() arguments, C conversions pinned to the golden host
+
+  - id: protocol-v2/xpath-aug-count-grouped
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7951#6.4", "RFC7950#6.4.1"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}, {name: pv2-aug}]
+      format: json
+      data_type: get
+      data_file: data/xpath-aug.json
+      context_path: /pv2:c
+      xpath: "count(grouped)"
+    golden: golden/xpath-aug-count-grouped.json
+
+  - id: protocol-v2/xpath-aug-count-grouped-2
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7951#6.4", "RFC7950#6.4.1"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}, {name: pv2-aug}]
+      format: json
+      data_type: get
+      data_file: data/xpath-aug.json
+      context_path: /pv2:c
+      xpath: "count(//grouped)"
+    golden: golden/xpath-aug-count-grouped-2.json
+
+  - id: protocol-v2/xpath-aug-count-extra
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7951#6.4", "RFC7950#6.4.1"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}, {name: pv2-aug}]
+      format: json
+      data_type: get
+      data_file: data/xpath-aug.json
+      context_path: /pv2:c
+      xpath: "count(extra)"
+    golden: golden/xpath-aug-count-extra.json
+
+  - id: protocol-v2/xpath-aug-count-c-grouped
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7951#6.4", "RFC7950#6.4.1"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}, {name: pv2-aug}]
+      format: json
+      data_type: get
+      data_file: data/xpath-aug.json
+      xpath: "count(/c/grouped)"
+    golden: golden/xpath-aug-count-c-grouped.json
+
+  - id: protocol-v2/xpath-normalize-space-a-b-2
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#4.2"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "normalize-space('a\tb')"
+    golden: golden/xpath-normalize-space-a-b-2.json
+
+  - id: protocol-v2/xpath-bit-is-set-flags-text-x
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#10.6.1"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "bit-is-set(flags/text(), 'x')"
+    golden: golden/xpath-bit-is-set-flags-text-x.json
+
+  - id: protocol-v2/xpath-floor-number-1e30
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#4.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "floor(number('1e30'))"
+    golden: golden/xpath-floor-number-1e30.json
+
+  - id: protocol-v2/xpath-ceiling-number-1e30-0-5
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#4.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "ceiling(number('1e30') + 0.5)"
+    golden: golden/xpath-ceiling-number-1e30-0-5.json
+
+  - id: protocol-v2/xpath-number-1e-5000
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#4.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "number('1e-5000')"
+    golden: golden/xpath-number-1e-5000.json

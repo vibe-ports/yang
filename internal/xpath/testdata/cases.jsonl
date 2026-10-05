@@ -575,3 +575,62 @@
 {"cp":"/pv2:c","x":"bit-is-set(.., 'x')"}
 {"cp":"/pv2:c","x":"enum-value(..)"}
 {"cp":"","x":"derived-from(c/id, 'one')"}
+{"cp": "/pv2:c", "x": "ceiling(number('1e30') + 0.5)"}
+{"cp": "/pv2:c", "x": "ceiling(-number('1e30') + 0.5)"}
+{"cp": "/pv2:c", "x": "floor(number('1e30'))"}
+{"cp": "/pv2:c", "x": "floor(-number('1e30'))"}
+{"cp": "/pv2:c", "x": "round(number('1e30'))"}
+{"cp": "/pv2:c", "x": "floor(number('9223372036854775808'))"}
+{"cp": "/pv2:c", "x": "substring('abc', number('1e30'))"}
+{"cp": "/pv2:c", "x": "substring('abc', -number('1e30'))"}
+{"cp": "/pv2:c", "x": "substring('abc', 1, number('1e30'))"}
+{"cp": "/pv2:c", "x": "substring('abc', 1, 4294967297)"}
+{"cp": "/pv2:c", "x": "substring('abc', 1, 2147483648)"}
+{"cp": "/pv2:c", "x": "substring('abc', 1, 4294967298)"}
+{"cp": "/pv2:c", "x": "substring('abc', -4294967295)"}
+{"cp": "/pv2:c", "x": "ll[number('1e30')]"}
+{"cp": "/pv2:c", "x": "ll[0 div 0]"}
+{"cp": "/pv2:c", "x": "ll[18446744073709551617]"}
+{"cp": "/pv2:c", "x": "string(number('1e30'))"}
+{"cp": "/pv2:c", "x": "number('1e-400') > 0"}
+{"cp": "/pv2:c", "x": "number('1e-310') > 0"}
+{"cp": "/pv2:c", "x": "number('1e-5000')"}
+{"cp": "/pv2:c", "x": "number('1e5000')"}
+{"cp": "/pv2:c", "x": "number('1e400') > 1"}
+{"cp": "/pv2:c", "x": "number('1e-4940') > 0"}
+{"cp": "/pv2:c", "x": "number('1e-4960') > 0"}
+{"cp": "/pv2:c", "x": "number('1e4930') > 1"}
+{"cp": "/pv2:c", "x": "number('1e4935')"}
+{"cp": "/pv2:c", "x": "string(number('1e-400'))"}
+{"cp": "/pv2:c", "x": "number('1e-400') = 0"}
+{"cp": "/pv2:c", "x": "normalize-space('a\tb')"}
+{"cp": "/pv2:c", "x": "normalize-space('a  b')"}
+{"cp": "/pv2:c", "x": "normalize-space('a b ')"}
+{"cp": "/pv2:c", "x": "bit-is-set(flags/text(), 'x')"}
+{"cp": "/pv2:c", "x": "enum-value(mode/text())"}
+{"cp": "/pv2:c", "x": "deref(ref/text())"}
+{"cp": "/pv2:c", "x": "derived-from(id/text(), 'pv2:one')"}
+{"cp": "/pv2:c", "x": "floor(0.5 - 1)"}
+{"cp": "/pv2-xp:xp", "x": "derived-from-or-self(id-first, 'pv2:two')", "set": "union"}
+{"cp": "/pv2-xp:xp", "x": "derived-from-or-self(str-first, 'pv2:two')", "set": "union"}
+{"cp": "/pv2-xp:xp", "x": "derived-from(id-first, 'pv2:one')", "set": "union"}
+{"cp": "/pv2-xp:xp", "x": "id-first = str-first", "set": "union"}
+{"cp": "/pv2-xp:xp", "x": "enum-value(en)", "set": "union"}
+{"cp": "/pv2-xp:xp", "x": "bit-is-set(bi, 'red')", "set": "union"}
+{"cp": "/pv2-xp:xp", "x": "en = bi", "set": "union"}
+{"set": "aug", "cp": "/pv2:c", "x": "//*"}
+{"set": "aug", "cp": "/pv2:c", "x": "count(grouped)"}
+{"set": "aug", "cp": "/pv2:c", "x": "grouped"}
+{"set": "aug", "cp": "/pv2:c", "x": "count(//grouped)"}
+{"set": "aug", "cp": "/pv2:c", "x": "count(extra)"}
+{"set": "aug", "cp": "", "x": "count(/c/grouped)"}
+{"set": "aug", "cp": "", "x": "count(c/grouped)"}
+{"set": "aug", "cp": "/pv2:c", "x": "count(pv2-aug:grouped)"}
+{"set": "aug", "cp": "/pv2:c", "x": "count(child::grouped)"}
+{"set": "aug", "cp": "/pv2:c", "x": "string(grouped)"}
+{"set": "aug", "cp": "/pv2:c", "x": "l[k='a']"}
+{"set": "aug", "cp": "/pv2:c", "x": "count(self::node()/grouped)"}
+{"set": "aug", "cp": "/pv2:c", "x": "count(../c/grouped)"}
+{"set": "aug", "cp": "/pv2:c", "x": "grouped = 'g2'"}
+{"set": "aug", "cp": "/pv2:c", "x": "count(*[local-name() = 'grouped'])"}
+{"set": "aug", "cp": "/pv2:c", "x": "count(grouped | extra)"}
