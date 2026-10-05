@@ -4,17 +4,16 @@ on:
     tags: ["v*"]
 permissions:
   contents: write
-  packages: write
+  packages: read
 jobs:
   release:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    env:
-      SENSITIVE_PATTERNS: ${{ secrets.SENSITIVE_PATTERNS }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Tag must be semver and on main
         run: |
           [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || { echo "not semver: $GITHUB_REF_NAME"; exit 1; }
@@ -28,11 +27,7 @@ jobs:
         with:
           imageName: ghcr.io/vibe-ports/yang-dev
           cacheFrom: ghcr.io/vibe-ports/yang-dev
-          push: filter
-          refFilterForPush: refs/heads/main
-          eventFilterForPush: push
-          env: |
-            SENSITIVE_PATTERNS
+          push: never
           runCmd: make ci
       - name: GitHub release
         env:

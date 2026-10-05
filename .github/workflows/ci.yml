@@ -1,11 +1,12 @@
 name: ci
+# Generic checks only: personal sensitive-data patterns never reach CI (they stay in the
+# maintainer's local denylist and git hooks, see CONTRIBUTING.md).
 on:
   push:
     branches: [main]
   pull_request:
 permissions:
   contents: read
-  packages: write
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -13,12 +14,16 @@ jobs:
   ci:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    env:
-      SENSITIVE_PATTERNS: ${{ secrets.SENSITIVE_PATTERNS }}
+    permissions:
+      contents: read
+      packages: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          # Test the PR's exact head (what merge-pr fast-forwards), not the synthetic merge commit.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
@@ -28,9 +33,29 @@ jobs:
         with:
           imageName: ghcr.io/vibe-ports/yang-dev
           cacheFrom: ghcr.io/vibe-ports/yang-dev
-          push: filter
-          refFilterForPush: refs/heads/main
-          eventFilterForPush: push
-          env: |
-            SENSITIVE_PATTERNS
+          push: never
           runCmd: make ci
+  # Publishing the dev image is the only job with packages: write, and only for main.
+  image:
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: devcontainers/ci@513af61f4de4f75d37e4438f184ba4358f0fc1ca # v0.3.1900000450
+        with:
+          imageName: ghcr.io/vibe-ports/yang-dev
+          cacheFrom: ghcr.io/vibe-ports/yang-dev
+          push: always
+          runCmd: "true"
