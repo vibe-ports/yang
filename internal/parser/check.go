@@ -140,6 +140,7 @@ type checker struct {
 	includes  bool
 	extDefs   map[string]*Stmt // extension statements of this module
 	exts      []*Stmt          // extension instances in ctx->ext_inst order
+	ctx       *Context
 }
 
 func parentName(kw string) string {
@@ -183,6 +184,10 @@ func (c *checker) child(l *lexer, f *frame, kw string, ext bool) error {
 		return l.errf(ly.SyntaxYang, "Duplicate keyword \"%s\".", kw)
 	}
 	f.seen[kw] = true
+	if kw == "include" && p == "submodule" && c.v11 && c.ctx != nil && c.ctx.Warn != nil {
+		c.ctx.Warn("YANG version 1.1 expects all includes in main module, includes in submodules (" + f.s.Arg +
+			") are not necessary.")
+	}
 	return nil
 }
 
@@ -277,8 +282,13 @@ func (c *checker) arg(l *lexer, pf *frame, s *Stmt) error {
 		pf.seen[k] = true
 	case "include":
 		c.includes = true
-		if a == c.name {
+		if a == c.name || c.ctx != nil && c.ctx.Module != nil && c.ctx.Module(a) {
 			return l.errf(ly.Semantics, "Name collision between module and submodule of name \"%s\".", a)
+		}
+	case "belongs-to":
+		if c.ctx != nil && a != c.ctx.Main {
+			return l.errf(ly.SyntaxYang, "Submodule \"belongs-to\" value \"%s\" does not match its module name \"%s\".",
+				a, c.ctx.Main)
 		}
 	case "extension":
 		c.extDefs[a] = s
@@ -302,6 +312,15 @@ func (c *checker) close(l *lexer, pf, f *frame) error {
 				return l.errf(ly.XPath, "%s", msg)
 			}
 		}
+		if pf == nil && c.ctx != nil && c.ctx.SubmoduleOf != nil { // end of parse_module / parse_submodule
+			switch owner := c.ctx.SubmoduleOf(s.Arg); {
+			case owner == "":
+			case !c.submodule:
+				return l.errf(ly.Semantics, "Name collision between module and submodule of name \"%s\".", s.Arg)
+			case owner != c.ctx.Main:
+				return l.errf(ly.Semantics, "Name collision between submodules of name \"%s\".", s.Arg)
+			}
+		}
 		if s.Keyword == "prefix" && pf != nil { // lysp_check_prefix after parse_text_field
 			if pf.s.Keyword != "import" {
 				c.prefix = s.Arg
@@ -318,6 +337,26 @@ func (c *checker) close(l *lexer, pf, f *frame) error {
 		c.exts = appendOwned(c.exts, s, s.ExtPrefix != "")
 	}
 	return nil
+}
+
+// ExtInstances returns the extension instances of a parsed (sub)module in
+// libyang's ctx->ext_inst order (owners as they close), the order in which
+// lysp_resolve_ext_instance_records resolves them.
+func ExtInstances(root *Stmt) []*Stmt {
+	var out []*Stmt
+	var walk func(s *Stmt)
+	walk = func(s *Stmt) {
+		for _, c := range s.Subs {
+			if c.ExtPrefix != "" || s.ExtPrefix == "" { // statements libyang's parser reads
+				walk(c)
+			}
+		}
+		if (s.ExtPrefix != "" || extOwner[s.Keyword]) && len(s.Subs) > 0 {
+			out = appendOwned(out, s, s.ExtPrefix != "")
+		}
+	}
+	walk(root)
+	return out
 }
 
 // appendOwned appends the extension instances whose exts array is s's.

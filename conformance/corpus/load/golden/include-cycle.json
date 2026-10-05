@@ -1,0 +1,19 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module im {\n  namespace \"urn:im\";\n  prefix im;\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "im",
+      "revision": null,
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

@@ -1,0 +1,9 @@
+submodule xe5s {
+  belongs-to xe5 { prefix p; }
+  grouping g {
+    leaf a {
+      type string;
+      p:nodef;
+    }
+  }
+}

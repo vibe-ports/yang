@@ -1,0 +1,11 @@
+module xe3 {
+  namespace "urn:xe3";
+  prefix xe3;
+  container c {
+    leaf l {
+      type string {
+        q:bar;
+      }
+    }
+  }
+}

@@ -1,0 +1,8 @@
+module d6 {
+  namespace "urn:d6";
+  prefix d6;
+  grouping g { leaf a { type string; } }
+  container c {
+    grouping g { leaf b { type string; } }
+  }
+}

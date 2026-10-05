@@ -1,0 +1,5 @@
+module wr {
+  namespace "urn:wr";
+  prefix wr;
+  revision 2019-01-01;
+}

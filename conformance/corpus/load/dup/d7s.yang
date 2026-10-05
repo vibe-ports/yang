@@ -1,0 +1,4 @@
+submodule d7s {
+  belongs-to d7 { prefix d7; }
+  feature f;
+}

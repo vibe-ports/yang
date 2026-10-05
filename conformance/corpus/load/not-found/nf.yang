@@ -1,0 +1,5 @@
+module nf {
+  namespace "urn:nf";
+  prefix nf;
+  import missing { prefix m; }
+}

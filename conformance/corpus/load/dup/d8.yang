@@ -1,0 +1,6 @@
+module d8 {
+  namespace "urn:d8";
+  prefix d8;
+  identity i;
+  identity i;
+}

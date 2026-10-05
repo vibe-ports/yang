@@ -1,0 +1,4 @@
+submodule sx {
+  belongs-to mb { prefix mb; }
+  revision 2021-01-01;
+}

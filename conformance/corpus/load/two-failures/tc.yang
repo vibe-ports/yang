@@ -1,0 +1,9 @@
+module tc {
+  namespace "urn:tc";
+  prefix tc;
+  import tb { prefix tb; }
+  augment "/tb:top/tb:ch/tb:x" {
+    when "1";
+    leaf m { type string; mandatory true; }
+  }
+}

@@ -1,0 +1,5 @@
+submodule sc1 {
+  yang-version 1.1;
+  belongs-to mc { prefix mc; }
+  include sc2 { revision-date 2019-01-01; }
+}

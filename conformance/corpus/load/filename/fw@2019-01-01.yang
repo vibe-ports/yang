@@ -1,0 +1,5 @@
+module fw {
+  namespace "urn:fw";
+  prefix fw;
+  revision 2020-01-01;
+}

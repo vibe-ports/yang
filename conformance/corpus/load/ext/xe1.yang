@@ -1,0 +1,9 @@
+module xe1 {
+  namespace "urn:xe1";
+  prefix xe1;
+  import missing { prefix x; }
+  leaf l {
+    type string;
+    x:foo;
+  }
+}

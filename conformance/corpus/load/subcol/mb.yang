@@ -1,0 +1,5 @@
+module mb {
+  namespace "urn:mb";
+  prefix mb;
+  include sx;
+}

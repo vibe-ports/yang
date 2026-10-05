@@ -1,0 +1,4 @@
+submodule sx {
+  belongs-to ma { prefix ma; }
+  revision 2020-01-01;
+}

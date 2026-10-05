@@ -1,0 +1,4 @@
+submodule is2 {
+  belongs-to im { prefix im; }
+  include is1;
+}

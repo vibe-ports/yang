@@ -1,0 +1,12 @@
+module d11 {
+  namespace "urn:d11";
+  prefix d11;
+  rpc r {
+    input {
+      typedef y { type string; }
+      container c {
+        typedef y { type string; }
+      }
+    }
+  }
+}

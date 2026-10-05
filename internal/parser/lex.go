@@ -48,7 +48,11 @@ type Error struct {
 	Pos  Pos
 	Code ly.Code
 	Msg  string
-	err  error
+	// Module is the name of the module or submodule (Submodule set) when
+	// its argument had been read before the error (libyang's mod->name).
+	Module    string
+	Submodule bool
+	err       error
 }
 
 func (e *Error) Error() string {
@@ -116,10 +120,42 @@ type lexer struct {
 	chk    *checker
 }
 
+// ErrKind is wrapped by the error for a module where a submodule is expected
+// or the reverse (LOGERR LY_EDENIED in yang_parse_(sub)module).
+var ErrKind = errors.New("parser: unexpected module kind")
+
+// Context is what the parser of a libyang context knows about it: the checks
+// that need it run at the position libyang makes them.
+type Context struct {
+	Submodule bool   // a submodule is expected (yang_parse_submodule), else a module
+	Main      string // name of the main module a submodule must belong to
+	// Module reports a module of that name in the context (ly_ctx_get_module_latest).
+	Module func(name string) bool
+	// SubmoduleOf returns the main module of the latest submodule of that
+	// name in the context (ly_ctx_get_submodule_latest), "" when none.
+	SubmoduleOf func(name string) string
+	Warn        func(msg string) // LOGWRN against the context
+}
+
 // Parse reads one YANG module or submodule (yang_parse_module / yang_parse_submodule
 // without the context part). name is used only in error messages.
 func Parse(name string, src []byte, b *Budget) (*Stmt, error) {
-	l := &lexer{src: src, file: name, line: 1, chk: &checker{imports: map[string]string{}, extDefs: map[string]*Stmt{}}}
+	return ParseIn(nil, name, src, b)
+}
+
+// ParseIn is Parse with the context checks of ctx (nil: none).
+func ParseIn(ctx *Context, name string, src []byte, b *Budget) (*Stmt, error) {
+	l := &lexer{src: src, file: name, line: 1, chk: &checker{imports: map[string]string{}, extDefs: map[string]*Stmt{}, ctx: ctx}}
+	s, err := l.parse(b)
+	var e *Error
+	if errors.As(err, &e) {
+		e.Module, e.Submodule = l.chk.name, l.chk.submodule
+	}
+	return s, err
+}
+
+func (l *lexer) parse(b *Budget) (*Stmt, error) {
+	src, name := l.src, l.file
 	if b != nil {
 		l.b = *b
 	}
@@ -151,6 +187,15 @@ func Parse(name string, src []byte, b *Budget) (*Stmt, error) {
 	if err != nil {
 		return nil, err
 	}
+	if c := l.chk.ctx; c != nil && !ext && kw == "submodule" && !c.Submodule {
+		e := l.errf(ly.Success, "Input data contains submodule which cannot be parsed directly without its main module.")
+		e.Pos, e.err = Pos{}, ErrKind
+		return nil, e
+	} else if c != nil && !ext && kw == "module" && c.Submodule {
+		e := l.errf(ly.Success, "Input data contains module in situation when a submodule is expected.")
+		e.Pos, e.err = Pos{}, ErrKind
+		return nil, e
+	}
 	if ext || (kw != "module" && kw != "submodule") {
 		return nil, l.errf(ly.Syntax, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".", kwName(kw, ext))
 	}
@@ -167,6 +212,9 @@ func Parse(name string, src []byte, b *Budget) (*Stmt, error) {
 			rest, more = rest[:15], "..."
 		}
 		return nil, l.errf(ly.Syntax, "Trailing garbage \"%s%s\" after %s, expected end-of-input.", rest, more, kw)
+	}
+	if l.chk.ctx != nil { // the loader resolves them after the imports (lysp_resolve_ext_instance_records)
+		return s, nil
 	}
 	return s, l.chk.resolveExts(name)
 }

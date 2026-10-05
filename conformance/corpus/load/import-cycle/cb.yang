@@ -1,0 +1,5 @@
+module cb {
+  namespace "urn:cb";
+  prefix cb;
+  import ca { prefix ca; }
+}

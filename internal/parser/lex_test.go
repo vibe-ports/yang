@@ -247,3 +247,17 @@ func TestBudget(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+// TestErrorModule: the error names the (sub)module once its argument was read.
+func TestErrorModule(t *testing.T) {
+	for src, want := range map[string]Error{
+		"module m { foo; }":       {Module: "m"},
+		"submodule s { foo; }":    {Module: "s", Submodule: true},
+		"module { namespace x; }": {},
+	} {
+		var e *Error
+		if _, err := Parse("", []byte(src), nil); !errors.As(err, &e) || e.Module != want.Module || e.Submodule != want.Submodule {
+			t.Errorf("%q: %v", src, err)
+		}
+	}
+}

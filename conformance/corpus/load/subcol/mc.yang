@@ -1,0 +1,7 @@
+module mc {
+  yang-version 1.1;
+  namespace "urn:mc";
+  prefix mc;
+  include sc1;
+  include sc2 { revision-date 2020-01-01; }
+}

@@ -1,0 +1,10 @@
+module d2 {
+  namespace "urn:d2";
+  prefix d2;
+  container c {
+    typedef x { type string; }
+    container d {
+      typedef x { type string; }
+    }
+  }
+}

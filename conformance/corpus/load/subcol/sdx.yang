@@ -1,0 +1,4 @@
+submodule sdx {
+  belongs-to other { prefix o; }
+  leaf l { foo; }
+}

@@ -1,0 +1,5 @@
+submodule ie1a {
+  yang-version 1.1;
+  belongs-to ie1 { prefix ie1; }
+  include ie1b;
+}

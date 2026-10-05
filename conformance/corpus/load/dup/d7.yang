@@ -1,0 +1,6 @@
+module d7 {
+  namespace "urn:d7";
+  prefix d7;
+  include d7s;
+  feature f;
+}

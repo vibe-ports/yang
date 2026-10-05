@@ -1,0 +1,5 @@
+module xi {
+  namespace "urn:xi";
+  prefix xi;
+  extension ok;
+}

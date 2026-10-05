@@ -1,0 +1,4 @@
+submodule ie4a {
+  belongs-to ie4 { prefix ie4; }
+  include ie4b;
+}

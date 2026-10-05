@@ -1,0 +1,11 @@
+module tb {
+  namespace "urn:tb";
+  prefix tb;
+  container top {
+    choice ch {
+      default x;
+      case x { leaf x { type string; } }
+      case y { leaf y { type string; } }
+    }
+  }
+}

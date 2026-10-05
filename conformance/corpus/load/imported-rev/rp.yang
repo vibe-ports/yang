@@ -1,0 +1,5 @@
+module rp {
+  namespace "urn:rp";
+  prefix rp;
+  revision 2018-01-01;
+}

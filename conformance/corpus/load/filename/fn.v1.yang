@@ -1,0 +1,4 @@
+module fn {
+  namespace "urn:fn";
+  prefix fn;
+}

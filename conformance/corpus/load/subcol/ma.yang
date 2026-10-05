@@ -1,0 +1,5 @@
+module ma {
+  namespace "urn:ma";
+  prefix ma;
+  include sx { revision-date 2020-01-01; }
+}

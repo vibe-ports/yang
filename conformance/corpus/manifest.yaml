@@ -2927,3 +2927,148 @@ fixtures:
         - {"do": "validate", "data_type": "config"}
         - {"do": "dump", "with_defaults": "all"}
     golden: golden/when-order-b-after-a.json
+  # --- module loading (design 06 §1.2-1.4; hand-written; Go side: internal/compile load_test) ---
+  - id: load/import-cycle
+    dir: load
+    source: *own
+    rfc: ["RFC7950#7.1.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [import-cycle]
+      modules: [{name: ca}]
+    golden: golden/import-cycle.json
+
+  - id: load/include-cycle
+    dir: load
+    source: *own
+    rfc: []   # libyang accepts a YANG 1.0 include cycle between submodules; no RFC rule on cycles
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [include-cycle]
+      modules: [{name: im}]
+    golden: golden/include-cycle.json
+
+  - id: load/wrong-revision-file
+    dir: load
+    source: *own
+    rfc: ["RFC7950#5.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [wrong-rev]
+      modules: [{name: wr, revision: "2020-01-01"}]
+    golden: golden/wrong-revision-file.json
+
+  - id: load/imported-rev-binding
+    dir: load
+    source: *own
+    rfc: ["RFC7950#7.1.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [imported-rev]
+      modules: [{name: ia}, {name: r, revision: "2020-01-01"}, {name: ib}, {name: r}, {name: rp}]
+    golden: golden/imported-rev-binding.json
+
+  - id: load/filename-warning
+    dir: load
+    source: *own
+    rfc: ["RFC7950#5.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [filename]
+      modules: [{name: fw}, {name: fn}, {name: ro}]
+    golden: golden/filename-warning.json
+
+  - id: load/import-not-found
+    dir: load
+    source: *own
+    rfc: ["RFC7950#7.1.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [not-found]
+      modules: [{name: nf}, {name: nope}]
+    golden: golden/import-not-found.json
+
+  - id: load/symlink-dir
+    dir: load
+    source: *own
+    rfc: []   # libyang search-directory walk follows a symlinked directory; no RFC rule
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [symlink]
+      modules: [{name: sd}]
+    golden: golden/symlink-dir.json
+
+  - id: load/symlink-file
+    dir: load
+    source: *own
+    rfc: []   # libyang search-directory walk takes a symlinked file; no RFC rule
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [symlink]
+      modules: [{name: sf}]
+    golden: golden/symlink-file.json
+
+  - id: load/dup-typedef-scopes
+    dir: load
+    source: *own
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#7.12"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [dup]
+      modules: [{name: d1}, {name: d2}, {name: d3}, {name: d4}, {name: d5}, {name: d6}, {name: d7}, {name: d8},
+        {name: d9}, {name: d10}, {name: d11}]
+    golden: golden/dup-typedef-scopes.json
+
+  - id: load/include-errors
+    dir: load
+    source: *own
+    rfc: ["RFC7950#7.1.6", "RFC7950#7.2.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [include]
+      modules: [{name: ie1}, {name: ie2}, {name: ie3}, {name: ie4}, {name: ie1a}]
+    golden: golden/include-errors.json
+
+  - id: load/submodule-collisions
+    dir: load
+    source: *own
+    rfc: ["RFC7950#7.1.6", "RFC7950#7.2.2", "RFC7950#5.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [subcol]
+      modules: [{name: ma}, {name: mb}, {name: mc}, {name: md}]
+    golden: golden/submodule-collisions.json
+
+  - id: load/ext-instance-resolution
+    dir: load
+    source: *own
+    rfc: ["RFC7950#7.19", "RFC7950#6.3.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [ext]
+      modules: [{name: xe1}, {name: xe2}, {name: xe3}, {name: xe4}, {name: xe5}, {name: xe6}, {name: xe7},
+        {name: xe8}]
+    golden: golden/ext-instance-resolution.json
+
+  - id: load/two-failures
+    dir: load
+    source: *own
+    rfc: ["RFC7950#7.9.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [two-failures]
+      modules: [{name: tb}, {name: tc}]
+    golden: golden/two-failures.json

@@ -1,0 +1,11 @@
+module xe8 {
+  namespace "urn:xe8";
+  prefix xe8;
+  extension a {
+    argument v;
+  }
+  xe8:a "x";
+  container c {
+    xe8:a "y";
+  }
+}

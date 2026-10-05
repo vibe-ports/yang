@@ -1,0 +1,5 @@
+module d1 {
+  namespace "urn:d1";
+  prefix d1;
+  typedef int8 { type string; }
+}

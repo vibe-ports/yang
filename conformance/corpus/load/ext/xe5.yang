@@ -1,0 +1,5 @@
+module xe5 {
+  namespace "urn:xe5";
+  prefix xe5;
+  include xe5s;
+}

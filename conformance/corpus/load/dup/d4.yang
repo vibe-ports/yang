@@ -1,0 +1,6 @@
+module d4 {
+  namespace "urn:d4";
+  prefix d4;
+  include d4s;
+  typedef x { type string; }
+}

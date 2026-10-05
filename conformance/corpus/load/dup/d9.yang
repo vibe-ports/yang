@@ -1,0 +1,8 @@
+module d9 {
+  namespace "urn:d9";
+  prefix d9;
+  container c {
+    typedef x { type string; }
+    typedef x { type int8; }
+  }
+}

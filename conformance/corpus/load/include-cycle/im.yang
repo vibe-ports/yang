@@ -1,0 +1,5 @@
+module im {
+  namespace "urn:im";
+  prefix im;
+  include is1;
+}

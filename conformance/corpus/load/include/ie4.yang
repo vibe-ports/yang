@@ -1,0 +1,6 @@
+module ie4 {
+  namespace "urn:ie4";
+  prefix ie4;
+  include ie4a;
+  typedef x { type string; }
+}

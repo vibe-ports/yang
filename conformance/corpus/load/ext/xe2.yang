@@ -1,0 +1,7 @@
+module xe2 {
+  namespace "urn:xe2";
+  prefix xe2;
+  container c {
+    xe2:undef;
+  }
+}

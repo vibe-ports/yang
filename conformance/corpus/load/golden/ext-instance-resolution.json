@@ -1,0 +1,213 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Loading \"missing@<any>\" module failed, not found.",
+          "phase": "parse",
+          "schema_path": null,
+          "vecode": 4,
+          "vecode_name": "LYVE_REFERENCE"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 12,
+            "name": "LY_EOTHER"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Parsing module \"xe1\" failed.",
+          "phase": "parse",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "name": "xe1",
+      "phase": "parse"
+    },
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Extension definition of extension instance \"xe2:undef\" not found.",
+          "phase": "parse",
+          "schema_path": "/xe2:c/{ext-inst='xe2:undef'}",
+          "vecode": 4,
+          "vecode_name": "LYVE_REFERENCE"
+        }
+      ],
+      "name": "xe2",
+      "phase": "parse"
+    },
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Invalid prefix \"q\" used for extension instance identifier.",
+          "phase": "parse",
+          "schema_path": "/xe3:{type='string'}/{ext-inst='q:bar'}",
+          "vecode": 4,
+          "vecode_name": "LYVE_REFERENCE"
+        }
+      ],
+      "name": "xe3",
+      "phase": "parse"
+    },
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Extension instance \"xe4:e\" missing argument \"name\".",
+          "phase": "parse",
+          "schema_path": "/xe4:{ext-inst='xe4:e'}",
+          "vecode": 6,
+          "vecode_name": "LYVE_SEMANTICS"
+        }
+      ],
+      "name": "xe4",
+      "phase": "parse"
+    },
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Extension definition of extension instance \"p:nodef\" not found.",
+          "phase": "parse",
+          "schema_path": "/xe5:{grouping='g'}/a/{ext-inst='p:nodef'}",
+          "vecode": 4,
+          "vecode_name": "LYVE_REFERENCE"
+        }
+      ],
+      "name": "xe5",
+      "phase": "parse"
+    },
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Extension definition of extension instance \"i:nope\" not found.",
+          "phase": "parse",
+          "schema_path": "/xe6:{description}/{ext-inst='i:nope'}",
+          "vecode": 4,
+          "vecode_name": "LYVE_REFERENCE"
+        }
+      ],
+      "name": "xe6",
+      "phase": "parse"
+    },
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Extension definition of extension instance \"xe7:nodef\" not found.",
+          "phase": "parse",
+          "schema_path": "/xe7:l/{key}/{ext-inst='xe7:nodef'}",
+          "vecode": 4,
+          "vecode_name": "LYVE_REFERENCE"
+        }
+      ],
+      "name": "xe7",
+      "phase": "parse"
+    },
+    {
+      "accepted": true,
+      "compiled": "module xe8 {\n  namespace \"urn:xe8\";\n  prefix xe8;\n\n  xe8:a \"x\";\n\n  container c {\n    xe8:a \"y\";\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "xe8",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": "y",
+              "module": "xe8",
+              "name": "a"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "xe8",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/xe8:c",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

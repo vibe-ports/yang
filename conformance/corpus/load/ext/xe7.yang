@@ -1,0 +1,10 @@
+module xe7 {
+  namespace "urn:xe7";
+  prefix xe7;
+  list l {
+    key k {
+      xe7:nodef;
+    }
+    leaf k { type string; }
+  }
+}

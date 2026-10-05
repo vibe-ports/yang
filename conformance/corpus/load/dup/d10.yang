@@ -1,0 +1,6 @@
+module d10 {
+  namespace "urn:d10";
+  prefix d10;
+  grouping g { leaf a { type string; } }
+  grouping g { leaf b { type string; } }
+}

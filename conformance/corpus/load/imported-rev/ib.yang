@@ -1,0 +1,6 @@
+module ib {
+  namespace "urn:ib";
+  prefix ib;
+  import r { prefix r; }
+  leaf l { type r:t; }
+}

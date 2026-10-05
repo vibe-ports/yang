@@ -1,0 +1,6 @@
+module r {
+  namespace "urn:r";
+  prefix r;
+  revision 2020-01-01;
+  typedef t { type int8; }
+}

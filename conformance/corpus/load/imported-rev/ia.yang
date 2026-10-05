@@ -1,0 +1,5 @@
+module ia {
+  namespace "urn:ia";
+  prefix ia;
+  import r { prefix r; }
+}

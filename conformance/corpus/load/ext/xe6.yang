@@ -1,0 +1,11 @@
+module xe6 {
+  namespace "urn:xe6";
+  prefix xe6;
+  import xi { prefix i; }
+  container c {
+    i:ok;
+    description "d" {
+      i:nope;
+    }
+  }
+}

@@ -1,0 +1,8 @@
+module xe4 {
+  namespace "urn:xe4";
+  prefix xe4;
+  extension e {
+    argument name;
+  }
+  xe4:e;
+}

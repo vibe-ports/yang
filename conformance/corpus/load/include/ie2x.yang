@@ -1,0 +1,3 @@
+submodule ie2x {
+  belongs-to other { prefix other; }
+}

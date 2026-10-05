@@ -1,0 +1,5 @@
+module sf {
+  namespace "urn:sf";
+  prefix sf;
+  leaf l { type string; }
+}

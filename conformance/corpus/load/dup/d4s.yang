@@ -1,0 +1,4 @@
+submodule d4s {
+  belongs-to d4 { prefix d4; }
+  typedef x { type int8; }
+}

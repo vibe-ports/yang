@@ -1,0 +1,5 @@
+module ie2 {
+  namespace "urn:ie2";
+  prefix ie2;
+  include ie2x;
+}

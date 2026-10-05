@@ -1,0 +1,4 @@
+submodule ie4b {
+  belongs-to ie4 { prefix ie4; }
+  typedef x { type int8; }
+}

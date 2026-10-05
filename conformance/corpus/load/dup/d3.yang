@@ -1,0 +1,8 @@
+module d3 {
+  namespace "urn:d3";
+  prefix d3;
+  typedef x { type string; }
+  container c {
+    typedef x { type string; }
+  }
+}

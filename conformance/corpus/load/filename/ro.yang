@@ -1,0 +1,7 @@
+module ro {
+  namespace "urn:ro";
+  prefix ro;
+  revision 2019-01-01;
+  revision 2020-01-01;
+  revision 2020-01-01;
+}

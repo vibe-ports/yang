@@ -1,0 +1,5 @@
+module sd {
+  namespace "urn:sd";
+  prefix sd;
+  leaf l { type string; }
+}

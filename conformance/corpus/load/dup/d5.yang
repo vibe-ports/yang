@@ -1,0 +1,10 @@
+module d5 {
+  namespace "urn:d5";
+  prefix d5;
+  grouping g {
+    grouping h { leaf a { type string; } }
+    container c {
+      grouping h { leaf b { type string; } }
+    }
+  }
+}
