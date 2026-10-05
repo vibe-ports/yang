@@ -1486,3 +1486,285 @@ fixtures:
       data_type: config
       data: '<c xmlns="urn:vibe-ports:yang:conformance:pv2"><mode>on</mode><any><foo xmlns="urn:b">1</foo></any></c>'
     golden: golden/anydata-xml-ns-b.json
+
+  # ---- types: built-in type edge cases (internal/types, M1-4); messages checked in Go tests ----
+
+  - id: types/int-bounds-before-garbage
+    dir: types
+    source: *own
+    rfc: ["RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty"><i8>300 x</i8></c>'
+    golden: golden/int-bounds-before-garbage.json
+
+  - id: types/int-hex-in-xml
+    dir: types
+    source: *own
+    rfc: ["RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty"><i32>0x01</i32></c>'
+    golden: golden/int-hex-in-xml.json
+
+  - id: types/int64-overflow
+    dir: types
+    source: *own
+    rfc: ["RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty"><i64>9223372036854775808</i64></c>'
+    golden: golden/int64-overflow.json
+
+  - id: types/uint64-minus-one
+    dir: types
+    source: *own
+    rfc: ["RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty"><u64>-1</u64></c>'
+    golden: golden/uint64-minus-one.json
+
+  - id: types/uint64-minus-zero
+    dir: types
+    source: *own
+    rfc: ["RFC7950#9.2.2"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty"><u64>-0</u64></c>'
+    golden: golden/uint64-minus-zero.json
+
+  - id: types/dec64-overflow
+    dir: types
+    source: *own
+    rfc: ["RFC7950#9.3.1"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty"><d18>10</d18></c>'
+    golden: golden/dec64-overflow.json
+
+  - id: types/dec64-point-end
+    dir: types
+    source: *own
+    rfc: ["RFC7950#9.3.1"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty"><d1>2.</d1></c>'
+    golden: golden/dec64-point-end.json
+
+  - id: types/dec64-canonical
+    dir: types
+    source: *own
+    rfc: ["RFC7950#9.3.2"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty"><d1> +8.00 </d1></c>'
+    golden: golden/dec64-canonical.json
+
+  - id: types/string-invert-match
+    dir: types
+    source: *own
+    rfc: ["RFC7950#9.4.6"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty"><s>xab</s></c>'
+    golden: golden/string-invert-match.json
+
+  - id: types/string-length
+    dir: types
+    source: *own
+    rfc: ["RFC7950#9.4.4"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty"><s>abcdef</s></c>'
+    golden: golden/string-length.json
+
+  - id: types/bits-duplicate
+    dir: types
+    source: *own
+    rfc: ["RFC7950#9.7.4"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty"><bt>ten two ten</bt></c>'
+    golden: golden/bits-duplicate.json
+
+  - id: types/bits-canonical
+    dir: types
+    source: *own
+    rfc: ["RFC7950#9.7.2"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty"><bt> ten  two </bt></c>'
+    golden: golden/bits-canonical.json
+
+  - id: types/binary-padding
+    dir: types
+    source: *own
+    rfc: ["RFC7950#9.8.2"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty"><bin>Y===</bin></c>'
+    golden: golden/binary-padding.json
+
+  - id: types/binary-length
+    dir: types
+    source: *own
+    rfc: ["RFC7950#9.8.1"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty"><bin>MTIzNA==</bin></c>'
+    golden: golden/binary-length.json
+
+  - id: types/json-int8-string
+    dir: types
+    source: *own
+    rfc: ["RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: json
+      data_type: config
+      data: '{"ty:c":{"i8":"5"}}'
+    golden: golden/json-int8-string.json
+
+  - id: types/json-int64-number
+    dir: types
+    source: *own
+    rfc: ["RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: json
+      data_type: config
+      data: '{"ty:c":{"i64":5}}'
+    golden: golden/json-int64-number.json
+
+  - id: types/json-dec64-number
+    dir: types
+    source: *own
+    rfc: ["RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: json
+      data_type: config
+      data: '{"ty:c":{"d1":2.5}}'
+    golden: golden/json-dec64-number.json
+
+  - id: types/json-bool-string
+    dir: types
+    source: *own
+    rfc: ["RFC7951#6.3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: json
+      data_type: config
+      data: '{"ty:c":{"b":"true"}}'
+    golden: golden/json-bool-string.json
+
+  - id: types/json-empty-string
+    dir: types
+    source: *own
+    rfc: ["RFC7951#6.9"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: json
+      data_type: config
+      data: '{"ty:c":{"e":""}}'
+    golden: golden/json-empty-string.json
+
+  - id: types/json-valid
+    dir: types
+    source: *own
+    rfc: ["RFC7951#6.1", "RFC7951#6.9"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: json
+      data_type: config
+      data: '{"ty:c":{"i8":5,"i64":"-9223372036854775808","u64":"18446744073709551615","d18":"-9.223372036854775808","b":true,"e":[null],"en":"black","bt":"ten two","bin":"YQ=="}}'
+    golden: golden/json-valid.json
