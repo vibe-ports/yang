@@ -1,3 +1,5 @@
+| src/path.c | ly_path_compile_leafref, _ly_path_compile (lref), ly_path_compile_snode, ly_path_compile_predicate_leafref | types.CompileLeafref, leafrefCompiler.compile, .snode, .predicate | ported | Go unit tests (types/path_test.go); oracle fixtures lref/* are C7 follow-ups (need the compiler) | format schema-resolved only; no extension nodes; an any-node context falls back to the module top level as libyang does; predicates checked, not compiled |
+| src/path.c | ly_path_compile_deref, ly_path_compile_deref_type, ly_path_append | leafrefCompiler.deref, .derefType, append | ported | Go unit tests | LY_CTX_LEAFREF_EXTENDED only; nested leafref compiled with the outer prefix data as libyang; errors of skipped union members are not logged |
 # Port map: libyang v5.8.6 → Go
 
 One row per ported libyang function. Status: `ported` · `partial` · `replaced` (different Go design,
