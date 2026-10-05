@@ -1,3 +1,4 @@
+{"arch":"amd64"}
 {"cp":"","x":"//*","result":{"type":"node-set","nodes":["/pv2:c","/pv2:c/mode","/pv2:c/x","/pv2:c/u","/pv2:c/dec","/pv2:c/id","/pv2:c/l[k='a']","/pv2:c/l[k='a']/k","/pv2:c/l[k='b']","/pv2:c/l[k='b']/k","/pv2:c/l[k='c']","/pv2:c/l[k='c']/k","/pv2:c/stats[1]","/pv2:c/stats[1]/hits","/pv2:c/stats[2]","/pv2:c/stats[2]/hits","/pv2:c/grouped","/pv2:c/ref","/pv2:c/u2","/pv2:c/ll[.='x']","/pv2:c/ll[.='y']","/pv2:c/ll[.='z']","/pv2:c/flags"]}}
 {"cp":"","x":"count(//*)","result":{"type":"number","value":23}}
 {"cp":"","x":"count(//.)","result":{"type":"number","value":24}}
@@ -347,11 +348,11 @@
 {"cp":"/pv2:c","x":"string(0.00001)","result":{"type":"string","value":"0.0"}}
 {"cp":"/pv2:c","x":"string(-123.456)","result":{"type":"string","value":"-123.5"}}
 {"cp":"/pv2:c","x":"string(9007199254740993)","result":{"type":"string","value":"9007199254740993"}}
-{"cp":"/pv2:c","x":"string(0.15)","result":{"type":"string","value":"0.1"}}
-{"cp":"/pv2:c","x":"string(0.45)","result":{"type":"string","value":"0.5"}}
-{"cp":"/pv2:c","x":"string(1.05)","result":{"type":"string","value":"1.1"}}
+{"cp":"/pv2:c","x":"string(0.15)","result":{"type":"string","value":"0.2"}}
+{"cp":"/pv2:c","x":"string(0.45)","result":{"type":"string","value":"0.4"}}
+{"cp":"/pv2:c","x":"string(1.05)","result":{"type":"string","value":"1.0"}}
 {"cp":"/pv2:c","x":"string(2.675)","result":{"type":"string","value":"2.7"}}
-{"cp":"/pv2:c","x":"string(99.95)","result":{"type":"string","value":"100.0"}}
+{"cp":"/pv2:c","x":"string(99.95)","result":{"type":"string","value":"99.9"}}
 {"cp":"/pv2:c","x":"string(-0.05)","result":{"type":"string","value":"-0.1"}}
 {"cp":"/pv2:c","x":"string(1000000000000000000000000)","result":{"type":"string","value":"1000000000000000000000000.0"}}
 {"cp":"/pv2:c","x":"string(9223372036854775807)","result":{"type":"string","value":"9223372036854775807"}}
@@ -370,11 +371,11 @@
 {"cp":"/pv2:c","x":"string(-0 * 1)","result":{"type":"string","value":"0"}}
 {"cp":"/pv2:c","x":"boolean(-0)","result":{"type":"boolean","value":false}}
 {"cp":"/pv2:c","x":"0.0000004 = 0","result":{"type":"boolean","value":true}}
-{"cp":"/pv2:c","x":"0.0000005 = 0","result":{"type":"boolean","value":true}}
+{"cp":"/pv2:c","x":"0.0000005 = 0","result":{"type":"boolean","value":false}}
 {"cp":"/pv2:c","x":"0.0000006 = 0.000001","result":{"type":"boolean","value":true}}
 {"cp":"/pv2:c","x":"1000000.0000001 = 1000000","result":{"type":"boolean","value":true}}
 {"cp":"/pv2:c","x":"1e3 = 1000","error":{"err":"LY_EVALID","msg":"Invalid character 'e'[2] of expression '1e3 = 1000'.","vecode":"LYVE_XPATH"}}
-{"cp":"/pv2:c","x":"100000000000000000000 = 100000000000000000001","result":{"type":"boolean","value":false}}
+{"cp":"/pv2:c","x":"100000000000000000000 = 100000000000000000001","result":{"type":"boolean","value":true}}
 {"cp":"/pv2:c","x":"sum(ll)","result":{"type":"number","value":"NaN"}}
 {"cp":"/pv2:c","x":"number(l)","result":{"type":"number","value":"NaN"}}
 {"cp":"/pv2:c","x":"count(//ll | //l)","result":{"type":"number","value":6}}

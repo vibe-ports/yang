@@ -37,8 +37,11 @@ make -C conformance/oracle                         # LIBYANG_PREFIX=/opt/homebre
 
 The pins live in the repo-root `Dockerfile` (stage `libyang`), which records them in
 `/opt/libyang/BUILDINFO` inside the dev image.
-Architecture is whatever docker builds for (arm64 on Apple silicon); outputs are not expected to
-differ by arch, but goldens were produced on arm64.
+The canonical architecture is **linux/amd64** (CI and typical deployments): libyang computes XPath
+numbers in C `long double`, 80-bit x87 on amd64 but 128-bit on arm64, so e.g. `string(0.15)` differs.
+Produce goldens and `internal/xpath/testdata/oracle-pv2.jsonl` with
+`DEV_PLATFORM=linux/amd64 ./dev make oracle-golden` (and `… ./dev go test -tags oracle ./internal/xpath/
+-run Oracle -update`); on Apple silicon this runs under emulation.
 
 ## Common request fields
 

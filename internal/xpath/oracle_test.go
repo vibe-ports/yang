@@ -18,6 +18,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -107,6 +108,15 @@ func compact(t *testing.T, b []byte) json.RawMessage {
 // TestOracleLive asks libyang about every case and compares with the stored
 // results (or rewrites them with -update), then replays them against Go.
 func TestOracleLive(t *testing.T) {
+	if runtime.GOARCH != oracleArch {
+		// libyang computes in long double, whose width depends on the host
+		// (80-bit x87 on amd64, 128-bit on arm64): string(0.15) differs.
+		if *update {
+			t.Fatalf("regenerate on %s: DEV_PLATFORM=linux/%s ./dev go test -tags oracle ./internal/xpath/ -run Oracle -update", oracleArch, oracleArch)
+		}
+		t.Logf("live libyang comparison skipped: the canonical oracle runs on %s, this is %s (stored results are replayed by TestCompileOracle)", oracleArch, runtime.GOARCH)
+		return
+	}
 	bin := lyoracle(t)
 	var live []oracleCase
 	for _, c := range readCases(t, "cases.jsonl") {
@@ -114,6 +124,7 @@ func TestOracleLive(t *testing.T) {
 	}
 	if *update {
 		var buf bytes.Buffer
+		buf.WriteString(`{"arch":"` + runtime.GOARCH + `"}` + "\n")
 		for _, c := range live {
 			b, err := json.Marshal(c)
 			if err != nil {
