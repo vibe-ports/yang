@@ -1,0 +1,5 @@
+module iu1 {
+  namespace "urn:iu1";
+  prefix iu1;
+  identity a { base nope; }
+}

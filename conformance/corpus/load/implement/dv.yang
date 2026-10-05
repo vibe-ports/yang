@@ -1,0 +1,6 @@
+module dv {
+  namespace "urn:dv";
+  prefix dv;
+  import tg { prefix t; }
+  deviation "/t:c" { deviate not-supported; }
+}

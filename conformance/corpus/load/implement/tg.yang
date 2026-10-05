@@ -1,0 +1,5 @@
+module tg {
+  namespace "urn:tg";
+  prefix tg;
+  container c;
+}

@@ -1,0 +1,6 @@
+module fu2 {
+  yang-version 1.1;
+  namespace "urn:fu2";
+  prefix fu2;
+  feature a { if-feature "x or y"; }
+}

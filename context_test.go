@@ -34,3 +34,22 @@ func TestContextLoad(t *testing.T) {
 		t.Errorf("s: %v %+v", err, diags)
 	}
 }
+
+func TestContextLoadFeatures(t *testing.T) {
+	dir := fstest.MapFS{"f.yang": {Data: []byte(`module f { namespace urn:f; prefix f; feature a { if-feature b; } feature b; }`)}}
+	ctx, _, err := yang.NewContext(yang.Options{}, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	diags, err := ctx.Load("f", "", []string{"x"})
+	if err == nil || len(diags) != 1 || diags[0].Phase != "parse" || diags[0].Err != "LY_EINVAL" {
+		t.Errorf("unknown feature: %v %+v", err, diags)
+	}
+	diags, err = ctx.Load("f", "", []string{"a"})
+	if err == nil || len(diags) != 1 || diags[0].Phase != "compile" || diags[0].Err != "LY_EDENIED" {
+		t.Errorf("if-feature not satisfied: %v %+v", err, diags)
+	}
+	if diags, err := ctx.Load("f", "", []string{"*"}); err != nil {
+		t.Errorf("all: %v %+v", err, diags)
+	}
+}

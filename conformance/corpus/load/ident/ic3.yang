@@ -1,0 +1,7 @@
+module ic3 {
+  namespace "urn:ic3";
+  prefix ic3;
+  identity a;
+  identity b;
+  identity c { base a; base b; }
+}

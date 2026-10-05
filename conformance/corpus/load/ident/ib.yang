@@ -1,0 +1,7 @@
+module ib {
+  namespace "urn:ib";
+  prefix ib;
+  import ibase { prefix b; }
+  identity d { base b:root; }
+  identity e { base d; }
+}

@@ -1,0 +1,5 @@
+module ibase {
+  namespace "urn:ibase";
+  prefix ibase;
+  identity root;
+}

@@ -1,0 +1,6 @@
+module fu3 {
+  namespace "urn:fu3";
+  prefix fu3;
+  feature a { if-feature "q:b"; }
+  feature b;
+}

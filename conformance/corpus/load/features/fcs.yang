@@ -1,0 +1,4 @@
+submodule fcs {
+  belongs-to fc { prefix fc; }
+  feature sub { if-feature own; }
+}

@@ -1,0 +1,7 @@
+module fc3 {
+  namespace "urn:fc3";
+  prefix fc3;
+  feature a { if-feature b; }
+  feature b { if-feature c; }
+  feature c { if-feature a; }
+}

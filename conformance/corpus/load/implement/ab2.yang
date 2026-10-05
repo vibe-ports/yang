@@ -1,0 +1,6 @@
+module ab2 {
+  namespace "urn:ab2";
+  prefix ab2;
+  import tg { prefix t; }
+  augment "t:c" { leaf x { type string; } }
+}

@@ -1,0 +1,5 @@
+module dvu {
+  namespace "urn:dvu";
+  prefix dvu;
+  import dv { prefix d; }
+}

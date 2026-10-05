@@ -154,12 +154,13 @@ created* are removed from the context; then the previous state is recompiled wit
 sets `to_compile`). Reproduced by astra with three loads of one module `m` (features `a` with
 `if-feature b`, and `b`): (1) `features: []` → accepted, all off; (2) `features: [a]` → compile fails
 `Feature "a" cannot be enabled …` — `a` stays enabled in the parsed module and `m` stays `to_compile`;
-(3) `features: null` ("untouched") → fails again with the same error. Our snapshot model therefore
-copies on write everything *except* the parsed feature flags (and `to_compile`) of modules that were
-already implemented before the failed `Load`: those changes survive the rollback, exactly as above.
-Whether the revert's own recompilation logs an internal error, and what the feature dump of `m`
-shows after (2), is VERIFY(load/feature-rollback-3load) — the fixture is a three-module-entry
-`schema` request (`m` three times) comparing per-entry verdict, diagnostics and the final dump. An
+(3) `features: null` ("untouched") → fails again with the same error. C1b therefore ports
+`lys_unres_glob_revert` in place rather than restoring a copy-on-write snapshot: the parsed feature
+flags (and `to_compile`) of modules that were already implemented before the failed `Load` survive
+the rollback by construction, exactly as above (publishing an immutable snapshot to readers is C8's,
+§4). Fixture load/feature-rollback-3load (closed): (2) and (3) fail with the same error, no
+internal error is logged (nothing newly implemented, so no recompilation), and the final dump shows
+`a` enabled. An
 atomic rollback would be friendlier, but it changes observable verdicts, so it is not done (no
 deviation). Fixtures: load/two-failures (an older module that now fails
 is reported under the new module's load), load/warning-once (a "Locally scoped grouping not used"

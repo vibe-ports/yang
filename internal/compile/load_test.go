@@ -13,8 +13,7 @@ import (
 	"github.com/vibe-ports/yang/internal/parser"
 )
 
-// TestReadBudget: a module file larger than Parse.MaxBytes is not read whole;
-// setting features is C1b's.
+// TestReadBudget: a module file larger than Parse.MaxBytes is not read whole.
 func TestReadBudget(t *testing.T) {
 	dir := t.TempDir()
 	write(t, dir, "big.yang", "module big { namespace urn:big; prefix big; }"+string(make([]byte, 40000)))
@@ -24,9 +23,6 @@ func TestReadBudget(t *testing.T) {
 	}
 	if _, _, err := c.Load("big", "", nil); !errors.Is(err, ErrBudget) {
 		t.Fatalf("got %v", err)
-	}
-	if _, _, err := c.Load("big", "", []string{}); !errors.Is(err, ErrUnsupported) {
-		t.Fatalf("features: got %v", err)
 	}
 }
 
@@ -72,11 +68,17 @@ type goldenDiag struct {
 }
 
 type goldenModule struct {
-	Name        string       `json:"name"`
-	Accepted    bool         `json:"accepted"`
-	Phase       string       `json:"phase"`
-	Revision    *string      `json:"revision"`
-	Diagnostics []goldenDiag `json:"diagnostics"`
+	Name        string          `json:"name"`
+	Accepted    bool            `json:"accepted"`
+	Phase       string          `json:"phase"`
+	Revision    *string         `json:"revision"`
+	Diagnostics []goldenDiag    `json:"diagnostics"`
+	Features    []goldenFeature `json:"features"`
+}
+
+type goldenFeature struct {
+	Name    string `json:"name"`
+	Enabled bool   `json:"enabled"`
 }
 
 func (d Diagnostic) golden() goldenDiag {
@@ -89,29 +91,47 @@ func (d Diagnostic) golden() goldenDiag {
 }
 
 // TestLoadGoldens loads the modules of the conformance/corpus/load fixtures in
-// order and compares the parse phase with libyang's: verdict, every
-// diagnostic (message and line included) and the loaded revision.
+// order and compares them with libyang: verdict, every diagnostic (message
+// and line included) and the loaded revision. Fixtures marked full are
+// decided by the code ported so far in both phases (no node compile), so
+// their compile phase and enabled features are compared too; the others
+// only in the parse phase.
 func TestLoadGoldens(t *testing.T) {
 	fixtures := []struct {
 		id, dir string
 		revs    map[string]string // requested revision per module name
+		feats   map[int][]string  // features per module entry (missing: nil)
+		full    bool
 	}{
-		{"import-cycle", "import-cycle", nil},
-		{"include-cycle", "include-cycle", nil},
-		{"wrong-revision-file", "wrong-rev", map[string]string{"wr": "2020-01-01"}},
-		{"imported-rev-binding", "imported-rev", nil}, // r@2020-01-01 is the second module, see below
-		{"filename-warning", "filename", nil},
-		{"import-not-found", "not-found", nil},
-		{"symlink-dir", "symlink", nil},
-		{"symlink-file", "symlink", nil},
-		{"dup-typedef-scopes", "dup", nil},
-		{"include-errors", "include", nil},
-		{"submodule-collisions", "subcol", nil},
-		{"ext-instance-resolution", "ext", nil},
-		{"two-failures", "two-failures", nil},
+		{"import-cycle", "import-cycle", nil, nil, false},
+		{"include-cycle", "include-cycle", nil, nil, false},
+		{"wrong-revision-file", "wrong-rev", map[string]string{"wr": "2020-01-01"}, nil, false},
+		{"imported-rev-binding", "imported-rev", nil, nil, false}, // r@2020-01-01 is the second module, see below
+		{"filename-warning", "filename", nil, nil, false},
+		{"import-not-found", "not-found", nil, nil, false},
+		{"symlink-dir", "symlink", nil, nil, false},
+		{"symlink-file", "symlink", nil, nil, false},
+		{"dup-typedef-scopes", "dup", nil, nil, false},
+		{"include-errors", "include", nil, nil, false},
+		{"submodule-collisions", "subcol", nil, nil, false},
+		{"ext-instance-resolution", "ext", nil, nil, false},
+		{"two-failures", "two-failures", nil, nil, false},
+		{"feature-not-found", "features", nil, map[int][]string{0: {"x"}}, true},
+		{"feature-not-satisfied", "features", nil, map[int][]string{0: {"a"}}, true},
+		{"feature-rollback-3load", "features", nil, map[int][]string{0: {}, 1: {"a"}}, true},
+		{"feature-first-iffeature-only", "features", nil, map[int][]string{0: {"a", "b"}}, true},
+		{"feature-iff-prefixed", "features", nil, map[int][]string{0: {"*"}}, true},
+		{"iff-feature-cycle", "iff", nil, nil, true},
+		{"iff-unknown-feature", "iff", nil, nil, true},
+		{"ident-cycle", "ident", nil, nil, true},
+		{"ident-unknown-base", "ident", nil, nil, true},
+		{"augment-implements-target", "implement", nil, nil, true},
+		{"augment-nodeid-errors", "implement", nil, nil, true},
+		{"deviation-import-only", "implement", nil, nil, true},
+		{"../../compile/golden/errpath-submodule-identity", "../compile/schemas", nil, nil, false},
 	}
 	for _, f := range fixtures {
-		t.Run(f.id, func(t *testing.T) {
+		t.Run(filepath.Base(f.id), func(t *testing.T) {
 			b, err := os.ReadFile(filepath.Join(corpus, "load", "golden", f.id+".json"))
 			if err != nil {
 				t.Fatal(err)
@@ -129,10 +149,10 @@ func TestLoadGoldens(t *testing.T) {
 				if f.id == "imported-rev-binding" && i == 1 {
 					rev = "2020-01-01"
 				}
-				m, diags, err := c.Load(gm.Name, rev, nil)
+				m, diags, err := c.Load(gm.Name, rev, f.feats[i])
 				var want []goldenDiag
 				for _, d := range gm.Diagnostics {
-					if d.Phase == "parse" {
+					if f.full || d.Phase == "parse" {
 						want = append(want, d)
 					}
 				}
@@ -140,17 +160,32 @@ func TestLoadGoldens(t *testing.T) {
 				for _, d := range diags {
 					got = append(got, d.golden())
 				}
-				if (err != nil) != (gm.Phase == "parse") {
-					t.Errorf("%s: err %v, golden phase %q", gm.Name, err, gm.Phase)
+				if f.full && (err == nil) != gm.Accepted || !f.full && (err != nil) != (gm.Phase == "parse") {
+					t.Errorf("%s: err %v, golden accepted %v phase %q", gm.Name, err, gm.Accepted, gm.Phase)
 				}
 				if js(got) != js(want) {
 					t.Errorf("%s diagnostics:\n got %s\nwant %s", gm.Name, js(got), js(want))
 				}
-				if err == nil && gm.Accepted && gm.Revision != nil && m.Revision != *gm.Revision {
+				if err != nil || !gm.Accepted {
+					continue
+				}
+				if gm.Revision != nil && m.Revision != *gm.Revision {
 					t.Errorf("%s: revision %q, golden %q", gm.Name, m.Revision, *gm.Revision)
 				}
 				if f.id == "imported-rev-binding" && gm.Name == "ib" && m.Imports[0].Revision != "2021-01-01" {
 					t.Errorf("ib imports r@%s, want the IMPORTED_REV module r@2021-01-01", m.Imports[0].Revision)
+				}
+			}
+			// the oracle dumps the parsed feature flags (lys_feature_value) after the last load
+			for _, gm := range g.Modules {
+				if m := c.implemented(gm.Name); f.full && gm.Accepted && m != nil {
+					fs := []goldenFeature{}
+					for _, x := range m.features {
+						fs = append(fs, goldenFeature{x.p.Name, x.enabled})
+					}
+					if js(fs) != js(gm.Features) {
+						t.Errorf("%s features %s, golden %s", gm.Name, js(fs), js(gm.Features))
+					}
 				}
 			}
 		})

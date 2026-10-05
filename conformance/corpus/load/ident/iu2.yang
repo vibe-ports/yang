@@ -1,0 +1,5 @@
+module iu2 {
+  namespace "urn:iu2";
+  prefix iu2;
+  identity a { base q:b; }
+}

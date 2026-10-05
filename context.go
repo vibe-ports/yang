@@ -25,6 +25,9 @@ type Options struct {
 	NoYangLibrary     bool // LY_CTX_NO_YANGLIBRARY
 	DisableSearchdirs bool // LY_CTX_DISABLE_SEARCHDIRS
 	PreferSearchdirs  bool // LY_CTX_PREFER_SEARCHDIRS: search directories before Loader
+	// EnableImportFeatures enables all features of modules that become
+	// implemented implicitly (LY_CTX_ENABLE_IMP_FEATURES).
+	EnableImportFeatures bool
 	// Loader supplies modules and submodules not found otherwise (libyang's
 	// import callback): the YANG text of module@revision, or of its submodule
 	// when submodule is not empty; ok false when it has none. It is called
@@ -72,7 +75,7 @@ type Context struct {
 func NewContext(opts Options, dirs ...fs.FS) (*Context, []Diagnostic, error) {
 	c, diags, err := compile.NewContext(compile.Options{AllImplemented: opts.AllImplemented,
 		NoYangLibrary: opts.NoYangLibrary, DisableSearchdirs: opts.DisableSearchdirs,
-		PreferSearchdirs: opts.PreferSearchdirs, Loader: opts.Loader, MaxSearchDirs: opts.MaxSearchDirs,
+		PreferSearchdirs: opts.PreferSearchdirs, EnableImportFeatures: opts.EnableImportFeatures, Loader: opts.Loader, MaxSearchDirs: opts.MaxSearchDirs,
 		Parse: parser.Budget(opts.ParseBudget)}, dirs...)
 	if err != nil {
 		return nil, convert(diags), err
@@ -81,10 +84,13 @@ func NewContext(opts Options, dirs ...fs.FS) (*Context, []Diagnostic, error) {
 }
 
 // Load loads module name (the newest available revision when revision is
-// empty) with its imports and includes and marks it implemented. On error
-// the context is unchanged except where libyang keeps changes too.
-// features nil leaves the features untouched; setting them and compiling
-// are not ported yet (design 06 C1b): non-nil features fail with ErrUnsupported.
+// empty) with its imports and includes, implements it with the features and
+// compiles the context. features nil leaves the module's features untouched
+// (all disabled for a newly implemented module), an empty list disables
+// all, ["*"] enables all, otherwise exactly the listed ones are enabled. On
+// error the context is unchanged except where libyang keeps changes too
+// (the features of a module implemented before). Compiling schema nodes is
+// not ported yet (design 06 C4a).
 func (x *Context) Load(name, revision string, features []string) ([]Diagnostic, error) {
 	x.mu.Lock()
 	defer x.mu.Unlock()

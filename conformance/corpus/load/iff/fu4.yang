@@ -1,0 +1,7 @@
+module fu4 {
+  namespace "urn:fu4";
+  prefix fu4;
+  feature a { if-feature "b and c"; }
+  feature b;
+  feature c;
+}

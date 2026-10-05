@@ -1,0 +1,80 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Unable to find base (nope) of identity \"a\".",
+          "phase": "parse",
+          "schema_path": "/iu1:{identity='a'}",
+          "vecode": 2,
+          "vecode_name": "LYVE_SYNTAX_YANG"
+        }
+      ],
+      "name": "iu1",
+      "phase": "parse"
+    },
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Invalid prefix used for base (q:b) of identity \"a\".",
+          "phase": "parse",
+          "schema_path": "/iu2:{identity='a'}",
+          "vecode": 2,
+          "vecode_name": "LYVE_SYNTAX_YANG"
+        }
+      ],
+      "name": "iu2",
+      "phase": "parse"
+    },
+    {
+      "accepted": true,
+      "compiled": "module ib {\n  namespace \"urn:ib\";\n  prefix ib;\n\n  identity d {\n    derived e;\n  }\n\n  identity e {\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [
+        {
+          "bases": [
+            "ibase:root"
+          ],
+          "derived": [
+            "ib:e"
+          ],
+          "name": "ib:d"
+        },
+        {
+          "bases": [
+            "ib:d"
+          ],
+          "derived": [],
+          "name": "ib:e"
+        }
+      ],
+      "name": "ib",
+      "revision": null,
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

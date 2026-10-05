@@ -1,0 +1,6 @@
+module fc2 {
+  namespace "urn:fc2";
+  prefix fc2;
+  feature a { if-feature b; }
+  feature b { if-feature a; }
+}

@@ -1,0 +1,5 @@
+module ic1 {
+  namespace "urn:ic1";
+  prefix ic1;
+  identity a { base a; }
+}

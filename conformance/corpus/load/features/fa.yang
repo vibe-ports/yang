@@ -1,0 +1,6 @@
+module fa {
+  namespace "urn:fa";
+  prefix fa;
+  feature a { if-feature b; }
+  feature b;
+}

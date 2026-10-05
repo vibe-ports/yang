@@ -1,0 +1,6 @@
+module ic2 {
+  namespace "urn:ic2";
+  prefix ic2;
+  identity a { base b; }
+  identity b { base a; }
+}

@@ -1,0 +1,75 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Invalid schema-nodeid nametest - prefix \"q\" not defined in module \"ab1\".",
+          "phase": "parse",
+          "schema_path": "/ab1:{augment='/q:c'}",
+          "vecode": 4,
+          "vecode_name": "LYVE_REFERENCE"
+        }
+      ],
+      "name": "ab1",
+      "phase": "parse"
+    },
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Invalid absolute-schema-nodeid value \"t:c\" - \"/\" expected instead of \"t:c\".",
+          "phase": "parse",
+          "schema_path": "/ab2:{augment='t:c'}",
+          "vecode": 4,
+          "vecode_name": "LYVE_REFERENCE"
+        }
+      ],
+      "name": "ab2",
+      "phase": "parse"
+    },
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Invalid absolute-schema-nodeid value \"/t:c/\" - unexpected end of expression.",
+          "phase": "parse",
+          "schema_path": "/ab3:{augment='/t:c/'}",
+          "vecode": 4,
+          "vecode_name": "LYVE_REFERENCE"
+        }
+      ],
+      "name": "ab3",
+      "phase": "parse"
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

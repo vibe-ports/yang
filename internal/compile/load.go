@@ -34,6 +34,9 @@ type Options struct {
 	NoYangLibrary     bool // LY_CTX_NO_YANGLIBRARY
 	DisableSearchdirs bool // LY_CTX_DISABLE_SEARCHDIRS
 	PreferSearchdirs  bool // LY_CTX_PREFER_SEARCHDIRS
+	// EnableImportFeatures enables all features of modules implemented
+	// implicitly (LY_CTX_ENABLE_IMP_FEATURES).
+	EnableImportFeatures bool
 	// Loader is the import callback (ly_module_imp_clb): YANG text of the
 	// module (submodule "" ) or of the submodule, ok false when it has none.
 	// It runs inside Load and must not call back into the Context.
@@ -110,6 +113,13 @@ type Module struct {
 	Name, Revision, Namespace string
 	Implemented               bool
 	latest                    uint8
+	// Schema is the lys_module part made at parse time (identities,
+	// submodules, imports) and, once compiled, the lysc_module part.
+	Schema      *schema.Module
+	features    []*feature // lysp_feature_next order
+	augmentedBy []*Module  // modules with top-level augments of this one
+	toCompile   bool
+	compiled    bool
 }
 
 // Submodule is a parsed submodule (struct lysp_submodule).
@@ -134,11 +144,17 @@ type Context struct {
 	dirs    []fs.FS
 	Modules []*Module // ctx->modules, in insertion order
 	diags   []Diagnostic
+	phase   string // of the diagnostics logged now
 	// per Load (lys_glob_unres)
-	creating, implementing []*Module
-	nodes                  int        // schema nodes compiled (Budget.MaxNodes)
-	types                  int        // compiled types and union member slots (Budget.MaxTypes)
-	typeCache              *typeCache // compiled typedefs (design 06 §2.3), created by the first compile
+	creating, implementing, compiling []*Module
+	sets                              [][]*Module // dep_sets
+	unresHook                         func(*Context) error
+	nodes                             int        // schema nodes compiled (Budget.MaxNodes)
+	types                             int        // compiled types and union member slots (Budget.MaxTypes)
+	typeCache                         *typeCache // compiled typedefs (design 06 §2.3), created by the first compile
+	// nodeWalk turns on the node walk (compileNodes) in compile; off until
+	// design 06 C4b and C6 make the internal modules compile
+	nodeWalk bool
 }
 
 // internal_modules[] of context.c.
@@ -171,7 +187,7 @@ func NewContext(opts Options, dirs ...fs.FS) (*Context, []Diagnostic, error) {
 		opts.Parse.MaxBytes = 64 << 20 // the parser's default
 	}
 	c := &Context{opts: Options{AllImplemented: opts.AllImplemented, MaxSearchDirs: opts.MaxSearchDirs, Parse: opts.Parse},
-		dirs: []fs.FS{models.Libyang}}
+		dirs: []fs.FS{models.Libyang}, phase: "parse"}
 	n := len(internalModules)
 	if opts.NoYangLibrary {
 		n -= 2
@@ -179,12 +195,17 @@ func NewContext(opts Options, dirs ...fs.FS) (*Context, []Diagnostic, error) {
 	for _, im := range internalModules[:n] {
 		m, err := c.parseLoad(im.name, im.rev)
 		if err == nil && (im.implemented || opts.AllImplemented) {
-			err = c.implement(m)
+			err = c.implement(m, nil)
 		}
-		if err != nil {
+		if err != nil && !errors.Is(err, errRecompile) {
 			return nil, c.diags, err
 		}
 	}
+	c.phase = "compile" // the oracle's ly_ctx_compile after ly_ctx_new
+	if err := c.compileCtx(); err != nil {
+		return nil, c.diags, err
+	}
+	c.creating, c.implementing, c.compiling, c.sets = nil, nil, nil, nil
 	diags := c.diags
 	c.opts, c.diags = opts, nil
 	c.dirs = append(c.dirs, dirs...)
@@ -194,45 +215,31 @@ func NewContext(opts Options, dirs ...fs.FS) (*Context, []Diagnostic, error) {
 	return c, diags, nil
 }
 
-// Load is the parse phase of ly_ctx_load_module: lys_parse_load and
-// implementing the module. On error the modules created or implemented by
-// this call are reverted (lys_unres_glob_revert); other flag changes stay,
-// as in libyang. features nil leaves them untouched; setting features is
-// not ported yet (design 06 C1b) and fails with ErrUnsupported.
+// Load is ly_ctx_load_module under LY_CTX_EXPLICIT_COMPILE followed by
+// ly_ctx_compile, as the oracle runs them: phase "parse" loads the module
+// and implements it with the features (nil leaves them untouched, an empty
+// list disables all, "*" enables all), phase "compile" compiles the dep
+// sets. On error the modules created or implemented by this call are
+// reverted (lys_unres_glob_revert); other changes (feature flags of a module
+// implemented before) stay, as in libyang.
 func (c *Context) Load(name, rev string, features []string) (*Module, []Diagnostic, error) {
-	if features != nil {
-		return nil, nil, fmt.Errorf("%w: setting features (design 06 C1b)", ErrUnsupported)
-	}
-	c.diags, c.creating, c.implementing = nil, nil, nil
+	c.diags, c.creating, c.implementing, c.compiling, c.sets = nil, nil, nil, nil, nil
 	c.nodes, c.types = 0, 0
+	c.phase = "parse"
 	m, err := c.parseLoad(name, rev)
-	if err == nil && !m.Implemented { // _lys_set_implemented
-		err = c.implement(m)
-		for i := 0; err == nil && c.opts.AllImplemented && i < len(c.creating); i++ {
-			if !c.creating[i].Implemented {
-				err = c.implement(c.creating[i])
-			}
-		}
+	if err == nil {
+		err = c.setImplemented(m, features)
+	}
+	if err == nil {
+		c.phase = "compile"
+		err = c.compileCtx()
 	}
 	if err != nil {
-		for _, m := range c.implementing {
-			m.Implemented = false
-		}
-		c.Modules = slices.DeleteFunc(c.Modules, func(m *Module) bool { return slices.Contains(c.creating, m) })
-		return nil, c.diags, err
+		c.revert()
+		m = nil
 	}
-	return m, c.diags, nil
-}
-
-// implement is the loader part of lys_implement.
-func (c *Context) implement(m *Module) error {
-	if o := c.implemented(m.Name); o != nil {
-		return c.logErr(eDenied, "Module \"%s@%s\" is already implemented in revision \"%s\".",
-			m.Name, orNone(m.Revision), orNone(o.Revision))
-	}
-	m.Implemented = true
-	c.implementing = append(c.implementing, m)
-	return nil
+	c.creating, c.implementing, c.compiling, c.sets = nil, nil, nil, nil
+	return m, c.diags, err
 }
 
 func orNone(s string) string {
@@ -245,25 +252,25 @@ func orNone(s string) string {
 // --- logging (LOGVAL, LOGERR, LOGWRN) ---
 
 func (c *Context) logVal(code ly.Code, line int, format string, a ...any) error {
-	d := Diagnostic{Phase: "parse", Level: LevelError, Err: string(eValid), Code: code, Line: line, Msg: fmt.Sprintf(format, a...)}
+	d := Diagnostic{Phase: c.phase, Level: LevelError, Err: string(eValid), Code: code, Line: line, Msg: fmt.Sprintf(format, a...)}
 	c.diags = append(c.diags, d)
 	return eValid
 }
 
 // logPath is LOGVAL with a log location path (ly_log_location), no line.
 func (c *Context) logPath(code ly.Code, path, format string, a ...any) error {
-	d := Diagnostic{Phase: "parse", Level: LevelError, Err: string(eValid), Code: code, SchemaPath: path, Msg: fmt.Sprintf(format, a...)}
+	d := Diagnostic{Phase: c.phase, Level: LevelError, Err: string(eValid), Code: code, SchemaPath: path, Msg: fmt.Sprintf(format, a...)}
 	c.diags = append(c.diags, d)
 	return eValid
 }
 
 func (c *Context) logErr(err error, format string, a ...any) error {
-	c.diags = append(c.diags, Diagnostic{Phase: "parse", Level: LevelError, Err: rcName(err), Msg: fmt.Sprintf(format, a...)})
+	c.diags = append(c.diags, Diagnostic{Phase: c.phase, Level: LevelError, Err: rcName(err), Msg: fmt.Sprintf(format, a...)})
 	return err
 }
 
 func (c *Context) warn(format string, a ...any) {
-	c.diags = append(c.diags, Diagnostic{Phase: "parse", Level: LevelWarning, Err: "LY_SUCCESS", Msg: fmt.Sprintf(format, a...)})
+	c.diags = append(c.diags, Diagnostic{Phase: c.phase, Level: LevelWarning, Err: "LY_SUCCESS", Msg: fmt.Sprintf(format, a...)})
 }
 
 // --- context lookups (context.c) ---
@@ -508,6 +515,11 @@ func (c *Context) parseModule(src []byte, d loadData) (m *Module, err error) {
 	name = st.Arg
 	m = &Module{Name: st.Arg, Namespace: pm.Namespace, pmod: pmod{Parsed: pm}}
 	m.Revision = c.lastRevision(pm.Revisions, "module", m.Name)
+	m.Schema = &schema.Module{Name: m.Name, Revision: m.Revision, Namespace: m.Namespace, Prefix: pm.Prefix,
+		Version: schema.Version1}
+	if pm.Version == "1.1" {
+		m.Schema.Version = schema.Version11
+	}
 	latest := c.latest(m.Name)
 	switch {
 	case latest == nil:
@@ -545,6 +557,21 @@ func (c *Context) parseModule(src []byte, d loadData) (m *Module, err error) {
 	}
 	if err := c.checkDups(p); err != nil {
 		return nil, err
+	}
+	// P0: features, identities and submodules (extension definitions have
+	// nothing to compile without plugins)
+	collectFeatures(m)
+	if err := c.compileFeatureIffeatures(m); err != nil {
+		return nil, err
+	}
+	if err := c.compileIdentities(m); err != nil {
+		return nil, err
+	}
+	for u, imp := range pm.Imports {
+		m.Schema.Imports = append(m.Schema.Imports, schema.Import{Prefix: imp.Prefix, Module: m.Imports[u].Schema})
+	}
+	for _, inc := range m.Includes { // lys_compile_submodules
+		m.Schema.Submodules = append(m.Schema.Submodules, schema.Submodule{Name: inc.Sub.Name, Revision: inc.Sub.Revision})
 	}
 	return m, nil
 }

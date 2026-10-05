@@ -1,0 +1,7 @@
+module fb {
+  namespace "urn:fb";
+  prefix fb;
+  feature a { if-feature b; if-feature c; }
+  feature b;
+  feature c;
+}

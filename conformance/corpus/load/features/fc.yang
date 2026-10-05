@@ -1,0 +1,7 @@
+module fc {
+  namespace "urn:fc";
+  prefix fc;
+  import fa { prefix x; }
+  include fcs;
+  feature own { if-feature "x:b"; }
+}

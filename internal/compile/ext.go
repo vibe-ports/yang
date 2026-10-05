@@ -5,6 +5,7 @@
 package compile
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/vibe-ports/yang/internal/ly"
@@ -22,6 +23,7 @@ func (c *Context) resolveExts(p *pctx) error {
 	for _, s := range p.done {
 		pms = append(pms, &s.pmod)
 	}
+	var unsupported error
 	for _, pm := range pms {
 		parent := map[*parser.Stmt]*parser.Stmt{}
 		var link func(s *parser.Stmt)
@@ -55,9 +57,37 @@ func (c *Context) resolveExts(p *pctx) error {
 				}
 				return c.logPath(ly.Semantics, path(), "Extension instance \"%s\" missing argument %s\"%s\".", name, elem, a.Arg)
 			}
+			if u := unsupportedPlugin(mod, e.Keyword); u != "" && unsupported == nil {
+				unsupported = fmt.Errorf("%w: extension instance %s of %s (%s)", ErrUnsupported, name, mod.Name, u)
+			}
 		}
 	}
-	return nil
+	// the second loop of lysp_resolve_ext_instance_records: plugin parse
+	// callbacks (annotation and NACM are design 06 C4b's)
+	return unsupported
+}
+
+// unsupportedPlugins are the libyang extension plugins (plugins.c) that are
+// not ported: an instance makes the load fail (design 06 §2.17). The
+// revision "" matches any (lyplg_record_find).
+var unsupportedPlugins = []struct{ module, revision, name, id string }{
+	{"ietf-restconf", "2017-01-26", "yang-data", "U-0023"},
+	{"ietf-yang-structure-ext", "2020-06-17", "structure", "U-0023"},
+	{"ietf-yang-structure-ext", "2020-06-17", "augment-structure", "U-0023"},
+	{"ietf-yang-schema-mount", "2019-01-14", "mount-point", "U-0024"},
+	{"openconfig-extensions", "", "regexp-posix", "U-0025"},
+	{"openconfig-extensions", "", "posix-pattern", "U-0025"},
+}
+
+// unsupportedPlugin returns the deviation id of the plugin of extension
+// name defined in m (lyplg_ext_plugin_find with m's name and revision).
+func unsupportedPlugin(m *Module, name string) string {
+	for _, p := range unsupportedPlugins {
+		if p.module == m.Name && p.name == name && (p.revision == "" || p.revision == m.Revision) {
+			return p.id
+		}
+	}
+	return ""
 }
 
 // prefixModule is ly_schema_resolve_prefix for the (sub)module pm of main.
