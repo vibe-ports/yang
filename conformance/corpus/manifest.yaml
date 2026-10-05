@@ -2094,3 +2094,17 @@ fixtures:
       data_type: config
       data: '<c xmlns="urn:vibe-ports:ty3"><mac>DB:BA:12:54:fa:00</mac><uuid>f81D4fAE-7dec-11d0-A765-00a0c91E6BF6</uuid></c>'
     golden: golden/hex-lowercase.json
+
+  - id: types/dt-minus-half-hour
+    dir: types
+    source: *own
+    rfc: ["RFC6991#3"]   # libyang applies "-00:30" as +00:30, mirrored; see D-0026
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty3}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty3"><dt>2005-05-25T12:00:00-00:30</dt></c>'
+    golden: golden/dt-minus-half-hour.json

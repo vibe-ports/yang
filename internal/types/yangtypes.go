@@ -7,6 +7,7 @@ package types
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"time"
 )
@@ -46,7 +47,7 @@ func storeDateAndTime(a *storeArgs, oldRev bool) (Value, *Diag) {
 	}
 	dt, msg := timeStr2Time(a.lex)
 	if msg != "" { // ly_err_new(err, LY_EINVAL, 0, ...): no validation error code
-		return Value{}, &Diag{Code: "LYVE_SUCCESS", Msg: msg}
+		return Value{}, &Diag{Code: CodeNone, Msg: msg}
 	}
 	if strings.HasSuffix(a.lex, "-00:00") || !oldRev && strings.HasSuffix(a.lex, "Z") {
 		dt.unknownTZ = true
@@ -64,17 +65,51 @@ func storeDateAndTime(a *storeArgs, oldRev bool) (Value, *Diag) {
 		if oldRev {
 			tz = "-00:00"
 		}
-		v.canon = time.Unix(dt.unix, 0).UTC().Format("2006-01-02T15:04:05") + frac + tz
-	} else { // ly_time_time2str: the host's local time zone, like libyang
-		t := time.Unix(dt.unix, 0).In(time.Local)
+		v.canon = formatTime(time.Unix(dt.unix, 0).UTC(), frac) + tz
+	} else {
+		// libyang ly_time_time2str prints in the host's local zone (localtime_r); we print in
+		// dateTimeZone, UTC unless a test changes it (D-0025).
+		t := time.Unix(dt.unix, 0).In(dateTimeZone)
 		_, off := t.Zone()
 		h, m := off/3600, off/60%60
 		if m < 0 {
 			m = -m
 		}
-		v.canon = t.Format("2006-01-02T15:04:05") + frac + fmt.Sprintf("%+03d:%02d", h, m)
+		v.canon = formatTime(t, frac) + fmt.Sprintf("%+03d:%02d", h, m)
 	}
 	return v, nil
+}
+
+// dateTimeZone is the zone known-offset date-and-time values are printed in. Always UTC; the
+// libyang unit tests assume UTC-2, so the ported tests switch it (D-0025).
+var dateTimeZone = time.UTC
+
+// formatTime prints like libyang's "%04d-%02d-%02dT%02d:%02d:%02d" (years below 1000 and
+// negative years as printf does, e.g. "0000", "-001").
+func formatTime(t time.Time, frac string) string {
+	return fmt.Sprintf("%04d-%02d-%02dT%02d:%02d:%02d%s", t.Year(), int(t.Month()), t.Day(), t.Hour(), t.Minute(), t.Second(), frac)
+}
+
+// cStrtol is C strtol(s, &end, 10): leading space, sign, digits, LONG_MIN/LONG_MAX on overflow;
+// end is 0 (the start) when no digits were read.
+func cStrtol(s string) (int64, int) {
+	t := trimCSpace(s)
+	mag, neg, end, ok := cStrtou(t, 10)
+	if end == 0 {
+		return 0, 0
+	}
+	end += len(s) - len(t)
+	switch {
+	case neg && (!ok || mag > 1<<63):
+		return math.MinInt64, end
+	case !neg && (!ok || mag > math.MaxInt64):
+		return math.MaxInt64, end
+	case neg && mag == 1<<63:
+		return math.MinInt64, end
+	case neg:
+		return -int64(mag), end //nolint:gosec // mag < 2^63 checked above
+	}
+	return int64(mag), end //nolint:gosec // mag <= MaxInt64 checked above
 }
 
 // cAtoi is C atoi: optional space and sign, then digits.
@@ -140,19 +175,16 @@ func timeStr2Time(v string) (*dateTime, string) {
 	if i < len(v) {
 		rest = v[i:]
 	}
-	mag, neg, end, _ := cStrtou(trimCSpace(rest), 10)
-	shift := int64(mag) //nolint:gosec // bounded below
-	if neg {
-		shift = -shift
-	}
+	shift, end := cStrtol(rest)
 	if shift > 23 || shift < -23 {
 		return nil, fmt.Sprintf("Invalid date-and-time timezone hour \"%d\".", shift)
 	}
-	after := trimCSpace(rest)[end:]
+	after := rest[end:]
 	if after == "" || after[0] != ':' {
 		return nil, fmt.Sprintf("Invalid date-and-time timezone hour \"%s\".", rest)
 	}
-	shiftM := int64(cAtoi(after[1:]))
+	// "-00:30": the sign is taken from the hour value, so libyang applies +00:30 (D-0026).
+	shiftM, _ := cStrtol(after[1:])
 	if shiftM < 0 || shiftM > 59 {
 		return nil, fmt.Sprintf("Invalid date-and-time timezone minutes \"%d\".", shiftM)
 	}

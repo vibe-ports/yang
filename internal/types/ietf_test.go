@@ -6,7 +6,6 @@ package types
 
 import (
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -47,12 +46,12 @@ func ietfTypes(yangRev string) map[string]*schema.Type {
 
 const dateAndTimePattern = `[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\.[0-9]+)?(Z|[\+\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?`
 
-// withLocal runs f with the local time zone set (libyang prints known-offset date-and-time
-// values in the host's zone; the C tests run with UTC-2).
+// withLocal runs f with known-offset date-and-time values printed in loc (libyang prints them
+// in the host's zone and its C tests run with UTC-2; ours is always UTC, D-0025).
 func withLocal(loc *time.Location, f func()) {
-	old := time.Local
-	time.Local = loc
-	defer func() { time.Local = old }()
+	old := dateTimeZone
+	dateTimeZone = loc
+	defer func() { dateTimeZone = old }()
 	f()
 }
 
@@ -84,6 +83,7 @@ func TestInetTypes(t *testing.T) {
 		{"ipv6-single-zero", "ipv6-address", "1:0:2:3:4:5:6:7", "1:0:2:3:4:5:6:7", ""},
 		{"ipv6-bad", "ipv6-address", "1:::2", "", `Failed to store IPv6 address "1:::2".`},
 		{"ipv6-v4", "ipv6-address-no-zone", "1.2.3.4", "", `Failed to store IPv6 address "1.2.3.4".`},
+		{"ipv4-nul (D-0027)", "ipv4-address", "1.2.3.4\x00junk", "", "Failed to store IPv4 address \"1.2.3.4\x00junk\"."},
 	}
 	for _, c := range cases {
 		v, d := Store(ts[c.typedef], c.lex, FormatXML, HintData, nil, nil)
@@ -172,13 +172,14 @@ func TestOracleGoldensIETF(t *testing.T) {
 	cases := map[string][][2]string{
 		"inet-canonical": {{"ip", "2008:15:0:0:0:0:feAC:1"}, {"v4", "192.168.0.1%12"}, {"v6", "FAAC:21:011:Da85::87:daaF%1"},
 			{"v6nz", "::0102:0304"}, {"p4", "12.1.58.4/8"}, {"p6", "::C:D:E:f:a/110"}, {"ipp", "2000:A:B:C:D:E:f:a/16"}},
-		"inet-mapped":     {{"v6", "1:0:0:2:0:0:3:4"}, {"v6nz", "::FFFF:1.2.3.4"}},
-		"inet-bad-v4":     {{"v4", "192.168.0.333"}},
-		"inet-bad-v6":     {{"v6nz", "1:::2"}},
-		"dt-known-zone":   {{"dt", "2005-05-25T23:15:15.88888+04:30"}},
-		"dt-unknown-zone": {{"dt", "2021-02-29T00:00:00-00:00"}},
-		"dt-pattern":      {{"dt", "2023-16-15T20:13:01+01:00"}},
-		"hex-lowercase":   {{"mac", "DB:BA:12:54:fa:00"}, {"uuid", "f81D4fAE-7dec-11d0-A765-00a0c91E6BF6"}},
+		"inet-mapped":        {{"v6", "1:0:0:2:0:0:3:4"}, {"v6nz", "::FFFF:1.2.3.4"}},
+		"inet-bad-v4":        {{"v4", "192.168.0.333"}},
+		"inet-bad-v6":        {{"v6nz", "1:::2"}},
+		"dt-known-zone":      {{"dt", "2005-05-25T23:15:15.88888+04:30"}},
+		"dt-unknown-zone":    {{"dt", "2021-02-29T00:00:00-00:00"}},
+		"dt-pattern":         {{"dt", "2023-16-15T20:13:01+01:00"}},
+		"dt-minus-half-hour": {{"dt", "2005-05-25T12:00:00-00:30"}},
+		"hex-lowercase":      {{"mac", "DB:BA:12:54:fa:00"}, {"uuid", "f81D4fAE-7dec-11d0-A765-00a0c91E6BF6"}},
 	}
 	withLocal(time.UTC, func() {
 		for id, cs := range cases {
@@ -207,9 +208,6 @@ func FuzzIETF(f *testing.F) {
 		f.Add(s)
 	}
 	ts := ietfTypes("2025-12-22")
-	old := time.Local
-	time.Local = time.FixedZone("", 5*3600+30*60) // whole minutes: local mean time offsets do not print
-	f.Cleanup(func() { time.Local = old })
 	names := []string{"ip-address", "ip-address-no-zone", "ip-prefix", "date-and-time", "hex-string", "uuid"}
 	f.Fuzz(func(t *testing.T, lex string) {
 		for _, n := range names {
@@ -219,10 +217,40 @@ func FuzzIETF(f *testing.F) {
 					continue
 				}
 				v2, d := Store(ts[n], v.Canonical(), FormatXML, HintData, nil, nil)
-				if d == nil && v2.Canonical() != v.Canonical() && !strings.HasPrefix(v.Canonical(), "0000") {
+				if d == nil && v2.Canonical() != v.Canonical() {
 					t.Fatalf("%s: %q -> %q -> %q", n, lex, v.Canonical(), v2.Canonical())
 				}
 			}
 		}
 	})
+}
+
+// TestDateAndTimeEdges: UTC output by default, libyang's "-00:30" sign quirk, printf-style years
+// and strtol clamping of the zone hour.
+func TestDateAndTimeEdges(t *testing.T) {
+	dt := ietfTypes("2025-12-22")["date-and-time"]
+	cases := []struct{ lex, canon, err string }{
+		{"2005-05-25T23:15:15.88888+04:30", "2005-05-25T18:45:15.88888+00:00", ""}, // D-0025
+		{"2005-05-25T12:00:00-00:30", "2005-05-25T11:30:00+00:00", ""},             // D-0026: applied as +00:30
+		{"2005-05-25T12:00:00-01:30", "2005-05-25T13:30:00+00:00", ""},
+		{"0000-01-01T00:00:00Z", "0000-01-01T00:00:00Z", ""},
+		{"0000-01-01T00:00:00+01:00", "-001-12-31T23:00:00+00:00", ""},
+	}
+	for _, c := range cases {
+		v, d := Store(dt, c.lex, FormatXML, HintData, nil, nil)
+		if d != nil || v.Canonical() != c.canon {
+			t.Errorf("%s: %v %q, want %q", c.lex, d, v.Canonical(), c.canon)
+		}
+	}
+	// the pattern rejects these; the parser behind it (StoreOnly) clamps like strtol
+	for lex, want := range map[string]string{
+		"2005-05-25T12:00:00+99999999999999999999:00": `Invalid date-and-time timezone hour "9223372036854775807".`,
+		"2005-05-25T12:00:00-99999999999999999999:00": `Invalid date-and-time timezone hour "-9223372036854775808".`,
+		"2005-05-25T12:00:00+01:99999999999999999999": `Invalid date-and-time timezone minutes "9223372036854775807".`,
+		"2005-05-25T12:00:00+01":                      `Invalid date-and-time timezone hour "+01".`,
+	} {
+		if _, d := StoreOnly(dt, lex, FormatXML, HintData, nil, nil); d == nil || d.Msg != want || d.Code != CodeNone {
+			t.Errorf("%s: %v, want %q", lex, d, want)
+		}
+	}
 }

@@ -115,6 +115,7 @@ func (s SchemaText) Resolve(prefix string) *schema.Module {
 const (
 	CodeData      = "LYVE_DATA"
 	CodeReference = "LYVE_REFERENCE"
+	CodeNone      = "LYVE_SUCCESS" // plain errors without a validation code (ly_err_new with vecode 0)
 )
 
 // Diag is a rejected value: libyang's ly_err_item without the data path, which the caller adds.

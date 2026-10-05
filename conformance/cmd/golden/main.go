@@ -100,6 +100,8 @@ func runOracle(oracle, corpus string, f conformance.Fixture, reqProto bool) (con
 	defer cancel()
 	cmd := exec.CommandContext(ctx, oracle)
 	cmd.Dir = corpus
+	// libyang prints date-and-time in the local zone; goldens are made in UTC (D-0025)
+	cmd.Env = append(os.Environ(), "TZ=UTC")
 	cmd.Stdin = bytes.NewReader(in)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr

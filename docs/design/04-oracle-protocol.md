@@ -109,3 +109,11 @@ golden = `deviation`; not matching the assert = `differ`.
 - `Engine` interface (`Run(Request) (Response, error)`) + `Compare(e Engine) Report`; per-area report
   (agree / differ / deviation / unsupported) as Markdown for the CI job summary. No engine exists yet;
   a fake engine that replays goldens proves the plumbing.
+
+## 7. Host libc and environment in goldens
+Goldens record libyang as built in the dev image (Debian trixie, **glibc**), and some outputs come
+from libc rather than libyang: the canonical IPv6 form is glibc `inet_ntop` (first longest run of
+≥ 2 zero groups as `::`, IPv4-compatible/-mapped addresses with a dotted quad; other libcs differ),
+`inet_pton` acceptance, and `date-and-time` values printed through `localtime_r`. Every oracle run
+therefore exports `TZ=UTC` (Makefile oracle targets, `cmd/golden`); internal/types prints UTC
+regardless of the host (D-0025) and ports the glibc `inet_ntop6` algorithm.

@@ -71,6 +71,9 @@ LIBYANG_PREFIX ?= /opt/libyang
 oracle:
 	$(MAKE) -C conformance/oracle LIBYANG_PREFIX=$(LIBYANG_PREFIX)
 
+# libyang prints date-and-time in the host's local zone: every oracle run is pinned to UTC.
+test-oracle oracle-check oracle-golden: export TZ = UTC
+
 oracle-check:
 	$(MAKE) oracle
 	cd conformance && go run ./cmd/golden -check -require-protocol && go test ./...
