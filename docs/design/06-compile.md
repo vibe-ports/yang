@@ -347,7 +347,7 @@ the refine's module: default (leaf 1, leaf-list 1.1 only, choice), description, 
 if-feature (appended), extensions. Refines with the same target collected from nested uses are
 merged into one record, keyed by node-id text and module (SCA:297-326), and applied in collection
 order; observed (refine/nested-same-target): **the innermost uses' refine wins** (SCA:363-399,
-1913-1915), so the compile must apply the outer refine first and let the inner overwrite. The merge ignores the context node: if a same-text inner refine is collected while the outer refine is still pending (the outer target is compiled after the inner uses), it is applied to the outer target and lost for its own (D-0048; refine/same-text = no overlap, refine/same-text-leak = leak).
+1913-1915), so the compile must apply the outer refine first and let the inner overwrite. The merge ignores the context node: if a same-text inner refine is collected while the outer refine is still pending (the outer target is compiled after the inner uses), it is applied to the outer target and lost for its own (D-0048; refine/same-text = no overlap, refine/same-text-leak = leak). A failure adds a trailing
 `Compilation of a deviated and/or refined node failed.` LYVE_OTHER (SCN:2605).
 
 **2.7 Augments.** Top-level augments are applied when their target finishes its own children:
