@@ -122,9 +122,9 @@ func TestOracleErrors(t *testing.T) {
 }
 
 // corpusKnown are corpus files libyang rejects at load time for a reason
-// Parse leaves to others: leafref path syntax (U-0005), the argument of an
-// extension defined in an imported module (the compiler).
-var corpusKnown = map[string]bool{"issue973.yang": true, "modextleafref.yang": true, "issue728.yang": true}
+// Parse leaves to others: the argument of an extension defined in an imported
+// module (the compiler).
+var corpusKnown = map[string]bool{"issue728.yang": true}
 
 // extResolution tells libyang's extension-resolution errors, reported with a
 // schema path (line 0) after parsing, which Parse makes too.

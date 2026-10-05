@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/vibe-ports/yang/internal/ly"
+	"github.com/vibe-ports/yang/internal/lyxp"
 )
 
 // Statement grammar: the substatements each parse_* function of parser_yang.c
@@ -238,6 +239,10 @@ func (c *checker) arg(l *lexer, pf *frame, s *Stmt) error {
 		}
 		if _, err := time.Parse("2006-01-02", a); err != nil || !allDigits(a[:4]+a[5:7]+a[8:]) {
 			return l.inval(s)
+		}
+	case "path": // parse_type: the leafref path is syntax-checked while parsing
+		if _, msg := lyxp.ParsePath(a, lyxp.Opts{Begin: lyxp.BeginEither, Prefix: lyxp.PrefixOptional, Pred: lyxp.PredLeafref, Leafref: true}); msg != "" {
+			return l.errf(ly.XPath, "%s", msg)
 		}
 	case "min-elements", "max-elements": // parse_minelements, parse_maxelements
 		if s.Keyword == "max-elements" && a == "unbounded" {

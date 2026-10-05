@@ -180,7 +180,43 @@ var buildErrors = []struct {
 	{sb11 + "extension e {argument a;} x:e;}", 0, ly.Semantics, `Extension instance "x:e" missing argument "a".`},
 	{sb11 + "extension e {argument a {yin-element true;}} x:e;}", 0, ly.Semantics, `Extension instance "x:e" missing argument element "a".`},
 	{sb11 + "extension e {argument a;} leaf l {type string; x:e v {x:e;}}}", 0, ly.Semantics, `Extension instance "x:e" missing argument "a".`},
+	{lref(""), 4, ly.XPath, "Unexpected XPath expression end."},
+	{lref("deref(../x)/."), 4, ly.XPath, "Unexpected XPath token \"FunctionName\" (\"deref(../x)/.\"), expected \"..\"."},
+	{lref("/"), 4, ly.XPath, "Unexpected XPath expression end."},
+	{lref("x"), 4, ly.XPath, "Unexpected XPath token \"NameTest\" (\"x\"), expected \"..\"."},
+	{lref("../"), 4, ly.XPath, "Unexpected XPath expression end."},
+	{lref("../.."), 4, ly.XPath, "Unexpected XPath expression end."},
+	{lref("../a["), 4, ly.XPath, "Unexpected XPath expression end."},
+	{lref("/a[b=current()/..]"), 4, ly.XPath, "Unexpected XPath token \"]\" (\"]\"), expected \"Operator(Path)\"."},
+	{lref("/a[b=1]"), 4, ly.XPath, "Unexpected XPath token \"Number\" (\"1]\"), expected \"FunctionName\"."},
+	{lref("/a[b=current()/../c][b=current()/../d]"), 4, ly.XPath, "Duplicate predicate key \"b\" in path."},
+	{lref("/a[b=foo()/../c]"), 4, ly.XPath, "Invalid function \"foo\" invocation in path."},
+	{lref("../a/"), 4, ly.XPath, "Unexpected XPath expression end."},
+	{lref("/a b"), 4, ly.XPath, "Invalid character 0x62 ('b'), perhaps \"a\" is supposed to be a function call."},
+	{lref("../a[.='x']"), 4, ly.XPath, "Unexpected XPath token \".\" (\".='x']\")."},
+	{lref("/a[1]"), 4, ly.XPath, "Unexpected XPath token \"Number\" (\"1]\")."},
+	{lref("/a[b=current()/../c"), 4, ly.XPath, "Unexpected XPath expression end."},
+	{lref("a/.."), 4, ly.XPath, "Unexpected XPath token \"NameTest\" (\"a/..\"), expected \"..\"."},
+	{lref("/a[b=current()]"), 4, ly.XPath, "Unexpected XPath token \"]\" (\"]\"), expected \"Operator(Path)\"."},
+	{lref("..//a"), 4, ly.XPath, "Unexpected XPath token \"Operator(Recursive Path)\" (\"//a\"), expected \"Operator(Path)\"."},
+	{lref("../a[b=current()/c]"), 4, ly.XPath, "Unexpected XPath token \"NameTest\" (\"c]\"), expected \"..\"."},
+	{lref("../a | ../b"), 4, ly.XPath, "Unparsed characters \"| ../b\" left at the end of path."},
+	{lref("../a'x"), 4, ly.XPath, "Unterminated string delimited with ' ('x)."},
+	{lref("/a/.."), 4, ly.XPath, "Unexpected XPath token \"..\" (\"..\"), expected \"NameTest\"."},
+	{lref("../a[]"), 4, ly.XPath, "Unexpected XPath token \"]\" (\"]\")."},
+	{lref("../a[b]"), 4, ly.XPath, "Unexpected XPath token \"]\" (\"]\"), expected \"Operator(Equal)\"."},
+	{lref("../a[b=]"), 4, ly.XPath, "Unexpected XPath token \"]\" (\"]\"), expected \"FunctionName\"."},
+	{lref("../a[b=current(1)/../c]"), 4, ly.XPath, "Unexpected XPath token \"Number\" (\"1)/../c]\"), expected \")\"."},
+	{lref("../a[b=current()/../c/]"), 4, ly.XPath, "Unexpected XPath token \"]\" (\"]\"), expected \"NameTest\"."},
+
+	// leafref path syntax is checked while parsing (ly_path_parse, closes U-0005), at libyang's line
+	{hdr + "  leaf a { type leafref { path\n\"x\"\n;} }\n}", 6, ly.XPath, `Unexpected XPath token "NameTest" ("x"), expected "..".`},
+	{hdr + "  leaf a { type leafref { path \"../a\\n[b=current()/../c]x\"; } }\n}", 4, ly.XPath, `Invalid character 0x78 ('x'), perhaps "]" is supposed to be a function call.`},
+	{hdr + "  leaf a { type leafref { path \"x\"; } }\n  leaf b { type string; mandatory maybe; }\n}", 4, ly.XPath, `Unexpected XPath token "NameTest" ("x"), expected "..".`},
 }
+
+// lref is a module with a leafref whose path is p.
+func lref(p string) string { return hdr + "  leaf a { type leafref { path \"" + p + "\"; } }\n}" }
 
 // iffErrors: Build keeps these modules, the if-feature carries libyang's compile error.
 var iffErrors = []struct {

@@ -2,7 +2,10 @@
 // Ported from libyang v5.8.6 src/xpath.c (lyxp_expr_parse, parse_ncname, expr_parse_axis,
 // lyxp_check_token, lyxp_token2str) (BSD-3-Clause, © CESNET).
 
-package types
+// Package lyxp is the libyang XPath tokenizer (lyxp_expr_parse) and the path grammar built on
+// it (ly_path_parse, ly_path_check_predicate). Stdlib only, so the YANG parser, the type
+// plugins and the XPath evaluator can share it. Errors are libyang's LYVE_XPATH messages.
+package lyxp
 
 import (
 	"fmt"
@@ -10,38 +13,36 @@ import (
 	"unicode/utf8"
 )
 
-// The XPath tokenizer instance-identifier values go through (libyang parses them with the generic
-// XPath lexer and re-checks the token sequence in path.c). internal/xpath owns full XPath; this
-// is the lexer alone, kept here so types does not depend on the evaluator.
+// Tok is a token kind (enum lyxp_token).
+type Tok uint8
 
-type xpTok uint8
-
+// Token kinds, in libyang's order.
 const (
-	tokNone xpTok = iota
-	tokPar1
-	tokPar2
-	tokBrack1
-	tokBrack2
-	tokDot
-	tokDDot
-	tokAt
-	tokComma
-	tokDColon
-	tokNameTest
-	tokNodeType
-	tokFuncName
-	tokOperLog
-	tokOperEqual
-	tokOperNEqual
-	tokOperComp
-	tokOperMath
-	tokOperUni
-	tokOperPath
-	tokOperRPath
-	tokAxisName
-	tokLiteral
-	tokNumber
-	tokVarRef
+	TokNone Tok = iota
+	TokPar1
+	TokPar2
+	TokBrack1
+	TokBrack2
+	TokDot
+	TokDDot
+	TokAt
+	TokComma
+	TokDColon
+	TokNameTest
+	TokNodeType
+	TokFuncName
+	TokOperLog
+	TokOperEqual
+	TokOperNEqual
+	TokOperComp
+	TokOperMath
+	TokOperUni
+	TokOperPath
+	TokOperRPath
+	TokAxisName
+	TokLiteral
+	TokNumber
+	TokVarRef
 )
 
 var tokNames = [...]string{"none", "(", ")", "[", "]", ".", "..", "@", ",", "::", "NameTest", "NodeType",
@@ -49,19 +50,21 @@ var tokNames = [...]string{"none", "(", ")", "[", "]", ".", "..", "@", ",", "::"
 	"Operator(Math)", "Operator(Union)", "Operator(Path)", "Operator(Recursive Path)", "AxisName", "Literal",
 	"Number", "VariableReference"}
 
-func (t xpTok) String() string { return tokNames[t] }
+func (t Tok) String() string { return tokNames[t] }
 
-type xpExpr struct {
-	src  string
-	toks []xpTok
-	pos  []int
-	len  []int
+// Expr is a tokenized expression (the token part of struct lyxp_expr).
+type Expr struct {
+	Src  string
+	Toks []Tok
+	Pos  []int
+	Len  []int
 }
 
-func (e *xpExpr) text(i int) string { return e.src[e.pos[i] : e.pos[i]+e.len[i]] }
+// Text is the text of token i.
+func (e *Expr) Text(i int) string { return e.Src[e.Pos[i] : e.Pos[i]+e.Len[i]] }
 
-// rest is the expression from token i on (C prints &expr[tok_pos] as a string).
-func (e *xpExpr) rest(i int) string { return e.src[e.pos[i]:] }
+// Rest is the expression from token i on (C prints &expr[tok_pos] as a string).
+func (e *Expr) Rest(i int) string { return e.Src[e.Pos[i]:] }
 
 func isXMLWS(c byte) bool { return c == ' ' || c == '\t' || c == '\n' || c == '\r' }
 
@@ -118,15 +121,15 @@ var axes = map[string]bool{"self": true, "child": true, "parent": true, "ancesto
 
 const errXPEOF = "Unexpected XPath expression end."
 
-// xpLex ports lyxp_expr_parse without reparse: it only tokenizes.
-func xpLex(src string) (*xpExpr, string) {
+// Lex ports lyxp_expr_parse without reparse: it only tokenizes.
+func Lex(src string) (*Expr, string) {
 	if src == "" || src[0] == 0 {
 		return nil, errXPEOF
 	}
 	if i := strings.IndexByte(src, 0); i >= 0 {
 		src = src[:i]
 	}
-	e := &xpExpr{src: src}
+	e := &Expr{Src: src}
 	at := func(i int) byte {
 		if i < len(src) {
 			return src[i]
@@ -136,14 +139,14 @@ func xpLex(src string) (*xpExpr, string) {
 	inexpr := func(p int) string {
 		return fmt.Sprintf("Invalid character '%c'[%d] of expression '%s'.", at(p), p+1, src)
 	}
-	add := func(t xpTok, p, l int) {
-		e.toks, e.pos, e.len = append(e.toks, t), append(e.pos, p), append(e.len, l)
+	add := func(t Tok, p, l int) {
+		e.Toks, e.Pos, e.Len = append(e.Toks, t), append(e.Pos, p), append(e.Len, l)
 	}
-	last := func() xpTok {
-		if len(e.toks) == 0 {
-			return tokNone
+	last := func() Tok {
+		if len(e.Toks) == 0 {
+			return TokNone
 		}
-		return e.toks[len(e.toks)-1]
+		return e.Toks[len(e.Toks)-1]
 	}
 	p := 0
 	for p < len(src) && isXMLWS(src[p]) {
@@ -152,35 +155,35 @@ func xpLex(src string) (*xpExpr, string) {
 	prevFunc, prevNType := false, false
 	for {
 		var tl int
-		var tt xpTok
+		var tt Tok
 		c := at(p)
 		switch {
 		case c == '(':
-			tl, tt = 1, tokPar1
-			if n := len(e.toks); n > 0 && e.toks[n-1] == tokNameTest {
-				name := e.text(n - 1)
+			tl, tt = 1, TokPar1
+			if n := len(e.Toks); n > 0 && e.Toks[n-1] == TokNameTest {
+				name := e.Text(n - 1)
 				if prevNType && (name == "node" || name == "text" || name == "comment") {
-					e.toks[n-1] = tokNodeType
+					e.Toks[n-1] = TokNodeType
 					prevNType, prevFunc = false, false
 				} else if prevFunc {
-					e.toks[n-1] = tokFuncName
+					e.Toks[n-1] = TokFuncName
 					prevNType, prevFunc = false, false
 				}
 			}
 		case c == ')':
-			tl, tt = 1, tokPar2
+			tl, tt = 1, TokPar2
 		case c == '[':
-			tl, tt = 1, tokBrack1
+			tl, tt = 1, TokBrack1
 		case c == ']':
-			tl, tt = 1, tokBrack2
+			tl, tt = 1, TokBrack2
 		case strings.HasPrefix(src[p:], ".."):
-			tl, tt = 2, tokDDot
+			tl, tt = 2, TokDDot
 		case c == '.' && !isDigit(at(p+1)):
-			tl, tt = 1, tokDot
+			tl, tt = 1, TokDot
 		case c == '@':
-			tl, tt = 1, tokAt
+			tl, tt = 1, TokAt
 		case c == ',':
-			tl, tt = 1, tokComma
+			tl, tt = 1, TokComma
 		case c == '\'' || c == '"':
 			end := strings.IndexByte(src[p+1:], c)
 			if end < 0 {
@@ -190,7 +193,7 @@ func xpLex(src string) (*xpExpr, string) {
 				}
 				return nil, fmt.Sprintf("Unterminated string delimited with %c (%s).", c, q)
 			}
-			tl, tt = end+2, tokLiteral
+			tl, tt = end+2, TokLiteral
 		case c == '.' || isDigit(c):
 			tl = 0
 			for isDigit(at(p + tl)) {
@@ -202,7 +205,7 @@ func xpLex(src string) (*xpExpr, string) {
 					tl++
 				}
 			}
-			tt = tokNumber
+			tt = TokNumber
 		case c == '$':
 			p++
 			n := parseNCName(src[p:])
@@ -212,37 +215,37 @@ func xpLex(src string) (*xpExpr, string) {
 			if at(p+n) == ':' {
 				return nil, "Variable with prefix is not supported."
 			}
-			tl, tt = n, tokVarRef
+			tl, tt = n, TokVarRef
 		case c == '/':
-			tl, tt = 1, tokOperPath
+			tl, tt = 1, TokOperPath
 			if at(p+1) == '/' {
-				tl, tt = 2, tokOperRPath
+				tl, tt = 2, TokOperRPath
 			}
 		case strings.HasPrefix(src[p:], "!="):
-			tl, tt = 2, tokOperNEqual
+			tl, tt = 2, TokOperNEqual
 		case strings.HasPrefix(src[p:], "<=") || strings.HasPrefix(src[p:], ">="):
-			tl, tt = 2, tokOperComp
+			tl, tt = 2, TokOperComp
 		case c == '|':
-			tl, tt = 1, tokOperUni
+			tl, tt = 1, TokOperUni
 		case c == '+' || c == '-':
-			tl, tt = 1, tokOperMath
+			tl, tt = 1, TokOperMath
 		case c == '=':
-			tl, tt = 1, tokOperEqual
+			tl, tt = 1, TokOperEqual
 		case c == '<' || c == '>':
-			tl, tt = 1, tokOperComp
-		case len(e.toks) > 0 && !afterOperand(last()):
+			tl, tt = 1, TokOperComp
+		case len(e.Toks) > 0 && !afterOperand(last()):
 			switch {
 			case c == '*':
-				tl, tt = 1, tokOperMath
+				tl, tt = 1, TokOperMath
 			case strings.HasPrefix(src[p:], "or"):
-				tl, tt = 2, tokOperLog
+				tl, tt = 2, TokOperLog
 			case strings.HasPrefix(src[p:], "and"):
-				tl, tt = 3, tokOperLog
+				tl, tt = 3, TokOperLog
 			case strings.HasPrefix(src[p:], "mod") || strings.HasPrefix(src[p:], "div"):
-				tl, tt = 3, tokOperMath
+				tl, tt = 3, TokOperMath
 			case prevNType || prevFunc:
 				return nil, fmt.Sprintf("Invalid character 0x%x ('%c'), perhaps \"%s\" is supposed to be a function call.",
-					c, c, e.text(len(e.toks)-1))
+					c, c, e.Text(len(e.Toks)-1))
 			default:
 				return nil, inexpr(p)
 			}
@@ -259,9 +262,9 @@ func xpLex(src string) (*xpExpr, string) {
 				if !axes[src[p:p+n]] {
 					return nil, inexpr(p)
 				}
-				add(tokAxisName, p, tl)
+				add(TokAxisName, p, tl)
 				p += tl
-				add(tokDColon, p, 2)
+				add(TokDColon, p, 2)
 				p += 2
 				n = 1
 				if at(p) != '*' {
@@ -287,7 +290,7 @@ func xpLex(src string) (*xpExpr, string) {
 				prevNType = at(p) != '*'
 				prevFunc = prevNType && !hasAxis
 			}
-			tt = tokNameTest
+			tt = TokNameTest
 		}
 		add(tt, p, tl)
 		p += tl
@@ -301,25 +304,25 @@ func xpLex(src string) (*xpExpr, string) {
 }
 
 // afterOperand: the previous token cannot be followed by an operator-name ('*', "and", ...).
-func afterOperand(t xpTok) bool {
+func afterOperand(t Tok) bool {
 	switch t {
-	case tokAt, tokPar1, tokBrack1, tokComma, tokOperLog, tokOperEqual, tokOperNEqual, tokOperComp,
-		tokOperMath, tokOperUni, tokOperPath, tokOperRPath:
+	case TokAt, TokPar1, TokBrack1, TokComma, TokOperLog, TokOperEqual, TokOperNEqual, TokOperComp,
+		TokOperMath, TokOperUni, TokOperPath, TokOperRPath:
 		return true
 	}
 	return false
 }
 
-// check ports lyxp_check_token: "" when token i is want (tokNone = any token).
-func (e *xpExpr) check(i int, want xpTok) string {
-	if i >= len(e.toks) {
+// Check ports lyxp_check_token: "" when token i is want (TokNone = any token).
+func (e *Expr) Check(i int, want Tok) string {
+	if i >= len(e.Toks) {
 		return errXPEOF
 	}
-	if want != tokNone && e.toks[i] != want {
-		return fmt.Sprintf("Unexpected XPath token \"%s\" (\"%.15s\"), expected \"%s\".", e.toks[i], e.rest(i), want)
+	if want != TokNone && e.Toks[i] != want {
+		return fmt.Sprintf("Unexpected XPath token \"%s\" (\"%.15s\"), expected \"%s\".", e.Toks[i], e.Rest(i), want)
 	}
 	return ""
 }
 
-// is reports whether token i exists and is t (lyxp_check_token without logging).
-func (e *xpExpr) is(i int, t xpTok) bool { return i < len(e.toks) && e.toks[i] == t }
+// Is reports whether token i exists and is t (lyxp_check_token without logging).
+func (e *Expr) Is(i int, t Tok) bool { return i < len(e.Toks) && e.Toks[i] == t }

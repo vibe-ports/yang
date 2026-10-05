@@ -25,7 +25,6 @@ questionable. Format: id · area · libyang behaviour · ours · RFC reference �
 | ID | Area | Limit | Reason |
 |---|---|---|---|
 | U-0001 | pattern | repeat count > 1000, nesting > 1000 → `ErrUnsupported` | Go RE2 limits; never approximated |
-| U-0005 | YANG parser: leafref `path` | the argument of `path` is not syntax-checked while parsing (libyang runs `ly_path_parse`, e.g. rejects `path "deref(../x)/."`) | needs the XPath lexer (M1-3); the compiler must check it. Corpus: libyang issue973.yang, modextleafref.yang |
 | U-0006 | YANG parser: warnings | libyang's parser warnings are not reported: empty argument (`CHECK_NONEMPTY`), control characters in enum names, revision order, includes in a YANG 1.1 submodule | no warning channel in `Parse`/`Build` yet; verdicts unaffected |
 | U-0010 | types: libyang type plugins not ported yet | `ietf-yang-types` `date`, `date-no-zone`, `time`, `time-no-zone`, `xpath1.0`; `libnetconf2-netconf-server` `time-period`; `ietf-netconf-acm` `node-instance-identifier`; `yang` `instance-identifier-keys`. These typedefs store as their base type (strings with the typedef's restrictions), so canonical forms and errors differ from libyang | not used by the M1 corpus; ported when a fixture needs them (xpath1.0 after internal/xpath) |
 | U-0003 | xpath: expression size | more than `xpath.MaxTokens` (4 194 304) tokens → LYVE_XPATH error | libyang only limits the length to UINT32_MAX; the cap bounds AST memory |

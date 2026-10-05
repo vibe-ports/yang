@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Ported from libyang v5.8.6 src/plugins_types/instanceid.c, src/path.c (ly_path_parse,
-// ly_path_check_predicate, ly_path_compile, ly_path_compile_snode, ly_path_compile_predicate)
+// Ported from libyang v5.8.6 src/plugins_types/instanceid.c, src/path.c (ly_path_compile, ly_path_compile_snode, ly_path_compile_predicate)
 // and src/plugins_types.c (lyplg_type_lypath_new, lyplg_type_lypath_check_status)
 // (BSD-3-Clause, © CESNET).
 
@@ -12,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/vibe-ports/yang/internal/lyxp"
 	"github.com/vibe-ports/yang/internal/schema"
 )
 
@@ -108,14 +108,17 @@ func storeInstanceID(a *storeArgs) (Value, *Diag) {
 
 // lypathNew ports lyplg_type_lypath_new: parse, then resolve on the schema.
 func lypathNew(a *storeArgs) (Path, *Diag) {
-	mandatory := a.f == FormatSchema || a.f == FormatSchemaResolved || a.f == FormatXML
+	prefix := lyxp.PrefixStrictInherit
+	if a.f == FormatSchema || a.f == FormatSchemaResolved || a.f == FormatXML {
+		prefix = lyxp.PrefixMandatory
+	}
 	fail := func(kind, detail string) (Path, *Diag) {
 		if detail == "" || a.quiet { // inside a union libyang logs nothing, so no detail is attached
 			return nil, errf("Invalid instance-identifier \"%s\" value - %s error.", a.lex, kind)
 		}
 		return nil, errf("Invalid instance-identifier \"%s\" value - %s error: %s", a.lex, kind, detail)
 	}
-	e, msg := pathParse(a.lex, mandatory)
+	e, msg := lyxp.ParsePath(a.lex, lyxp.Opts{Begin: lyxp.BeginAbsolute, Prefix: prefix, Pred: lyxp.PredSimple})
 	if msg != "" {
 		return fail("syntax", msg)
 	}
@@ -124,130 +127,6 @@ func lypathNew(a *storeArgs) (Path, *Diag) {
 		return fail("semantic", msg)
 	}
 	return p, nil
-}
-
-// pathParse ports ly_path_parse for LY_PATH_BEGIN_ABSOLUTE and LY_PATH_PRED_SIMPLE, with prefixes
-// LY_PATH_PREFIX_MANDATORY (mandatory) or LY_PATH_PREFIX_STRICT_INHERIT.
-func pathParse(src string, mandatory bool) (*xpExpr, string) {
-	if src == "" || src[0] != '/' {
-		return nil, fmt.Sprintf("XPath \"%s\" was expected to be absolute.", src)
-	}
-	e, msg := xpLex(src)
-	if msg != "" {
-		return nil, msg
-	}
-	i := 1 // the leading '/'
-	prevPrefix := ""
-	for {
-		if msg := e.check(i, tokNameTest); msg != "" {
-			return nil, msg
-		}
-		name := e.text(i)
-		colon := strings.IndexByte(name, ':')
-		switch {
-		case mandatory && colon < 0:
-			return nil, fmt.Sprintf("Prefix missing for \"%s\" in path.", name)
-		case !mandatory && prevPrefix == "":
-			if colon < 0 {
-				return nil, fmt.Sprintf("Prefix missing for \"%s\" in path.", name)
-			}
-			prevPrefix = name[:colon]
-		case !mandatory && colon >= 0:
-			if name[:colon] == prevPrefix {
-				return nil, fmt.Sprintf("Duplicate prefix for \"%s\" in path.", name)
-			}
-			prevPrefix = name[:colon]
-		}
-		i++
-		var msg string
-		if i, msg = checkPredicate(e, i, mandatory); msg != "" {
-			return nil, msg
-		}
-		if !e.is(i, tokOperPath) {
-			break
-		}
-		i++
-	}
-	if i < len(e.toks) {
-		return nil, fmt.Sprintf("Unparsed characters \"%s\" left at the end of path.", e.rest(i))
-	}
-	return e, ""
-}
-
-// checkPredicate ports ly_path_check_predicate for LY_PATH_PRED_SIMPLE.
-func checkPredicate(e *xpExpr, i int, mandatory bool) (int, string) {
-	if !e.is(i, tokBrack1) {
-		return i, ""
-	}
-	i++
-	switch {
-	case e.is(i, tokNameTest):
-		var seen []string
-		for {
-			if msg := e.check(i, tokNameTest); msg != "" {
-				return i, msg
-			}
-			full := e.text(i)
-			name := full
-			if c := strings.IndexByte(full, ':'); c >= 0 {
-				if !mandatory {
-					return i, fmt.Sprintf("Redundant prefix for \"%s\" in path.", full)
-				}
-				name = full[c+1:]
-			} else if mandatory {
-				return i, fmt.Sprintf("Prefix missing for \"%s\" in path.", full)
-			}
-			for _, s := range seen {
-				if s == name {
-					return i, fmt.Sprintf("Duplicate predicate key \"%s\" in path.", name)
-				}
-			}
-			seen = append(seen, name)
-			i++
-			if msg := e.check(i, tokOperEqual); msg != "" {
-				return i, msg
-			}
-			i++
-			if !e.is(i, tokLiteral) && !e.is(i, tokNumber) && !e.is(i, tokVarRef) {
-				return i, e.check(i, tokLiteral)
-			}
-			i++
-			if msg := e.check(i, tokBrack2); msg != "" {
-				return i, msg
-			}
-			i++
-			if !e.is(i, tokBrack1) {
-				return i, ""
-			}
-			i++
-		}
-	case e.is(i, tokDot):
-		i++
-		if msg := e.check(i, tokOperEqual); msg != "" {
-			return i, msg
-		}
-		i++
-		if i >= len(e.toks) {
-			return i, errXPEOF
-		}
-		if !e.is(i, tokLiteral) && !e.is(i, tokNumber) {
-			return i, fmt.Sprintf("Unexpected XPath token \"%s\" (\"%.15s\").", e.toks[i], e.rest(i))
-		}
-		i++
-	case e.is(i, tokNumber):
-		if n, _ := strconv.Atoi(leadingInt(e.text(i))); n == 0 {
-			return i, fmt.Sprintf("Invalid positional predicate \"%s\".", e.text(i))
-		}
-		i++
-	case i >= len(e.toks):
-		return i, errXPEOF
-	default:
-		return i, fmt.Sprintf("Unexpected XPath token \"%s\" (\"%.15s\").", e.toks[i], e.rest(i))
-	}
-	if msg := e.check(i, tokBrack2); msg != "" {
-		return i, msg
-	}
-	return i + 1, ""
 }
 
 // leadingInt is the digit prefix C atoi reads.
@@ -277,7 +156,7 @@ var formatNames = map[Format]string{FormatCanon: "canonical", FormatSchema: "sch
 	FormatSchemaResolved: "schema stored mapping", FormatXML: "XML prefixes", FormatJSON: "JSON module names"}
 
 // pathCompile ports _ly_path_compile (not leafref, LY_PATH_TARGET_SINGLE, not XPath).
-func pathCompile(a *storeArgs, e *xpExpr) (Path, string) {
+func pathCompile(a *storeArgs, e *lyxp.Expr) (Path, string) {
 	output := a.ctx != nil && a.ctx.InOutput()
 	var path Path
 	var parent *schema.Node
@@ -286,10 +165,10 @@ func pathCompile(a *storeArgs, e *xpExpr) (Path, string) {
 		if n := len(path); n > 0 && path[n-1].Node.Kind == schema.List && path[n-1].Preds == nil {
 			return nil, fmt.Sprintf("Predicate missing for %s \"%s\" in path.", kindName(schema.List), path[n-1].Node.Name)
 		}
-		if msg := e.check(i, tokNameTest); msg != "" {
+		if msg := e.Check(i, lyxp.TokNameTest); msg != "" {
 			return nil, msg
 		}
-		node, msg := compileSNode(a, parent, e.text(i), output)
+		node, msg := compileSNode(a, parent, e.Text(i), output)
 		if msg != "" {
 			return nil, msg
 		}
@@ -300,13 +179,13 @@ func pathCompile(a *storeArgs, e *xpExpr) (Path, string) {
 			return nil, msg
 		}
 		path = append(path, seg)
-		if !e.is(i, tokOperPath) {
+		if !e.Is(i, lyxp.TokOperPath) {
 			break
 		}
 		i++
 	}
-	if i < len(e.toks) {
-		return nil, fmt.Sprintf("Unexpected XPath token \"%s\" (\"%.15s\").", e.toks[i], e.rest(i))
+	if i < len(e.Toks) {
+		return nil, fmt.Sprintf("Unexpected XPath token \"%s\" (\"%.15s\").", e.Toks[i], e.Rest(i))
 	}
 	if last := path[len(path)-1]; (last.Node.Kind == schema.List || last.Node.Kind == schema.LeafList) && last.Preds == nil {
 		return nil, fmt.Sprintf("Predicate missing for %s \"%s\" in path.", kindName(last.Node.Kind), last.Node.Name)
@@ -381,29 +260,29 @@ func getNext(nodes []*schema.Node, mod *schema.Module, name string, output bool)
 	return nil
 }
 
-func literal(e *xpExpr, i int) string {
-	if e.toks[i] == tokLiteral {
-		return e.src[e.pos[i]+1 : e.pos[i]+e.len[i]-1]
+func literal(e *lyxp.Expr, i int) string {
+	if e.Toks[i] == lyxp.TokLiteral {
+		return e.Src[e.Pos[i]+1 : e.Pos[i]+e.Len[i]-1]
 	}
-	return e.text(i)
+	return e.Text(i)
 }
 
 // compilePredicate ports ly_path_compile_predicate.
-func compilePredicate(a *storeArgs, node *schema.Node, e *xpExpr, i int) ([]PathPred, int, string) {
-	if !e.is(i, tokBrack1) {
+func compilePredicate(a *storeArgs, node *schema.Node, e *lyxp.Expr, i int) ([]PathPred, int, string) {
+	if !e.Is(i, lyxp.TokBrack1) {
 		return nil, i, ""
 	}
 	i++
 	var preds []PathPred
-	switch e.toks[i] {
-	case tokNameTest:
+	switch e.Toks[i] {
+	case lyxp.TokNameTest:
 		if node.Kind != schema.List {
 			return nil, i, fmt.Sprintf("List predicate defined for %s \"%s\" in path.", kindName(node.Kind), node.Name)
 		} else if len(node.Keys) == 0 {
 			return nil, i, fmt.Sprintf("List predicate defined for keyless %s \"%s\" in path.", kindName(node.Kind), node.Name)
 		}
 		for {
-			key, msg := compileSNode(a, node, e.text(i), false)
+			key, msg := compileSNode(a, node, e.Text(i), false)
 			if msg != "" {
 				return nil, i, msg
 			}
@@ -411,7 +290,7 @@ func compilePredicate(a *storeArgs, node *schema.Node, e *xpExpr, i int) ([]Path
 				return nil, i, fmt.Sprintf("Key expected instead of %s \"%s\" in path.", kindName(key.Kind), key.Name)
 			}
 			i += 2 // key, '='
-			if e.toks[i] == tokVarRef {
+			if e.Toks[i] == lyxp.TokVarRef {
 				return nil, i, "Variable reference not allowed in an instance-identifier."
 			}
 			v, d := storeKey(a, key, literal(e, i))
@@ -420,7 +299,7 @@ func compilePredicate(a *storeArgs, node *schema.Node, e *xpExpr, i int) ([]Path
 			}
 			preds = append(preds, PathPred{Kind: PredKey, Key: key, Value: v})
 			i += 2 // value, ']'
-			if !e.is(i, tokBrack1) {
+			if !e.Is(i, lyxp.TokBrack1) {
 				break
 			}
 			i++
@@ -428,7 +307,7 @@ func compilePredicate(a *storeArgs, node *schema.Node, e *xpExpr, i int) ([]Path
 		if len(preds) != len(node.Keys) {
 			return nil, i, fmt.Sprintf("Predicate missing for a key of %s \"%s\" in path.", kindName(node.Kind), node.Name)
 		}
-	case tokDot:
+	case lyxp.TokDot:
 		if node.Kind != schema.LeafList {
 			return nil, i, fmt.Sprintf("Leaf-list predicate defined for %s \"%s\" in path.", kindName(node.Kind), node.Name)
 		}
@@ -438,13 +317,13 @@ func compilePredicate(a *storeArgs, node *schema.Node, e *xpExpr, i int) ([]Path
 		}
 		preds = append(preds, PathPred{Kind: PredLeafList, Value: v})
 		i += 4 // '.', '=', value, ']'
-	default: // tokNumber
+	default: // lyxp.TokNumber
 		if node.Kind != schema.LeafList && node.Kind != schema.List {
 			return nil, i, fmt.Sprintf("Positional predicate defined for %s \"%s\" in path.", kindName(node.Kind), node.Name)
 		} else if node.Config {
 			return nil, i, fmt.Sprintf("Positional predicate defined for configuration %s \"%s\" in path.", kindName(node.Kind), node.Name)
 		}
-		pos, _ := strconv.ParseUint(leadingInt(e.text(i)), 10, 64)
+		pos, _ := strconv.ParseUint(leadingInt(e.Text(i)), 10, 64)
 		preds = append(preds, PathPred{Kind: PredPosition, Position: pos})
 		i += 2 // number, ']'
 	}
