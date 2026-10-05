@@ -67,6 +67,7 @@ type evaluator struct {
 	err   error                 // sticky budget / cancellation error
 	sib   map[Node]map[Node]int // per parent (nil: top level), index of each child; built lazily
 	keys  map[Node][]int        // sibling indexes from the top level down to the node
+	nums  map[string]ld         // parsed long number texts
 }
 
 func newEvaluator(e *Expr, ec *EvalContext) *evaluator {
@@ -951,8 +952,23 @@ func (ev *evaluator) toNum(v value) ld {
 		return ld{}
 	}
 	str := ev.toString(v)
-	ev.charge(len(str) / 1024)
-	return cStrtod(str)
+	if len(str) <= 64 {
+		return cStrtod(str)
+	}
+	// long texts: big-number conversion, charged by length and memoized
+	// (a constant argument or a repeated value is parsed once per evaluation)
+	if x, ok := ev.nums[str]; ok {
+		return x
+	}
+	ev.charge(len(str) / 4)
+	x := cStrtod(str)
+	if ev.nums == nil {
+		ev.nums = map[string]ld{}
+	}
+	if len(ev.nums) < 1024 {
+		ev.nums[str] = x
+	}
+	return x
 }
 
 // numCmp charges the %Lf renderings moveto_num_cmp compares.

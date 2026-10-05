@@ -215,30 +215,79 @@ func parseLD(s string) (x ld, erange bool) {
 			ds += "1"
 		}
 	}
-	t := "0." + ds + "e" + strconv.Itoa(point+exp)
+	base := 10
 	if hex {
-		t = "0x0." + ds + "p" + strconv.Itoa(4*point+exp)
+		base = 16
 	}
-	if neg {
-		t = "-" + t
-	}
-	// exact rational, then one correct rounding (big.ParseFloat is not
-	// correctly rounded on decimal ties)
-	r, ok := new(big.Rat).SetString(t)
+	d, ok := parseDigits(ds, base)
 	if !ok {
 		return ldNaN, true
 	}
-	f := newF().SetRat(r)
-	switch exp := f.MantExp(nil); {
-	case exp > ldMaxExp:
+	var f *big.Float
+	var exact func() bool // value is a multiple of 2^-16445 (denormal check)
+	if hex {              // value = d · 2^e2: binary, rounding by SetInt is exact RNE
+		e2 := 4*(point-len(ds)) + exp
+		f = newF().SetInt(d)
+		f.SetMantExp(f, e2)
+		exact = func() bool { return e2 >= ldMinExp-1 || d.TrailingZeroBits() >= uint(ldMinExp-1-e2) }
+	} else {
+		f, exact = decToLD(d, point-len(ds)+exp)
+	}
+	if neg {
+		f.Neg(f)
+	}
+	switch e := f.MantExp(nil); {
+	case e > ldMaxExp:
 		return ldNaN, true // overflow: ERANGE
-	case exp < -16381: // below LDBL_MIN: glibc sets ERANGE only if the denormal is inexact
-		q := new(big.Rat).Mul(r, new(big.Rat).SetInt(new(big.Int).Lsh(big.NewInt(1), -ldMinExp+1)))
-		if !q.IsInt() {
-			return ldNaN, true // not a multiple of 2^-16445
-		}
+	case e < -16381 && !exact(): // below LDBL_MIN: glibc sets ERANGE only for an inexact denormal
+		return ldNaN, true
 	}
 	return ld{f: f}, false
+}
+
+// parseDigits is big.Int.SetString by halves (hi·base^len(lo) + lo), so long
+// digit strings convert in sub-quadratic time (SetString alone is quadratic).
+func parseDigits(ds string, base int) (*big.Int, bool) {
+	if len(ds) <= 512 {
+		return new(big.Int).SetString(ds, base)
+	}
+	m := len(ds) / 2
+	hi, ok1 := parseDigits(ds[:m], base)
+	lo, ok2 := parseDigits(ds[m:], base)
+	if !ok1 || !ok2 {
+		return nil, false
+	}
+	p := new(big.Int).Exp(big.NewInt(int64(base)), big.NewInt(int64(len(ds)-m)), nil)
+	return hi.Add(hi.Mul(hi, p), lo), true
+}
+
+// decToLD rounds d · 10^e10 to long double (RNE) with integer arithmetic only:
+// a quotient of at least 66 bits plus a sticky bit from the remainder rounds
+// exactly like the infinitely precise value.
+func decToLD(d *big.Int, e10 int) (*big.Float, func() bool) {
+	if e10 >= 0 {
+		n := new(big.Int).Mul(d, new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(e10)), nil))
+		return newF().SetInt(n), func() bool { return true }
+	}
+	pow := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(-e10)), nil) // value = d / pow
+	k := max(0, 68-(d.BitLen()-pow.BitLen()))
+	q, r := new(big.Int), new(big.Int)
+	for {
+		q.QuoRem(new(big.Int).Lsh(d, uint(k)), pow, r)
+		if q.BitLen() >= 66 {
+			break
+		}
+		k += 66 - q.BitLen()
+	}
+	q.Lsh(q, 1)
+	if r.Sign() != 0 {
+		q.SetBit(q, 0, 1) // sticky
+	}
+	f := newF().SetInt(q)
+	f.SetMantExp(f, -(k + 1))
+	return f, func() bool { // d·2^16445 divisible by 10^-e10
+		return new(big.Int).Rem(new(big.Int).Lsh(d, uint(1-ldMinExp)), pow).Sign() == 0
+	}
 }
 
 // parseNumberToken is eval_number: the Number token in long double.
