@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Self-test of the security gates with stubbed `gh`/`curl` and throwaway git repos (no network, no
-# real merges): check-sensitive + pre-push hook, merge-pr, ai-review-publish, review-tier.
+# real merges): check-sensitive + pre-push hook, merge-pr, import-goldens, astra --trusted
+# (stubbed codex), ai-review-publish, review-tier.
 #   scripts/test-gates        (part of `make ci`; needs bash, git, perl, python3, jq)
 set -uo pipefail
 src=$(cd "$(dirname "$0")" && pwd)
@@ -164,13 +165,17 @@ expect 1 "merge-pr: approval inside a code fence is ignored" "$NOAPP" mp
 comments 1056050 $D1 "$A"; edit_last
 expect 1 "merge-pr: edited comment is ignored" "$NOAPP" mp
 comments 1056050 $D1 "VERDICT: approve $head (claude-sonnet-5-5)"
-expect 1 "merge-pr: reviewer outside codex-*/claude-opus* is ignored" "$NOAPP" mp
+expect 1 "merge-pr: reviewer outside codex-*/port-reviewer-* is ignored" "$NOAPP" mp
+comments 1056050 $D1 "VERDICT: approve $head (claude-opus-5-5)"
+expect 1 "merge-pr: pasted ai-review bot line (claude-opus) is ignored" "$NOAPP .* is 'none'" mp
 comments 1056050 $D1 "VERDICT: approve ${head:0:12} (codex-x)"
 expect 1 "merge-pr: short SHA is ignored" "$NOAPP" mp
-comments 1056050 $D1 "$A" 1056050 $D2 "VERDICT: changes $head (claude-opus-5-5)"
+comments 1056050 $D1 "$A" 1056050 $D2 "VERDICT: changes $head (port-reviewer-opus)"
 expect 1 "merge-pr: later 'changes' revokes approval" "$NOAPP .* is 'changes'" mp
-comments 1056050 $D1 "VERDICT: changes $head (codex-x)" 1056050 $D2 "$(printf 'text\r\n%s\r\n' "$A")"
 runs failure
+comments 1056050 $D1 "VERDICT: approve $head (port-reviewer-opus)"
+expect 1 "merge-pr: port-reviewer-* attestation accepted (stops at CI)" "is 'completed/failure'" mp
+comments 1056050 $D1 "VERDICT: changes $head (codex-x)" 1056050 $D2 "$(printf 'text\r\n%s\r\n' "$A")"
 expect 1 "merge-pr: failed CI" "is 'completed/failure'" mp
 runs success .github/workflows/other.yml
 expect 1 "merge-pr: CI from another workflow is ignored" "is 'missing'" mp
@@ -201,6 +206,78 @@ GIT_COMMITTER_DATE="1700000000 +0200" git -C "$m" commit -qm tz; head=$(git -C "
 git -C "$m" push -q -f origin HEAD:refs/pull/7/head
 onmain; pull; runs success; comments 1056050 $D1 "VERDICT: approve $head (codex-gpt-6-astra)"
 expect 1 "merge-pr: non-UTC committer date" "non-UTC dates" mp
+
+# ---------------------------------------------------------------- import-goldens (libyang-sync)
+g=$t/ig; G=conformance/corpus/basic/golden; mkdir -p "$g/$G" "$g/scripts"
+cp "$src/import-goldens" "$g/scripts/"; echo '{"v":1}' >"$g/$G/a.json"; echo 'FROM x' >"$g/Dockerfile"
+git -C "$g" init -q -b main; git -C "$g" add -A; git -C "$g" commit -qm base
+mktar() { # mktar <out> <kind:path:arg>...   kind = reg (arg = octal mode) | sym | hard (arg = target)
+  python3 - "$@" <<'PY'
+import io, sys, tarfile
+with tarfile.open(sys.argv[1], "w") as tar:
+    for spec in sys.argv[2:]:
+        kind, path, arg = spec.split(":", 2)
+        ti = tarfile.TarInfo(path)
+        if kind == "reg":
+            data = b'{"v":2}\n'; ti.size = len(data); ti.mode = int(arg, 8); tar.addfile(ti, io.BytesIO(data))
+        else:
+            ti.type = tarfile.SYMTYPE if kind == "sym" else tarfile.LNKTYPE; ti.linkname = arg; tar.addfile(ti)
+PY
+}
+ig() { (cd "$g" && scripts/import-goldens "$t/g.tar"); }
+igreset() { git -C "$g" reset -q --hard; git -C "$g" clean -fdq; }
+mktar "$t/g.tar" "reg:$G/a.json:644" "reg:$G/new.json:644"
+expect 0 "import-goldens: modified + new golden" - ig
+[[ $(git -C "$g" diff --cached --name-status | tr '\t' ' ' | sort | tr '\n' ,) == "A $G/new.json,M $G/a.json," ]] &&
+  ok "import-goldens: exactly the goldens staged" || no "import-goldens: exactly the goldens staged"
+igreset; mktar "$t/g.tar" "sym:$G/a.json:../../../../Dockerfile"
+expect 1 "import-goldens: symlink member rejected" "not a regular file" ig
+igreset; mktar "$t/g.tar" "hard:$G/a.json:Dockerfile"
+expect 1 "import-goldens: hardlink member rejected" "not a regular file" ig
+igreset; mktar "$t/g.tar" "reg:$G/a.json:755"
+expect 1 "import-goldens: executable member rejected" "exec bits" ig
+igreset; mktar "$t/g.tar" "reg:conformance/corpus/manifest.yaml:644"
+expect 1 "import-goldens: non-golden path rejected" "not a golden JSON path" ig
+igreset; mktar "$t/g.tar" "reg:$G/a.json:644" "reg:Dockerfile:644"
+expect 1 "import-goldens: Dockerfile tampering rejected" "not a golden JSON path" ig
+[[ $(cat "$g/Dockerfile") == "FROM x" && -z $(git -C "$g" diff --cached --name-only) ]] &&
+  ok "import-goldens: nothing written when any member is bad" || no "import-goldens: nothing written when any member is bad"
+igreset; mktar "$t/g.tar" "reg:conformance/corpus/../golden/x.json:644"
+expect 1 "import-goldens: dot-dot path rejected" "not a golden JSON path" ig
+igreset; git -C "$g" mv "$G/a.json" "$G/b.json"; mktar "$t/g.tar" "reg:$G/new.json:644"
+expect 1 "import-goldens: rename in the index rejected" "unexpected staged change D" ig
+igreset; git -C "$g" update-index --chmod=+x "$G/a.json"; mktar "$t/g.tar" "reg:$G/new.json:644"
+expect 1 "import-goldens: mode change rejected" "unexpected staged change M 100755" ig
+igreset; mv "$g/$G" "$t/elsewhere"; ln -s "$t/elsewhere" "$g/$G"; mktar "$t/g.tar" "reg:$G/a.json:644"
+expect 1 "import-goldens: symlinked golden directory rejected" "missing or redirected" ig
+rm "$g/$G"; mv "$t/elsewhere" "$g/$G"
+
+# ---------------------------------------------------------------- astra --trusted (stubbed codex)
+cat >"$t/bin/codex" <<'EOF'
+#!/usr/bin/env bash
+# Stub: records argv, writes an approving answer to the -o file.
+printf '%s\n' "$@" >"$FX/codex-args"
+while (($#)); do [[ $1 == -o ]] && { echo '{"verdict":"approve","summary":"ok","findings":[]}' >"$2"; }; shift; done
+EOF
+chmod +x "$t/bin/codex"
+abare=$t/astra-origin.git; git init -q --bare -b main "$abare"
+a=$t/as; git -C "$t" clone -q "$abare" as 2>/dev/null; mkdir -p "$a/scripts"
+cp "$src/astra" "$src/review-schema.json" "$a/scripts/"; echo '# rules' >"$a/AGENTS.md"
+git -C "$a" add -A; git -C "$a" commit -qm base; git -C "$a" push -q origin HEAD:main
+git -C "$a" checkout -q -b pr; echo change >"$a/x"; git -C "$a" add x; git -C "$a" commit -qm change
+asha=$(git -C "$a" rev-parse HEAD)
+astra() { (cd "$a" && scripts/astra review "$@"); }
+expect 0 "astra --trusted: clean PR reviewed" - astra --trusted
+has "astra --trusted: canonical attestation with full SHA" "^VERDICT: approve $asha \(codex-gpt-6-astra\)$" "$t/out"
+has "astra --trusted: --ignore-rules passed" "^--ignore-rules$" "$FX/codex-args"
+has "astra --trusted: project AGENTS.md disabled" "^project_doc_max_bytes=0$" "$FX/codex-args"
+expect 0 "astra (untrusted): runs" - astra
+hasnt "astra (untrusted): no attestation" "^VERDICT:" "$t/out"
+mkdir -p "$a/sub/.codex"; echo 'x=1' >"$a/sub/.codex/config.toml"; git -C "$a" add sub; git -C "$a" commit -qm codex
+expect 2 "astra --trusted: refuses a PR adding .codex/" "contains .codex/ or .agents/" astra --trusted
+git -C "$a" reset -q --hard HEAD~1; rm -rf "$a/sub"; mkdir "$a/.agents"
+expect 2 "astra --trusted: refuses an untracked .agents/ in the checkout" "contains .codex/ or .agents/" astra --trusted
+rmdir "$a/.agents"
 
 # ---------------------------------------------------------------- ai-review-publish
 pub() { (REPO=vibe-ports/yang PR=7 "$src/ai-review-publish" "$@"); }
@@ -259,7 +336,7 @@ rm "$FX/fail"
 tier() { (unset TYPESAFE_API_KEY; "$src/review-tier" <<<"$1"); }
 f1() { jq -nc --arg p "$1" --argjson a "${2:-1}" '[{path:$p,additions:$a,deletions:0}]'; }
 [[ $(tier "$(f1 docs/a.md 3)") == light ]] && ok "tier: docs → light" || no "tier: docs → light"
-for p in scripts/x AGENTS.md conformance/AGENTS.md CLAUDE.md .claude/skills/x/SKILL.md Makefile dev .devcontainer/devcontainer.json .githooks/pre-push; do
+for p in scripts/x AGENTS.md conformance/AGENTS.md CLAUDE.md .claude/skills/x/SKILL.md Makefile dev .devcontainer/devcontainer.json .githooks/pre-push .codex/config.toml x/.codex/rules .agents/a.md; do
   [[ $(tier "$(f1 "$p")") == deep ]] && ok "tier: policy file $p → deep" || no "tier: policy file $p → deep"
 done
 [[ $(tier "$(f1 docs/a.md 500)") == deep ]] && ok "tier: size → deep" || no "tier: size → deep"
