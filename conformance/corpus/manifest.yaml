@@ -2328,7 +2328,7 @@ fixtures:
       modules: [{"name": "refine-nested-same-target"}]
     golden: golden/refine-nested-same-target.json
 
-  # VERIFIED: an inner refine of x and an outer refine of a different node also spelled x each hit their own node (outer leaf x = top-refine, k/x = inner-refine); no leak through the text merge (SCA:297-326)
+  # VERIFIED: outer leaf x is compiled before container k, so the inner refine of k/x and the outer refine of x (same node-id text) do not overlap: x = top-refine, k/x = inner-refine (SCA:297-326)
   - id: refine/same-text
     dir: compile
     source: *own
@@ -2339,6 +2339,18 @@ fixtures:
       searchdirs: [schemas]
       modules: [{"name": "refine-same-text"}]
     golden: golden/refine-same-text.json
+
+  # VERIFY-by-golden: same as refine/same-text with container k before leaf x; libyang merges refines by text and ignores the context node, so the inner refine reaches the outer /c/x and is lost for /c/k/x (D-0048)
+  - id: refine/same-text-leak
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.13.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "refine-same-text-leak"}]
+    golden: golden/refine-same-text-leak.json
 
   - id: refine/target-missing
     dir: compile
@@ -2544,7 +2556,7 @@ fixtures:
       rfc: ["RFC7950#7.8.2"]
       deviation: null
 
-  # VERIFIED: with the feature on the key is kept and the module is accepted (companion of key-iffeature-disabled; RFC 7950 s7.8.2 only says a key must not be if-feature'd, so libyang accepting is a deviation candidate)
+  # VERIFIED: with the feature on the key is kept and the module is accepted (companion of key-iffeature-disabled; RFC 7950 s7.8.2 only says a key must not be if-feature'd, so libyang accepting is D-0049)
   - id: list/key-iffeature-enabled
     dir: compile
     source: *own
