@@ -31,10 +31,16 @@ family → less correlated blind spots). **codex gpt-5.6-sol/luna** writes indep
    (A) must pass (B)'s fixtures; disagreements are resolved by the oracle or recorded in
    `conformance/deviations.md` with an RFC reason.
 3. **Review.** `ASTRA_PR=<n> scripts/astra review` posts a structured review of `main...HEAD` to
-   the PR (commit SHA in the header). Claude fixes or rebuts each finding **in the PR**. Re-run
-   until no `high` and verdict `approve`; after 3 rounds without convergence the maintainer decides.
-4. **Merge gate** (AGENTS.md): CI green and astra `approve` on the **same head SHA**. Only the lead
-   merges.
+   the PR, ending with `VERDICT: <approve|changes> <full HEAD sha> (codex-<model>)` (run it on a
+   checkout of the PR head, under the maintainer's `gh` login). Claude fixes or rebuts each finding
+   **in the PR**. Re-run until no `high` and verdict `approve`; after 3 rounds without convergence
+   the maintainer decides. The automatic Claude (`ai-review`) and Codex-app reviews are extra
+   eyes; their verdicts are advisory.
+4. **Merge gate** (AGENTS.md, CONTRIBUTING.md "Merge gate"): `scripts/merge-pr <n>` checks that
+   `ci.yml` succeeded on the PR's full head SHA and that the latest maintainer-authored attestation
+   for that SHA is `approve`, then fast-forwards `main` with a lease. Only the lead merges. This is
+   a script, not branch protection (Free private plan); rulesets get enabled when the repo is
+   public.
 
 ## Per milestone
 

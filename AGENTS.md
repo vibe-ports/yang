@@ -43,7 +43,8 @@ Plan and rationale: `PLAN.md`. Decisions: `docs/decisions/`. Designs: `docs/desi
 - No secrets in the repo. `make secrets` (gitleaks) runs in CI.
 - **No private details** — this repo will be public: no host names, hardware, IPs, network layout,
   local paths, personal e-mails, account names beyond the commit identity, or tooling of the
-  maintainer's own infrastructure. `make sensitive` + the pre-commit hook check it
+  maintainer's own infrastructure. `make sensitive` (generic rules, also in CI) + the pre-commit
+  and pre-push hooks (generic + the maintainer's local denylist) check it
   (`git config core.hooksPath .githooks` once per clone). See the `sensitive-check` skill.
 - Do not hand-edit files under `conformance/corpus/**/golden/`.
 - Do not edit `LICENSE` or provenance headers of existing files.
@@ -78,11 +79,16 @@ Do not comment on style that gofmt/golangci-lint already enforce.
 
 ## Git
 - Work on a branch, open a PR to `main`. Small PRs (≈ one C file or one feature).
-- Merge gate (the repo has no branch protection, so this is a rule, not a setting): CI green on the
-  PR's **exact head SHA** + a `port-reviewer` (or codex astra) review of that SHA, linked in the PR.
+- Merge gate (Free private plan: no branch protection, so this is a rule enforced by a script,
+  not a setting): for the PR's **full head SHA**, `ci.yml` concluded success and the latest
+  maintainer-authored attestation line `VERDICT: approve <full sha> (<reviewer>)` — posted by
+  `scripts/astra review`, or by the lead after a `port-reviewer` review — names that SHA. Bot
+  verdicts (Claude `ai-review`, Codex app) are advisory. Changes to CI, workflows, hooks or
+  `scripts/` need a human read: a PR can change what its own CI runs.
   Only the lead merges; worker agents never push to `main` or hold merge rights.
 - Merging is `scripts/merge-pr <n>` only (checks the gate, requires UTC dates, fast-forwards the
-  reviewed head SHA). Never the GitHub merge button — it records the local time zone.
+  reviewed head SHA with a lease on `main`). Never the GitHub merge button — it records the local
+  time zone. Details and limits: CONTRIBUTING.md "Merge gate".
 - Conventional-commit subjects (`feat(xpath): …`, `fix:`, `docs:`, `test:`, `build:`).
 - Commit with `TZ=UTC` (`git ci` alias) as the configured author. **No AI trailers**
   (`Co-Authored-By`, `Assisted-by`) — AI assistance is disclosed once, in README.
