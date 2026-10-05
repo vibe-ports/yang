@@ -301,6 +301,134 @@
       "path": "/pv2:c/any",
       "schema": "/pv2:c/any",
       "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2:c/any/c",
+      "schema": "/pv2:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2:c/any/c/mode",
+      "schema": "/pv2:c/mode",
+      "value": {
+        "canonical": "off",
+        "type": "enumeration",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2:c/any/c/d",
+      "schema": "/pv2:c/d",
+      "value": {
+        "canonical": "7",
+        "type": "uint8",
+        "typedef": "percent",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2:c/any/c/f",
+      "schema": "/pv2:c/ch/first/f",
+      "value": {
+        "canonical": "ff",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2:c/any/c/dref",
+      "schema": "/pv2:c/dref",
+      "value": {
+        "canonical": "7",
+        "type": "uint8",
+        "typedef": "percent",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2:c/any/c/ll[.='a']",
+      "schema": "/pv2:c/ll",
+      "value": {
+        "canonical": "a",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2:c/any/c/ll[.='b']",
+      "schema": "/pv2:c/ll",
+      "value": {
+        "canonical": "b",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
     }
   ],
   "verdict": "valid"

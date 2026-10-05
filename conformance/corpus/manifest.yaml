@@ -1458,3 +1458,31 @@ fixtures:
       verdict: valid
       rfc: ["RFC7950#7.21.5"]
       deviation: null
+
+  - id: protocol-v2/anydata-xml-ns-a
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#7.10"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:yang:conformance:pv2"><mode>on</mode><any><foo xmlns="urn:a">1</foo></any></c>'
+    golden: golden/anydata-xml-ns-a.json
+
+  - id: protocol-v2/anydata-xml-ns-b
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#7.10"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:yang:conformance:pv2"><mode>on</mode><any><foo xmlns="urn:b">1</foo></any></c>'
+    golden: golden/anydata-xml-ns-b.json

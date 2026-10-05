@@ -3,13 +3,17 @@
 package conformance
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"maps"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 )
 
 const manifestPath = "corpus/manifest.yaml"
@@ -324,12 +328,54 @@ func TestOpaqueNamespaceDiffers(t *testing.T) {
 		t.Fatalf("fixture %s missing", id)
 		return nil
 	}
-	a, b := golden("protocol-v2/opaque-xml-ns-a"), golden("protocol-v2/opaque-xml-ns-b")
-	if diffResponses(a, b) == "" {
-		t.Error("opaque nodes in different XML namespaces compare equal")
+	for _, set := range []string{"opaque-xml-ns", "anydata-xml-ns"} {
+		a, b := golden("protocol-v2/"+set+"-a"), golden("protocol-v2/"+set+"-b")
+		if diffResponses(a, b) == "" {
+			t.Errorf("%s: nodes in different XML namespaces compare equal", set)
+		}
+		if diffResponses(withoutAsserted(a), withoutAsserted(b)) == "" {
+			t.Errorf("%s: a deviation must not waive the namespace", set)
+		}
 	}
-	if diffResponses(withoutAsserted(a), withoutAsserted(b)) == "" {
-		t.Error("a deviation must not waive the opaque namespace")
+}
+
+// Malformed sequence requests are request-errors (exit 2), found before any step runs. Needs the
+// built oracle (oracle/lyoracle, i.e. make oracle-check); skipped without it.
+func TestOracleRequestErrors(t *testing.T) {
+	oracle, err := filepath.Abs("oracle/lyoracle")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(oracle); err != nil {
+		t.Skip("oracle not built")
+	}
+	const head = `{"op":"sequence","base_dir":"corpus/protocol-v2","searchdirs":["schemas"],"modules":[{"name":"pv2"}],"steps":[`
+	for _, tc := range []struct{ name, steps, want string }{
+		{"empty key (issue #5)", `{"do":"dump","":1}`, `unknown key ""`},
+		{"empty key in set", `{"do":"edit","set":{"path":"/pv2:c/mode","":1}}`, `unknown key ""`},
+		{"prefix of an allowed key", `{"do":"parse","data":"{}","dat":1}`, `unknown key "dat"`},
+		{"merge option on set", `{"do":"edit","set":{"path":"/pv2:c/mode","value":"on"},"format":"garbage"}`, `key "format" not allowed`},
+		{"merge option on delete", `{"do":"edit","delete":"/pv2:c/mode","data_type":"config"}`, `key "data_type" not allowed`},
+		{"malformed step after a failing one", `{"do":"edit","delete":"/pv2:c/nope"},{"do":"dump","with_defaults":"bogus"}`, `unknown with_defaults mode`},
+	} {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		cmd := exec.CommandContext(ctx, oracle) //nolint:gosec // test runs the repo's own oracle binary
+		cmd.Stdin = strings.NewReader(head + tc.steps + "]}")
+		out, err := cmd.Output()
+		cancel()
+		var ee *exec.ExitError
+		if !errors.As(err, &ee) || ee.ExitCode() != 2 {
+			t.Errorf("%s: want exit 2, got %v", tc.name, err)
+			continue
+		}
+		r, err := ParseResponse(out)
+		if err != nil {
+			t.Errorf("%s: %v", tc.name, err)
+			continue
+		}
+		if msg, _ := r["request_error"].(string); r.Verdict() != "request-error" || !strings.Contains(msg, tc.want) {
+			t.Errorf("%s: verdict %q, request_error %q, want %q", tc.name, r.Verdict(), msg, tc.want)
+		}
 	}
 }
 

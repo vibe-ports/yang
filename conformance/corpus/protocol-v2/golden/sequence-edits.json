@@ -210,6 +210,39 @@
           "path": "/pv2:c/any",
           "schema": "/pv2:c/any",
           "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2:c/any/c",
+          "schema": "/pv2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2:c/any/c/mode",
+          "schema": "/pv2:c/mode",
+          "value": {
+            "canonical": "off",
+            "type": "enumeration",
+            "typedef": null,
+            "union_member": null
+          }
         }
       ]
     },
@@ -439,6 +472,39 @@
           "path": "/pv2:c/any",
           "schema": "/pv2:c/any",
           "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2:c/any/c",
+          "schema": "/pv2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2:c/any/c/mode",
+          "schema": "/pv2:c/mode",
+          "value": {
+            "canonical": "off",
+            "type": "enumeration",
+            "typedef": null,
+            "union_member": null
+          }
         }
       ]
     },
@@ -635,6 +701,39 @@
           "path": "/pv2:c/any",
           "schema": "/pv2:c/any",
           "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2:c/any/c",
+          "schema": "/pv2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2:c/any/c/mode",
+          "schema": "/pv2:c/mode",
+          "value": {
+            "canonical": "off",
+            "type": "enumeration",
+            "typedef": null,
+            "union_member": null
+          }
         }
       ]
     },
@@ -927,6 +1026,39 @@
           "path": "/pv2:c/any",
           "schema": "/pv2:c/any",
           "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2:c/any/c",
+          "schema": "/pv2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2:c/any/c/mode",
+          "schema": "/pv2:c/mode",
+          "value": {
+            "canonical": "off",
+            "type": "enumeration",
+            "typedef": null,
+            "union_member": null
+          }
         }
       ]
     },
@@ -1219,6 +1351,39 @@
           "path": "/pv2:c/any",
           "schema": "/pv2:c/any",
           "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2:c/any/c",
+          "schema": "/pv2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2:c/any/c/mode",
+          "schema": "/pv2:c/mode",
+          "value": {
+            "canonical": "off",
+            "type": "enumeration",
+            "typedef": null,
+            "union_member": null
+          }
         }
       ]
     },
@@ -1526,6 +1691,39 @@
           "path": "/pv2:c/any",
           "schema": "/pv2:c/any",
           "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2:c/any/c",
+          "schema": "/pv2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2:c/any/c/mode",
+          "schema": "/pv2:c/mode",
+          "value": {
+            "canonical": "off",
+            "type": "enumeration",
+            "typedef": null,
+            "union_member": null
+          }
         }
       ]
     },

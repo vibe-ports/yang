@@ -25,6 +25,8 @@ in pre-order (siblings in libyang order), one object per node:
  "any": null}   // anydata/anyxml: {"value_type": "datatree"|"string"|null, "text": "…"}
 ```
 libyang v5 anydata holds only a data tree or a string, so `value_type` has no xml/json/lyb.
+`text` (JSON) loses XML namespaces, so a `datatree` payload is also dumped as nodes right after
+the anydata node (opaque payload nodes carry their namespace in `opaque`).
 `union_member` is the first union member whose type (leafref: its realtype) is the stored realtype
 — libyang does not record the member, this is its own ordering rule (`lyplg_type_sort_union`);
 two members with the same realtype report the earlier one. Opaque nodes: `value.canonical` is the
@@ -68,7 +70,8 @@ target only when `lysc_node_lref_targets` resolves one per leafref member (it sk
    {"do": "validate", "data_type": "config"},
    {"do": "dump", "with_defaults": "all-tagged"}]}
 ```
-All steps are checked (request-error, also for keys a step kind does not take) before any runs. Response: `steps`: one object per step with `rc`, `diagnostics`, and for `validate` the
+All steps are checked (request-error, also for keys a step kind — or edit kind: merge takes the
+parse options, `set` and `delete` nothing else — does not take, and for empty keys) before any runs. Response: `steps`: one object per step with `rc`, `diagnostics`, and for `validate` the
 `implicit_diff` (lyd_validate_all's diff: defaults added, nodes auto-deleted by `when`, printed as
 JSON with `yang:operation`), for every step the resulting `typed` dump. The sequence stops at the
 first failing step — rc not LY_SUCCESS or an error-level diagnostic logged (e.g. `lyd_free_tree`

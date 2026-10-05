@@ -477,8 +477,9 @@ typed_add(cJSON *arr, const struct lyd_node *n)
             free(s);
         } else {
             cJSON_AddNullToObject(o, "any");
-            typed_add(arr, lyd_child(n));
         }
+        /* anydata/anyxml payload trees too: their (opaque) nodes keep namespaces the JSON text loses */
+        typed_add(arr, lyd_child_any(n));
     }
 }
 
@@ -1377,21 +1378,24 @@ op_diff(const cJSON *req)
 
 /* ---------- sequence: steps on one retained tree ---------- */
 
-/* request-error unless every key of o is in the space-separated list allowed */
+/* request-error unless every key of o is one of the space-separated tokens in allowed */
 static void
 keys_only(const cJSON *o, const char *allowed, const char *what)
 {
     const cJSON *it;
 
     cJSON_ArrayForEach(it, o) {
-        const char *k = it->string, *p = allowed;
-        size_t n = strlen(k);
+        const char *k = it->string, *tok = allowed;
+        size_t n = strlen(k), len;
+        int found = 0;
 
-        /* a whole word: "data" must not match inside "data_type" */
-        while ((p = strstr(p, k)) && (((p != allowed) && (p[-1] != ' ')) || ((p[n] != ' ') && p[n]))) {
-            p += n;
+        /* compare whole tokens: "data" is not "data_type", "" matches nothing */
+        while (!found && *tok) {
+            len = strcspn(tok, " ");
+            found = n && (len == n) && !strncmp(tok, k, n);
+            tok += len + (tok[len] == ' ');
         }
-        if (!p) {
+        if (!found) {
             die(what, k);
         }
     }
@@ -1414,6 +1418,13 @@ check_step(const cJSON *step)
             "parse_options validate_options" : !strcmp(what, "validate") ? "do data_type validate_options" :
             !strcmp(what, "edit") ? "do merge merge_file set delete format data_type unknown parse_options" :
             !strcmp(what, "dump") ? "do with_defaults" : "do", "unknown key \"%s\" in a sequence step");
+    if (!strcmp(what, "edit")) {
+        /* the parse options belong to merge only */
+        keys_only(step, cJSON_GetObjectItemCaseSensitive(step, "set") ? "do set" :
+                cJSON_GetObjectItemCaseSensitive(step, "delete") ? "do delete" :
+                "do merge merge_file format data_type unknown parse_options",
+                "key \"%s\" not allowed in this edit step");
+    }
     if (!strcmp(what, "parse")) {
         dparams_of(step, &p);
         if (p.optype != LYD_TYPE_DATA_YANG) {

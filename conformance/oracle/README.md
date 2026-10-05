@@ -215,8 +215,11 @@ are null, `hints` lists the parser's value/node hints (the JSON type the value c
 `meta` (`module` = module name for JSON input, namespace for XML). Opaque nodes also carry
 `"opaque": {"name", "prefix", "format": "xml"|"json", "namespace" (XML), "module" (JSON, inherited)}`
 — `struct ly_opaq_name` as libyang stores it; `path` alone does not show an XML namespace (fixtures
-`protocol-v2/opaque-xml-ns-a` / `-b` differ only there). Schema-bound nodes have `"opaque": null`. `any.text` is `lyd_any_value_str(LYD_JSON)`;
-anydata content is not listed as separate nodes.
+`protocol-v2/opaque-xml-ns-a` / `-b` differ only there). Schema-bound nodes have `"opaque": null`. `any.text` is `lyd_any_value_str(LYD_JSON)`,
+which loses XML namespaces; the payload tree of a `datatree` anydata/anyxml is therefore also
+listed, right after the anydata node (`lyd_child_any`), e.g. `/pv2:c/any/foo` with `"opaque":
+{"namespace": "urn:a", ...}` (fixtures `protocol-v2/anydata-xml-ns-a` / `-b`). Payload nodes
+libyang could bind to a schema (JSON content of a known module) appear as schema-bound nodes.
 
 `union_member` = `{"index", "type", "typedef", "realtype": {"type", "typedef"}}`: `index`, `type`
 and `typedef` describe the union member (unions are flattened by libyang), `realtype` the type the
@@ -273,13 +276,14 @@ becomes observable. Context fields as in `schema`; step fields are per step (not
 |---|---|---|
 | `parse` | `format`, `data_type` (datastore types only), `data`/`data_file`, `unknown`, `parse_only`, `parse_options`, `validate_options` | as op `data`; on success replaces the tree |
 | `validate` | `data_type`, `validate_options` (validate flags of the preset) | `lyd_validate_all(&tree, ctx, opts, &diff)` |
-| `edit` | exactly one of `merge` / `merge_file` (+ `format`, `data_type`, `unknown`, `parse_options`) | `lyd_parse_data(… LYD_PARSE_ONLY …)` + `lyd_merge_siblings(LYD_MERGE_DESTRUCT)` |
-| | `set: {"path", "value"}` (value in JSON format, omit for containers/lists) | `lyd_new_path(tree, ctx, path, value, LYD_NEW_PATH_UPDATE)` |
-| | `delete: "<path>"` | `lyd_find_path` + `lyd_free_tree` (`LY_EINCOMPLETE` if only a parent exists; a list key is refused, see below) |
+| `edit` | exactly one of `merge` / `merge_file` (+ `format`, `data_type`, `unknown`, `parse_options`, merge only) | `lyd_parse_data(… LYD_PARSE_ONLY …)` + `lyd_merge_siblings(LYD_MERGE_DESTRUCT)` |
+| | `set: {"path", "value"}` only (value in JSON format, omit for containers/lists) | `lyd_new_path(tree, ctx, path, value, LYD_NEW_PATH_UPDATE)` |
+| | `delete: "<path>"` only | `lyd_find_path` + `lyd_free_tree` (`LY_EINCOMPLETE` if only a parent exists; a list key is refused, see below) |
 | `dump` | `with_defaults` | `tree` = `{"json", "xml"}` as op `data` |
 
 All steps are checked before the first runs (unknown `do`, keys not listed in the table for that
-step or in `set`, missing/extra edit fields, bad enums, unreadable files → request-error), so a run that stops early never hides a malformed later step.
+step or edit kind or in `set` — matched as whole names, an empty key never matches — missing/extra
+edit fields, bad enums, unreadable files → request-error), so a run that stops early never hides a malformed later step.
 A step fails when its call returns an error **or** it logged an error-level diagnostic (void
 APIs: `lyd_free_tree` refuses a list key with `LY_EINVAL` "Cannot free a list key"); its `rc` is
 then that item's code.
