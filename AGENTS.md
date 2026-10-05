@@ -16,6 +16,10 @@ Plan and rationale: `PLAN.md`. Decisions: `docs/decisions/`. Designs: `docs/desi
 - `./dev make fuzz FUZZTIME=30s` — run all fuzz targets.
 - `./dev go test ./internal/xpath/ -run TestX` — any single command.
 - Never install Go tools on the host; add them to `Dockerfile` instead.
+- **Canonical oracle architecture is linux/amd64** (CI runs amd64; libyang's `long double`
+  and C integer conversions differ on arm64). Before a PR that touches oracle results run
+  `DEV_PLATFORM=linux/amd64 ./dev make test-oracle oracle-check`; generate goldens/jsonl only with
+  `DEV_PLATFORM=linux/amd64`.
 
 ## Porting rules
 - Port behaviour, not C idioms: errors as values, no globals, no manual memory, `io.Reader`/`fs.FS`
@@ -43,6 +47,18 @@ Plan and rationale: `PLAN.md`. Decisions: `docs/decisions/`. Designs: `docs/desi
   (`git config core.hooksPath .githooks` once per clone). See the `sensitive-check` skill.
 - Do not hand-edit files under `conformance/corpus/**/golden/`.
 - Do not edit `LICENSE` or provenance headers of existing files.
+- Registries (`conformance/corpus/manifest.yaml`, `docs/port-map.md`, `conformance/deviations.md`)
+  merge with git's union driver: after every rebase check for duplicated ids/rows (an edited row
+  shows up twice). Deviation ids come from your stream's range below — never "next free".
+
+| Stream | D-ids | U-ids |
+|---|---|---|
+| xsdre / earlier | D-0001…D-0009 | U-0001 |
+| xpath | D-0010…D-0019 | U-0002…U-0004 |
+| parser | D-0020…D-0024 | U-0005…U-0009 |
+| types | D-0025…D-0034 | U-0010…U-0019 |
+| compile (M1-5) | D-0035…D-0049 | U-0020…U-0039 |
+| data / validation (M1-6) | D-0050…D-0069 | U-0040…U-0059 |
 
 ## Workflow
 Claude/porter implement, codex writes independent fixtures in parallel, astra reviews every PR
