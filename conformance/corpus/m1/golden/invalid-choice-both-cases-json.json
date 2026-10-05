@@ -9,7 +9,7 @@
       },
       "data_path": null,
       "level": "error",
-      "line": 32,
+      "line": 33,
       "msg": "Data for both cases \"shared\" and \"dedicated\" exist.",
       "phase": "data",
       "schema_path": "/ietf-interfaces:interfaces/interface/m1-ext:m1/mode",

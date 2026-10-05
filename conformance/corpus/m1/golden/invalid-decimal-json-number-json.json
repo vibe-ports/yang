@@ -7,14 +7,14 @@
         "err": 7,
         "name": "LY_EVALID"
       },
-      "data_path": "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1",
+      "data_path": "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1/gain",
       "level": "error",
-      "line": 31,
-      "msg": "Node \"bogus\" not found as a child of \"m1\" node.",
+      "line": 26,
+      "msg": "Invalid non-string-encoded decimal64 value \"2.5\".",
       "phase": "data",
       "schema_path": null,
-      "vecode": 4,
-      "vecode_name": "LYVE_REFERENCE"
+      "vecode": 9,
+      "vecode_name": "LYVE_DATA"
     }
   ],
   "libyang": "5.8.6",

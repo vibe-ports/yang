@@ -26,7 +26,8 @@
           "gain": "2.50",
           "kind": "m1-ext:m1-eth",
           "hw": "zz",
-          "site": "example.com"
+          "site": "example.com",
+          "addr": "192.0.2.9"
         }
       },
       {

@@ -7,14 +7,14 @@
         "err": 7,
         "name": "LY_EVALID"
       },
-      "data_path": "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1",
+      "data_path": "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1/weight",
       "level": "error",
-      "line": 31,
-      "msg": "Node \"bogus\" not found as a child of \"m1\" node.",
+      "line": 25,
+      "msg": "Invalid union value \"7\" - no matching subtype found:\n    ly2 integers: Invalid non-number-encoded uint8 value \"7\".\n    ly2 enumeration: Invalid enumeration value \"7\".\n    ly2 string: Unsatisfied pattern - \"7\" does not match \"[a-z]+-[0-9]+\".\n",
       "phase": "data",
       "schema_path": null,
-      "vecode": 4,
-      "vecode_name": "LYVE_REFERENCE"
+      "vecode": 9,
+      "vecode_name": "LYVE_DATA"
     }
   ],
   "libyang": "5.8.6",

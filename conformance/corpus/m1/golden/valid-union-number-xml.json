@@ -35,8 +35,8 @@
     "name": "LY_SUCCESS"
   },
   "tree": {
-    "json": "{\n  \"ietf-interfaces:interfaces\": {\n    \"interface\": [\n      {\n        \"name\": \"eth0\",\n        \"description\": \"uplink\",\n        \"type\": \"iana-if-type:ethernetCsmacd\",\n        \"enabled\": true,\n        \"ietf-ip:ipv4\": {\n          \"address\": [\n            {\n              \"ip\": \"192.0.2.1\",\n              \"prefix-length\": 24\n            }\n          ]\n        },\n        \"m1-ext:m1\": {\n          \"rate\": 200,\n          \"burst\": 10,\n          \"shared-weight\": 7,\n          \"fast\": true,\n          \"boost\": 3,\n          \"mtu-limit\": 1500,\n          \"peer\": \"eth1\",\n          \"weight\": \"node-3\",\n          \"gain\": \"2.5\",\n          \"kind\": \"m1-eth\",\n          \"site\": \"example.com\",\n          \"addr\": \"192.0.2.9\",\n          \"hw\": \"00:11:22:33:44:55\"\n        }\n      },\n      {\n        \"name\": \"eth1\",\n        \"type\": \"iana-if-type:ethernetCsmacd\"\n      }\n    ]\n  }\n}\n",
-    "xml": "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">\n  <interface>\n    <name>eth0</name>\n    <description>uplink</description>\n    <type xmlns:ianaift=\"urn:ietf:params:xml:ns:yang:iana-if-type\">ianaift:ethernetCsmacd</type>\n    <enabled>true</enabled>\n    <ipv4 xmlns=\"urn:ietf:params:xml:ns:yang:ietf-ip\">\n      <address>\n        <ip>192.0.2.1</ip>\n        <prefix-length>24</prefix-length>\n      </address>\n    </ipv4>\n    <m1 xmlns=\"urn:example:m1-ext\">\n      <rate>200</rate>\n      <burst>10</burst>\n      <shared-weight>7</shared-weight>\n      <fast>true</fast>\n      <boost>3</boost>\n      <mtu-limit>1500</mtu-limit>\n      <peer>eth1</peer>\n      <weight>node-3</weight>\n      <gain>2.5</gain>\n      <kind>m1-eth</kind>\n      <site>example.com</site>\n      <addr>192.0.2.9</addr>\n      <hw>00:11:22:33:44:55</hw>\n    </m1>\n  </interface>\n  <interface>\n    <name>eth1</name>\n    <type xmlns:ianaift=\"urn:ietf:params:xml:ns:yang:iana-if-type\">ianaift:ethernetCsmacd</type>\n  </interface>\n</interfaces>\n"
+    "json": "{\n  \"ietf-interfaces:interfaces\": {\n    \"interface\": [\n      {\n        \"name\": \"eth0\",\n        \"description\": \"uplink\",\n        \"type\": \"iana-if-type:ethernetCsmacd\",\n        \"enabled\": true,\n        \"ietf-ip:ipv4\": {\n          \"address\": [\n            {\n              \"ip\": \"192.0.2.1\",\n              \"prefix-length\": 24\n            }\n          ]\n        },\n        \"m1-ext:m1\": {\n          \"rate\": 200,\n          \"burst\": 10,\n          \"shared-weight\": 7,\n          \"fast\": true,\n          \"boost\": 3,\n          \"mtu-limit\": 1500,\n          \"peer\": \"eth1\",\n          \"weight\": 7,\n          \"gain\": \"2.5\",\n          \"kind\": \"m1-eth\",\n          \"site\": \"example.com\",\n          \"addr\": \"192.0.2.9\",\n          \"hw\": \"00:11:22:33:44:55\"\n        }\n      },\n      {\n        \"name\": \"eth1\",\n        \"type\": \"iana-if-type:ethernetCsmacd\"\n      }\n    ]\n  }\n}\n",
+    "xml": "<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">\n  <interface>\n    <name>eth0</name>\n    <description>uplink</description>\n    <type xmlns:ianaift=\"urn:ietf:params:xml:ns:yang:iana-if-type\">ianaift:ethernetCsmacd</type>\n    <enabled>true</enabled>\n    <ipv4 xmlns=\"urn:ietf:params:xml:ns:yang:ietf-ip\">\n      <address>\n        <ip>192.0.2.1</ip>\n        <prefix-length>24</prefix-length>\n      </address>\n    </ipv4>\n    <m1 xmlns=\"urn:example:m1-ext\">\n      <rate>200</rate>\n      <burst>10</burst>\n      <shared-weight>7</shared-weight>\n      <fast>true</fast>\n      <boost>3</boost>\n      <mtu-limit>1500</mtu-limit>\n      <peer>eth1</peer>\n      <weight>7</weight>\n      <gain>2.5</gain>\n      <kind>m1-eth</kind>\n      <site>example.com</site>\n      <addr>192.0.2.9</addr>\n      <hw>00:11:22:33:44:55</hw>\n    </m1>\n  </interface>\n  <interface>\n    <name>eth1</name>\n    <type xmlns:ianaift=\"urn:ietf:params:xml:ns:yang:iana-if-type\">ianaift:ethernetCsmacd</type>\n  </interface>\n</interfaces>\n"
   },
   "typed": [
     {
@@ -407,16 +407,16 @@
       "path": "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1/weight",
       "schema": "/ietf-interfaces:interfaces/interface/m1-ext:m1/weight",
       "value": {
-        "canonical": "node-3",
+        "canonical": "7",
         "type": "union",
         "typedef": null,
         "union_member": {
-          "index": 2,
+          "index": 0,
           "realtype": {
-            "type": "string",
+            "type": "uint8",
             "typedef": null
           },
-          "type": "string",
+          "type": "uint8",
           "typedef": null
         }
       }

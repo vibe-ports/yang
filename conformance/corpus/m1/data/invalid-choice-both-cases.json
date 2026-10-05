@@ -27,6 +27,7 @@
           "kind": "m1-ext:m1-eth",
           "hw": "00:11:22:33:44:55",
           "site": "example.com",
+          "addr": "192.0.2.9",
           "dedicated-slot": 3
         }
       },

@@ -9,7 +9,7 @@
         "ietf-ip:ipv4": {
           "address": [
             {
-              "ip": "192.0.2.1",
+              "ip": "300.1.1.1",
               "prefix-length": 24
             }
           ]
@@ -21,7 +21,7 @@
           "fast": true,
           "boost": 3,
           "mtu-limit": 1500,
-          "peer": "nope",
+          "peer": "eth1",
           "weight": "node-3",
           "gain": "2.50",
           "kind": "m1-ext:m1-eth",

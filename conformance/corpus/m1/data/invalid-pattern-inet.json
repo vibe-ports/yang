@@ -26,7 +26,8 @@
           "gain": "2.50",
           "kind": "m1-ext:m1-eth",
           "hw": "00:11:22:33:44:55",
-          "site": "-bad-.example"
+          "site": "-bad-.example",
+          "addr": "192.0.2.9"
         }
       },
       {

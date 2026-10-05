@@ -417,7 +417,7 @@ fixtures:
 
   - id: m1/schema-tree
     dir: m1
-    source: &m1src {url: "https://github.com/YangModels/yang (see m1/SOURCE.md) + hand-written m1-ext (this repo)", commit: 0e28ed86b0a9070b7f15fd06ba4fa501723fac84, license: BSD-3-Clause}
+    source: &m1src {url: "https://github.com/YangModels/yang (see m1/SOURCE.md) + hand-written m1-ext (this repo)", commit: 0e28ed86b0a9070b7f15fd06ba4fa501723fac84, license: "BSD-3-Clause AND BSD-2-Clause"}
     rfc: ["RFC7950#7.20", "RFC7950#7.18.1", "RFC7950#7.13", "RFC7950#7.9", "RFC7950#7.5.3", "RFC7950#7.21.5", "RFC7950#9.9", "RFC7950#9.12", "RFC7950#9.3", "RFC7950#9.10", "RFC8343#5", "RFC8344#4"]
     areas: [schema, types]
     request:
@@ -429,6 +429,21 @@ fixtures:
         - {name: ietf-ip, features: [ipv4-non-contiguous-netmasks]}
         - {name: m1-ext, features: [fast-path]}
     golden: golden/schema-tree.json
+
+  - id: m1/schema-tree-no-features
+    dir: m1
+    source: *m1src
+    rfc: ["RFC7950#7.20.2", "RFC7950#7.20"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules:
+        - {name: ietf-interfaces, features: [arbitrary-names, pre-provisioning, if-mib]}
+        - {name: iana-if-type}
+        - {name: ietf-ip, features: [ipv4-non-contiguous-netmasks]}
+        - {name: m1-ext}
+    golden: golden/schema-tree-no-features.json
 
   - id: m1/valid-config-json
     dir: m1
@@ -525,7 +540,7 @@ fixtures:
   - id: m1/invalid-mandatory-missing-json
     dir: m1
     source: *m1src
-    rfc: ["RFC7950#7.6.5", "RFC7950#7.5.3"]
+    rfc: ["RFC7950#7.6.5", "RFC7950#7.13.2", "RFC7950#7.5.1"]
     areas: [validation]
     request:
       op: data
@@ -550,7 +565,7 @@ fixtures:
   - id: m1/invalid-mandatory-missing-xml
     dir: m1
     source: *m1src
-    rfc: ["RFC7950#7.6.5", "RFC7950#7.5.3"]
+    rfc: ["RFC7950#7.6.5", "RFC7950#7.13.2", "RFC7950#7.5.1"]
     areas: [validation]
     request:
       op: data
@@ -775,7 +790,7 @@ fixtures:
   - id: m1/invalid-decimal-range-json
     dir: m1
     source: *m1src
-    rfc: ["RFC7950#9.3.4", "RFC7950#9.3.1"]
+    rfc: ["RFC7950#9.2.4", "RFC7950#9.3.3"]
     areas: [types]
     request:
       op: data
@@ -800,7 +815,7 @@ fixtures:
   - id: m1/invalid-decimal-range-xml
     dir: m1
     source: *m1src
-    rfc: ["RFC7950#9.3.4", "RFC7950#9.3.1"]
+    rfc: ["RFC7950#9.2.4", "RFC7950#9.3.3"]
     areas: [types]
     request:
       op: data
@@ -825,7 +840,7 @@ fixtures:
   - id: m1/invalid-decimal-digits-json
     dir: m1
     source: *m1src
-    rfc: ["RFC7950#9.3.4"]
+    rfc: ["RFC7950#9.3.1", "RFC7950#9.3.4"]
     areas: [types]
     request:
       op: data
@@ -850,7 +865,7 @@ fixtures:
   - id: m1/invalid-decimal-digits-xml
     dir: m1
     source: *m1src
-    rfc: ["RFC7950#9.3.4"]
+    rfc: ["RFC7950#9.3.1", "RFC7950#9.3.4"]
     areas: [types]
     request:
       op: data
@@ -875,7 +890,7 @@ fixtures:
   - id: m1/invalid-pattern-inet-json
     dir: m1
     source: *m1src
-    rfc: ["RFC7950#9.4.5", "RFC6991#3"]
+    rfc: ["RFC7950#9.4.5", "RFC9911#4"]
     areas: [types]
     request:
       op: data
@@ -900,7 +915,7 @@ fixtures:
   - id: m1/invalid-pattern-inet-xml
     dir: m1
     source: *m1src
-    rfc: ["RFC7950#9.4.5", "RFC6991#3"]
+    rfc: ["RFC7950#9.4.5", "RFC9911#4"]
     areas: [types]
     request:
       op: data
@@ -922,10 +937,12 @@ fixtures:
         - {vecode_name: LYVE_DATA, data_path: "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1/site"}
       deviation: null
 
-  - id: m1/invalid-inet-ipv4-address-json
+  # Bad value on a list KEY: libyang reports the type error plus a cascade ('missing key') with detached
+  # data_paths (/ietf-ip:address/ip). Observed quirk, kept for the Go engine; see invalid-ipv4-address for the clean case.
+  - id: m1/invalid-key-value-type-json
     dir: m1
     source: *m1src
-    rfc: ["RFC6991#4"]
+    rfc: ["RFC9911#4"]
     areas: [types]
     request:
       op: data
@@ -937,17 +954,17 @@ fixtures:
         - {name: m1-ext, features: [fast-path]}
       format: json
       data_type: config
-      data_file: data/invalid-inet-ipv4-address.json
+      data_file: data/invalid-key-value-type.json
       with_defaults: explicit
-    golden: golden/invalid-inet-ipv4-address-json.json
+    golden: golden/invalid-key-value-type-json.json
     assert:
       verdict: invalid
       deviation: null
 
-  - id: m1/invalid-inet-ipv4-address-xml
+  - id: m1/invalid-key-value-type-xml
     dir: m1
     source: *m1src
-    rfc: ["RFC6991#4"]
+    rfc: ["RFC9911#4"]
     areas: [types]
     request:
       op: data
@@ -959,17 +976,67 @@ fixtures:
         - {name: m1-ext, features: [fast-path]}
       format: xml
       data_type: config
-      data_file: data/invalid-inet-ipv4-address.xml
+      data_file: data/invalid-key-value-type.xml
       with_defaults: explicit
-    golden: golden/invalid-inet-ipv4-address-xml.json
+    golden: golden/invalid-key-value-type-xml.json
     assert:
       verdict: invalid
+      deviation: null
+
+  - id: m1/invalid-ipv4-address-json
+    dir: m1
+    source: *m1src
+    rfc: ["RFC9911#4"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules:
+        - {name: ietf-interfaces, features: [arbitrary-names, pre-provisioning, if-mib]}
+        - {name: iana-if-type}
+        - {name: ietf-ip, features: [ipv4-non-contiguous-netmasks]}
+        - {name: m1-ext, features: [fast-path]}
+      format: json
+      data_type: config
+      data_file: data/invalid-ipv4-address.json
+      with_defaults: explicit
+    golden: golden/invalid-ipv4-address-json.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC9911#4"]
+      diagnostics:
+        - {vecode_name: LYVE_DATA, data_path: "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1/addr"}
+      deviation: null
+
+  - id: m1/invalid-ipv4-address-xml
+    dir: m1
+    source: *m1src
+    rfc: ["RFC9911#4"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules:
+        - {name: ietf-interfaces, features: [arbitrary-names, pre-provisioning, if-mib]}
+        - {name: iana-if-type}
+        - {name: ietf-ip, features: [ipv4-non-contiguous-netmasks]}
+        - {name: m1-ext, features: [fast-path]}
+      format: xml
+      data_type: config
+      data_file: data/invalid-ipv4-address.xml
+      with_defaults: explicit
+    golden: golden/invalid-ipv4-address-xml.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC9911#4"]
+      diagnostics:
+        - {vecode_name: LYVE_DATA, data_path: "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1/addr"}
       deviation: null
 
   - id: m1/invalid-pattern-yang-json
     dir: m1
     source: *m1src
-    rfc: ["RFC7950#9.4.5", "RFC6991#3"]
+    rfc: ["RFC7950#9.4.5", "RFC9911#3"]
     areas: [types]
     request:
       op: data
@@ -994,7 +1061,7 @@ fixtures:
   - id: m1/invalid-pattern-yang-xml
     dir: m1
     source: *m1src
-    rfc: ["RFC7950#9.4.5", "RFC6991#3"]
+    rfc: ["RFC7950#9.4.5", "RFC9911#3"]
     areas: [types]
     request:
       op: data
@@ -1066,10 +1133,11 @@ fixtures:
         - {vecode_name: LYVE_DATA, data_path: "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1/kind"}
       deviation: null
 
+  # libyang reports the duplicate-instance diagnostic twice (known oracle behaviour); asserts are subset matches.
   - id: m1/invalid-duplicate-key-json
     dir: m1
     source: *m1src
-    rfc: ["RFC7950#7.8.1", "RFC7950#7.8.3"]
+    rfc: ["RFC7950#7.8.1", "RFC7950#7.8.2"]
     areas: [validation]
     request:
       op: data
@@ -1094,7 +1162,7 @@ fixtures:
   - id: m1/invalid-duplicate-key-xml
     dir: m1
     source: *m1src
-    rfc: ["RFC7950#7.8.1", "RFC7950#7.8.3"]
+    rfc: ["RFC7950#7.8.1", "RFC7950#7.8.2"]
     areas: [validation]
     request:
       op: data
@@ -1119,7 +1187,7 @@ fixtures:
   - id: m1/invalid-choice-both-cases-json
     dir: m1
     source: *m1src
-    rfc: ["RFC7950#7.9.2", "RFC7950#7.9.1"]
+    rfc: ["RFC7950#7.9.2", "RFC7950#8.3.1"]
     areas: [validation]
     request:
       op: data
@@ -1144,7 +1212,7 @@ fixtures:
   - id: m1/invalid-choice-both-cases-xml
     dir: m1
     source: *m1src
-    rfc: ["RFC7950#7.9.2", "RFC7950#7.9.1"]
+    rfc: ["RFC7950#7.9.2", "RFC7950#8.3.1"]
     areas: [validation]
     request:
       op: data
@@ -1169,7 +1237,7 @@ fixtures:
   - id: m1/invalid-unknown-node-json
     dir: m1
     source: *m1src
-    rfc: ["RFC7950#6.1"]
+    rfc: ["RFC7950#8.3.1", "RFC7951#4"]
     areas: [validation, codecs]
     request:
       op: data
@@ -1186,12 +1254,15 @@ fixtures:
     golden: golden/invalid-unknown-node-json.json
     assert:
       verdict: invalid
+      rfc: ["RFC7950#8.3.1"]
+      diagnostics:
+        - {vecode_name: LYVE_REFERENCE, data_path: "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1"}
       deviation: null
 
   - id: m1/invalid-unknown-node-xml
     dir: m1
     source: *m1src
-    rfc: ["RFC7950#6.1"]
+    rfc: ["RFC7950#8.3.1", "RFC7951#4"]
     areas: [validation, codecs]
     request:
       op: data
@@ -1208,8 +1279,159 @@ fixtures:
     golden: golden/invalid-unknown-node-xml.json
     assert:
       verdict: invalid
+      rfc: ["RFC7950#8.3.1"]
+      diagnostics:
+        - {vecode_name: LYVE_REFERENCE, data_path: "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1"}
       deviation: null
 
+  - id: m1/invalid-if-feature-disabled-json
+    dir: m1
+    source: *m1src
+    rfc: ["RFC7950#7.20.2", "RFC7950#8.3.1"]
+    areas: [validation, schema]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules:
+        - {name: ietf-interfaces, features: [arbitrary-names, pre-provisioning, if-mib]}
+        - {name: iana-if-type}
+        - {name: ietf-ip, features: [ipv4-non-contiguous-netmasks]}
+        - {name: m1-ext}
+      format: json
+      data_type: config
+      data_file: data/invalid-if-feature-disabled.json
+      with_defaults: explicit
+    golden: golden/invalid-if-feature-disabled-json.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.2"]
+      diagnostics:
+        - {vecode_name: LYVE_REFERENCE, data_path: "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1"}
+      deviation: null
+
+  - id: m1/invalid-if-feature-disabled-xml
+    dir: m1
+    source: *m1src
+    rfc: ["RFC7950#7.20.2", "RFC7950#8.3.1"]
+    areas: [validation, schema]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules:
+        - {name: ietf-interfaces, features: [arbitrary-names, pre-provisioning, if-mib]}
+        - {name: iana-if-type}
+        - {name: ietf-ip, features: [ipv4-non-contiguous-netmasks]}
+        - {name: m1-ext}
+      format: xml
+      data_type: config
+      data_file: data/invalid-if-feature-disabled.xml
+      with_defaults: explicit
+    golden: golden/invalid-if-feature-disabled-xml.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.2"]
+      diagnostics:
+        - {vecode_name: LYVE_REFERENCE, data_path: "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1"}
+      deviation: null
+
+  - id: m1/valid-union-number-json
+    dir: m1
+    source: *m1src
+    rfc: ["RFC7950#9.12", "RFC7951#6.1"]
+    areas: [types, codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules:
+        - {name: ietf-interfaces, features: [arbitrary-names, pre-provisioning, if-mib]}
+        - {name: iana-if-type}
+        - {name: ietf-ip, features: [ipv4-non-contiguous-netmasks]}
+        - {name: m1-ext, features: [fast-path]}
+      format: json
+      data_type: config
+      data_file: data/valid-union-number.json
+      with_defaults: explicit
+    golden: golden/valid-union-number-json.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7951#6.1"]
+      deviation: null
+
+  - id: m1/valid-union-number-xml
+    dir: m1
+    source: *m1src
+    rfc: ["RFC7950#9.12", "RFC7951#6.1"]
+    areas: [types, codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules:
+        - {name: ietf-interfaces, features: [arbitrary-names, pre-provisioning, if-mib]}
+        - {name: iana-if-type}
+        - {name: ietf-ip, features: [ipv4-non-contiguous-netmasks]}
+        - {name: m1-ext, features: [fast-path]}
+      format: xml
+      data_type: config
+      data_file: data/valid-union-number.xml
+      with_defaults: explicit
+    golden: golden/valid-union-number-xml.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7951#6.1"]
+      deviation: null
+
+  - id: m1/invalid-union-json-string-7-json
+    dir: m1
+    source: *m1src
+    rfc: ["RFC7950#9.12", "RFC7951#6.1"]
+    areas: [types, codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules:
+        - {name: ietf-interfaces, features: [arbitrary-names, pre-provisioning, if-mib]}
+        - {name: iana-if-type}
+        - {name: ietf-ip, features: [ipv4-non-contiguous-netmasks]}
+        - {name: m1-ext, features: [fast-path]}
+      format: json
+      data_type: config
+      data_file: data/invalid-union-json-string-7.json
+      with_defaults: explicit
+    golden: golden/invalid-union-json-string-7-json.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7951#6.1"]
+      diagnostics:
+        - {vecode_name: LYVE_DATA, data_path: "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1/weight"}
+      deviation: null
+
+  - id: m1/invalid-decimal-json-number-json
+    dir: m1
+    source: *m1src
+    rfc: ["RFC7951#6.1", "RFC7950#9.3.1"]
+    areas: [types, codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules:
+        - {name: ietf-interfaces, features: [arbitrary-names, pre-provisioning, if-mib]}
+        - {name: iana-if-type}
+        - {name: ietf-ip, features: [ipv4-non-contiguous-netmasks]}
+        - {name: m1-ext, features: [fast-path]}
+      format: json
+      data_type: config
+      data_file: data/invalid-decimal-json-number.json
+      with_defaults: explicit
+    golden: golden/invalid-decimal-json-number-json.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7951#6.1"]
+      diagnostics:
+        - {vecode_name: LYVE_DATA, data_path: "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1/gain"}
+      deviation: null
+
+  # End state (RFC7950#8.3.2, #7.21.5): boost auto-deleted once rate=50 makes its when false; deleting rate
+  # re-creates the default 100 (implicit diff op create); shared-weight stays the default-case default.
   - id: m1/sequence-when-auto-delete
     dir: m1
     source: *m1src
