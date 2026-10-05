@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+"""Stage regenerated goldens from an UNTRUSTED tarball (libyang-sync's `pr` job).
+
+  scripts/import-goldens <goldens.tar>
+
+The tarball comes from a job that ran upstream code, so it is treated as hostile data:
+  - every member must be a regular file (no symlinks, hardlinks, devices, directories) without
+    exec bits, at a path matching conformance/corpus/<group>/golden/<name>.json (no "." / "..");
+  - files are written with mode 0644 into existing, non-symlink directories, then `git add`ed;
+  - afterwards the whole index diff (`--no-renames`) may contain only A/M entries on such paths
+    with mode 100644 — any rename, deletion, mode change or other path aborts.
+Pins (Dockerfile, manifest) are never taken from the artifact; the job writes them itself.
+"""
+import os
+import re
+import subprocess
+import sys
+import tarfile
+
+ALLOWED = re.compile(r"conformance/corpus/[^/]+/golden/[^/]+\.json")
+
+
+def die(msg):
+    print(f"::error::import-goldens: {msg}", file=sys.stderr)
+    sys.exit(1)
+
+
+def allowed(path):
+    return ALLOWED.fullmatch(path) is not None and not any(p in (".", "..") for p in path.split("/"))
+
+
+def main():
+    if len(sys.argv) != 2:
+        die("usage: import-goldens <goldens.tar>")
+    top = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True, check=True).stdout.strip()
+    os.chdir(top)
+    staged = []
+    with tarfile.open(sys.argv[1], "r:") as tar:
+        members = tar.getmembers()
+        for m in members:  # validate everything before writing anything
+            if not m.isreg():
+                die(f"member {m.name!r} is not a regular file")
+            if not allowed(m.name):
+                die(f"member {m.name!r} is not a golden JSON path")
+            if m.mode & 0o111:
+                die(f"member {m.name!r} has exec bits")
+        for m in members:
+            d = os.path.dirname(m.name)
+            if os.path.islink(d) or os.path.realpath(d) != os.path.join(os.path.realpath(top), d):
+                die(f"directory of {m.name!r} is missing or redirected")
+            if os.path.lexists(m.name) and not (os.path.isfile(m.name) and not os.path.islink(m.name)):
+                die(f"{m.name!r} exists and is not a regular file")
+            data = tar.extractfile(m).read()
+            fd = os.open(m.name, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o644)
+            with os.fdopen(fd, "wb") as f:
+                f.write(data)
+            os.chmod(m.name, 0o644)
+            staged.append(m.name)
+    if staged:
+        subprocess.run(["git", "add", "--", *staged], check=True)
+    raw = subprocess.run(["git", "diff", "--cached", "--raw", "-z", "--no-renames"],
+                         capture_output=True, check=True).stdout.decode().split("\0")
+    for i in range(0, len(raw) - 1, 2):
+        meta, path = raw[i], raw[i + 1]
+        _, new_mode, _, _, status = meta.lstrip(":").split(" ")
+        if status not in ("A", "M") or new_mode != "100644" or not allowed(path):
+            die(f"unexpected staged change {status} {new_mode} {path!r}")
+    print(f"import-goldens: staged {len(staged)} golden file(s)")
+
+
+if __name__ == "__main__":
+    main()

@@ -3,8 +3,10 @@ name: libyang-sync
 #  - new release  → PR bumping Dockerfile pins + regenerated goldens (golden diff = behaviour change)
 #  - master drift → one tracking issue listing upstream commits since the pinned tag that touch src/
 # Upstream code (libyang) is built and run only in the `goldens` job, which holds a read-only
-# token and no persisted git credentials. The write token lives in `pr`, which runs no upstream or
-# repository code: it applies the uploaded patch (only pin/golden paths allowed) and opens the PR.
+# token and no persisted git credentials; its only output is a tarball of golden JSON files,
+# treated as hostile. The write token lives in `pr`, which builds nothing: it writes the pins itself
+# (sed from the validated tag/SHA), imports only regular golden JSON files from the tarball
+# (scripts/import-goldens from this checkout, i.e. main) and opens the PR.
 # Upstream tag names and SHAs are validated before any use and reach shells only through env.
 on:
   schedule:
@@ -95,13 +97,14 @@ jobs:
           cacheFrom: ghcr.io/vibe-ports/yang-dev
           push: never
           runCmd: make oracle-golden
-      - run: |
-          git add -A
-          git diff --cached --binary > "$RUNNER_TEMP/libyang-sync.patch"
+      - name: Pack changed goldens
+        run: |
+          git ls-files -z -m -o --exclude-standard -- 'conformance/corpus/*/golden/*.json' |
+            tar --null -T - -cf "$RUNNER_TEMP/goldens.tar"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: libyang-sync-patch
-          path: ${{ runner.temp }}/libyang-sync.patch
+          name: libyang-sync-goldens
+          path: ${{ runner.temp }}/goldens.tar
           retention-days: 3
 
   pr:
@@ -117,16 +120,25 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: libyang-sync-patch
-          path: ${{ runner.temp }}/patch
-      - name: Apply the patch (pin and golden paths only)
+          name: libyang-sync-goldens
+          path: ${{ runner.temp }}/goldens
+      - name: Import goldens (regular golden JSON files only)
+        run: scripts/import-goldens "$RUNNER_TEMP/goldens/goldens.tar"
+      - name: Write pins (from the validated tag/SHA, never from the artifact)
+        env:
+          LIBYANG_TAG: ${{ needs.check.outputs.tag }}
+          LIBYANG_SHA: ${{ needs.check.outputs.sha }}
         run: |
-          p="$RUNNER_TEMP/patch/libyang-sync.patch"
-          # Paths come from git's own parser; anything outside the allowed set aborts.
-          bad=$(git apply --numstat -z "$p" | tr '\0' '\n' | awk -F'\t' 'NF >= 3 {print $3} NF == 1 && $1 != "" {print $1}' |
-            grep -vE '^(Dockerfile|conformance/corpus/manifest\.yaml|conformance/corpus/[^/]+/golden/[^/]+\.json)$' || true)
-          [[ -z $bad ]] || { echo "::error::patch touches paths outside the pins and goldens"; exit 1; }
-          git apply --index "$p"
+          [[ $LIBYANG_TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+          [[ $LIBYANG_SHA =~ ^[0-9a-f]{40}$ ]] || exit 1
+          sed -i "s/^ARG LIBYANG_REF=.*/ARG LIBYANG_REF=$LIBYANG_TAG/; s/^ARG LIBYANG_COMMIT=.*/ARG LIBYANG_COMMIT=$LIBYANG_SHA/" Dockerfile
+          sed -i "s/^  libyang: .*/  libyang: $LIBYANG_TAG/; s/^  libyang_commit: .*/  libyang_commit: $LIBYANG_SHA/" conformance/corpus/manifest.yaml
+          git add Dockerfile conformance/corpus/manifest.yaml
+          # Final index: goldens (checked by import-goldens) plus exactly these two pin files.
+          bad=$(git diff --cached --name-status -z --no-renames | tr '\0' '\n' | paste - - |
+            grep -vE $'^(A|M)\t(Dockerfile|conformance/corpus/manifest\\.yaml|conformance/corpus/[^/]+/golden/[^/]+\\.json)$' || true)
+          [[ -z $bad ]] || { echo "::error::unexpected staged changes"; exit 1; }
+          [[ -z $(git status --porcelain --untracked-files=all | grep -v '^[AM] ') ]] || { echo "::error::unstaged changes"; exit 1; }
       - # A PAT/App token is needed so the PR triggers CI + ai-review (GITHUB_TOKEN PRs don't).
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
