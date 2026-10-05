@@ -29,3 +29,17 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | src/plugins_types/binary.c | binary_base64_newlines, binary_base64_validate | types.base64Newlines, types.base64Validate | ported | types/binary-padding | |
 | src/plugins_types/binary.c | lyplg_type_compare_binary, lyplg_type_sort_binary | types.Equal, types.Compare | ported | — | |
 | src/tree_schema.h | struct lysc_* (module, node, type, ident, must, when) | internal/schema | replaced | — | plain Go structs, lookups only |
+| parser_yang.c | `buf_add_char` | `lexer.storeChar` (`append`) | replaced | internal/parser lex_test | Go slices instead of the zero-copy/buffer split |
+| parser_yang.c | `buf_store_char` | `lexer.storeChar` | ported | internal/parser lex_test, oracle_test | indent counting, character checks per argument kind |
+| parser_yang.c | `skip_comment` | `lexer.skipComment` | ported | internal/parser lex_test | |
+| parser_yang.c | `read_qstring` | `lexer.readQString` | ported | internal/parser lex_test, oracle_test (fidelity) | escapes, indentation trimming incl. tabs, `+` concatenation, CR handling |
+| parser_yang.c | `get_argument` | `lexer.getArgument` | ported | internal/parser lex_test | |
+| parser_yang.c | `get_keyword` | `lexer.getKeyword` | ported | internal/parser lex_test | `MaxDepth` = `LY_MAX_BLOCK_DEPTH` |
+| parser_yang.c | `parse_ext`, `parse_ext_substmt` | `lexer.stmt` (generic `Stmt`) | replaced | internal/parser lex_test | every statement is read generically; grammar checks in `Build` |
+| parser_yang.c | `skip_redundant_chars` | `lexer.skipRedundant` | ported | internal/parser lex_test | |
+| parser_yang.c | `yang_parse_module`, `yang_parse_submodule` | `Parse` | partial | internal/parser lex_test | no context: the module/submodule decision is the caller's |
+| tree_schema_common.c | `lysp_match_kw` | `lexer.matchKw` (`kwTrie`) | ported | internal/parser lex_test | partial matches keep libyang's input/indent effects |
+| tree_schema_common.c | `lysp_check_identifierchar` | `lexer.checkIdentChar` | ported | internal/parser lex_test | |
+| tree_schema_common.c | `lysp_check_stringchar` | `isYangChar` (in `storeChar`) | ported | internal/parser lex_test | incl. libyang's empty U+40000 range |
+| ly_common.c | `ly_getutf8` | `lexer.utf8At` | ported | internal/parser lex_test | incl. 4-byte sequences accepted from U+1000 |
+| log.h | `LY_VECODE` | `ly.Code` | ported | internal/ly code_test | shared by all ported packages |

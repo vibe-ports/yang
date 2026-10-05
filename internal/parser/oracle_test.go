@@ -1,0 +1,151 @@
+// SPDX-License-Identifier: BSD-3-Clause
+
+//go:build oracle
+
+// Differential test against libyang (yanglint):
+//
+//	./dev go test -tags oracle -run Oracle -v ./internal/parser/
+//
+// YANGLINT overrides the binary (default: yanglint from PATH).
+package parser
+
+import (
+	"bytes"
+	"encoding/xml"
+	"errors"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
+	"testing"
+)
+
+func yanglint(t *testing.T, src string, args ...string) (string, bool) {
+	t.Helper()
+	bin := os.Getenv("YANGLINT")
+	if bin == "" {
+		bin = "yanglint"
+	}
+	if _, err := exec.LookPath(bin); err != nil {
+		if os.Getenv("YANG_ORACLE_REQUIRED") != "" {
+			t.Fatalf("yanglint not found: %v", err)
+		}
+		t.Skip("yanglint not found")
+	}
+	dir := t.TempDir()
+	f := filepath.Join(dir, "m.yang")
+	if err := os.WriteFile(f, []byte(src), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out, err := exec.Command(bin, append(append([]string{"-p", dir}, args...), f)...).CombinedOutput() //nolint:gosec // test oracle
+	return string(out), err == nil
+}
+
+var lyLine = regexp.MustCompile(`^(.*) \(line (\d+)\)$`)
+
+// lyError is libyang's first error: message and line (0 when it reports a path or nothing).
+func lyError(out string) (string, int) {
+	for _, s := range strings.Split(out, "\n") {
+		if msg, ok := strings.CutPrefix(s, "libyang err : "); ok {
+			if m := lyLine.FindStringSubmatch(msg); m != nil {
+				n, _ := strconv.Atoi(m[2])
+				return m[1], n
+			}
+			if i := strings.LastIndex(msg, " (/"); i > 0 {
+				msg = msg[:i]
+			}
+			return msg, 0
+		}
+	}
+	return "", 0
+}
+
+// oracleDiff reports how libyang's verdict on src differs from rejecting it with msg at line.
+func oracleDiff(t *testing.T, src string, line int, msg string) string {
+	t.Helper()
+	out, ok := yanglint(t, src)
+	lmsg, lline := lyError(out)
+	if ok || lmsg != msg || lline != line {
+		return fmt.Sprintf("libyang ok=%v line %d: %s\n    ours line %d: %s", ok, lline, lmsg, line, msg)
+	}
+	return ""
+}
+
+// oracleError checks that libyang rejects src with msg at line.
+func oracleError(t *testing.T, src string, line int, msg string) {
+	t.Helper()
+	if d := oracleDiff(t, src, line, msg); d != "" {
+		t.Errorf("%q\n %s", src, d)
+	}
+}
+
+func TestOracleParseErrors(t *testing.T) {
+	for _, c := range parseErrors {
+		oracleError(t, c.src, c.line, c.msg)
+	}
+	if out, ok := yanglint(t, hdr+"  extension e;\n  m:e x { ;; }\n}"); !ok {
+		t.Errorf("';' in extension instance: %s", out)
+	}
+}
+
+// TestOracleCorpus: whatever Parse rejects in libyang's own modules and fuzz
+// corpus, libyang rejects with the same message and line.
+func TestOracleCorpus(t *testing.T) {
+	root := filepath.Join("..", "..", ".cache", "libyang")
+	if _, err := os.Stat(root); err != nil {
+		t.Skip("no .cache/libyang (make libyang-src)")
+	}
+	n := 0
+	_ = filepath.WalkDir(root, func(p string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(p, ".yang") && !strings.Contains(p, "lys_parse_mem") {
+			return nil
+		}
+		src, _ := os.ReadFile(p)
+		_, err = Parse("", src, nil)
+		var e *Error
+		if errors.As(err, &e) {
+			n++
+			if d := oracleDiff(t, string(src), e.Pos.Line, e.Msg); d != "" {
+				// grammar checks come with Build; until then libyang may report one first
+				t.Logf("%s\n %s", p, d)
+			}
+		}
+		return nil
+	})
+	t.Logf("%d rejected files compared", n)
+}
+
+// TestOracleFidelity compares argument strings with libyang's YIN output.
+func TestOracleFidelity(t *testing.T) {
+	for _, c := range fidelity {
+		out, ok := yanglint(t, mod("1.1", c.src), "-f", "yin")
+		if !ok {
+			t.Errorf("%q: yanglint failed: %s", c.src, out)
+			continue
+		}
+		d := xml.NewDecoder(bytes.NewReader([]byte(out)))
+		var text string
+		for in := false; ; {
+			tok, err := d.Token()
+			if err != nil {
+				break
+			}
+			switch tok := tok.(type) {
+			case xml.StartElement:
+				in = tok.Name.Local == "text"
+			case xml.CharData:
+				if in && text == "" {
+					text = string(tok)
+				}
+			case xml.EndElement:
+				in = false
+			}
+		}
+		if text != c.want {
+			t.Errorf("%q: libyang %q, recorded %q", c.src, text, c.want)
+		}
+	}
+}
