@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Create or update the agent-task-queue labels (docs/agent-workflow.md "Agent task queue").
+# Idempotent: `gh label create --force` updates colour and description of an existing label.
+#   scripts/labels            (needs gh with write access; GH_REPO selects another repository)
+set -euo pipefail
+while IFS='|' read -r name color desc; do
+  gh label create "$name" --color "$color" --description "$desc" --force
+done <<'EOF'
+agent-ready|0E8A16|Maintainer gate: only issues with this label may be picked up by agents
+up-for-grabs|C2E0C6|Free to claim with scripts/claim
+claimed|FBCA04|Claimed by an agent (see the CLAIM comment); scripts/claim --release frees it
+blocked|B60205|Waits for the dependencies listed in the issue
+size:S|EDEDED|About 300 Go lines or less, tests included
+size:M|D4D4D4|About 800 Go lines or less, tests included
+size:L|BDBDBD|About 1500 Go lines or less, tests included
+area:parser|C5DEF5|YANG text parsing (internal/parser, internal/lyxp)
+area:compile|C5DEF5|Schema compilation and loading
+area:types|C5DEF5|Types, values, internal/xsdre
+area:xpath|C5DEF5|XPath and schema-mode XPath
+area:data|C5DEF5|Data tree, codecs, validation, diff
+area:conformance|C5DEF5|Oracle, corpus, fixtures, comparator
+area:infra|C5DEF5|CI, build, scripts, docs tooling
+worker:sonnet|D4C5F9|Suggested worker: Sonnet (mechanical, well specified)
+worker:opus|D4C5F9|Suggested worker: Opus (design judgement or cross-cutting)
+worker:astra|D4C5F9|Suggested worker: codex astra (review-heavy or investigation)
+EOF

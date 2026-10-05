@@ -5,10 +5,11 @@ FUZZTIME ?= 60s
 
 ci: fmt-check vet lint nocgo test test-386 test-go-min test-oracle test-gates vuln secrets sensitive oracle-check registries
 
-# Security gates (check-sensitive, hooks, merge-pr, ai-review publisher, review-tier) against
-# stubbed gh/curl and throwaway repos.
+# Security gates (check-sensitive, hooks, merge-pr, ai-review publisher, review-tier) and the
+# agent task queue (scripts/claim) against stubbed gh/curl and throwaway repos.
 test-gates:
 	scripts/test-gates
+	scripts/test-claim
 
 # Duplicate ids/rows left by the union merge driver in the append-only registries.
 registries:

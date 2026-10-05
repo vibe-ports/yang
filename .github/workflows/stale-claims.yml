@@ -1,0 +1,32 @@
+name: stale-claims
+# Agent task queue: release claims with no activity for 24 h (`scripts/claim --stale`: no commit on a
+# branch issue-<n>-*, no comment by the claiming account, no open PR from such a branch) by posting
+# `RELEASE (stale)` and relabelling the issue up-for-grabs.
+# Runs only the default branch's script (checkout pinned to it, no credentials persisted); nothing
+# from issues, comments or branches is executed — comment bodies are parsed with jq only.
+# Token: issues: write to comment and relabel; contents/pull-requests: read for the checkout, the
+# issue-branch refs and the open-PR list (needed while the repository is private).
+on:
+  schedule:
+    - cron: "41 */6 * * *"
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: stale-claims
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main  # the default branch, also for workflow_dispatch from another ref
+          persist-credentials: false
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: scripts/claim --stale

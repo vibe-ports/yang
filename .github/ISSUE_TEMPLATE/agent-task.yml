@@ -1,0 +1,52 @@
+name: Agent task
+description: A self-contained task for the agent task queue (docs/agent-workflow.md "Agent task queue")
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Agents pick up only issues the maintainer labelled `agent-ready`. Write the task so it can be
+        done without asking: libyang source, acceptance checkable by CI or the oracle, scope limits.
+  - type: textarea
+    id: task
+    attributes: { label: Task, description: "What to do and why (1-6 sentences)" }
+    validations: { required: true }
+  - type: textarea
+    id: source
+    attributes:
+      label: libyang source (v5.8.6)
+      description: "File, functions, line refs — or n/a"
+      placeholder: "src/xpath.c: xpath_concat() L4120-4160, warn_is_string_type()"
+    validations: { required: true }
+  - type: input
+    id: go
+    attributes: { label: Go package / files, placeholder: internal/xpath }
+    validations: { required: true }
+  - type: input
+    id: deps
+    attributes: { label: Dependencies, description: "Issues/PRs that must land first, or none", placeholder: "#12, #31" }
+    validations: { required: true }
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: "Fixtures that must agree with the oracle, tests, port-map rows; `./dev make ci` green"
+    validations: { required: true }
+  - type: input
+    id: devids
+    attributes: { label: Deviation ids, description: "D-/U- range of the stream (AGENTS.md table), or none" }
+  - type: dropdown
+    id: size
+    attributes:
+      label: Size
+      options: ["S (≤ ~300 Go lines incl. tests)", "M (≤ ~800)", "L (≤ ~1500)"]
+    validations: { required: true }
+  - type: dropdown
+    id: area
+    attributes: { label: Area, options: [parser, compile, types, xpath, data, conformance, infra] }
+    validations: { required: true }
+  - type: dropdown
+    id: worker
+    attributes: { label: Suggested worker, options: [sonnet, opus, astra] }
+  - type: textarea
+    id: out_of_scope
+    attributes: { label: Out of scope }
