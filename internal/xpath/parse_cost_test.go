@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 )
 
 // refLD is the exact reference (whole text as a rational; the previous implementation).
@@ -51,8 +50,9 @@ func TestDenormalProbes(t *testing.T) {
 	}
 }
 
-// TestManyLongParses: 10k parses of 20k-digit texts finish fast (same text:
-// memoized) or hit the step budget (distinct texts: charged by length).
+// TestManyLongParses: 10k conversions of 20k-digit texts parse each distinct
+// text once per evaluation (memo) and are charged to the budget (distinct
+// texts: ErrBudget). Counts parses instead of timing them.
 func TestManyLongParses(t *testing.T) {
 	digits := strings.Repeat("1234567890", 2_000)
 	for _, distinct := range []bool{false, true} {
@@ -65,11 +65,32 @@ func TestManyLongParses(t *testing.T) {
 			ls[i] = keyed(list("l", leaf("k", strconv.Itoa(i)), leaf("v", v)), "k")
 		}
 		tree := top(cont("pv2:c", ls...))
-		for _, src := range []string{"count(/c/l[number(v) > 0])", "count(/c/l[k < number('0." + digits + "')])", "sum(/c/l/v)"} {
-			start := time.Now()
-			_, err := eval(src, EvalContext{Tree: tree})
-			if d := time.Since(start); !errors.Is(err, ErrBudget) && d > time.Second {
-				t.Errorf("distinct=%v %.40s: took %v (err %v)", distinct, src, d, err)
+		for _, c := range []struct {
+			src     string
+			ok      func(float64) bool
+			viaData bool // converts the 10k data values
+		}{
+			{"count(/c/l[number(v) > 0])", func(n float64) bool { return n == 10_000 }, true},
+			{"count(/c/l[k < number('0." + digits + "')])", func(n float64) bool { return n == 1 }, false},
+			{"sum(/c/l/v)", func(n float64) bool { return n > 1234 && n < 1235 }, true},
+		} {
+			e, err := Compile(c.src, jsonNS{"pv2": true})
+			if err != nil {
+				t.Fatal(err)
+			}
+			ec := EvalContext{Tree: tree}
+			ev := newEvaluator(e, &ec)
+			v, err := ev.eval(e.root, ev.start())
+			if err == nil {
+				err = ev.err
+			}
+			switch {
+			case distinct && c.viaData:
+				if !errors.Is(err, ErrBudget) {
+					t.Errorf("distinct %.40s: want ErrBudget, got %v after %d parses", c.src, err, ev.parses)
+				}
+			case err != nil || ev.parses != 1 || !c.ok(v.f.float()):
+				t.Errorf("distinct=%v %.40s: %v parses, result %v, err %v", distinct, c.src, ev.parses, v.f.float(), err)
 			}
 		}
 	}

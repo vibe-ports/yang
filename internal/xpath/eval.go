@@ -57,17 +57,18 @@ func nodesV(n []item) value {
 }
 
 type evaluator struct {
-	e     *Expr
-	ns    NamespaceCtx
-	ec    *EvalContext
-	ctx   context.Context
-	cur   item       // current()
-	op    SchemaNode // set->context_op: the RPC/action/notification of current()
-	steps int
-	err   error                 // sticky budget / cancellation error
-	sib   map[Node]map[Node]int // per parent (nil: top level), index of each child; built lazily
-	keys  map[Node][]int        // sibling indexes from the top level down to the node
-	nums  map[string]ld         // parsed long number texts
+	e      *Expr
+	ns     NamespaceCtx
+	ec     *EvalContext
+	ctx    context.Context
+	cur    item       // current()
+	op     SchemaNode // set->context_op: the RPC/action/notification of current()
+	steps  int
+	err    error                 // sticky budget / cancellation error
+	sib    map[Node]map[Node]int // per parent (nil: top level), index of each child; built lazily
+	keys   map[Node][]int        // sibling indexes from the top level down to the node
+	nums   map[string]ld         // parsed long number texts
+	parses int                   // long number texts actually parsed (tests)
 }
 
 func newEvaluator(e *Expr, ec *EvalContext) *evaluator {
@@ -961,6 +962,7 @@ func (ev *evaluator) toNum(v value) ld {
 		return x
 	}
 	ev.charge(len(str) / 4)
+	ev.parses++
 	x := cStrtod(str)
 	if ev.nums == nil {
 		ev.nums = map[string]ld{}
