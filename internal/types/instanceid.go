@@ -185,7 +185,7 @@ func pathCompile(a *storeArgs, e *lyxp.Expr) (Path, string) {
 		i++
 	}
 	if i < len(e.Toks) {
-		return nil, fmt.Sprintf("Unexpected XPath token \"%s\" (\"%.15s\").", e.Toks[i], e.Rest(i))
+		return nil, fmt.Sprintf("Unexpected XPath token \"%s\" (\"%s\").", e.Toks[i], lyxp.Trunc15(e.Rest(i)))
 	}
 	if last := path[len(path)-1]; (last.Node.Kind == schema.List || last.Node.Kind == schema.LeafList) && last.Preds == nil {
 		return nil, fmt.Sprintf("Predicate missing for %s \"%s\" in path.", kindName(last.Node.Kind), last.Node.Name)

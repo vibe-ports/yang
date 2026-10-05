@@ -2,7 +2,12 @@
 
 package lyxp
 
-import "testing"
+import (
+	"fmt"
+	"strings"
+	"testing"
+	"time"
+)
 
 var (
 	lref   = Opts{BeginEither, PrefixOptional, PredLeafref, true, false}
@@ -38,10 +43,36 @@ func TestParsePath(t *testing.T) {
 		{"/m:a[0]", instID, `Invalid positional predicate "0".`},
 		{"/m:a[.=]", instID, `Unexpected XPath token "]" ("]").`},
 		{"m:a", instID, `XPath "m:a" was expected to be absolute.`},
+		{"//m:x", instID, `Unexpected XPath token "Operator(Recursive Path)" ("//m:x"), expected "Operator(Path)".`},
+		{"/m:a[1]", instID, ""},
+		{"/m:a[4294967296]", instID, `Invalid positional predicate "4294967296".`}, // (int)strtol wraps to 0
+		{"/m:a[4294967297]", instID, ""},
 		{"", instID, `XPath "" was expected to be absolute.`},
 	} {
 		if _, msg := ParsePath(c.src, c.o); msg != c.msg {
 			t.Errorf("%q: got %q, want %q", c.src, msg, c.msg)
 		}
+	}
+}
+
+func TestTrunc15(t *testing.T) {
+	if got := Trunc15("\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9"); len(got) != 15 {
+		t.Errorf("len %d, want 15 bytes", len(got))
+	}
+}
+
+// 100k predicate keys must not take quadratic time (duplicate-key check).
+func TestManyKeys(t *testing.T) {
+	var b strings.Builder
+	b.WriteString("/m:a")
+	for i := 0; i < 100000; i++ {
+		fmt.Fprintf(&b, "[k%d='1']", i)
+	}
+	start := time.Now()
+	if _, msg := ParsePath(b.String(), instID); msg != "" {
+		t.Fatal(msg)
+	}
+	if d := time.Since(start); d > 5*time.Second {
+		t.Errorf("took %v", d)
 	}
 }

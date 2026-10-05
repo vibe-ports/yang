@@ -209,6 +209,10 @@ var buildErrors = []struct {
 	{lref("../a[b=current(1)/../c]"), 4, ly.XPath, "Unexpected XPath token \"Number\" (\"1)/../c]\"), expected \")\"."},
 	{lref("../a[b=current()/../c/]"), 4, ly.XPath, "Unexpected XPath token \"]\" (\"]\"), expected \"NameTest\"."},
 
+	// the path is checked when its statement closes (parse_type after parse_text_field)
+	{hdr + "  leaf a { type leafref { path \"../x[\" { description d; } } }\n}", 4, ly.SyntaxYang, `Invalid keyword "description" as a child of "path".`},
+	{hdr + "  leaf a { type leafref { path \"x\" {\n\n  }\n  } }\n}", 6, ly.XPath, `Unexpected XPath token "NameTest" ("x"), expected "..".`},
+	{hdr + "  leaf a { type leafref { path \"../a[1\" ; } }\n}", 4, ly.XPath, `Unexpected XPath token "Number" ("1").`},
 	// leafref path syntax is checked while parsing (ly_path_parse, closes U-0005), at libyang's line
 	{hdr + "  leaf a { type leafref { path\n\"x\"\n;} }\n}", 6, ly.XPath, `Unexpected XPath token "NameTest" ("x"), expected "..".`},
 	{hdr + "  leaf a { type leafref { path \"../a\\n[b=current()/../c]x\"; } }\n}", 4, ly.XPath, `Invalid character 0x78 ('x'), perhaps "]" is supposed to be a function call.`},

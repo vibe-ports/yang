@@ -64,7 +64,12 @@ func ParsePath(src string, o Opts) (*Expr, string) {
 	}
 	i, isAbs := 0, true
 	switch {
-	case o.Begin == BeginAbsolute || e.Is(0, TokOperPath):
+	case o.Begin == BeginAbsolute:
+		if msg = e.Check(0, TokOperPath); msg != "" {
+			return nil, msg
+		}
+		i++
+	case e.Is(0, TokOperPath):
 		i++
 	default: // relative
 		isAbs = false
@@ -116,7 +121,7 @@ func ParsePath(src string, o Opts) (*Expr, string) {
 			prev = cur
 		}
 		i++
-		if i, msg = e.CheckPredicate(i, o.Prefix, o.Pred); msg != "" {
+		if i, msg = e.checkPredicate(i, o.Prefix, o.Pred); msg != "" {
 			return nil, msg
 		}
 		if !e.Is(i, TokOperPath) {
@@ -169,9 +174,9 @@ func (e *Expr) deref(i int, o Opts) (int, string) {
 	return i, msg
 }
 
-// CheckPredicate ports ly_path_check_predicate: the optional predicates at token i, returning
+// checkPredicate ports ly_path_check_predicate: the optional predicates at token i, returning
 // the index after them. It checks syntax only.
-func (e *Expr) CheckPredicate(i int, prefix Prefix, pred Pred) (int, string) {
+func (e *Expr) checkPredicate(i int, prefix Prefix, pred Pred) (int, string) {
 	if !e.Is(i, TokBrack1) {
 		return i, ""
 	}
@@ -180,7 +185,7 @@ func (e *Expr) CheckPredicate(i int, prefix Prefix, pred Pred) (int, string) {
 	switch {
 	case e.Is(i, TokNameTest): // key predicates (all three preds)
 		leafref := pred == PredLeafref
-		var seen []string
+		seen := map[string]bool{}
 		for {
 			if msg = e.Check(i, TokNameTest); msg != "" {
 				return i, msg
@@ -194,12 +199,10 @@ func (e *Expr) CheckPredicate(i int, prefix Prefix, pred Pred) (int, string) {
 				return i, fmt.Sprintf("Redundant prefix for \"%s\" in path.", full)
 			}
 			name := full[c+1:] // c == -1 keeps all of it
-			for _, s := range seen {
-				if s == name {
-					return i, fmt.Sprintf("Duplicate predicate key \"%s\" in path.", name)
-				}
+			if seen[name] {
+				return i, fmt.Sprintf("Duplicate predicate key \"%s\" in path.", name)
 			}
-			seen = append(seen, name)
+			seen[name] = true
 			if i, msg = e.next(i+1, TokOperEqual); msg != "" {
 				return i, msg
 			}
@@ -230,7 +233,7 @@ func (e *Expr) CheckPredicate(i int, prefix Prefix, pred Pred) (int, string) {
 			return i, msg
 		}
 		if !e.Is(i, TokLiteral) && !e.Is(i, TokNumber) {
-			return i, fmt.Sprintf("Unexpected XPath token \"%s\" (\"%.15s\").", e.Toks[i], e.Rest(i))
+			return i, fmt.Sprintf("Unexpected XPath token \"%s\" (\"%s\").", e.Toks[i], Trunc15(e.Rest(i)))
 		}
 		i++
 	case pred == PredSimple && e.Is(i, TokNumber):
@@ -241,7 +244,7 @@ func (e *Expr) CheckPredicate(i int, prefix Prefix, pred Pred) (int, string) {
 	case i >= len(e.Toks):
 		return i, errXPEOF
 	default:
-		return i, fmt.Sprintf("Unexpected XPath token \"%s\" (\"%.15s\").", e.Toks[i], e.Rest(i))
+		return i, fmt.Sprintf("Unexpected XPath token \"%s\" (\"%s\").", e.Toks[i], Trunc15(e.Rest(i)))
 	}
 	return e.next(i, TokBrack2)
 }
@@ -281,16 +284,25 @@ func (e *Expr) leafrefKey(i int) (int, string) {
 	return i, ""
 }
 
-// atoi is C atoi on the digit prefix (0 when there is none).
+// atoi is C (int)strtol on the digit prefix: saturating at LONG_MAX, then truncated to 32 bits.
 func atoi(s string) int {
-	n := 0
+	var n int64
 	for i := 0; i < len(s) && isDigit(s[i]); i++ {
-		n = n*10 + int(s[i]-'0')
-		if n > 1<<30 {
+		if n > (1<<63-1-int64(s[i]-'0'))/10 {
+			n = 1<<63 - 1
 			break
 		}
+		n = n*10 + int64(s[i]-'0')
 	}
-	return n
+	return int(int32(n)) //nolint:gosec // C (int) conversion wraps by design
+}
+
+// Trunc15 is C's "%.15s": at most 15 bytes (not runes).
+func Trunc15(s string) string {
+	if len(s) > 15 {
+		return s[:15]
+	}
+	return s
 }
 
 func isDigit(c byte) bool { return c >= '0' && c <= '9' }

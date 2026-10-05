@@ -50,6 +50,7 @@ func TestOracleGoldensDerived(t *testing.T) {
 		{"ident-not-derived", "id", "x:other", FormatXML, fakeTree{}, -1},
 		{"ident-json", "id", "der", FormatJSON, fakeTree{}, -1},
 		{"instid-canonical", "ii", `/x:c/x:l[x:k="a"]/x:v`, FormatXML, fakeTree{}, -1},
+		{"instid-double-slash", "iif", "//x:c/x:ll", FormatXML, fakeTree{}, -1},
 		{"instid-pos-config", "iif", "/x:c/x:l[2]", FormatXML, fakeTree{}, -1},
 		{"instid-key-type", "iif", "/x:c/x:ll[.='x']", FormatXML, fakeTree{}, -1},
 		{"instid-no-instance", "ii", "/x:c/x:ll[.='3']", FormatXML, fakeTree{}, -1},

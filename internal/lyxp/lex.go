@@ -319,7 +319,7 @@ func (e *Expr) Check(i int, want Tok) string {
 		return errXPEOF
 	}
 	if want != TokNone && e.Toks[i] != want {
-		return fmt.Sprintf("Unexpected XPath token \"%s\" (\"%.15s\"), expected \"%s\".", e.Toks[i], e.Rest(i), want)
+		return fmt.Sprintf("Unexpected XPath token \"%s\" (\"%s\"), expected \"%s\".", e.Toks[i], Trunc15(e.Rest(i)), want)
 	}
 	return ""
 }
