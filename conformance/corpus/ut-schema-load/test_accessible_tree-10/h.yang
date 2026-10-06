@@ -1,0 +1,17 @@
+module h {
+    namespace urn:h;
+    prefix h;
+    rpc rp {
+        input {
+            leaf l2 {
+                must ../l;
+                type empty;
+            }
+        }
+        output {
+            leaf l {
+                type empty;
+            }
+        }
+    }
+}

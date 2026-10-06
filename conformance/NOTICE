@@ -44,6 +44,7 @@ with the libyang file, tag/commit and license):
   Each set is listed here when it lands:
   - conformance/corpus/ut-ietf-types/ (tests/utests/types/inet_types.c, yang_types.c).
   - conformance/corpus/ut-int/ (tests/utests/types/int8.c … uint64.c).
+  - conformance/corpus/ut-schema-load/ (tests/utests/schema/test_tree_schema_compile.c, test_schema.c).
 - docs/conformance/utests-inventory.md quotes counts and file names from that suite.
 
 The names of CESNET and of its contributors are not used to endorse or promote anything here.

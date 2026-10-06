@@ -1,0 +1,1 @@
+submodule b {belongs-to a {prefix a;} typedef x {type int8;}}

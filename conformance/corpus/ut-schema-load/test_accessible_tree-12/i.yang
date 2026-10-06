@@ -1,0 +1,17 @@
+module i {
+    namespace urn:i;
+    prefix i;
+    rpc rp {
+        input {
+            leaf l2 {
+                must /notif/l;
+                type empty;
+            }
+        }
+    }
+    notification notif {
+        leaf l {
+            type empty;
+        }
+    }
+}

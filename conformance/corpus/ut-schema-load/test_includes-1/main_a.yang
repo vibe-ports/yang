@@ -1,0 +1,1 @@
+module main_a { namespace urn:test:main_a; prefix ma; include sub_a_one;}

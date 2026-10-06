@@ -1,0 +1,1 @@
+submodule sub_a_two { belongs-to main_a { prefix ma; } }

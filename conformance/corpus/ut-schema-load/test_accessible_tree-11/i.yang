@@ -1,0 +1,18 @@
+module i {
+    namespace urn:i;
+    prefix i;
+    rpc rp {
+        input {
+            leaf l2 {
+                type leafref {
+                    path ../../notif/l;
+                }
+            }
+        }
+    }
+    notification notif {
+        leaf l {
+            type empty;
+        }
+    }
+}

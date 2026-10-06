@@ -1,0 +1,15 @@
+module e {
+    namespace urn:e;
+    prefix e;
+    notification notif {
+        leaf l {
+            type empty;
+        }
+        leaf l2 {
+            must ../../notif/l;
+            type leafref {
+                path /notif/l;
+            }
+        }
+    }
+}

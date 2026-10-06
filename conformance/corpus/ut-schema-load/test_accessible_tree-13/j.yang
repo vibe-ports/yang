@@ -1,0 +1,27 @@
+module j {
+    yang-version 1.1;
+    namespace urn:j;
+    prefix j;
+    container cont {
+        list ll {
+            key k;
+            leaf k {
+                type string;
+            }
+            action act {
+                output {
+                    leaf l2 {
+                        must /cont/l;
+                        type leafref {
+                            path ../../../l;
+                        }
+                    }
+                }
+            }
+        }
+        leaf l {
+            config false;
+            type empty;
+        }
+    }
+}

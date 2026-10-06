@@ -1,0 +1,18 @@
+module d {
+    namespace urn:d;
+    prefix d;
+    container cont {
+        config false;
+        leaf l {
+            type empty;
+        }
+    }
+    notification notif {
+        leaf l2 {
+            must ../../cont/l;
+            type leafref {
+                path /cont/l;
+            }
+        }
+    }
+}

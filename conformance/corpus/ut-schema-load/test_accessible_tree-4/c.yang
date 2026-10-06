@@ -1,0 +1,18 @@
+module c {
+    namespace urn:c;
+    prefix c;
+    container cont {
+        leaf l {
+            type empty;
+        }
+    }
+    container cont2 {
+        config false;
+        leaf l2 {
+            must ../../cont/l;
+            type leafref {
+                path /cont/l;
+            }
+        }
+    }
+}

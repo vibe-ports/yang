@@ -1,0 +1,1 @@
+module a {yang-version 1.1;namespace urn:a;prefix a;container c { list l {key "k"; leaf k {type string;}leaf-list a {type string;}notification a;}}}

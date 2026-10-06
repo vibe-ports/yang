@@ -1,0 +1,126 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module c {\n  namespace \"urn:c\";\n  prefix c;\n\n  container cont {\n    config true;\n    status current;\n    leaf l {\n      type empty;\n      config true;\n      status current;\n    }\n  }\n  container cont2 {\n    config false;\n    status current;\n    leaf l2 {\n      type leafref {\n        path \"/cont/l\";\n        require-instance true;\n        type empty;\n      }\n      must \"../../cont/l\";\n      config false;\n      status current;\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "c",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "c",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/c:cont",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "c",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/c:cont/l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "empty",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "c",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/c:cont2",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "c",
+          "musts": [
+            {
+              "apptag": null,
+              "expr": "../../cont/l",
+              "message": null
+            }
+          ],
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/c:cont2/l2",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "/cont/l",
+              "require_instance": true,
+              "target": "/c:cont/l"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

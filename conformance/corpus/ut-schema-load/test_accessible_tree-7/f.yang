@@ -1,0 +1,20 @@
+module f {
+    namespace urn:f;
+    prefix f;
+    container cont {
+        config false;
+        leaf l {
+            type empty;
+        }
+    }
+    rpc rp {
+        input {
+            leaf l2 {
+                must ../../cont/l;
+                type leafref {
+                    path /cont/l;
+                }
+            }
+        }
+    }
+}

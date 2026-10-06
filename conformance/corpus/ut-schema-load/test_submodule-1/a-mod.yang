@@ -1,0 +1,1 @@
+module a-mod {namespace urn:a-mod; prefix a; include a-submod;identity baseid;}

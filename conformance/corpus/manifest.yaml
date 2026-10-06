@@ -9424,6 +9424,886 @@ fixtures:
       searchdirs: [schemas]
       modules: [{"name": "lref-circular"}]
     golden: golden/lref-circular.json
+  - id: ut-schema-load/test_module-1
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_module:97
+    rfc: ["RFC7950#5.1", "RFC7950#6.2.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_module-1]
+      modules: [{"name": "test", "features": ["invalid"]}, {"name": "test"}]
+    golden: golden/test_module-1.json
+
+  - id: ut-schema-load/test_module-2
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_module:131
+    rfc: ["RFC7950#5.1", "RFC7950#6.2.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_module-2]
+      modules: [{"name": "aa"}]
+    golden: golden/test_module-2.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#5.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_submodule-1
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_submodule:150
+    rfc: ["RFC7950#5.1", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_submodule-1]
+      modules: [{"name": "a-mod"}]
+    golden: golden/test_submodule-1.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#5.1"]
+      deviation: null
+
+  - id: ut-schema-load/test_name_collisions-1
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_name_collisions:164
+    rfc: ["RFC7950#6.2.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_name_collisions-1]
+      modules: [{"name": "a"}]
+    golden: golden/test_name_collisions-1.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_name_collisions-2
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_name_collisions:172
+    rfc: ["RFC7950#6.2.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_name_collisions-2]
+      modules: [{"name": "a"}]
+    golden: golden/test_name_collisions-2.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_name_collisions-3
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_name_collisions:180
+    rfc: ["RFC7950#6.2.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_name_collisions-3]
+      modules: [{"name": "a"}]
+    golden: golden/test_name_collisions-3.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_name_collisions-4
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_name_collisions:193
+    rfc: ["RFC7950#6.2.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_name_collisions-4]
+      modules: [{"name": "a"}]
+    golden: golden/test_name_collisions-4.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_name_collisions-5
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_name_collisions:201
+    rfc: ["RFC7950#6.2.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_name_collisions-5]
+      modules: [{"name": "a"}]
+    golden: golden/test_name_collisions-5.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_name_collisions-6
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_name_collisions:208
+    rfc: ["RFC7950#6.2.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_name_collisions-6]
+      modules: [{"name": "a"}]
+    golden: golden/test_name_collisions-6.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_name_collisions-7
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_name_collisions:215
+    rfc: ["RFC7950#6.2.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_name_collisions-7]
+      modules: [{"name": "a"}]
+    golden: golden/test_name_collisions-7.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_typedef-1
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_typedef:285
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_typedef-1]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_typedef-1.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_typedef-2
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_typedef:289
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_typedef-2]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_typedef-2.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_typedef-3
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_typedef:293
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_typedef-3]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_typedef-3.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_typedef-4
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_typedef:297
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_typedef-4]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_typedef-4.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_typedef-5
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_typedef:301
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_typedef-5]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_typedef-5.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_typedef-6
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_typedef:305
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_typedef-6]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_typedef-6.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_typedef-7
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_typedef:313
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_typedef-7]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_typedef-7.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_typedef-8
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_typedef:317
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_typedef-8]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_typedef-8.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_typedef-9
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_typedef:321
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_typedef-9]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_typedef-9.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_typedef-10
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_typedef:325
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_typedef-10]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_typedef-10.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_typedef-11
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_typedef:329
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_typedef-11]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_typedef-11.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_typedef-12
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_typedef:333
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_typedef-12]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_typedef-12.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_typedef-13
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_typedef:337
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_typedef-13]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_typedef-13.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_typedef-14
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_typedef:341
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_typedef-14]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_typedef-14.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_typedef-15
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_typedef:345
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_typedef-15]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_typedef-15.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_typedef-16
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_typedef:349
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_typedef-16]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_typedef-16.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_typedef-17
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_typedef:353
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_typedef-17]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_typedef-17.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_typedef-18
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_typedef:357
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_typedef-18]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_typedef-18.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_typedef-19
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_typedef:366
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_typedef-19]
+      modules: [{"name": "mytypes"}]
+    golden: golden/test_collision_typedef-19.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#6.2.1"]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_typedef-20
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_typedef:389
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_typedef-20]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_typedef-20.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_typedef-21
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_typedef:396
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_typedef-21]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_typedef-21.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_typedef-22
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_typedef:405
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_typedef-22]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_typedef-22.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_typedef-23
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_typedef:411
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_typedef-23]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_typedef-23.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_typedef-24
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_typedef:419
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_typedef-24]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_typedef-24.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_typedef-25
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_typedef:435
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_typedef-25]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_typedef-25.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_typedef-26
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_typedef:441
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_typedef-26]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_typedef-26.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_typedef-27
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_typedef:448
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_typedef-27]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_typedef-27.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#6.2.1"]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_grouping-1
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_grouping:463
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.12", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_grouping-1]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_grouping-1.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_grouping-2
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_grouping:469
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.12", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_grouping-2]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_grouping-2.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_grouping-3
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_grouping:482
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.12", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_grouping-3]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_grouping-3.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_grouping-4
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_grouping:489
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.12", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_grouping-4]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_grouping-4.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_grouping-5
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_grouping:498
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.12", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_grouping-5]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_grouping-5.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_grouping-6
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_grouping:512
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.12", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_grouping-6]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_grouping-6.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_grouping-7
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_grouping:519
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.12", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_grouping-7]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_grouping-7.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_grouping-8
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_grouping:528
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.12", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_grouping-8]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_grouping-8.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_grouping-9
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_grouping:534
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.12", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_grouping-9]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_grouping-9.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_grouping-10
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_grouping:540
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.12", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_grouping-10]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_grouping-10.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_grouping-11
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_grouping:547
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.12", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_grouping-11]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_grouping-11.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#6.2.1"]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_identity-1
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_identity:572
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.18"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_identity-1]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_identity-1.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_identity-2
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_identity:580
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.18"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_identity-2]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_identity-2.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_identity-3
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_identity:589
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.18"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_identity-3]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_identity-3.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_feature-1
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_feature:606
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.20.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_feature-1]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_feature-1.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_feature-2
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_feature:614
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.20.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_feature-2]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_feature-2.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_collision_feature-3
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_feature:631
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.20.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_feature-3]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_feature-3.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-schema-load/test_accessible_tree-1
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_accessible_tree:659
+    rfc: ["RFC7950#9.9", "RFC7950#7.5.3", "RFC7950#7.21.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_accessible_tree-1]
+      modules: [{"name": "a"}]
+    golden: golden/test_accessible_tree-1.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: ut-schema-load/test_accessible_tree-2
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_accessible_tree:680
+    rfc: ["RFC7950#9.9", "RFC7950#7.5.3", "RFC7950#7.21.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_accessible_tree-2]
+      modules: [{"name": "b"}]
+    golden: golden/test_accessible_tree-2.json
     assert:
       verdict: "invalid"
       rfc: ["RFC7950#9.9"]
@@ -9634,6 +10514,106 @@ fixtures:
       searchdirs: [schemas]
       modules: [{"name": "lref-default-target-missing"}]
     golden: golden/lref-default-target-missing.json
+  - id: ut-schema-load/test_accessible_tree-3
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_accessible_tree:701
+    rfc: ["RFC7950#9.9", "RFC7950#7.5.3", "RFC7950#7.21.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_accessible_tree-3]
+      modules: [{"name": "b"}]
+    golden: golden/test_accessible_tree-3.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: ut-schema-load/test_accessible_tree-4
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_accessible_tree:724
+    rfc: ["RFC7950#9.9", "RFC7950#7.5.3", "RFC7950#7.21.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_accessible_tree-4]
+      modules: [{"name": "c"}]
+    golden: golden/test_accessible_tree-4.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: ut-schema-load/test_accessible_tree-5
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_accessible_tree:746
+    rfc: ["RFC7950#9.9", "RFC7950#7.5.3", "RFC7950#7.21.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_accessible_tree-5]
+      modules: [{"name": "d"}]
+    golden: golden/test_accessible_tree-5.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: ut-schema-load/test_accessible_tree-6
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_accessible_tree:765
+    rfc: ["RFC7950#9.9", "RFC7950#7.5.3", "RFC7950#7.21.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_accessible_tree-6]
+      modules: [{"name": "e"}]
+    golden: golden/test_accessible_tree-6.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: ut-schema-load/test_accessible_tree-7
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_accessible_tree:789
+    rfc: ["RFC7950#9.9", "RFC7950#7.5.3", "RFC7950#7.21.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_accessible_tree-7]
+      modules: [{"name": "f"}]
+    golden: golden/test_accessible_tree-7.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: ut-schema-load/test_accessible_tree-8
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_accessible_tree:810
+    rfc: ["RFC7950#9.9", "RFC7950#7.5.3", "RFC7950#7.21.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_accessible_tree-8]
+      modules: [{"name": "g"}]
+    golden: golden/test_accessible_tree-8.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: ut-schema-load/test_accessible_tree-9
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_accessible_tree:832
+    rfc: ["RFC7950#9.9", "RFC7950#7.5.3", "RFC7950#7.21.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_accessible_tree-9]
+      modules: [{"name": "h"}]
+    golden: golden/test_accessible_tree-9.json
     assert:
       verdict: "invalid"
       rfc: ["RFC7950#9.9"]
@@ -12978,3 +13958,170 @@ fixtures:
       searchdirs: [schemas]
       modules: [{"name": "refine-sub-prefix"}]
     golden: golden/refine-submodule-prefix-not-in-main.json
+  - id: ut-schema-load/test_accessible_tree-10
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_accessible_tree:853
+    rfc: ["RFC7950#9.9", "RFC7950#7.5.3", "RFC7950#7.21.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_accessible_tree-10]
+      modules: [{"name": "h"}]
+    golden: golden/test_accessible_tree-10.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: ut-schema-load/test_accessible_tree-11
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_accessible_tree:876
+    rfc: ["RFC7950#9.9", "RFC7950#7.5.3", "RFC7950#7.21.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_accessible_tree-11]
+      modules: [{"name": "i"}]
+    golden: golden/test_accessible_tree-11.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9"]
+      diagnostics: [{"vecode_name": "LYVE_XPATH"}]
+      deviation: null
+
+  - id: ut-schema-load/test_accessible_tree-12
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_accessible_tree:897
+    rfc: ["RFC7950#9.9", "RFC7950#7.5.3", "RFC7950#7.21.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_accessible_tree-12]
+      modules: [{"name": "i"}]
+    golden: golden/test_accessible_tree-12.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: ut-schema-load/test_accessible_tree-13
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_accessible_tree:929
+    rfc: ["RFC7950#9.9", "RFC7950#7.5.3", "RFC7950#7.21.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_accessible_tree-13]
+      modules: [{"name": "j"}]
+    golden: golden/test_accessible_tree-13.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: ut-schema-load/test_accessible_tree-14
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_accessible_tree:960
+    rfc: ["RFC7950#9.9", "RFC7950#7.5.3", "RFC7950#7.21.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_accessible_tree-14]
+      modules: [{"name": "k"}]
+    golden: golden/test_accessible_tree-14.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9"]
+      diagnostics: [{"vecode_name": "LYVE_XPATH"}]
+      deviation: null
+
+  - id: ut-schema-load/test_accessible_tree-15
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_accessible_tree:990
+    rfc: ["RFC7950#9.9", "RFC7950#7.5.3", "RFC7950#7.21.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_accessible_tree-15]
+      modules: [{"name": "k"}]
+    golden: golden/test_accessible_tree-15.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: ut-schema-load/test_includes-1
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_includes:1010
+    rfc: ["RFC7950#5.1", "RFC7950#7.1.6"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_includes-1]
+      modules: [{"name": "main_a"}]
+    golden: golden/test_includes-1.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#5.1"]
+      deviation: null
+
+  - id: ut-schema-load/test_includes-2
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_includes:1026
+    rfc: ["RFC7950#5.1", "RFC7950#7.1.6"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_includes-2]
+      modules: [{"name": "main_d"}]
+    golden: golden/test_includes-2.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#5.1"]
+      deviation: null
+
+  - id: ut-schema-load/test_includes-3
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_includes:1061
+    rfc: ["RFC7950#5.1", "RFC7950#7.1.6"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_includes-3]
+      modules: [{"name": "main_c"}]
+    golden: golden/test_includes-3.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#5.1"]
+      deviation: null
+
+  - id: ut-schema-load/test_key_order-1
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_key_order:1096
+    rfc: ["RFC7950#7.8.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_key_order-1]
+      modules: [{"name": "a"}]
+    golden: golden/test_key_order-1.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.8.2"]
+      deviation: null
+
+  - id: ut-schema-load/test_key_order-2
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_key_order:1127
+    rfc: ["RFC7950#7.8.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_key_order-2]
+      modules: [{"name": "b"}]
+    golden: golden/test_key_order-2.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.8.2"]
+      deviation: null
+

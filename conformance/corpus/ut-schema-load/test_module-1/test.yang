@@ -1,0 +1,1 @@
+module test {namespace urn:test; prefix t;feature f1;feature f2 {if-feature f1;}}

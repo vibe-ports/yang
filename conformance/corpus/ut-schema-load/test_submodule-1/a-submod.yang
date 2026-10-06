@@ -1,0 +1,1 @@
+submodule a-submod {yang-version 1.1; belongs-to a-mod {prefix a;}  extension ext2 {argument arg;}  typedef INTERFACE_NAME {type string; a:ext2 "interface";}}

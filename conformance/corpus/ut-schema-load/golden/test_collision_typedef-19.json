@@ -1,0 +1,19 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module mytypes {\n  namespace \"urn:types\";\n  prefix t;\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "mytypes",
+      "revision": null,
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

@@ -1,0 +1,1 @@
+submodule asub {belongs-to a {prefix a;} typedef g {type int;}}

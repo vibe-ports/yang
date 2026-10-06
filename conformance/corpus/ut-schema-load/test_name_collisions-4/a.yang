@@ -1,0 +1,1 @@
+module a {namespace urn:a;prefix a;  container c;  leaf a {type empty;}  choice ch {    leaf c {type string;}    case c2 {      leaf aa {type empty;}    }  }}

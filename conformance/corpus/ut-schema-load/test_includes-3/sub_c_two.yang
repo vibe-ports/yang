@@ -1,0 +1,1 @@
+submodule sub_c_two { yang-version 1.1; belongs-to main_c { prefix mc; } include sub_c_one;}

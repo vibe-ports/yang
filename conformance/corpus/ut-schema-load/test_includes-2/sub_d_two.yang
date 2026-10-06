@@ -1,0 +1,1 @@
+submodule sub_d_two { belongs-to main_d { prefix md; } include sub_d_one;}
