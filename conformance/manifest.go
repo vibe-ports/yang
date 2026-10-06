@@ -174,6 +174,11 @@ func (m *Manifest) validate() error {
 		if len(f.Assert.Waive) > 0 && f.Assert.Deviation == nil {
 			fail("%s: assert.waive without assert.deviation", id)
 		}
+		for _, w := range f.Assert.Waive {
+			if !slices.Contains(Waivable, w) {
+				fail("%s: assert.waive %q not one of %v", id, w, Waivable)
+			}
+		}
 		if d := f.Assert.Deviation; d != nil {
 			if !devLoaded {
 				devLoaded = true

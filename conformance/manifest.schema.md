@@ -39,11 +39,12 @@ names. Goldens record what libyang does, `assert` what the spec requires: an `as
 contradicts its golden must name a deviation id present in `conformance/deviations.md`, otherwise
 `go test` fails (and a deviation whose assert already matches the golden is stale, also a failure).
 `deviations.md` records OUR intentional differences from libyang. A deviation waives what the
-assert covers (verdict, rc, failed_step, diagnostics); `waive` names further response fields it
-covers, dropped at the top level and in every `modules` item before the golden comparison (e.g.
-`schema_tree` and `compiled` when libyang's compiled tree is the deviation). `waive` is only valid
-with `deviation`, and a waiving fixture is never stale (its verdict may match the golden). Engine
-comparison:
+assert covers (verdict, rc, failed_step, diagnostics). With `waive` it waives instead only the
+named response fields, dropped at the top level and in every `modules` item before the golden
+comparison: `schema_tree` and/or `compiled`, when libyang's compiled tree is what the deviation is
+about (the verdict and diagnostics must then match the golden). `waive` is only valid with
+`deviation`, every waived field must be present in the golden, and an engine result that matches
+the whole golden reports a stale waive (`differ`). Engine comparison:
 
 | fixture | engine result | status |
 |---|---|---|

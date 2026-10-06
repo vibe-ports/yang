@@ -78,7 +78,9 @@ func (m *Manifest) Compare(e Engine) (Report, error) {
 
 // classify: without a deviation the engine must match the assert (if any) and the whole
 // normalized golden. With a deviation (libyang differs from the spec on purpose) matching the
-// assert but not the golden is Deviation; not matching the assert is Differ.
+// assert but not the golden is Deviation; not matching the assert is Differ. A deviation with
+// assert.waive waives only the named fields, everything else (verdict and diagnostics too) must
+// match; a waiving fixture that matches the whole golden has a stale waive (Differ).
 func classify(f Fixture, golden, got Response) (Status, string) {
 	assertDiff, goldenDiff := "", diffResponses(golden, got)
 	if f.Assert != nil {
@@ -87,14 +89,19 @@ func classify(f Fixture, golden, got Response) (Status, string) {
 	switch {
 	case assertDiff != "":
 		return Differ, assertDiff
+	case goldenDiff == "" && f.Assert != nil && len(f.Assert.Waive) > 0:
+		return Differ, fmt.Sprintf("stale waive %v: the result matches the golden", f.Assert.Waive)
 	case goldenDiff == "":
 		return Agree, ""
+	case f.Assert != nil && f.Assert.Deviation != nil && len(f.Assert.Waive) > 0:
+		if d := diffResponses(withoutFields(golden, f.Assert.Waive), withoutFields(got, f.Assert.Waive)); d != "" {
+			return Differ, d
+		}
+		return Deviation, *f.Assert.Deviation
 	case f.Assert != nil && f.Assert.Deviation != nil:
-		// The deviation only waives what the assert covers (verdict, rc, diagnostics) and the
-		// fields it names in waive; the rest of the golden (trees, xpath results, diffs) must
-		// still match.
-		w := f.Assert.Waive
-		if d := diffResponses(withoutAsserted(golden, w...), withoutAsserted(got, w...)); d != "" {
+		// The deviation only waives what the assert covers (verdict, rc, diagnostics); the rest
+		// of the golden (trees, xpath results, diffs) must still match.
+		if d := diffResponses(withoutAsserted(golden), withoutAsserted(got)); d != "" {
 			return Differ, d
 		}
 		return Deviation, *f.Assert.Deviation
@@ -120,26 +127,51 @@ func MatchAssert(a *Assert, resp Response) string {
 }
 
 // withoutAsserted drops what a deviation waives: the verdict with its rc and failed_step, every
-// diagnostic list, each sequence step's rc and diagnostics, and the fields named in waive (the
-// fixture's assert.waive) at the top level and in every module. Step trees and `skipped` stay
+// diagnostic list, and each sequence step's rc and diagnostics. Step trees and `skipped` stay
 // compared.
-func withoutAsserted(r Response, waive ...string) Response {
+func withoutAsserted(r Response) Response {
 	o := maps.Clone(map[string]any(r))
-	for _, k := range append([]string{"verdict", "rc", "failed_step", "diagnostics", "context_diagnostics"}, waive...) {
+	for _, k := range []string{"verdict", "rc", "failed_step", "diagnostics", "context_diagnostics"} {
 		delete(o, k)
-	}
-	if len(waive) > 0 {
-		mapItems(o, "modules", func(m map[string]any) {
-			for _, k := range waive {
-				delete(m, k)
-			}
-		})
 	}
 	mapItems(o, "steps", func(s map[string]any) {
 		delete(s, "rc")
 		delete(s, "diagnostics")
 	})
 	return o
+}
+
+// Waivable are the response fields assert.waive may name.
+var Waivable = []string{"schema_tree", "compiled"}
+
+// withoutFields drops the fields of an assert.waive at the top level and in every module.
+func withoutFields(r Response, fields []string) Response {
+	o := maps.Clone(map[string]any(r))
+	for _, k := range fields {
+		delete(o, k)
+	}
+	mapItems(o, "modules", func(m map[string]any) {
+		for _, k := range fields {
+			delete(m, k)
+		}
+	})
+	return o
+}
+
+// hasField reports whether r has field at the top level or in some module.
+func hasField(r Response, field string) bool {
+	if _, ok := r[field]; ok {
+		return true
+	}
+	l, _ := r["modules"].([]any)
+	for _, e := range l {
+		if m, ok := e.(map[string]any); ok {
+			if _, ok := m[field]; ok {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // mapItems replaces m[key] (a list of objects) by clones edited by f.

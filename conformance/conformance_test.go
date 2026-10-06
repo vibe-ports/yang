@@ -46,7 +46,12 @@ func TestAssertsConsistentWithGoldens(t *testing.T) {
 		if d != "" && f.Assert.Deviation == nil {
 			t.Errorf("%s: assert contradicts golden without a deviation: %s", f.ID, d)
 		}
-		if d == "" && f.Assert.Deviation != nil && len(f.Assert.Waive) == 0 { // a waiver is not stale
+		for _, w := range f.Assert.Waive {
+			if !hasField(g, w) {
+				t.Errorf("%s: assert.waive %q: the golden has no such field", f.ID, w)
+			}
+		}
+		if d == "" && f.Assert.Deviation != nil && len(f.Assert.Waive) == 0 { // a waiver's staleness is the engine's (classify)
 			t.Errorf("%s: stale deviation %s: assert already matches the golden", f.ID, *f.Assert.Deviation)
 		}
 	}
@@ -110,10 +115,23 @@ func TestCompareReplayAllAgree(t *testing.T) {
 		if r.Status != want {
 			t.Errorf("%s: %s %s, want %s", r.ID, r.Status, r.Detail, want)
 		}
+		if f := fixture(m, r.ID); f.Assert != nil && len(f.Assert.Waive) > 0 && !strings.HasPrefix(r.Detail, "stale waive") {
+			t.Errorf("%s: %s, want a stale waive (replaying libyang)", r.ID, r.Detail)
+		}
 	}
 	if len(rep.Results) != len(m.Fixtures) || !strings.Contains(rep.Markdown(), fmt.Sprintf("| **fixtures** | %d | %d | 0 | 0 |", len(m.Fixtures)-devs, devs)) {
 		t.Errorf("unexpected report:\n%s", rep.Markdown())
 	}
+}
+
+// fixture returns the fixture id (zero if none).
+func fixture(m *Manifest, id string) Fixture {
+	for _, f := range m.Fixtures {
+		if f.ID == id {
+			return f
+		}
+	}
+	return Fixture{}
 }
 
 // hasDeviation reports whether fixture id asserts a deviation from libyang.
@@ -172,7 +190,8 @@ func TestManifestRejectsBad(t *testing.T) {
 		"  - {id: a, dir: d, golden: g, source: {url: u, license: l}, rfc: [], areas: [nope], request: {op: x}}\n" +
 		"  - {id: a, dir: d, golden: g, source: {url: u, license: l, commit: null}, rfc: [], areas: [types], request: {op: x}, assert: {verdict: valid, deviation: D-9999}}\n" +
 		"  - {id: b, dir: ../d, golden: g, source: {url: u, license: l, commit: null}, rfc: [], areas: [types], request: {}, assert: {verdict: bogus}}\n" +
-		"  - {id: c, dir: d, golden: g, source: {url: u, license: l, commit: null}, rfc: [], areas: [types], request: {op: x}, assert: {verdict: valid, waive: [schema_tree]}}\n"
+		"  - {id: c, dir: d, golden: g, source: {url: u, license: l, commit: null}, rfc: [], areas: [types], request: {op: x}, assert: {verdict: valid, waive: [schema_tree]}}\n" +
+		"  - {id: e, dir: d, golden: g, source: {url: u, license: l, commit: null}, rfc: [], areas: [types], request: {op: x}, assert: {verdict: valid, deviation: D-0001, waive: [modules]}}\n"
 	if err := os.WriteFile(dir+"/manifest.yaml", []byte(bad), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +202,7 @@ func TestManifestRejectsBad(t *testing.T) {
 	if err == nil {
 		t.Fatal("bad manifest accepted")
 	}
-	for _, w := range []string{"version", "unknown area", "duplicate id", "D-9999", "source.commit", "local relative", "request.op", "bogus", "waive without"} {
+	for _, w := range []string{"version", "unknown area", "duplicate id", "D-9999", "source.commit", "local relative", "request.op", "bogus", "waive without", "waive \"modules\" not one of"} {
 		if !strings.Contains(err.Error(), w) {
 			t.Errorf("error lacks %q: %v", w, err)
 		}
@@ -237,7 +256,9 @@ func TestClassify(t *testing.T) {
 		want Status
 	}{
 		{"waive: waived fields differ", waiving, treeOff, Deviation},
-		{"waive: equal", waiving, tree, Agree},
+		{"waive: equal is a stale waive", waiving, tree, Differ},
+		{"waive: context diagnostic differs", waiving,
+			resp(t, `{"verdict":"valid","context_diagnostics":[{"level":"warning"}],"modules":[{"name":"m","schema_tree":[2],"compiled":"b"}],"result":1}`), Differ},
 		{"waive: an unwaived module field differs", waiveTree, treeOff, Differ},
 		{"waive: other field differs", waiving, resp(t, `{"verdict":"valid","modules":[{"name":"m"}],"result":2}`), Differ},
 		{"waive: module name differs", waiving, resp(t, `{"verdict":"valid","modules":[{"name":"x"}],"result":1}`), Differ},
