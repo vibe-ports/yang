@@ -1,0 +1,5 @@
+module defs {
+  yang-version 1.1;
+  namespace "urn:tests:defs";
+  prefix pref;
+feature f; leaf l1 {type enumeration {enum white; enum yellow {if-feature f;}}}}

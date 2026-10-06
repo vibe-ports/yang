@@ -1,0 +1,73 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module T0 {\n  namespace \"urn:tests:T0\";\n  prefix pref;\n\n  leaf port {\n    type bits {\n      bit \"two\" {\n        position 2;\n        status current;\n      }\n      bit \"ten\" {\n        position 10;\n        status current;\n      }\n      bit \"eleven\" {\n        position 11;\n        status current;\n      }\n      bit \"twelve\" {\n        position 12;\n        status current;\n      }\n      bit \"_test-end...\" {\n        position 13;\n        status current;\n      }\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "T0",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "T0",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/T0:port",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "bits",
+            "bases": null,
+            "bits": [
+              {
+                "name": "two",
+                "position": 2
+              },
+              {
+                "name": "ten",
+                "position": 10
+              },
+              {
+                "name": "eleven",
+                "position": 11
+              },
+              {
+                "name": "twelve",
+                "position": 12
+              },
+              {
+                "name": "_test-end...",
+                "position": 13
+              }
+            ],
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "my_type"
+            ],
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

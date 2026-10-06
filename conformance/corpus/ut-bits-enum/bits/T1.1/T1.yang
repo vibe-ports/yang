@@ -1,0 +1,5 @@
+module T1 {
+  yang-version 1.1;
+  namespace "urn:tests:T1";
+  prefix pref;
+leaf port {type bits { bit _ten {position 10;} bit _ten-one; bit _two {position 2;} bit ten_end...;}}}

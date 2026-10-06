@@ -14125,3 +14125,683 @@ fixtures:
       rfc: ["RFC7950#7.8.2"]
       deviation: null
 
+
+# BEGIN ut-bits-enum (generated from libyang tests/utests/types/bits.c and enumeration.c by conformance/tools/extract-utests, reviewed)
+
+  - id: ut-bits-enum/bits-schema-yang-01
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:108
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [bits/T0.1]
+      modules: [{name: "T0"}]
+    golden: golden/bits-schema-yang-01.json
+
+  - id: ut-bits-enum/bits-schema-yang-02
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:125
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [bits/T0.1, bits/T1.1]
+      modules: [{name: "T0"}, {name: "T1"}]
+    golden: golden/bits-schema-yang-02.json
+
+  - id: ut-bits-enum/bits-schema-yang-03
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:143
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}]
+    golden: golden/bits-schema-yang-03.json
+
+  - id: ut-bits-enum/bits-schema-yang-04
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:161
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1, bits/T3.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}]
+    golden: golden/bits-schema-yang-04.json
+
+  - id: ut-bits-enum/bits-schema-yang-05
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:181
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1, bits/T3.1, bits/TERR_0.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "TERR_0"}]
+    golden: golden/bits-schema-yang-05.json
+
+  - id: ut-bits-enum/bits-schema-yang-06
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:190
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1, bits/T3.1, bits/TERR_1.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "TERR_1"}]
+    golden: golden/bits-schema-yang-06.json
+
+  - id: ut-bits-enum/bits-schema-yang-07
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:197
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1, bits/T3.1, bits/TERR_2.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "TERR_2"}]
+    golden: golden/bits-schema-yang-07.json
+
+  - id: ut-bits-enum/bits-schema-yang-08
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:205
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1, bits/T3.1, bits/TERR_3.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "TERR_3"}]
+    golden: golden/bits-schema-yang-08.json
+
+  - id: ut-bits-enum/bits-schema-yang-09
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:212
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1, bits/T3.1, bits/TERR_4.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "TERR_4"}]
+    golden: golden/bits-schema-yang-09.json
+
+  - id: ut-bits-enum/bits-schema-yang-10
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:220
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1, bits/T3.1, bits/TERR_5.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "TERR_5"}]
+    golden: golden/bits-schema-yang-10.json
+
+  - id: ut-bits-enum/bits-schema-yang-11
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:227
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1, bits/T3.1, bits/TERR_6.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "TERR_6"}]
+    golden: golden/bits-schema-yang-11.json
+
+  - id: ut-bits-enum/bits-schema-yang-12
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:235
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1, bits/T3.1, bits/TERR_7.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "TERR_7"}]
+    golden: golden/bits-schema-yang-12.json
+
+  - id: ut-bits-enum/bits-schema-yang-13
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:242
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1, bits/T3.1, bits/TERR_8.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "TERR_8"}]
+    golden: golden/bits-schema-yang-13.json
+
+  - id: ut-bits-enum/bits-schema-yang-14
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:247
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1, bits/T3.1, bits/TERR_9.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "TERR_9"}]
+    golden: golden/bits-schema-yang-14.json
+
+  - id: ut-bits-enum/bits-schema-yang-15
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:259
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1, bits/T3.1, bits/TERR_10.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "TERR_10"}]
+    golden: golden/bits-schema-yang-15.json
+
+  - id: ut-bits-enum/bits-schema-yang-16
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:270
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1, bits/T3.1, bits/TERR_11.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "TERR_11"}]
+    golden: golden/bits-schema-yang-16.json
+
+  - id: ut-bits-enum/bits-data-xml-01
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:613
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [bits/T0.2]
+      modules: [{name: "T0"}]
+    golden: golden/bits-data-xml-01.json
+
+  - id: ut-bits-enum/bits-data-xml-02
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:615
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [bits/T0.2]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">ten two twelve</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/bits-data-xml-02.json
+
+  - id: ut-bits-enum/bits-data-xml-03
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:616
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [bits/T0.2]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">ten\ntwo\ttwelve</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/bits-data-xml-03.json
+
+  - id: ut-bits-enum/bits-data-xml-04
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:617
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [bits/T0.2]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">ten two</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/bits-data-xml-04.json
+
+  - id: ut-bits-enum/bits-data-xml-05
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:618
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [bits/T0.2]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">_test-end...</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/bits-data-xml-05.json
+
+  - id: ut-bits-enum/bits-data-xml-06
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:619
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [bits/T0.2]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">twelve\nten\ttwo  \n eleven</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/bits-data-xml-06.json
+
+  - id: ut-bits-enum/bits-data-xml-07
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:621
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [bits/T0.2]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\"></port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/bits-data-xml-07.json
+
+  - id: ut-bits-enum/bits-data-xml-08
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:622
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [bits/T0.2]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">\n\t</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/bits-data-xml-08.json
+
+  - id: ut-bits-enum/bits-data-xml-09
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:624
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [bits/T0.2]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">twelvea</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/bits-data-xml-09.json
+
+  - id: ut-bits-enum/bits-data-xml-10
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:626
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [bits/T0.2]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">twelve t</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/bits-data-xml-10.json
+
+  - id: ut-bits-enum/bits-data-xml-11
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:628
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [bits/T0.2]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">ELEVEN</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/bits-data-xml-11.json
+
+  - id: ut-bits-enum/bits-data-xml-12
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:633
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [bits/T0.2]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\"/>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/bits-data-xml-12.json
+
+  - id: ut-bits-enum/bits-data-json-01
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:652
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [bits/T0.2]
+      modules: [{name: "T0"}]
+    golden: golden/bits-data-json-01.json
+
+  - id: ut-bits-enum/bits-data-json-02
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:654
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.6"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [bits/T0.2]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":\"ten two twelve\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/bits-data-json-02.json
+
+  - id: ut-bits-enum/bits-data-json-03
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:655
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.6"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [bits/T0.2]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":\"ten\\ntwo\\ttwelve\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/bits-data-json-03.json
+
+  - id: ut-bits-enum/bits-data-json-04
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:656
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.6"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [bits/T0.2]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":\"ten two\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/bits-data-json-04.json
+
+  - id: ut-bits-enum/bits-data-json-05
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:657
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.6"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [bits/T0.2]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":\"_test-end...\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/bits-data-json-05.json
+
+  - id: ut-bits-enum/bits-data-json-06
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:658
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.6"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [bits/T0.2]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":\"twelve\\nten\\ttwo  \\n eleven\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/bits-data-json-06.json
+
+  - id: ut-bits-enum/bits-data-json-07
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:660
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.6"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [bits/T0.2]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":\"\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/bits-data-json-07.json
+
+  - id: ut-bits-enum/bits-data-json-08
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:661
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.6"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [bits/T0.2]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":\"\\n\\t\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/bits-data-json-08.json
+
+  - id: ut-bits-enum/bits-data-json-09
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:663
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.6"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [bits/T0.2]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":twelvea}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/bits-data-json-09.json
+
+  - id: ut-bits-enum/bits-data-json-10
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:665
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.6"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [bits/T0.2]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":twelve t}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/bits-data-json-10.json
+
+  - id: ut-bits-enum/bits-data-json-11
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:667
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.6"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [bits/T0.2]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":ELEVEN}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/bits-data-json-11.json
+
+  - id: ut-bits-enum/enumeration-data-xml-01
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/enumeration.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:70
+    rfc: ["RFC7950#9.6", "RFC7950#9.6.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [enumeration/defs.1]
+      modules: [{name: "defs"}]
+    golden: golden/enumeration-data-xml-01.json
+
+  - id: ut-bits-enum/enumeration-data-xml-02
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/enumeration.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:72
+    rfc: ["RFC7950#9.6"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [enumeration/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\">white</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/enumeration-data-xml-02.json
+
+  - id: ut-bits-enum/enumeration-data-xml-03
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/enumeration.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:75
+    rfc: ["RFC7950#9.6"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [enumeration/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\">yellow</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/enumeration-data-xml-03.json
+
+  - id: ut-bits-enum/enumeration-data-xml-04
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/enumeration.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:79
+    rfc: ["RFC7950#9.6"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [enumeration/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\"> white</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/enumeration-data-xml-04.json
+
+  - id: ut-bits-enum/enumeration-data-xml-05
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/enumeration.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:82
+    rfc: ["RFC7950#9.6"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [enumeration/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\">white\n</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/enumeration-data-xml-05.json
+
+  - id: ut-bits-enum/enumeration-data-xml-06
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/enumeration.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:86
+    rfc: ["RFC7950#9.6"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [enumeration/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\">black</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/enumeration-data-xml-06.json
+# END ut-bits-enum

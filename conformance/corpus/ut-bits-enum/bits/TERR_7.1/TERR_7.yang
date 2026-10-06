@@ -1,0 +1,5 @@
+module TERR_7 {
+  yang-version 1.1;
+  namespace "urn:tests:TERR_7";
+  prefix pref;
+leaf port {type bits { bit first {position 10;} bit "ab&cd";}}}

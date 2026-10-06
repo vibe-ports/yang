@@ -1,0 +1,5 @@
+module TERR_1 {
+  yang-version 1.1;
+  namespace "urn:tests:TERR_1";
+  prefix pref;
+typedef my_type{type bits {   bit ten {position 10;} bit eleven; bit two {position 2;} bit twelve;}}leaf port {type my_type {   bit ten {position 10;} bit two;  bit test;}}}

@@ -1,0 +1,278 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module T0 {\n  namespace \"urn:tests:T0\";\n  prefix pref;\n\n  leaf port {\n    type bits {\n      bit \"zero\" {\n        position 0;\n        status current;\n      }\n      bit \"one\" {\n        position 1;\n        status current;\n      }\n      bit \"ten\" {\n        position 10;\n        status current;\n      }\n      bit \"eleven\" {\n        position 11;\n        status current;\n      }\n      bit \"last\" {\n        position 4294967295;\n        status current;\n      }\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "T0",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "T0",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/T0:port",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "bits",
+            "bases": null,
+            "bits": [
+              {
+                "name": "zero",
+                "position": 0
+              },
+              {
+                "name": "one",
+                "position": 1
+              },
+              {
+                "name": "ten",
+                "position": 10
+              },
+              {
+                "name": "eleven",
+                "position": 11
+              },
+              {
+                "name": "last",
+                "position": 4294967295
+              }
+            ],
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module T1 {\n  namespace \"urn:tests:T1\";\n  prefix pref;\n\n  leaf port {\n    type bits {\n      bit \"_two\" {\n        position 2;\n        status current;\n      }\n      bit \"_ten\" {\n        position 10;\n        status current;\n      }\n      bit \"_ten-one\" {\n        position 11;\n        status current;\n      }\n      bit \"ten_end...\" {\n        position 12;\n        status current;\n      }\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "T1",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "T1",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/T1:port",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "bits",
+            "bases": null,
+            "bits": [
+              {
+                "name": "_two",
+                "position": 2
+              },
+              {
+                "name": "_ten",
+                "position": 10
+              },
+              {
+                "name": "_ten-one",
+                "position": 11
+              },
+              {
+                "name": "ten_end...",
+                "position": 12
+              }
+            ],
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module T2 {\n  namespace \"urn:tests:T2\";\n  prefix pref;\n\n  leaf port {\n    type bits {\n      bit \"two\" {\n        position 2;\n        status current;\n      }\n      bit \"ten\" {\n        position 10;\n        status current;\n      }\n      bit \"eleven\" {\n        position 11;\n        status current;\n      }\n      bit \"twelve\" {\n        position 12;\n        status current;\n      }\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "T2",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "T2",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/T2:port",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "bits",
+            "bases": null,
+            "bits": [
+              {
+                "name": "two",
+                "position": 2
+              },
+              {
+                "name": "ten",
+                "position": 10
+              },
+              {
+                "name": "eleven",
+                "position": 11
+              },
+              {
+                "name": "twelve",
+                "position": 12
+              }
+            ],
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "my_type"
+            ],
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module T3 {\n  namespace \"urn:tests:T3\";\n  prefix pref;\n\n  leaf port {\n    type bits {\n      bit \"two\" {\n        position 2;\n        status current;\n      }\n      bit \"ten\" {\n        position 10;\n        status current;\n      }\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "T3",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "T3",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/T3:port",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "bits",
+            "bases": null,
+            "bits": [
+              {
+                "name": "two",
+                "position": 2
+              },
+              {
+                "name": "ten",
+                "position": 10
+              }
+            ],
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "my_type"
+            ],
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 5,
+          "msg": "Invalid identifier first character '4' (0x0034).",
+          "phase": "parse",
+          "schema_path": null,
+          "vecode": 2,
+          "vecode_name": "LYVE_SYNTAX_YANG"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 12,
+            "name": "LY_EOTHER"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Parsing module \"TERR_8\" failed.",
+          "phase": "parse",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "name": "TERR_8",
+      "phase": "parse"
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}
