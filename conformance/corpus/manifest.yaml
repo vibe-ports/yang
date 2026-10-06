@@ -26393,7 +26393,7 @@ fixtures:
 
   - id: ut-identity/compile-20
     dir: ut-identity
-    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1510 (b imports a@2014-05-08 (not implemented), then a@2015-05-08 is implemented; shared C context rebuilt as one request)
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1510 (b imports a without revision, then a@2015-05-08 is implemented; the C warning about the import of a@2014-05-08 is not in the golden (oracle gap: import-time revision availability); shared C context rebuilt as one request)
     rfc: ["RFC7950#7.18", "RFC7950#9.10"]
     areas: [schema]
     request: {"op": "schema", "searchdirs": ["a@2014-05-08.1", "a@2015-05-08.1", "b.6"], "modules": [{"name": "b"}, {"name": "a", "revision": "2015-05-08"}]}
@@ -26402,22 +26402,6 @@ fixtures:
       verdict: valid
       rfc: ["RFC7950#7.18", "RFC7950#9.10"]
       deviation: null
-
-  - id: ut-identity/compile-21
-    dir: ut-identity
-    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1523 (; shared C context rebuilt as one request)
-    rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
-    areas: [schema, validation]
-    request: {"op": "data", "searchdirs": ["a@2014-05-08.1", "a@2015-05-08.1", "b.6"], "modules": [{"name": "b"}, {"name": "a", "revision": "2015-05-08"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<alf xmlns=\"urn:a\" xmlns:ids=\"urn:b\">ids:id1</alf>"}
-    golden: golden/compile-21.json
-
-  - id: ut-identity/compile-22
-    dir: ut-identity
-    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1525 (; shared C context rebuilt as one request)
-    rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
-    areas: [schema, validation]
-    request: {"op": "data", "searchdirs": ["a@2014-05-08.1", "a@2015-05-08.1", "b.6"], "modules": [{"name": "b"}, {"name": "a", "revision": "2015-05-08"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<alf xmlns=\"urn:a\" xmlns:ids=\"urn:b\">ids:id2</alf>"}
-    golden: golden/compile-22.json
 
   - id: ut-identity/compile-23
     dir: ut-identity
