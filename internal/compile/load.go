@@ -151,7 +151,7 @@ type Context struct {
 	unresHook                         func(*Context) error
 	nodes                             int        // schema nodes compiled (Budget.MaxNodes)
 	types                             int        // compiled types and union member slots (Budget.MaxTypes)
-	typeCache                         *typeCache // compiled typedefs (design 06 §2.3), created by the first compile
+	typeCache                         *typeCache // compiled typedefs (design 06 §2.3); entries leave with their module (revert)
 	// nodeWalk turns on the node walk (compileNodes) in compile; off until
 	// design 06 C4b and C6 make the internal modules compile
 	nodeWalk bool
@@ -187,7 +187,7 @@ func NewContext(opts Options, dirs ...fs.FS) (*Context, []Diagnostic, error) {
 		opts.Parse.MaxBytes = 64 << 20 // the parser's default
 	}
 	c := &Context{opts: Options{AllImplemented: opts.AllImplemented, MaxSearchDirs: opts.MaxSearchDirs, Parse: opts.Parse},
-		dirs: []fs.FS{models.Libyang}, phase: "parse"}
+		dirs: []fs.FS{models.Libyang}, phase: "parse", typeCache: newTypeCache()}
 	n := len(internalModules)
 	if opts.NoYangLibrary {
 		n -= 2
@@ -520,6 +520,7 @@ func (c *Context) parseModule(src []byte, d loadData) (m *Module, err error) {
 	if pm.Version == "1.1" {
 		m.Schema.Version = schema.Version11
 	}
+	m.mod = m.Schema
 	latest := c.latest(m.Name)
 	switch {
 	case latest == nil:
@@ -815,7 +816,7 @@ func (c *Context) parseSubmodule(p *pctx, src []byte, d loadData, inDirs bool) (
 	if err != nil {
 		return nil, err
 	}
-	s = &Submodule{Name: st.Arg, Main: p.main, pmod: pmod{Parsed: pm}}
+	s = &Submodule{Name: st.Arg, Main: p.main, pmod: pmod{Parsed: pm, mod: p.main.Schema}}
 	p.parsed = append(p.parsed, s) // parsed_mods is a stack: popped when this parser context is freed
 	defer func() { p.parsed = p.parsed[:len(p.parsed)-1] }()
 	s.Revision = c.lastRevision(pm.Revisions, "submodule", s.Name)

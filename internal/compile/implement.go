@@ -12,6 +12,7 @@ import (
 
 	"github.com/vibe-ports/yang/internal/ly"
 	"github.com/vibe-ports/yang/internal/lyxp"
+	"github.com/vibe-ports/yang/internal/parser"
 	"github.com/vibe-ports/yang/internal/schema"
 )
 
@@ -221,7 +222,7 @@ func (m *Module) anyPmod(f func(*pmod) bool) bool {
 		return true
 	}
 	for _, inc := range m.Includes {
-		if f(&inc.Sub.pmod) {
+		if inc.Sub != nil && f(&inc.Sub.pmod) { // nil: a failed module's include
 			return true
 		}
 	}
@@ -384,8 +385,18 @@ func (c *Context) compile(m *Module) error {
 	return nil
 }
 
-// free is lysc_module_free.
+// free is lysc_module_free: the types its leaves and leaf-lists hold are
+// released (lysc_node_free → lysc_type_free).
 func (c *Context) free(m *Module) {
+	for work := slices.Clone(m.Schema.Top); len(work) > 0; {
+		n := work[len(work)-1]
+		work = append(work[:len(work)-1], n.Children...)
+		work = append(work, n.Actions...)
+		work = append(work, n.Notifs...)
+		if n.Type != nil && (n.Kind == schema.Leaf || n.Kind == schema.LeafList) {
+			c.typeCache.release(n.Type)
+		}
+	}
 	m.Schema.Features, m.Schema.Top, m.Schema.Exts = nil, nil, nil
 	m.compiled = false
 }
@@ -416,6 +427,7 @@ func (c *Context) revert() {
 			}
 		}
 		unlinkDerived(c.Modules, m)
+		c.dropTypedefs(m)
 	}
 	if len(c.implementing) > 0 {
 		n := len(c.diags)
@@ -423,6 +435,35 @@ func (c *Context) revert() {
 		c.diags = c.diags[:n]
 		if err != nil {
 			_ = c.logErr(rc("LY_EINT"), "Internal error (tree_schema.c:1340).")
+		}
+	}
+}
+
+// dropTypedefs releases the cached types of the typedefs of a module leaving
+// the context (lys_module_free frees its parsed typedefs and their
+// compiled types).
+func (c *Context) dropTypedefs(m *Module) {
+	var work []*parser.Node
+	m.anyPmod(func(pm *pmod) bool { work = append(work, &pm.Parsed.Node); return false })
+	for len(work) > 0 {
+		n := work[len(work)-1]
+		work = work[:len(work)-1]
+		for _, td := range n.Typedefs {
+			if t, ok := c.typeCache.compiled[td]; ok {
+				delete(c.typeCache.compiled, td)
+				c.typeCache.release(t)
+			}
+		}
+		work = append(work, n.Children...)
+		work = append(work, n.Groupings...)
+		work = append(work, n.Actions...)
+		work = append(work, n.Notifications...)
+		work = append(work, n.Augments...)
+		if n.Input != nil {
+			work = append(work, n.Input)
+		}
+		if n.Output != nil {
+			work = append(work, n.Output)
 		}
 	}
 }

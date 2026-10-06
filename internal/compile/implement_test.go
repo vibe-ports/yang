@@ -7,7 +7,43 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/vibe-ports/yang/internal/parser"
+	"github.com/vibe-ports/yang/internal/schema"
 )
+
+// TestRevertDropsTypedefs: modules and submodules are bound to their
+// compiled module (lysp_module.mod); cached types of the typedefs of a module
+// removed by a failed load leave the typedef cache.
+func TestRevertDropsTypedefs(t *testing.T) {
+	dir := t.TempDir()
+	write(t, dir, "td.yang", `module td { namespace urn:td; prefix td; include tds;
+  container c { typedef inner { type string; } } }`)
+	write(t, dir, "tds.yang", `submodule tds { belongs-to td { prefix td; } typedef outer { type int8; } }`)
+	c := newCtx(t, Options{}, dir)
+	boom := errors.New("boom")
+	c.unresHook = func(c *Context) error {
+		m := c.latest("td")
+		if m == nil {
+			return nil
+		}
+		if m.mod != m.Schema || m.Includes[0].Sub.mod != m.Schema {
+			t.Error("pmod.mod not bound")
+		}
+		for _, td := range []*parser.Node{m.Parsed.Children[0].Typedefs[0], m.Includes[0].Sub.Parsed.Typedefs[0]} {
+			tp := &schema.Type{}
+			c.typeCache.compiled[td] = tp
+			c.typeCache.hold(tp)
+		}
+		return boom
+	}
+	if _, _, err := c.Load("td", "", nil); !errors.Is(err, boom) {
+		t.Fatalf("got %v", err)
+	}
+	if len(c.typeCache.compiled) != 0 || len(c.typeCache.refs) != 0 {
+		t.Errorf("cache after revert: %d entries, %d types", len(c.typeCache.compiled), len(c.typeCache.refs))
+	}
+}
 
 func newCtx(t *testing.T, opts Options, dir string) *Context {
 	t.Helper()
