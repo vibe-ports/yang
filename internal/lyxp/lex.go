@@ -123,13 +123,20 @@ const errXPEOF = "Unexpected XPath expression end."
 
 // Lex ports lyxp_expr_parse without reparse: it only tokenizes.
 func Lex(src string) (*Expr, string) {
+	e, msg, _ := LexMax(src, 0)
+	return e, msg
+}
+
+// LexMax is Lex with a cap on the number of tokens (0: none, as libyang): more than limit tokens
+// returns tooMany, with no message (the caller owns that text).
+func LexMax(src string, limit int) (e *Expr, msg string, tooMany bool) {
 	if src == "" || src[0] == 0 {
-		return nil, errXPEOF
+		return nil, errXPEOF, false
 	}
 	if i := strings.IndexByte(src, 0); i >= 0 {
 		src = src[:i]
 	}
-	e := &Expr{Src: src}
+	e = &Expr{Src: src}
 	at := func(i int) byte {
 		if i < len(src) {
 			return src[i]
@@ -194,7 +201,7 @@ func Lex(src string) (*Expr, string) {
 				if len(q) > 15 {
 					q = q[:15]
 				}
-				return nil, fmt.Sprintf("Unterminated string delimited with %c (%s).", c, q)
+				return nil, fmt.Sprintf("Unterminated string delimited with %c (%s).", c, q), false
 			}
 			tl, tt = end+2, TokLiteral
 		case c == '.' || isDigit(c):
@@ -213,10 +220,10 @@ func Lex(src string) (*Expr, string) {
 			p++
 			n := parseNCName(src[p:])
 			if n < 1 {
-				return nil, inexpr(p - n)
+				return nil, inexpr(p - n), false
 			}
 			if at(p+n) == ':' {
-				return nil, "Variable with prefix is not supported."
+				return nil, "Variable with prefix is not supported.", false
 			}
 			tl, tt = n, TokVarRef
 		case c == '/':
@@ -248,22 +255,22 @@ func Lex(src string) (*Expr, string) {
 				tl, tt = 3, TokOperMath
 			case prevNType || prevFunc:
 				return nil, fmt.Sprintf("Invalid character 0x%x ('%s'), perhaps \"%s\" is supposed to be a function call.",
-					c, string([]byte{c}), e.Text(len(e.Toks)-1))
+					c, string([]byte{c}), e.Text(len(e.Toks)-1)), false
 			default:
-				return nil, inexpr(p)
+				return nil, inexpr(p), false
 			}
 		default:
 			n := 1
 			if c != '*' {
 				if n = parseNCName(src[p:]); n < 1 {
-					return nil, inexpr(p - n)
+					return nil, inexpr(p - n), false
 				}
 			}
 			tl = n
 			hasAxis := false
 			if strings.HasPrefix(src[p+tl:], "::") {
 				if !axes[src[p:p+n]] {
-					return nil, inexpr(p)
+					return nil, inexpr(p), false
 				}
 				add(TokAxisName, p, tl)
 				p += tl
@@ -272,7 +279,7 @@ func Lex(src string) (*Expr, string) {
 				n = 1
 				if at(p) != '*' {
 					if n = parseNCName(src[p:]); n < 1 {
-						return nil, inexpr(p - n)
+						return nil, inexpr(p - n), false
 					}
 				}
 				tl, hasAxis = n, true
@@ -284,7 +291,7 @@ func Lex(src string) (*Expr, string) {
 				} else {
 					n := parseNCName(src[p+tl:])
 					if n < 1 {
-						return nil, inexpr(p - n)
+						return nil, inexpr(p - n), false
 					}
 					tl += n
 				}
@@ -296,12 +303,15 @@ func Lex(src string) (*Expr, string) {
 			tt = TokNameTest
 		}
 		add(tt, p, tl)
+		if limit > 0 && len(e.Toks) > limit {
+			return nil, "", true
+		}
 		p += tl
 		for p < len(src) && isXMLWS(src[p]) {
 			p++
 		}
 		if p >= len(src) {
-			return e, ""
+			return e, "", false
 		}
 	}
 }

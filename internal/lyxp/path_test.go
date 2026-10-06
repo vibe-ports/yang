@@ -76,3 +76,21 @@ func TestManyKeys(t *testing.T) {
 		t.Errorf("took %v", d)
 	}
 }
+
+func TestLexMax(t *testing.T) {
+	if e, msg, over := LexMax("a|b|c", 5); e == nil || msg != "" || over {
+		t.Fatal(e, msg, over)
+	}
+	if _, msg, over := LexMax("a|b|c", 4); !over || msg != "" {
+		t.Fatalf("over=%v msg=%q", over, msg)
+	}
+	for src, want := range map[string]string{
+		"namespace::x": "Invalid character 'n'[1] of expression 'namespace::x'.",
+		"\xff":         "Invalid character '\xff'[1] of expression '\xff'.",
+		"child::":      "Invalid character '",
+	} {
+		if _, msg, _ := LexMax(src, 0); msg != want {
+			t.Errorf("%q: %q, want %q", src, msg, want)
+		}
+	}
+}

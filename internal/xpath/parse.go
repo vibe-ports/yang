@@ -112,13 +112,13 @@ func (p *parser) check(want tokKind) error {
 		return xpErr("Unexpected XPath expression end.")
 	}
 	if want != tNone && p.toks[p.i].k != want {
-		return xpErr("Unexpected XPath token \"%s\" (\"%s\"), expected \"%s\".", tokNames[p.toks[p.i].k], p.at15(p.i), tokNames[want])
+		return xpErr("Unexpected XPath token \"%s\" (\"%s\"), expected \"%s\".", p.toks[p.i].k, p.at15(p.i), want)
 	}
 	return nil
 }
 
 func (p *parser) unexpected() error {
-	return xpErr("Unexpected XPath token \"%s\" (\"%s\").", tokNames[p.toks[p.i].k], p.at15(p.i))
+	return xpErr("Unexpected XPath token \"%s\" (\"%s\").", p.toks[p.i].k, p.at15(p.i))
 }
 
 // peek is lyxp_check_token without logging.
