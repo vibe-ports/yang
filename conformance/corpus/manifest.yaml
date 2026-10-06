@@ -7874,3 +7874,44 @@ fixtures:
       rfc: ["RFC7950#7.17", "RFC7950#7.21.2"]
       diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
       deviation: null
+  - id: types/print-prefixes-xml
+    dir: types
+    source: *own
+    rfc: ["RFC7950#9.13.2", "RFC7950#9.10"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty2}, {name: ty4}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty4" xmlns:a="urn:vibe-ports:ty2"><ext>a:der</ext><loc>own</loc><ii xmlns:x="urn:vibe-ports:ty4" xmlns:y="urn:vibe-ports:ty2">/x:c/x:l[x:k="y:der"]/x:v</ii><l><k>a:der</k><v>1</v></l><ll>a:der</ll><ll>own</ll><un>a:der</un><lr>a:der</lr></c>'
+    golden: golden/print-prefixes-xml.json
+
+  - id: types/print-prefixes-json
+    dir: types
+    source: *own
+    rfc: ["RFC7951#6.8", "RFC7951#6.11"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty2}, {name: ty4}]
+      format: json
+      data_type: config
+      data: '{"ty4:c":{"ext":"ty2:der","loc":"own","ii":"/ty4:c/l[k=''ty2:der'']/v","l":[{"k":"ty2:der","v":"1"}],"ll":["ty2:der","ty4:own"],"un":"ty2:der","lr":"ty2:der"}}'
+    golden: golden/print-prefixes-json.json
+
+  - id: types/default-store
+    dir: types
+    source: *own
+    rfc: ["RFC7950#7.6.1", "RFC7950#7.7.2"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty2}, {name: ty4}]
+      format: xml
+      data_type: config
+      data: '<d xmlns="urn:vibe-ports:ty4"/>'
+    golden: golden/default-store.json

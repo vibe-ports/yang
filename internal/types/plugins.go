@@ -12,6 +12,9 @@ type plugin struct {
 	store   func(*storeArgs) (Value, *Diag)
 	equal   func(a, b Value) bool // nil: canonical strings (lyplg_type_compare_simple)
 	compare func(a, b Value) int  // nil: canonical strings (lyplg_type_sort_simple)
+	// validate: the record's validate_value is lyplg_type_validate_value_string (hex-string);
+	// the other records have none.
+	validate bool
 }
 
 // pluginKey is (module, revision, typedef); revision "" matches every revision.

@@ -29,17 +29,21 @@ func storeString(a *storeArgs) (Value, *Diag) {
 // storeStringRestrictions ports lyplg_type_validate_value_string: length in characters, then
 // patterns.
 func storeStringRestrictions(a *storeArgs) (Value, *Diag) {
-	v := Value{typ: a.t, canon: a.lex}
-	if a.t.Length != nil {
-		n := int64(utf8.RuneCountInString(a.lex))
-		if d := checkRange(schema.String, a.t.Length, n, a.lex); d != nil {
-			return Value{}, d
-		}
-	}
-	if d := checkPatterns(a.t.Patterns, a.lex); d != nil {
+	if d := validateString(a.t, a.lex); d != nil {
 		return Value{}, d
 	}
-	return v, nil
+	return Value{typ: a.t, canon: a.lex}, nil
+}
+
+// validateString is lyplg_type_validate_value_string on the canonical value s.
+func validateString(t *schema.Type, s string) *Diag {
+	if t.Length != nil {
+		n := int64(utf8.RuneCountInString(s))
+		if d := checkRange(schema.String, t.Length, n, s); d != nil {
+			return d
+		}
+	}
+	return checkPatterns(t.Patterns, s)
 }
 
 // checkChars ports string_check_chars / ly_checkutf8: valid UTF-8 without surrogates and without

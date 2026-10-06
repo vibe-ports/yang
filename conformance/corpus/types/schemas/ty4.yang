@@ -1,0 +1,35 @@
+module ty4 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:ty4";
+  prefix t4;
+
+  import ty2 { prefix t2; }
+
+  description "Printing prefixes of identityref and instance-identifier values (XML
+    namespace prefixes, JSON module names) for internal/types.Print (M1-6 D0).";
+
+  identity own { base t2:base; }
+
+  container c {
+    leaf ext { type identityref { base t2:base; } }
+    leaf loc { type identityref { base t2:base; } }
+    leaf ii { type instance-identifier { require-instance false; } }
+    list l {
+      key k;
+      leaf k { type identityref { base t2:base; } }
+      leaf v { type string; }
+    }
+    leaf-list ll { type identityref { base t2:base; } }
+    leaf un { type union { type identityref { base t2:base; } type int8; } }
+    leaf lr { type leafref { path "../ext"; require-instance false; } }
+  }
+
+  // schema defaults written with the module's own and an imported prefix (types.StoreDefault)
+  container d {
+    leaf dflt { type identityref { base t2:base; } default "t2:der"; }
+    leaf-list dll { type identityref { base t2:base; } default "t4:own"; default "t2:der"; }
+    leaf dun { type union { type int8; type identityref { base t2:base; } } default "t2:der"; }
+    leaf dlr { type leafref { path "../dflt"; require-instance false; } default "t2:der"; }
+    leaf dstr { type string { length "1..4"; } default "ab"; }
+  }
+}

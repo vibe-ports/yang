@@ -100,6 +100,10 @@ type golden struct {
 		VecodeName string `json:"vecode_name"`
 		AppTag     string `json:"apptag"`
 	} `json:"diagnostics"`
+	Tree *struct {
+		JSON string `json:"json"`
+		XML  string `json:"xml"`
+	} `json:"tree"`
 	Typed []struct {
 		Path  string `json:"path"`
 		Value *struct {

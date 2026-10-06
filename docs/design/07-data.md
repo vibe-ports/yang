@@ -444,7 +444,7 @@ m1 schemas (C7) and the opaque `yang.Schema` snapshot (C8, `internal/snap`): it 
 |---|---|---|---|---|---|
 | S1 | `internal/schema` helpers, one home for all users: `lys_getnext` order (with/without choice, output), `lysc_path(LYSC_PATH_LOG)`, `lysc_data_parent`, `lysc_has_when`; `internal/types` copies switch to them (C4a told the same) | 400 | C0 #24 | **now** | Sonnet |
 | X1 | xpath: `Eval` reports steps consumed (for `MaxXPathSteps`) | 100 | #16 | **now** (on #16) | Sonnet |
-| D0 | types additions: `Print(v, f, prefix-ctx)` (plugin print for XML/JSON prefixes, `prefix_data` capture for XML namespaces), `Validate(t, v)` (= `validate_value` restriction re-check), default store helper | 400 | #17 | **now** | Sonnet |
+| D0 | types additions: `Print(v, f, *PrintCtx)` (plugin print for XML/JSON prefixes, `prefix_data` capture for XML namespaces), `Validate(t, v)` (= `validate_value` restriction re-check), default store helper | 400 | #17 | **now** | Sonnet |
 | D1 | tree core: Node/Tree/flags, insertion (schema order, top-level module order, sorted system-ordered, opaque last), unlink/free + key refusal, sibling index, iterators | 1.1k | C0, S1 | **now** (S1 in parallel) | Opus |
 | D1b | `lyd_path` (STD), diagnostics (`yang.Diagnostic` fill, `ValidationError`), `LOG_LOCSET` location stack, error-path builder §1.10 | 0.5k | D1, S1 | after D1 | Sonnet |
 | D2 | XML lexer (`xml.c`): elements, attributes, ns stack, values/entities/CDATA, DOCTYPE refusal, depth 500, lines, backup/restore + fuzz | 1.2k | — | **now** | Sonnet |

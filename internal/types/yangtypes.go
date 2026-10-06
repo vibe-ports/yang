@@ -20,7 +20,7 @@ func init() {
 		equal: equalDateAndTime, compare: compareDateAndTime}
 	plugins[pluginKey{yt, "2013-07-15", "date-and-time"}] = dtOld
 	plugins[pluginKey{yt, "2025-12-22", "date-and-time"}] = dtNew
-	hex := &plugin{id: "hex-string", store: storeHexString}
+	hex := &plugin{id: "hex-string", store: storeHexString, validate: true}
 	for _, n := range []string{"phys-address", "mac-address", "hex-string", "uuid"} {
 		plugins[pluginKey{yt, "", n}] = hex
 	}

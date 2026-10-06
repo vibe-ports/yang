@@ -1,0 +1,267 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ty2",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ty4",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"ty4:c\": {\n    \"ext\": \"ty2:der\",\n    \"loc\": \"own\",\n    \"ii\": \"/ty4:c/l[k='ty2:der']/v\",\n    \"l\": [\n      {\n        \"k\": \"ty2:der\",\n        \"v\": \"1\"\n      }\n    ],\n    \"ll\": [\n      \"ty2:der\",\n      \"own\"\n    ],\n    \"un\": \"ty2:der\",\n    \"lr\": \"ty2:der\"\n  }\n}\n",
+    "xml": "<c xmlns=\"urn:vibe-ports:ty4\">\n  <ext xmlns:t2=\"urn:vibe-ports:ty2\">t2:der</ext>\n  <loc>own</loc>\n  <ii xmlns:t4=\"urn:vibe-ports:ty4\" xmlns:t2=\"urn:vibe-ports:ty2\">/t4:c/t4:l[t4:k='t2:der']/t4:v</ii>\n  <l>\n    <k xmlns:t2=\"urn:vibe-ports:ty2\">t2:der</k>\n    <v>1</v>\n  </l>\n  <ll xmlns:t2=\"urn:vibe-ports:ty2\">t2:der</ll>\n  <ll>own</ll>\n  <un xmlns:t2=\"urn:vibe-ports:ty2\">t2:der</un>\n  <lr xmlns:t2=\"urn:vibe-ports:ty2\">t2:der</lr>\n</c>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty2:c",
+      "schema": "/ty2:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty4:d",
+      "schema": "/ty4:d",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty4:c",
+      "schema": "/ty4:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty4:c/ext",
+      "schema": "/ty4:c/ext",
+      "value": {
+        "canonical": "ty2:der",
+        "type": "identityref",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty4:c/loc",
+      "schema": "/ty4:c/loc",
+      "value": {
+        "canonical": "ty4:own",
+        "type": "identityref",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty4:c/ii",
+      "schema": "/ty4:c/ii",
+      "value": {
+        "canonical": "/ty4:c/l[k='ty2:der']/v",
+        "type": "instance-identifier",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty4:c/l[k='ty2:der']",
+      "schema": "/ty4:c/l",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty4:c/l[k='ty2:der']/k",
+      "schema": "/ty4:c/l/k",
+      "value": {
+        "canonical": "ty2:der",
+        "type": "identityref",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty4:c/l[k='ty2:der']/v",
+      "schema": "/ty4:c/l/v",
+      "value": {
+        "canonical": "1",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty4:c/ll[.='ty2:der']",
+      "schema": "/ty4:c/ll",
+      "value": {
+        "canonical": "ty2:der",
+        "type": "identityref",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty4:c/ll[.='ty4:own']",
+      "schema": "/ty4:c/ll",
+      "value": {
+        "canonical": "ty4:own",
+        "type": "identityref",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty4:c/un",
+      "schema": "/ty4:c/un",
+      "value": {
+        "canonical": "ty2:der",
+        "type": "union",
+        "typedef": null,
+        "union_member": {
+          "index": 0,
+          "realtype": {
+            "type": "identityref",
+            "typedef": null
+          },
+          "type": "identityref",
+          "typedef": null
+        }
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty4:c/lr",
+      "schema": "/ty4:c/lr",
+      "value": {
+        "canonical": "ty2:der",
+        "type": "identityref",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}
