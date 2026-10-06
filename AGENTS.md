@@ -15,11 +15,20 @@ Plan and rationale: `PLAN.md`. Decisions: `docs/decisions/`. Designs: `docs/desi
 - `./dev make oracle-check` / `./dev make oracle-golden` — compare with / regenerate goldens.
 - `./dev make fuzz FUZZTIME=30s` — run all fuzz targets.
 - `./dev go test ./internal/xpath/ -run TestX` — any single command.
+- `scripts/lyfn <fn> [more…]` — print where a libyang v5.8.6 function/macro/struct is defined and
+  its full body (`-n`: location only; `--callers`/`--callees <fn>`: call graph); use it instead of
+  grepping or reading whole C files. Needs `.cache/libyang` (auto `make libyang-src`) and, on macOS,
+  `brew install universal-ctags cscope`.
 - Never install Go tools on the host; add them to `Dockerfile` instead.
 - **Canonical oracle architecture is linux/amd64** (CI runs amd64; libyang's `long double`
   and C integer conversions differ on arm64). Before a PR that touches oracle results run
   `DEV_PLATFORM=linux/amd64 ./dev make test-oracle oracle-check`; generate goldens/jsonl only with
   `DEV_PLATFORM=linux/amd64`.
+
+## Tooling
+- The shell may be wrapped by a token-saving output proxy (rtk) that condenses output. Where every byte
+  matters (git range-diff/log dates, merge-pr, check-registries, oracle/golden diffs, test failure
+  text) run the command as `rtk proxy <cmd>` when rtk is present.
 
 ## Porting rules
 - Port behaviour, not C idioms: errors as values, no globals, no manual memory, `io.Reader`/`fs.FS`

@@ -10,6 +10,7 @@ ci: fmt-check vet lint nocgo test test-386 test-go-min test-oracle test-gates vu
 test-gates:
 	scripts/test-gates
 	scripts/test-claim
+	scripts/test-lyfn
 
 # Duplicate ids/rows left by the union merge driver in the append-only registries.
 registries:

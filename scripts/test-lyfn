@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+# Self-test of scripts/lyfn against a tiny fixture C tree (no libyang checkout, no network).
+#   scripts/test-lyfn        (part of `make test-gates`; needs universal-ctags)
+set -uo pipefail
+src=$(cd "$(dirname "$0")" && pwd)
+t=$(mktemp -d); trap 'rm -rf "$t"' EXIT
+mkdir -p "$t/src"
+cat >"$t/src/a.c" <<'C'
+#include "a.h"
+
+static int
+helper(int x)
+{
+    if (x) {
+        return 1; /* } in a comment */
+    }
+    return 0;
+}
+
+LY_ERR
+two_line(const char *s,
+        int n)
+{
+    return "}" [0] + n;
+}
+C
+cat >"$t/src/a.h" <<'C'
+#define ADD(A, B) \
+    ((A) + \
+     (B))
+#define ONE 1
+struct pt {
+    int x;
+};
+C
+cat >"$t/src/b.c" <<'C'
+void leaf(void) {}
+void mid(void)
+{
+    leaf();
+}
+void top(void)
+{
+    mid();
+    leaf();
+}
+C
+export LYFN_SRC=$t
+fails=0
+ok() { echo "ok   $1"; }
+no() { echo "FAIL $1"; fails=$((fails + 1)); }
+# eq <name> <expected output (stdout+stderr)> <cmd...>
+eq() { local n=$1 want=$2 got; shift 2; got=$("$@" 2>&1); if [[ $got == "$want" ]]; then ok "$n"; else no "$n"; printf '%s\n' "$got" | sed 's/^/     /'; fi; }
+# rc <name> <exit code> <cmd...>
+rc() { local n=$1 want=$2 got; shift 2; "$@" >/dev/null 2>&1; got=$?; if [[ $got == "$want" ]]; then ok "$n"; else no "$n (exit $got, want $want)"; fi; }
+
+for pass in ctags-end brace-fallback; do
+  if [[ $pass == brace-fallback ]]; then "$src/lyfn" -n ONE >/dev/null 2>&1; sed -i.bak 's/	end:[0-9]*//' "$t/tags"; fi
+  eq "$pass: static fn with return type line" "== src/a.c:3-10 helper ==
+static int
+helper(int x)
+{
+    if (x) {
+        return 1; /* } in a comment */
+    }
+    return 0;
+}" "$src/lyfn" helper
+  eq "$pass: fn, braces in strings" "== src/a.c:12-17 two_line ==" "$src/lyfn" -n two_line
+  eq "$pass: multi-line macro" "== src/a.h:1-3 ADD ==
+#define ADD(A, B) \\
+    ((A) + \\
+     (B))" "$src/lyfn" ADD
+  eq "$pass: struct" "== src/a.h:5-7 pt ==
+struct pt {
+    int x;
+};" "$src/lyfn" pt
+done
+eq "multiple symbols, -n" "== src/a.h:4-4 ONE ==
+== src/a.c:3-10 helper ==" "$src/lyfn" -n ONE helper
+eq "unknown symbol" "lyfn: nosuch: not found" "$src/lyfn" nosuch
+rc "unknown symbol exits 1" 1 "$src/lyfn" nosuch
+rc "no args: usage, exit 2" 2 "$src/lyfn"
+eq "--callers" "src/b.c:4 mid
+src/b.c:9 top" "$src/lyfn" --callers leaf
+eq "--callees" "src/b.c:8 mid
+src/b.c:9 leaf" "$src/lyfn" --callees top
+eq "--callers none" "lyfn: top: none found" "$src/lyfn" --callers top
+# BSD ctags only: lyfn must refuse with a clear message
+mkdir "$t/bin"; printf '#!/bin/sh\necho "usage: ctags [-BFTaduwvx]"\n' >"$t/bin/ctags"; chmod +x "$t/bin/ctags"
+eq "BSD ctags rejected" "lyfn: universal-ctags not found (BSD/Exuberant ctags will not do); macOS: brew install universal-ctags" \
+  env PATH="$t/bin:/usr/bin:/bin" "$src/lyfn" helper
+echo; (( fails == 0 )) && echo "all lyfn tests passed" || { echo "$fails lyfn test(s) failed"; exit 1; }
