@@ -7120,7 +7120,8 @@ fixtures:
     assert:
       verdict: "valid"
       rfc: ["RFC7950#7.13.2"]
-      deviation: null
+      deviation: "D-0080"
+      waive: [schema_tree, compiled]
 
   - id: uses/refine-notification-description
     dir: compile
@@ -14174,7 +14175,8 @@ fixtures:
     assert:
       verdict: "valid"
       rfc: ["RFC7950#7.13.2"]
-      deviation: null
+      deviation: "D-0080"
+      waive: [schema_tree, compiled]
 
   # the refine merge resolves the prefixes of every pending refine of the same length in the
   # module of the new refine: "a" of the outer refine is not defined in refine-merge-pb

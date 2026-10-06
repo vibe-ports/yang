@@ -82,6 +82,9 @@ type Assert struct {
 	Diagnostics []map[string]any `yaml:"diagnostics"`
 	RFC         []string         `yaml:"rfc"`
 	Deviation   *string          `yaml:"deviation"` // deviations.md id when libyang differs
+	// Waive names further response fields the deviation covers (top-level and per module, e.g.
+	// schema_tree, compiled); only with Deviation.
+	Waive []string `yaml:"waive"`
 }
 
 // Corpus returns the corpus directory the manifest was loaded from.
@@ -167,6 +170,9 @@ func (m *Manifest) validate() error {
 		}
 		if !slices.Contains(verdicts, f.Assert.Verdict) {
 			fail("%s: assert.verdict %q not one of %v", id, f.Assert.Verdict, verdicts)
+		}
+		if len(f.Assert.Waive) > 0 && f.Assert.Deviation == nil {
+			fail("%s: assert.waive without assert.deviation", id)
 		}
 		if d := f.Assert.Deviation; d != nil {
 			if !devLoaded {

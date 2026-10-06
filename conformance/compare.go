@@ -90,9 +90,11 @@ func classify(f Fixture, golden, got Response) (Status, string) {
 	case goldenDiff == "":
 		return Agree, ""
 	case f.Assert != nil && f.Assert.Deviation != nil:
-		// The deviation only waives what the assert covers (verdict, rc, diagnostics);
-		// the rest of the golden (trees, xpath results, diffs) must still match.
-		if d := diffResponses(withoutAsserted(golden), withoutAsserted(got)); d != "" {
+		// The deviation only waives what the assert covers (verdict, rc, diagnostics) and the
+		// fields it names in waive; the rest of the golden (trees, xpath results, diffs) must
+		// still match.
+		w := f.Assert.Waive
+		if d := diffResponses(withoutAsserted(golden, w...), withoutAsserted(got, w...)); d != "" {
 			return Differ, d
 		}
 		return Deviation, *f.Assert.Deviation
@@ -118,12 +120,20 @@ func MatchAssert(a *Assert, resp Response) string {
 }
 
 // withoutAsserted drops what a deviation waives: the verdict with its rc and failed_step, every
-// diagnostic list, and each sequence step's rc and diagnostics. Step trees and `skipped` stay
+// diagnostic list, each sequence step's rc and diagnostics, and the fields named in waive (the
+// fixture's assert.waive) at the top level and in every module. Step trees and `skipped` stay
 // compared.
-func withoutAsserted(r Response) Response {
+func withoutAsserted(r Response, waive ...string) Response {
 	o := maps.Clone(map[string]any(r))
-	for _, k := range []string{"verdict", "rc", "failed_step", "diagnostics", "context_diagnostics"} {
+	for _, k := range append([]string{"verdict", "rc", "failed_step", "diagnostics", "context_diagnostics"}, waive...) {
 		delete(o, k)
+	}
+	if len(waive) > 0 {
+		mapItems(o, "modules", func(m map[string]any) {
+			for _, k := range waive {
+				delete(m, k)
+			}
+		})
 	}
 	mapItems(o, "steps", func(s map[string]any) {
 		delete(s, "rc")

@@ -46,7 +46,7 @@ func TestAssertsConsistentWithGoldens(t *testing.T) {
 		if d != "" && f.Assert.Deviation == nil {
 			t.Errorf("%s: assert contradicts golden without a deviation: %s", f.ID, d)
 		}
-		if d == "" && f.Assert.Deviation != nil {
+		if d == "" && f.Assert.Deviation != nil && len(f.Assert.Waive) == 0 { // a waiver is not stale
 			t.Errorf("%s: stale deviation %s: assert already matches the golden", f.ID, *f.Assert.Deviation)
 		}
 	}
@@ -171,7 +171,8 @@ func TestManifestRejectsBad(t *testing.T) {
 	bad := "version: 1\noracle: {libyang: v, libyang_commit: c}\nfixtures:\n" +
 		"  - {id: a, dir: d, golden: g, source: {url: u, license: l}, rfc: [], areas: [nope], request: {op: x}}\n" +
 		"  - {id: a, dir: d, golden: g, source: {url: u, license: l, commit: null}, rfc: [], areas: [types], request: {op: x}, assert: {verdict: valid, deviation: D-9999}}\n" +
-		"  - {id: b, dir: ../d, golden: g, source: {url: u, license: l, commit: null}, rfc: [], areas: [types], request: {}, assert: {verdict: bogus}}\n"
+		"  - {id: b, dir: ../d, golden: g, source: {url: u, license: l, commit: null}, rfc: [], areas: [types], request: {}, assert: {verdict: bogus}}\n" +
+		"  - {id: c, dir: d, golden: g, source: {url: u, license: l, commit: null}, rfc: [], areas: [types], request: {op: x}, assert: {verdict: valid, waive: [schema_tree]}}\n"
 	if err := os.WriteFile(dir+"/manifest.yaml", []byte(bad), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -182,7 +183,7 @@ func TestManifestRejectsBad(t *testing.T) {
 	if err == nil {
 		t.Fatal("bad manifest accepted")
 	}
-	for _, w := range []string{"version", "unknown area", "duplicate id", "D-9999", "source.commit", "local relative", "request.op", "bogus"} {
+	for _, w := range []string{"version", "unknown area", "duplicate id", "D-9999", "source.commit", "local relative", "request.op", "bogus", "waive without"} {
 		if !strings.Contains(err.Error(), w) {
 			t.Errorf("error lacks %q: %v", w, err)
 		}
@@ -223,6 +224,28 @@ func TestClassify(t *testing.T) {
 		{"deviation: neither", deviating, resp(t, `{"verdict":"data-error"}`), Differ},
 		{"deviation: assert ok, but non-asserted value wrong", deviating,
 			resp(t, `{"verdict":"invalid","result":{"type":"number","value":2}}`), Differ},
+	}
+	// assert.waive: the named fields of the response and of every module are not compared
+	tree := resp(t, `{"verdict":"valid","modules":[{"name":"m","schema_tree":[1],"compiled":"a"}],"result":1}`)
+	treeOff := resp(t, `{"verdict":"valid","modules":[{"name":"m","schema_tree":[2],"compiled":"b"}],"result":1}`)
+	waiving := Fixture{Assert: &Assert{Verdict: "valid", Deviation: &dev, Waive: []string{"schema_tree", "compiled"}}}
+	waiveTree := Fixture{Assert: &Assert{Verdict: "valid", Deviation: &dev, Waive: []string{"schema_tree"}}}
+	for _, tc := range []struct {
+		name string
+		f    Fixture
+		got  Response
+		want Status
+	}{
+		{"waive: waived fields differ", waiving, treeOff, Deviation},
+		{"waive: equal", waiving, tree, Agree},
+		{"waive: an unwaived module field differs", waiveTree, treeOff, Differ},
+		{"waive: other field differs", waiving, resp(t, `{"verdict":"valid","modules":[{"name":"m"}],"result":2}`), Differ},
+		{"waive: module name differs", waiving, resp(t, `{"verdict":"valid","modules":[{"name":"x"}],"result":1}`), Differ},
+		{"no waive: tree differs", deviating, resp(t, `{"verdict":"invalid","modules":[{"name":"m","schema_tree":[2],"compiled":"a"}],"result":1}`), Differ},
+	} {
+		if got, d := classify(tc.f, tree, tc.got); got != tc.want {
+			t.Errorf("%s: %s (%s), want %s", tc.name, got, d, tc.want)
+		}
 	}
 	for _, tc := range tests {
 		if got, d := classify(tc.f, golden, tc.got); got != tc.want {

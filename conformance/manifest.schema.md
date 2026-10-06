@@ -31,13 +31,19 @@ assert:
   rfc: ["RFC7950#9.2.4"]                                      # optional, the clause it rests on
   diagnostics: [{vecode_name: LYVE_DATA, data_path: /basic:sys/mtu}]   # subset match
   deviation: null                                             # or "D-0001"
+  waive: [schema_tree, compiled]                              # optional, only with a deviation
 ```
 
 Each listed diagnostic must equal some actual diagnostic (top-level or per-module) on every field it
 names. Goldens record what libyang does, `assert` what the spec requires: an `assert` that
 contradicts its golden must name a deviation id present in `conformance/deviations.md`, otherwise
 `go test` fails (and a deviation whose assert already matches the golden is stale, also a failure).
-`deviations.md` records OUR intentional differences from libyang. Engine comparison:
+`deviations.md` records OUR intentional differences from libyang. A deviation waives what the
+assert covers (verdict, rc, failed_step, diagnostics); `waive` names further response fields it
+covers, dropped at the top level and in every `modules` item before the golden comparison (e.g.
+`schema_tree` and `compiled` when libyang's compiled tree is the deviation). `waive` is only valid
+with `deviation`, and a waiving fixture is never stale (its verdict may match the golden). Engine
+comparison:
 
 | fixture | engine result | status |
 |---|---|---|
