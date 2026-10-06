@@ -519,6 +519,18 @@ func (ev *evaluator) hashChild(set value, sn SchemaNode, name string, preds []as
 			if hit, ok = lookupOf(it).LookupChild(sn, vals); !ok {
 				return value{}, 0, fmt.Errorf("xpath: LookupChild of %s refused a lookup it was asked for", sn.Name())
 			}
+			if len(hit) == 1 && hit[0].Schema() == nil && used > 0 {
+				// the opaque fallback: the scan runs the predicates on it, so the consumed
+				// ones run here (D-0013; libyang returns it unfiltered)
+				v, err := ev.predicates(nodesV([]item{{hit[0], itElem}}), preds[:used], "child")
+				if err != nil {
+					return value{}, 0, err
+				}
+				hit = nil
+				for _, o := range v.nodes {
+					hit = append(hit, o.n)
+				}
+			}
 		} else {
 			var kids []Node
 			switch it.t {
@@ -562,9 +574,12 @@ func (ev *evaluator) hashChild(set value, sn SchemaNode, name string, preds []as
 // lookupValues returns the values of the predicates libyang turns into a hash
 // lookup (the list keys in key order, a leaf-list's '.'), when every one is a
 // literal; ok is false when a value is any other expression. A container,
-// leaf or any node is looked up without values.
+// leaf or any node is looked up without values. Each literal is canonized by
+// the key's (leaf-list's) type as the scan's comparison does (set_comp_canonize:
+// kept as written when that fails).
 func lookupValues(sn SchemaNode, preds []ast) (vals []string, used int, ok bool) {
-	n := len(sn.Keys())
+	keys := sn.Keys()
+	n := len(keys)
 	switch sn.Kind() {
 	case KindLeafList:
 		n = 1
@@ -578,7 +593,7 @@ func lookupValues(sn SchemaNode, preds []ast) (vals []string, used int, ok bool)
 	if len(preds) < n {
 		return nil, 0, false
 	}
-	for _, p := range preds[:n] {
+	for i, p := range preds[:n] {
 		c, isChain := p.(chainExpr)
 		if !isChain || len(c.args) != 2 {
 			return nil, 0, false
@@ -587,7 +602,16 @@ func lookupValues(sn SchemaNode, preds []ast) (vals []string, used int, ok bool)
 		if !isLit {
 			return nil, 0, false
 		}
-		vals = append(vals, string(lit))
+		v, ts := string(lit), sn
+		if keys != nil {
+			if ts = sn.Child(sn.Module(), keys[i]); ts == nil {
+				return nil, 0, false
+			}
+		}
+		if cv, ok := ts.Canonical(v); ok {
+			v = cv
+		}
+		vals = append(vals, v)
 	}
 	return vals, n, true
 }

@@ -4,6 +4,8 @@ package xpath
 
 import (
 	"fmt"
+	"slices"
+	"strconv"
 	"testing"
 )
 
@@ -106,5 +108,146 @@ func TestTreeLookup(t *testing.T) {
 	got, err := eval(src, EvalContext{Tree: tree, Node: ctxNode, Schema: sch, TreeLookup: rl})
 	if err != nil || !got.Bool || rl.calls != 1 || got.Steps > 20 {
 		t.Fatalf("lookup: %v %v, %d calls, %d steps", got, err, rl.calls, got.Steps)
+	}
+}
+
+// wnode is a parallel tree over tnodes; lnode adds LookupChild, so a tree can mix nodes with
+// and without the interface.
+type wnode struct {
+	t      *tnode
+	parent Node
+	kids   []Node
+	calls  *int
+}
+
+type lnode struct{ *wnode }
+
+func (w *wnode) Parent() Node       { return w.parent }
+func (w *wnode) Children() []Node   { return w.kids }
+func (w *wnode) Name() string       { return w.t.Name() }
+func (w *wnode) Module() string     { return w.t.Module() }
+func (w *wnode) Schema() SchemaNode { return w.t.Schema() }
+func (w *wnode) Value() Value       { return w.t.Value() }
+func (w *wnode) When() WhenState    { return w.t.When() }
+
+func unwrap(n Node) *tnode {
+	if l, ok := n.(lnode); ok {
+		return l.t
+	}
+	return n.(*wnode).t
+}
+
+func wrap(t *tnode, parent Node, look func(*tnode) bool, calls *int) Node {
+	w := &wnode{t: t, parent: parent, calls: calls}
+	var self Node = w
+	if look(t) {
+		self = lnode{w}
+	}
+	for _, c := range t.kids {
+		w.kids = append(w.kids, wrap(c.(*tnode), self, look, calls))
+	}
+	return self
+}
+
+// LookupChild implements the contract by scanning (the step count is not what these tests check).
+func (l lnode) LookupChild(sn SchemaNode, vals []string) ([]Node, bool) {
+	*l.calls++
+	var out []Node
+	exists := false
+	for _, c := range l.kids {
+		if c.Schema() != sn {
+			continue
+		}
+		exists = true
+		ok := true
+		switch keys := sn.Keys(); {
+		case vals == nil:
+		case keys == nil:
+			ok = c.Value().String() == vals[0]
+		default:
+			for i, k := range keys {
+				var kv string
+				for _, kc := range c.Children() {
+					if kc.Name() == k {
+						kv = kc.Value().String()
+					}
+				}
+				ok = ok && kv == vals[i]
+			}
+		}
+		if ok {
+			out = append(out, c)
+		}
+	}
+	if !exists {
+		for _, c := range l.kids {
+			if c.Schema() == nil && c.Name() == sn.Name() {
+				return []Node{c}, true
+			}
+		}
+	}
+	return out, true
+}
+
+// TestChildLookupContract: lookups through LookupChild select the same nodes as the scan for
+// multi-key lists, canonized literals, the opaque fallback (its predicates still run), steps
+// whose predicates are not consumed, and mixed context sets (one context node without the
+// interface: every context node scans).
+func TestChildLookupContract(t *testing.T) {
+	stripZeros := func(v string) (string, bool) {
+		n, err := strconv.Atoi(v)
+		return strconv.Itoa(n), err == nil
+	}
+	inst := func(k, j string, kids ...*tnode) *tnode {
+		return keyed(list("l", append([]*tnode{leaf("k", k), leaf("j", j)}, kids...)...), "k", "j")
+	}
+	opq := leafl("ll", "2")
+	tree := top(cont("a:c",
+		inst("a", "1", leaf("v", "x")), inst("a", "2", leaf("v", "y")),
+		inst("b", "1", leafl("ll", "1")), inst("b", "2", opq),
+		leafl("n", "1"), leafl("n", "2")))
+	c := tree[0].(*tnode)
+	opq.sch = nil
+	c.sch.kids[[2]string{"a", "n"}].canon = stripZeros
+	c.sch.kids[[2]string{"a", "l"}].kids[[2]string{"a", "j"}].canon = stripZeros
+	first := c.kids[0].(*tnode)
+	for _, tc := range []struct {
+		src     string
+		want    []string // values of the selected nodes
+		mixed   bool     // the first list instance has no LookupChild
+		noCalls bool
+	}{
+		{"/a:c/l[k='a'][j='2']/v", []string{"y"}, false, false},
+		{"/a:c/l[k='a'][j='01']/v", []string{"x"}, false, false}, // canonized literal
+		{"/a:c/n[.='002']", []string{"2"}, false, false},
+		{"/a:c/l/ll[.='1']", []string{"1"}, false, false},     // opaque ll=2 filtered out
+		{"/a:c/l/ll[.='2']", nil, false, false},               // '.' never selects an opaque node
+		{"/a:c/l[k='a'][j='1']/v[.='zz']", nil, false, false}, // a leaf: nothing consumed
+		{"/a:c/l/v", []string{"x", "y"}, true, true},
+		{"/a:c/l/ll[.='1']", []string{"1"}, true, true},
+	} {
+		plain, err := eval(tc.src, EvalContext{Tree: tree})
+		if err != nil {
+			t.Fatal(tc.src, err)
+		}
+		calls := 0
+		look := func(n *tnode) bool { return (!tc.mixed || n != first) && n.Schema() != nil }
+		got, err := eval(tc.src, EvalContext{Tree: []Node{wrap(c, nil, look, &calls)}})
+		if err != nil {
+			t.Fatal(tc.src, err)
+		}
+		var pv, gv []string
+		for i, n := range plain.Nodes {
+			pv = append(pv, n.Value().String())
+			if i >= len(got.Nodes) || unwrap(got.Nodes[i]) != n.(*tnode) {
+				t.Fatalf("%s: lookup %v, scan %v", tc.src, got.Nodes, plain.Nodes)
+			}
+		}
+		for _, n := range got.Nodes {
+			gv = append(gv, n.Value().String())
+		}
+		if !slices.Equal(pv, tc.want) || !slices.Equal(gv, tc.want) || (calls == 0) != tc.noCalls {
+			t.Fatalf("%s: scan %v, lookup %v (%d calls), want %v", tc.src, pv, gv, calls, tc.want)
+		}
 	}
 }

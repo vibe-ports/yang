@@ -84,13 +84,17 @@ type Node interface {
 // Without it the evaluator scans Children() for every step whose schema node it
 // knows, which costs O(siblings) per step.
 type ChildLookup interface {
-	// LookupChild returns the child instances of sn whose list keys (in key
-	// order) or leaf-list value equal vals, or every instance of sn when vals is
-	// nil (a container, leaf or any node); when there is none, the first opaque
-	// child named like sn (lyd_find_sibling_opaq_next), if any. vals are the
-	// predicate literals as written, stored by the implementation as values of
-	// the key or leaf-list type. ok=false means the node cannot look up, and is
-	// an error: implement the interface only where lookups work.
+	// LookupChild returns, in document order, every child instance of sn whose
+	// list keys (in key order) or leaf-list value have the string values
+	// (Value().String()) vals, or every instance of sn when vals is nil (a
+	// container, leaf or any node). vals are canonical already (the evaluator
+	// canonizes the predicate literals by the key's type, set_comp_canonize), so
+	// the comparison is plain string equality; no match is an empty result. Only
+	// when the node has no instance of sn at all, the result is the first opaque
+	// child named like sn (lyd_find_sibling_opaq_next) if there is one, and the
+	// evaluator runs the consumed predicates on it: the scan's fallback (D-0013;
+	// libyang falls back whenever the value is not found and does not filter). ok=false means the node cannot look up and is an error: implement
+	// the interface only where lookups work.
 	LookupChild(sn SchemaNode, vals []string) (nodes []Node, ok bool)
 }
 
