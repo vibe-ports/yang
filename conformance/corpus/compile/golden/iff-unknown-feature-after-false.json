@@ -1,0 +1,24 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module iff-unknown-feature-after-false {\n  namespace \"urn:vibe-ports:yang:conformance:iff-unknown-feature-after-false\";\n  prefix iff-unknown-feature-after-false;\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": false,
+          "name": "f"
+        }
+      ],
+      "identities": [],
+      "name": "iff-unknown-feature-after-false",
+      "revision": null,
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

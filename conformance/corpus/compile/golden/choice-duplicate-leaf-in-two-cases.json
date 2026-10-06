@@ -1,0 +1,35 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Duplicate identifier \"/choice-duplicate-leaf-in-two-cases:ch/a/y\" of data definition/RPC/action/notification statement.",
+          "phase": "compile",
+          "schema_path": "/choice-duplicate-leaf-in-two-cases:ch/b/y",
+          "vecode": 2,
+          "vecode_name": "LYVE_SYNTAX_YANG"
+        }
+      ],
+      "name": "choice-duplicate-leaf-in-two-cases",
+      "phase": "compile",
+      "rc": {
+        "err": 4,
+        "name": "LY_EEXIST"
+      }
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

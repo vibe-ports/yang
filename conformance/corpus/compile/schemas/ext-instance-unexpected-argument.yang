@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module ext-instance-unexpected-argument {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:ext-instance-unexpected-argument";
+  prefix ext-instance-unexpected-argument;
+  extension e;
+  container c { ext-instance-unexpected-argument:e "arg"; }
+}

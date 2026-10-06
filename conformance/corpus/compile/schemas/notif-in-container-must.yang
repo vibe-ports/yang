@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_notification.
+module notif-in-container-must {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:notif-in-container-must";
+  prefix notif-in-container-must;
+  container top { notification b1 { leaf x { type int8; } } notification b2 { must "/top"; } }
+}

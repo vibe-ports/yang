@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_node_list.
+module list-unique-config-mismatch {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:list-unique-config-mismatch";
+  prefix list-unique-config-mismatch;
+  list l { key x; unique "x y"; leaf x { type string; } leaf y { config false; type string; } }
+}

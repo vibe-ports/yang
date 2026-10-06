@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module obsolete-mandatory-propagates {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:obsolete-mandatory-propagates";
+  prefix obsolete-mandatory-propagates;
+  container c { leaf m { type string; mandatory true; status obsolete; } leaf o { type string; } }
+}

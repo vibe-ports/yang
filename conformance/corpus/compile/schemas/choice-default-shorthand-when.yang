@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_node_choice.
+module choice-default-shorthand-when {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:choice-default-shorthand-when";
+  prefix choice-default-shorthand-when;
+  choice ch { default b; when "true()";
+    case a { leaf a1 { type string; } leaf a2 { type string; } }
+    leaf b { type string; } }
+}

@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module ext-annotation-union-and-leafref-type {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:ext-annotation-union-and-leafref-type";
+  prefix ext-annotation-union-and-leafref-type;
+  import ietf-yang-metadata { prefix md; }
+  md:annotation u { type union { type int8; type string; } }
+  md:annotation e { type enumeration { enum a; enum b; } }
+}

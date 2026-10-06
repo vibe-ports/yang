@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module mand-config-false-mandatory {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:mand-config-false-mandatory";
+  prefix mand-config-false-mandatory;
+  container c { config false; leaf m { type string; mandatory true; } }
+}

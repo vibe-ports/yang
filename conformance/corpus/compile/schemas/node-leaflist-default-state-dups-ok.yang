@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_node_leaflist.
+module node-leaflist-default-state-dups-ok {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:node-leaflist-default-state-dups-ok";
+  prefix node-leaflist-default-state-dups-ok;
+  leaf-list ll { config false; type string; default one; default two; default one; }
+}

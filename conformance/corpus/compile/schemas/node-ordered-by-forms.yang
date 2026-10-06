@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module node-ordered-by-forms {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:node-ordered-by-forms";
+  prefix node-ordered-by-forms;
+  list l1 { key k; ordered-by user; leaf k { type string; } }
+  list l2 { key k; ordered-by system; leaf k { type string; } }
+  list l3 { config false; leaf v { type string; } }
+  leaf-list ll1 { type string; ordered-by user; }
+  leaf-list ll2 { type string; }
+}

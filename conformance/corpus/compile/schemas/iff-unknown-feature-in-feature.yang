@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_schema.c:test_feature.
+module iff-unknown-feature-in-feature {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:iff-unknown-feature-in-feature";
+  prefix iff-unknown-feature-in-feature;
+  feature f { if-feature f1; }
+}

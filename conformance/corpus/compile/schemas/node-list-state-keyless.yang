@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module node-list-state-keyless {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:node-list-state-keyless";
+  prefix node-list-state-keyless;
+  list l { config false; leaf v { type string; } }
+}

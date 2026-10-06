@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_schema.c:test_obsolete.
+module obsolete-default-dropped {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:obsolete-default-dropped";
+  prefix obsolete-default-dropped;
+  list my_list { key my_leaf_string; leaf my_leaf_string { type string; } leaf my_leaf_number { type uint32; } }
+  leaf refstr { type leafref { path "../my_list/my_leaf_string"; } status obsolete; }
+  leaf refnum { type leafref { path "../my_list/my_leaf_number"; } status obsolete; }
+}

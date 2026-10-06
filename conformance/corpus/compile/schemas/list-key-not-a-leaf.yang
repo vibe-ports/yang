@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_node_list.
+module list-key-not-a-leaf {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:list-key-not-a-leaf";
+  prefix list-key-not-a-leaf;
+  list l { key x; leaf-list x { type string; } }
+}

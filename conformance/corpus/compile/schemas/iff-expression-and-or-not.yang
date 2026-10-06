@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module iff-expression-and-or-not {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:iff-expression-and-or-not";
+  prefix iff-expression-and-or-not;
+  feature a; feature b; feature c;
+  leaf l1 { if-feature "a and (b or not c)"; type string; }
+  leaf l2 { if-feature "not a"; type string; }
+  leaf l3 { if-feature "a"; if-feature "b"; type string; }
+  leaf l4 { if-feature "not not a"; type string; }
+}

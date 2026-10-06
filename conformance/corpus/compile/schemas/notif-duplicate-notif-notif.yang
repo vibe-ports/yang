@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_notification.
+module notif-duplicate-notif-notif {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:notif-duplicate-notif-notif";
+  prefix notif-duplicate-notif-notif;
+  container c { notification z; notification z; }
+}

@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module iff-enabled-sibling-error-reported {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:iff-enabled-sibling-error-reported";
+  prefix iff-enabled-sibling-error-reported;
+  feature f;
+  list l { key k; unique "u"; leaf k { type string; } leaf u { type string; if-feature f; } leaf w { type string; mandatory true; if-feature f; } leaf bad { type string; mandatory true; default x; } }
+}

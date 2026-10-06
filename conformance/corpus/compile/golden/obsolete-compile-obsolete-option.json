@@ -1,0 +1,168 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module obsolete-compile-obsolete-option {\n  namespace \"urn:vibe-ports:yang:conformance:obsolete-compile-obsolete-option\";\n  prefix obsolete-compile-obsolete-option;\n\n  list my_list {\n    key \"my_leaf_string\";\n    config true;\n    min-elements 0;\n    max-elements 4294967295;\n    ordered-by system;\n    status current;\n    leaf my_leaf_string {\n      type string;\n      config true;\n      status current;\n    }\n    leaf my_leaf_number {\n      type uint32;\n      config true;\n      status current;\n    }\n  }\n  leaf refstr {\n    type leafref {\n      path \"../my_list/my_leaf_string\";\n      require-instance true;\n      type string;\n    }\n    config true;\n    status obsolete;\n  }\n  leaf refnum {\n    type leafref {\n      path \"../my_list/my_leaf_number\";\n      require-instance true;\n      type uint32;\n    }\n    config true;\n    status obsolete;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "obsolete-compile-obsolete-option",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "my_leaf_string"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "obsolete-compile-obsolete-option",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "system",
+          "path": "/obsolete-compile-obsolete-option:my_list",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "obsolete-compile-obsolete-option",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/obsolete-compile-obsolete-option:my_list/my_leaf_string",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "obsolete-compile-obsolete-option",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/obsolete-compile-obsolete-option:my_list/my_leaf_number",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "obsolete-compile-obsolete-option",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/obsolete-compile-obsolete-option:refstr",
+          "presence": null,
+          "status": "obsolete",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "../my_list/my_leaf_string",
+              "require_instance": true,
+              "target": "/obsolete-compile-obsolete-option:my_list/my_leaf_string"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "obsolete-compile-obsolete-option",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/obsolete-compile-obsolete-option:refnum",
+          "presence": null,
+          "status": "obsolete",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "../my_list/my_leaf_number",
+              "require_instance": true,
+              "target": "/obsolete-compile-obsolete-option:my_list/my_leaf_number"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

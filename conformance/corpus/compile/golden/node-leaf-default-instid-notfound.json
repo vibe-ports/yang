@@ -1,0 +1,35 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Invalid default - value does not fit the type (Invalid instance-identifier \"/node-leaf-default-instid-notfound:g\" value - semantic error: Not found node \"g\" in path.).",
+          "phase": "compile",
+          "schema_path": "/node-leaf-default-instid-notfound:ref",
+          "vecode": 6,
+          "vecode_name": "LYVE_SEMANTICS"
+        }
+      ],
+      "name": "node-leaf-default-instid-notfound",
+      "phase": "compile",
+      "rc": {
+        "err": 7,
+        "name": "LY_EVALID"
+      }
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

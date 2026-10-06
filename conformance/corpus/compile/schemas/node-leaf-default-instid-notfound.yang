@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_node_leaflist.
+module node-leaf-default-instid-notfound {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:node-leaf-default-instid-notfound";
+  prefix node-leaf-default-instid-notfound;
+  leaf ref { type instance-identifier { require-instance true; } default "/node-leaf-default-instid-notfound:g"; }
+}

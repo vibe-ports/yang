@@ -1,0 +1,172 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module choice-default-shorthand-when {\n  namespace \"urn:vibe-ports:yang:conformance:choice-default-shorthand-when\";\n  prefix choice-default-shorthand-when;\n\n  choice ch {\n    when \"true()\";\n    default \"b\";\n    config true;\n    status current;\n    case a {\n      config true;\n      status current;\n      leaf a1 {\n        type string;\n        config true;\n        status current;\n      }\n      leaf a2 {\n        type string;\n        config true;\n        status current;\n      }\n    }\n    case b {\n      config true;\n      status current;\n      leaf b {\n        type string;\n        config true;\n        status current;\n      }\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "choice-default-shorthand-when",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": [
+            "b"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "choice-default-shorthand-when",
+          "musts": null,
+          "nodetype": "choice",
+          "ordered_by": null,
+          "path": "/choice-default-shorthand-when:ch",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": [
+            {
+              "context": null,
+              "expr": "true()",
+              "module": "choice-default-shorthand-when"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "choice-default-shorthand-when",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/choice-default-shorthand-when:ch/a",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "choice-default-shorthand-when",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/choice-default-shorthand-when:ch/a/a1",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "choice-default-shorthand-when",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/choice-default-shorthand-when:ch/a/a2",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "choice-default-shorthand-when",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/choice-default-shorthand-when:ch/b",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "choice-default-shorthand-when",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/choice-default-shorthand-when:ch/b/b",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

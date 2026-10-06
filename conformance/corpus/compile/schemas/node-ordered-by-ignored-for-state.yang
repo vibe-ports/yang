@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_node_leaflist.
+module node-ordered-by-ignored-for-state {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:node-ordered-by-ignored-for-state";
+  prefix node-ordered-by-ignored-for-state;
+  leaf-list ll { config false; type string; ordered-by user; }
+  list l { config false; key k; ordered-by user; leaf k { type string; } }
+  rpc oper { output { leaf-list ll { type string; ordered-by user; } } }
+  notification event { leaf-list ll { type string; ordered-by user; } }
+}

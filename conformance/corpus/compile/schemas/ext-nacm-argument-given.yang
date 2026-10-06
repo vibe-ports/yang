@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module ext-nacm-argument-given {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:ext-nacm-argument-given";
+  prefix ext-nacm-argument-given;
+  import ietf-netconf-acm { prefix nacm; }
+  container c { nacm:default-deny-all "oops"; }
+}

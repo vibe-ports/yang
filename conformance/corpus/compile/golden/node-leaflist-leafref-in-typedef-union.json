@@ -1,0 +1,158 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module node-leaflist-leafref-in-typedef-union {\n  namespace \"urn:vibe-ports:yang:conformance:node-leaflist-leafref-in-typedef-union\";\n  prefix node-leaflist-leafref-in-typedef-union;\n\n  leaf-list ll1 {\n    type union {\n      type decimal64 {\n        fraction-digits 2;\n      }\n      type leafref {\n        path \"../target\";\n        require-instance true;\n        type int8;\n      }\n      type string;\n    }\n    config true;\n    min-elements 0;\n    max-elements 4294967295;\n    ordered-by system;\n    status current;\n  }\n  leaf-list ll2 {\n    type leafref {\n      path \"../target\";\n      require-instance true;\n      type int8;\n    }\n    config true;\n    min-elements 0;\n    max-elements 4294967295;\n    ordered-by system;\n    status current;\n  }\n  leaf target {\n    type int8;\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "node-leaflist-leafref-in-typedef-union",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "node-leaflist-leafref-in-typedef-union",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "system",
+          "path": "/node-leaflist-leafref-in-typedef-union:ll1",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": [
+              {
+                "base": "decimal64",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": 2,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              },
+              {
+                "base": "leafref",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": {
+                  "path": "../target",
+                  "require_instance": true,
+                  "target": "/node-leaflist-leafref-in-typedef-union:target"
+                },
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              },
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              }
+            ]
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "node-leaflist-leafref-in-typedef-union",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "system",
+          "path": "/node-leaflist-leafref-in-typedef-union:ll2",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "../target",
+              "require_instance": true,
+              "target": "/node-leaflist-leafref-in-typedef-union:target"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "node-leaflist-leafref-in-typedef-union",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/node-leaflist-leafref-in-typedef-union:target",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "int8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

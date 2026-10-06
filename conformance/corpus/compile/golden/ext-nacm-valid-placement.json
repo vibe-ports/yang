@@ -1,0 +1,169 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ext-nacm-valid-placement {\n  namespace \"urn:vibe-ports:yang:conformance:ext-nacm-valid-placement\";\n  prefix ext-nacm-valid-placement;\n\n  container c {\n    ietf-netconf-acm:default-deny-all;\n    config true;\n    status current;\n    leaf x {\n      ietf-netconf-acm:default-deny-write;\n      ietf-netconf-acm:default-deny-all;\n      type string;\n      config true;\n      status current;\n    }\n  }\n\n  rpc r {\n    ietf-netconf-acm:default-deny-all;\n    status current;\n  }\n\n  notification n {\n    ietf-netconf-acm:default-deny-all;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "ext-nacm-valid-placement",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ext-nacm-valid-placement",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ext-nacm-valid-placement:c",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-write"
+            },
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ext-nacm-valid-placement",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ext-nacm-valid-placement:c/x",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ext-nacm-valid-placement",
+          "musts": null,
+          "nodetype": "rpc",
+          "ordered_by": null,
+          "path": "/ext-nacm-valid-placement:r",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ext-nacm-valid-placement",
+          "musts": null,
+          "nodetype": "input",
+          "ordered_by": null,
+          "path": "/ext-nacm-valid-placement:r/input",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ext-nacm-valid-placement",
+          "musts": null,
+          "nodetype": "output",
+          "ordered_by": null,
+          "path": "/ext-nacm-valid-placement:r/output",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ext-nacm-valid-placement",
+          "musts": null,
+          "nodetype": "notif",
+          "ordered_by": null,
+          "path": "/ext-nacm-valid-placement:n",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

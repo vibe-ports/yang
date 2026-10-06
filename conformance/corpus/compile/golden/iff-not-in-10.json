@@ -1,0 +1,46 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Invalid value \"not f1\" of if-feature - YANG 1.1 expression in YANG 1.0 module.",
+          "phase": "parse",
+          "schema_path": null,
+          "vecode": 2,
+          "vecode_name": "LYVE_SYNTAX_YANG"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 12,
+            "name": "LY_EOTHER"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Parsing module \"iff-not-in-10\" failed.",
+          "phase": "parse",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "name": "iff-not-in-10",
+      "phase": "parse"
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

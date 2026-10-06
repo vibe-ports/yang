@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module ext-instance-in-typedef-chain {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:ext-instance-in-typedef-chain";
+  prefix ext-instance-in-typedef-chain;
+  extension e { argument arg; }
+  typedef t1 { type string { ext-instance-in-typedef-chain:e "base"; } }
+  typedef t2 { type t1; }
+  leaf l { type t2; }
+}

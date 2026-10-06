@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module status-inherited-from-parent {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:status-inherited-from-parent";
+  prefix status-inherited-from-parent;
+  container c { status deprecated; leaf a { type string; } container d { leaf b { type string; } } }
+}

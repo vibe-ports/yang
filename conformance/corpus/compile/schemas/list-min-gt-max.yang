@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module list-min-gt-max {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:list-min-gt-max";
+  prefix list-min-gt-max;
+  list l { key k; min-elements 3; max-elements 2; leaf k { type string; } }
+}

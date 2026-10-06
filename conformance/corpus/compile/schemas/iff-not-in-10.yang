@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_schema.c:test_feature.
+module iff-not-in-10 {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:iff-not-in-10";
+  prefix iff-not-in-10;
+  feature f1; feature f2 { if-feature 'not f1'; }
+}

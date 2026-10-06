@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module iff-disabled-leaf-bad-type {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:iff-disabled-leaf-bad-type";
+  prefix iff-disabled-leaf-bad-type;
+  feature f;
+  leaf x { if-feature f; type nosuchtype; }
+}

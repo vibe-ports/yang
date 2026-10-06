@@ -1,0 +1,38 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module anyd-anydata-mandatory-state {\n  namespace \"urn:vibe-ports:yang:conformance:anyd-anydata-mandatory-state\";\n  prefix anyd-anydata-mandatory-state;\n\n  anydata any {\n    config false;\n    mandatory true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "anyd-anydata-mandatory-state",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "anyd-anydata-mandatory-state",
+          "musts": null,
+          "nodetype": "anydata",
+          "ordered_by": null,
+          "path": "/anyd-anydata-mandatory-state:any",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

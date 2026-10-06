@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_node_choice.
+module choice-default-case-wrong-module {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:choice-default-case-wrong-module";
+  prefix choice-default-case-wrong-module;
+  import choice-default-case-wrong-module-h1 { prefix o; }
+  choice ch { default o:a; case a { leaf x { type string; } } case b { leaf y { type string; } } }
+}

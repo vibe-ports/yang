@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module ext-instance-generic-everywhere {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:ext-instance-generic-everywhere";
+  prefix ext-instance-generic-everywhere;
+  extension e { argument arg; }
+  ext-instance-generic-everywhere:e "on-module";
+  container c { ext-instance-generic-everywhere:e "on-container"; leaf l { ext-instance-generic-everywhere:e "on-leaf"; type string { ext-instance-generic-everywhere:e "on-type"; } } }
+  typedef t { type string; ext-instance-generic-everywhere:e "on-typedef"; }
+  leaf m { type t; }
+  rpc r { ext-instance-generic-everywhere:e "on-rpc"; input { ext-instance-generic-everywhere:e "on-input"; leaf x { type string; } } }
+  feature f { ext-instance-generic-everywhere:e "on-feature"; }
+  identity i { ext-instance-generic-everywhere:e "on-identity"; }
+}

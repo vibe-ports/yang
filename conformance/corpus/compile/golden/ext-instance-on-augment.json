@@ -1,0 +1,74 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ext-instance-on-augment {\n  namespace \"urn:vibe-ports:yang:conformance:ext-instance-on-augment\";\n  prefix ext-instance-on-augment;\n\n  container c {\n    config true;\n    status current;\n    leaf x {\n      type string;\n      config true;\n      status current;\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "ext-instance-on-augment",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": "on-augment",
+              "module": "ext-instance-on-augment",
+              "name": "e"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ext-instance-on-augment",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ext-instance-on-augment:c",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ext-instance-on-augment",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ext-instance-on-augment:c/x",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

@@ -1,0 +1,44 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ext-instance-substatements {\n  namespace \"urn:vibe-ports:yang:conformance:ext-instance-substatements\";\n  prefix ext-instance-substatements;\n\n  container c {\n    ext-instance-substatements:e \"outer\" {\n      ext-instance-substatements:e2 \"inner\";\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "ext-instance-substatements",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": "outer",
+              "module": "ext-instance-substatements",
+              "name": "e"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ext-instance-substatements",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ext-instance-substatements:c",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

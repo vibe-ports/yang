@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module list-unique-through-list {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:list-unique-through-list";
+  prefix list-unique-through-list;
+  list l { key x; unique c/y; leaf x { type string; } list c { key y; leaf y { type string; } } }
+}

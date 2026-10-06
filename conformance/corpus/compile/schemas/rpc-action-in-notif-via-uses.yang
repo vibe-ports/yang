@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_action.
+module rpc-action-in-notif-via-uses {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:rpc-action-in-notif-via-uses";
+  prefix rpc-action-in-notif-via-uses;
+  notification test { container a { uses grp; } }
+  grouping grp { action invalid { input { leaf x { type string; } } } }
+}

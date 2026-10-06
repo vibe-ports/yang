@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_node_leaflist.
+module node-leaf-instid-default-forward-ref {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:node-leaf-instid-default-forward-ref";
+  prefix node-leaf-instid-default-forward-ref;
+  leaf ref { type instance-identifier { require-instance true; } default "/node-leaf-instid-default-forward-ref:g[.='val']"; }
+  leaf-list g { type string; }
+}

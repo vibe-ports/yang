@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module iff-unknown-feature-after-false {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:iff-unknown-feature-after-false";
+  prefix iff-unknown-feature-after-false;
+  feature f;
+  leaf x { if-feature f; if-feature nosuchfeature; type string; }
+}

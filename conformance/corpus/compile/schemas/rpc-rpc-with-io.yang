@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_action.
+module rpc-rpc-with-io {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:rpc-rpc-with-io";
+  prefix rpc-rpc-with-io;
+  rpc a { input { leaf x { type int8; } leaf y { type int8; } } output { leaf result { type int16; } } }
+}

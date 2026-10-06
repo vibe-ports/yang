@@ -1,0 +1,89 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module node-leaflist-defaults-typedef {\n  namespace \"urn:vibe-ports:yang:conformance:node-leaflist-defaults-typedef\";\n  prefix node-leaflist-defaults-typedef;\n\n  leaf-list ll1 {\n    type int8;\n    default \"1\";\n    default \"1\";\n    config false;\n    min-elements 0;\n    max-elements 4294967295;\n    ordered-by user;\n    status current;\n  }\n  leaf-list ll2 {\n    type int8;\n    default \"10\";\n    config true;\n    min-elements 0;\n    max-elements 4294967295;\n    ordered-by user;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "node-leaflist-defaults-typedef",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": false,
+          "defaults": [
+            "1",
+            "1"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "node-leaflist-defaults-typedef",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "user",
+          "path": "/node-leaflist-defaults-typedef:ll1",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "int8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "mytype"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "10"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "node-leaflist-defaults-typedef",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "user",
+          "path": "/node-leaflist-defaults-typedef:ll2",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "int8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "mytype"
+            ],
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

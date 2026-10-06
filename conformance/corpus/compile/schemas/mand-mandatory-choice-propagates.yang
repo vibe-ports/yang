@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module mand-mandatory-choice-propagates {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:mand-mandatory-choice-propagates";
+  prefix mand-mandatory-choice-propagates;
+  container c { choice ch { mandatory true; leaf a { type string; } leaf b { type string; } } }
+}

@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module iff-feature-enabled-dependency-not-satisfied {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:iff-feature-enabled-dependency-not-satisfied";
+  prefix iff-feature-enabled-dependency-not-satisfied;
+  feature f; feature g { if-feature f; }
+  leaf x { type string; }
+}

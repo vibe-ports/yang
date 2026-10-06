@@ -1,0 +1,31 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Invalid prefix \"nope\" used for extension instance identifier.",
+          "phase": "parse",
+          "schema_path": "/ext-instance-unknown-prefix:c/{ext-inst='nope:e'}/x",
+          "vecode": 4,
+          "vecode_name": "LYVE_REFERENCE"
+        }
+      ],
+      "name": "ext-instance-unknown-prefix",
+      "phase": "parse"
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

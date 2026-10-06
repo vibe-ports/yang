@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module mand-presence-container-stops {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:mand-presence-container-stops";
+  prefix mand-presence-container-stops;
+  container c { presence "p"; container d { leaf m { type string; mandatory true; } } }
+  container top { container p { presence "q"; leaf m { type string; mandatory true; } } }
+}

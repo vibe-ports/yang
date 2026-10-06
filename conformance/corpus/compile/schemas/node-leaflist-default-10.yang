@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module node-leaflist-default-10 {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:node-leaflist-default-10";
+  prefix node-leaflist-default-10;
+  leaf-list ll { type string; default x; }
+}

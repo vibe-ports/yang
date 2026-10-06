@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_notification.
+submodule notif-duplicate-submodule-rpc-h1 {
+  yang-version 1.1;
+  belongs-to notif-duplicate-submodule-rpc { prefix notif-duplicate-submodule-rpc; }
+  rpc w;
+}

@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_node_container.
+module node-container-config-status-inherit {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:node-container-config-status-inherit";
+  prefix node-container-config-status-inherit;
+  container c { config false; status deprecated; container child; }
+}

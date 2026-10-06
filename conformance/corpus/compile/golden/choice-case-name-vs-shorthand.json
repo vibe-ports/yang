@@ -1,0 +1,35 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Duplicate identifier \"/choice-case-name-vs-shorthand:ch/a\" of case statement.",
+          "phase": "compile",
+          "schema_path": "/choice-case-name-vs-shorthand:ch/a",
+          "vecode": 2,
+          "vecode_name": "LYVE_SYNTAX_YANG"
+        }
+      ],
+      "name": "choice-case-name-vs-shorthand",
+      "phase": "compile",
+      "rc": {
+        "err": 4,
+        "name": "LY_EEXIST"
+      }
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

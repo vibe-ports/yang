@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module list-key-not-found {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:list-key-not-found";
+  prefix list-key-not-found;
+  list l { key nothere; leaf x { type string; } }
+}

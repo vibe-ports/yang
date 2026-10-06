@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_status.
+module status-child-current-in-obsolete {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:status-child-current-in-obsolete";
+  prefix status-child-current-in-obsolete;
+  container c { status obsolete; leaf l { status current; type string; } }
+}

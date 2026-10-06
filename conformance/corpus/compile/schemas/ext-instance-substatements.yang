@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module ext-instance-substatements {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:ext-instance-substatements";
+  prefix ext-instance-substatements;
+  extension e { argument arg; }
+  extension e2 { argument arg2; }
+  container c { ext-instance-substatements:e "outer" { ext-instance-substatements:e2 "inner"; } }
+}

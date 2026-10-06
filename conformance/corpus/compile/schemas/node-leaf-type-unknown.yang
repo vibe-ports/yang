@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module node-leaf-type-unknown {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:node-leaf-type-unknown";
+  prefix node-leaf-type-unknown;
+  leaf l { type nosuchtype; }
+}

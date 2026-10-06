@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_node_choice.
+module choice-duplicate-case-name {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:choice-duplicate-case-name";
+  prefix choice-duplicate-case-name;
+  choice ch { case b { leaf x { type string; } } case b { leaf y { type string; } } }
+}

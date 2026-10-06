@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module iff-disabled-nodes-removed {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:iff-disabled-nodes-removed";
+  prefix iff-disabled-nodes-removed;
+  feature f;
+  leaf a { type string; }
+  leaf b { if-feature f; type string; }
+  container c { if-feature f; leaf x { type string; } }
+  list l { if-feature f; key k; leaf k { type string; } }
+  leaf-list ll { if-feature f; type string; }
+  choice ch { if-feature f; leaf z { type string; } }
+  anydata any { if-feature f; }
+  rpc r { if-feature f; }
+  notification n { if-feature f; }
+}

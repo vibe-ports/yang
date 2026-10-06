@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_node_leaflist.
+module node-leaflist-defaults-typedef {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:node-leaflist-defaults-typedef";
+  prefix node-leaflist-defaults-typedef;
+  typedef mytype { type int8; default 10; }
+  leaf-list ll1 { type mytype; default 1; default 1; config false; }
+  leaf-list ll2 { type mytype; ordered-by user; }
+}

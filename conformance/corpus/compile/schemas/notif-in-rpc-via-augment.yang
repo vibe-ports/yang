@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_notification.
+module notif-in-rpc-via-augment {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:notif-in-rpc-via-augment";
+  prefix notif-in-rpc-via-augment;
+  rpc test { input { container a { leaf b { type string; } } } }
+  augment /test/input/a { notification invalid { leaf x { type string; } } }
+}

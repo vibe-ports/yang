@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_refine.
+module node-leaflist-default-min-elements {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:node-leaflist-default-min-elements";
+  prefix node-leaflist-default-min-elements;
+  leaf-list ll { type string; min-elements 1; default x; }
+}

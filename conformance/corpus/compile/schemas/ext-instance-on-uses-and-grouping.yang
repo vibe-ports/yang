@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module ext-instance-on-uses-and-grouping {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:ext-instance-on-uses-and-grouping";
+  prefix ext-instance-on-uses-and-grouping;
+  extension e { argument arg; }
+  grouping g { ext-instance-on-uses-and-grouping:e "on-grouping"; leaf x { type string; } }
+  container c { uses g { ext-instance-on-uses-and-grouping:e "on-uses"; } }
+}

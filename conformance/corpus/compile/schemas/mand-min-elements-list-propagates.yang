@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module mand-min-elements-list-propagates {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:mand-min-elements-list-propagates";
+  prefix mand-min-elements-list-propagates;
+  container c { list l { key k; min-elements 1; leaf k { type string; } } }
+}

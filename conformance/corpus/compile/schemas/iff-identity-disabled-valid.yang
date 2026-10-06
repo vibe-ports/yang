@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module iff-identity-disabled-valid {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:iff-identity-disabled-valid";
+  prefix iff-identity-disabled-valid;
+  feature f;
+  identity base;
+  identity enabled-id { base base; }
+  identity disabled-id { base base; if-feature f; }
+}

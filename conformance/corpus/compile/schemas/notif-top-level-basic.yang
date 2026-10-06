@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_notification.
+module notif-top-level-basic {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:notif-top-level-basic";
+  prefix notif-top-level-basic;
+  notification a1 { leaf x { type int8; } }
+  notification a2;
+}

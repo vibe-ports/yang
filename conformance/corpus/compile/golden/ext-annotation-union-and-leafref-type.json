@@ -1,0 +1,19 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ext-annotation-union-and-leafref-type {\n  namespace \"urn:vibe-ports:yang:conformance:ext-annotation-union-and-leafref-type\";\n  prefix ext-annotation-union-and-leafref-type;\n\n  ietf-yang-metadata:annotation \"u\" {\n    type union {\n      type int8;\n      type string;\n    }\n  }\n  ietf-yang-metadata:annotation \"e\" {\n    type enumeration {\n      enum \"a\" {\n        value 0;\n        status current;\n      }\n      enum \"b\" {\n        value 1;\n        status current;\n      }\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "ext-annotation-union-and-leafref-type",
+      "revision": null,
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

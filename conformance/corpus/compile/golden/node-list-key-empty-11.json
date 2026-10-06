@@ -1,0 +1,70 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module node-list-key-empty-11 {\n  namespace \"urn:vibe-ports:yang:conformance:node-list-key-empty-11\";\n  prefix node-list-key-empty-11;\n\n  list l {\n    key \"a\";\n    config true;\n    min-elements 0;\n    max-elements 4294967295;\n    ordered-by system;\n    status current;\n    leaf a {\n      type empty;\n      config true;\n      status current;\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "node-list-key-empty-11",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "a"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "node-list-key-empty-11",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "system",
+          "path": "/node-list-key-empty-11:l",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "node-list-key-empty-11",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/node-list-key-empty-11:l/a",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "empty",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

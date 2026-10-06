@@ -1,0 +1,44 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ext-nacm-argument-given {\n  namespace \"urn:vibe-ports:yang:conformance:ext-nacm-argument-given\";\n  prefix ext-nacm-argument-given;\n\n  container c {\n    ietf-netconf-acm:default-deny-all \"oops\";\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "ext-nacm-argument-given",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": "oops",
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ext-nacm-argument-given",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ext-nacm-argument-given:c",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

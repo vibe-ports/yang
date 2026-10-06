@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_action.
+module rpc-duplicate-action-submodule-notif {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:rpc-duplicate-action-submodule-notif";
+  prefix rpc-duplicate-action-submodule-notif;
+  include rpc-duplicate-action-submodule-notif-h1;
+  rpc w;
+}

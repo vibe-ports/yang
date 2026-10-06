@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_node_list.
+module node-list-unique-descendant-paths {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:node-list-unique-descendant-paths";
+  prefix node-list-unique-descendant-paths;
+  list l { key a; unique "a c/b"; unique "c/e d";
+    leaf a { type string; default x; } leaf d { type string; config false; }
+    container c { leaf b { type string; } leaf e { type string; config false; } } }
+}

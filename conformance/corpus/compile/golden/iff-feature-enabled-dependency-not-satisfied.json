@@ -1,0 +1,35 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 8,
+            "name": "LY_EDENIED"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Feature \"g\" cannot be enabled because its \"if-feature\" is not satisfied.",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "name": "iff-feature-enabled-dependency-not-satisfied",
+      "phase": "compile",
+      "rc": {
+        "err": 8,
+        "name": "LY_EDENIED"
+      }
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

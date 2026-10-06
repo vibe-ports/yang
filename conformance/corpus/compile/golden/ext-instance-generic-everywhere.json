@@ -1,0 +1,219 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ext-instance-generic-everywhere {\n  namespace \"urn:vibe-ports:yang:conformance:ext-instance-generic-everywhere\";\n  prefix ext-instance-generic-everywhere;\n\n  ext-instance-generic-everywhere:e \"on-module\";\n\n  identity i {\n    ext-instance-generic-everywhere:e \"on-identity\";\n  }\n\n  container c {\n    ext-instance-generic-everywhere:e \"on-container\";\n    config true;\n    status current;\n    leaf l {\n      ext-instance-generic-everywhere:e \"on-leaf\";\n      type string {\n        ext-instance-generic-everywhere:e \"on-type\";\n      }\n      config true;\n      status current;\n    }\n  }\n  leaf m {\n    type string;\n    config true;\n    status current;\n  }\n\n  rpc r {\n    ext-instance-generic-everywhere:e \"on-rpc\";\n    status current;\n\n    input {\n      ext-instance-generic-everywhere:e \"on-input\";\n      leaf x {\n        type string;\n        status current;\n      }\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": false,
+          "name": "f"
+        }
+      ],
+      "identities": [
+        {
+          "bases": [],
+          "derived": [],
+          "name": "ext-instance-generic-everywhere:i"
+        }
+      ],
+      "name": "ext-instance-generic-everywhere",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": "on-container",
+              "module": "ext-instance-generic-everywhere",
+              "name": "e"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ext-instance-generic-everywhere",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ext-instance-generic-everywhere:c",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": "on-leaf",
+              "module": "ext-instance-generic-everywhere",
+              "name": "e"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ext-instance-generic-everywhere",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ext-instance-generic-everywhere:c/l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ext-instance-generic-everywhere",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ext-instance-generic-everywhere:m",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "t"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": "on-rpc",
+              "module": "ext-instance-generic-everywhere",
+              "name": "e"
+            }
+          ],
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ext-instance-generic-everywhere",
+          "musts": null,
+          "nodetype": "rpc",
+          "ordered_by": null,
+          "path": "/ext-instance-generic-everywhere:r",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": "on-input",
+              "module": "ext-instance-generic-everywhere",
+              "name": "e"
+            }
+          ],
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ext-instance-generic-everywhere",
+          "musts": null,
+          "nodetype": "input",
+          "ordered_by": null,
+          "path": "/ext-instance-generic-everywhere:r/input",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ext-instance-generic-everywhere",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ext-instance-generic-everywhere:r/input/x",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ext-instance-generic-everywhere",
+          "musts": null,
+          "nodetype": "output",
+          "ordered_by": null,
+          "path": "/ext-instance-generic-everywhere:r/output",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

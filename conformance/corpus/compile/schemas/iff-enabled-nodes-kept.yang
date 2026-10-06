@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module iff-enabled-nodes-kept {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:iff-enabled-nodes-kept";
+  prefix iff-enabled-nodes-kept;
+  feature f;
+  leaf a { type string; }
+  leaf b { if-feature f; type string; }
+  container c { if-feature f; leaf x { type string; } }
+  rpc r { if-feature f; }
+  notification n { if-feature f; }
+}

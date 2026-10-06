@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module status-typedef-deprecated-cross-module-h1 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:status-typedef-deprecated-cross-module-h1";
+  prefix status-typedef-deprecated-cross-module-h1;
+  typedef t { status deprecated; type string; }
+}

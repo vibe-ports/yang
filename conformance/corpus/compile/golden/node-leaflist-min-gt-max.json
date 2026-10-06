@@ -1,0 +1,35 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Leaf-list min-elements 3 is bigger than max-elements 2.",
+          "phase": "compile",
+          "schema_path": "/node-leaflist-min-gt-max:ll",
+          "vecode": 6,
+          "vecode_name": "LYVE_SEMANTICS"
+        }
+      ],
+      "name": "node-leaflist-min-gt-max",
+      "phase": "compile",
+      "rc": {
+        "err": 7,
+        "name": "LY_EVALID"
+      }
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

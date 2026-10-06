@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module rpc-action-config-ignored {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:rpc-action-config-ignored";
+  prefix rpc-action-config-ignored;
+  rpc r { input { container c { leaf l { type string; } list x { key k; leaf k { type string; } } } } }
+}

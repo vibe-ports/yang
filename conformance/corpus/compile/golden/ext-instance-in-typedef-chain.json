@@ -1,0 +1,52 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ext-instance-in-typedef-chain {\n  namespace \"urn:vibe-ports:yang:conformance:ext-instance-in-typedef-chain\";\n  prefix ext-instance-in-typedef-chain;\n\n  leaf l {\n    type string {\n      ext-instance-in-typedef-chain:e \"base\";\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "ext-instance-in-typedef-chain",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ext-instance-in-typedef-chain",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ext-instance-in-typedef-chain:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "t1"
+            ],
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

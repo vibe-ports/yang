@@ -1,0 +1,38 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module anyd-anyxml-10 {\n  namespace \"urn:vibe-ports:yang:conformance:anyd-anyxml-10\";\n  prefix anyd-anyxml-10;\n\n  anyxml any {\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "anyd-anyxml-10",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "anyd-anyxml-10",
+          "musts": null,
+          "nodetype": "anyxml",
+          "ordered_by": null,
+          "path": "/anyd-anyxml-10:any",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

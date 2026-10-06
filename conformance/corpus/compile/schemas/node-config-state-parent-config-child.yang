@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module node-config-state-parent-config-child {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:node-config-state-parent-config-child";
+  prefix node-config-state-parent-config-child;
+  container c { config false; leaf l { type string; config true; } }
+}

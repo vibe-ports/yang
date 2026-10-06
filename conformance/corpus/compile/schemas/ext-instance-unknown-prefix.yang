@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module ext-instance-unknown-prefix {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:ext-instance-unknown-prefix";
+  prefix ext-instance-unknown-prefix;
+  container c { nope:e "x"; }
+}

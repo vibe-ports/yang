@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module iff-disabled-skips-default-check {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:iff-disabled-skips-default-check";
+  prefix iff-disabled-skips-default-check;
+  feature f;
+  leaf x { if-feature f; type uint8; default "not-a-number"; }
+}
