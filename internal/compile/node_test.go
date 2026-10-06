@@ -278,6 +278,8 @@ func TestNodeGoldens(t *testing.T) {
 				switch {
 				case loadErr != nil && !gm.Accepted && gm.Phase == "parse":
 					return // the parse phase is C1a's
+				case errors.Is(loadErr, ErrUnsupported):
+					t.Skip(loadErr) // U-0020, U-0023…U-0025: engine-only
 				case loadErr != nil:
 					t.Fatalf("%s: load: %v", gm.Name, loadErr)
 				case gm.Phase == "parse":

@@ -68,6 +68,21 @@ func TestAugmentImplementsTarget(t *testing.T) {
 	}
 }
 
+// TestNodeWalkGate: compile runs the node walk only when nodeWalk is on;
+// freeing on recompilation releases what the nodes held.
+func TestNodeWalkGate(t *testing.T) {
+	c := newCtx(t, Options{}, filepath.Join(corpus, "load", "implement"))
+	tg, _, err := c.Load("tg", "", nil)
+	if err != nil || len(tg.Schema.Top) != 0 {
+		t.Fatalf("walk off: %v, %d nodes", err, len(tg.Schema.Top))
+	}
+	c = newCtx(t, Options{}, filepath.Join(corpus, "load", "implement"))
+	c.nodeWalk = true
+	if tg, _, err = c.Load("tg", "", nil); err != nil || len(tg.Schema.Top) != 1 {
+		t.Fatalf("walk on: %v, %+v", err, tg)
+	}
+}
+
 // TestDeviationUnsupported: implementing a module with deviations fails
 // with ErrUnsupported (U-0020) and the load is reverted; the target stays
 // import-only.
