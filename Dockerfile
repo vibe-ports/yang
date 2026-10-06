@@ -42,6 +42,10 @@ ARG GOLANGCI_LINT_VERSION=v2.14.0
 ARG GOVULNCHECK_VERSION=v1.8.0
 ARG GITLEAKS_VERSION=v8.30.1
 ARG ACTIONLINT_VERSION=v1.7.12
+ARG ZIZMOR_VERSION=v1.30.1
+ARG ZIZMOR_SHA256_AMD64=e65324f4430c2717591937edcec90ccbefaf14c174f8ec9415e03ca875b46e1a
+ARG ZIZMOR_SHA256_ARM64=7ff1dce33bdd18fd2a4affe63bdd47efcccca97b2cec1c1863ec26e9e2647540
+ARG TARGETARCH
 RUN apt-get update && apt-get install -y --no-install-recommends \
       libpcre2-dev=${PCRE2_VERSION} libpcre2-8-0=${PCRE2_VERSION} sudo jq universal-ctags cscope \
     && rm -rf /var/lib/apt/lists/*
@@ -52,11 +56,21 @@ ENV PATH=/opt/libyang/bin:${PATH} \
     GOTOOLCHAIN=local \
     GOPATH=/home/dev/go \
     GOCACHE=/home/dev/.cache/go-build
-RUN curl -sSfL "https://raw.githubusercontent.com/golangci/golangci-lint/${GOLANGCI_LINT_VERSION}/install.sh" \
-      | sh -s -- -b /usr/local/bin "${GOLANGCI_LINT_VERSION}" \
+# Go tools via go install: module hashes are checked against the Go checksum database.
+RUN GOBIN=/usr/local/bin go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${GOLANGCI_LINT_VERSION}" \
     && GOBIN=/usr/local/bin go install "golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION}" \
     && GOBIN=/usr/local/bin go install "github.com/zricethezav/gitleaks/v8@${GITLEAKS_VERSION}" \
     && GOBIN=/usr/local/bin go install "github.com/rhysd/actionlint/cmd/actionlint@${ACTIONLINT_VERSION}"
+# zizmor (Rust): release tarball pinned by sha256.
+RUN case "${TARGETARCH}" in \
+      amd64) arch=x86_64 sum="${ZIZMOR_SHA256_AMD64}" ;; \
+      arm64) arch=aarch64 sum="${ZIZMOR_SHA256_ARM64}" ;; \
+      *) echo "zizmor: unsupported arch ${TARGETARCH}" >&2; exit 1 ;; \
+    esac \
+    && curl -sSfL -o /tmp/zizmor.tgz "https://github.com/zizmorcore/zizmor/releases/download/${ZIZMOR_VERSION}/zizmor-${arch}-unknown-linux-gnu.tar.gz" \
+    && echo "${sum}  /tmp/zizmor.tgz" | sha256sum -c - \
+    && tar -xzf /tmp/zizmor.tgz -C /usr/local/bin zizmor \
+    && rm /tmp/zizmor.tgz
 # Non-root user; all Go caches live under its home so devcontainer UID remapping
 # (which chowns the home dir) keeps them writable.
 RUN useradd -m -u 1000 -s /bin/bash dev && echo 'dev ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/dev \

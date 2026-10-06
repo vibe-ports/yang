@@ -1,9 +1,9 @@
 # All targets are meant to run inside the dev container (./dev make <target>).
 FUZZTIME ?= 60s
 
-.PHONY: ci test-oracle fmt-check vet lint nocgo test test-386 vuln secrets sensitive fuzz oracle test-go-min oracle-check oracle-golden test-gates registries port-coverage
+.PHONY: ci mod-verify test-oracle fmt-check vet lint nocgo test test-386 vuln secrets sensitive fuzz oracle test-go-min oracle-check oracle-golden test-gates registries port-coverage
 
-ci: fmt-check vet lint nocgo test test-386 test-go-min test-oracle test-gates vuln secrets sensitive oracle-check registries
+ci: mod-verify fmt-check vet lint nocgo test test-386 test-go-min test-oracle test-gates vuln secrets sensitive oracle-check registries
 
 # Security gates (check-sensitive, hooks, merge-pr, ai-review publisher, review-tier) and the
 # agent task queue (scripts/claim) against stubbed gh/curl and throwaway repos.
@@ -15,6 +15,11 @@ test-gates:
 # Duplicate ids/rows left by the union merge driver in the append-only registries.
 registries:
 	scripts/check-registries
+
+# Module cache contents match go.sum.
+mod-verify:
+	go mod verify
+	cd conformance && go mod verify
 
 fmt-check:
 	@out=$$(git ls-files -z '*.go' | xargs -0 -r gofmt -l); [ -z "$$out" ] || { echo "gofmt needed:"; echo "$$out"; exit 1; }
@@ -29,6 +34,7 @@ lint:
 	golangci-lint run
 	cd conformance && golangci-lint run
 	actionlint -shellcheck= .github/workflows/*.yml
+	zizmor --offline --no-progress .github/workflows
 
 # Production code must never use cgo (goal 1). The oracle lives outside this module.
 nocgo:

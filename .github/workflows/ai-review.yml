@@ -24,7 +24,7 @@ name: ai-review
 # verdict, which is why merge-pr only trusts maintainer-authored attestations.
 # Rotate the token every 90 days and immediately if the publisher or scan ever fires.
 on:
-  pull_request_target:
+  pull_request_target: # zizmor: ignore[dangerous-triggers] main-only checkout, PR code never runs (see 1-4 above)
     types: [opened, synchronize, ready_for_review, reopened]
 permissions:
   contents: read
