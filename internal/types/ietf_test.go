@@ -183,7 +183,8 @@ func TestOracleGoldensIETF(t *testing.T) {
 	ts := ietfTypes("2025-12-22")
 	leaves := map[string]string{"ip": "ip-address", "v4": "ipv4-address", "v6": "ipv6-address",
 		"v6nz": "ipv6-address-no-zone", "p4": "ipv4-prefix", "p6": "ipv6-prefix", "ipp": "ip-prefix",
-		"dt": "date-and-time", "mac": "mac-address", "uuid": "uuid"}
+		"dt": "date-and-time", "mac": "mac-address", "uuid": "uuid",
+		"d": "date", "dnz": "date-no-zone", "t": "time", "tnz": "time-no-zone"}
 	cases := map[string][][2]string{
 		"inet-canonical": {{"ip", "2008:15:0:0:0:0:feAC:1"}, {"v4", "192.168.0.1%12"}, {"v6", "FAAC:21:011:Da85::87:daaF%1"},
 			{"v6nz", "::0102:0304"}, {"p4", "12.1.58.4/8"}, {"p6", "::C:D:E:f:a/110"}, {"ipp", "2000:A:B:C:D:E:f:a/16"}},
@@ -195,6 +196,20 @@ func TestOracleGoldensIETF(t *testing.T) {
 		"dt-pattern":         {{"dt", "2023-16-15T20:13:01+01:00"}},
 		"dt-minus-half-hour": {{"dt", "2005-05-25T12:00:00-00:30"}},
 		"hex-lowercase":      {{"mac", "DB:BA:12:54:fa:00"}, {"uuid", "f81D4fAE-7dec-11d0-A765-00a0c91E6BF6"}},
+		// #68, #69: date and time
+		"date-zone":             {{"d", "2005-05-31+05:30"}},
+		"date-unknown-zone":     {{"d", "2005-05-31Z"}},
+		"date-no-zone":          {{"dnz", "2005-05-31"}},
+		"date-invalid":          {{"d", "2005-13-01"}},
+		"date-without-zone":     {{"d", "2005-05-31"}},
+		"date-calendar":         {{"d", "2005-02-30Z"}},
+		"date-no-zone-calendar": {{"dnz", "2005-02-30"}},
+		"time-zone":             {{"t", "23:15:15+05:30"}},
+		"time-fraction":         {{"t", "00:59:59.0100-02:00"}},
+		"time-unknown-zone":     {{"t", "12:00:00.50Z"}},
+		"time-no-zone":          {{"tnz", "23:15:15.5"}},
+		"time-invalid":          {{"t", "24:00:00"}},
+		"time-leap-second":      {{"tnz", "23:59:60"}},
 	}
 	withLocal(time.UTC, func() {
 		for id, cs := range cases {
@@ -312,7 +327,10 @@ func TestDateTimeTypes(t *testing.T) {
 	}
 	if Equal(st("time", "12:00:00.5Z"), st("time", "12:00:00.50Z")) || !Equal(st("time-no-zone", "12:00:00"), st("time-no-zone", "12:00:00")) ||
 		Compare(st("time-no-zone", "12:00:00"), st("time-no-zone", "12:00:00.1")) >= 0 ||
-		Compare(st("time-no-zone", "12:00:01"), st("time-no-zone", "12:00:00.9")) <= 0 {
+		Compare(st("time-no-zone", "12:00:01"), st("time-no-zone", "12:00:00.9")) <= 0 ||
+		Equal(st("time-no-zone", "12:00:00"), st("time-no-zone", "12:00:00.0")) || // equal only without fractions on both
+		Compare(st("time-no-zone", "12:00:00"), st("time-no-zone", "12:00:00.0")) != 0 || // an all-zero fraction sorts as none
+		Compare(st("time", "12:00:00.5Z"), st("time", "12:00:00.50Z")) >= 0 {
 		t.Error("time equality/order")
 	}
 	for typedef, lex := range map[string]string{"date-no-zone": "2005-13-31", "time-no-zone": "24:00:00"} {

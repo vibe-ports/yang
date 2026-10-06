@@ -1,0 +1,59 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ty3",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"ty3:c\": {\n    \"dnz\": \"2005-03-02\"\n  }\n}\n",
+    "xml": "<c xmlns=\"urn:vibe-ports:ty3\">\n  <dnz>2005-03-02</dnz>\n</c>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c",
+      "schema": "/ty3:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c/dnz",
+      "schema": "/ty3:c/dnz",
+      "value": {
+        "canonical": "2005-03-02",
+        "type": "string",
+        "typedef": "date-no-zone",
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

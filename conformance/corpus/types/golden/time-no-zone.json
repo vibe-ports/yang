@@ -1,0 +1,59 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ty3",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"ty3:c\": {\n    \"tnz\": \"23:15:15.5\"\n  }\n}\n",
+    "xml": "<c xmlns=\"urn:vibe-ports:ty3\">\n  <tnz>23:15:15.5</tnz>\n</c>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c",
+      "schema": "/ty3:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c/tnz",
+      "schema": "/ty3:c/tnz",
+      "value": {
+        "canonical": "23:15:15.5",
+        "type": "string",
+        "typedef": "time-no-zone",
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

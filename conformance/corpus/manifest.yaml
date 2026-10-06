@@ -29684,3 +29684,195 @@ fixtures:
       verdict: "invalid"
       rfc: ["RFC7950#6.2"]
       deviation: null
+
+  # #68/#69 date-zone: a known offset, printed at the time zone of the printer
+  - id: types/date-zone
+    dir: types
+    source: *own
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty3}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty3"><d>2005-05-31+05:30</d></c>'
+    golden: golden/date-zone.json
+
+  # #68/#69 date-unknown-zone: Z: the unknown time zone is kept
+  - id: types/date-unknown-zone
+    dir: types
+    source: *own
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty3}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty3"><d>2005-05-31Z</d></c>'
+    golden: golden/date-unknown-zone.json
+
+  - id: types/date-no-zone
+    dir: types
+    source: *own
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty3}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty3"><dnz>2005-05-31</dnz></c>'
+    golden: golden/date-no-zone.json
+
+  # #68/#69 date-invalid: the pattern rejects month 13
+  - id: types/date-invalid
+    dir: types
+    source: *own
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty3}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty3"><d>2005-13-01</d></c>'
+    golden: golden/date-invalid.json
+
+  # #68/#69 date-without-zone: the pattern allows no zone, but libyang's date store appends the
+  # date to "T00:00:00" and ly_time_str2time then requires a zone (observed only)
+  - id: types/date-without-zone
+    dir: types
+    source: *own
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty3}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty3"><d>2005-05-31</d></c>'
+    golden: golden/date-without-zone.json
+
+  # #68/#69 date-calendar: Feb 30 matches the pattern; timegm moves it to Mar 2
+  - id: types/date-calendar
+    dir: types
+    source: *own
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty3}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty3"><d>2005-02-30Z</d></c>'
+    golden: golden/date-calendar.json
+
+  # #68/#69 date-no-zone-calendar: Feb 30 through strptime and timegm: Mar 2
+  - id: types/date-no-zone-calendar
+    dir: types
+    source: *own
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty3}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty3"><dnz>2005-02-30</dnz></c>'
+    golden: golden/date-no-zone-calendar.json
+
+  - id: types/time-zone
+    dir: types
+    source: *own
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty3}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty3"><t>23:15:15+05:30</t></c>'
+    golden: golden/time-zone.json
+
+  # #68/#69 time-fraction: fractions of a second are kept as written
+  - id: types/time-fraction
+    dir: types
+    source: *own
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty3}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty3"><t>00:59:59.0100-02:00</t></c>'
+    golden: golden/time-fraction.json
+
+  - id: types/time-unknown-zone
+    dir: types
+    source: *own
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty3}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty3"><t>12:00:00.50Z</t></c>'
+    golden: golden/time-unknown-zone.json
+
+  - id: types/time-no-zone
+    dir: types
+    source: *own
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty3}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty3"><tnz>23:15:15.5</tnz></c>'
+    golden: golden/time-no-zone.json
+
+  # #68/#69 time-invalid: the pattern rejects hour 24
+  - id: types/time-invalid
+    dir: types
+    source: *own
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty3}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty3"><t>24:00:00</t></c>'
+    golden: golden/time-invalid.json
+
+  # #68/#69 time-leap-second: a leap second matches the pattern; timegm makes it the next day's 00:00:00
+  - id: types/time-leap-second
+    dir: types
+    source: *own
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty3}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty3"><tnz>23:59:60</tnz></c>'
+    golden: golden/time-leap-second.json

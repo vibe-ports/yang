@@ -19,5 +19,9 @@ module ty3 {
     leaf dt { type yang:date-and-time; }
     leaf mac { type yang:mac-address; }
     leaf uuid { type yang:uuid; }
+    leaf d { type yang:date; }
+    leaf dnz { type yang:date-no-zone; }
+    leaf t { type yang:time; }
+    leaf tnz { type yang:time-no-zone; }
   }
 }
