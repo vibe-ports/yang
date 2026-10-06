@@ -221,10 +221,19 @@ func compileSNode(a *storeArgs, parent *schema.Node, qname string, output bool) 
 	case !mod.Implemented:
 		return nil, fmt.Sprintf("Not implemented module \"%s\" in path.", mod.Name)
 	}
-	if n := schema.FindChild(parent, mod.Top, mod, name, getNextOpts(output)); n != nil {
+	if n := findSNode(parent, mod, name, output); n != nil {
 		return n, ""
 	}
 	return nil, fmt.Sprintf("Not found node \"%s\" in path.", name)
+}
+
+// findSNode is the lys_getnext loop of ly_path_compile_snode (path.c:583): an anydata or anyxml
+// context node is no schema parent, so the search falls back to the module's top level.
+func findSNode(parent *schema.Node, mod *schema.Module, name string, output bool) *schema.Node {
+	if parent != nil && (parent.Kind == schema.AnyData || parent.Kind == schema.AnyXML) {
+		parent = nil
+	}
+	return schema.FindChild(parent, mod.Top, mod, name, getNextOpts(output))
 }
 
 // getNextOpts are the lys_getnext options of a path step in an operation's input or output.

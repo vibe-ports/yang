@@ -134,10 +134,7 @@ func (c *leafrefCompiler) snode(ctxNode *schema.Node, qname string, output bool)
 	case !mod.Implemented:
 		return nil, fmt.Sprintf("Not implemented module \"%s\" in path.", mod.Name)
 	}
-	if ctxNode != nil && (ctxNode.Kind == schema.AnyData || ctxNode.Kind == schema.AnyXML) {
-		ctxNode = nil // lys_getnext with no schema parent: libyang lets an any node fall back to the top level
-	}
-	if n := schema.FindChild(ctxNode, mod.Top, mod, name, getNextOpts(output)); n != nil {
+	if n := findSNode(ctxNode, mod, name, output); n != nil {
 		return n, ""
 	}
 	return nil, fmt.Sprintf("Not found node \"%s\" in path.", name)

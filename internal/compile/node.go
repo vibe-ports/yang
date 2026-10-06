@@ -57,6 +57,8 @@ type nodeCtx struct {
 	parents []*parser.Node // parsed nodes being compiled, outermost first (lysp_node.parent chain)
 	depth   int
 	tc      *typeCtx // type compilation (design 06 C5)
+	seen    map[uniqKey]bool
+	scans   int // uniqueness scans run (index hits)
 }
 
 // compileNodes is the data-node part of lys_compile (SC:1776-1814), the entry point of the
@@ -79,9 +81,9 @@ func (c *Context) compileNodes(m *Module, out *schema.Module) error {
 		}
 	}
 	w := &nodeCtx{c: c, cur: out, pm: &m.pmod, fl: map[*schema.Node]int{},
-		tc: &typeCtx{cur: out, pmod: &m.pmod, parsed: parsed, cache: c.typeCache, budget: c.opts.Budget}}
+		tc: &typeCtx{cur: out, pmod: &m.pmod, parsed: parsed, cache: c.typeCache, budget: c.opts.Budget, types: c.types}}
 	w.path.init(out)
-	defer func() { out.Top = slices.Concat(w.data, w.rpcs, w.notifs) }()
+	defer func() { out.Top, c.types = slices.Concat(w.data, w.rpcs, w.notifs), w.tc.types }()
 	if err := w.topLevel(m.Parsed); err != nil {
 		return err
 	}
@@ -424,17 +426,43 @@ func (w *nodeCtx) findChild(parent *schema.Node, mod *schema.Module, name string
 	if mod == nil {
 		return nil
 	}
-	top := mod.Top
-	if mod == w.cur {
+	var top []*schema.Node
+	switch {
+	case parent != nil:
+	case mod == w.cur:
 		top = w.top()
+	default:
+		top = mod.Top
 	}
 	return schema.FindChild(parent, top, mod, name, opts)
 }
 
-// uniqueness is lys_compile_node_uniqness.
-// ponytail: each check scans the siblings, so connecting n siblings is O(n²) like libyang;
-// Budget.MaxNodes bounds n. A per-parent name index if that ever shows up.
+// uniqKey is one name in the scope lys_compile_node_uniqness scans: the nearest ancestor that
+// is not a choice or case (nil: top level), or the choice for a case.
+type uniqKey struct {
+	scope *schema.Node
+	mod   *schema.Module
+	name  string
+	cs    bool
+}
+
+// uniqueness is lys_compile_node_uniqness. A name not yet seen in its scope cannot clash, so
+// the libyang scan (which decides the duplicate and its message) only runs on an index hit;
+// without that, connecting n siblings would be O(n²). Names stay in the index (false hits are
+// harmless: the scan finds nothing).
 func (w *nodeCtx) uniqueness(parent *schema.Node, name string, excl *schema.Node) error {
+	k := uniqKey{scope: parent, mod: excl.Module, name: name, cs: excl.Kind == schema.Case}
+	for !k.cs && k.scope != nil && (k.scope.Kind == schema.Choice || k.scope.Kind == schema.Case) {
+		k.scope = k.scope.Parent
+	}
+	if w.seen == nil {
+		w.seen = map[uniqKey]bool{}
+	}
+	if !w.seen[k] {
+		w.seen[k] = true
+		return nil
+	}
+	w.scans++
 	same := func(it *schema.Node) bool { return it != excl && it.Module == excl.Module && it.Name == name }
 	what := "data definition/RPC/action/notification"
 	var dup *schema.Node
@@ -472,7 +500,11 @@ func (w *nodeCtx) uniqueness(parent *schema.Node, name string, excl *schema.Node
 				parent = parent.Children[0]
 			}
 		}
-		for it := range schema.GetNext(parent, w.top(), opts) {
+		var top []*schema.Node
+		if parent == nil {
+			top = w.top()
+		}
+		for it := range schema.GetNext(parent, top, opts) {
 			if !slices.Contains(choices, it) && same(it) {
 				return it
 			}
@@ -669,6 +701,10 @@ func (w *nodeCtx) leaf(pn *parser.Node, n *schema.Node) error {
 	}
 	if w.fl[n]&flSetDflt != 0 && n.Mandatory {
 		return w.errf(ly.Semantics, "Invalid mandatory leaf with a default value.")
+	}
+	if n.Mandatory {
+		// lys_compile_unres_leaf_dlft (SC:1026): a mandatory leaf never gets its typedef's default
+		n.Default = nil
 	}
 	return nil
 }

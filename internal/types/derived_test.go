@@ -455,3 +455,17 @@ func TestAccessorsCopy(t *testing.T) {
 		t.Fatal("accessor returned shared storage")
 	}
 }
+
+// TestPathAnydataParent: an anydata/anyxml context node is no schema parent in
+// ly_path_compile_snode (path.c:583); the next step is looked up at the module's top level.
+func TestPathAnydataParent(t *testing.T) {
+	f := newInstFixture()
+	for _, k := range []schema.Kind{schema.AnyData, schema.AnyXML} {
+		anyd := node(f.defs, nil, k, "any", nil)
+		a := &storeArgs{f: FormatXML, pc: f.xml(map[string]string{"xdf": "defs"})}
+		n, msg := compileSNode(a, anyd, "xdf:llist", false)
+		if msg != "" || n == nil || n.Name != "llist" || n.Parent != nil {
+			t.Fatalf("%v: got %v %q, want the top-level llist", k, n, msg)
+		}
+	}
+}

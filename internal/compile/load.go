@@ -136,6 +136,7 @@ type Context struct {
 	// per Load (lys_glob_unres)
 	creating, implementing []*Module
 	nodes                  int        // schema nodes compiled (Budget.MaxNodes)
+	types                  int        // compiled types and union member slots (Budget.MaxTypes)
 	typeCache              *typeCache // compiled typedefs (design 06 §2.3), created by the first compile
 }
 
@@ -202,7 +203,7 @@ func (c *Context) Load(name, rev string, features []string) (*Module, []Diagnost
 		return nil, nil, fmt.Errorf("%w: setting features (design 06 C1b)", ErrUnsupported)
 	}
 	c.diags, c.creating, c.implementing = nil, nil, nil
-	c.nodes = 0
+	c.nodes, c.types = 0, 0
 	m, err := c.parseLoad(name, rev)
 	if err == nil && !m.Implemented { // _lys_set_implemented
 		err = c.implement(m)

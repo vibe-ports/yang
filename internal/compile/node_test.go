@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -412,6 +413,81 @@ func TestNodeBudget(t *testing.T) {
 	h := newNodeHarness(t, Options{Budget: Budget{MaxNodes: 5, MaxDepth: 4}}, mapFS(map[string]string{"b.yang": src}))
 	if _, _, _, err := h.load("b"); err != nil {
 		t.Fatalf("within budget: %v", err)
+	}
+}
+
+// TestTypeBudgetPerLoad: MaxTypes counts across every module compiled in one Load (U-0030), not
+// per module, and starts again with the next Load.
+func TestTypeBudgetPerLoad(t *testing.T) {
+	src := "module b { namespace urn:b; prefix b; leaf x { type string { length 1; } } leaf y { type string { length 2; } } }"
+	h := newNodeHarness(t, Options{Budget: Budget{MaxTypes: 3}}, mapFS(map[string]string{"b.yang": src}))
+	if _, _, _, err := h.load("b"); err != nil {
+		t.Fatal(err)
+	}
+	m := h.c.Modules[len(h.c.Modules)-1]
+	if err := h.c.compileNodes(m, &schema.Module{Name: "b", Implemented: true}); !errors.Is(err, ErrBudget) {
+		t.Fatalf("second compile in the same Load: %v, want ErrBudget", err)
+	}
+	h.c.nodes, h.c.types = 0, 0 // what the next Load does
+	if err := h.c.compileNodes(m, &schema.Module{Name: "b", Implemented: true}); err != nil {
+		t.Fatalf("after reset: %v", err)
+	}
+}
+
+// TestMandatoryLeafTypedefDefault: a mandatory leaf ignores its typedef's default (SC:1026,
+// fixture mand/leaf-with-typedef-default-ignored); a non-mandatory one keeps it.
+func TestMandatoryLeafTypedefDefault(t *testing.T) {
+	src := `module d { namespace urn:d; prefix d; typedef t { type string; default "x"; }
+		leaf m { type t; mandatory true; } leaf o { type t; } }`
+	h := newNodeHarness(t, Options{}, mapFS(map[string]string{"d.yang": src}))
+	mod, _, loadErr, err := h.load("d")
+	if loadErr != nil || err != nil {
+		t.Fatal(loadErr, err)
+	}
+	if m, o := mod.Top[0], mod.Top[1]; m.Default != nil || len(o.Default) != 1 || o.Default[0].Lex != "x" {
+		t.Fatalf("m %v, o %v", m.Default, o.Default)
+	}
+}
+
+// TestUniquenessIndex: connecting many distinct siblings runs no sibling scan; a duplicate (also
+// one inside a choice, and a case name) still runs the libyang scan and reports it.
+func TestUniquenessIndex(t *testing.T) {
+	m := &schema.Module{Name: "m"}
+	w := &nodeCtx{c: &Context{}, cur: m, fl: map[*schema.Node]int{}}
+	w.path.init(m)
+	c := &schema.Node{Kind: schema.Container, Name: "c", Module: m}
+	const n = 40000
+	for i := range n {
+		if err := w.connect(c, &schema.Node{Kind: schema.Leaf, Name: fmt.Sprint("l", i), Module: m}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ch := &schema.Node{Kind: schema.Choice, Name: "ch", Module: m}
+	cs := &schema.Node{Kind: schema.Case, Name: "a", Module: m}
+	for _, step := range []struct{ parent, node *schema.Node }{{c, ch}, {ch, cs}} {
+		if err := w.connect(step.parent, step.node); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if w.scans != 0 || len(c.Children) != n+1 {
+		t.Fatalf("%d scans, %d children", w.scans, len(c.Children))
+	}
+	for _, step := range []struct {
+		parent *schema.Node
+		node   *schema.Node
+		msg    string
+	}{
+		{cs, &schema.Node{Kind: schema.Leaf, Name: "l7", Module: m}, `Duplicate identifier "/m:c/l7" of data definition/RPC/action/notification statement.`},
+		{ch, &schema.Node{Kind: schema.Case, Name: "a", Module: m}, `Duplicate identifier "/m:c/ch/a" of case statement.`},
+		{c, &schema.Node{Kind: schema.Leaf, Name: "ch", Module: m}, `Duplicate identifier "/m:c/ch" of data definition/RPC/action/notification statement.`},
+	} {
+		w.c.diags = nil
+		if err := w.connect(step.parent, step.node); !errors.Is(err, eExist) || len(w.c.diags) != 1 || w.c.diags[0].Msg != step.msg {
+			t.Fatalf("%s: %v %+v", step.node.Name, err, w.c.diags)
+		}
+	}
+	if w.scans != 3 {
+		t.Fatalf("%d scans, want 3", w.scans)
 	}
 }
 
