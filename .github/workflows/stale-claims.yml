@@ -1,7 +1,8 @@
 name: stale-claims
-# Agent task queue: release claims with no activity for 24 h (`scripts/claim --stale`: no commit on a
-# branch issue-<n>-*, no comment by the claiming account, no open PR from such a branch) by posting
-# `RELEASE (stale)` and relabelling the issue up-for-grabs.
+# Agent task queue: release claims with no activity for 24 h (`scripts/claim --stale`: no
+# `PROGRESS <agent>` comment, no commit on a branch issue-<n>-*, no open PR from such a branch of this
+# repository) by posting `RELEASE (stale)` and relabelling the issue up-for-grabs. Only comments by
+# vars.MAINTAINER_ID (default 1056050, as in issue-triage.yml) and github-actions[bot] count.
 # Runs only the default branch's script (checkout pinned to it, no credentials persisted); nothing
 # from issues, comments or branches is executed — comment bodies are parsed with jq only.
 # Token: issues: write to comment and relabel; contents/pull-requests: read for the checkout, the
@@ -29,4 +30,5 @@ jobs:
       - env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          MAINTAINER_ID: ${{ vars.MAINTAINER_ID || '1056050' }}
         run: scripts/claim --stale

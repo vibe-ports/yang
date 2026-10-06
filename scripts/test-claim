@@ -20,9 +20,9 @@ check() { if eval "$2"; then ok "$1"; else no "$1"; fi; }
 mkdir -p "$t/bin" "$t/fx"
 cat >"$t/bin/gh" <<'EOF'
 #!/usr/bin/env bash
-# Stub: state in $FX/<n>.labels (one per line), <n>.comments (JSON), <n>.state; pulls.json,
-# refs-<n>.json, commit-<sha>.json. A file $FX/race holds a comment body that lands just before the
-# next CLAIM (a concurrent claimer).
+# Stub: state in $FX/<n>.labels (one per line), <n>.comments (JSON), <n>.state, <n>.author (user
+# id); pulls.json, refs-<n>.json, commit-<sha>.json. $FX/race holds a comment (JSON) that lands just
+# before the next CLAIM (a concurrent claimer); $FX/failpath an ERE of API paths that fail.
 [[ $1 == repo ]] && { echo o/r; exit 0; }
 shift
 m=GET jqx= slurp= body= lab=
@@ -31,23 +31,27 @@ while (($#)); do case $1 in
   -f) case $2 in body=*) body=${2#body=} ;; labels*) lab=${2#*=} ;; esac; shift 2 ;;
   *) p=$1; shift ;; esac; done
 p=${p#repos/o/r/}
-add() { # <n> <login> <assoc> <body>
-  local f=$FX/$1.comments id; [[ -f $f ]] || echo '[]' >"$f"
-  id=$(( $(jq length "$f") + 1 ))
-  jq --argjson id "$id" --arg l "$2" --arg a "$3" --arg b "$4" --arg at "$(date -u -d "@$CLAIM_NOW" +%FT%TZ 2>/dev/null || date -u -r "$CLAIM_NOW" +%FT%TZ)" \
-    '. + [{id: $id, user: {login: $l}, author_association: $a, created_at: $at, body: $b}]' "$f" >"$f.n" && mv "$f.n" "$f"
+[[ -f $FX/failpath ]] && grep -qE "$(cat "$FX/failpath")" <<<"$m $p" && { echo "HTTP 502" >&2; exit 1; }
+at() { date -u -d "@$CLAIM_NOW" +%FT%TZ 2>/dev/null || date -u -r "$CLAIM_NOW" +%FT%TZ; }
+add() { # <n> <comment JSON without id>
+  local f=$FX/$1.comments; [[ -f $f ]] || echo '[]' >"$f"
+  jq --argjson c "$2" '. + [$c + {id: (length + 1)}]' "$f" >"$f.n" && mv "$f.n" "$f"; jq 'length' "$f"
 }
 case "$m $p" in
   "GET issues/"*/comments) n=${p#issues/}; n=${n%/comments}; out=$(cat "$FX/$n.comments" 2>/dev/null || echo '[]') ;;
   "POST issues/"*/comments) n=${p#issues/}; n=${n%/comments}
-    if [[ -f $FX/race && $body == CLAIM* ]]; then add "$n" other COLLABORATOR "$(cat "$FX/race")"; rm "$FX/race"; fi
-    add "$n" "${STUB_LOGIN:-me}" COLLABORATOR "$body"; exit 0 ;;
+    if [[ -f $FX/race && $body == CLAIM* ]]; then add "$n" "$(cat "$FX/race")" >/dev/null; rm "$FX/race"; fi
+    id=$(add "$n" "$(jq -n --arg l "${STUB_LOGIN:-me}" --argjson u "${STUB_UID:-1056050}" --arg b "$body" --arg at "$(at)" \
+      '{user: {login: $l, id: $u}, created_at: $at, body: $b}')")
+    out="{\"id\": $id}" ;;
   "POST issues/"*/labels) n=${p#issues/}; n=${n%/labels}; echo "$lab" >>"$FX/$n.labels"; exit 0 ;;
   "DELETE issues/"*/labels/*) n=${p#issues/}; n=${n%%/*}; l=${p##*/}
     grep -qxF "$l" "$FX/$n.labels" || exit 1; grep -vxF "$l" "$FX/$n.labels" >"$FX/x"; mv "$FX/x" "$FX/$n.labels"; exit 0 ;;
-  "GET issues?"*) out=$(for f in "$FX"/*.labels; do grep -qx claimed "$f" && basename "$f" .labels; done | jq -s 'map({number: .})') ;;
+  "GET issues?"*) out=$(for f in "$FX"/*.labels; do grep -qx agent-ready "$f" && basename "$f" .labels; done \
+      | while read -r n; do jq -Rn --argjson n "$n" '{number: $n, labels: [inputs | {name: .}]}' <"$FX/$n.labels"; done | jq -s .) ;;
   "GET issues/"*) n=${p#issues/}
-    out=$(jq -Rn --arg s "$(cat "$FX/$n.state" 2>/dev/null || echo open)" '{state: $s, labels: [inputs | {name: .}]}' <"$FX/$n.labels") ;;
+    out=$(jq -Rn --arg s "$(cat "$FX/$n.state" 2>/dev/null || echo open)" --argjson a "$(cat "$FX/$n.author" 2>/dev/null || echo 1056050)" \
+      '{state: $s, user: {id: $a}, labels: [inputs | {name: .}]}' <"$FX/$n.labels") ;;
   "GET pulls?"*) out=$(cat "$FX/pulls.json" 2>/dev/null || echo '[]') ;;
   "GET git/matching-refs/heads/"*) n=${p#git/matching-refs/heads/issue-}; out=$(cat "$FX/refs-${n%-}.json" 2>/dev/null || echo '[]') ;;
   "GET commits/"*) out=$(cat "$FX/commit-${p#commits/}.json") ;;
@@ -57,12 +61,16 @@ esac
 if [[ -n $jqx ]]; then jq -r "$jqx" <<<"$out"; else echo "$out"; fi
 EOF
 chmod +x "$t/bin/gh"
-export PATH=$t/bin:$PATH FX=$t/fx GH_REPO=o/r CLAIM_SETTLE=0 CLAIM_NOW=1700000000
+export PATH=$t/bin:$PATH FX=$t/fx GH_REPO=o/r CLAIM_SETTLE=0 CLAIM_NOW=1700000000 MAINTAINER_ID=1056050
+T0=1700000000 DAY=86400
 cl() { "$src/claim" "$@"; }
 reset() { rm -f "$FX"/*; }
 labels() { printf '%s\n' "$@" >"$FX/5.labels"; }
 has() { grep -qxF "$2" "$FX/$1.labels"; }
 bodies() { jq -r '.[].body' "$FX/5.comments" 2>/dev/null; }
+# post <body> [login] [uid]: a comment at CLAIM_NOW
+post() { STUB_LOGIN=${2:-me} STUB_UID=${3:-1056050} gh api -X POST repos/o/r/issues/5/comments -f body="$1" >/dev/null; }
+comment() { jq -nc --arg b "$1" --arg l "${2:-me}" --argjson u "${3:-1056050}" '{user: {login: $l, id: $u}, created_at: "2023-11-14T22:13:19Z", body: $b}'; }
 
 reset; labels agent-ready up-for-grabs
 expect 0 "claim: free issue" - cl 5 alpha
@@ -82,50 +90,87 @@ reset; labels agent-ready up-for-grabs blocked
 expect 1 "claim: refuses blocked" "blocked" cl 5 alpha
 reset; labels agent-ready up-for-grabs; echo closed >"$FX/5.state"
 expect 1 "claim: refuses closed" "closed" cl 5 alpha
+reset; labels agent-ready up-for-grabs; echo 4242 >"$FX/5.author"
+expect 1 "claim: refuses an issue opened by an untrusted account (7)" "trusted" cl 5 alpha
 expect 2 "claim: bad agent name" "agent name" cl 5 'a b'
 expect 2 "claim: bad issue" "number" cl 5x alpha
 
-reset; labels agent-ready up-for-grabs; echo 'CLAIM rival 2023-11-14T22:13:19Z' >"$FX/race"
+# trust by user id (1)
+reset; labels agent-ready up-for-grabs; comment 'CLAIM squatter t' me 4242 >"$FX/race"
+expect 0 "claim: CLAIM from another user id ignored, even with the same login (1)" - cl 5 alpha
+reset; labels agent-ready up-for-grabs; comment 'CLAIM rival t' renamed 1056050 >"$FX/race"
+expect 1 "claim: maintainer id counts under any login (1)" "lost to rival" cl 5 alpha
+reset; labels agent-ready claimed
+expect 0 "stale: claimed issue without a live claim is skipped (1)" "no live claim" cl --stale
+check "stale: ... and left alone (1)" 'has 5 claimed && [[ ! -f $FX/5.comments ]]'
+
+# concurrent claims, same agent name (2)
+reset; labels agent-ready up-for-grabs; comment 'CLAIM rival t' >"$FX/race"
 expect 1 "claim: concurrent earlier claim wins" "lost to rival" cl 5 alpha
-check "claim: loser releases itself" '[[ $(bodies | tail -1) == "RELEASE alpha "* ]]'
+check "claim: loser withdraws its own claim" '[[ $(bodies | tail -1) == "RELEASE alpha "*" 2" ]]'
 check "claim: loser leaves labels" 'has 5 up-for-grabs && ! has 5 claimed'
+reset; labels agent-ready up-for-grabs; comment 'CLAIM alpha t' >"$FX/race"
+expect 1 "claim: same agent name, later comment id loses (2)" "lost to alpha" cl 5 alpha
+expect 1 "claim: the withdrawal keeps the other alpha claim live (2)" "lost to alpha" cl 5 beta
 
-reset; labels agent-ready up-for-grabs
-echo '[{"id":1,"user":{"login":"x"},"author_association":"NONE","created_at":"2023-11-14T00:00:00Z","body":"CLAIM squatter t"}]' >"$FX/5.comments"
-expect 0 "claim: outsider's CLAIM ignored" - cl 5 alpha
-reset; labels agent-ready up-for-grabs
-jq -n '[{id:1,user:{login:"m"},author_association:"OWNER",created_at:"2023-11-14T00:00:00Z",body:"CLAIM old t"},
-        {id:2,user:{login:"m"},author_association:"OWNER",created_at:"2023-11-14T00:00:01Z",body:"RELEASE (stale) t"},
-        {id:3,user:{login:"m"},author_association:"OWNER",created_at:"2023-11-14T00:00:02Z",body:"CLAIM b t"},
-        {id:4,user:{login:"m"},author_association:"OWNER",created_at:"2023-11-14T00:00:03Z",body:"RELEASE b t"}]' >"$FX/5.comments"
-expect 0 "claim: claims before a global or own RELEASE are dead" - cl 5 alpha
+# ghost claims (3)
+reset; labels agent-ready up-for-grabs; echo 'POST issues/5/labels' >"$FX/failpath"
+expect 1 "claim: relabel failure fails (3)" - cl 5 alpha
+check "claim: ... and withdraws the claim (3)" '[[ $(bodies | tail -1) == "RELEASE alpha "*" 1" ]]'
+reset; labels agent-ready up-for-grabs; post 'CLAIM ghost t'
+CLAIM_NOW=$((T0 + DAY)) expect 0 "stale: expires a live claim on an unclaimed-label issue (3)" - cl --stale
+check "stale: ghost released (3)" '[[ $(bodies | tail -1) == "RELEASE (stale) "* ]] && has 5 up-for-grabs'
 
-# stale: claimed at CLAIM_NOW; 24 h later nothing happened
+# API failures are not hidden (4)
+reset; labels agent-ready up-for-grabs; cl 5 alpha >/dev/null; echo 'GET issues/5/comments' >"$FX/failpath"
+CLAIM_NOW=$((T0 + DAY)) expect 1 "stale: comment read failure fails the run (4)" - cl --stale
+rm "$FX/failpath"; check "stale: ... and releases nothing (4)" 'has 5 claimed && [[ $(bodies | grep -c .) == 1 ]]'
+echo 'git/matching-refs' >"$FX/failpath"
+CLAIM_NOW=$((T0 + DAY)) expect 1 "stale: ref lookup failure fails the run (4)" - cl --stale
+rm "$FX/failpath"; check "stale: ... and releases nothing (4b)" 'has 5 claimed'
+echo 'GET issues\?' >"$FX/failpath"
+CLAIM_NOW=$((T0 + DAY)) expect 1 "stale: issue list failure fails the run (4)" - cl --stale
+rm "$FX/failpath"
+
+# stale basics
 reset; labels agent-ready up-for-grabs; cl 5 alpha >/dev/null
 expect 0 "stale: fresh claim kept" - cl --stale
 check "stale: fresh claim untouched" 'has 5 claimed'
-CLAIM_NOW=$((1700000000 + 86400)) expect 0 "stale: idle claim released" - cl --stale
+CLAIM_NOW=$((T0 + DAY)) expect 0 "stale: idle claim released" - cl --stale
 check "stale: comment + labels" '[[ $(bodies | tail -1) == "RELEASE (stale) "* ]] && has 5 up-for-grabs && ! has 5 claimed'
 
 reset; labels agent-ready up-for-grabs; cl 5 alpha >/dev/null
 echo '[{"object":{"sha":"abc"}}]' >"$FX/refs-5.json"
 echo '{"commit":{"committer":{"date":"2023-11-15T12:00:00Z"}}}' >"$FX/commit-abc.json"
-CLAIM_NOW=$((1700000000 + 86400)) expect 0 "stale: recent commit on issue branch keeps claim" - cl --stale
+CLAIM_NOW=$((T0 + DAY)) expect 0 "stale: recent commit on issue branch keeps claim" - cl --stale
 check "stale: branch activity counts" 'has 5 claimed'
-rm "$FX/refs-5.json"; echo '[{"head":{"ref":"issue-5-x"}}]' >"$FX/pulls.json"
-CLAIM_NOW=$((1700000000 + 999999)) expect 0 "stale: open PR keeps claim" - cl --stale
+rm "$FX/refs-5.json"; echo '[{"head":{"ref":"issue-5-x","repo":{"full_name":"o/r"}}}]' >"$FX/pulls.json"
+CLAIM_NOW=$((T0 + 999999)) expect 0 "stale: open PR keeps claim" - cl --stale
 check "stale: open PR counts" 'has 5 claimed'
+echo '[{"head":{"ref":"issue-5-x","repo":{"full_name":"fork/r"}}},{"head":{"ref":"issue-5-y","repo":null}}]' >"$FX/pulls.json"
+CLAIM_NOW=$((T0 + 999999)) expect 0 "stale: fork PR named issue-5-* (5)" - cl --stale
+check "stale: fork PR does not keep the claim (5)" 'has 5 up-for-grabs'
+rm "$FX/pulls.json"
+
+# activity = PROGRESS <agent> (8)
 reset; labels agent-ready up-for-grabs; cl 5 alpha >/dev/null
-CLAIM_NOW=$((1700000000 + 80000)) gh api -X POST repos/o/r/issues/5/comments -f body="RELEASE nobody t"
-CLAIM_NOW=$((1700000000 + 86400)) expect 0 "stale: a RELEASE comment is not activity" - cl --stale
-check "stale: released despite RELEASE comment" 'has 5 up-for-grabs'
+CLAIM_NOW=$((T0 + 80000)) cl --progress 5 alpha
+CLAIM_NOW=$((T0 + DAY)) expect 0 "stale: PROGRESS by the claimant (8)" - cl --stale
+check "stale: PROGRESS keeps the claim (8)" 'has 5 claimed'
 reset; labels agent-ready up-for-grabs; cl 5 alpha >/dev/null
-CLAIM_NOW=$((1700000000 + 80000)) STUB_LOGIN=other gh api -X POST repos/o/r/issues/5/comments -f body="me too"
-CLAIM_NOW=$((1700000000 + 86400)) expect 0 "stale: another account's comment is not activity" - cl --stale
-check "stale: released despite foreign comment" 'has 5 up-for-grabs'
-reset; labels agent-ready up-for-grabs; cl 5 alpha >/dev/null
-CLAIM_NOW=$((1700000000 + 80000)) gh api -X POST repos/o/r/issues/5/comments -f body="progress: half done"
-CLAIM_NOW=$((1700000000 + 86400)) expect 0 "stale: progress comment" - cl --stale
-check "stale: progress comment by the claiming account keeps claim" 'has 5 claimed'
+CLAIM_NOW=$((T0 + 80000)) post 'some chatter'
+CLAIM_NOW=$((T0 + 80000)) cl --progress 5 beta
+CLAIM_NOW=$((T0 + 80000)) post 'PROGRESS alpha t' x 4242
+CLAIM_NOW=$((T0 + DAY)) expect 0 "stale: chatter, other agents, untrusted PROGRESS (8)" - cl --stale
+check "stale: none of them is activity (8)" 'has 5 up-for-grabs'
+
+# RELEASE forms (6)
+reset; labels agent-ready up-for-grabs
+for b in 'CLAIM old t' 'RELEASE (stale) t' 'CLAIM b t' 'RELEASE b t'; do post "$b"; done
+expect 0 "claim: claims before RELEASE (stale) or the agent's RELEASE are dead" - cl 5 alpha
+reset; labels agent-ready up-for-grabs; post 'CLAIM old t'; post 'RELEASE'; post $'RELEASE\r'; post 'RELEASE (stale) t' x 4242
+expect 1 "claim: bare RELEASE and untrusted RELEASE (stale) cancel nothing (6)" "lost to old" cl 5 alpha
+reset; labels agent-ready up-for-grabs; post $'CLAIM old t\r'; post $'RELEASE old t\r'
+expect 0 "claim: CRLF bodies parse (6)" - cl 5 alpha
 
 echo; (( fails == 0 )) && echo "all claim tests passed" || { echo "$fails claim test(s) failed"; exit 1; }

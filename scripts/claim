@@ -1,105 +1,129 @@
 #!/usr/bin/env bash
 # Agent task queue (docs/agent-workflow.md "Agent task queue"): claim, release, expire claims.
-#   scripts/claim <issue> <agent>             claim an agent-ready + up-for-grabs issue; exit 1 if lost
-#   scripts/claim --release <issue> <agent>   give it back
-#   scripts/claim --stale                     release claims idle for CLAIM_TTL seconds (default 24 h);
-#                                             run by .github/workflows/stale-claims.yml
+#   scripts/claim <issue> <agent>              claim an agent-ready + up-for-grabs issue; exit 1 if lost
+#   scripts/claim --progress <issue> <agent>   keep a claim alive (posts `PROGRESS <agent> <time>`)
+#   scripts/claim --release <issue> <agent>    give it back
+#   scripts/claim --stale                      release claims idle for CLAIM_TTL seconds (default 24 h);
+#                                              run by .github/workflows/stale-claims.yml
 # Protocol, all in issue comments (first line of the body):
-#   `CLAIM <agent> <UTC time>`    `RELEASE <agent> <UTC time>` (cancels that agent's claims)
-#   `RELEASE (stale) <UTC time>` or a bare `RELEASE` (cancels every claim before it)
-# The winner is the earliest CLAIM still live. Only comments by OWNER/MEMBER/COLLABORATOR accounts or
-# github-actions[bot] count, so an outsider's comment can neither claim nor release.
-# Env: GH_REPO (else the current repo), CLAIM_SETTLE (seconds before re-reading, default 3),
-# CLAIM_NOW (epoch seconds, tests), CLAIM_TTL.
+#   `CLAIM <agent> <UTC time>`
+#   `PROGRESS <agent> <UTC time>`                 activity of the claim held by <agent>
+#   `RELEASE <agent> <UTC time> [<comment id>]`   cancels that agent's claims (or only that CLAIM)
+#   `RELEASE (stale) <UTC time>`                  cancels every claim before it
+# The winner is the earliest live CLAIM, identified by its comment id. Only comments by trusted
+# accounts count: the user id MAINTAINER_ID (default 1056050, as in issue-triage.yml) and
+# github-actions[bot]. Issues opened by anyone else are refused (their body is not the maintainer's).
+# Env: GH_REPO (else the current repo), MAINTAINER_ID, CLAIM_SETTLE (seconds before re-reading,
+# default 3), CLAIM_NOW (epoch seconds, tests), CLAIM_TTL. Needs gh >= 2.48 (--slurp) and jq.
 set -euo pipefail
 die() { echo "claim: $*" >&2; exit "${2:-2}"; }
 repo=${GH_REPO:-$(gh repo view --json nameWithOwner -q .nameWithOwner)}
 now=${CLAIM_NOW:-$(date -u +%s)}
+mid=${MAINTAINER_ID:-1056050}
+[[ $mid =~ ^[0-9]+$ ]] || die "MAINTAINER_ID must be numeric"
 stamp() { date -u -d "@$now" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -r "$now" +%Y-%m-%dT%H:%M:%SZ; }
+TRUST="def trusted: .user.id == $mid or .user.login == \"github-actions[bot]\";"
+NAME='^[A-Za-z0-9._-]{1,40}$'
 
 # Live claims of a comment array, oldest first: [{id, login, at, agent}].
-LIVE='[.[] | select(.author_association == "OWNER" or .author_association == "MEMBER"
-        or .author_association == "COLLABORATOR" or .user.login == "github-actions[bot]")
-      | {id, login: .user.login, at: .created_at, l: (.body | split("\n")[0] | split(" "))}]
+LIVE="$TRUST"'
+  [.[] | select(trusted) | {id, login: .user.login, at: .created_at,
+                            l: (.body | split("\n")[0] | sub("\r$"; "") | split(" "))}]
   | sort_by(.id)
   | reduce .[] as $c ([];
-      if $c.l[0] == "CLAIM" and ($c.l[1] // "" | test("^[A-Za-z0-9._-]{1,40}$")) then
+      if $c.l[0] == "CLAIM" and ($c.l[1] // "" | test("'"$NAME"'")) then
         . + [$c | {id, login, at, agent: .l[1]}]
-      elif $c.l[0] == "RELEASE" then
-        ($c.l[1] // "") as $a
-        | if $a == "" or ($a | startswith("(")) then [] else map(select(.agent != $a)) end
+      elif $c.l[0] == "RELEASE" and $c.l[1] == "(stale)" then []
+      elif $c.l[0] == "RELEASE" and ($c.l[1] // "" | test("'"$NAME"'")) then
+        ($c.l[3] // "" | tonumber? // null) as $only
+        | map(select(.agent != $c.l[1] or ($only != null and .id != $only)))
       else . end)'
 
 comments() { gh api --paginate --slurp "repos/$repo/issues/$1/comments" | jq -c 'add // []'; }
-say() { gh api -X POST "repos/$repo/issues/$1/comments" -f body="$2" >/dev/null; }
+say() { gh api -X POST "repos/$repo/issues/$1/comments" -f body="$2" --jq .id; }
 relabel() { # <issue> <add> <remove>
   gh api -X POST "repos/$repo/issues/$1/labels" -f "labels[]=$2" >/dev/null
   gh api -X DELETE "repos/$repo/issues/$1/labels/$3" >/dev/null 2>&1 || true  # absent label: fine
 }
 args() {
   [[ ${1:-} =~ ^[0-9]+$ ]] || die "issue must be a number"
-  [[ ${2:-} =~ ^[A-Za-z0-9._-]{1,40}$ ]] || die "agent name must match [A-Za-z0-9._-]{1,40}"
+  [[ ${2:-} =~ $NAME ]] || die "agent name must match [A-Za-z0-9._-]{1,40}"
 }
 
 claim() {
-  local n=$1 agent=$2 labels first
-  labels=$(gh api "repos/$repo/issues/$n" --jq 'if .state != "open" then "closed" else [.labels[].name] | join(",") end')
+  n=$1 agent=$2  # global: the EXIT trap uses them
+  local labels first
+  labels=$(gh api "repos/$repo/issues/$n" --jq "$TRUST"' if .state != "open" then "closed"
+             elif (trusted | not) then "untrusted" else [.labels[].name] | join(",") end')
   case ",$labels," in
     ,closed,) die "#$n is closed" 1 ;;
+    ,untrusted,) die "#$n was not opened by a trusted account" 1 ;;
     *,agent-ready,*) ;;
     *) die "#$n is not labelled agent-ready (maintainer gate)" 1 ;;
   esac
   [[ ,$labels, != *,claimed,* ]] || die "#$n is already claimed" 1
   [[ ,$labels, == *,up-for-grabs,* ]] || die "#$n is not up-for-grabs" 1
   [[ ,$labels, != *,blocked,* ]] || die "#$n is blocked" 1
-  say "$n" "CLAIM $agent $(stamp)"
+  mine=$(say "$n" "CLAIM $agent $(stamp)")
+  # Whatever goes wrong before the labels are swapped, withdraw this claim (no ghost claims).
+  trap 'say "$n" "RELEASE $agent $(stamp) $mine" >/dev/null || echo "claim: could not withdraw claim $mine on #$n" >&2' EXIT
   sleep "${CLAIM_SETTLE:-3}"  # let concurrent claims land before deciding
-  first=$(comments "$n" | jq -r "$LIVE | .[0].agent // empty")
-  if [[ $first != "$agent" ]]; then
-    say "$n" "RELEASE $agent $(stamp)"
-    die "#$n lost to ${first:-nobody}" 1
-  fi
+  first=$(comments "$n" | jq -r "$LIVE | .[0] // {} | \"\(.id) \(.agent)\"")
+  [[ ${first%% *} == "$mine" ]] || die "#$n lost to ${first#* }" 1
   relabel "$n" claimed up-for-grabs
+  trap - EXIT
   echo "claimed #$n as $agent: branch issue-$n-<slug>, PR body 'Closes #$n'"
 }
 
 release() {
-  local n=$1 agent=$2
-  say "$n" "RELEASE $agent $(stamp)"
-  if [[ $(comments "$n" | jq "$LIVE | length") == 0 ]]; then relabel "$n" up-for-grabs claimed; fi
+  local n=$1 agent=$2 live
+  say "$n" "RELEASE $agent $(stamp)" >/dev/null
+  live=$(comments "$n" | jq "$LIVE | length")
+  if [[ $live == 0 ]]; then relabel "$n" up-for-grabs claimed; fi
   echo "released #$n"
 }
 
-# A claim is stale when, for CLAIM_TTL, there was no commit on a branch issue-<n>-*, no comment by
-# the claiming account and no open PR from such a branch.
+# A claim is stale when, for CLAIM_TTL, there was no PROGRESS comment for it, no commit on a branch
+# issue-<n>-* of this repository and no open PR from such a branch. Scans every open agent-ready
+# issue, so a live claim on an issue whose labels were never swapped expires too.
 # ponytail: branch activity = committer date of the branch head, not push time (no push API for
 # that); a rebase or amend refreshes it, an old commit pushed late does not.
 stale() {
-  local ttl=${CLAIM_TTL:-86400} n c last d sha heads
-  heads=$(gh api --paginate --slurp "repos/$repo/pulls?state=open&per_page=100" | jq -c '[add // [] | .[].head.ref]')
-  for n in $(gh api --paginate --slurp "repos/$repo/issues?state=open&labels=claimed&per_page=100" \
-               | jq -r 'add // [] | .[] | select(.pull_request | not) | .number'); do
+  local ttl=${CLAIM_TTL:-86400} n c w last d sha heads issues shas
+  heads=$(gh api --paginate --slurp "repos/$repo/pulls?state=open&per_page=100" \
+            | jq -c --arg r "$repo" '[add // [] | .[] | select(.head.repo.full_name? == $r) | .head.ref]')
+  issues=$(gh api --paginate --slurp "repos/$repo/issues?state=open&labels=agent-ready&per_page=100" \
+             | jq -r 'add // [] | .[] | select(.pull_request | not)
+                      | "\(.number) \([.labels[].name] | index("claimed") != null)"')
+  while read -r n claimed; do
+    [[ -n $n ]] || continue
     c=$(comments "$n")
-    last=$(jq -r "($LIVE | .[0]) as \$w | if \$w == null then 0 else
-        [\$w.at, (.[] | select(.user.login == \$w.login and .id > \$w.id
-                     and (.body | startswith(\"RELEASE\") | not)) | .created_at)]
-        | map(fromdateiso8601) | max end" <<<"$c")
+    w=$(jq -c "$LIVE | .[0] // empty" <<<"$c")
+    if [[ -z $w ]]; then
+      if [[ $claimed == true ]]; then echo "claim: #$n is labelled claimed but has no live claim; skipped" >&2; fi
+      continue
+    fi
     if jq -e --arg p "issue-$n-" 'any(startswith($p))' <<<"$heads" >/dev/null; then continue; fi
-    for sha in $(gh api "repos/$repo/git/matching-refs/heads/issue-$n-" --jq '.[].object.sha'); do
+    last=$(jq -r --argjson w "$w" "$TRUST"' [$w.at, (.[] | select(trusted and .id > $w.id)
+             | select(.body | split("\n")[0] | sub("\r$"; "") | split(" ") | .[0] == "PROGRESS" and .[1] == $w.agent)
+             | .created_at)] | map(fromdateiso8601) | max' <<<"$c")
+    shas=$(gh api "repos/$repo/git/matching-refs/heads/issue-$n-" --jq '.[].object.sha')
+    for sha in $shas; do
       d=$(gh api "repos/$repo/commits/$sha" --jq '.commit.committer.date | fromdateiso8601')
       if ((d > last)); then last=$d; fi
     done
     if ((now - last >= ttl)); then
-      say "$n" "RELEASE (stale) $(stamp)"
+      say "$n" "RELEASE (stale) $(stamp)" >/dev/null
       relabel "$n" up-for-grabs claimed
       echo "released stale claim on #$n"
     fi
-  done
+  done <<<"$issues"
 }
 
 case ${1:-} in
   --release) args "${2:-}" "${3:-}"; release "$2" "$3" ;;
+  --progress) args "${2:-}" "${3:-}"; say "$2" "PROGRESS $3 $(stamp)" >/dev/null ;;
   --stale) stale ;;
-  -*|"") die "usage: claim <issue> <agent> | --release <issue> <agent> | --stale" ;;
+  -*|"") die "usage: claim <issue> <agent> | --progress|--release <issue> <agent> | --stale" ;;
   *) args "$1" "${2:-}"; claim "$1" "$2" ;;
 esac
