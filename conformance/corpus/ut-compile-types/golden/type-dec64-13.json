@@ -141,7 +141,7 @@
           "data_path": null,
           "level": "error",
           "line": 0,
-          "msg": "Invalid range restriction - invalid value \"10000000000000000000\".",
+          "msg": "Invalid range restriction - invalid value \"-10000000000000000000\".",
           "phase": "compile",
           "schema_path": "/ee:l",
           "vecode": 2,

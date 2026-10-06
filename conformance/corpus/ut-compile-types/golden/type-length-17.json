@@ -505,14 +505,14 @@
           "data_path": null,
           "level": "error",
           "line": 0,
-          "msg": "Invalid length restriction - unexpected beginning of the expression (| 50).",
+          "msg": "Invalid length restriction - unexpected data (x).",
           "phase": "compile",
-          "schema_path": "/hh:l",
+          "schema_path": "/ff:l",
           "vecode": 2,
           "vecode_name": "LYVE_SYNTAX_YANG"
         }
       ],
-      "name": "hh",
+      "name": "ff",
       "phase": "compile",
       "rc": {
         "err": 7,

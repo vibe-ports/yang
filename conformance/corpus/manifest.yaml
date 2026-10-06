@@ -22052,13 +22052,13 @@ fixtures:
 
   - id: ut-compile-types/type-length-15
     dir: ut-compile-types
-    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:951
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:947
     rfc: ["RFC7950#9.4.4"]
     areas: [schema]
     request:
       op: "schema"
-      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, ff.1]
-      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "ff"}]
+      searchdirs: [dd.1]
+      modules: [{name: "dd"}]
     golden: golden/type-length-15.json
     assert:
       verdict: invalid
@@ -22067,13 +22067,13 @@ fixtures:
 
   - id: ut-compile-types/type-length-16
     dir: ut-compile-types
-    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:953
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:949
     rfc: ["RFC7950#9.4.4"]
     areas: [schema]
     request:
       op: "schema"
-      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, gg.1]
-      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "gg"}]
+      searchdirs: [ee.1]
+      modules: [{name: "ee"}]
     golden: golden/type-length-16.json
     assert:
       verdict: invalid
@@ -22082,13 +22082,13 @@ fixtures:
 
   - id: ut-compile-types/type-length-17
     dir: ut-compile-types
-    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:955
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:951
     rfc: ["RFC7950#9.4.4"]
     areas: [schema]
     request:
       op: "schema"
-      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, hh.1]
-      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "hh"}]
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, ff.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "ff"}]
     golden: golden/type-length-17.json
     assert:
       verdict: invalid
@@ -22097,13 +22097,13 @@ fixtures:
 
   - id: ut-compile-types/type-length-18
     dir: ut-compile-types
-    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:957
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:953
     rfc: ["RFC7950#9.4.4"]
     areas: [schema]
     request:
       op: "schema"
-      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, ii.1]
-      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "ii"}]
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, gg.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "gg"}]
     golden: golden/type-length-18.json
     assert:
       verdict: invalid
@@ -22112,13 +22112,13 @@ fixtures:
 
   - id: ut-compile-types/type-length-19
     dir: ut-compile-types
-    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:959
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:955
     rfc: ["RFC7950#9.4.4"]
     areas: [schema]
     request:
       op: "schema"
-      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, jj.1]
-      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "jj"}]
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, hh.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "hh"}]
     golden: golden/type-length-19.json
     assert:
       verdict: invalid
@@ -22127,13 +22127,13 @@ fixtures:
 
   - id: ut-compile-types/type-length-20
     dir: ut-compile-types
-    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:961
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:957
     rfc: ["RFC7950#9.4.4"]
     areas: [schema]
     request:
       op: "schema"
-      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, kk.1]
-      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "kk"}]
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, ii.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "ii"}]
     golden: golden/type-length-20.json
     assert:
       verdict: invalid
@@ -22142,13 +22142,13 @@ fixtures:
 
   - id: ut-compile-types/type-length-21
     dir: ut-compile-types
-    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:966
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:959
     rfc: ["RFC7950#9.4.4"]
     areas: [schema]
     request:
       op: "schema"
-      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, ll.1]
-      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "ll"}]
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, jj.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "jj"}]
     golden: golden/type-length-21.json
     assert:
       verdict: invalid
@@ -22157,13 +22157,13 @@ fixtures:
 
   - id: ut-compile-types/type-length-22
     dir: ut-compile-types
-    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:969
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:961
     rfc: ["RFC7950#9.4.4"]
     areas: [schema]
     request:
       op: "schema"
-      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, mm.1]
-      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "mm"}]
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, kk.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "kk"}]
     golden: golden/type-length-22.json
     assert:
       verdict: invalid
@@ -22172,13 +22172,13 @@ fixtures:
 
   - id: ut-compile-types/type-length-23
     dir: ut-compile-types
-    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:972
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:963
     rfc: ["RFC7950#9.4.4"]
     areas: [schema]
     request:
       op: "schema"
-      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, nn.1]
-      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "nn"}]
+      searchdirs: [kl.1]
+      modules: [{name: "kl"}]
     golden: golden/type-length-23.json
     assert:
       verdict: invalid
@@ -22187,13 +22187,13 @@ fixtures:
 
   - id: ut-compile-types/type-length-24
     dir: ut-compile-types
-    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:976
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:966
     rfc: ["RFC7950#9.4.4"]
     areas: [schema]
     request:
       op: "schema"
-      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, oo.1]
-      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "oo"}]
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, ll.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "ll"}]
     golden: golden/type-length-24.json
     assert:
       verdict: invalid
@@ -22202,13 +22202,13 @@ fixtures:
 
   - id: ut-compile-types/type-length-25
     dir: ut-compile-types
-    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:980
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:969
     rfc: ["RFC7950#9.4.4"]
     areas: [schema]
     request:
       op: "schema"
-      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, pp.1]
-      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "pp"}]
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, mm.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "mm"}]
     golden: golden/type-length-25.json
     assert:
       verdict: invalid
@@ -22217,13 +22217,13 @@ fixtures:
 
   - id: ut-compile-types/type-length-26
     dir: ut-compile-types
-    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:983
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:972
     rfc: ["RFC7950#9.4.4"]
     areas: [schema]
     request:
       op: "schema"
-      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, qq.1]
-      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "qq"}]
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, nn.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "nn"}]
     golden: golden/type-length-26.json
     assert:
       verdict: invalid
@@ -22232,13 +22232,13 @@ fixtures:
 
   - id: ut-compile-types/type-length-27
     dir: ut-compile-types
-    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:986
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:976
     rfc: ["RFC7950#9.4.4"]
     areas: [schema]
     request:
       op: "schema"
-      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, rr.1]
-      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "rr"}]
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, oo.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "oo"}]
     golden: golden/type-length-27.json
     assert:
       verdict: invalid
@@ -22247,6 +22247,51 @@ fixtures:
 
   - id: ut-compile-types/type-length-28
     dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:980
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, pp.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "pp"}]
+    golden: golden/type-length-28.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-29
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:983
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, qq.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "qq"}]
+    golden: golden/type-length-29.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-30
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:986
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, rr.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "rr"}]
+    golden: golden/type-length-30.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-31
+    dir: ut-compile-types
     source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:990
     rfc: ["RFC7950#9.4.4"]
     areas: [schema]
@@ -22254,7 +22299,7 @@ fixtures:
       op: "schema"
       searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, ss.1]
       modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "ss"}]
-    golden: golden/type-length-28.json
+    golden: golden/type-length-31.json
     assert:
       verdict: invalid
       rfc: ["RFC7950#9.4.4"]
@@ -22492,7 +22537,7 @@ fixtures:
     areas: [schema]
     request:
       op: "schema"
-      searchdirs: [a.3, b.3, moc_c.1, moc_d.1, aa.9, dd.1]
+      searchdirs: [a.3, b.3, moc_c.1, moc_d.1, aa.9, dd.2]
       modules: [{name: "a"}, {name: "b"}, {name: "moc_c"}, {name: "moc_d"}, {name: "aa"}, {name: "dd"}]
     golden: golden/type-enum-15.json
     assert:
@@ -22507,7 +22552,7 @@ fixtures:
     areas: [schema]
     request:
       op: "schema"
-      searchdirs: [a.3, b.3, moc_c.1, moc_d.1, aa.9, ee.1]
+      searchdirs: [a.3, b.3, moc_c.1, moc_d.1, aa.9, ee.2]
       modules: [{name: "a"}, {name: "b"}, {name: "moc_c"}, {name: "moc_d"}, {name: "aa"}, {name: "ee"}]
     golden: golden/type-enum-16.json
     assert:
@@ -22697,13 +22742,13 @@ fixtures:
 
   - id: ut-compile-types/type-dec64-10
     dir: ut-compile-types
-    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_dec64:1223
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_dec64:1219
     rfc: ["RFC7950#9.3.4"]
     areas: [schema]
     request:
       op: "schema"
-      searchdirs: [a.4, b.4, c.3, dd.2]
-      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "dd"}]
+      searchdirs: [cc.3]
+      modules: [{name: "cc"}]
     golden: golden/type-dec64-10.json
     assert:
       verdict: invalid
@@ -22712,13 +22757,13 @@ fixtures:
 
   - id: ut-compile-types/type-dec64-11
     dir: ut-compile-types
-    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_dec64:1227
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_dec64:1223
     rfc: ["RFC7950#9.3.4"]
     areas: [schema]
     request:
       op: "schema"
-      searchdirs: [a.4, b.4, c.3, de.1]
-      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "de"}]
+      searchdirs: [a.4, b.4, c.3, dd.3]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "dd"}]
     golden: golden/type-dec64-11.json
     assert:
       verdict: invalid
@@ -22727,13 +22772,13 @@ fixtures:
 
   - id: ut-compile-types/type-dec64-12
     dir: ut-compile-types
-    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_dec64:1232
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_dec64:1227
     rfc: ["RFC7950#9.3.4"]
     areas: [schema]
     request:
       op: "schema"
-      searchdirs: [a.4, b.4, c.3, ee.2]
-      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "ee"}]
+      searchdirs: [a.4, b.4, c.3, de.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "de"}]
     golden: golden/type-dec64-12.json
     assert:
       verdict: invalid
@@ -22742,7 +22787,7 @@ fixtures:
 
   - id: ut-compile-types/type-dec64-13
     dir: ut-compile-types
-    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_dec64:1235
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_dec64:1232
     rfc: ["RFC7950#9.3.4"]
     areas: [schema]
     request:
@@ -22750,6 +22795,21 @@ fixtures:
       searchdirs: [a.4, b.4, c.3, ee.3]
       modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "ee"}]
     golden: golden/type-dec64-13.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.3.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-dec64-14
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_dec64:1235
+    rfc: ["RFC7950#9.3.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.4, b.4, c.3, ee.4]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "ee"}]
+    golden: golden/type-dec64-14.json
     assert:
       verdict: invalid
       rfc: ["RFC7950#9.3.4"]
@@ -22767,6 +22827,52 @@ fixtures:
     golden: golden/type-instanceid-01.json
     assert:
       verdict: valid
+      rfc: ["RFC7950#9.13.2"]
+      deviation: null
+
+  - id: ut-compile-types/type-instanceid-02
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_instanceid:1270
+    rfc: ["RFC7950#9.13.2"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [b1.1, b2.1]
+      modules: [{name: "b2"}]
+      context_options: ["ref_implemented"]
+    golden: golden/type-instanceid-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.13.2"]
+      deviation: null
+
+  - id: ut-compile-types/type-instanceid-03
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_instanceid:1276
+    rfc: ["RFC7950#9.13.2"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [aa.14]
+      modules: [{name: "aa"}]
+    golden: golden/type-instanceid-03.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.13.2"]
+      deviation: null
+
+  - id: ut-compile-types/type-instanceid-04
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_instanceid:1280
+    rfc: ["RFC7950#9.13.2"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [aa.15]
+      modules: [{name: "aa"}]
+    golden: golden/type-instanceid-04.json
+    assert:
+      verdict: invalid
       rfc: ["RFC7950#9.13.2"]
       deviation: null
 
@@ -22807,7 +22913,7 @@ fixtures:
     areas: [schema]
     request:
       op: "schema"
-      searchdirs: [a.6, b.5, aa.14]
+      searchdirs: [a.6, b.5, aa.16]
       modules: [{name: "a"}, {name: "b"}, {name: "aa"}]
     golden: golden/type-identityref-03.json
     assert:
@@ -22837,7 +22943,7 @@ fixtures:
     areas: [schema]
     request:
       op: "schema"
-      searchdirs: [a.6, b.5, cc.3]
+      searchdirs: [a.6, b.5, cc.4]
       modules: [{name: "a"}, {name: "b"}, {name: "cc"}]
     golden: golden/type-identityref-05.json
     assert:
@@ -22852,7 +22958,7 @@ fixtures:
     areas: [schema]
     request:
       op: "schema"
-      searchdirs: [a.6, b.5, dd.3]
+      searchdirs: [a.6, b.5, dd.4]
       modules: [{name: "a"}, {name: "b"}, {name: "dd"}]
     golden: golden/type-identityref-06.json
     assert:
@@ -22867,7 +22973,7 @@ fixtures:
     areas: [schema]
     request:
       op: "schema"
-      searchdirs: [a.6, b.5, ee.4]
+      searchdirs: [a.6, b.5, ee.5]
       modules: [{name: "a"}, {name: "b"}, {name: "ee"}]
     golden: golden/type-identityref-07.json
     assert:
@@ -22912,7 +23018,7 @@ fixtures:
     areas: [schema]
     request:
       op: "schema"
-      searchdirs: [aa.15]
+      searchdirs: [aa.17]
       modules: [{name: "aa"}]
     golden: golden/type-empty-01.json
     assert:
@@ -22987,7 +23093,7 @@ fixtures:
     areas: [schema]
     request:
       op: "schema"
-      searchdirs: [a.7, b.6, c.4, aa.16]
+      searchdirs: [a.7, b.6, c.4, aa.18]
       modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "aa"}]
     golden: golden/type-union-04.json
     assert:
@@ -23017,7 +23123,7 @@ fixtures:
     areas: [schema]
     request:
       op: "schema"
-      searchdirs: [a.7, b.6, c.4, cc.4]
+      searchdirs: [a.7, b.6, c.4, cc.5]
       modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "cc"}]
     golden: golden/type-union-06.json
     assert:
@@ -23032,7 +23138,7 @@ fixtures:
     areas: [schema]
     request:
       op: "schema"
-      searchdirs: [a.7, b.6, c.4, dd.4]
+      searchdirs: [a.7, b.6, c.4, dd.5]
       modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "dd"}]
     golden: golden/type-union-07.json
     assert:
@@ -23047,7 +23153,7 @@ fixtures:
     areas: [schema]
     request:
       op: "schema"
-      searchdirs: [a.7, b.6, c.4, ee.5]
+      searchdirs: [a.7, b.6, c.4, ee.6]
       modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "ee"}]
     golden: golden/type-union-08.json
     assert:

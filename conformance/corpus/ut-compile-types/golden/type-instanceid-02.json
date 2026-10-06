@@ -1,0 +1,52 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module b2 {\n  namespace \"urn:b2\";\n  prefix b2;\n\n  leaf l1 {\n    type instance-identifier {\n      require-instance true;\n    }\n    default \"/b1:l1\";\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "b2",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": [
+            "/b1:l1"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "b2",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/b2:l1",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "instance-identifier",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

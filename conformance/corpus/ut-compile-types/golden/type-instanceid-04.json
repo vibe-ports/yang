@@ -14,18 +14,18 @@
           "data_path": null,
           "level": "error",
           "line": 0,
-          "msg": "Invalid length restriction - values are not in ascending order (10).",
+          "msg": "Invalid type restrictions for instance-identifier type.",
           "phase": "compile",
-          "schema_path": "/dd:l",
+          "schema_path": "/aa:l",
           "vecode": 2,
           "vecode_name": "LYVE_SYNTAX_YANG"
         }
       ],
-      "name": "dd",
+      "name": "aa",
       "phase": "compile",
       "rc": {
-        "err": 4,
-        "name": "LY_EEXIST"
+        "err": 7,
+        "name": "LY_EVALID"
       }
     }
   ],

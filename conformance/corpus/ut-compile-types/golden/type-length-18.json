@@ -505,14 +505,14 @@
           "data_path": null,
           "level": "error",
           "line": 0,
-          "msg": "Invalid length restriction - unexpected end of the expression after \"..\" (10 ..).",
+          "msg": "Invalid length restriction - unexpected data before min keyword (50 | ).",
           "phase": "compile",
-          "schema_path": "/ii:l",
+          "schema_path": "/gg:l",
           "vecode": 2,
           "vecode_name": "LYVE_SYNTAX_YANG"
         }
       ],
-      "name": "ii",
+      "name": "gg",
       "phase": "compile",
       "rc": {
         "err": 7,

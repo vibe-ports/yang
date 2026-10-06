@@ -1,0 +1,1 @@
+module b2 {namespace urn:b2;prefix b2;import b1 {prefix b1;}leaf l1 {type instance-identifier; default "/b1:l1";}}

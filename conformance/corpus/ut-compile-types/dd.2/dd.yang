@@ -1,1 +1,1 @@
-module dd {namespace urn:dd;prefix dd; typedef mytype {type decimal64 {fraction-digits 2;}}leaf l {type mytype {fraction-digits 3;}}}
+module dd {yang-version 1.1;namespace urn:dd;prefix dd;typedef mytype {type enumeration {enum one;}}leaf l {type mytype {enum one {value 1;}}}}

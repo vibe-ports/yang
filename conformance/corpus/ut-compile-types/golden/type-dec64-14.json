@@ -141,14 +141,14 @@
           "data_path": null,
           "level": "error",
           "line": 0,
-          "msg": "Invalid fraction-digits substatement for type not directly derived from decimal64 built-in type.",
+          "msg": "Invalid range restriction - invalid value \"10000000000000000000\".",
           "phase": "compile",
-          "schema_path": "/dd:l",
+          "schema_path": "/ee:l",
           "vecode": 2,
           "vecode_name": "LYVE_SYNTAX_YANG"
         }
       ],
-      "name": "dd",
+      "name": "ee",
       "phase": "compile",
       "rc": {
         "err": 7,

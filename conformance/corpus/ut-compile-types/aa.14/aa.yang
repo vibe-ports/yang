@@ -1,1 +1,1 @@
-module aa {namespace urn:aa;prefix aa; leaf l {type identityref;}}
+module aa {namespace urn:aa;prefix aa;leaf l {type instance-identifier {require-instance yes;}}}

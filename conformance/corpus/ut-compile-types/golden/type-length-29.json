@@ -505,14 +505,14 @@
           "data_path": null,
           "level": "error",
           "line": 0,
-          "msg": "Invalid length restriction - the derived restriction (11) is not equally or more limiting.",
+          "msg": "Invalid length restriction - the derived restriction (15..35) is not equally or more limiting.",
           "phase": "compile",
-          "schema_path": "/ll:l",
+          "schema_path": "/qq:l",
           "vecode": 2,
           "vecode_name": "LYVE_SYNTAX_YANG"
         }
       ],
-      "name": "ll",
+      "name": "qq",
       "phase": "compile",
       "rc": {
         "err": 7,

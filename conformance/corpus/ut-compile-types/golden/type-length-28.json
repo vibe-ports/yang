@@ -505,14 +505,14 @@
           "data_path": null,
           "level": "error",
           "line": 0,
-          "msg": "Invalid type restrictions for binary type.",
+          "msg": "Invalid length restriction - the derived restriction (15) is not equally or more limiting.",
           "phase": "compile",
-          "schema_path": "/ss:l",
+          "schema_path": "/pp:l",
           "vecode": 2,
           "vecode_name": "LYVE_SYNTAX_YANG"
         }
       ],
-      "name": "ss",
+      "name": "pp",
       "phase": "compile",
       "rc": {
         "err": 7,

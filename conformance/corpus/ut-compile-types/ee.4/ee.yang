@@ -1,1 +1,1 @@
-module ee {namespace urn:ee;prefix ee; identity i; identity j;leaf l {type identityref {base i;base j;}}}
+module ee {namespace urn:ee;prefix ee;typedef mytype {type decimal64 {fraction-digits 18;range '0 .. 10';}}leaf l {type mytype;}}

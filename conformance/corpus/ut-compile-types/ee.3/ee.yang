@@ -1,1 +1,1 @@
-module ee {namespace urn:ee;prefix ee;typedef mytype {type decimal64 {fraction-digits 18;range '0 .. 10';}}leaf l {type mytype;}}
+module ee {namespace urn:ee;prefix ee;typedef mytype {type decimal64 {fraction-digits 18;range '-10 .. 0';}}leaf l {type mytype;}}
