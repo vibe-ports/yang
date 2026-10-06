@@ -1,0 +1,51 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "b",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"a:l22\": \"f81d4fae-7dec-11d0-a765-00a0c91e6bf6\"\n}\n",
+    "xml": "<l22 xmlns=\"urn:tests:a\">f81d4fae-7dec-11d0-a765-00a0c91e6bf6</l22>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:l22",
+      "schema": "/a:l22",
+      "value": {
+        "canonical": "f81d4fae-7dec-11d0-a765-00a0c91e6bf6",
+        "type": "string",
+        "typedef": "uuid",
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

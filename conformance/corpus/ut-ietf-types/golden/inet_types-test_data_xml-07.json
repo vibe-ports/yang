@@ -1,0 +1,45 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"a:l4\": \"a:b:c:d:e:f:1:0\"\n}\n",
+    "xml": "<l4 xmlns=\"urn:tests:a\">a:b:c:d:e:f:1:0</l4>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:l4",
+      "schema": "/a:l4",
+      "value": {
+        "canonical": "a:b:c:d:e:f:1:0",
+        "type": "string",
+        "typedef": "ipv6-address-no-zone",
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

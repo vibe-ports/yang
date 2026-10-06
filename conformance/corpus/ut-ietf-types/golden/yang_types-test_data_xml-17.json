@@ -1,0 +1,51 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "b",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"a:l4nz\": \"23:15:15\"\n}\n",
+    "xml": "<l4nz xmlns=\"urn:tests:a\">23:15:15</l4nz>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:l4nz",
+      "schema": "/a:l4nz",
+      "value": {
+        "canonical": "23:15:15",
+        "type": "string",
+        "typedef": "time-no-zone",
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

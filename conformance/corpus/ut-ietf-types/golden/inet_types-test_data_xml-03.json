@@ -1,0 +1,53 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"a:l\": \"2008:15::feac:1\"\n}\n",
+    "xml": "<l xmlns=\"urn:tests:a\">2008:15::feac:1</l>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:l",
+      "schema": "/a:l",
+      "value": {
+        "canonical": "2008:15::feac:1",
+        "type": "union",
+        "typedef": "ip-address",
+        "union_member": {
+          "index": 1,
+          "realtype": {
+            "type": "string",
+            "typedef": "ipv6-address"
+          },
+          "type": "string",
+          "typedef": "ipv6-address"
+        }
+      }
+    }
+  ],
+  "verdict": "valid"
+}

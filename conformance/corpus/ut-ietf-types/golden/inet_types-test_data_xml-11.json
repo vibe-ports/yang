@@ -1,0 +1,45 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"a:l6\": \"0.1.58.4/32\"\n}\n",
+    "xml": "<l6 xmlns=\"urn:tests:a\">0.1.58.4/32</l6>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:l6",
+      "schema": "/a:l6",
+      "value": {
+        "canonical": "0.1.58.4/32",
+        "type": "string",
+        "typedef": "ipv4-prefix",
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

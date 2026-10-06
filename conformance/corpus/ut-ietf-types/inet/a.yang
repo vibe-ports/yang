@@ -1,0 +1,9 @@
+module a {
+  yang-version 1.1;
+  namespace "urn:tests:a";
+  prefix pref;
+  import ietf-inet-types {
+    prefix inet;
+  }
+  extension myext;
+leaf l {type inet:ip-address;}leaf l2 {type inet:ipv6-address;}leaf l3 {type inet:ip-address-no-zone;}leaf l4 {type inet:ipv6-address-no-zone;}leaf l5 {type inet:ip-prefix;}leaf l6 {type inet:ipv4-prefix {pref:myext;}}leaf l7 {type inet:ipv6-prefix;}}

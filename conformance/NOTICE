@@ -41,7 +41,8 @@ with the libyang file, tag/commit and license):
   outcomes derived from them. The tool contains no libyang code; its output does.
 - Any conformance/corpus/<set>/ directory whose manifest `source` points at libyang tests/
   (tests/utests extractions, tests/yanglint modules and data, tests/modules, tests/fuzz seeds).
-  None exist yet; each set is listed here when it lands.
+  Each set is listed here when it lands:
+  - conformance/corpus/ut-ietf-types/ (tests/utests/types/inet_types.c, yang_types.c).
 - docs/conformance/utests-inventory.md quotes counts and file names from that suite.
 
 The names of CESNET and of its contributors are not used to endorse or promote anything here.

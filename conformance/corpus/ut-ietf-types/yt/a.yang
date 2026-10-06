@@ -1,0 +1,8 @@
+module a {
+  yang-version 1.1;
+  namespace "urn:tests:a";
+  prefix pref;
+  import ietf-yang-types {
+    prefix yang;
+  }
+leaf l {type yang:date-and-time;}leaf l2 {type yang:date;}leaf l2nz {type yang:date-no-zone;}leaf l4 {type yang:time;}leaf l4nz {type yang:time-no-zone;}leaf l21 {type yang:hex-string;}leaf l22 {type yang:uuid;}leaf l3 {type yang:xpath1.0;}}
