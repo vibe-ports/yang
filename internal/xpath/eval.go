@@ -72,6 +72,7 @@ type evaluator struct {
 	keys   map[Node][]int        // sibling indexes from the top level down to the node
 	nums   map[string]ld         // parsed long number texts
 	parses int                   // long number texts actually parsed (tests)
+	vars   int                   // variable references being evaluated, nested
 }
 
 func newEvaluator(e *Expr, ec *EvalContext) *evaluator {
@@ -148,7 +149,13 @@ func (ev *evaluator) eval1(a ast, ctx value) (value, error) {
 	case numExpr:
 		return numV(a.v), nil
 	case varExpr:
-		return value{}, &Error{Err: "LY_ENOTFOUND", Msg: "Variable \"" + string(a) + "\" not defined."}
+		root, err := ev.variable(string(a))
+		if err != nil {
+			return value{}, err
+		}
+		ev.vars++
+		defer func() { ev.vars-- }()
+		return ev.eval(root, ctx)
 	case callExpr:
 		args := make([]value, len(a.args))
 		for i, x := range a.args {
@@ -162,6 +169,78 @@ func (ev *evaluator) eval1(a ast, ctx value) (value, error) {
 		return ev.path(a, ctx)
 	}
 	panic("xpath: unknown AST node")
+}
+
+// variable is the lookup and parse of eval_variable_reference: the value of the variable,
+// parsed. libyang recurses through a variable whose value refers back to it until the stack
+// overflows; the port stops at maxDepth nested references (D-0063).
+func (ev *evaluator) variable(name string) (ast, error) {
+	i, ok := FindVar(ev.ec.Vars, name)
+	if !ok {
+		return nil, &Error{Err: "LY_ENOTFOUND", Msg: "Variable \"" + name + "\" not defined."}
+	}
+	if ev.vars >= maxDepth {
+		return nil, xpErr("The maximum nesting of expressions has been exceeded.")
+	}
+	root, _, err := parse(ev.ec.Vars[i].Value)
+	var xe *Error
+	if errors.As(err, &xe) {
+		xe.AtCurrent = true
+	}
+	return root, err
+}
+
+// skip is evaluation with LYXP_SKIP_EXPR, which libyang runs over the operands lazy and/or do
+// not need and over the predicates of an empty node set: nothing is evaluated, but every
+// variable reference is still looked up and its value parsed and skipped in turn, so an
+// undefined variable fails even there.
+func (ev *evaluator) skip(a ast) error {
+	if err := ev.tick(); err != nil {
+		return err
+	}
+	switch a := a.(type) {
+	case chainExpr:
+		for _, x := range a.args {
+			if err := ev.skip(x); err != nil {
+				return err
+			}
+		}
+	case negExpr:
+		return ev.skip(a.x)
+	case varExpr:
+		root, err := ev.variable(string(a))
+		if err != nil {
+			return err
+		}
+		ev.vars++
+		defer func() { ev.vars-- }()
+		return ev.skip(root)
+	case callExpr:
+		for _, x := range a.args {
+			if err := ev.skip(x); err != nil {
+				return err
+			}
+		}
+	case pathExpr:
+		if a.prim != nil {
+			if err := ev.skip(a.prim); err != nil {
+				return err
+			}
+		}
+		for _, x := range a.preds {
+			if err := ev.skip(x); err != nil {
+				return err
+			}
+		}
+		for _, s := range a.steps {
+			for _, x := range s.preds {
+				if err := ev.skip(x); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // chain is eval_or_expr … eval_union_expr: every operand is evaluated against
@@ -178,6 +257,11 @@ func (ev *evaluator) chain(a chainExpr, ctx value) (value, error) {
 	var union []item
 	for i, op := range a.ops {
 		if logic && acc.b == (op == "or") { // lazy evaluation
+			for _, rest := range a.args[i+1:] {
+				if err := ev.skip(rest); err != nil {
+					return value{}, err
+				}
+			}
 			break
 		}
 		r, err := ev.eval(a.args[i+1], ctx)
@@ -887,6 +971,12 @@ func (ev *evaluator) predicates(set value, preds []ast, axis string) (value, err
 			}
 			if !ev.toBool(r) {
 				set = nodesV(nil)
+			}
+			continue
+		}
+		if len(set.nodes) == 0 { // only_parse
+			if err := ev.skip(pr); err != nil {
+				return value{}, err
 			}
 			continue
 		}

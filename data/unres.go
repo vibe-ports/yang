@@ -55,8 +55,8 @@ func (vc *valCtx) eval(e *xpath.Expr, ctx *Node, root xpath.RootKind, ignoreWhen
 	if per <= 0 {
 		return xpath.Result{}, fmt.Errorf("%w: more than %d XPath steps", yang.ErrBudget, limit)
 	}
-	r, err := e.Eval(xpath.EvalContext{Ctx: b.ctx, Node: wrap(vc.t.set, ctx), Tree: vc.topNodes(), Root: root,
-		IgnoreWhen: ignoreWhen, Schema: info{vc.t.set}, Deref: vc.deref, MaxSteps: int(per)})
+	r, err := e.EvalTo(xpath.EvalContext{Ctx: b.ctx, Node: wrap(vc.t.set, ctx), Tree: vc.topNodes(), Root: root,
+		IgnoreWhen: ignoreWhen, Schema: info{vc.t.set}, Deref: vc.deref, MaxSteps: int(per), Vars: vc.vars}, vc.to)
 	b.steps += r.Steps
 	switch {
 	case errors.Is(err, xpath.ErrBudget):

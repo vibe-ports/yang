@@ -15,6 +15,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 )
@@ -223,6 +224,33 @@ type EvalContext struct {
 	// Deref resolves a leafref / instance-identifier node to its targets.
 	Deref    func(Node) ([]Node, error)
 	MaxSteps int // evaluation step budget; 0 = DefaultMaxSteps
+	// Vars are the variable bindings of $name references (set->vars).
+	Vars []Var
+}
+
+// Var is struct lyxp_var: a variable whose value is an XPath expression, parsed and evaluated in
+// the context of each reference.
+type Var struct{ Name, Value string }
+
+// FindVar is lyxp_vars_find: the index of the first variable whose name starts with name
+// (libyang compares only the first len(name) bytes, so $ab finds a variable "abc").
+func FindVar(vars []Var, name string) (int, bool) {
+	for i, v := range vars {
+		if strings.HasPrefix(v.Name, name) {
+			return i, true
+		}
+	}
+	return -1, false
+}
+
+// SetVar is lyxp_vars_set: the value of the variable FindVar finds is replaced, else the variable
+// is appended.
+func SetVar(vars []Var, name, value string) []Var {
+	if i, ok := FindVar(vars, name); ok {
+		vars[i].Value = value
+		return vars
+	}
+	return append(vars, Var{name, value})
 }
 
 // DefaultMaxSteps bounds the work of one evaluation.
@@ -257,6 +285,9 @@ type Error struct {
 	Err    string // LY_EVALID, LY_EINVAL, LY_ENOTFOUND
 	VECode string // LYVE_XPATH, LYVE_DATA, or "" for none
 	Msg    string
+	// AtCurrent: libyang logs the error at the current node (lyxp_expr_parse of a variable's
+	// value), not without a node like the other evaluation errors.
+	AtCurrent bool
 }
 
 func (e *Error) Error() string { return e.Msg }
@@ -288,25 +319,54 @@ func (e *Expr) String() string { return e.src }
 // functions and wrong argument counts are compile errors; prefixes are
 // resolved through ns at evaluation, as libyang does.
 func Compile(src string, ns NamespaceCtx) (*Expr, error) {
-	toks, src, err := lex(src)
+	root, src, err := parse(src)
 	if err != nil {
 		return nil, err
-	}
-	p := &parser{src: src, toks: toks}
-	root, err := p.orExpr(0)
-	if err != nil {
-		return nil, err
-	}
-	if p.i < len(toks) {
-		return nil, xpErr("Unparsed characters \"%s\" left at the end of an XPath expression.", src[toks[p.i].pos:])
 	}
 	return &Expr{src: src, root: root, ns: ns}, nil
 }
 
+// parse is lyxp_expr_parse with reparse.
+func parse(src string) (ast, string, error) {
+	toks, src, err := lex(src)
+	if err != nil {
+		return nil, "", err
+	}
+	p := &parser{src: src, toks: toks}
+	root, err := p.orExpr(0)
+	if err != nil {
+		return nil, "", err
+	}
+	if p.i < len(toks) {
+		return nil, "", xpErr("Unparsed characters \"%s\" left at the end of an XPath expression.", src[toks[p.i].pos:])
+	}
+	return root, src, nil
+}
+
 // Eval evaluates e (lyxp_eval).
 func (e *Expr) Eval(ec EvalContext) (Result, error) {
+	return e.eval(ec, false, 0)
+}
+
+// EvalTo evaluates e and casts a result that is not a node set to t (lyxp_set_cast), as
+// lyd_eval_xpath4 does when it is asked for one result type only; t NodeSet casts nothing.
+func (e *Expr) EvalTo(ec EvalContext, t ResultType) (Result, error) {
+	return e.eval(ec, true, t)
+}
+
+func (e *Expr) eval(ec EvalContext, cast bool, to ResultType) (Result, error) {
 	ev := newEvaluator(e, &ec)
 	v, err := ev.eval(e.root, ev.start())
+	if err == nil && cast {
+		switch to {
+		case Boolean:
+			v = boolV(ev.toBool(v))
+		case Number:
+			v = numV(ev.toNum(v))
+		case String:
+			v = strV(ev.toString(v))
+		}
+	}
 	if err == nil {
 		err = ev.err
 	}

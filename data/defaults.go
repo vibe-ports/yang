@@ -57,6 +57,10 @@ type valCtx struct {
 	topBuilds, posBuilds int
 	lrefs                map[lrefKey]*lrefTemplate // leafref target-path templates per type and node
 	uniqDefs             map[*schema.Node]uniqDef  // unique leaves' default canonicals, per unique()
+	// vars and to are the variables and the result cast of the evaluations of a query
+	// (lyd_eval_xpath4); validation has none (to NodeSet casts nothing).
+	vars []xpath.Var
+	to   xpath.ResultType
 }
 
 type getnextKey struct {
