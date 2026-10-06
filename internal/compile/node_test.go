@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -299,9 +298,6 @@ func TestNodeGoldens(t *testing.T) {
 					}
 					ran++
 					return
-				}
-				if err != nil && slices.ContainsFunc(diags, func(d Diagnostic) bool { return strings.Contains(d.Msg, "Unable to find base") }) {
-					t.Skip("identities are compiled by design 06 C1b")
 				}
 				if err != nil {
 					t.Fatalf("%s: %v %+v, golden accepted", gm.Name, err, diags)

@@ -8887,7 +8887,7 @@ fixtures:
   - id: must/value-not-fit-sides-warning
     dir: compile
     source: *own
-    rfc: ["RFC7950#7.5.3", "RFC7950#7.5.3"]
+    rfc: ["RFC7950#7.5.3"]
     areas: ["schema", "xpath"]
     request:
       op: schema
