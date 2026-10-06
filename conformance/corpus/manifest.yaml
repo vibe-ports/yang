@@ -14138,6 +14138,10 @@ fixtures:
       searchdirs: [bits/T0.1]
       modules: [{name: "T0"}]
     golden: golden/bits-schema-yang-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+      deviation: null
 
   - id: ut-bits-enum/bits-schema-yang-02
     dir: ut-bits-enum
@@ -14149,6 +14153,10 @@ fixtures:
       searchdirs: [bits/T0.1, bits/T1.1]
       modules: [{name: "T0"}, {name: "T1"}]
     golden: golden/bits-schema-yang-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+      deviation: null
 
   - id: ut-bits-enum/bits-schema-yang-03
     dir: ut-bits-enum
@@ -14160,6 +14168,10 @@ fixtures:
       searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1]
       modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}]
     golden: golden/bits-schema-yang-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+      deviation: null
 
   - id: ut-bits-enum/bits-schema-yang-04
     dir: ut-bits-enum
@@ -14171,6 +14183,10 @@ fixtures:
       searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1, bits/T3.1]
       modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}]
     golden: golden/bits-schema-yang-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+      deviation: null
 
   - id: ut-bits-enum/bits-schema-yang-05
     dir: ut-bits-enum
@@ -14182,6 +14198,10 @@ fixtures:
       searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1, bits/T3.1, bits/TERR_0.1]
       modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "TERR_0"}]
     golden: golden/bits-schema-yang-05.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+      deviation: null
 
   - id: ut-bits-enum/bits-schema-yang-06
     dir: ut-bits-enum
@@ -14193,6 +14213,10 @@ fixtures:
       searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1, bits/T3.1, bits/TERR_1.1]
       modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "TERR_1"}]
     golden: golden/bits-schema-yang-06.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+      deviation: null
 
   - id: ut-bits-enum/bits-schema-yang-07
     dir: ut-bits-enum
@@ -14204,6 +14228,10 @@ fixtures:
       searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1, bits/T3.1, bits/TERR_2.1]
       modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "TERR_2"}]
     golden: golden/bits-schema-yang-07.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+      deviation: null
 
   - id: ut-bits-enum/bits-schema-yang-08
     dir: ut-bits-enum
@@ -14215,6 +14243,10 @@ fixtures:
       searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1, bits/T3.1, bits/TERR_3.1]
       modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "TERR_3"}]
     golden: golden/bits-schema-yang-08.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+      deviation: null
 
   - id: ut-bits-enum/bits-schema-yang-09
     dir: ut-bits-enum
@@ -14226,6 +14258,10 @@ fixtures:
       searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1, bits/T3.1, bits/TERR_4.1]
       modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "TERR_4"}]
     golden: golden/bits-schema-yang-09.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+      deviation: null
 
   - id: ut-bits-enum/bits-schema-yang-10
     dir: ut-bits-enum
@@ -14237,6 +14273,10 @@ fixtures:
       searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1, bits/T3.1, bits/TERR_5.1]
       modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "TERR_5"}]
     golden: golden/bits-schema-yang-10.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+      deviation: null
 
   - id: ut-bits-enum/bits-schema-yang-11
     dir: ut-bits-enum
@@ -14248,6 +14288,10 @@ fixtures:
       searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1, bits/T3.1, bits/TERR_6.1]
       modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "TERR_6"}]
     golden: golden/bits-schema-yang-11.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+      deviation: null
 
   - id: ut-bits-enum/bits-schema-yang-12
     dir: ut-bits-enum
@@ -14259,6 +14303,10 @@ fixtures:
       searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1, bits/T3.1, bits/TERR_7.1]
       modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "TERR_7"}]
     golden: golden/bits-schema-yang-12.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+      deviation: null
 
   - id: ut-bits-enum/bits-schema-yang-13
     dir: ut-bits-enum
@@ -14270,6 +14318,10 @@ fixtures:
       searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1, bits/T3.1, bits/TERR_8.1]
       modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "TERR_8"}]
     golden: golden/bits-schema-yang-13.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+      deviation: null
 
   - id: ut-bits-enum/bits-schema-yang-14
     dir: ut-bits-enum
@@ -14281,6 +14333,10 @@ fixtures:
       searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1, bits/T3.1, bits/TERR_9.1]
       modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "TERR_9"}]
     golden: golden/bits-schema-yang-14.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+      deviation: null
 
   - id: ut-bits-enum/bits-schema-yang-15
     dir: ut-bits-enum
@@ -14292,6 +14348,10 @@ fixtures:
       searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1, bits/T3.1, bits/TERR_10.1]
       modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "TERR_10"}]
     golden: golden/bits-schema-yang-15.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+      deviation: null
 
   - id: ut-bits-enum/bits-schema-yang-16
     dir: ut-bits-enum
@@ -14303,6 +14363,10 @@ fixtures:
       searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1, bits/T3.1, bits/TERR_11.1]
       modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "TERR_11"}]
     golden: golden/bits-schema-yang-16.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+      deviation: null
 
   - id: ut-bits-enum/bits-data-xml-01
     dir: ut-bits-enum
@@ -14314,6 +14378,10 @@ fixtures:
       searchdirs: [bits/T0.2]
       modules: [{name: "T0"}]
     golden: golden/bits-data-xml-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+      deviation: null
 
   - id: ut-bits-enum/bits-data-xml-02
     dir: ut-bits-enum
@@ -14332,6 +14400,10 @@ fixtures:
       validate_options: ["present"]
       unknown: "skip"
     golden: golden/bits-data-xml-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.5"]
+      deviation: null
 
   - id: ut-bits-enum/bits-data-xml-03
     dir: ut-bits-enum
@@ -14350,6 +14422,10 @@ fixtures:
       validate_options: ["present"]
       unknown: "skip"
     golden: golden/bits-data-xml-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.5"]
+      deviation: null
 
   - id: ut-bits-enum/bits-data-xml-04
     dir: ut-bits-enum
@@ -14368,6 +14444,10 @@ fixtures:
       validate_options: ["present"]
       unknown: "skip"
     golden: golden/bits-data-xml-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.5"]
+      deviation: null
 
   - id: ut-bits-enum/bits-data-xml-05
     dir: ut-bits-enum
@@ -14386,6 +14466,10 @@ fixtures:
       validate_options: ["present"]
       unknown: "skip"
     golden: golden/bits-data-xml-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.5"]
+      deviation: null
 
   - id: ut-bits-enum/bits-data-xml-06
     dir: ut-bits-enum
@@ -14404,6 +14488,10 @@ fixtures:
       validate_options: ["present"]
       unknown: "skip"
     golden: golden/bits-data-xml-06.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.5"]
+      deviation: null
 
   - id: ut-bits-enum/bits-data-xml-07
     dir: ut-bits-enum
@@ -14422,6 +14510,10 @@ fixtures:
       validate_options: ["present"]
       unknown: "skip"
     golden: golden/bits-data-xml-07.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.5"]
+      deviation: null
 
   - id: ut-bits-enum/bits-data-xml-08
     dir: ut-bits-enum
@@ -14440,6 +14532,10 @@ fixtures:
       validate_options: ["present"]
       unknown: "skip"
     golden: golden/bits-data-xml-08.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.5"]
+      deviation: null
 
   - id: ut-bits-enum/bits-data-xml-09
     dir: ut-bits-enum
@@ -14458,6 +14554,10 @@ fixtures:
       validate_options: ["present"]
       unknown: "skip"
     golden: golden/bits-data-xml-09.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.5"]
+      deviation: null
 
   - id: ut-bits-enum/bits-data-xml-10
     dir: ut-bits-enum
@@ -14476,6 +14576,10 @@ fixtures:
       validate_options: ["present"]
       unknown: "skip"
     golden: golden/bits-data-xml-10.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.5"]
+      deviation: null
 
   - id: ut-bits-enum/bits-data-xml-11
     dir: ut-bits-enum
@@ -14494,6 +14598,10 @@ fixtures:
       validate_options: ["present"]
       unknown: "skip"
     golden: golden/bits-data-xml-11.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.5"]
+      deviation: null
 
   - id: ut-bits-enum/bits-data-xml-12
     dir: ut-bits-enum
@@ -14512,6 +14620,10 @@ fixtures:
       validate_options: ["present"]
       unknown: "skip"
     golden: golden/bits-data-xml-12.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.5"]
+      deviation: null
 
   - id: ut-bits-enum/bits-data-json-01
     dir: ut-bits-enum
@@ -14523,11 +14635,15 @@ fixtures:
       searchdirs: [bits/T0.2]
       modules: [{name: "T0"}]
     golden: golden/bits-data-json-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+      deviation: null
 
   - id: ut-bits-enum/bits-data-json-02
     dir: ut-bits-enum
     source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:654
-    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.6"]
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.5"]
     areas: [types]
     request:
       op: "data"
@@ -14541,11 +14657,15 @@ fixtures:
       validate_options: ["present"]
       unknown: "skip"
     golden: golden/bits-data-json-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.5"]
+      deviation: null
 
   - id: ut-bits-enum/bits-data-json-03
     dir: ut-bits-enum
     source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:655
-    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.6"]
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.5"]
     areas: [types]
     request:
       op: "data"
@@ -14559,11 +14679,15 @@ fixtures:
       validate_options: ["present"]
       unknown: "skip"
     golden: golden/bits-data-json-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.5"]
+      deviation: null
 
   - id: ut-bits-enum/bits-data-json-04
     dir: ut-bits-enum
     source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:656
-    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.6"]
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.5"]
     areas: [types]
     request:
       op: "data"
@@ -14577,11 +14701,15 @@ fixtures:
       validate_options: ["present"]
       unknown: "skip"
     golden: golden/bits-data-json-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.5"]
+      deviation: null
 
   - id: ut-bits-enum/bits-data-json-05
     dir: ut-bits-enum
     source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:657
-    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.6"]
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.5"]
     areas: [types]
     request:
       op: "data"
@@ -14595,11 +14723,15 @@ fixtures:
       validate_options: ["present"]
       unknown: "skip"
     golden: golden/bits-data-json-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.5"]
+      deviation: null
 
   - id: ut-bits-enum/bits-data-json-06
     dir: ut-bits-enum
     source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:658
-    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.6"]
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.5"]
     areas: [types]
     request:
       op: "data"
@@ -14613,11 +14745,15 @@ fixtures:
       validate_options: ["present"]
       unknown: "skip"
     golden: golden/bits-data-json-06.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.5"]
+      deviation: null
 
   - id: ut-bits-enum/bits-data-json-07
     dir: ut-bits-enum
     source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:660
-    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.6"]
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.5"]
     areas: [types]
     request:
       op: "data"
@@ -14631,11 +14767,15 @@ fixtures:
       validate_options: ["present"]
       unknown: "skip"
     golden: golden/bits-data-json-07.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.5"]
+      deviation: null
 
   - id: ut-bits-enum/bits-data-json-08
     dir: ut-bits-enum
     source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:661
-    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.6"]
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.5"]
     areas: [types]
     request:
       op: "data"
@@ -14649,11 +14789,15 @@ fixtures:
       validate_options: ["present"]
       unknown: "skip"
     golden: golden/bits-data-json-08.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.5"]
+      deviation: null
 
   - id: ut-bits-enum/bits-data-json-09
     dir: ut-bits-enum
     source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:663
-    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.6"]
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.5"]
     areas: [types]
     request:
       op: "data"
@@ -14667,11 +14811,15 @@ fixtures:
       validate_options: ["present"]
       unknown: "skip"
     golden: golden/bits-data-json-09.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.5"]
+      deviation: null
 
   - id: ut-bits-enum/bits-data-json-10
     dir: ut-bits-enum
     source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:665
-    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.6"]
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.5"]
     areas: [types]
     request:
       op: "data"
@@ -14685,11 +14833,15 @@ fixtures:
       validate_options: ["present"]
       unknown: "skip"
     golden: golden/bits-data-json-10.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.5"]
+      deviation: null
 
   - id: ut-bits-enum/bits-data-json-11
     dir: ut-bits-enum
     source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:667
-    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.6"]
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.5"]
     areas: [types]
     request:
       op: "data"
@@ -14703,6 +14855,10 @@ fixtures:
       validate_options: ["present"]
       unknown: "skip"
     golden: golden/bits-data-json-11.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.5", "RFC7951#6.5"]
+      deviation: null
 
   - id: ut-bits-enum/enumeration-data-xml-01
     dir: ut-bits-enum
@@ -14714,6 +14870,10 @@ fixtures:
       searchdirs: [enumeration/defs.1]
       modules: [{name: "defs"}]
     golden: golden/enumeration-data-xml-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.6", "RFC7950#9.6.4"]
+      deviation: null
 
   - id: ut-bits-enum/enumeration-data-xml-02
     dir: ut-bits-enum
@@ -14732,6 +14892,10 @@ fixtures:
       validate_options: ["present"]
       unknown: "skip"
     golden: golden/enumeration-data-xml-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.6"]
+      deviation: null
 
   - id: ut-bits-enum/enumeration-data-xml-03
     dir: ut-bits-enum
@@ -14750,6 +14914,10 @@ fixtures:
       validate_options: ["present"]
       unknown: "skip"
     golden: golden/enumeration-data-xml-03.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.6"]
+      deviation: null
 
   - id: ut-bits-enum/enumeration-data-xml-04
     dir: ut-bits-enum
@@ -14768,6 +14936,10 @@ fixtures:
       validate_options: ["present"]
       unknown: "skip"
     golden: golden/enumeration-data-xml-04.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.6"]
+      deviation: null
 
   - id: ut-bits-enum/enumeration-data-xml-05
     dir: ut-bits-enum
@@ -14786,6 +14958,10 @@ fixtures:
       validate_options: ["present"]
       unknown: "skip"
     golden: golden/enumeration-data-xml-05.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.6"]
+      deviation: null
 
   - id: ut-bits-enum/enumeration-data-xml-06
     dir: ut-bits-enum
@@ -14804,4 +14980,8 @@ fixtures:
       validate_options: ["present"]
       unknown: "skip"
     golden: golden/enumeration-data-xml-06.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.6"]
+      deviation: null
 # END ut-bits-enum
