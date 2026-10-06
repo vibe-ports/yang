@@ -15,7 +15,9 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/vibe-ports/yang/internal/lyxp"
 	"github.com/vibe-ports/yang/internal/schema"
+	"github.com/vibe-ports/yang/internal/types"
 )
 
 // nodeHarness drives compileNodes the way the dep-set loop of design 06 C1b will: load with the
@@ -56,7 +58,10 @@ func (h *nodeHarness) loadFeatures(name string, features []string) (mod *schema.
 	}
 	h.c.diags = nil
 	if err = h.c.compileNodes(m, m.mod); err == nil {
-		err = h.c.removeDisabled()
+		// a module unres implements is compiled with the node walk
+		h.c.nodeWalk = true
+		err = h.c.unres()
+		h.c.nodeWalk = false
 	}
 	return m.mod, loadDiags, h.c.diags, nil, err
 }
@@ -89,7 +94,8 @@ type gNode struct {
 	Keys      []string `json:"keys"`
 	Min       *uint32  `json:"min_elements"`
 	Max       *uint32  `json:"max_elements"`
-	Defaults  []string `json:"defaults"` // choice only here (leaf defaults are unres, C7)
+	Defaults  []string `json:"defaults"`
+	Type      *gType   `json:"type"`
 	Exts      *[]gExt  `json:"extensions"`
 }
 
@@ -152,6 +158,17 @@ func dumpTree(m *schema.Module) []gNode {
 		if n.DefaultCase != nil {
 			g.Defaults = []string{n.DefaultCase.Name}
 		}
+		for _, d := range n.Default { // lyoracle dflt_json: canonical, the text when it fails
+			v, diag := types.Store(n.Type, d.Lex, types.FormatSchemaResolved, types.HintSchema, d.NS, n)
+			if diag != nil {
+				g.Defaults = append(g.Defaults, d.Lex)
+			} else {
+				g.Defaults = append(g.Defaults, v.Canonical())
+			}
+		}
+		if n.Type != nil {
+			g.Type = leafType(n)
+		}
 		if n.Exts != nil {
 			exts := []gExt{}
 			for _, e := range n.Exts {
@@ -193,7 +210,18 @@ var c4aMessages = []string{
 	"Leaf-list of type \"empty\"",
 	// design 06 C4b
 	"Invalid value \"", "A current definition ", "A deprecated definition ", "Key \"", "Referenced type ",
+	// design 06 C7 (unres)
+	"Invalid leafref path ", "Not found node ", "Target of leafref ", "Invalid default ", "Node \"",
+	"Configuration leaf-list has multiple", "Too many parent references", "No module connected with the prefix",
+	"Key expected instead of", "List predicate defined for", "Leaf expected instead of", "Missing path substatement",
+	"Leafref type ", "Invalid type \"", "Deref function", "Unexpected XPath token", "Not implemented module",
+	"When condition ", "Invalid when condition", "Invalid must condition", "Unknown/non-implemented module",
+	"Unexpected XPath expression end",
 }
+
+// checkedWarnings are the warnings this harness compares: plugins (C4b), when/must status and
+// not-implemented module, schema nodes not found by the XPath schema walk (C2a, C7).
+var checkedWarnings = []string{"Ext plugin ", "When condition ", "Must condition ", "Schema node "}
 
 // c4bParseMessages are the parse-phase errors and warnings of the ported extension plugins
 // (design 06 C4b); other parse-phase failures are the loader's.
@@ -359,9 +387,6 @@ func TestNodeGoldens(t *testing.T) {
 					if !matchesAny(want[0].Msg, c4aMessages) || strings.Contains(want[0].SchemaPath, "{grouping=") {
 						t.Skipf("first error is a later PR's: %s", want[0].Msg)
 					}
-					if err == nil && matchesAny(want[0].Msg, []string{"A current definition ", "A deprecated definition "}) {
-						t.Skipf("status check of a later PR (leafref targets are unres, C7): %s", want[0].Msg)
-					}
 					var got []goldenDiag
 					for _, d := range diags {
 						d.Phase = "compile"
@@ -377,13 +402,16 @@ func TestNodeGoldens(t *testing.T) {
 					t.Fatalf("%s: %v %+v, golden accepted", gm.Name, err, diags)
 				}
 				var gotW, wantW []goldenDiag
-				for _, d := range append(loadDiags, diags...) {
-					if d.Level == LevelWarning && matchesAny(d.Msg, c4bParseMessages) {
+				for i, d := range append(loadDiags, diags...) {
+					if i >= len(loadDiags) {
+						d.Phase = "compile"
+					}
+					if d.Level == LevelWarning && matchesAny(d.Msg, checkedWarnings) {
 						gotW = append(gotW, d.golden())
 					}
 				}
 				for _, d := range gm.Diagnostics {
-					if d.Level == "warning" && matchesAny(d.Msg, c4bParseMessages) {
+					if d.Level == "warning" && matchesAny(d.Msg, checkedWarnings) {
 						wantW = append(wantW, d)
 					}
 				}
@@ -394,11 +422,6 @@ func TestNodeGoldens(t *testing.T) {
 					continue // no schema dump in this request
 				}
 				wantTree := *gm.Tree
-				for i := range wantTree {
-					if wantTree[i].Nodetype != "choice" {
-						wantTree[i].Defaults = nil
-					}
-				}
 				if got := dumpTree(mod); len(got)+len(wantTree) > 0 && !reflect.DeepEqual(got, wantTree) {
 					gj, _ := json.MarshalIndent(got, "", " ")
 					wj, _ := json.MarshalIndent(wantTree, "", " ")
@@ -577,4 +600,39 @@ func matchesAny(msg string, prefixes []string) bool {
 		}
 	}
 	return false
+}
+
+// leafType is lyoracle leaf_type_json: the type with each leafref's target, recompiled from the
+// node as lysc_node_lref_target(s) do; in a union the targets are given only if all resolve.
+func leafType(n *schema.Node) *gType {
+	g := dumpType(n.Type)
+	var targets []*string
+	all := true
+	for _, t := range leafrefs(n) {
+		e, _ := lyxp.ParsePath(t.Path, lyxp.Opts{Begin: lyxp.BeginEither, Prefix: lyxp.PrefixOptional,
+			Pred: lyxp.PredLeafref, Leafref: true})
+		var target *string
+		if e != nil {
+			if p, _, err := types.CompileLeafref(n, e, t.Prefixes, n.InOutput(), false); err == nil {
+				s := p[len(p)-1].Node.LogPath()
+				target = &s
+			}
+		}
+		all = all && target != nil
+		targets = append(targets, target)
+	}
+	if g.Leafref != nil {
+		g.Leafref.Target = targets[0]
+	}
+	i := 0
+	for _, u := range g.Union {
+		if u.Leafref != nil {
+			u.Leafref.Target = nil
+			if all {
+				u.Leafref.Target = targets[i]
+			}
+			i++
+		}
+	}
+	return g
 }

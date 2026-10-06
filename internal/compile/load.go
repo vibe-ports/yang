@@ -157,6 +157,7 @@ type Context struct {
 	types                             int            // compiled types and union member slots (Budget.MaxTypes)
 	typeCache                         *typeCache     // compiled typedefs (design 06 §2.3); entries leave with their module (revert)
 	disabled                          []*schema.Node // lys_depset_unres.disabled: if-feature-disabled and obsolete nodes
+	ur                                unresSets      // the other lys_depset_unres sets (design 06 P6)
 	// extArrs are the exts arrays whose instances a plugin parse callback removed (LY_ENOT),
 	// by owner statement, in libyang's order after the removal.
 	extArrs map[*parser.Stmt][]*parser.Stmt
@@ -235,7 +236,7 @@ func NewContext(opts Options, dirs ...fs.FS) (*Context, []Diagnostic, error) {
 // implemented before) stay, as in libyang.
 func (c *Context) Load(name, rev string, features []string) (*Module, []Diagnostic, error) {
 	c.diags, c.creating, c.implementing, c.compiling, c.sets = nil, nil, nil, nil, nil
-	c.nodes, c.types, c.disabled = 0, 0, nil
+	c.nodes, c.types, c.disabled, c.ur = 0, 0, nil, unresSets{}
 	c.phase = "parse"
 	m, err := c.parseLoad(name, rev)
 	if err == nil {

@@ -237,6 +237,7 @@ func (w *nodeCtx) nodeGeneric(pn *parser.Node, parent *schema.Node, spec specFun
 			return err
 		}
 		n.Whens = append(n.Whens, wh)
+		w.addWhen(wh, n)
 	}
 	w.parents = append(w.parents, pn)
 	err = spec(w, pn, n)
@@ -625,6 +626,9 @@ func (w *nodeCtx) musts(pn *parser.Node, n *schema.Node) error {
 		}
 		n.Musts = append(n.Musts, &schema.Must{Src: pm.Arg, Msg: pm.ErrorMessage, AppTag: pm.ErrorAppTag, Ctx: ns, Compiled: e})
 	}
+	if n.Kind != schema.Input && n.Kind != schema.Output { // their musts are added by action
+		w.addMusts(n)
+	}
 	return nil
 }
 
@@ -678,6 +682,7 @@ func (w *nodeCtx) nodeType(pn *parser.Node, n *schema.Node) error {
 	if dflt != nil && w.fl[n]&flSetDflt == 0 && w.opts&(optDisabled|optGrouping) == 0 {
 		n.Default = []schema.DefaultValue{*dflt}
 	}
+	w.addTypeUnres(n, w.pm, dflt != nil && w.fl[n]&flSetDflt == 0)
 	return nil
 }
 
@@ -697,6 +702,7 @@ func (w *nodeCtx) leaf(pn *parser.Node, n *schema.Node) error {
 		if w.opts&(optDisabled|optGrouping) == 0 {
 			n.Default = []schema.DefaultValue{{Lex: pn.Defaults[0], NS: nsCtx(w.pm)}}
 		}
+		w.addDflt(n)
 		w.fl[n] |= flSetDflt
 	}
 	if w.fl[n]&flSetDflt != 0 && n.Mandatory {
@@ -732,6 +738,7 @@ func (w *nodeCtx) leafList(pn *parser.Node, n *schema.Node) error {
 				n.Default = append(n.Default, schema.DefaultValue{Lex: d, NS: ns})
 			}
 		}
+		w.addDflt(n)
 		w.fl[n] |= flSetDflt
 	}
 	minMax(pn, n)
@@ -1137,11 +1144,13 @@ func (w *nodeCtx) action(pn *parser.Node, n *schema.Node) error {
 		if p == nil {
 			p = &parser.Node{Kind: io.kind}
 		}
-		err := w.nodeGeneric(p, n, (*nodeCtx).inout, &schema.Node{Kind: kinds[io.kind]}, nil)
+		inout := &schema.Node{Kind: kinds[io.kind]}
+		err := w.nodeGeneric(p, n, (*nodeCtx).inout, inout, nil)
 		w.path.pop()
 		if err != nil {
 			return err
 		}
+		w.addMusts(inout)
 	}
 	return nil
 }

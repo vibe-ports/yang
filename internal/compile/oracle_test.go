@@ -138,6 +138,12 @@ func dumpType(t *schema.Type) *gType {
 		fd := int(t.FracDigits)
 		g.FractionDigits = &fd
 	}
+	switch t.Base { // an enumeration or bits has items; all removed by if-feature leaves an empty array
+	case schema.Enumeration:
+		g.Enums = []gEnum{}
+	case schema.Bits:
+		g.Bits = []gBit{}
+	}
 	for _, e := range t.Enums {
 		if !e.Disabled {
 			g.Enums = append(g.Enums, gEnum{e.Name, e.Value})

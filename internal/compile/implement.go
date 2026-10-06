@@ -359,15 +359,6 @@ restart:
 	}
 }
 
-// unres is lys_compile_unres_depset; the unres sets come with the node walk
-// (design 06 C7), until then only a test hook raises anything.
-func (c *Context) unres() error {
-	if c.unresHook != nil {
-		return c.unresHook(c)
-	}
-	return nil
-}
-
 // compile is lys_compile: the features of the module, then the node walk
 // (P3, design 06 C4a); P2 own augments (C6), module extension instances,
 // P4 and P5 (C4b) follow with their PRs. A failed compile leaves no
