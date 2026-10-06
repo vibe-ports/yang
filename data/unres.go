@@ -320,23 +320,82 @@ func (vc *valCtx) unres() error {
 			vc.nodeTypes.rmIndex(i)
 		}
 	}
+	if vc.metaTypes != nil && len(*vc.metaTypes) > 0 {
+		q := *vc.metaTypes
+		owners := vc.metaOwners(q)
+		for i := len(q) - 1; i >= 0; i-- {
+			if n := owners[q[i]]; n != nil { // nil: a default="true" metadata the parser dropped
+				if err := vc.validateMetaIncomplete(n, q[i]); err != nil {
+					if rc = err; vc.stop(err) {
+						*vc.metaTypes = q[:i]
+						return rc
+					}
+				}
+			}
+		}
+		*vc.metaTypes = q[:0]
+	}
 	return rc
 }
 
-// validateIncomplete is lyd_value_validate_incomplete: the tree-time checks of the value of n,
-// errors logged at n.
-func (vc *valCtx) validateIncomplete(n *Node) error {
+// metaOwners maps each queued metadata to the node that holds it.
+// ponytail: one walk of the tree per drain (the XML parser attaches a metadata list to the node it
+// creates next, so the queue cannot record the owner); a parent field on meta if this shows up.
+func (vc *valCtx) metaOwners(q []*meta) map[*meta]*Node {
+	want := make(map[*meta]bool, len(q))
+	for _, m := range q {
+		want[m] = true
+	}
+	owners := make(map[*meta]*Node, len(q))
+	for top := range vc.t.top.all() {
+		for n := range top.All() {
+			for _, m := range n.meta {
+				if want[m] {
+					owners[m] = n
+				}
+			}
+		}
+	}
+	return owners
+}
+
+// validateMetaIncomplete is the meta_types part of lyd_validate_unres: lyd_value_validate_incomplete
+// of the metadata m of n, errors logged at n.
+func (vc *valCtx) validateMetaIncomplete(n *Node, m *meta) error {
+	ant := annotation(m.mod, m.name)
+	if ant == nil {
+		return nil
+	}
+	v, err := vc.incomplete(n, ant.Type, m.value)
+	if err == nil {
+		m.value = v
+	}
+	return err
+}
+
+// incomplete is lyd_value_validate_incomplete: the tree-time checks of the value v of type t
+// whose context node is n, errors logged at n.
+func (vc *valCtx) incomplete(n *Node, t *schema.Type, val types.Value) (types.Value, error) {
 	tt := &typeTree{vc: vc, n: n}
-	v, d := types.ValidateTree(n.schema.Type, n.value, tt)
+	v, d := types.ValidateTree(t, val, tt)
 	if tt.err != nil {
-		return tt.err // budget or cancellation
+		return val, tt.err // budget or cancellation
 	}
 	if d != nil {
 		rc := "LY_EVALID"
 		if d.Err != "" {
 			rc = d.Err
 		}
-		return vc.log.item(n, nil, false, rc, codeOf(d.Code), d.AppTag, d.Msg)
+		return val, vc.log.item(n, nil, false, rc, codeOf(d.Code), d.AppTag, d.Msg)
+	}
+	return v, nil
+}
+
+// validateIncomplete is lyd_value_validate_incomplete for the value of n.
+func (vc *valCtx) validateIncomplete(n *Node) error {
+	v, err := vc.incomplete(n, n.schema.Type, n.value)
+	if err != nil {
+		return err
 	}
 	if v.Canonical() != n.value.Canonical() || !types.Equal(v, n.value) {
 		sib := n.siblingsOf()

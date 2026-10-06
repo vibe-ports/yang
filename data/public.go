@@ -9,6 +9,7 @@ import (
 	"io"
 
 	"github.com/vibe-ports/yang"
+	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/snap"
 )
 
@@ -34,6 +35,36 @@ func Parse(ctx context.Context, r io.Reader, f Format, s *yang.Schema, o ParseOp
 	}
 	return parseWith(ctx, r, snap.Set(s), parseOpts{ParseOptions: o}, fp, nil)
 }
+
+// Path is lyd_path(LYD_PATH_STD): "/mod:a/b[k='v']/c", the module name on every module change,
+// list keys and config leaf-list values as predicates, the position of keyless list and state
+// leaf-list instances.
+func (n *Node) Path() string {
+	root := n
+	for root.parent != nil {
+		root = root.parent
+	}
+	var set *schema.Set
+	if root.tree != nil {
+		set = root.tree.set
+	}
+	return lydPath(set, n, false)
+}
+
+// Value is lyd_get_value: the canonical text of a leaf or leaf-list value, the text of an
+// opaque node as it was written, "" for other nodes.
+func (n *Node) Value() string {
+	switch {
+	case n.schema == nil:
+		return n.opaq.Value
+	case n.isTerm():
+		return n.value.Canonical()
+	}
+	return ""
+}
+
+// Schema is the schema node of n, nil for an opaque node.
+func (n *Node) Schema() *yang.SchemaNode { return snap.NodeOf(n.schema) }
 
 // Validate is lyd_validate_all over the whole tree: when conditions, value checks needing the
 // tree, implicit default nodes (added to t), must, mandatory, min/max-elements, unique and

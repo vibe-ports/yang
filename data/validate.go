@@ -134,10 +134,17 @@ func (vc *valCtx) implOpts() implOpts {
 func (vc *valCtx) validate(validateSubtree bool) error {
 	var rc error
 	mods := vc.modules()
+	defer func() { vc.modFirst = nil }()
 	for _, mod := range mods {
+		vc.modFirst = nil
 		if err := vc.validateNew(nil, nil, mod); err != nil {
 			if rc = err; vc.stop(err) {
 				return rc
+			}
+		}
+		if top := vc.topList(); len(top) > 0 {
+			if i := vc.firstModuleSibling(top, 0, mod); i > 0 && i < len(top) && ownerModule(vc.t.set, top[i]) == mod {
+				vc.modFirst = top[i]
 			}
 		}
 		var err error
@@ -155,7 +162,11 @@ func (vc *valCtx) validate(validateSubtree bool) error {
 		}
 		if validateSubtree {
 			top := vc.topList()
-			for i := vc.firstModuleSibling(top, 0, mod); i < len(top) && ownerModule(vc.t.set, top[i]) == mod; i++ {
+			start := vc.firstModuleSibling(top, 0, mod)
+			if vc.modFirst != nil {
+				start = vc.modStart() // LY_LIST_FOR(*first2): a node misplaced before it is not walked
+			}
+			for i := start; i < len(top) && ownerModule(vc.t.set, top[i]) == mod; i++ {
 				if err := vc.validateTree(top[i]); err != nil {
 					if rc = err; vc.stop(err) {
 						return rc
@@ -195,6 +206,13 @@ func (vc *valCtx) validateTree(root *Node) error {
 	for n := range root.All() {
 		if n.schema == nil {
 			continue // opaque nodes are not validated
+		}
+		if vc.metaTypes != nil {
+			for _, m := range n.meta {
+				if ant := annotation(m.mod, m.name); ant != nil && hasValidateTree(ant.Type) {
+					*vc.metaTypes = append(*vc.metaTypes, m)
+				}
+			}
 		}
 		var err error
 		switch {
@@ -677,7 +695,7 @@ func (lc *lydCtx) valCtx() *valCtx {
 	if lc.vc == nil {
 		o := lc.opts.Validate
 		o.NoState = o.NoState || lc.opts.NoState
-		lc.vc = &valCtx{t: lc.tree, log: lc.log, opts: o, nodeWhen: &lc.nodeWhen, nodeTypes: &lc.nodeTypes,
+		lc.vc = &valCtx{t: lc.tree, log: lc.log, opts: o, nodeWhen: &lc.nodeWhen, nodeTypes: &lc.nodeTypes, metaTypes: &lc.metaTypes,
 			charge: lc.countNode, budget: xpathBudget{ctx: lc.ctx, max: lc.opts.Budget.MaxXPathSteps}}
 	}
 	return lc.vc
@@ -693,7 +711,7 @@ func (t *Tree) validateAll(ctx context.Context, o ValidateOptions, b Budget, dif
 		ctx = context.Background()
 	}
 	charged := 0 // implicit nodes created by this validation (Budget.MaxNodes)
-	vc := &valCtx{t: t, log: &logger{set: t.set}, opts: o, nodeWhen: &nodeSet{}, nodeTypes: &nodeSet{}, diff: diff,
+	vc := &valCtx{t: t, log: &logger{set: t.set}, opts: o, nodeWhen: &nodeSet{}, nodeTypes: &nodeSet{}, metaTypes: &[]*meta{}, diff: diff,
 		budget: xpathBudget{ctx: ctx, max: b.MaxXPathSteps}}
 	vc.charge = func() error {
 		charged++

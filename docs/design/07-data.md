@@ -268,6 +268,7 @@ func (t *Tree) Find(path string) (*Node, error)
 func (n *Node) Remove() error
 func (t *Tree) Merge(src *Tree) error
 func (t *Tree) Top() iter.Seq[*Node]   // + Node: Schema(), Value(), Name(), Children(), All() (pre-order), Parent(), Path(), Flags()
+func (e *ValidationError) RC() string // the call's LY_ERR name (LY_EVALID, LY_EINVAL, LY_ENOTFOUND, ...): that of the last error logged
 ```
 `ValidateDiff` is the second Validate method because the implicit diff is libyang's out-parameter
 (the oracle and NETCONF servers need it); PLAN §2's `Validate` shape stays, with `context.Context` as

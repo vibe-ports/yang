@@ -233,7 +233,7 @@ func TestParserHelpers(t *testing.T) {
 		t.Fatal("a key is never freed")
 	}
 	o, err := lc.createOpaq(opaque{Name: "u", ModuleNS: "zz", Format: types.FormatJSON})
-	if err != nil || o.flags != FlagNew {
+	if err != nil || o.flags != 0 { // lyd_create_opaq sets no LYD_NEW
 		t.Fatalf("opaque: %v", err)
 	}
 	lc.nodeInsert(c, nil, o)

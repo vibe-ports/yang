@@ -7,6 +7,7 @@ package data
 
 import (
 	"errors"
+	"slices"
 
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
@@ -39,6 +40,7 @@ type valCtx struct {
 	opts      ValidateOptions
 	nodeWhen  *nodeSet // node_when
 	nodeTypes *nodeSet // node_types
+	metaTypes *[]*meta // meta_types: metadata values that need the tree
 	// output is LYD_INTOPT_REPLY: the output of an operation is validated (operations are M4;
 	// datastore data passes false)
 	output bool
@@ -61,6 +63,9 @@ type valCtx struct {
 	// (lyd_eval_xpath4); validation has none (to NodeSet casts nothing).
 	vars []xpath.Var
 	to   xpath.ResultType
+	// modFirst is lyd_validate's *first2 when it is &first: the first top-level node of the
+	// module being validated when that is not the tree's first node, else nil (see modInsert).
+	modFirst *Node
 }
 
 type getnextKey struct {
@@ -233,7 +238,11 @@ func (vc *valCtx) addImplicit(parent, n *Node) error {
 	if hasWhen(n.schema) {
 		n.flags |= FlagWhenTrue
 	}
-	vc.t.insert(parent, n, insertDefault)
+	if parent == nil && vc.modFirst != nil {
+		vc.modInsert(n)
+	} else {
+		vc.t.insert(parent, n, insertDefault)
+	}
 	if hasWhen(n.schema) && vc.nodeWhen != nil {
 		vc.nodeWhen.add(n)
 	}
@@ -243,13 +252,50 @@ func (vc *valCtx) addImplicit(parent, n *Node) error {
 	return nil
 }
 
+// modInsert is lyd_insert_node of a top-level implicit node with first_sibling pointing at the
+// module's first node, which is not the tree's first (lyd_validate passes &first then). Without
+// an anchor, lyd_insert_node_last inserts after first->prev, which is the last node of the
+// preceding module, not the last sibling: the node lands right before the module's first node,
+// and first is not moved, so lyd_new_implicit_r does not recurse into it and lyd_validate_tree
+// does not walk it (libyang v5.8.6 behaviour, fixtures types/print-prefixes-json and -xml).
+// An anchor at first moves first to the node.
+// ponytail: Go's insertion position stands in for libyang's anchor search from first (they
+// agree while the module's nodes are in schema order).
+func (vc *valCtx) modInsert(n *Node) {
+	t, sib := vc.t, &vc.t.top
+	fi := slices.Index(sib.list, vc.modFirst)
+	at := t.insertPos(sib, n, insertDefault)
+	switch {
+	case fi < 0:
+		t.link(nil, sib, n, at)
+		return
+	case at == len(sib.list):
+		at = fi // no anchor: after first->prev
+	case at <= fi:
+		vc.modFirst = n // inserted before first: lyd_insert_node_ordby_schema moves it
+	}
+	t.link(nil, sib, n, at)
+}
+
+// modStart is the index of lyd_validate's *first2 in the top level: modFirst, else 0.
+func (vc *valCtx) modStart() int {
+	if vc.modFirst == nil {
+		return 0
+	}
+	return max(0, slices.Index(vc.t.top.list, vc.modFirst))
+}
+
 // newImplicitR is lyd_new_implicit_r: newImplicit, then recursively in every default container
 // among the children (the top-level siblings when parent is nil).
 func (vc *valCtx) newImplicitR(parent *Node, sparent *schema.Node, mod *schema.Module, o implOpts) error {
 	if err := vc.newImplicit(parent, sparent, mod, o); err != nil {
 		return err
 	}
-	for _, c := range vc.t.childrenOf(parent).list { // lyd_child_no_keys: keys are not containers
+	kids := vc.t.childrenOf(parent).list
+	if parent == nil {
+		kids = kids[vc.modStart():] // LY_LIST_FOR(*first): from lyd_validate's first2
+	}
+	for _, c := range kids { // lyd_child_no_keys: keys are not containers
 		if c.flags&FlagDefault != 0 && c.schema.Kind == schema.Container {
 			if err := vc.newImplicitR(c, nil, mod, o); err != nil {
 				return err

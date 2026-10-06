@@ -319,9 +319,7 @@ func (lc *lydCtx) createOpaq(o opaque) (*Node, error) {
 	if err := lc.countNode(); err != nil {
 		return nil, err
 	}
-	n := newOpaque(o)
-	n.flags = lc.newFlags()
-	return n, nil
+	return newOpaque(o), nil // lyd_create_opaq sets no flag (no LYD_NEW)
 }
 
 // checkSchema is lyd_parser_check_schema for datastore data: a state node with LYD_PARSE_NO_STATE,

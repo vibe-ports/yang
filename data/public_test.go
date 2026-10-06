@@ -27,6 +27,7 @@ var fzModules = fstest.MapFS{
   prefix fz;
   import ietf-yang-metadata { prefix md; }
   md:annotation ann { type string; }
+  md:annotation ref { type instance-identifier; }
   identity b;
   identity i1 { base b; }
   container c {
@@ -118,6 +119,36 @@ func TestParsePublic(t *testing.T) {
 	if _, _, err := parse(nil, "", data.FormatJSON, data.ParseOptions{}); err == nil {
 		t.Fatal("nil schema")
 	}
+}
+
+// TestMetaTypes: metadata values that need the tree (meta_types) are checked at the end of
+// lyd_validate_unres, on the Parse path (queued by the parser) and by Validate (queued by
+// lyd_validate_tree), errors logged at the node holding the metadata. No oracle golden: libyang
+// v5.8.6 crashes draining meta_types (deviations.md, libyang crash cases).
+func TestMetaTypes(t *testing.T) {
+	s := fzContext(t).Schema()
+	in := func(target string) string {
+		return `{"fz:c": {"s": "x", "@s": {"fz:ref": "` + target + `"}}}`
+	}
+	o := data.ParseOptions{Validate: data.ValidateOptions{MultiError: true}}
+	if _, diags, err := parse(s, in("/fz:c/s"), data.FormatJSON, o); err != nil {
+		t.Fatal(err, diags)
+	}
+	check := func(diags []yang.Diagnostic, err error) {
+		t.Helper()
+		var ve *data.ValidationError
+		if !errors.As(err, &ve) || ve.RC() != "LY_ENOTFOUND" || len(diags) != 1 || diags[0].DataPath != "/fz:c/s" {
+			t.Fatalf("%v %v", err, diags)
+		}
+	}
+	_, diags, err := parse(s, in("/fz:c/w"), data.FormatJSON, o)
+	check(diags, err)
+	o.ParseOnly = true
+	tr, _, err := parse(s, in("/fz:c/w"), data.FormatJSON, o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	check(tr.Validate(context.Background(), data.ValidateOptions{MultiError: true}))
 }
 
 // TestWhenMetaRequeue: the JSON parser queues a node with a when once more per metadata member
