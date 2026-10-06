@@ -30292,3 +30292,18 @@ fixtures:
         - {do: edit, merge_file: data/edit-merge.json, format: json, data_type: data}
         - {do: dump, with_defaults: explicit}
     golden: golden/seq-merge-basic.json
+
+  # an invalid value of an unpredicated leaf-list is checked with log 0: an error, no diagnostic
+  - id: seq/new-path-leaflist-invalid
+    dir: protocol-v2
+    source: *own
+    rfc: []
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: edit, set: {path: "/pv2-edit:c/a", value: "x"}}
+        - {do: edit, set: {path: "/pv2-edit:c/nl", value: "300"}}
+    golden: golden/seq-new-path-leaflist-invalid.json

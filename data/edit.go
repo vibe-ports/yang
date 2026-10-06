@@ -78,15 +78,19 @@ func (n *Node) Remove() error {
 
 // Merge is lyd_merge_siblings without options: the top-level subtrees of src are merged into t.
 // Nodes missing in t are copied with their flags and metadata and marked New; an existing leaf
-// takes src's value unless src's leaf is a default node; src is not changed.
+// takes src's value unless src's leaf is a default node; src is not changed. A nil src merges
+// nothing.
 func (t *Tree) Merge(src *Tree) error {
 	lg := &logger{set: t.set}
+	if src == nil {
+		return nil
+	}
 	if src.set != t.set {
 		return lg.done(lg.logErr("LY_EINVAL", "Different contexts mixed in a \"lyd_merge\" function call."))
 	}
-	dupInst := map[*Node]*dupInst{}
+	cache := &dupCache{}
 	for _, n := range src.top.nodes() {
-		t.mergeSibling(nil, n, dupInst)
+		t.mergeSibling(nil, n, cache)
 	}
 	return nil
 }
@@ -101,17 +105,22 @@ func (s *siblings) nodes() []*Node {
 }
 
 // findPath is lyd_find_path from the first top-level node: errNotFound / errPartial when the
-// path does not match fully (the tree being empty is not found, as the oracle's sequence does).
+// path does not match fully. The path is checked on an empty tree too (the oracle's sequence
+// reports LY_ENOTFOUND there without calling lyd_find_path).
 func (t *Tree) findPath(lg *logger, path string) (*Node, error) {
-	if len(t.top.list) == 0 {
-		return nil, errNotFound
-	}
 	if path == "" || path[0] != '/' {
 		return nil, fmt.Errorf("data: %q is not an absolute path", path)
 	}
-	p, msg, at := types.CompilePath(t.set, t.top.list[0].schema, path, false, false)
+	var ctxNode *schema.Node // ctx_node->schema: the first top-level node
+	if len(t.top.list) > 0 {
+		ctxNode = t.top.list[0].schema
+	}
+	p, msg, at := types.CompilePath(t.set, ctxNode, path, false, false)
 	if msg != "" {
 		return nil, lg.item(nil, at, false, "LY_EVALID", ly.XPath, "", msg)
+	}
+	if len(t.top.list) == 0 {
+		return nil, errNotFound
 	}
 	n, idx := t.evalPartial(p)
 	switch {
@@ -300,7 +309,8 @@ func (t *Tree) checkPosition(lg *logger, parent *Node, seg types.PathSegment) er
 // checkFindPath is lyd_new_path_check_find_lypath (without LYD_NEW_PATH_OPAQ): lists need their
 // keys, a leaf-list instance without a predicate gets one from the value, and the path is cut
 // before a key-less list or state leaf-list instance, which is always created. It returns the
-// path to search for existing nodes.
+// path to search for existing nodes. An invalid leaf-list value is not logged (libyang validates
+// it with log 0): the error carries the type's message only.
 func (t *Tree) checkFindPath(lg *logger, p types.Path, path, value string) (types.Path, error) {
 	newCount := len(p)
 	for u := range p {
@@ -324,7 +334,7 @@ func (t *Tree) checkFindPath(lg *logger, p types.Path, path, value string) (type
 		case sn.Kind == schema.LeafList && (len(preds) == 0 || preds[0].Kind != types.PredLeafList):
 			v, d := types.Store(sn.Type, value, types.FormatJSON, types.HintData, types.ModuleNames{Set: t.set}, sn)
 			if d != nil {
-				return nil, lg.item(nil, sn, false, "LY_EVALID", codeOf(d.Code), d.AppTag, d.Msg)
+				return nil, fmt.Errorf("data: invalid value of %s %q: %s", nodetypeStr(sn.Kind), sn.Name, d.Msg)
 			}
 			p[u].Preds = append(p[u].Preds, types.PathPred{Kind: types.PredLeafList, Value: v})
 		}
@@ -425,25 +435,71 @@ type dupInst struct {
 	used int
 }
 
+// dupCache is the duplicate instance cache of one sibling level (lyd_dup_inst_get's hash table),
+// with an index of the level's instances by lyd_hash key, built once per schema node, so that the
+// equal instances of a node are looked up among its equal-hash run only.
+type dupCache struct {
+	inst map[*Node]*dupInst
+	runs map[*schema.Node]map[idxKey][]*Node
+}
+
+// run returns the instances of the siblings of inst that hash like it (opaque nodes: the opaque
+// siblings). A key-less list hashes by schema node only, so its run is all its instances,
+// compared whole (libyang parity).
+func (t *Tree) run(c *dupCache, inst *Node) []*Node {
+	sib := inst.siblingsOf()
+	if inst.schema == nil {
+		return sib.opq
+	}
+	if c.runs == nil {
+		c.runs = map[*schema.Node]map[idxKey][]*Node{}
+	}
+	idx := c.runs[inst.schema]
+	if idx == nil {
+		idx = map[idxKey][]*Node{}
+		for n := range t.instances(sib, inst.schema) {
+			t.work++
+			if k, ok := hashOf(n); ok {
+				idx[k] = append(idx[k], n)
+			}
+		}
+		c.runs[inst.schema] = idx
+	}
+	k, _ := hashOf(inst)
+	return idx[k]
+}
+
+// added records n, just inserted at the level of c, in the level's index.
+func (c *dupCache) added(n *Node) {
+	if idx := c.runs[n.schema]; idx != nil {
+		if k, ok := hashOf(n); ok {
+			idx[k] = append(idx[k], n)
+		}
+	}
+}
+
 // dupInstNext is lyd_dup_inst_next: equal target instances are matched one by one; once all are
 // used, a key-less list, state leaf-list or user-ordered instance matches nothing more, others
-// keep matching the first one.
-// ponytail: the equal instances are collected by a scan of the siblings in order (libyang walks
-// its hash bucket); fine while Merge runs on API-sized trees.
-func (t *Tree) dupInstNext(inst *Node, cache map[*Node]*dupInst) *Node {
+// keep matching the first one. The equal instances (lyd_find_sibling_dup_inst_set) come from
+// inst's equal-hash run, in sibling order (libyang: its hash bucket order).
+func (t *Tree) dupInstNext(inst *Node, c *dupCache) *Node {
 	if inst == nil {
 		return nil
 	}
-	d := cache[inst]
+	d := c.inst[inst]
 	if d == nil {
 		d = &dupInst{set: []*Node{inst}}
 		full := isDupInstList(inst.schema)
-		for n := range inst.siblingsOf().all() {
+		for _, n := range t.run(c, inst) {
+			t.work++
 			if n != inst && compareSingle(t, n, inst, full) {
 				d.set = append(d.set, n)
 			}
 		}
-		cache[inst] = d
+		if c.inst == nil {
+			c.inst = map[*Node]*dupInst{}
+		}
+		c.inst[inst] = d
 	}
 	if d.used == len(d.set) {
 		if isDupInstList(inst.schema) || inst.schema != nil && inst.schema.UserOrdered {
@@ -457,7 +513,7 @@ func (t *Tree) dupInstNext(inst *Node, cache map[*Node]*dupInst) *Node {
 
 // mergeSibling is lyd_merge_sibling_r without options: src merged into the children of parent
 // (nil: the top level of t).
-func (t *Tree) mergeSibling(parent, src *Node, cache map[*Node]*dupInst) {
+func (t *Tree) mergeSibling(parent, src *Node, cache *dupCache) {
 	sib := t.childrenOf(parent)
 	var match *Node
 	switch {
@@ -476,6 +532,9 @@ func (t *Tree) mergeSibling(parent, src *Node, cache map[*Node]*dupInst) {
 			e.flags |= FlagNew // required for validation
 		}
 		t.insert(parent, d, insertDefault)
+		if d.schema != nil {
+			cache.added(d)
+		}
 		if firstInst {
 			t.dupInstNext(d, cache) // do not match this instance next time
 		}
@@ -491,7 +550,7 @@ func (t *Tree) mergeSibling(parent, src *Node, cache map[*Node]*dupInst) {
 	case match.schema.Kind == schema.Leaf && src.flags&FlagDefault == 0:
 		t.changeTermVal(match, src.value, false)
 	}
-	childCache := map[*Node]*dupInst{}
+	childCache := &dupCache{}
 	for _, c := range src.kids.nodes() {
 		if !c.isKey() { // lyd_child_no_keys
 			t.mergeSibling(match, c, childCache)

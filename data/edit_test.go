@@ -158,7 +158,7 @@ func (s editStep) apply(tr *Tree) (rc string, diags []string) {
 		}
 		return "error", diags
 	} else if err != nil {
-		return err.Error(), nil
+		return "error", nil // not logged
 	}
 	return "LY_SUCCESS", nil
 }
@@ -179,6 +179,7 @@ func TestEditGoldens(t *testing.T) {
 		"seq-new-path-bad-path":          {x("/nope", "1")},
 		"seq-delete-not-found":           {x("/a", "x"), del("/l[k='a']/v")},
 		"seq-delete-bad-path":            {x("/a", "x"), del("/l")},
+		"seq-new-path-leaflist-invalid":  {x("/a", "x"), x("/nl", "300")},
 	}
 	for name, steps := range fixtures {
 		t.Run(name, func(t *testing.T) {
@@ -292,4 +293,42 @@ func TestNewPathAPI(t *testing.T) {
 		d.flags&FlagDefault != 0 || np.flags&FlagDefault != 0 || d.flags&FlagNew != 0 {
 		t.Errorf("default leaf: %v %v flags %v %v", n, err, d.flags, np.flags)
 	}
+}
+
+// TestMergeWork: merging n keyed instances into a level holding them costs O(n) dup-inst work
+// (each instance's equal set comes from its own hash run, not from all siblings).
+func TestMergeWork(t *testing.T) {
+	set := editSet(t)
+	build := func(n int) *Tree {
+		tr := newTree(set)
+		for i := range n {
+			if _, err := tr.NewPath(fmt.Sprintf("/pv2-edit:c/l[k='%d']/v", i), "1", NewPathOptions{}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return tr
+	}
+	const n = 4000
+	tr, src := build(n), build(n)
+	tr.work = 0
+	if err := tr.Merge(src); err != nil {
+		t.Fatal(err)
+	}
+	if limit := 8 * n; tr.work > limit {
+		t.Fatalf("merging %d equal instances: %d units of work, limit %d", n, tr.work, limit)
+	}
+}
+
+// TestEditEdges: Merge(nil) merges nothing, a malformed path is rejected on an empty tree too.
+func TestEditEdges(t *testing.T) {
+	set := editSet(t)
+	tr := newTree(set)
+	if err := tr.Merge(nil); err != nil {
+		t.Errorf("Merge(nil): %v", err)
+	}
+	var ve *ValidationError
+	if _, err := tr.Find("/pv2-edit:c/l"); !errors.As(err, &ve) || ve.Diags[0].Msg != `Predicate missing for list "l" in path.` {
+		t.Errorf("malformed path on an empty tree: %v", err)
+	}
+	// seq/new-path-leaflist-invalid replays the invalid leaf-list value
 }

@@ -32,6 +32,9 @@ module pv2-edit {
     leaf-list ll {
       type string;
     }
+    leaf-list nl {
+      type uint8;
+    }
     list st {
       config false;
       leaf x {
