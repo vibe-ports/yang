@@ -462,3 +462,10 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | src/tree_schema.c | lysc_tree_dfs_full, lysc_module_dfs_full | schema.Node.DFS, schema.Module.DFS | ported | compile/* (schema_tree dump order), Go test schema/TestDFS | iterators (iter.Seq) instead of a callback; iterative, no recursion |
 | src/tree_schema_common.c | lysc_owner_module | schema.Node.OwnerModule | ported | Go test schema/TestOwnerModule | |
 | src/tree_schema.c, src/path.c | lys_find_path, _ly_path_compile (LY_PATH_TARGET_MANY, relative paths) | types.FindPath, types.pathCompileAt | ported | Go test types/TestFindPath | returns libyang's message instead of logging it |
+| src/tree_data_new.c | lyd_new_implicit, lyd_new_implicit_r | data.valCtx.newImplicit, newImplicitR, addImplicit | ported | Go test TestNewImplicit; dflt/* (stream F) | defaults through types.StoreDefault, NeedsTree → node_types; diff via the hook (D8b) |
+| src/validation.c | lyd_val_getnext_get | data.valCtx.getnextOf | ported | Go test TestNewImplicit | cached per schema parent |
+| src/tree_data_common.c | lys_getnext_data | data.valCtx.getnextData, firstData | ported | Go tests TestNewImplicit, TestValidateNew | |
+| src/validation.c | lyd_validate_new, lyd_validate_choice_r, lyd_validate_cases, lyd_val_has_default | data.valCtx.validateNew, validateChoices, validateCases, data.hasDefault | ported | Go test TestValidateNew; m1/invalid-choice-both-cases, choice/old-case-autodelete | |
+| src/validation.c | lyd_validate_autodel_leaflist_dflt, lyd_validate_autodel_cont_leaf_dflt, lyd_validate_autodel_case_dflt, lyd_validate_autodel_node_del | data.valCtx.autodelLeafListDflt, autodelContLeafDflt, autodelCaseDflt, autodel | ported | Go test TestValidateNew; dflt/* (stream F) | |
+| src/validation.c | lyd_validate_duplicates, LY_VAL_ERR_GOTO | data.valCtx.duplicates, data.dupIndex, data.valCtx.stop | ported | Go tests TestDuplicates, TestDuplicateWork; m1/invalid-duplicate-key | children table or a per-call index where libyang scans the siblings (same answers, linear) |
+| src/tree_schema.h | lysc_has_when | data.hasWhen | ported | Go test TestNewImplicit | |

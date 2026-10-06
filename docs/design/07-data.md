@@ -457,7 +457,8 @@ m1 schemas (C7) and the opaque `yang.Schema` snapshot (C8, `internal/snap`): it 
 | D6 | XML data parser (PX minus ops/any/ext, key-position check), hand-built-schema tests + parser corpus | 1.0k | D2, D4 | after D4 | Sonnet |
 | D7 | printers JSON + XML + metadata printing | 1.1k | D0, D1b | after D1b | Sonnet |
 | D7b | with-defaults filter (`lyd_node_should_print`, `lyd_is_default`), tagged modes | 0.4k | D7 | after D7 | Sonnet |
-| D8 | `lyd_new_implicit[_r]`, `lyd_validate_new` (cases, autodel, duplicates), `np_cont_dflt_*`, implicit diff (`lyd_val_diff_add`, create/delete subset of `lyd_diff_add`/`merge_all`) | 1.3k | D1b, D0 | after D1b | Opus |
+| D8 | `lyd_new_implicit[_r]`, `lyd_validate_new` (cases, autodel, duplicates), `np_cont_dflt_*`; a `diff(node, op)` hook at every `lyd_val_diff_add` call site | 1.0k | D1b, D0 | after D1b | Opus |
+| D8b | implicit diff tree behind D8's hook: `lyd_val_diff_add` = create/delete subset of `lyd_diff_add` + `lyd_diff_merge_all` (yang:operation, user-ordered key/value/position metadata); needed by ValidateDiff (M6), not by the M1 pilot | 0.6k | D8 | by priority | Opus |
 | D9 | xpath/types adapters, `when` queue + auto-delete + `WhenFalse`, dummy when, `node_types` resolution (per-value leafref predicate), musts | 1.2k | D8, #16 | after D8 | Opus |
 | D10 | `lyd_validate` (Parse path shared queues vs Validate path per module, `Present` order), `lyd_validate_tree`, `final_r`, siblings-schema (mandatory/min/max/unique), operational severities, Validate/ValidateDiff, parse → validate wiring, `MaxXPathSteps` + ctx | 1.3k | D9, X1, D5 or D6 | after D9 | Opus |
 | D11 | edits: NewPath(Update) over `internal/lyxp`, Find, Remove, Merge (no options) | 1.1k | D1b, D8 (flags) | after D8 | Sonnet |
