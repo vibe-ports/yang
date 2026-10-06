@@ -30934,3 +30934,100 @@ fixtures:
         - {do: edit, set: {path: "/pv2-edit:c/np/d", value: "7"}}
         - {do: dup, node: "/pv2-edit:c/ll[.='a']", options: [recursive, no_lyds], siblings: true}
     golden: golden/seq-dup-no-lyds.json
+
+  # #185 (D8b): the implicit diff of lyd_validate_all (validate steps' implicit_diff) over pv2-diff
+  # every implicit default: leaf, NP container, system- and user-ordered leaf-lists (yang:value anchors), the default case
+  - id: seq/diff-defaults
+    dir: protocol-v2
+    source: *own
+    rfc: []   # libyang lyd_validate_all diff (yang:operation metadata): no RFC behaviour
+    areas: [validation, diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-diff}]
+      steps:
+        - {do: parse, format: json, data_type: config, parse_only: true, data: '{"pv2-diff:c": {"mode": "off"}}'}
+        - {do: validate, data_type: config}
+    golden: golden/seq-diff-defaults.json
+
+  # nodes whose when turned false are deleted; the implicit z created under wc first is merged into wc's delete
+  - id: seq/diff-when-delete
+    dir: protocol-v2
+    source: *own
+    rfc: []   # libyang lyd_validate_all diff (yang:operation metadata): no RFC behaviour
+    areas: [validation, diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-diff}]
+      steps:
+        - {do: parse, format: json, data_type: config, parse_only: true, data: '{"pv2-diff:c": {"mode": "on", "w": "a", "wc": {"y": "b"}}}'}
+        - {do: validate, data_type: config}
+        - {do: edit, set: {path: "/pv2-diff:c/mode", value: "off"}}
+        - {do: validate, data_type: config}
+    golden: golden/seq-diff-when-delete.json
+
+  # created and deleted in one validation: the defaults of wc merge with its delete
+  - id: seq/diff-when-same-pass
+    dir: protocol-v2
+    source: *own
+    rfc: []   # libyang lyd_validate_all diff (yang:operation metadata): no RFC behaviour
+    areas: [validation, diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-diff}]
+      steps:
+        - {do: parse, format: json, data_type: config, parse_only: true, data: '{"pv2-diff:c": {"mode": "off", "wc": {"y": "b"}}}'}
+        - {do: validate, data_type: config}
+    golden: golden/seq-diff-when-same-pass.json
+
+  # a new case deletes the default one: c1a delete, its created default merged away
+  - id: seq/diff-case-replace
+    dir: protocol-v2
+    source: *own
+    rfc: []   # libyang lyd_validate_all diff (yang:operation metadata): no RFC behaviour
+    areas: [validation, diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-diff}]
+      steps:
+        - {do: parse, format: json, data_type: config, parse_only: true, data: '{"pv2-diff:c": {"mode": "off"}}'}
+        - {do: validate, data_type: config}
+        - {do: edit, set: {path: "/pv2-diff:c/c2a", value: "x"}}
+        - {do: validate, data_type: config}
+    golden: golden/seq-diff-case-replace.json
+
+  # defaults inside user-ordered list instances: the instances are none parents with their keys
+  - id: seq/diff-userord-list
+    dir: protocol-v2
+    source: *own
+    rfc: []   # libyang lyd_validate_all diff (yang:operation metadata): no RFC behaviour
+    areas: [validation, diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-diff}]
+      steps:
+        - {do: parse, format: json, data_type: config, parse_only: true, data: '{"pv2-diff:c": {"mode": "off", "ol": [{"k": "x"}, {"k": "y"}]}}'}
+        - {do: validate, data_type: config}
+    golden: golden/seq-diff-userord-list.json
+
+  # an explicit value deleted by when, then the default recreated: replace with orig-value
+  - id: seq/diff-explicit-default
+    dir: protocol-v2
+    source: *own
+    rfc: []   # libyang lyd_validate_all diff (yang:operation metadata): no RFC behaviour
+    areas: [validation, diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-diff}]
+      steps:
+        - {do: parse, format: json, data_type: config, parse_only: true, data: '{"pv2-diff:c": {"mode": "on", "wc": {"y": "b", "z": 9}}}'}
+        - {do: validate, data_type: config}
+        - {do: edit, set: {path: "/pv2-diff:c/mode", value: "off"}}
+        - {do: validate, data_type: config}
+    golden: golden/seq-diff-explicit-default.json

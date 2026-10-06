@@ -1,0 +1,75 @@
+module pv2-diff {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-diff";
+  prefix pd;
+
+  description
+    "Hand-written module for the implicit diff of lyd_validate_all (sequence validate steps):
+     implicit defaults created, nodes deleted by when and by a new case, user-ordered anchors.";
+
+  container c {
+    leaf mode {
+      type string;
+    }
+    leaf d {
+      type uint8;
+      default "5";
+    }
+    container np {
+      leaf x {
+        type string;
+        default "dx";
+      }
+    }
+    leaf w {
+      when "../mode = 'on'";
+      type string;
+    }
+    container wc {
+      when "../mode = 'on'";
+      leaf y {
+        type string;
+      }
+      leaf z {
+        type uint8;
+        default "1";
+      }
+    }
+    leaf-list dl {
+      type uint8;
+      default "2";
+      default "1";
+    }
+    leaf-list ul {
+      ordered-by user;
+      type string;
+      default "b";
+      default "a";
+    }
+    choice ch {
+      default c1;
+      case c1 {
+        leaf c1a {
+          type uint8;
+          default "7";
+        }
+      }
+      case c2 {
+        leaf c2a {
+          type string;
+        }
+      }
+    }
+    list ol {
+      key "k";
+      ordered-by user;
+      leaf k {
+        type string;
+      }
+      leaf v {
+        type uint8;
+        default "3";
+      }
+    }
+  }
+}

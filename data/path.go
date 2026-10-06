@@ -85,12 +85,7 @@ func lydPath(set *schema.Set, n *Node, noLastPred bool) string {
 				b.WriteString("[" + strconv.Itoa(listPos(it)) + "]")
 				break
 			}
-			for _, k := range it.kids.list {
-				if k.schema == nil || !k.schema.IsKey() {
-					break
-				}
-				b.WriteString("[" + k.schema.Name + "=" + quoted(k.value.Canonical()) + "]")
-			}
+			b.WriteString(listPredicate(it))
 		case schema.LeafList:
 			if it.schema.Config {
 				b.WriteString("[.=" + quoted(it.value.Canonical()) + "]")
