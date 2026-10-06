@@ -208,6 +208,9 @@ func oneOf(a string, vals ...string) bool {
 // just after it was read: the value checks of the parse_* functions.
 func (c *checker) arg(l *lexer, pf *frame, s *Stmt) error {
 	a := s.Arg
+	if a == "" && emptyArgWarned[s.Keyword] && s.ExtPrefix == "" && c.ctx != nil && c.ctx.Warn != nil { // CHECK_NONEMPTY
+		c.ctx.Warn("Empty argument of " + s.Keyword + " statement does not make sense.")
+	}
 	switch s.Keyword {
 	case "module", "submodule":
 		if pf == nil {
@@ -472,3 +475,8 @@ func enumValue(s *Stmt) (int64, bool) {
 	}
 	return int64(n), true //nolint:gosec // n <= MaxUint32
 }
+
+// emptyArgWarned are the statements whose empty argument libyang's YANG parser warns about
+// (CHECK_NONEMPTY in parse_restr, parse_when, parse_refine, parse_augment, parse_deviation).
+var emptyArgWarned = map[string]bool{"must": true, "length": true, "range": true, "when": true, "refine": true,
+	"augment": true, "deviation": true}

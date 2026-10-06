@@ -539,7 +539,7 @@ may be referencing` (SC:629, SC:721, C7), `check skipped because referenced modu
 SC:1212, C7), `Refining config inside %s has no effect` (SCA:961, C6), `Single revision of the
 module imported twice` (TS:1436, C1a), `File name does not match module name|revision` (TS:1996,
 TS:2001, C1a); revision-order, duplicate-revision, control characters, 1.1 submodule includes
-(TSC:94-122, parser_yang.c:4713) are parser warnings = existing U-0006, closed with a warning channel
+(TSC:94-122, parser_yang.c:4713) are parser warnings, reported through `parser.Context.Warn` (the former U-0006)
 in `parser`. The 81 XPath sites are §2.13 (C2a/C2b). **Revert:** any error reverts the
 whole `Load` (§1.6); there is no partially compiled module.
 
