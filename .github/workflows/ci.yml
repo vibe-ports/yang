@@ -35,6 +35,33 @@ jobs:
           cacheFrom: ghcr.io/vibe-ports/yang-dev
           push: never
           runCmd: make ci
+  # Port coverage report (issue #77): informational, never fails the build.
+  port-coverage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    continue-on-error: true
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: devcontainers/ci@513af61f4de4f75d37e4438f184ba4358f0fc1ca # v0.3.1900000450
+        continue-on-error: true
+        with:
+          imageName: ghcr.io/vibe-ports/yang-dev
+          cacheFrom: ghcr.io/vibe-ports/yang-dev
+          push: never
+          runCmd: make port-coverage > port-coverage.md 2>&1 || true
+      - if: always()
+        run: cat port-coverage.md >> "$GITHUB_STEP_SUMMARY" || true
   # Publishing the dev image is the only job with packages: write, and only for main.
   image:
     needs: ci

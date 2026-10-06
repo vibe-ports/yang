@@ -1,7 +1,7 @@
 # All targets are meant to run inside the dev container (./dev make <target>).
 FUZZTIME ?= 60s
 
-.PHONY: ci test-oracle fmt-check vet lint nocgo test test-386 vuln secrets sensitive fuzz oracle test-go-min oracle-check oracle-golden test-gates registries
+.PHONY: ci test-oracle fmt-check vet lint nocgo test test-386 vuln secrets sensitive fuzz oracle test-go-min oracle-check oracle-golden test-gates registries port-coverage
 
 ci: fmt-check vet lint nocgo test test-386 test-go-min test-oracle test-gates vuln secrets sensitive oracle-check registries
 
@@ -92,6 +92,13 @@ oracle-check:
 
 oracle-golden: oracle
 	cd conformance && go run ./cmd/golden -require-protocol && go test ./...
+
+# Port coverage (issue #77): libyang functions reachable from the pilot entry points that
+# docs/port-map.md does not list; roots and out-of-scope areas in conformance/port-coverage.conf.
+# Informational (CI job summary); runs on the host too (needs universal-ctags).
+port-coverage: libyang-src
+	@scripts/lyfn -n ly_ctx_new >/dev/null
+	@cd conformance && go run ./cmd/portcov -src ../.cache/libyang -portmap ../docs/port-map.md -config port-coverage.conf
 
 # libyang v5.8.6 sources for porting and reviews (host side, gitignored).
 libyang-src:
