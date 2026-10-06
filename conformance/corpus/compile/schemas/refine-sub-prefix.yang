@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module refine-sub-prefix {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:refine-sub-prefix";
+  prefix refine-sub-prefix;
+  include refine-sub-prefix-sub;
+}

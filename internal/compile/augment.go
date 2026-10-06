@@ -6,15 +6,52 @@ package compile
 
 import (
 	"github.com/vibe-ports/yang/internal/ly"
+	"github.com/vibe-ports/yang/internal/lyxp"
 	"github.com/vibe-ports/yang/internal/parser"
 	"github.com/vibe-ports/yang/internal/schema"
 )
 
-// augments is lys_compile_node_augments: apply the uses augments targeting node, restarting the
-// scan after each (an applied augment may add targets of others).
+// topAug is struct lysc_augment of a top-level augment (ctx->augs).
+type topAug struct {
+	nid *nodeid
+	pm  *pmod // aug_pmod
+	aug *parser.Node
+}
+
+// precompileOwnAugments is lys_precompile_own_augments: the top-level augments of the modules
+// augmenting the one being compiled (module, then its submodules, statement order) that target
+// it. The loader checked their node-ids (lys_nodeid_mod_check, design 06 C1b); augments in
+// extension instances are U-0023.
+func (w *nodeCtx) precompileOwnAugments(m *Module) {
+	for _, am := range m.augmentedBy {
+		pms := []*pmod{&am.pmod}
+		for _, inc := range am.Includes {
+			if inc.Sub != nil {
+				pms = append(pms, &inc.Sub.pmod)
+			}
+		}
+		for _, pm := range pms {
+			for _, a := range pm.Parsed.Augments {
+				e, msg := lyxp.Lex(a.Name)
+				if msg != "" {
+					continue // reported when the augmenting module was implemented
+				}
+				nid := precompileNodeid(e)
+				if pm.resolve(nid.prefix[0]) != w.cur {
+					continue // augment for another module
+				}
+				w.augs.add(&topAug{nid: nid, pm: pm, aug: a}, w.nidKey(nid, pm), nid)
+			}
+		}
+	}
+}
+
+// augments is lys_compile_node_augments: apply the uses augments, then the top-level augments
+// targeting node, restarting each scan after an application (an applied augment may add
+// targets of others).
 func (w *nodeCtx) augments(node *schema.Node) error {
-	prevPm := w.pm
-	defer func() { w.pm = prevPm }()
+	prevPm, prevCur := w.pm, w.cur
+	defer func() { w.pm, w.cur, w.tc.cur = prevPm, prevCur, prevCur }()
 	keys := w.usesAugs.keys(node.Name, node.Parent, &w.c.work)
 	sc := w.usesAugs.scan(keys, &w.c.work)
 	for i := 0; ; {
@@ -41,6 +78,33 @@ func (w *nodeCtx) augments(node *schema.Node) error {
 		w.usesAugs.remove(aug)
 		w.pendingOf[aug.uses]--
 		sc = w.usesAugs.scan(keys, &w.c.work)
+		i = 0
+	}
+	keys = w.augs.keys(node.Name, node.Parent, &w.c.work)
+	tsc := w.augs.scan(keys, &w.c.work)
+	for i := 0; ; {
+		aug, j, ok := tsc.next(i)
+		if !ok {
+			break
+		}
+		if !w.nodeidMatch(aug.nid, aug.pm, nil, node, nil, nil) {
+			i = j + 1
+			continue
+		}
+		// use the path (from the root) and the modules of the augment
+		saved := w.path
+		w.cur, w.tc.cur, w.pm = aug.pm.mod, aug.pm.mod, aug.pm
+		w.path.init(w.cur)
+		w.path.update(nil, "{augment}")
+		w.path.update(nil, aug.aug.Name)
+		err := w.compileAugment(aug.aug, node)
+		w.path = saved
+		w.cur, w.tc.cur = prevCur, prevCur
+		if err != nil {
+			return err
+		}
+		w.augs.remove(aug)
+		tsc = w.augs.scan(keys, &w.c.work)
 		i = 0
 	}
 	return nil

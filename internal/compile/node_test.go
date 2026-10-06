@@ -53,41 +53,24 @@ func (h *nodeHarness) load(name string) (mod *schema.Module, diags []Diagnostic,
 // parse-phase diagnostics.
 func (h *nodeHarness) loadFeatures(name string, features []string) (mod *schema.Module, loadDiags, diags []Diagnostic,
 	loadErr, err error) {
-	m, loadDiags, loadErr := h.c.Load(name, "", features)
-	if loadErr != nil {
-		return nil, loadDiags, nil, loadErr, nil
-	}
-	h.c.diags = nil
-	if err = h.c.compileNodes(m, m.mod); err == nil {
-		// a module unres implements is compiled with the node walk
-		h.c.nodeWalk = true
-		err = h.c.unres()
-		h.c.nodeWalk = false
-	}
-	return m.mod, loadDiags, h.c.diags, nil, err
-}
-
-// pmods are the module and its submodules.
-func (m *Module) pmods() []*pmod {
-	pms := []*pmod{&m.pmod}
-	for _, inc := range m.Includes {
-		if inc.Sub != nil {
-			pms = append(pms, &inc.Sub.pmod)
+	h.c.nodeWalk = true // libyang's internal modules were compiled without it by NewContext
+	m, all, err := h.c.Load(name, "", features)
+	parseErr := false
+	for _, d := range all {
+		if d.Phase == "parse" {
+			loadDiags = append(loadDiags, d)
+			parseErr = parseErr || d.Level == LevelError
+		} else {
+			diags = append(diags, d)
 		}
 	}
-	return pms
-}
-
-// augmented reports whether a module outside libyang's internal ones has a top-level augment.
-func (h *nodeHarness) augmented() bool {
-	for _, m := range h.c.Modules[len(internalModules):] {
-		for _, pm := range m.pmods() {
-			if len(pm.Parsed.Augments) > 0 {
-				return true
-			}
-		}
+	switch {
+	case err != nil && parseErr:
+		return nil, loadDiags, diags, err, nil
+	case err != nil:
+		return nil, loadDiags, diags, nil, err
 	}
-	return false
+	return m.Schema, loadDiags, diags, nil, nil
 }
 
 // gNode is the part of the oracle's schema_tree entry (lyoracle.c snode_cb) that C4a decides.
@@ -370,14 +353,26 @@ func TestNodeGoldens(t *testing.T) {
 			}
 			schemas := os.DirFS(filepath.Join(dir, "schemas"))
 			opts := Options{CompileObsolete: req.compileObsolete}
-			pre := newNodeHarness(t, opts, schemas)
-			for _, gm := range g.Modules {
-				_, _, _ = pre.c.Load(gm.Name, "", nil)
-			}
-			if pre.augmented() {
-				t.Skip("top-level augments: design 06 C6 part 2")
-			}
 			h := newNodeHarness(t, opts, schemas)
+			type dump struct {
+				name string
+				mod  *schema.Module
+				want []gNode
+			}
+			var dumps []dump
+			defer func() {
+				// the oracle dumps every module after the last load (later loads may recompile)
+				if t.Failed() || t.Skipped() {
+					return
+				}
+				for _, d := range dumps {
+					if got := dumpTree(d.mod); len(got)+len(d.want) > 0 && !reflect.DeepEqual(got, d.want) {
+						gj, _ := json.MarshalIndent(got, "", " ")
+						wj, _ := json.MarshalIndent(d.want, "", " ")
+						t.Fatalf("%s tree:\n got  %s\n want %s", d.name, gj, wj)
+					}
+				}
+			}()
 			for _, gm := range g.Modules {
 				mod, loadDiags, diags, loadErr, err := h.loadFeatures(gm.Name, req.features[gm.Name])
 				if !gm.Accepted && gm.Phase == "parse" && len(gm.Diagnostics) > 0 &&
@@ -413,8 +408,6 @@ func TestNodeGoldens(t *testing.T) {
 					t.Skip("parse-phase failure the C1a loader does not report yet (C1b, C4b)")
 				case errors.Is(err, ErrUnsupported):
 					t.Skip(err)
-				case h.augmented():
-					t.Skip("top-level augments: design 06 C6 part 2")
 				}
 				var want, got []goldenDiag
 				var first *goldenDiag
@@ -472,11 +465,7 @@ func TestNodeGoldens(t *testing.T) {
 				if dev := knownDeviations[id]; dev != nil {
 					wantTree = dev(wantTree)
 				}
-				if got := dumpTree(mod); len(got)+len(wantTree) > 0 && !reflect.DeepEqual(got, wantTree) {
-					gj, _ := json.MarshalIndent(got, "", " ")
-					wj, _ := json.MarshalIndent(wantTree, "", " ")
-					t.Fatalf("%s tree:\n got  %s\n want %s", gm.Name, gj, wj)
-				}
+				dumps = append(dumps, dump{gm.Name, mod, wantTree})
 				ran++
 			}
 		})

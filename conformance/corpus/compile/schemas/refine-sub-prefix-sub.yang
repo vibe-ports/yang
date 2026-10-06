@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+// The refine node-id prefix is imported by the submodule only: libyang matches it against the
+// main module's imports.
+submodule refine-sub-prefix-sub {
+  yang-version 1.1;
+  belongs-to refine-sub-prefix { prefix rsp; }
+  import refine-sub-prefix-o { prefix o; }
+  grouping g { leaf x { type string; } }
+  container c { uses g { refine "o:x" { description "d"; } } }
+}

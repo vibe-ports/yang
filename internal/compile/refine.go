@@ -62,19 +62,29 @@ func (w *nodeCtx) nodeidModCheck(str string) (*nodeid, error) {
 			return nil, w.errf(ly.Reference, "Invalid %s value \"%s\" - name test expected instead of \"%s\".", typ, str, e.Text(i+1))
 		}
 	}
-	// lys_precompile_nodeid
-	nid := &nodeid{str: str}
-	for i := 0; i < len(e.Toks); i += 2 {
-		prefix, name, ok := strings.Cut(e.Text(i), ":")
-		if !ok {
-			prefix, name = "", prefix
-		}
-		nid.prefix, nid.name = append(nid.prefix, prefix), append(nid.name, name)
+	nid := precompileNodeid(e)
+	for _, prefix := range nid.prefix {
 		if _, ok := w.nodeidMod(prefix, w.pm); !ok {
 			return nil, eValid
 		}
 	}
 	return nid, nil
+}
+
+// precompileNodeid is lys_precompile_nodeid of a checked node-id.
+func precompileNodeid(e *lyxp.Expr) *nodeid {
+	nid := &nodeid{str: e.Src}
+	for i, t := range e.Toks {
+		if t != lyxp.TokNameTest {
+			continue
+		}
+		prefix, name, ok := strings.Cut(e.Text(i), ":")
+		if !ok {
+			prefix, name = "", prefix
+		}
+		nid.prefix, nid.name = append(nid.prefix, prefix), append(nid.name, name)
+	}
+	return nid
 }
 
 // nodeidMod is lys_schema_node_get_module: the module of a node test written in pm; an unknown

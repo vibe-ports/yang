@@ -60,6 +60,7 @@ type nodeCtx struct {
 	scans  int // uniqueness scans run (index hits)
 	// design 06 C6: groupings, uses, refines, augments
 	usesAugs  pending[*usesAug]                        // ctx->uses_augs
+	augs      pending[*topAug]                         // ctx->augs
 	usesRfns  pending[*usesRfn]                        // ctx->uses_rfns
 	pendingOf map[*parser.Node]int                     // pending augments and refines per uses
 	groupings map[*parser.Node]bool                    // ctx->groupings: the uses stack
@@ -102,6 +103,7 @@ func (c *Context) compileNodes(m *Module, out *schema.Module) error {
 	w.path.init(out)
 	defer func() { out.Top, c.types = slices.Concat(w.data, w.rpcs, w.notifs), w.tc.types }()
 	out.Exts = nil
+	w.precompileOwnAugments(m)
 	if err := w.topLevel(m.Parsed); err != nil {
 		return err
 	}
@@ -118,7 +120,11 @@ func (c *Context) compileNodes(m *Module, out *schema.Module) error {
 	if err := w.validateGroupings(m); err != nil {
 		return err
 	}
-	return w.unresMod(nil) // P5; the top-level augments come with design 06 C6 part 2
+	augs := make([]pendingAug, 0, len(w.augs.items))
+	for _, a := range w.augs.items {
+		augs = append(augs, pendingAug{nodeid: a.nid.str, pm: a.pm})
+	}
+	return w.unresMod(augs) // P5
 }
 
 func (w *nodeCtx) topLevel(p *parser.Module) error {
