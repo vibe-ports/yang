@@ -5,6 +5,7 @@ package data
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -126,6 +127,11 @@ func TestParseJSON(t *testing.T) {
 		{"meta-top-at", rej, false, `{"@": {"pj:ann": "x"}, "pj:top": "a"}`, []string{
 			`LY_EVALID LYVE_SYNTAX_JSON ||1: Invalid metadata format - "@" can be used only inside anydata, container or list entries.`}},
 		{"meta-top-at-multi", rej, true, `{"pj:top": "a", "@": {"pj:ann": "x"}}`, []string{
+			`LY_EVALID LYVE_SYNTAX_JSON ||1: Invalid metadata format - "@" can be used only inside anydata, container or list entries.`,
+			`LY_EVALID LYVE_SYNTAX_JSON ||1: Top-level JSON object member "@" must be namespace-qualified.`,
+			`LY_EVALID LYVE_REFERENCE /@||1: Missing JSON data instance to be coupled with @ metadata.`}},
+		// libyang logs the second error once per top-level schema sibling, twice here (D-0060)
+		{"meta-top-at-two-siblings", rej, true, `{"pj:top": "a", "pk:top": "b", "@": {"pj:ann": "x"}}`, []string{
 			`LY_EVALID LYVE_SYNTAX_JSON ||1: Invalid metadata format - "@" can be used only inside anydata, container or list entries.`,
 			`LY_EVALID LYVE_SYNTAX_JSON ||1: Top-level JSON object member "@" must be namespace-qualified.`,
 			`LY_EVALID LYVE_REFERENCE /@||1: Missing JSON data instance to be coupled with @ metadata.`}},
@@ -303,4 +309,57 @@ func FuzzParseJSON(f *testing.F) {
 			t.Fatalf("unexpected error %v", err)
 		}
 	})
+}
+
+// TestParseJSONLinear: attaching metadata is linear in the number of siblings. work counts the
+// parser's sibling visits and the insertions; 4× the input must cost about 4× the work. Cases: a
+// leaf-list metadata array after and before its instances, and the metadata of many opaque
+// siblings after and before them.
+func TestParseJSONLinear(t *testing.T) {
+	set := pjSchema()
+	c := set.Modules[1].Top[0]
+	c.Children = append(c.Children, &schema.Node{Kind: schema.LeafList, Name: "ls", Module: c.Module, Parent: c,
+		Type: &schema.Type{Base: schema.String}, Config: true})
+	join := func(n int, f func(i int) string) string {
+		s := make([]string, n)
+		for i := range s {
+			s[i] = f(i)
+		}
+		return strings.Join(s, ", ")
+	}
+	values := func(n int) string {
+		return `"ls": [` + join(n, func(i int) string { return fmt.Sprintf(`"v%07d"`, i) }) + `]`
+	}
+	metas := func(n int) string { return `"@ls": [` + join(n, func(int) string { return `{"pj:ann": "a"}` }) + `]` }
+	opaq := func(n int) string { return join(n, func(i int) string { return fmt.Sprintf(`"q%d": 1`, i) }) }
+	attrs := func(n int) string {
+		return join(n, func(i int) string { return fmt.Sprintf(`"@q%d": {"pj:ann": "a"}`, i) })
+	}
+	cases := []struct {
+		name    string
+		unknown UnknownPolicy
+		in      func(n int) string
+	}{
+		{"leaf-list-after", Reject, func(n int) string { return values(n) + ", " + metas(n) }},
+		{"leaf-list-before", Reject, func(n int) string { return metas(n) + ", " + values(n) }},
+		{"opaque-after", Opaque, func(n int) string { return opaq(n) + ", " + attrs(n) }},
+		{"opaque-before", Opaque, func(n int) string { return attrs(n) + ", " + opaq(n) }},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			work := func(n int) int {
+				var lc *lydCtx
+				o := parseOpts{ParseOptions: ParseOptions{Unknown: tc.unknown, ParseOnly: true}}
+				in := `{"pj:c": {` + tc.in(n) + `}}`
+				if _, diags, err := parseWith(context.Background(), strings.NewReader(in), set, o, parseJSON,
+					func(l *lydCtx) { lc = l }); err != nil {
+					t.Fatalf("%v %v", err, diags)
+				}
+				return lc.tree.work
+			}
+			if w1, w4 := work(1000), work(4000); w4 > 5*w1 {
+				t.Fatalf("work %d for 1000 siblings, %d for 4000: not linear", w1, w4)
+			}
+		})
+	}
 }

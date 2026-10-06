@@ -6,6 +6,7 @@ package data
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/vibe-ports/yang"
@@ -21,6 +22,23 @@ type jsonParser struct {
 	lc           *lydCtx
 	lx           *lyjson.Lexer
 	strict, opaq bool
+	// opqFirst is the first opaque child of a parent (nil: the top level) with a name and module
+	// name, for parseAttribute. JSON opaque nodes are only ever appended, so the first one stays.
+	opqFirst map[opqKey]*Node
+}
+
+type opqKey struct {
+	parent    *Node
+	name, mod string
+}
+
+// insertOpaq links the new opaque node n under parent (lyd_parser_node_insert) and indexes it.
+func (p *jsonParser) insertOpaq(parent, n *Node) {
+	p.lc.nodeInsert(parent, nil, n)
+	k := opqKey{parent, n.opaq.Name, n.opaq.ModuleNS}
+	if _, ok := p.opqFirst[k]; !ok {
+		p.opqFirst[k] = n
+	}
 }
 
 // parseJSON is lyd_parse_json for datastore data (LYD_INTOPT_WITH_SIBLINGS, no parent, no bare
@@ -35,7 +53,8 @@ func parseJSON(lc *lydCtx, in []byte) error {
 	}
 	lc.log.pushInput(func() int { return int(lx.Line()) }) //nolint:gosec // line numbers fit
 	defer lc.log.popInput()
-	p := &jsonParser{lc: lc, lx: lx, strict: lc.opts.Unknown == Reject, opaq: lc.opts.Unknown == Opaque}
+	p := &jsonParser{lc: lc, lx: lx, strict: lc.opts.Unknown == Reject, opaq: lc.opts.Unknown == Opaque,
+		opqFirst: map[opqKey]*Node{}}
 	if st := lx.Status(); st != lyjson.TokenObject {
 		_ = lc.log.val(nil, "", ly.SyntaxJSON, "Expected top-level JSON object or correct bare value, but %s found.", st)
 		return errLoggedFatal
@@ -326,98 +345,139 @@ func (p *jsonParser) checkOpaq(sn *schema.Node) (h types.Hints, err error) {
 
 // metadataFinish is lydjson_metadata_finish: the opaque "@name" nodes among the children of
 // parent (the top level when nil) become metadata of the instance they precede in the input; the
-// n-th "@name" goes to the n-th instance in sibling order (system-ordered instances are already
-// sorted, design 07 §4).
+// n-th "@name" in a run of them goes to the n-th instance in sibling order (system-ordered
+// instances are already sorted, design 07 §4). libyang scans all siblings per "@name"; the
+// instances are looked up instead (the run of a schema node by binary search, opaque nodes by
+// name), so the work is linear.
 func (p *jsonParser) metadataFinish(parent *Node) error {
 	lc := p.lc
 	sib := lc.tree.childrenOf(parent)
+	var ats []*Node
+	byName := map[string][]*Node{} // opaque siblings by name, in order
+	for _, n := range sib.opq {
+		lc.tree.work++
+		byName[n.opaq.Name] = append(byName[n.opaq.Name], n)
+		if strings.HasPrefix(n.opaq.Name, "@") {
+			ats = append(ats, n)
+		}
+	}
+	if len(ats) == 0 {
+		return nil
+	}
+	type run struct{ at, n int } // the instances of a schema node: sib.list[at:at+n]
+	runs := map[*schema.Node]run{}
+	firstList := map[string]int{} // index of the first list-hinted opaque node of a name, -1: none
+	var done []*Node
+	// libyang frees each one when it is attached; none of them is a target of another (their
+	// names start with '@'), except for a "@@name" member
+	defer func() { _ = lc.tree.unlinkAll(done) }()
 	var rc error
 	prev, instance := "", 0
-	for _, at := range append([]*Node(nil), sib.opq...) {
-		if !strings.HasPrefix(at.opaq.Name, "@") {
-			continue
-		}
+	for _, at := range ats {
+		lc.tree.work++
 		if prev != at.opaq.Name {
 			prev, instance = at.opaq.Name, 1
 		} else {
 			instance++
 		}
-		match := 0
-		for n := range sib.all() {
-			if n.schema == nil {
-				if at.opaq.Name[1:] != n.opaq.Name {
-					continue
-				}
-				if n.opaq.Hints&hintList != 0 {
-					return lc.log.val(at, "", ly.Syntax, "Metadata container references a sibling list node %s.", n.opaq.Name)
-				}
-				if match++; match != instance {
-					continue
-				}
-				for m := range at.kids.all() {
-					a := attr{Name: m.Name(), Value: valueText(m), Format: types.FormatJSON}
-					if m.schema != nil {
-						a.ModuleNS = m.schema.Module.Name
-					} else {
-						a.Prefix, a.ModuleNS, a.Hints = m.opaq.Prefix, m.opaq.ModuleNS, m.opaq.Hints
-					}
-					createAttr(n, a)
-				}
-				break
-			}
-			// the second resolution of the name: it succeeded the first time, or found nothing
+		// libyang resolves the name again at every schema sibling; it succeeded the first time or
+		// found nothing, except for the top-level "@", whose error it logs once per schema sibling
+		// (D-0060: once here)
+		var sn *schema.Node
+		if len(sib.list) > 0 {
 			name, prefix, _, isAttr := parseName(at.opaq.Name)
-			sn, _ := p.getSnode(isAttr, prefix, name, parent)
-			if sn != n.schema {
-				continue
-			}
-			if match++; match != instance {
-				continue
-			}
-			for m := range at.kids.all() {
-				var mod *schema.Module
-				var mprefix string
-				var h types.Hints
-				switch {
-				case m.schema != nil:
-					mod = m.schema.Module
-				case m.opaq.Prefix != "":
-					mprefix, h = m.opaq.Prefix, m.opaq.Hints
-					mod = lc.tree.set.Implemented(mprefix)
-				default:
-					// libyang dereferences the missing schema node here and crashes (D-0059):
-					// treated as metadata without a module
-					h = m.opaq.Hints
-				}
-				if mod != nil {
-					err := lc.createMeta(n, &n.meta, mod, m.Name(), valueText(m), types.FormatJSON,
-						types.ModuleNames{Set: lc.tree.set}, h, n.schema, n)
-					if err != nil {
-						return err
-					}
-				} else if p.strict {
-					if mprefix != "" {
-						return lc.log.val(at, "", ly.Reference, "Unknown (or not implemented) YANG module \"%s\" of metadata \"%s:%s\".",
-							mprefix, mprefix, m.Name())
-					}
-					return lc.log.val(at, "", ly.Reference, "Missing YANG module of metadata \"%s\".", m.Name())
-				}
-			}
-			lc.setDataFlags(n, &n.meta)
-			break
+			sn, _ = p.getSnode(isAttr, prefix, name, parent)
 		}
-		if match != instance {
+		r, ok := runs[sn]
+		if !ok && sn != nil {
+			if r.at = lc.tree.schemaIndex(sib, sn); r.at >= 0 {
+				for r.n = 0; r.at+r.n < len(sib.list) && sib.list[r.at+r.n].schema == sn; r.n++ {
+					lc.tree.work++
+				}
+			}
+			runs[sn] = r
+		}
+		var n *Node
+		if instance <= r.n {
+			n = sib.list[r.at+instance-1]
+		} else {
+			// then the opaque siblings of the name; a list-hinted one before the instance fails
+			m, same := instance-r.n, byName[at.opaq.Name[1:]]
+			fl, ok := firstList[at.opaq.Name[1:]]
+			if !ok {
+				fl = slices.IndexFunc(same, func(o *Node) bool { return o.opaq.Hints&hintList != 0 })
+				firstList[at.opaq.Name[1:]] = fl
+			}
+			if fl >= 0 && fl < m {
+				return lc.log.val(at, "", ly.Syntax, "Metadata container references a sibling list node %s.", same[fl].opaq.Name)
+			}
+			if m <= len(same) {
+				n = same[m-1]
+			}
+		}
+		switch {
+		case n == nil:
 			if instance > 1 {
 				rc = lc.log.val(at, "", ly.Reference, "Missing JSON data instance #%d to be coupled with %s metadata.",
 					instance, at.opaq.Name)
 			} else {
 				rc = lc.log.val(at, "", ly.Reference, "Missing JSON data instance to be coupled with %s metadata.", at.opaq.Name)
 			}
-		} else {
-			unlink(at)
+			continue
+		case n.schema == nil:
+			for m := range at.kids.all() {
+				a := attr{Name: m.Name(), Value: valueText(m), Format: types.FormatJSON}
+				if m.schema != nil {
+					a.ModuleNS = m.schema.Module.Name
+				} else {
+					a.Prefix, a.ModuleNS, a.Hints = m.opaq.Prefix, m.opaq.ModuleNS, m.opaq.Hints
+				}
+				createAttr(n, a)
+			}
+		default:
+			if err := p.attachMeta(at, n); err != nil {
+				return err
+			}
+			lc.setDataFlags(n, &n.meta)
 		}
+		done = append(done, at)
 	}
 	return rc
+}
+
+// attachMeta turns the members of the opaque metadata container at into metadata of n.
+func (p *jsonParser) attachMeta(at, n *Node) error {
+	lc := p.lc
+	for m := range at.kids.all() {
+		var mod *schema.Module
+		var mprefix string
+		var h types.Hints
+		switch {
+		case m.schema != nil:
+			mod = m.schema.Module
+		case m.opaq.Prefix != "":
+			mprefix, h = m.opaq.Prefix, m.opaq.Hints
+			mod = lc.tree.set.Implemented(mprefix)
+		default:
+			// libyang dereferences the missing schema node here and crashes (D-0059): treated as
+			// metadata without a module
+			h = m.opaq.Hints
+		}
+		switch {
+		case mod != nil:
+			err := lc.createMeta(n, &n.meta, mod, m.Name(), valueText(m), types.FormatJSON,
+				types.ModuleNames{Set: lc.tree.set}, h, n.schema, n)
+			if err != nil {
+				return err
+			}
+		case p.strict && mprefix != "":
+			return lc.log.val(at, "", ly.Reference, "Unknown (or not implemented) YANG module \"%s\" of metadata \"%s:%s\".",
+				mprefix, mprefix, m.Name())
+		case p.strict:
+			return lc.log.val(at, "", ly.Reference, "Missing YANG module of metadata \"%s\".", m.Name())
+		}
+	}
+	return nil
 }
 
 // valueText is lyd_get_value: the canonical value of a term, the value of an opaque node, "" else.
@@ -431,26 +491,21 @@ func valueText(n *Node) string {
 	return ""
 }
 
-// nextSibling is lyd_node.next in libyang's sibling order (schema nodes, then opaque nodes).
-func nextSibling(n *Node) *Node {
-	sib := n.siblingsOf()
-	l := sib.list
-	if n.schema == nil {
-		l = sib.opq
-	}
-	i := indexOf(l, n)
+// sibAt is the i-th sibling in libyang's order (schema nodes, then opaque nodes), nil past the end.
+func sibAt(sib *siblings, i int) *Node {
 	switch {
-	case i+1 < len(l):
-		return l[i+1]
-	case n.schema != nil && len(sib.opq) > 0:
-		return sib.opq[0]
+	case i < len(sib.list):
+		return sib.list[i]
+	case i-len(sib.list) < len(sib.opq):
+		return sib.opq[i-len(sib.list)]
 	}
 	return nil
 }
 
 // metaAttr is lydjson_meta_attr: the metadata object of node (an array of them for a leaf-list,
 // one per instance from node on), as metadata of a schema node or attributes of an opaque one.
-func (p *jsonParser) metaAttr(node *Node) (rc error) {
+// idx is the position of a leaf-list node among its siblings (sibAt): libyang's node->next.
+func (p *jsonParser) metaAttr(node *Node, idx int) (rc error) {
 	lc := p.lc
 	nodetype := schema.Container
 	if node.schema != nil {
@@ -521,7 +576,8 @@ func (p *jsonParser) metaAttr(node *Node) (rc error) {
 					instance, prev.schema.Module.Name, prev.schema.Name)
 			}
 			if status == lyjson.TokenNull {
-				prev, node = node, nextSibling(node)
+				idx++
+				prev, node = node, sibAt(node.siblingsOf(), idx)
 				if err := p.next(&status); err != nil {
 					return err
 				}
@@ -599,7 +655,8 @@ func (p *jsonParser) metaAttr(node *Node) (rc error) {
 			return nil
 		}
 		// the metadata object of the next leaf-list instance
-		prev, node = node, nextSibling(node)
+		idx++
+		prev, node = node, sibAt(node.siblingsOf(), idx)
 		if err := p.next(&status); err != nil {
 			return err
 		}
@@ -631,7 +688,7 @@ func (p *jsonParser) parseOpaq(name, prefix string, parent *Node, statusP, statu
 	if err != nil {
 		return nil, err
 	}
-	lc.nodeInsert(parent, nil, node)
+	p.insertOpaq(parent, node)
 	children := func(status *lyjson.Token) error {
 		for {
 			if err := p.subtree(node); err != nil {
@@ -674,7 +731,7 @@ func (p *jsonParser) parseOpaq(name, prefix string, parent *Node, statusP, statu
 			if node, err = p.createOpaqJSON(name, prefix, parent, statusInner); err != nil {
 				return nil, err
 			}
-			lc.nodeInsert(parent, nil, node)
+			p.insertOpaq(parent, node)
 		}
 	case *statusP == lyjson.TokenObject:
 		node.opaq.Hints |= hintContainer
@@ -702,38 +759,43 @@ func (p *jsonParser) ctxNextParseOpaq(name, prefix string, parent *Node, status 
 
 // parseAttribute is lydjson_parse_attribute: the "@name" member of attrNode, else of the sibling
 // it names; a member whose node is not parsed yet (or unknown) is kept as an opaque "@name" node
-// for metadataFinish.
+// for metadataFinish. libyang scans the siblings for the first match; schema nodes come first, so
+// the first instance of the schema node (binary search), else the first opaque node of the name
+// and module (opqFirst) is that match.
 func (p *jsonParser) parseAttribute(attrNode *Node, sn *schema.Node, name, prefix string, hasPrefix bool,
 	parent *Node, status *lyjson.Token) (*Node, error) {
+	lc := p.lc
+	idx := -1
 	if attrNode == nil {
-		attrMod := prefix
-		if sn == nil && !hasPrefix {
-			attrMod = nodePrefix(parent, "")
-		}
-		for a := range p.lc.tree.childrenOf(parent).all() {
-			if sn != nil {
-				if a.schema == sn || a.schema == nil && a.opaq.Name == sn.Name && a.opaq.ModuleNS != "" &&
-					a.opaq.ModuleNS == sn.Module.Name {
-					attrNode = a
-					break
+		lc.tree.work++
+		sib := lc.tree.childrenOf(parent)
+		mod := ""
+		if sn == nil {
+			// any node of that name and module (libyang compares them only when both are set)
+			if mod = prefix; !hasPrefix {
+				mod = nodePrefix(parent, "")
+			}
+			if m := lc.tree.set.Implemented(mod); m != nil && mod != "" {
+				var sparent *schema.Node
+				if parent != nil {
+					sparent = parent.schema
 				}
-				continue
+				sn = schema.FindChild(sparent, m.Top, m, name, 0)
 			}
-			modName := ""
-			if a.schema != nil {
-				modName = a.schema.Module.Name
-			} else {
-				modName = a.opaq.ModuleNS
+		} else {
+			mod, name = sn.Module.Name, sn.Name
+		}
+		if sn != nil {
+			if idx = lc.tree.schemaIndex(sib, sn); idx >= 0 {
+				attrNode = sib.list[idx]
 			}
-			// libyang compares the module names only when both are set
-			if a.Name() == name && modName != "" && attrMod != "" && modName == attrMod {
-				attrNode = a
-				break
-			}
+		}
+		if attrNode == nil && mod != "" {
+			attrNode = p.opqFirst[opqKey{parent, name, mod}]
 		}
 	}
 	if attrNode != nil {
-		return nil, p.metaAttr(attrNode)
+		return nil, p.metaAttr(attrNode, idx)
 	}
 	// parse it as an opaque node named "@[prefix:]name", resolved later
 	strict, opaq := p.strict, p.opaq

@@ -76,7 +76,7 @@ type Tree struct {
 	// order); lookups only read the tree otherwise, so the cache has its own lock.
 	rankMu sync.Mutex
 	rank   map[*schema.Node]int
-	work   int // comparisons made by insertions (tests count work, not time)
+	work   int // comparisons made by insertions, sibling visits of the parsers (tests count work, not time)
 }
 
 // newTree returns an empty tree over the compiled schema s (the public constructor over a
