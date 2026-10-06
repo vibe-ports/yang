@@ -116,7 +116,7 @@ func parseNCName(s string) int {
 }
 
 var axes = map[string]bool{"self": true, "child": true, "parent": true, "ancestor": true, "attribute": true,
-	"following": true, "namespace": true, "preceding": true, "descendant": true, "ancestor-or-self": true,
+	"following": true, "preceding": true, "descendant": true, "ancestor-or-self": true,
 	"following-sibling": true, "preceding-sibling": true, "descendant-or-self": true}
 
 const errXPEOF = "Unexpected XPath expression end."
@@ -137,7 +137,10 @@ func Lex(src string) (*Expr, string) {
 		return 0
 	}
 	inexpr := func(p int) string {
-		return fmt.Sprintf("Invalid character '%c'[%d] of expression '%s'.", at(p), p+1, src)
+		if at(p) == 0 { // %c of NUL ends the C message
+			return "Invalid character '"
+		}
+		return fmt.Sprintf("Invalid character '%s'[%d] of expression '%s'.", string([]byte{at(p)}), p+1, src)
 	}
 	add := func(t Tok, p, l int) {
 		e.Toks, e.Pos, e.Len = append(e.Toks, t), append(e.Pos, p), append(e.Len, l)
@@ -244,8 +247,8 @@ func Lex(src string) (*Expr, string) {
 			case strings.HasPrefix(src[p:], "mod") || strings.HasPrefix(src[p:], "div"):
 				tl, tt = 3, TokOperMath
 			case prevNType || prevFunc:
-				return nil, fmt.Sprintf("Invalid character 0x%x ('%c'), perhaps \"%s\" is supposed to be a function call.",
-					c, c, e.Text(len(e.Toks)-1))
+				return nil, fmt.Sprintf("Invalid character 0x%x ('%s'), perhaps \"%s\" is supposed to be a function call.",
+					c, string([]byte{c}), e.Text(len(e.Toks)-1))
 			default:
 				return nil, inexpr(p)
 			}
