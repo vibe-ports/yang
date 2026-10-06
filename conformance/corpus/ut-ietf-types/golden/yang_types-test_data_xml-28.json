@@ -1,0 +1,51 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "b",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"a:l2nz\": \"1950-01-01\"\n}\n",
+    "xml": "<l2nz xmlns=\"urn:tests:a\">1950-01-01</l2nz>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:l2nz",
+      "schema": "/a:l2nz",
+      "value": {
+        "canonical": "1950-01-01",
+        "type": "string",
+        "typedef": "date-no-zone",
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}
