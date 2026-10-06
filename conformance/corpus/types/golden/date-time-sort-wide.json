@@ -1,0 +1,211 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ty3",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"ty3:c\": {\n    \"dl\": [\n      \"2100-01-01Z\",\n      \"1900-01-01Z\",\n      \"2000-01-01Z\"\n    ],\n    \"dtl\": [\n      \"2100-01-01T00:00:00Z\",\n      \"1900-01-01T00:00:00Z\",\n      \"2000-01-01T00:00:00Z\"\n    ],\n    \"tl\": [\n      \"06:00:00Z\",\n      \"12:00:00Z\",\n      \"05:58:16+00:00\"\n    ]\n  }\n}\n",
+    "xml": "<c xmlns=\"urn:vibe-ports:ty3\">\n  <dl>2100-01-01Z</dl>\n  <dl>1900-01-01Z</dl>\n  <dl>2000-01-01Z</dl>\n  <dtl>2100-01-01T00:00:00Z</dtl>\n  <dtl>1900-01-01T00:00:00Z</dtl>\n  <dtl>2000-01-01T00:00:00Z</dtl>\n  <tl>06:00:00Z</tl>\n  <tl>12:00:00Z</tl>\n  <tl>05:58:16+00:00</tl>\n</c>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c",
+      "schema": "/ty3:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c/dl[.='2100-01-01Z']",
+      "schema": "/ty3:c/dl",
+      "value": {
+        "canonical": "2100-01-01Z",
+        "type": "string",
+        "typedef": "date",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c/dl[.='1900-01-01Z']",
+      "schema": "/ty3:c/dl",
+      "value": {
+        "canonical": "1900-01-01Z",
+        "type": "string",
+        "typedef": "date",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c/dl[.='2000-01-01Z']",
+      "schema": "/ty3:c/dl",
+      "value": {
+        "canonical": "2000-01-01Z",
+        "type": "string",
+        "typedef": "date",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c/dtl[.='2100-01-01T00:00:00Z']",
+      "schema": "/ty3:c/dtl",
+      "value": {
+        "canonical": "2100-01-01T00:00:00Z",
+        "type": "string",
+        "typedef": "date-and-time",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c/dtl[.='1900-01-01T00:00:00Z']",
+      "schema": "/ty3:c/dtl",
+      "value": {
+        "canonical": "1900-01-01T00:00:00Z",
+        "type": "string",
+        "typedef": "date-and-time",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c/dtl[.='2000-01-01T00:00:00Z']",
+      "schema": "/ty3:c/dtl",
+      "value": {
+        "canonical": "2000-01-01T00:00:00Z",
+        "type": "string",
+        "typedef": "date-and-time",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c/tl[.='06:00:00Z']",
+      "schema": "/ty3:c/tl",
+      "value": {
+        "canonical": "06:00:00Z",
+        "type": "string",
+        "typedef": "time",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c/tl[.='12:00:00Z']",
+      "schema": "/ty3:c/tl",
+      "value": {
+        "canonical": "12:00:00Z",
+        "type": "string",
+        "typedef": "time",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty3:c/tl[.='05:58:16+00:00']",
+      "schema": "/ty3:c/tl",
+      "value": {
+        "canonical": "05:58:16+00:00",
+        "type": "string",
+        "typedef": "time",
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

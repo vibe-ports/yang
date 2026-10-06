@@ -23,5 +23,8 @@ module ty3 {
     leaf dnz { type yang:date-no-zone; }
     leaf t { type yang:time; }
     leaf tnz { type yang:time-no-zone; }
+    leaf-list dl { type yang:date; }
+    leaf-list dtl { type yang:date-and-time; }
+    leaf-list tl { type yang:time; }
   }
 }

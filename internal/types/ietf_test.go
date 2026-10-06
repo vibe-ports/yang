@@ -333,6 +333,12 @@ func TestDateTimeTypes(t *testing.T) {
 		Compare(st("time", "12:00:00.5Z"), st("time", "12:00:00.50Z")) >= 0 {
 		t.Error("time equality/order")
 	}
+	// gaps over 2^31 s order by their sign (D-0028; libyang's int of difftime() does not)
+	if Compare(st("date", "2100-01-01Z"), st("date", "1900-01-01Z")) <= 0 ||
+		Compare(st("date-and-time", "1900-01-01T00:00:00Z"), st("date-and-time", "2100-01-01T00:00:00Z")) >= 0 ||
+		Compare(st("time", "00:30:00+01:00"), st("time", "12:00:00Z")) <= 0 {
+		t.Error("wide gaps")
+	}
 	for typedef, lex := range map[string]string{"date-no-zone": "2005-13-31", "time-no-zone": "24:00:00"} {
 		want := fmt.Sprintf("Failed to parse %s value \"%s\".", typedef, lex)
 		if _, d := StoreOnly(ts[typedef], lex, FormatXML, HintData, nil, nil); d == nil || d.Msg != want || d.Code != CodeData {
@@ -389,20 +395,29 @@ func TestXPath10(t *testing.T) {
 func FuzzIETF(f *testing.F) {
 	for _, s := range []string{"1.2.3.4%x", "::ffff:1.2.3.4", "1::/0", "10.0.0.1/33", "2005-05-25T23:15:15.5+04:30",
 		"2005-02-29T23:15:15-00:00", "AB:cd", "/", "%", "1:2:3:4:5:6:7:8/128", "2005-05-31-01:00", "00:30:00+01:00",
-		"23:15:15.5", "/a:b[. = 1] | c"} {
+		"23:15:15.5", "/a:b[. = 1] | c", "/x:c/y:d[x:k = 'y:v'] or count(y:e) + 1", "x:a | (y:b/x:c)"} {
 		f.Add(s)
 	}
 	ts := ietfTypes("2025-12-22")
 	names := []string{"ip-address", "ip-address-no-zone", "ip-prefix", "date-and-time", "hex-string", "uuid", "date",
 		"date-no-zone", "time", "time-no-zone", "xpath1.0"}
+	// the XML namespaces in scope of the value: x/y as written, a/b equal to the module names so that
+	// a canonical (JSON) xpath1.0 re-stores in XML to itself
+	set := &schema.Set{Modules: []*schema.Module{{Name: "a", Namespace: "urn:a", Implemented: true},
+		{Name: "b", Namespace: "urn:b", Implemented: true}}}
+	pc := XMLNamespaces{Set: set, NS: map[string]string{"": "urn:a", "x": "urn:a", "y": "urn:b", "a": "urn:a", "b": "urn:b"}}
 	f.Fuzz(func(t *testing.T, lex string) {
 		for _, n := range names {
 			for _, st := range []func(*schema.Type, string, Format, Hints, PrefixCtx, *schema.Node) (Value, *Diag){Store, StoreOnly} {
-				v, d := st(ts[n], lex, FormatXML, HintData, nil, nil)
+				v, d := st(ts[n], lex, FormatXML, HintData, pc, nil)
 				if d != nil {
 					continue
 				}
-				v2, d := Store(ts[n], v.Canonical(), FormatXML, HintData, nil, nil)
+				if !Equal(v, v) || Compare(v, v) != 0 {
+					t.Fatalf("%s: %q is not equal to itself", n, lex)
+				}
+				// not Equal: date/time canonical forms drop the time of day, a different instant in libyang too
+				v2, d := Store(ts[n], v.Canonical(), FormatXML, HintData, pc, nil)
 				if d == nil && v2.Canonical() != v.Canonical() {
 					t.Fatalf("%s: %q -> %q -> %q", n, lex, v.Canonical(), v2.Canonical())
 				}

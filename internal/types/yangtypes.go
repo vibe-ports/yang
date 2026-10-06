@@ -141,7 +141,8 @@ func equalDate(a, b Value) bool {
 	return x.unix == y.unix && x.unknownTZ == y.unknownTZ
 }
 
-// compareDate ports lyplg_type_sort_date.
+// compareDate ports lyplg_type_sort_date, ordering by the sign of the gap (D-0028: libyang casts
+// difftime() to int).
 func compareDate(a, b Value) int {
 	x, y := a.ext.(*dateVal), b.ext.(*dateVal)
 	return cmp3(x.unix < y.unix, x.unix > y.unix)
@@ -212,7 +213,8 @@ func equalTime(a, b Value) bool {
 	return x.seconds == y.seconds && x.unknownTZ == y.unknownTZ && x.hasFrac == y.hasFrac && x.frac == y.frac
 }
 
-// compareTime ports lyplg_type_sort_time (lyplg_type_sort_by_fractions).
+// compareTime ports lyplg_type_sort_time (lyplg_type_sort_by_fractions), ordering by the sign of
+// the gap (D-0028).
 func compareTime(a, b Value) int {
 	x, y := a.ext.(*timeVal), b.ext.(*timeVal)
 	if x.seconds != y.seconds {
@@ -390,7 +392,8 @@ func equalDateAndTime(a, b Value) bool {
 	return x.unix == y.unix && x.unknownTZ == y.unknownTZ && x.hasFrac == y.hasFrac && x.frac == y.frac
 }
 
-// compareDateAndTime ports lyplg_type_sort_date_and_time (lyplg_type_sort_by_fractions).
+// compareDateAndTime ports lyplg_type_sort_date_and_time (lyplg_type_sort_by_fractions), ordering
+// by the sign of the gap (D-0028).
 func compareDateAndTime(a, b Value) int {
 	x, y := a.ext.(*dateTime), b.ext.(*dateTime)
 	if x.unix != y.unix {
