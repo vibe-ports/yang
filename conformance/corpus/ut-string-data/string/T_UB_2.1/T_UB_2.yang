@@ -1,0 +1,5 @@
+module T_UB_2 {
+  yang-version 1.1;
+  namespace "urn:tests:T_UB_2";
+  prefix pref;
+leaf port {type string { pattern '[\p{IsBasicLatin}]+';} } }

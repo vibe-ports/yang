@@ -15728,3 +15728,1952 @@ fixtures:
       verdict: "valid"
       rfc: ["RFC7950#7.19"]
       deviation: null
+
+# BEGIN ut-string-data (generated from libyang tests/utests/types/string.c by conformance/tools/extract-utests, reviewed)
+
+  - id: ut-string-data/xml-01
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:711
+    rfc: ["RFC7950#9.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+    golden: golden/xml-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-02
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:713
+    rfc: ["RFC7950#9.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\"> 50  \n\t 64</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-03
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:715
+    rfc: ["RFC7950#9.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">50</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-04
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:716
+    rfc: ["RFC7950#9.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">+250</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-05
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:718
+    rfc: ["RFC7950#9.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">&quot;</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-06
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:719
+    rfc: ["RFC7950#9.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">|&amp;|</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-06.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-07
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:720
+    rfc: ["RFC7950#9.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">&apos;</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-07.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-08
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:721
+    rfc: ["RFC7950#9.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">&lt;</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-08.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-09
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:722
+    rfc: ["RFC7950#9.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">&gt;</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-09.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-10
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:723
+    rfc: ["RFC7950#9.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">&#x42f;&#1071;</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-10.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-11
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:725
+    rfc: ["RFC7950#9.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">\"</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-11.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-12
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:726
+    rfc: ["RFC7950#9.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">'</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-12.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-13
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:727
+    rfc: ["RFC7950#9.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">></port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-13.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-14
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:728
+    rfc: ["RFC7950#9.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\"></port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-14.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-15
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:729
+    rfc: ["RFC7950#9.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">&amp;&lt;lt;</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-15.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-16
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:739
+    rfc: ["RFC7950#9.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">< df</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-16.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-17
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:741
+    rfc: ["RFC7950#9.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">&text;</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-17.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-18
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:743
+    rfc: ["RFC7950#9.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">\"&#x8;\"</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-18.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-19
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:753
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [string/T0.1, string/T1.1]
+      modules: [{name: "T0"}, {name: "T1"}]
+    golden: golden/xml-19.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6"]
+      deviation: null
+
+  - id: ut-string-data/xml-20
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:755
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.1]
+      modules: [{name: "T0"}, {name: "T1"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T1\">abcde</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-20.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6"]
+      deviation: null
+
+  - id: ut-string-data/xml-21
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:756
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.1]
+      modules: [{name: "T0"}, {name: "T1"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T1\">abcde&lt;</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-21.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6"]
+      deviation: null
+
+  - id: ut-string-data/xml-22
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:757
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.1]
+      modules: [{name: "T0"}, {name: "T1"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T1\">p4abc</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-22.json
+    assert:
+      verdict: invalid
+      diagnostics: [{apptag: "pattern-violation"}]
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6"]
+      deviation: null
+
+  - id: ut-string-data/xml-23
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:760
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.1]
+      modules: [{name: "T0"}, {name: "T1"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T1\">ahojahojahojahojahoj</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-23.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6"]
+      deviation: null
+
+  - id: ut-string-data/xml-24
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:761
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.1]
+      modules: [{name: "T0"}, {name: "T1"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T1\">abc-de</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-24.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6"]
+      deviation: null
+
+  - id: ut-string-data/xml-25
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:763
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.1]
+      modules: [{name: "T0"}, {name: "T1"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T1\">p4a&lt;</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-25.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6"]
+      deviation: null
+
+  - id: ut-string-data/xml-26
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:772
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}]
+    golden: golden/xml-26.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-27
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:774
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}]
+      format: "xml"
+      data_type: "data"
+      data: "<cont xmlns=\"urn:tests:T2\"></cont>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-27.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-28
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:783
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}]
+    golden: golden/xml-28.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-29
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:785
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}]
+      format: "xml"
+      data_type: "data"
+      data: "<cont xmlns=\"urn:tests:T2\"><port> 52 </port></cont>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-29.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-30
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:795
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}]
+    golden: golden/xml-30.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-31
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:796
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T_WHITE\"> \n\t</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-31.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-32
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:797
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T_WHITE\"> \n&lt;\t</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-32.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-33
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:804
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1, string/T_UTF8.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}, {name: "T_UTF8"}]
+    golden: golden/xml-33.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-34
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:805
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1, string/T_UTF8.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}, {name: "T_UTF8"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T_UTF8\">\u20ac\u20ac\u20ac\u20ac\u20ac</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-34.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-35
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:806
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1, string/T_UTF8.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}, {name: "T_UTF8"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T_UTF8\">\u20ac\u20ac\u20ac</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-35.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-36
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:808
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1, string/T_UTF8.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}, {name: "T_UTF8"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T_UTF8\">\u20ac\u20ac\u20ac\u20ac\u20ac\u20ac\u20ac\u20ac</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-36.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-37
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:815
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1, string/T_UTF8.1, string/T_ANCHOR.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}, {name: "T_UTF8"}, {name: "T_ANCHOR"}]
+    golden: golden/xml-37.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-38
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:816
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1, string/T_UTF8.1, string/T_ANCHOR.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}, {name: "T_UTF8"}, {name: "T_ANCHOR"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T_ANCHOR\">abc</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-38.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-39
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:818
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1, string/T_UTF8.1, string/T_ANCHOR.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}, {name: "T_UTF8"}, {name: "T_ANCHOR"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T_ANCHOR\">cab</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-39.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-40
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:823
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1, string/T_UTF8.1, string/T_ANCHOR.1, string/T_UB_1.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}, {name: "T_UTF8"}, {name: "T_ANCHOR"}, {name: "T_UB_1"}]
+    golden: golden/xml-40.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-41
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:824
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1, string/T_UTF8.1, string/T_ANCHOR.1, string/T_UB_1.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}, {name: "T_UTF8"}, {name: "T_ANCHOR"}, {name: "T_UB_1"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T_UB_1\">B4s1cLatin!</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-41.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-42
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:828
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1, string/T_UTF8.1, string/T_ANCHOR.1, string/T_UB_1.1, string/T_UB_2.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}, {name: "T_UTF8"}, {name: "T_ANCHOR"}, {name: "T_UB_1"}, {name: "T_UB_2"}]
+    golden: golden/xml-42.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-43
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:829
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1, string/T_UTF8.1, string/T_ANCHOR.1, string/T_UB_1.1, string/T_UB_2.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}, {name: "T_UTF8"}, {name: "T_ANCHOR"}, {name: "T_UB_1"}, {name: "T_UB_2"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T_UB_2\">B4s1cLatin!</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-43.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-44
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:833
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1, string/T_UTF8.1, string/T_ANCHOR.1, string/T_UB_1.1, string/T_UB_2.1, string/T_UB_3.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}, {name: "T_UTF8"}, {name: "T_ANCHOR"}, {name: "T_UB_1"}, {name: "T_UB_2"}, {name: "T_UB_3"}]
+    golden: golden/xml-44.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-45
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:834
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1, string/T_UTF8.1, string/T_ANCHOR.1, string/T_UB_1.1, string/T_UB_2.1, string/T_UB_3.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}, {name: "T_UTF8"}, {name: "T_ANCHOR"}, {name: "T_UB_1"}, {name: "T_UB_2"}, {name: "T_UB_3"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T_UB_3\">\u00c1\u00c9\u00cd\u00d3\u00d6\u00dc</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-45.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-46
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:838
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1, string/T_UTF8.1, string/T_ANCHOR.1, string/T_UB_1.1, string/T_UB_2.1, string/T_UB_3.1, string/T_UB_4.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}, {name: "T_UTF8"}, {name: "T_ANCHOR"}, {name: "T_UB_1"}, {name: "T_UB_2"}, {name: "T_UB_3"}, {name: "T_UB_4"}]
+    golden: golden/xml-46.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-47
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:839
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1, string/T_UTF8.1, string/T_ANCHOR.1, string/T_UB_1.1, string/T_UB_2.1, string/T_UB_3.1, string/T_UB_4.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}, {name: "T_UTF8"}, {name: "T_ANCHOR"}, {name: "T_UB_1"}, {name: "T_UB_2"}, {name: "T_UB_3"}, {name: "T_UB_4"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T_UB_4\">\u00c1\u00c9\u00cd\u00d3\u00d6\u00dc</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-47.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-48
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:843
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1, string/T_UTF8.1, string/T_ANCHOR.1, string/T_UB_1.1, string/T_UB_2.1, string/T_UB_3.1, string/T_UB_4.1, string/T_UB_5.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}, {name: "T_UTF8"}, {name: "T_ANCHOR"}, {name: "T_UB_1"}, {name: "T_UB_2"}, {name: "T_UB_3"}, {name: "T_UB_4"}, {name: "T_UB_5"}]
+    golden: golden/xml-48.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-49
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:844
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1, string/T_UTF8.1, string/T_ANCHOR.1, string/T_UB_1.1, string/T_UB_2.1, string/T_UB_3.1, string/T_UB_4.1, string/T_UB_5.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}, {name: "T_UTF8"}, {name: "T_ANCHOR"}, {name: "T_UB_1"}, {name: "T_UB_2"}, {name: "T_UB_3"}, {name: "T_UB_4"}, {name: "T_UB_5"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T_UB_5\">\u0150\u0170\u0151\u0171</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-49.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-50
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:850
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1, string/T_UTF8.1, string/T_ANCHOR.1, string/T_UB_1.1, string/T_UB_2.1, string/T_UB_3.1, string/T_UB_4.1, string/T_UB_5.1, string/T_UB_6.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}, {name: "T_UTF8"}, {name: "T_ANCHOR"}, {name: "T_UB_1"}, {name: "T_UB_2"}, {name: "T_UB_3"}, {name: "T_UB_4"}, {name: "T_UB_5"}, {name: "T_UB_6"}]
+    golden: golden/xml-50.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-51
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:851
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1, string/T_UTF8.1, string/T_ANCHOR.1, string/T_UB_1.1, string/T_UB_2.1, string/T_UB_3.1, string/T_UB_4.1, string/T_UB_5.1, string/T_UB_6.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}, {name: "T_UTF8"}, {name: "T_ANCHOR"}, {name: "T_UB_1"}, {name: "T_UB_2"}, {name: "T_UB_3"}, {name: "T_UB_4"}, {name: "T_UB_5"}, {name: "T_UB_6"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T_UB_6\">\u00c1rv\u00edzt\u0171r\u0151 t\u00fck\u00f6rf\u00far\u00f3g\u00e9p!</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-51.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-52
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:855
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1, string/T_UTF8.1, string/T_ANCHOR.1, string/T_UB_1.1, string/T_UB_2.1, string/T_UB_3.1, string/T_UB_4.1, string/T_UB_5.1, string/T_UB_6.1, string/T_UB_7.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}, {name: "T_UTF8"}, {name: "T_ANCHOR"}, {name: "T_UB_1"}, {name: "T_UB_2"}, {name: "T_UB_3"}, {name: "T_UB_4"}, {name: "T_UB_5"}, {name: "T_UB_6"}, {name: "T_UB_7"}]
+    golden: golden/xml-52.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-53
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:863
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1, string/T_UTF8.1, string/T_ANCHOR.1, string/T_UB_1.1, string/T_UB_2.1, string/T_UB_3.1, string/T_UB_4.1, string/T_UB_5.1, string/T_UB_6.1, string/T_UB_8.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}, {name: "T_UTF8"}, {name: "T_ANCHOR"}, {name: "T_UB_1"}, {name: "T_UB_2"}, {name: "T_UB_3"}, {name: "T_UB_4"}, {name: "T_UB_5"}, {name: "T_UB_6"}, {name: "T_UB_8"}]
+    golden: golden/xml-53.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-54
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:869
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1, string/T_UTF8.1, string/T_ANCHOR.1, string/T_UB_1.1, string/T_UB_2.1, string/T_UB_3.1, string/T_UB_4.1, string/T_UB_5.1, string/T_UB_6.1, string/T_UB_9.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}, {name: "T_UTF8"}, {name: "T_ANCHOR"}, {name: "T_UB_1"}, {name: "T_UB_2"}, {name: "T_UB_3"}, {name: "T_UB_4"}, {name: "T_UB_5"}, {name: "T_UB_6"}, {name: "T_UB_9"}]
+    golden: golden/xml-54.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-55
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:870
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1, string/T_UTF8.1, string/T_ANCHOR.1, string/T_UB_1.1, string/T_UB_2.1, string/T_UB_3.1, string/T_UB_4.1, string/T_UB_5.1, string/T_UB_6.1, string/T_UB_9.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}, {name: "T_UTF8"}, {name: "T_ANCHOR"}, {name: "T_UB_1"}, {name: "T_UB_2"}, {name: "T_UB_3"}, {name: "T_UB_4"}, {name: "T_UB_5"}, {name: "T_UB_6"}, {name: "T_UB_9"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T_UB_9\">&#xFFFA;&#xFFFD;</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-55.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-56
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:874
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1, string/T_UTF8.1, string/T_ANCHOR.1, string/T_UB_1.1, string/T_UB_2.1, string/T_UB_3.1, string/T_UB_4.1, string/T_UB_5.1, string/T_UB_6.1, string/T_UB_9.1, string/T_UB_10.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}, {name: "T_UTF8"}, {name: "T_ANCHOR"}, {name: "T_UB_1"}, {name: "T_UB_2"}, {name: "T_UB_3"}, {name: "T_UB_4"}, {name: "T_UB_5"}, {name: "T_UB_6"}, {name: "T_UB_9"}, {name: "T_UB_10"}]
+    golden: golden/xml-56.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-57
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:875
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1, string/T_UTF8.1, string/T_ANCHOR.1, string/T_UB_1.1, string/T_UB_2.1, string/T_UB_3.1, string/T_UB_4.1, string/T_UB_5.1, string/T_UB_6.1, string/T_UB_9.1, string/T_UB_10.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}, {name: "T_UTF8"}, {name: "T_ANCHOR"}, {name: "T_UB_1"}, {name: "T_UB_2"}, {name: "T_UB_3"}, {name: "T_UB_4"}, {name: "T_UB_5"}, {name: "T_UB_6"}, {name: "T_UB_9"}, {name: "T_UB_10"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T_UB_10\">&#xFFDF;&#xFFFD;</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-57.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-58
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:880
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1, string/T_UTF8.1, string/T_ANCHOR.1, string/T_UB_1.1, string/T_UB_2.1, string/T_UB_3.1, string/T_UB_4.1, string/T_UB_5.1, string/T_UB_6.1, string/T_UB_9.1, string/T_UB_10.1, string/T_UB_11.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}, {name: "T_UTF8"}, {name: "T_ANCHOR"}, {name: "T_UB_1"}, {name: "T_UB_2"}, {name: "T_UB_3"}, {name: "T_UB_4"}, {name: "T_UB_5"}, {name: "T_UB_6"}, {name: "T_UB_9"}, {name: "T_UB_10"}, {name: "T_UB_11"}]
+    golden: golden/xml-58.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/xml-59
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:881
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1, string/T_UTF8.1, string/T_ANCHOR.1, string/T_UB_1.1, string/T_UB_2.1, string/T_UB_3.1, string/T_UB_4.1, string/T_UB_5.1, string/T_UB_6.1, string/T_UB_9.1, string/T_UB_10.1, string/T_UB_11.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}, {name: "T_UTF8"}, {name: "T_ANCHOR"}, {name: "T_UB_1"}, {name: "T_UB_2"}, {name: "T_UB_3"}, {name: "T_UB_4"}, {name: "T_UB_5"}, {name: "T_UB_6"}, {name: "T_UB_9"}, {name: "T_UB_10"}, {name: "T_UB_11"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T_UB_11\">&#xFEFF;&#xFFFD;</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-59.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/json-01
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:895
+    rfc: ["RFC7950#9.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+    golden: golden/json-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4"]
+      deviation: null
+
+  - id: ut-string-data/json-02
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:896
+    rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":\"this is text\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-string-data/json-03
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:898
+    rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":\" 50  \\n\\t 64\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-string-data/json-04
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:900
+    rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":\"50\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-string-data/json-05
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:901
+    rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":\"+250\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-string-data/json-06
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:903
+    rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":\"\\\"\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-06.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-string-data/json-07
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:904
+    rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":\"|&|\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-07.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-string-data/json-08
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:905
+    rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":\"<\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-08.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-string-data/json-09
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:906
+    rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":\">\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-09.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-string-data/json-10
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:907
+    rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":\"\\u042F\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-10.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-string-data/json-11
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:908
+    rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":\"\\u042FFF\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-11.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-string-data/json-12
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:910
+    rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":\"'\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-12.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-string-data/json-13
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:911
+    rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":\">\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-13.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-string-data/json-14
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:912
+    rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":\"\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-14.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-string-data/json-15
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:913
+    rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":\"\\\" \\\\ \\r \\/ \\n \\t \\u20ac\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-15.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-string-data/json-16
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:916
+    rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":\"\n\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-16.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-string-data/json-17
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:919
+    rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":\"\\b\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-17.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-string-data/json-18
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:922
+    rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":\"\\f\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-18.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-string-data/json-19
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:925
+    rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":\"\"\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-19.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-string-data/json-20
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:928
+    rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":\"aabb \\x\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-20.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-string-data/json-21
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:937
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [string/T0.1, string/T1.2]
+      modules: [{name: "T0"}, {name: "T1"}]
+    golden: golden/json-21.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6"]
+      deviation: null
+
+  - id: ut-string-data/json-22
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:939
+    rfc: ["RFC7950#9.4", "RFC7951#6.1", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.2]
+      modules: [{name: "T0"}, {name: "T1"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T1:port\":\"a\\nbcde\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-22.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6"]
+      deviation: null
+
+  - id: ut-string-data/json-23
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:940
+    rfc: ["RFC7950#9.4", "RFC7951#6.1", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.2]
+      modules: [{name: "T0"}, {name: "T1"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T1:port\":\"p4abc\\n\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-23.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6"]
+      deviation: null
+
+  - id: ut-string-data/json-24
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:943
+    rfc: ["RFC7950#9.4", "RFC7951#6.1", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.2]
+      modules: [{name: "T0"}, {name: "T1"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T1:port\":\"ahojahojaho\\njahojaho\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-24.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6"]
+      deviation: null
+
+  - id: ut-string-data/json-25
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:944
+    rfc: ["RFC7950#9.4", "RFC7951#6.1", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.2]
+      modules: [{name: "T0"}, {name: "T1"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T1:port\":\"abc\\n-de\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-25.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6"]
+      deviation: null
+
+  - id: ut-string-data/json-26
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:955
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [string/T0.1, string/T1.2, string/T_DEFAULT2.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T_DEFAULT2"}]
+    golden: golden/json-26.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/json-27
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:957
+    rfc: ["RFC7950#9.4", "RFC7951#6.1", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.2, string/T_DEFAULT2.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T_DEFAULT2"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T_DEFAULT2:cont\":{}}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-27.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/json-28
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:966
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [string/T0.1, string/T1.2, string/T_DEFAULT2.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T_DEFAULT2"}]
+    golden: golden/json-28.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/json-29
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:968
+    rfc: ["RFC7950#9.4", "RFC7951#6.1", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.2, string/T_DEFAULT2.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T_DEFAULT2"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T_DEFAULT2:cont\":{\":port\": \" 52 \"}}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-29.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/json-30
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:981
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [string/T0.1, string/T1.2, string/T_DEFAULT2.1, string/T_UTF8.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T_DEFAULT2"}, {name: "T_UTF8"}]
+    golden: golden/json-30.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/json-31
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:982
+    rfc: ["RFC7950#9.4", "RFC7951#6.1", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.2, string/T_DEFAULT2.1, string/T_UTF8.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T_DEFAULT2"}, {name: "T_UTF8"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T_UTF8:port\":\"\u20ac\u20ac\u20ac\u20ac\u20ac\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-31.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/json-32
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:983
+    rfc: ["RFC7950#9.4", "RFC7951#6.1", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.2, string/T_DEFAULT2.1, string/T_UTF8.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T_DEFAULT2"}, {name: "T_UTF8"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T_UTF8:port\":\"\u20ac\u20ac\u20ac\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-32.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/json-33
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:985
+    rfc: ["RFC7950#9.4", "RFC7951#6.1", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.2, string/T_DEFAULT2.1, string/T_UTF8.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T_DEFAULT2"}, {name: "T_UTF8"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T_UTF8:port\":\"\u20ac\u20ac\u20ac\u20ac\u20ac\u20ac\u20ac\u20ac\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-33.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/json-34
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:992
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [string/T0.1, string/T1.2, string/T_DEFAULT2.1, string/T_UTF8.1, string/T_ANCHOR.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T_DEFAULT2"}, {name: "T_UTF8"}, {name: "T_ANCHOR"}]
+    golden: golden/json-34.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/json-35
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:993
+    rfc: ["RFC7950#9.4", "RFC7951#6.1", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.2, string/T_DEFAULT2.1, string/T_UTF8.1, string/T_ANCHOR.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T_DEFAULT2"}, {name: "T_UTF8"}, {name: "T_ANCHOR"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T_ANCHOR:port\":\"abc\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-35.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/json-36
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:995
+    rfc: ["RFC7950#9.4", "RFC7951#6.1", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.2, string/T_DEFAULT2.1, string/T_UTF8.1, string/T_ANCHOR.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T_DEFAULT2"}, {name: "T_UTF8"}, {name: "T_ANCHOR"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T_ANCHOR:port\":\"cb\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-36.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null
+
+  - id: ut-string-data/json-37
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:946 (missed by the extractor: the C escape \u042F; added by hand, numbered last)
+    rfc: ["RFC7950#9.4", "RFC7951#6.1", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [string/T0.1, string/T1.2]
+      modules: [{name: "T0"}, {name: "T1"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T1:port\":\"p4a\u042F\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-37.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4", "RFC7951#6.1", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6"]
+      deviation: null
+
+# END ut-string-data

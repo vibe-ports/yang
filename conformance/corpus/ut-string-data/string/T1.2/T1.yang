@@ -1,0 +1,5 @@
+module T1 {
+  yang-version 1.1;
+  namespace "urn:tests:T1";
+  prefix pref;
+leaf port {type string {       length  "5 .. 10 | 20";       pattern '[a-zA-Z_][a-zA-Z0-9\-_.<]*\n[a-zA-Z0-9\-_.<]*' ;       pattern 'p4.*\n' {modifier invert-match;}}}}

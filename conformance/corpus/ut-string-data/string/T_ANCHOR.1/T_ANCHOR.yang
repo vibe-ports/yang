@@ -1,0 +1,5 @@
+module T_ANCHOR {
+  yang-version 1.1;
+  namespace "urn:tests:T_ANCHOR";
+  prefix pref;
+leaf port {type string {       pattern 'a.*b' ;}}}

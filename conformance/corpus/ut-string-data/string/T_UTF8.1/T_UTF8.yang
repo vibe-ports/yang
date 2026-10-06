@@ -1,0 +1,5 @@
+module T_UTF8 {
+  yang-version 1.1;
+  namespace "urn:tests:T_UTF8";
+  prefix pref;
+leaf port {type string {       length  "5 .. 10";       pattern '[€]{5,7}' ;}}}
