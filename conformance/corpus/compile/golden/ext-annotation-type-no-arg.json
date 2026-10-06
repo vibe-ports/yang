@@ -1,0 +1,31 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Missing an expected string.",
+          "phase": "parse",
+          "schema_path": "/ext-annotation-type-no-arg:{ext-inst='md:annotation'}/x",
+          "vecode": 1,
+          "vecode_name": "LYVE_SYNTAX"
+        }
+      ],
+      "name": "ext-annotation-type-no-arg",
+      "phase": "parse"
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

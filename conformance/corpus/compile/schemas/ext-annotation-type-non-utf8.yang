@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module ext-annotation-type-non-utf8 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:ext-annotation-type-non-utf8";
+  prefix ext-annotation-type-non-utf8;
+  import ietf-yang-metadata { prefix md; }
+  md:annotation x { type "aÿb"; }
+}

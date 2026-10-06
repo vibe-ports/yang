@@ -29618,3 +29618,69 @@ fixtures:
       modules: [{"name": "ref-impl-rc-a"}, {"name": "ref-impl-rc-bd"}]
       context_options: ["ref_implemented"]
     golden: golden/ref-impl-instid-recompile-deviation.json
+
+  # lysp_stmt_validate_value (issue #145): the argument classes of an extension instance's
+  # substatements are checked while parsing the instance
+  # a space in a prefixed identifier
+  - id: ext/annotation-type-space
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#6.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ext-annotation-type-space"}]
+    golden: golden/ext-annotation-type-space.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2"]
+      deviation: null
+
+  # a digit first after the prefix
+  - id: ext/annotation-type-bad-prefix
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#6.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ext-annotation-type-bad-prefix"}]
+    golden: golden/ext-annotation-type-bad-prefix.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2"]
+      deviation: null
+
+  # no argument where a string is expected
+  - id: ext/annotation-type-no-arg
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#6.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ext-annotation-type-no-arg"}]
+    golden: golden/ext-annotation-type-no-arg.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2"]
+      deviation: null
+
+  # a non-UTF-8 byte (the lexer already rejects it)
+  - id: ext/annotation-type-non-utf8
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#6.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ext-annotation-type-non-utf8"}]
+    golden: golden/ext-annotation-type-non-utf8.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2"]
+      deviation: null

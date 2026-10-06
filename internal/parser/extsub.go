@@ -68,6 +68,9 @@ func ParseExtInstance(ext *Stmt, subs []ExtSubstmt, v11 bool) (*Node, *Error) {
 // already read tree: argument, each child keyword, the child, then the closing checks.
 func (l *lexer) replay(pf *frame, s *Stmt) error {
 	f := &frame{s: s, live: true, seen: map[string]bool{}}
+	if err := validateValue(argOf(s.Keyword, pf.s.Keyword, false), s); err != nil {
+		return err
+	}
 	if err := l.chk.arg(l, pf, s); err != nil {
 		return err
 	}
@@ -83,6 +86,42 @@ func (l *lexer) replay(pf *frame, s *Stmt) error {
 		}
 	}
 	return l.chk.close(l, pf, f)
+}
+
+// validateValue is lysp_stmt_validate_value: the argument of a replayed substatement checked
+// against its yang_arg class with the YANG lexer's character checks (the instance was read as
+// generic extension content, where any string goes).
+func validateValue(kind argKind, s *Stmt) error {
+	if !s.HasArg {
+		if kind == argMaybeStr || kind == argNone {
+			return nil
+		}
+		return &Error{Code: ly.Syntax, Msg: "Missing an expected string."}
+	}
+	v := &lexer{src: []byte(s.Arg)}
+	var prefix uint8
+	for v.off < len(v.src) {
+		c, n, ok := v.utf8At()
+		if !ok {
+			return v.errf(ly.Syntax, "Invalid character 0x%x.", v.c(0))
+		}
+		var err error
+		switch kind {
+		case argIdent:
+			err = v.checkIdentChar(c, v.off == 0, nil)
+		case argPrefIdent:
+			err = v.checkIdentChar(c, v.off == 0, &prefix)
+		default:
+			if !isYangChar(c) {
+				err = v.errf(ly.Syntax, "Invalid character 0x%x.", byte(c)) //nolint:gosec // (char)c, as libyang
+			}
+		}
+		if err != nil {
+			return err
+		}
+		v.off += n
+	}
+	return nil
 }
 
 func noPos(err error) *Error {
