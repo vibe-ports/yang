@@ -7,9 +7,11 @@ package yang
 import (
 	"io/fs"
 	"sync"
+	"sync/atomic"
 
 	"github.com/vibe-ports/yang/internal/compile"
 	"github.com/vibe-ports/yang/internal/parser"
+	"github.com/vibe-ports/yang/internal/snap"
 )
 
 var (
@@ -28,6 +30,8 @@ type Options struct {
 	// EnableImportFeatures enables all features of modules that become
 	// implemented implicitly (LY_CTX_ENABLE_IMP_FEATURES).
 	EnableImportFeatures bool
+	// CompileObsolete keeps obsolete nodes in the compiled tree (LY_CTX_COMPILE_OBSOLETE).
+	CompileObsolete bool
 	// Loader supplies modules and submodules not found otherwise (libyang's
 	// import callback): the YANG text of module@revision, or of its submodule
 	// when submodule is not empty; ok false when it has none. It is called
@@ -65,9 +69,18 @@ type Diagnostic struct {
 
 // Context is a set of loaded modules (ly_ctx). It is safe for concurrent use.
 type Context struct {
-	mu sync.Mutex
-	c  *compile.Context
+	mu     sync.Mutex
+	c      *compile.Context
+	schema atomic.Pointer[Schema]
 }
+
+// Schema returns the compiled schema as of the last NewContext or Load: an immutable snapshot.
+// A later Load publishes a new one; snapshots obtained before stay valid and unchanged (they just
+// do not see later loads). Safe to call concurrently with Load.
+func (x *Context) Schema() *Schema { return x.schema.Load() }
+
+// publish makes the context's current state the snapshot Schema returns (callers hold mu).
+func (x *Context) publish() { x.schema.Store(snap.New(x.c.Snapshot())) }
 
 // NewContext creates a context with libyang's internal modules loaded;
 // modules are searched in dirs (the last one first, as libyang does). The
@@ -77,12 +90,14 @@ type Context struct {
 func NewContext(opts Options, dirs ...fs.FS) (*Context, []Diagnostic, error) {
 	c, diags, err := compile.NewContext(compile.Options{AllImplemented: opts.AllImplemented,
 		NoYangLibrary: opts.NoYangLibrary, DisableSearchdirs: opts.DisableSearchdirs,
-		PreferSearchdirs: opts.PreferSearchdirs, EnableImportFeatures: opts.EnableImportFeatures, Loader: opts.Loader, MaxSearchDirs: opts.MaxSearchDirs,
+		PreferSearchdirs: opts.PreferSearchdirs, EnableImportFeatures: opts.EnableImportFeatures, CompileObsolete: opts.CompileObsolete, Loader: opts.Loader, MaxSearchDirs: opts.MaxSearchDirs,
 		Parse: parser.Budget(opts.ParseBudget)}, dirs...)
 	if err != nil {
 		return nil, convert(diags), err
 	}
-	return &Context{c: c}, convert(diags), nil
+	x := &Context{c: c}
+	x.publish()
+	return x, convert(diags), nil
 }
 
 // Load loads module name (the newest available revision when revision is
@@ -91,12 +106,12 @@ func NewContext(opts Options, dirs ...fs.FS) (*Context, []Diagnostic, error) {
 // (all disabled for a newly implemented module), an empty list disables
 // all, ["*"] enables all, otherwise exactly the listed ones are enabled. On
 // error the context is unchanged except where libyang keeps changes too
-// (the features of a module implemented before). Compiling schema nodes is
-// not ported yet (design 06 C4a).
+// (the features of a module implemented before). Afterwards Schema returns the new state.
 func (x *Context) Load(name, revision string, features []string) ([]Diagnostic, error) {
 	x.mu.Lock()
 	defer x.mu.Unlock()
 	_, diags, err := x.c.Load(name, revision, features)
+	x.publish()
 	return convert(diags), err
 }
 

@@ -2,7 +2,7 @@
 
 - `oracle/lyoracle-$(uname -m)` (C, links libyang) is the reference. It is built and run **only** in the dev
   container: `./dev make oracle-check`, `./dev make oracle-golden`.
-- The harness is a separate Go module (`conformance/go.mod`, only dependency: `go.yaml.in/yaml/v3`).
+- The harness is a separate Go module (`conformance/go.mod`, dependencies: `go.yaml.in/yaml/v3` and the root module, through `replace ../`, for the `yang` engine adapter).
   `go run ./cmd/golden [-check] [-run REGEX] [-oracle PATH]` (from `conformance/`) generates/compares
   goldens; `go test ./...` validates the manifest and asserts; `go run ./cmd/report` prints the
   per-area Markdown report. Root module code must never import it.

@@ -38,9 +38,12 @@ const (
 	Differ
 	Deviation
 	Unsupported
+	AgreeSkipped // agrees once the fields the engine does not produce (FieldSkipper) are dropped
 )
 
-func (s Status) String() string { return [...]string{"agree", "differ", "deviation", "unsupported"}[s] }
+func (s Status) String() string {
+	return [...]string{"agree", "differ", "deviation", "unsupported", "agree (skipped fields)"}[s]
+}
 
 // Result is one fixture's outcome.
 type Result struct {
@@ -69,7 +72,16 @@ func (m *Manifest) Compare(e Engine) (Report, error) {
 		case err != nil:
 			r.Status, r.Detail = Differ, err.Error()
 		default:
+			var skipped []string
+			if fs, ok := e.(FieldSkipper); ok {
+				op, _ := f.Request["op"].(string)
+				golden, skipped = withoutSkipped(golden, fs.SkippedFields(op))
+				got, _ = withoutSkipped(got, fs.SkippedFields(op))
+			}
 			r.Status, r.Detail = classify(f, golden, got)
+			if r.Status == Agree && len(skipped) > 0 {
+				r.Status, r.Detail = AgreeSkipped, "skipped: "+strings.Join(skipped, ", ")
+			}
 		}
 		rep.Results = append(rep.Results, r)
 	}
@@ -124,6 +136,30 @@ func MatchAssert(a *Assert, resp Response) string {
 		}
 	}
 	return ""
+}
+
+// withoutSkipped drops the fields of a response and of its module and step items; skipped are
+// those that were there.
+func withoutSkipped(r Response, fields []string) (Response, []string) {
+	if len(fields) == 0 {
+		return r, nil
+	}
+	o := maps.Clone(map[string]any(r))
+	var skipped []string
+	drop := func(m map[string]any) {
+		for _, f := range fields {
+			if _, ok := m[f]; ok {
+				delete(m, f)
+				if !slices.Contains(skipped, f) {
+					skipped = append(skipped, f)
+				}
+			}
+		}
+	}
+	drop(o)
+	mapItems(o, "modules", drop)
+	mapItems(o, "steps", drop)
+	return o, skipped
 }
 
 // withoutAsserted drops what a deviation waives: the verdict with its rc and failed_step, every
@@ -283,7 +319,7 @@ func canonNumbers(v any) any {
 // Markdown renders the per-area table (fixtures with several areas count in each) followed by
 // every non-agreeing fixture.
 func (r Report) Markdown() string {
-	type tally [4]int
+	type tally [5]int
 	byArea := map[string]*tally{}
 	var total tally
 	for _, x := range r.Results {
@@ -296,12 +332,13 @@ func (r Report) Markdown() string {
 		}
 	}
 	var b strings.Builder
-	b.WriteString("| area | agree | differ | deviation | unsupported |\n|---|--:|--:|--:|--:|\n")
+	b.WriteString("| area | agree | agree (skipped fields) | differ | deviation | unsupported |\n|---|--:|--:|--:|--:|--:|\n")
 	for _, a := range slices.Sorted(maps.Keys(byArea)) {
 		t := byArea[a]
-		fmt.Fprintf(&b, "| %s | %d | %d | %d | %d |\n", a, t[0], t[1], t[2], t[3])
+		fmt.Fprintf(&b, "| %s | %d | %d | %d | %d | %d |\n", a, t[Agree], t[AgreeSkipped], t[Differ], t[Deviation], t[Unsupported])
 	}
-	fmt.Fprintf(&b, "| **fixtures** | %d | %d | %d | %d |\n", total[0], total[1], total[2], total[3])
+	fmt.Fprintf(&b, "| **fixtures** | %d | %d | %d | %d | %d |\n", total[Agree], total[AgreeSkipped], total[Differ],
+		total[Deviation], total[Unsupported])
 	for _, x := range r.Results {
 		if x.Status != Agree {
 			fmt.Fprintf(&b, "\n- `%s`: %s %s", x.ID, x.Status, x.Detail)

@@ -119,7 +119,7 @@ func TestCompareReplayAllAgree(t *testing.T) {
 			t.Errorf("%s: %s, want a stale waive (replaying libyang)", r.ID, r.Detail)
 		}
 	}
-	if len(rep.Results) != len(m.Fixtures) || !strings.Contains(rep.Markdown(), fmt.Sprintf("| **fixtures** | %d | %d | 0 | 0 |", len(m.Fixtures)-devs, devs)) {
+	if len(rep.Results) != len(m.Fixtures) || !strings.Contains(rep.Markdown(), fmt.Sprintf("| **fixtures** | %d | 0 | %d | 0 | 0 |", len(m.Fixtures)-devs, devs)) {
 		t.Errorf("unexpected report:\n%s", rep.Markdown())
 	}
 }
@@ -293,8 +293,8 @@ func TestCompareUnsupportedAndMarkdown(t *testing.T) {
 		}
 	}
 	md := rep.Markdown()
-	if !strings.Contains(md, fmt.Sprintf("| **fixtures** | 0 | 0 | 0 | %d |", n)) ||
-		!strings.Contains(md, fmt.Sprintf("| validation | 0 | 0 | 0 | %d |", nval)) {
+	if !strings.Contains(md, fmt.Sprintf("| **fixtures** | 0 | 0 | 0 | 0 | %d |", n)) ||
+		!strings.Contains(md, fmt.Sprintf("| validation | 0 | 0 | 0 | 0 | %d |", nval)) {
 		t.Errorf("unexpected report:\n%s", md)
 	}
 	rep, _ = m.Compare(fixed{errors.New("boom")})

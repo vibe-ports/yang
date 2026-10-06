@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	engine := flag.String("engine", "replay", "engine to run: replay (returns the goldens)")
+	engine := flag.String("engine", "replay", "engine to run: replay (returns the goldens) or yang (this repository)")
 	manifest := flag.String("manifest", "corpus/manifest.yaml", "fixture manifest")
 	flag.Parse()
 	if err := do(*engine, *manifest); err != nil {
@@ -29,12 +29,16 @@ func do(engine, manifest string) error {
 	if err := m.CheckFiles(true); err != nil {
 		return err
 	}
-	if engine != "replay" {
+	var e conformance.Engine
+	switch engine {
+	case "replay":
+		if e, err = conformance.NewReplay(m); err != nil {
+			return err
+		}
+	case "yang":
+		e = conformance.Yang{}
+	default:
 		return fmt.Errorf("unknown engine %q", engine)
-	}
-	e, err := conformance.NewReplay(m)
-	if err != nil {
-		return err
 	}
 	rep, err := m.Compare(e)
 	if err != nil {

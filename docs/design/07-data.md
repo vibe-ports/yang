@@ -48,7 +48,7 @@ extension data (`LYD_EXT`), LYB, RESTCONF/NETCONF envelopes, full diff/merge opt
 4. **Schema snapshot, not a live context** (lead default, maintainer may revisit). `(*yang.Context)
    .Schema()` returns `*yang.Schema`, an immutable snapshot handle. It is **opaque** (design 05: never
    an alias with writable fields): the struct `Schema{ s *schema.Set }` is defined in a new leaf
-   package `internal/snap` (imports only `internal/schema`) together with its read-only accessors —
+   package `internal/snap` (imports `internal/schema` and the leaf packages `internal/types`, `internal/lyxp`: canonical defaults and leafref targets) together with its read-only accessors —
    all C8 handle types and their methods live there, `yang` only aliases them — and
    `snap.Set(*Schema) *schema.Set`; `yang` re-exports it as `type Schema = snap.Schema` — an alias of
    a struct with no exported fields, so callers outside the module can neither name the inner set nor
