@@ -98,6 +98,7 @@ type lydCtx struct {
 	// validation, where the first module traversed drains them for every module.
 	nodeWhen  nodeSet // node_when: nodes with a when, after their children (post-order)
 	nodeTypes nodeSet // node_types: values that still need the data tree (LY_EINCOMPLETE)
+	metaTypes []*meta // meta_types: metadata values that still need the data tree
 	// validateNewImplicit is lyd_parser_validate_new_implicit, run when an inner node closes
 	// without an error inside it: lyd_validate_new of its children and their implicit nodes
 	// (design 07 D8; nil until then).
@@ -206,20 +207,31 @@ func (lc *lydCtx) fatal(err error) bool {
 	if err == nil {
 		return false
 	}
-	if !errors.Is(err, errLogged) || !lc.opts.Validate.MultiError || len(lc.log.diags) == 0 {
+	if !lc.isEValid(err) || !lc.opts.Validate.MultiError {
 		return true
 	}
-	// r is the LY_ERR of the last error logged (warnings after it do not change it); the vecode
-	// is that of ly_err_last, the last message of any level
-	rc := ""
+	// the vecode is that of ly_err_last, the last message of any level
+	return lc.log.diags[len(lc.log.diags)-1].Code == ly.Syntax.String()
+}
+
+// isEValid reports whether err stands for LY_EVALID: a logged error whose last error (r of the
+// libyang caller; warnings after it do not change it) is LY_EVALID, and not errLoggedFatal.
+func (lc *lydCtx) isEValid(err error) bool {
+	if errors.Is(err, errLoggedFatal) || !errors.Is(err, errLogged) {
+		return false
+	}
 	for i := len(lc.log.diags) - 1; i >= 0; i-- {
 		if d := lc.log.diags[i]; !d.Warning {
-			rc = d.Err
-			break
+			return d.Err == "LY_EVALID"
 		}
 	}
-	return rc != "LY_EVALID" || lc.log.diags[len(lc.log.diags)-1].Code == ly.Syntax.String()
+	return false
 }
+
+// errLoggedFatal is a logged error whose libyang return code is not LY_EVALID although its
+// message was LOGVAL (LY_EINVAL after an unknown annotation, an invalid value encoding, …): it
+// always stops the parse.
+var errLoggedFatal = fmt.Errorf("%w (fatal)", errLogged)
 
 // countNode charges one created node against Budget.MaxNodes and checks the context every 1k
 // nodes.
@@ -381,27 +393,6 @@ func hasWhen(sn *schema.Node) bool {
 		}
 	}
 	return false
-}
-
-// setDataFlags is lyd_parser_set_data_flags. dflt reports that the parser found the
-// default/ietf-netconf-with-defaults "default" metadata set to true on the node; the parser
-// drops that metadata (design 07 D5/D6 with the metadata).
-func (lc *lydCtx) setDataFlags(n *Node, dflt bool) {
-	if lc.opts.noNew {
-		n.flags &^= FlagNew
-	}
-	if hasWhen(n.schema) {
-		if lc.opts.whenTrue {
-			n.flags |= FlagWhenTrue
-		}
-		if !lc.opts.ParseOnly {
-			lc.nodeWhen.add(n)
-		}
-	}
-	if dflt {
-		n.flags |= FlagDefault
-		npContDfltSet(n.parent)
-	}
 }
 
 // closeInner is the end of an inner node in lydjson_parse_instance_inner / lydxml_subtree_inner:

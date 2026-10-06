@@ -83,7 +83,7 @@ func TestValidateOrder(t *testing.T) {
 			if n.value.NeedsTree() {
 				lc.nodeTypes.add(n)
 			}
-			lc.setDataFlags(n, false)
+			lc.setDataFlags(n, &n.meta)
 		}
 		return lc
 	}

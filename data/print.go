@@ -40,14 +40,6 @@ type PrintOptions struct {
 	WithDefaults WD
 }
 
-// meta is one metadata instance of a node (lyd_meta): the annotation's module, its name and the
-// stored value. The parsers fill it (design 07 D4).
-type meta struct {
-	mod   *schema.Module
-	name  string
-	value types.Value
-}
-
 // npCont is lysc_is_np_cont: a non-presence container.
 func npCont(s *schema.Node) bool { return s != nil && s.Kind == schema.Container && !s.Presence }
 

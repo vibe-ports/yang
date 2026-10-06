@@ -183,13 +183,22 @@ func TestParserHelpers(t *testing.T) {
 	lc.nodeInsert(nil, nil, c)
 	z, _ := lc.json(f.z, c, "v")
 	lc.nodeInsert(c, nil, z)
-	lc.setDataFlags(z, false)
+	lc.setDataFlags(z, &z.meta)
 	x, _ := lc.json(f.x, c, "v")
 	lc.nodeInsert(c, nil, x)
-	lc.setDataFlags(x, true)
-	lc.setDataFlags(c, false)
+	// the first ietf-netconf-with-defaults:default="true" metadata becomes the flag and goes
+	wd := &schema.Module{Name: "ietf-netconf-with-defaults", Implemented: true}
+	vt, _ := types.Store(&schema.Type{Base: schema.Bool}, "true", types.FormatJSON, types.JSONHints("bool"), nil, nil)
+	vf, _ := types.Store(&schema.Type{Base: schema.Bool}, "false", types.FormatJSON, types.JSONHints("bool"), nil, nil)
+	other := &meta{mod: f.b, name: "default", value: vt}
+	x.meta = []*meta{other, {mod: wd, name: "default", value: vf}, {mod: wd, name: "default", value: vt}}
+	lc.setDataFlags(x, &x.meta)
+	lc.setDataFlags(c, &c.meta)
 	if !reflect.DeepEqual(lc.nodeWhen.items, []*Node{z, x, c}) || z.flags&FlagWhenTrue == 0 || x.flags&FlagDefault == 0 {
 		t.Fatalf("when queue / flags: %d %x %x", lc.nodeWhen.len(), z.flags, x.flags)
+	}
+	if len(x.meta) != 2 || x.meta[0] != other || x.meta[1].value.Bool() {
+		t.Fatalf("default metadata: %v", x.meta)
 	}
 	if c.flags&FlagDefault != 0 {
 		t.Fatal("an explicit sibling keeps the container explicit")
