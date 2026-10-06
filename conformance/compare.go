@@ -139,7 +139,8 @@ func MatchAssert(a *Assert, resp Response) string {
 }
 
 // withoutSkipped drops the fields of a response and of its module and step items; skipped are
-// those that were there.
+// those that were there. A dotted field ("typed.value.type") goes into the objects, or the
+// lists of objects, under its first parts.
 func withoutSkipped(r Response, fields []string) (Response, []string) {
 	if len(fields) == 0 {
 		return r, nil
@@ -148,11 +149,8 @@ func withoutSkipped(r Response, fields []string) (Response, []string) {
 	var skipped []string
 	drop := func(m map[string]any) {
 		for _, f := range fields {
-			if _, ok := m[f]; ok {
-				delete(m, f)
-				if !slices.Contains(skipped, f) {
-					skipped = append(skipped, f)
-				}
+			if dropPath(m, strings.Split(f, ".")) && !slices.Contains(skipped, f) {
+				skipped = append(skipped, f)
 			}
 		}
 	}
@@ -160,6 +158,39 @@ func withoutSkipped(r Response, fields []string) (Response, []string) {
 	mapItems(o, "modules", drop)
 	mapItems(o, "steps", drop)
 	return o, skipped
+}
+
+// dropPath deletes the field path from m in place (cloning what it edits); true if it was there.
+func dropPath(m map[string]any, path []string) bool {
+	v, ok := m[path[0]]
+	if !ok {
+		return false
+	}
+	if len(path) == 1 {
+		delete(m, path[0])
+		return true
+	}
+	found := false
+	switch x := v.(type) {
+	case map[string]any:
+		c := maps.Clone(x)
+		found = dropPath(c, path[1:])
+		m[path[0]] = c
+	case []any:
+		l := make([]any, len(x))
+		for i, it := range x {
+			l[i] = it
+			if im, isMap := it.(map[string]any); isMap {
+				c := maps.Clone(im)
+				if dropPath(c, path[1:]) {
+					found = true
+				}
+				l[i] = c
+			}
+		}
+		m[path[0]] = l
+	}
+	return found
 }
 
 // withoutAsserted drops what a deviation waives: the verdict with its rc and failed_step, every

@@ -53,3 +53,19 @@ func TestYangEngineTargets(t *testing.T) {
 		}
 	}
 }
+
+// TestTypedCompared: the data typed dump is compared without the skipped type details only.
+func TestTypedCompared(t *testing.T) {
+	r := Response{"typed": []any{map[string]any{"path": "/a:x", "flags": map[string]any{"new": false},
+		"value": map[string]any{"canonical": "1", "type": "uint8", "union_member": nil}, "meta": []any{}}}}
+	got, skipped := withoutSkipped(r, Yang{}.SkippedFields("data"))
+	want := Response{"typed": []any{map[string]any{"path": "/a:x", "flags": map[string]any{"new": false},
+		"value": map[string]any{"canonical": "1"}}}}
+	if d := diffResponses(want, got); d != "" || len(skipped) != 3 || r["typed"].([]any)[0].(map[string]any)["meta"] == nil {
+		t.Fatalf("%s %v %v", d, got, skipped)
+	}
+	got["typed"].([]any)[0].(map[string]any)["flags"] = map[string]any{"new": true}
+	if diffResponses(want, got) == "" {
+		t.Fatal("flags not compared")
+	}
+}

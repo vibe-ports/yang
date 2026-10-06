@@ -25,14 +25,17 @@ type FieldSkipper interface {
 // Yang is the engine of this repository (package yang).
 type Yang struct{}
 
-// SkippedFields implements FieldSkipper: the YANG printer of compiled modules is not ported,
-// nor the typed dump of data trees (it needs value type details package data does not export).
+// SkippedFields implements FieldSkipper: the YANG printer of compiled modules is not ported;
+// the typed dump of data trees compares path, schema, kind, flags and canonical value, but not
+// the details package data does not export (value types, union members, metadata, anydata
+// values, opaque names and hints).
 func (Yang) SkippedFields(op string) []string {
 	switch op {
 	case "schema":
 		return []string{"compiled"}
 	case "data":
-		return []string{"typed"}
+		return []string{"typed.value.type", "typed.value.typedef", "typed.value.union_member", "typed.value.hints",
+			"typed.meta", "typed.any", "typed.opaque"}
 	}
 	return nil
 }

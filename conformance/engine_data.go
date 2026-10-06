@@ -127,6 +127,29 @@ func runData(r Request, s *yang.Schema, resp map[string]any) error {
 			return unsupported(err)
 		}
 		resp["tree"] = map[string]any{"json": j.String(), "xml": x.String()}
+		resp["typed"] = typedJSON(tree)
 	}
 	return nil
+}
+
+// typedJSON is lyoracle.c typed_json without the skipped fields (Yang.SkippedFields).
+func typedJSON(tree *data.Tree) []any {
+	out := []any{}
+	for top := range tree.Top() {
+		for n := range top.All() {
+			f := n.Flags()
+			o := map[string]any{"path": n.Path(), "schema": nil, "kind": "opaque", "value": nil,
+				"flags": map[string]any{"default": f&data.FlagDefault != 0, "when_true": f&data.FlagWhenTrue != 0,
+					"new": f&data.FlagNew != 0}}
+			sn := n.Schema()
+			if sn != nil {
+				o["schema"], o["kind"] = sn.Path(), kindNames[sn.Kind()]
+			}
+			if sn == nil || sn.Kind() == yang.KindLeaf || sn.Kind() == yang.KindLeafList {
+				o["value"] = map[string]any{"canonical": n.Value()}
+			}
+			out = append(out, o)
+		}
+	}
+	return out
 }
