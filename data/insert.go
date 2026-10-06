@@ -230,16 +230,18 @@ func (t *Tree) childrenOf(parent *Node) *siblings {
 	return &parent.kids
 }
 
-// link puts the unlinked n at position at of sib.list (an opaque node: after the other opaque
-// nodes) under parent, and updates the children index and the default flags of the NP-container
+// link puts the unlinked n at position at of sib.list (an opaque node: of sib.opq, appended when
+// at is -1) under parent, and updates the children index and the default flags of the NP-container
 // ancestors.
 func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) {
 	if n.parent != nil || n.tree != nil {
 		panic("data: inserting a linked node") // internal invariant: callers unlink first
 	}
 	switch {
-	case n.schema == nil:
+	case n.schema == nil && (at < 0 || at >= len(sib.opq)):
 		sib.opq = append(sib.opq, n)
+	case n.schema == nil:
+		sib.opq = slices.Insert(sib.opq, at, n)
 	case at == len(sib.list):
 		sib.list = append(sib.list, n)
 	default:

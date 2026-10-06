@@ -203,8 +203,16 @@ func (lc *lydCtx) fatal(err error) bool {
 	if !errors.Is(err, errLogged) || !lc.opts.Validate.MultiError || len(lc.log.diags) == 0 {
 		return true
 	}
-	last := lc.log.diags[len(lc.log.diags)-1]
-	return last.Err != "LY_EVALID" || last.Code == ly.Syntax.String()
+	// r is the LY_ERR of the last error logged (warnings after it do not change it); the vecode
+	// is that of ly_err_last, the last message of any level
+	rc := ""
+	for i := len(lc.log.diags) - 1; i >= 0; i-- {
+		if d := lc.log.diags[i]; !d.Warning {
+			rc = d.Err
+			break
+		}
+	}
+	return rc != "LY_EVALID" || lc.log.diags[len(lc.log.diags)-1].Code == ly.Syntax.String()
 }
 
 // countNode charges one created node against Budget.MaxNodes and checks the context every 1k
@@ -418,9 +426,14 @@ func (lc *lydCtx) nodeInsert(parent, anchor, n *Node) {
 		}
 	}
 	switch {
-	case anchor != nil && anchor.schema != nil && n.schema != nil: // opaque nodes stay last (D-0058)
+	case anchor != nil && anchor.schema == nil && n.schema == nil:
+		// lyd_insert_after of the XML parser's anchor (lydxml_get_hints_opaq): an opaque node
+		// right after the last opaque sibling with the same name, among the opaque nodes
 		sib := anchor.siblingsOf()
-		lc.tree.link(anchor.parent, sib, n, indexOf(sib.list, anchor)+1)
+		lc.tree.link(anchor.parent, sib, n, indexOf(sib.opq, anchor)+1)
+	case anchor != nil:
+		// libyang's only insert anchor is the opaque one above
+		panic("data: insert anchor of a schema node")
 	case lc.opts.ordered:
 		lc.tree.insert(parent, n, insertLast)
 	default:

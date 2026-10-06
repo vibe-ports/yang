@@ -107,9 +107,9 @@ func (l *logger) opaqError(n *Node) error {
 			return err
 		}
 	case schema.Container, schema.RPC, schema.Action, schema.Notification:
-		if o.Value != "" {
-			return l.val(nil, "", ly.Data, "Invalid value \"%s\" for %s \"%s\".", o.Value, nodetypeStr(sn.Kind), sn.Name)
-		}
+		// an opaque value is never NULL in libyang (lyd_create_opaq stores ""), so an inner node
+		// always fails here
+		return l.val(nil, "", ly.Data, "Invalid value \"%s\" for %s \"%s\".", o.Value, nodetypeStr(sn.Kind), sn.Name)
 	default:
 		return l.logErr("LY_EINVAL", "Unexpected opaque schema node %s \"%s\".", nodetypeStr(sn.Kind), sn.Name)
 	}

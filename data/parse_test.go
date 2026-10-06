@@ -99,6 +99,16 @@ func TestParseDriver(t *testing.T) {
 	if lc.fatal(errLogged) {
 		t.Fatal("LYVE_SYNTAX_JSON goes on")
 	}
+	// the return code is the last error's; a warning after it does not change it, but the vecode
+	// is checked on the last message of any level (ly_err_last)
+	lc.log.warn("w")
+	if lc.fatal(errLogged) {
+		t.Fatal("LY_EVALID then a warning goes on")
+	}
+	lc.log.diags[len(lc.log.diags)-1].Code = "LYVE_SYNTAX"
+	if !lc.fatal(errLogged) {
+		t.Fatal("last message LYVE_SYNTAX stops")
+	}
 }
 
 // TestParseBudgets: MaxBytes and MaxNodes fail with yang.ErrBudget (U-0040, U-0041); a lexer
@@ -255,6 +265,7 @@ func TestOpaqError(t *testing.T) {
 		{c, op("ll", "urn:b", "x", types.FormatXML), `LY_EVALID LYVE_DATA /b:c/ll: Invalid type uint8 value "x".`},
 		{c, op("ll", "b", "7", types.FormatJSON), `LY_EINVAL LYVE_SUCCESS : Unexpected valid opaque node leaf-list "ll".`},
 		{nil, op("c", "b", "v", types.FormatJSON), `LY_EVALID LYVE_DATA /b:c: Invalid value "v" for container "c".`},
+		{nil, op("c", "b", "", types.FormatJSON), `LY_EVALID LYVE_DATA /b:c: Invalid value "" for container "c".`},
 		{c, op("l", "b", "", types.FormatJSON), `LY_EVALID LYVE_DATA /b:c/l: List instance is missing its key "k".`},
 	}
 	for _, tc := range cases {
@@ -279,5 +290,24 @@ func TestOpaqError(t *testing.T) {
 	tr.insert(l, in, insertDefault)
 	if nodeSchema(f.set, in) != f.lk || nodeSchema(f.set, l) != f.l {
 		t.Error("nodeSchema")
+	}
+}
+
+// TestOpaqueAnchor: the XML parser's anchor puts a repeated opaque name right after its last
+// instance (lydxml_get_hints_opaq + lyd_insert_after): <x/><y/><x/> gives x, x, y.
+func TestOpaqueAnchor(t *testing.T) {
+	f := newFixture()
+	tr := newTree(f.set)
+	lc := &lydCtx{ctx: context.Background(), tree: tr, log: &logger{set: f.set}}
+	c, _ := lc.createInner(f.c)
+	lc.nodeInsert(nil, nil, c)
+	x1, _ := lc.createOpaq(opaque{Name: "x"})
+	y, _ := lc.createOpaq(opaque{Name: "y"})
+	x2, _ := lc.createOpaq(opaque{Name: "x"})
+	lc.nodeInsert(c, nil, x1)
+	lc.nodeInsert(c, nil, y)
+	lc.nodeInsert(c, x1, x2)
+	if !reflect.DeepEqual(c.kids.opq, []*Node{x1, x2, y}) {
+		t.Fatalf("%v", names(c.Children()))
 	}
 }
