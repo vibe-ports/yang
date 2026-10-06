@@ -39,6 +39,7 @@ type opaque struct {
 	Prefix   string // as written in the input
 	ModuleNS string // JSON module name or XML namespace
 	Value    string
+	XML      bool // ModuleNS is a namespace (LY_VALUE_XML), else a module name (LY_VALUE_JSON)
 }
 
 // Node is a data node (lyd_node and its subtypes). A term (leaf, leaf-list instance) holds a

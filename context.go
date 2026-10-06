@@ -57,7 +57,9 @@ type Diagnostic struct {
 	Err        string // libyang LY_ERR name, e.g. "LY_EVALID"
 	Code       string // libyang LY_VECODE name, e.g. "LYVE_REFERENCE"
 	SchemaPath string
-	Line       int // 0 when unknown
+	DataPath   string // data trees: lyd_path of the node the message is about (design 07 §1.10)
+	AppTag     string // data trees: error-app-tag
+	Line       int    // 0 when unknown
 	Msg        string
 }
 
