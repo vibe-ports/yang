@@ -16,12 +16,13 @@ each rule, schema-tree dump, a `sequence` with when auto-delete.
 ```
 internal/parser   (stdlib only)               YANG text → statement tree → typed parsed module
 internal/schema   (stdlib only)               compiled schema types: Module, Node, Type, Must, When, Identity
+internal/snap     → schema (stdlib)           opaque read-only handles (Schema, Module, SchemaNode, …) and their methods (design 07 §0.4)
 internal/xsdre    (stdlib)                    done
 internal/xpath    → xsdre                     parse + evaluate over xpath.Node / SchemaNode / Value (interfaces it owns; no schema import)
 internal/types    → schema, xsdre             value model (design 01): Store/Canonical/Compare/Resolve
 internal/compile  → parser, schema, types, xpath   parsed modules → compiled schema
 data              → yang, snap, schema, types, xpath   tree (design 02), JSON/XML codecs, defaults, validation (design 07)
-yang (root)       → parser, compile, schema   Context: load modules (fs.FS), compile; aliases for schema types
+yang (root)       → parser, compile, schema, snap   Context: load modules (fs.FS), compile; aliases for schema types
 cmd/yanglint-go, conformance engine → yang, data
 ```
 The compiled schema is exposed from `yang` through **read-only handles** (accessor methods,

@@ -555,7 +555,9 @@ whole `Load` (§1.6); there is no partially compiled module.
 5. `ExtInstance` struct (2.17). No `Identity.Bases` (the oracle derives bases by scan; YAGNI).
 6. `Set.All(name)` iterator over every revision (import-only included) for the loader.
 
-**Public read-only handles (package `yang`)**, reason: the API PLAN §1 promises; each wraps an
+**Public read-only handles (package `yang`)** — the handle types and their methods are defined in
+`internal/snap` (imports only `internal/schema`) and `yang` re-exports them by alias, so `data` can
+reach the inner set without exporting it (design 07 §0.4). Reason: the API PLAN §1 promises; each wraps an
 internal pointer, returns values/iterators, never slices or writable structs:
 `Context`: `NewContext`, `Load`, `Module(name, rev)`, `Implemented(name)`, `Modules() iter.Seq[*Module]`,
 `FindSchema(path) (*SchemaNode, error)`. `Module`: `Name, Revision, Namespace, Prefix, Implemented,
