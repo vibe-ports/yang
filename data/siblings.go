@@ -39,11 +39,13 @@ func (s *siblings) visit() {
 	}
 }
 
-// indexOf is the position of n in l, one of s's lists, -1 if absent.
+// indexOf is the position of n in l, one of s's lists, -1 if absent. It scans from the end: the
+// XML parser's opaque anchor is the last opaque sibling of its name, usually the last one.
+// ponytail: O(distance from the end); a node→index map if anchors far from the end matter.
 func (s *siblings) indexOf(l []*Node, n *Node) int {
-	for i, c := range l {
+	for i := len(l) - 1; i >= 0; i-- {
 		s.visit()
-		if c == n {
+		if l[i] == n {
 			return i
 		}
 	}

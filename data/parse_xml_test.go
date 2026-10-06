@@ -289,8 +289,9 @@ func TestXMLNamespaceSync(t *testing.T) {
 }
 
 // TestParseXMLLinear: the namespace prefixes of values and elements cost no more than the value
-// and the declarations themselves. work counts the parser's namespace steps and the insertions;
-// 4× the input must cost about 4× the work. Cases: many declarations on the container and many
+// and the declarations themselves. work counts the parser's namespace steps, every namespace
+// entry a prefix snapshot copies, every sibling visit and the insertions; 4× the input must cost
+// about 4× the work. Cases: many declarations on the container and many
 // values in it (terms, prefixed terms, opaque nodes, metadata), and a declaration on every value.
 func TestParseXMLLinear(t *testing.T) {
 	set := pjSchema()

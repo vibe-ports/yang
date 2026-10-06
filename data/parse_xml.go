@@ -119,6 +119,7 @@ func (p *xmlParser) prefixes(value string) types.PrefixCtx {
 		}
 		i = j
 	}
+	p.lc.tree.work += len(ns) // the namespace entries the snapshot copies
 	return types.XMLNamespaces{Set: p.lc.tree.set, NS: ns}
 }
 
