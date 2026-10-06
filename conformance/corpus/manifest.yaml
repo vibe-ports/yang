@@ -30163,6 +30163,11 @@ fixtures:
       data_type: config
       data: '<c xmlns="urn:vibe-ports:ty3"><dl>2100-01-01Z</dl><dl>1900-01-01Z</dl><dl>2000-01-01Z</dl><dtl>2100-01-01T00:00:00Z</dtl><dtl>1900-01-01T00:00:00Z</dtl><dtl>2000-01-01T00:00:00Z</dtl><tl>12:00:00Z</tl><tl>00:30:00+01:00</tl><tl>06:00:00Z</tl></c>'
     golden: golden/date-time-sort-wide.json
+    assert:
+      verdict: valid
+      rfc: []
+      deviation: "D-0028"
+      waive: [tree]   # only the printed leaf-list order differs (libyang leaves it in input order)
 
   # --- tree edits (design 07 §1.11, D11; Go side: data TestEditGoldens) ---
   - id: seq/new-path-update

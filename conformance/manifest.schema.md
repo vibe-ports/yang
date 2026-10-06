@@ -31,7 +31,7 @@ assert:
   rfc: ["RFC7950#9.2.4"]                                      # optional, the clause it rests on
   diagnostics: [{vecode_name: LYVE_DATA, data_path: /basic:sys/mtu}]   # subset match
   deviation: null                                             # or "D-0001"
-  waive: [schema_tree, compiled]                              # optional, only with a deviation
+  waive: [schema_tree, compiled]                              # optional, only with a deviation; also tree
 ```
 
 Each listed diagnostic must equal some actual diagnostic (top-level or per-module) on every field it
@@ -41,8 +41,9 @@ contradicts its golden must name a deviation id present in `conformance/deviatio
 `deviations.md` records OUR intentional differences from libyang. A deviation waives what the
 assert covers (verdict, rc, failed_step, diagnostics). With `waive` it waives instead only the
 named response fields, dropped at the top level and in every `modules` item before the golden
-comparison: `schema_tree` and/or `compiled`, when libyang's compiled tree is what the deviation is
-about (the verdict and diagnostics must then match the golden). `waive` is only valid with
+comparison: `schema_tree` and/or `compiled` when libyang's compiled tree is what the deviation is
+about, `tree` (the printed data) when the deviation is in the data output; the verdict and
+diagnostics must then match the golden. `waive` is only valid with
 `deviation`, every waived field must be present in the golden, and an engine result that matches
 the whole golden reports a stale waive (`differ`). Engine comparison:
 

@@ -191,7 +191,8 @@ func TestManifestRejectsBad(t *testing.T) {
 		"  - {id: a, dir: d, golden: g, source: {url: u, license: l, commit: null}, rfc: [], areas: [types], request: {op: x}, assert: {verdict: valid, deviation: D-9999}}\n" +
 		"  - {id: b, dir: ../d, golden: g, source: {url: u, license: l, commit: null}, rfc: [], areas: [types], request: {}, assert: {verdict: bogus}}\n" +
 		"  - {id: c, dir: d, golden: g, source: {url: u, license: l, commit: null}, rfc: [], areas: [types], request: {op: x}, assert: {verdict: valid, waive: [schema_tree]}}\n" +
-		"  - {id: e, dir: d, golden: g, source: {url: u, license: l, commit: null}, rfc: [], areas: [types], request: {op: x}, assert: {verdict: valid, deviation: D-0001, waive: [modules]}}\n"
+		"  - {id: e, dir: d, golden: g, source: {url: u, license: l, commit: null}, rfc: [], areas: [types], request: {op: x}, assert: {verdict: valid, deviation: D-0001, waive: [modules]}}\n" +
+		"  - {id: f, dir: d, golden: g, source: {url: u, license: l, commit: null}, rfc: [], areas: [types], request: {op: x}, assert: {verdict: valid, deviation: D-0001, waive: [tree]}}\n"
 	if err := os.WriteFile(dir+"/manifest.yaml", []byte(bad), 0o600); err != nil {
 		t.Fatal(err)
 	}
