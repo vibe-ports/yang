@@ -148,7 +148,7 @@ func (vc *valCtx) linkType(n *Node, v types.Value, t *schema.Type) error {
 		if err != nil {
 			var xe *xpath.Error
 			if errors.As(err, &xe) {
-				_ = vc.xpathErr(err) // lyxp_eval logged it; the link is skipped
+				_ = vc.xpathErr(err, n) // lyxp_eval logged it at cur_node; the link is skipped
 				return nil
 			}
 			return err // budget, cancellation
