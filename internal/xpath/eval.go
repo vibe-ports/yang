@@ -6,6 +6,7 @@ package xpath
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 )
@@ -232,6 +233,7 @@ func (ev *evaluator) path(a pathExpr, ctx value) (value, error) {
 
 func (ev *evaluator) step(set value, s step) (value, error) {
 	var err error
+	preds := s.preds // what hashChild's lookup consumed is not evaluated again
 	switch s.test {
 	case tDot, tDDot:
 		if set.t != vNodes {
@@ -278,7 +280,9 @@ func (ev *evaluator) step(set value, s step) (value, error) {
 			set, err = ev.allDescChild(set, nt)
 		default:
 			if sn := ev.schemaTarget(set, nt, s); sn != nil {
-				set, err = ev.hashChild(set, sn, nt.name)
+				var used int
+				set, used, err = ev.hashChild(set, sn, nt.name, s.preds)
+				preds = s.preds[used:]
 			} else {
 				set, err = ev.moveto(set, s.axis, nt)
 			}
@@ -287,7 +291,7 @@ func (ev *evaluator) step(set value, s step) (value, error) {
 			return value{}, err
 		}
 	}
-	return ev.predicates(set, s.preds, s.axis)
+	return ev.predicates(set, preds, s.axis)
 }
 
 // nameTest selects nodes; any matches every node incl. the root.
@@ -474,34 +478,57 @@ func (ev *evaluator) atomsOK(val ast, sn SchemaNode) bool {
 }
 
 // hashChild is moveto_node_hash_child: the instances of sn under each context
-// node (an opaque node of that name if there is none).
-func (ev *evaluator) hashChild(set value, sn SchemaNode, name string) (value, error) {
+// node (an opaque node of that name if there is none). When every context node
+// is a ChildLookup and the predicates libyang hashes (preds, see hashPredicates)
+// have literal values, the instances come from LookupChild and those predicates
+// are consumed (used); otherwise the children are scanned and the predicates
+// are left to the caller.
+func (ev *evaluator) hashChild(set value, sn SchemaNode, name string, preds []ast) (value, int, error) {
 	if ev.ec.Root == RootConfig && !sn.Config() || ev.op != nil && isOp(sn) && sn != ev.op {
-		return nodesV(nil), nil
+		return nodesV(nil), 0, nil
+	}
+	vals, used, lookup := lookupValues(sn, preds)
+	for _, it := range set.nodes {
+		if _, ok := it.n.(ChildLookup); !ok || it.t != itElem {
+			lookup = false
+		}
+	}
+	if !lookup {
+		used = 0
 	}
 	var out []item
 	for _, it := range set.nodes {
-		var kids []Node
-		switch it.t {
-		case itRoot:
-			kids = ev.ec.Tree
-		case itElem:
-			kids = it.n.Children()
-		}
 		var hit []Node
-		for _, c := range kids {
+		if lookup {
 			if err := ev.tick(); err != nil {
-				return value{}, err
+				return value{}, 0, err
 			}
-			if c.Schema() == sn {
-				hit = append(hit, c)
+			var ok bool
+			if hit, ok = it.n.(ChildLookup).LookupChild(sn, vals); !ok {
+				return value{}, 0, fmt.Errorf("xpath: LookupChild of %s refused a lookup it was asked for", sn.Name())
 			}
-		}
-		if hit == nil {
+		} else {
+			var kids []Node
+			switch it.t {
+			case itRoot:
+				kids = ev.ec.Tree
+			case itElem:
+				kids = it.n.Children()
+			}
 			for _, c := range kids {
-				if c.Schema() == nil && c.Name() == name {
-					hit = []Node{c}
-					break
+				if err := ev.tick(); err != nil {
+					return value{}, 0, err
+				}
+				if c.Schema() == sn {
+					hit = append(hit, c)
+				}
+			}
+			if hit == nil {
+				for _, c := range kids {
+					if c.Schema() == nil && c.Name() == name {
+						hit = []Node{c}
+						break
+					}
 				}
 			}
 		}
@@ -509,7 +536,7 @@ func (ev *evaluator) hashChild(set value, sn SchemaNode, name string) (value, er
 			switch c.When() {
 			case WhenUnresolved:
 				if !ev.ec.IgnoreWhen {
-					return value{}, ErrIncomplete
+					return value{}, 0, ErrIncomplete
 				}
 			case WhenFalse:
 				continue // no exception for current() here, as libyang
@@ -517,7 +544,40 @@ func (ev *evaluator) hashChild(set value, sn SchemaNode, name string) (value, er
 			out = append(out, item{c, itElem})
 		}
 	}
-	return nodesV(out), nil
+	return nodesV(out), used, nil
+}
+
+// lookupValues returns the values of the predicates libyang turns into a hash
+// lookup (the list keys in key order, a leaf-list's '.'), when every one is a
+// literal; ok is false when a value is any other expression. A container,
+// leaf or any node is looked up without values.
+func lookupValues(sn SchemaNode, preds []ast) (vals []string, used int, ok bool) {
+	n := len(sn.Keys())
+	switch sn.Kind() {
+	case KindLeafList:
+		n = 1
+	case KindList:
+		if n == 0 {
+			return nil, 0, false // keyless lists are never hashed by schemaTarget
+		}
+	default:
+		return nil, 0, true
+	}
+	if len(preds) < n {
+		return nil, 0, false
+	}
+	for _, p := range preds[:n] {
+		c, isChain := p.(chainExpr)
+		if !isChain || len(c.args) != 2 {
+			return nil, 0, false
+		}
+		lit, isLit := c.args[1].(litExpr)
+		if !isLit {
+			return nil, 0, false
+		}
+		vals = append(vals, string(lit))
+	}
+	return vals, n, true
 }
 
 // check is moveto_node_check: match, or skip (LY_EINVAL: config-false under

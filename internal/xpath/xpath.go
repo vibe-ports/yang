@@ -78,6 +78,22 @@ type Node interface {
 	When() WhenState
 }
 
+// ChildLookup is an optional interface of a Node: finding its children through an
+// index, as libyang does through the parent's children hash table
+// (moveto_node_hash_child with lyd_find_sibling_first / lyd_find_sibling_val).
+// Without it the evaluator scans Children() for every step whose schema node it
+// knows, which costs O(siblings) per step.
+type ChildLookup interface {
+	// LookupChild returns the child instances of sn whose list keys (in key
+	// order) or leaf-list value equal vals, or every instance of sn when vals is
+	// nil (a container, leaf or any node); when there is none, the first opaque
+	// child named like sn (lyd_find_sibling_opaq_next), if any. vals are the
+	// predicate literals as written, stored by the implementation as values of
+	// the key or leaf-list type. ok=false means the node cannot look up, and is
+	// an error: implement the interface only where lookups work.
+	LookupChild(sn SchemaNode, vals []string) (nodes []Node, ok bool)
+}
+
 // SchemaNode is what the evaluator needs from a data node's schema node and
 // Atomize from the compiled schema (lysc_node). Implementations must be
 // comparable: all instances of one schema node return the same (==) SchemaNode.
