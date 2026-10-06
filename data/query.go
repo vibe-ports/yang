@@ -33,7 +33,7 @@ func (t *Tree) evalXPath4(l *logger, ctxNode *Node, src string, vars []xpath.Var
 	to xpath.ResultType) (xpath.Result, error) {
 	e, err := xpath.Compile(src, jsonNS{t.set})
 	if err != nil {
-		return xpath.Result{}, queryErr(l, ctxNode, err) // lyxp_expr_parse logs at the context node
+		return xpath.Result{}, queryErr(l, ctxNode, err)
 	}
 	// the first top-level sibling (opaque ones are last and have no schema node)
 	if l0 := t.top.list; len(l0) > 0 && l0[0].schema.DataParent() != nil {
@@ -47,11 +47,7 @@ func (t *Tree) evalXPath4(l *logger, ctxNode *Node, src string, vars []xpath.Var
 	}
 	r, err := vc.eval(e, ctxNode, xpath.RootAll, true)
 	if err != nil {
-		var xe *xpath.Error
-		if errors.As(err, &xe) && xe.AtCurrent {
-			return r, queryErr(l, ctxNode, err)
-		}
-		return r, vc.xpathErr(err, nil)
+		return r, queryErr(l, ctxNode, err)
 	}
 	if single && to == xpath.NodeSet && r.Type != xpath.NodeSet {
 		return r, l.logErr("LY_EINVAL", "XPath \"%s\" result is not a node set.", src)
@@ -59,14 +55,21 @@ func (t *Tree) evalXPath4(l *logger, ctxNode *Node, src string, vars []xpath.Var
 	return r, nil
 }
 
-// queryErr logs an expression parse error at n, as lyxp_expr_parse does.
-func queryErr(l *logger, n *Node, err error) error {
+// queryErr logs an error of a query where libyang does: lexer errors at the node the
+// expression is parsed for and evaluation errors at the current node, both ctxNode here
+// (lyd_eval_xpath4 passes the context node as both); reparse errors without a node; LOGERR
+// errors (no validation code) without a location. Budget and cancellation errors pass through.
+func queryErr(l *logger, ctxNode *Node, err error) error {
 	var xe *xpath.Error
 	if !errors.As(err, &xe) {
 		return err
 	}
 	if xe.VECode == "" {
 		return l.logErr(xe.Err, "%s", xe.Msg)
+	}
+	n := ctxNode
+	if xe.Origin == xpath.OriginReparse {
+		n = nil
 	}
 	return l.item(n, nil, false, xe.Err, codeOf(xe.VECode), "", xe.Msg)
 }

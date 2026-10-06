@@ -11,7 +11,8 @@ import (
 
 // TestFindXPath: lyd_find_xpath3 / lyd_eval_xpath4 over a tree — node sets in document order,
 // variables, the not-a-node-set refusal, casts of the single-type form, and where each error is
-// logged (parse errors at the context node, evaluation errors without a node).
+// logged: lexer and evaluation errors at the context node (also the current node), reparse
+// errors without a node, a variable value's errors like the expression's.
 func TestFindXPath(t *testing.T) {
 	f := newFixture()
 	tr := newTree(f.set)
@@ -20,7 +21,7 @@ func TestFindXPath(t *testing.T) {
 	for _, v := range []string{"5", "2", "9"} {
 		tr.insert(c, f.term(t, f.ll, v), insertDefault)
 	}
-	vars := []xpath.Var{{Name: "min", Value: "3"}, {Name: "bad", Value: "1 +"}}
+	vars := []xpath.Var{{Name: "min", Value: "3"}, {Name: "bad", Value: "1 +"}, {Name: "lx", Value: "'"}}
 
 	l := &logger{set: f.set}
 	got, err := tr.findXPath(l, nil, "/b:c/ll[. > $min]", vars)
@@ -40,11 +41,14 @@ func TestFindXPath(t *testing.T) {
 		src  string
 		want string
 	}{
-		{c, "ll[", `LY_EVALID LYVE_XPATH /b:c: Unexpected XPath expression end.`},
+		{c, "ll[", `LY_EVALID LYVE_XPATH : Unexpected XPath expression end.`},
+		{c, "ll['", `LY_EVALID LYVE_XPATH /b:c: Unterminated string delimited with ' (').`},
 		{nil, "count(/b:c/ll)", `LY_EINVAL LYVE_SUCCESS : XPath "count(/b:c/ll)" result is not a node set.`},
 		{c, "ll[$nope]", `LY_ENOTFOUND LYVE_SUCCESS : Variable "nope" not defined.`},
-		{c, "ll[$bad]", `LY_EVALID LYVE_XPATH /b:c: Unexpected XPath expression end.`},
+		{c, "ll[$bad]", `LY_EVALID LYVE_XPATH : Unexpected XPath expression end.`},
+		{c, "ll[$lx]", `LY_EVALID LYVE_XPATH /b:c: Unterminated string delimited with ' (').`},
 		{nil, "/zz:c", `LY_EVALID LYVE_XPATH : Unknown/non-implemented module "zz".`},
+		{c, "/zz:c", `LY_EVALID LYVE_XPATH /b:c: Unknown/non-implemented module "zz".`},
 	} {
 		l := &logger{set: f.set}
 		if _, err := tr.findXPath(l, tc.ctx, tc.src, vars); err == nil || len(l.diags) != 1 || codes(l.diags)[0] != tc.want {

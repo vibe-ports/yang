@@ -285,10 +285,24 @@ type Error struct {
 	Err    string // LY_EVALID, LY_EINVAL, LY_ENOTFOUND
 	VECode string // LYVE_XPATH, LYVE_DATA, or "" for none
 	Msg    string
-	// AtCurrent: libyang logs the error at the current node (lyxp_expr_parse of a variable's
-	// value), not without a node like the other evaluation errors.
-	AtCurrent bool
+	// Origin decides where libyang logs the error.
+	Origin ErrOrigin
 }
+
+// ErrOrigin is the libyang stage an Error comes from, which decides its log location.
+type ErrOrigin uint8
+
+// Error origins.
+const (
+	// OriginEval: evaluation (LOGVAL_DXPATH), logged at the current node.
+	OriginEval ErrOrigin = iota
+	// OriginLex: the lexer of lyxp_expr_parse (also an empty expression and unparsed characters),
+	// logged at the node the expression is parsed for (the context node of a query, the current
+	// node for a variable's value).
+	OriginLex
+	// OriginReparse: the token checks of reparse (LOGVAL without a node).
+	OriginReparse
+)
 
 func (e *Error) Error() string { return e.Msg }
 
@@ -330,17 +344,28 @@ func Compile(src string, ns NamespaceCtx) (*Expr, error) {
 func parse(src string) (ast, string, error) {
 	toks, src, err := lex(src)
 	if err != nil {
-		return nil, "", err
+		return nil, "", origin(err, OriginLex)
 	}
 	p := &parser{src: src, toks: toks}
 	root, err := p.orExpr(0)
 	if err != nil {
-		return nil, "", err
+		return nil, "", origin(err, OriginReparse)
 	}
 	if p.i < len(toks) {
-		return nil, "", xpErr("Unparsed characters \"%s\" left at the end of an XPath expression.", src[toks[p.i].pos:])
+		e := xpErr("Unparsed characters \"%s\" left at the end of an XPath expression.", src[toks[p.i].pos:])
+		e.Origin = OriginLex
+		return nil, "", e
 	}
 	return root, src, nil
+}
+
+// origin marks an *Error with where it came from.
+func origin(err error, o ErrOrigin) error {
+	var xe *Error
+	if errors.As(err, &xe) {
+		xe.Origin = o
+	}
+	return err
 }
 
 // Eval evaluates e (lyxp_eval).

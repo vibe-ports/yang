@@ -59,20 +59,21 @@ func nodesV(n []item) value {
 }
 
 type evaluator struct {
-	e      *Expr
-	ns     NamespaceCtx
-	ec     *EvalContext
-	ctx    context.Context
-	cur    item                  // current()
-	op     SchemaNode            // set->context_op: the RPC/action/notification of current()
-	steps  int                   // remaining budget
-	budget int                   // initial budget
-	err    error                 // sticky budget / cancellation error
-	sib    map[Node]map[Node]int // per parent (nil: top level), index of each child; built lazily
-	keys   map[Node][]int        // sibling indexes from the top level down to the node
-	nums   map[string]ld         // parsed long number texts
-	parses int                   // long number texts actually parsed (tests)
-	vars   int                   // variable references being evaluated, nested
+	e       *Expr
+	ns      NamespaceCtx
+	ec      *EvalContext
+	ctx     context.Context
+	cur     item                  // current()
+	op      SchemaNode            // set->context_op: the RPC/action/notification of current()
+	steps   int                   // remaining budget
+	budget  int                   // initial budget
+	err     error                 // sticky budget / cancellation error
+	sib     map[Node]map[Node]int // per parent (nil: top level), index of each child; built lazily
+	keys    map[Node][]int        // sibling indexes from the top level down to the node
+	nums    map[string]ld         // parsed long number texts
+	parses  int                   // long number texts actually parsed (tests)
+	vars    int                   // variable references being evaluated, nested
+	varASTs map[int]varAST        // parsed variable values, by index in ec.Vars
 }
 
 func newEvaluator(e *Expr, ec *EvalContext) *evaluator {
@@ -182,12 +183,21 @@ func (ev *evaluator) variable(name string) (ast, error) {
 	if ev.vars >= maxDepth {
 		return nil, xpErr("The maximum nesting of expressions has been exceeded.")
 	}
-	root, _, err := parse(ev.ec.Vars[i].Value)
-	var xe *Error
-	if errors.As(err, &xe) {
-		xe.AtCurrent = true
+	if ev.varASTs == nil {
+		ev.varASTs = map[int]varAST{}
 	}
-	return root, err
+	c, ok := ev.varASTs[i]
+	if !ok {
+		c.root, _, c.err = parse(ev.ec.Vars[i].Value)
+		ev.varASTs[i] = c
+	}
+	return c.root, c.err
+}
+
+// varAST is a variable's parsed value, or why it does not parse.
+type varAST struct {
+	root ast
+	err  error
 }
 
 // skip is evaluation with LYXP_SKIP_EXPR, which libyang runs over the operands lazy and/or do
