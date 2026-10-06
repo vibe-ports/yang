@@ -1,0 +1,10 @@
+module blk1 {
+  yang-version 1.1;
+  namespace "urn:tests:blk1";
+  prefix blk1;
+  leaf l {
+    type string {
+      pattern '\p{IsGreekExtended}';
+    }
+  }
+}

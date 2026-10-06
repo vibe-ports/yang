@@ -1,0 +1,37 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [
+    {
+      "apptag": null,
+      "code": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "data_path": null,
+      "level": "error",
+      "line": 1,
+      "msg": "Unsatisfied pattern - \"\u1f00\" does not match \"\\p{IsGreekExtended}\".",
+      "phase": "data",
+      "schema_path": "/blk1:l",
+      "vecode": 9,
+      "vecode_name": "LYVE_DATA"
+    }
+  ],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "blk1",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 7,
+    "name": "LY_EVALID"
+  },
+  "tree": null,
+  "verdict": "invalid"
+}

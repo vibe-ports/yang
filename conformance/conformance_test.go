@@ -93,14 +93,37 @@ func TestCompareReplayAllAgree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, r := range rep.Results {
-		if r.Status != Agree {
-			t.Errorf("%s: %s %s", r.ID, r.Status, r.Detail)
+	// The replay engine returns the goldens, which a deviation's assert contradicts by definition
+	// (TestAssertsConsistentWithGoldens): those fixtures are Differ here and only a real engine
+	// can make them Deviation.
+	devs := 0
+	for _, f := range m.Fixtures {
+		if f.Assert != nil && f.Assert.Deviation != nil {
+			devs++
 		}
 	}
-	if len(rep.Results) != len(m.Fixtures) || !strings.Contains(rep.Markdown(), fmt.Sprintf("| **fixtures** | %d | 0 | 0 | 0 |", len(m.Fixtures))) {
+	for _, r := range rep.Results {
+		want := Agree
+		if hasDeviation(m, r.ID) {
+			want = Differ
+		}
+		if r.Status != want {
+			t.Errorf("%s: %s %s, want %s", r.ID, r.Status, r.Detail, want)
+		}
+	}
+	if len(rep.Results) != len(m.Fixtures) || !strings.Contains(rep.Markdown(), fmt.Sprintf("| **fixtures** | %d | %d | 0 | 0 |", len(m.Fixtures)-devs, devs)) {
 		t.Errorf("unexpected report:\n%s", rep.Markdown())
 	}
+}
+
+// hasDeviation reports whether fixture id asserts a deviation from libyang.
+func hasDeviation(m *Manifest, id string) bool {
+	for _, f := range m.Fixtures {
+		if f.ID == id {
+			return f.Assert != nil && f.Assert.Deviation != nil
+		}
+	}
+	return false
 }
 
 // wrong replays goldens but flips one fixture's verdict.
@@ -130,7 +153,7 @@ func TestCompareFakeEngineDiffers(t *testing.T) {
 	}
 	for _, r := range rep.Results {
 		want := Agree
-		if r.ID == "basic/range" {
+		if r.ID == "basic/range" || hasDeviation(m, r.ID) {
 			want = Differ
 		}
 		if r.Status != want {

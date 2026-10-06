@@ -30420,3 +30420,258 @@ fixtures:
       data_file: data/empty-leaf-list.json
       print_options: [empty_leaf_list]
     golden: golden/empty-leaf-list.json
+
+# BEGIN xsdre-blocks (hand-written, measures libyang v5.8.6 pattern block escapes)
+
+  - id: xsdre-blocks/greek-extended-schema
+    dir: xsdre-blocks
+    source: {url: "hand-written (this repo), see issue 177", commit: null, license: BSD-3-Clause}   # schema \p{IsGreekExtended} (measures libyang v5.8.6 block handling, issue 177 step 1)
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request: {"op": "schema", "searchdirs": ["blk1"], "modules": [{"name": "blk1"}]}
+    golden: golden/greek-extended-schema.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: null
+
+  - id: xsdre-blocks/greek-extended-u03b1
+    dir: xsdre-blocks
+    source: {url: "hand-written (this repo), see issue 177", commit: null, license: BSD-3-Clause}   # \p{IsGreekExtended} against U+03B1 (measures libyang v5.8.6 block handling, issue 177 step 1)
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request: {"op": "data", "searchdirs": ["blk1"], "modules": [{"name": "blk1"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<l xmlns=\"urn:tests:blk1\">&#x3B1;</l>"}
+    golden: golden/greek-extended-u03b1.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: "D-0006"
+
+  - id: xsdre-blocks/greek-extended-u1f00
+    dir: xsdre-blocks
+    source: {url: "hand-written (this repo), see issue 177", commit: null, license: BSD-3-Clause}   # \p{IsGreekExtended} against U+1F00 (measures libyang v5.8.6 block handling, issue 177 step 1)
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request: {"op": "data", "searchdirs": ["blk1"], "modules": [{"name": "blk1"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<l xmlns=\"urn:tests:blk1\">&#x1F00;</l>"}
+    golden: golden/greek-extended-u1f00.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: "D-0006"
+
+  - id: xsdre-blocks/arabic-pf-b-schema
+    dir: xsdre-blocks
+    source: {url: "hand-written (this repo), see issue 177", commit: null, license: BSD-3-Clause}   # schema \p{IsArabicPresentationForms-B} (measures libyang v5.8.6 block handling, issue 177 step 1)
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request: {"op": "schema", "searchdirs": ["blk2"], "modules": [{"name": "blk2"}]}
+    golden: golden/arabic-pf-b-schema.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: null
+
+  - id: xsdre-blocks/arabic-pf-b-u0627
+    dir: xsdre-blocks
+    source: {url: "hand-written (this repo), see issue 177", commit: null, license: BSD-3-Clause}   # \p{IsArabicPresentationForms-B} against U+0627 (measures libyang v5.8.6 block handling, issue 177 step 1)
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request: {"op": "data", "searchdirs": ["blk2"], "modules": [{"name": "blk2"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<l xmlns=\"urn:tests:blk2\">&#x627;</l>"}
+    golden: golden/arabic-pf-b-u0627.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: "D-0006"
+
+  - id: xsdre-blocks/arabic-pf-b-ufe70
+    dir: xsdre-blocks
+    source: {url: "hand-written (this repo), see issue 177", commit: null, license: BSD-3-Clause}   # \p{IsArabicPresentationForms-B} against U+FE70 (measures libyang v5.8.6 block handling, issue 177 step 1)
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request: {"op": "data", "searchdirs": ["blk2"], "modules": [{"name": "blk2"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<l xmlns=\"urn:tests:blk2\">&#xFE70;</l>"}
+    golden: golden/arabic-pf-b-ufe70.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: "D-0006"
+
+  - id: xsdre-blocks/cyrillic-supplement-schema
+    dir: xsdre-blocks
+    source: {url: "hand-written (this repo), see issue 177", commit: null, license: BSD-3-Clause}   # schema \p{IsCyrillicSupplement} (measures libyang v5.8.6 block handling, issue 177 step 1)
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request: {"op": "schema", "searchdirs": ["blk3"], "modules": [{"name": "blk3"}]}
+    golden: golden/cyrillic-supplement-schema.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: null
+
+  - id: xsdre-blocks/cyrillic-supplement-u0410
+    dir: xsdre-blocks
+    source: {url: "hand-written (this repo), see issue 177", commit: null, license: BSD-3-Clause}   # \p{IsCyrillicSupplement} against U+0410 (measures libyang v5.8.6 block handling, issue 177 step 1)
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request: {"op": "data", "searchdirs": ["blk3"], "modules": [{"name": "blk3"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<l xmlns=\"urn:tests:blk3\">&#x410;</l>"}
+    golden: golden/cyrillic-supplement-u0410.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: "D-0006"
+
+  - id: xsdre-blocks/cyrillic-supplement-u0500
+    dir: xsdre-blocks
+    source: {url: "hand-written (this repo), see issue 177", commit: null, license: BSD-3-Clause}   # \p{IsCyrillicSupplement} against U+0500 (measures libyang v5.8.6 block handling, issue 177 step 1)
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request: {"op": "data", "searchdirs": ["blk3"], "modules": [{"name": "blk3"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<l xmlns=\"urn:tests:blk3\">&#x500;</l>"}
+    golden: golden/cyrillic-supplement-u0500.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: "D-0006"
+
+  - id: xsdre-blocks/basic-latin-bogus-schema
+    dir: xsdre-blocks
+    source: {url: "hand-written (this repo), see issue 177", commit: null, license: BSD-3-Clause}   # schema \p{IsBasicLatinBogus} (measures libyang v5.8.6 block handling, issue 177 step 1)
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request: {"op": "schema", "searchdirs": ["blk4"], "modules": [{"name": "blk4"}]}
+    golden: golden/basic-latin-bogus-schema.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: "D-0006"
+
+  - id: xsdre-blocks/basic-latin-bogus-a
+    dir: xsdre-blocks
+    source: {url: "hand-written (this repo), see issue 177", commit: null, license: BSD-3-Clause}   # \p{IsBasicLatinBogus} against U+0061 (measures libyang v5.8.6 block handling, issue 177 step 1)
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request: {"op": "data", "searchdirs": ["blk4"], "modules": [{"name": "blk4"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<l xmlns=\"urn:tests:blk4\">&#x61;</l>"}
+    golden: golden/basic-latin-bogus-a.json
+    assert:
+      verdict: schema-error
+      rfc: ["RFC7950#9.4.5"]
+      deviation: "D-0006"
+
+  - id: xsdre-blocks/basic-latin-bogus-u03b1
+    dir: xsdre-blocks
+    source: {url: "hand-written (this repo), see issue 177", commit: null, license: BSD-3-Clause}   # \p{IsBasicLatinBogus} against U+03B1 (measures libyang v5.8.6 block handling, issue 177 step 1)
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request: {"op": "data", "searchdirs": ["blk4"], "modules": [{"name": "blk4"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<l xmlns=\"urn:tests:blk4\">&#x3B1;</l>"}
+    golden: golden/basic-latin-bogus-u03b1.json
+    assert:
+      verdict: schema-error
+      rfc: ["RFC7950#9.4.5"]
+      deviation: "D-0006"
+
+  - id: xsdre-blocks/neg-escape-schema
+    dir: xsdre-blocks
+    source: {url: "hand-written (this repo), see issue 177", commit: null, license: BSD-3-Clause}   # schema \P{IsBasicLatin} (measures libyang v5.8.6 block handling, issue 177 step 1)
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request: {"op": "schema", "searchdirs": ["blk5"], "modules": [{"name": "blk5"}]}
+    golden: golden/neg-escape-schema.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: "D-0005"
+
+  - id: xsdre-blocks/neg-escape-a
+    dir: xsdre-blocks
+    source: {url: "hand-written (this repo), see issue 177", commit: null, license: BSD-3-Clause}   # \P{IsBasicLatin} against U+0061 (measures libyang v5.8.6 block handling, issue 177 step 1)
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request: {"op": "data", "searchdirs": ["blk5"], "modules": [{"name": "blk5"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<l xmlns=\"urn:tests:blk5\">&#x61;</l>"}
+    golden: golden/neg-escape-a.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: "D-0005"
+
+  - id: xsdre-blocks/neg-escape-u03b1
+    dir: xsdre-blocks
+    source: {url: "hand-written (this repo), see issue 177", commit: null, license: BSD-3-Clause}   # \P{IsBasicLatin} against U+03B1 (measures libyang v5.8.6 block handling, issue 177 step 1)
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request: {"op": "data", "searchdirs": ["blk5"], "modules": [{"name": "blk5"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<l xmlns=\"urn:tests:blk5\">&#x3B1;</l>"}
+    golden: golden/neg-escape-u03b1.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: "D-0005"
+
+  - id: xsdre-blocks/neg-escape-in-class-schema
+    dir: xsdre-blocks
+    source: {url: "hand-written (this repo), see issue 177", commit: null, license: BSD-3-Clause}   # schema [\P{IsBasicLatin}] (measures libyang v5.8.6 block handling, issue 177 step 1)
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request: {"op": "schema", "searchdirs": ["blk6"], "modules": [{"name": "blk6"}]}
+    golden: golden/neg-escape-in-class-schema.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: "D-0005"
+
+  - id: xsdre-blocks/neg-escape-in-class-a
+    dir: xsdre-blocks
+    source: {url: "hand-written (this repo), see issue 177", commit: null, license: BSD-3-Clause}   # [\P{IsBasicLatin}] against U+0061 (measures libyang v5.8.6 block handling, issue 177 step 1)
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request: {"op": "data", "searchdirs": ["blk6"], "modules": [{"name": "blk6"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<l xmlns=\"urn:tests:blk6\">&#x61;</l>"}
+    golden: golden/neg-escape-in-class-a.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: "D-0005"
+
+  - id: xsdre-blocks/neg-escape-in-class-u03b1
+    dir: xsdre-blocks
+    source: {url: "hand-written (this repo), see issue 177", commit: null, license: BSD-3-Clause}   # [\P{IsBasicLatin}] against U+03B1 (measures libyang v5.8.6 block handling, issue 177 step 1)
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request: {"op": "data", "searchdirs": ["blk6"], "modules": [{"name": "blk6"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<l xmlns=\"urn:tests:blk6\">&#x3B1;</l>"}
+    golden: golden/neg-escape-in-class-u03b1.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: "D-0005"
+
+  - id: xsdre-blocks/neg-class-schema
+    dir: xsdre-blocks
+    source: {url: "hand-written (this repo), see issue 177", commit: null, license: BSD-3-Clause}   # schema [^\p{IsBasicLatin}] (measures libyang v5.8.6 block handling, issue 177 step 1)
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request: {"op": "schema", "searchdirs": ["blk7"], "modules": [{"name": "blk7"}]}
+    golden: golden/neg-class-schema.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: null
+
+  - id: xsdre-blocks/neg-class-a
+    dir: xsdre-blocks
+    source: {url: "hand-written (this repo), see issue 177", commit: null, license: BSD-3-Clause}   # [^\p{IsBasicLatin}] against U+0061 (measures libyang v5.8.6 block handling, issue 177 step 1)
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request: {"op": "data", "searchdirs": ["blk7"], "modules": [{"name": "blk7"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<l xmlns=\"urn:tests:blk7\">&#x61;</l>"}
+    golden: golden/neg-class-a.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: null
+
+  - id: xsdre-blocks/neg-class-u03b1
+    dir: xsdre-blocks
+    source: {url: "hand-written (this repo), see issue 177", commit: null, license: BSD-3-Clause}   # [^\p{IsBasicLatin}] against U+03B1 (measures libyang v5.8.6 block handling, issue 177 step 1)
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request: {"op": "data", "searchdirs": ["blk7"], "modules": [{"name": "blk7"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<l xmlns=\"urn:tests:blk7\">&#x3B1;</l>"}
+    golden: golden/neg-class-u03b1.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: null
+# END xsdre-blocks

@@ -1,0 +1,10 @@
+module blk7 {
+  yang-version 1.1;
+  namespace "urn:tests:blk7";
+  prefix blk7;
+  leaf l {
+    type string {
+      pattern '[^\p{IsBasicLatin}]';
+    }
+  }
+}

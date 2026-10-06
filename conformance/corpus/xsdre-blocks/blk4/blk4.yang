@@ -1,0 +1,10 @@
+module blk4 {
+  yang-version 1.1;
+  namespace "urn:tests:blk4";
+  prefix blk4;
+  leaf l {
+    type string {
+      pattern '\p{IsBasicLatinBogus}';
+    }
+  }
+}
