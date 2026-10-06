@@ -32,6 +32,10 @@ func storeIdentityRef(a *storeArgs) (Value, *Diag) {
 	switch {
 	case id == nil:
 		return Value{}, errf("Invalid identityref \"%s\" value - identity not found in module \"%s\".", a.lex, mod.Name)
+	case !mod.Implemented && a.impl != nil: // lyplg_type_make_implemented
+		if err := a.impl(mod, false); err != nil {
+			return Value{}, &Diag{Code: CodeData}
+		}
 	case !mod.Implemented:
 		return Value{}, errf("Invalid identityref \"%s\" value - identity found in non-implemented module \"%s\".", a.lex, mod.Name)
 	case id.Disabled:

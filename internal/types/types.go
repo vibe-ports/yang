@@ -143,6 +143,20 @@ func StoreOnly(t *schema.Type, lex string, f Format, h Hints, pc PrefixCtx, ctx 
 	return store(t, lex, f, h, pc, ctx, true)
 }
 
+// Implementer is the LYPLG_TYPE_STORE_IMPLEMENT callback of a store: it makes a module referenced
+// by the value implemented (and compiled). importFeatures selects the features: the context's
+// import features (lys_compile_expr_implement) or none (lyplg_type_make_implemented).
+type Implementer func(m *schema.Module, importFeatures bool) error
+
+// StoreImplement is Store with LYPLG_TYPE_STORE_IMPLEMENT: an identityref naming an identity of a
+// module that is not implemented, and the modules an instance-identifier names, are implemented
+// through impl instead of failing. A failure of impl is a Diag without a message.
+// ponytail: union members are stored without impl (libyang passes the option on); add it to
+// UnionValue when a fixture needs a union default that implements a module.
+func StoreImplement(t *schema.Type, lex string, f Format, h Hints, pc PrefixCtx, ctx *schema.Node, impl Implementer) (Value, *Diag) {
+	return storeArgsDispatch(&storeArgs{t: t, lex: lex, f: f, h: h, pc: pc, ctx: ctx, impl: impl})
+}
+
 // storeArgs carries one store call (the arguments of libyang lyplg_type_store_clb).
 type storeArgs struct {
 	t    *schema.Type
@@ -155,6 +169,7 @@ type storeArgs struct {
 	// quiet: inside a union libyang turns logging off, so messages built from the context log
 	// (instance-identifier details) are missing.
 	quiet bool
+	impl  Implementer // LYPLG_TYPE_STORE_IMPLEMENT
 }
 
 func store(t *schema.Type, lex string, f Format, h Hints, pc PrefixCtx, ctx *schema.Node, only bool) (Value, *Diag) {

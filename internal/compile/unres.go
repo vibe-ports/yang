@@ -7,6 +7,7 @@
 package compile
 
 import (
+	"errors"
 	"slices"
 
 	"github.com/vibe-ports/yang/internal/ly"
@@ -95,8 +96,8 @@ func leafrefs(n *schema.Node) []*schema.Type {
 // (disabled ones LIFO, then two FIFO rounds), whens LIFO, musts LIFO, bits/enums LIFO, defaults
 // LIFO, then the disabled nodes are removed and leafrefs re-checked against them. First the
 // modules leafrefs name are implemented (unresImplement), which may return LY_ERECOMPILE.
-// Defaults never implement modules (LY_CTX_REF_IMPLEMENTED is unsupported), so the
-// resolve_all restart of libyang has nothing to do.
+// With LY_CTX_REF_IMPLEMENTED a when, must or default may implement more modules, whose new
+// items are resolved by the resolve_all restart.
 func (c *Context) unres() error {
 	if c.unresHook != nil { // a test raising what unres can (LY_ERECOMPILE, errors)
 		if err := c.unresHook(c); err != nil {
@@ -105,63 +106,73 @@ func (c *Context) unres() error {
 	}
 	ur := &c.ur
 	defer func() { c.ur, c.disabled = unresSets{}, nil }() // lys_compile_unres_depset_erase
-	if err := c.unresImplement(); err != nil {
-		return err
-	}
-	c.identitiesDisabled() // the identity values when/must and defaults are checked against
-	for len(ur.disabledLeafrefs) > 0 {
-		l := ur.disabledLeafrefs[len(ur.disabledLeafrefs)-1]
-		for _, t := range leafrefs(l.node) {
-			if err := c.unresLeafref(l.node, t, l.local); err != nil {
+	// resolve_all: implementing a module (a leafref target, LY_CTX_REF_IMPLEMENTED) compiles it,
+	// which adds to the sets; they are resolved again until nothing new comes
+	processed := 0
+	for {
+		if err := c.unresImplement(); err != nil {
+			return err
+		}
+		c.identitiesDisabled() // the identity values when/must and defaults are checked against
+		for len(ur.disabledLeafrefs) > 0 {
+			l := ur.disabledLeafrefs[len(ur.disabledLeafrefs)-1]
+			for _, t := range leafrefs(l.node) {
+				if err := c.unresLeafref(l.node, t, l.local); err != nil {
+					return err
+				}
+			}
+			ur.disabledLeafrefs = ur.disabledLeafrefs[:len(ur.disabledLeafrefs)-1]
+		}
+		for _, l := range ur.leafrefs[processed:] {
+			for _, t := range leafrefs(l.node) {
+				if err := c.unresLeafref(l.node, t, l.local); err != nil {
+					return err
+				}
+			}
+		}
+		for _, l := range ur.leafrefs[processed:] { // store the first non-leafref type of the chain
+			for _, t := range leafrefs(l.node) {
+				rt := t.Realtype
+				for rt.Base == schema.Leafref {
+					rt = rt.Realtype
+				}
+				c.typeCache.release(t.Realtype)
+				t.Realtype = rt
+				c.typeCache.hold(rt)
+			}
+		}
+		processed = len(ur.leafrefs)
+		for len(ur.whens) > 0 {
+			w := ur.whens[len(ur.whens)-1]
+			if err := c.unresWhen(w.when, w.node); err != nil {
 				return err
 			}
+			ur.whens = ur.whens[:len(ur.whens)-1]
 		}
-		ur.disabledLeafrefs = ur.disabledLeafrefs[:len(ur.disabledLeafrefs)-1]
-	}
-	for _, l := range ur.leafrefs {
-		for _, t := range leafrefs(l.node) {
-			if err := c.unresLeafref(l.node, t, l.local); err != nil {
+		for len(ur.musts) > 0 {
+			if err := c.unresMusts(ur.musts[len(ur.musts)-1]); err != nil {
 				return err
 			}
+			ur.musts = ur.musts[:len(ur.musts)-1]
 		}
-	}
-	for _, l := range ur.leafrefs { // store the first non-leafref type of the chain
-		for _, t := range leafrefs(l.node) {
-			rt := t.Realtype
-			for rt.Base == schema.Leafref {
-				rt = rt.Realtype
+		for len(ur.bitenums) > 0 {
+			n := ur.bitenums[len(ur.bitenums)-1]
+			if err := c.unresBitenum(n); err != nil {
+				return err
 			}
-			c.typeCache.release(t.Realtype)
-			t.Realtype = rt
-			c.typeCache.hold(rt)
+			ur.bitenums = ur.bitenums[:len(ur.bitenums)-1]
 		}
-	}
-	for len(ur.whens) > 0 {
-		w := ur.whens[len(ur.whens)-1]
-		if err := c.unresWhen(w.when, w.node); err != nil {
-			return err
+		for len(ur.dflts) > 0 {
+			n := ur.dflts[len(ur.dflts)-1]
+			if err := c.unresDflts(n); err != nil {
+				return err
+			}
+			ur.dflts = ur.dflts[:len(ur.dflts)-1]
 		}
-		ur.whens = ur.whens[:len(ur.whens)-1]
-	}
-	for len(ur.musts) > 0 {
-		if err := c.unresMusts(ur.musts[len(ur.musts)-1]); err != nil {
-			return err
+		if processed == len(ur.leafrefs) && len(ur.disabledLeafrefs) == 0 && len(ur.whens) == 0 &&
+			len(ur.musts) == 0 && len(ur.dflts) == 0 {
+			break
 		}
-		ur.musts = ur.musts[:len(ur.musts)-1]
-	}
-	for len(ur.bitenums) > 0 {
-		n := ur.bitenums[len(ur.bitenums)-1]
-		if err := c.unresBitenum(n); err != nil {
-			return err
-		}
-		ur.bitenums = ur.bitenums[:len(ur.bitenums)-1]
-	}
-	for len(ur.dflts) > 0 {
-		n := ur.dflts[len(ur.dflts)-1]
-		if err := c.unresDflts(n); err != nil {
-			return err
-		}
-		ur.dflts = ur.dflts[:len(ur.dflts)-1]
 	}
 	if err := c.removeDisabled(); err != nil {
 		return err
@@ -301,7 +312,21 @@ func (c *Context) unresDflts(n *schema.Node) error {
 	}
 	for _, d := range n.Default {
 		// LY_EINCOMPLETE (a value that needs the data tree) is success
-		if _, diag := types.Store(n.Type, d.Lex, types.FormatSchema, types.HintSchema, d.NS, n); diag != nil {
+		var implErr error
+		var diag *types.Diag
+		if c.opts.RefImplemented { // LYPLG_TYPE_STORE_IMPLEMENT
+			_, diag = types.StoreImplement(n.Type, d.Lex, types.FormatSchema, types.HintSchema, d.NS, n,
+				func(m *schema.Module, importFeatures bool) error {
+					implErr = c.implementRef(m, importFeatures)
+					return implErr
+				})
+		} else {
+			_, diag = types.Store(n.Type, d.Lex, types.FormatSchema, types.HintSchema, d.NS, n)
+		}
+		if errors.Is(implErr, errRecompile) || errors.Is(implErr, ErrBudget) {
+			return implErr // LY_ERECOMPILE, budget
+		}
+		if diag != nil {
 			if diag.Msg == "" {
 				return c.logPath(ly.Semantics, n.LogPath(), "Invalid default - value does not fit the type.")
 			}

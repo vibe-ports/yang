@@ -252,6 +252,7 @@ type manifestEntry struct {
 	modules         []string
 	features        map[string][]string // per module, as requested
 	compileObsolete bool                // context option compile_obsolete
+	refImplemented  bool                // context option ref_implemented
 	skip            string              // why the request is outside this harness
 }
 
@@ -277,6 +278,8 @@ func compileManifest(t *testing.T) map[string]manifestEntry {
 			inCompile = true
 		case l == `context_options: ["compile_obsolete"]`:
 			cur.compileObsolete = true
+		case l == `context_options: ["ref_implemented"]`:
+			cur.refImplemented = true
 		case strings.HasPrefix(l, "context_options:") && l != "context_options: []":
 			cur.skip = "context options"
 		case strings.HasPrefix(l, "modules:"):
@@ -351,7 +354,7 @@ func TestNodeGoldens(t *testing.T) {
 				t.Fatal(err)
 			}
 			schemas := os.DirFS(filepath.Join(dir, "schemas"))
-			opts := Options{CompileObsolete: req.compileObsolete}
+			opts := Options{CompileObsolete: req.compileObsolete, RefImplemented: req.refImplemented}
 			h := newNodeHarness(t, opts, schemas)
 			type dump struct {
 				name string

@@ -56,7 +56,8 @@ func (w *nodeCtx) addMusts(n *schema.Node) {
 // unresImplement is lys_compile_unres_depset_implement: the modules named by leafref paths
 // (disabled ones included: their target must exist) are implemented and compiled; a when or must
 // naming a module that is not implemented is not checked, with a warning (LY_CTX_REF_IMPLEMENTED
-// is unsupported). Compiling a module adds to the sets, so this runs until they are stable.
+// makes them implemented instead). Compiling a module adds to the sets, so this runs until they
+// are stable.
 // Implementing may need the dep set compiled again (LY_ERECOMPILE).
 func (c *Context) unresImplement() error {
 	ur := &c.ur
@@ -74,7 +75,11 @@ func (c *Context) unresImplement() error {
 		}
 		for wi < len(ur.whens) {
 			w := ur.whens[wi]
-			if m := exprModules(w.when.Src, w.when.Ctx, true); m != nil {
+			if c.opts.RefImplemented {
+				if err := c.implementExpr(w.when.Src, w.when.Ctx); err != nil {
+					return err
+				}
+			} else if m := exprModules(w.when.Src, w.when.Ctx, true); m != nil {
 				c.warn("When condition \"%s\" check skipped because referenced module \"%s\" is not implemented.", w.when.Src, m[0].Name)
 				ur.whens[wi] = ur.whens[len(ur.whens)-1] // ly_set_rm_index
 				ur.whens = ur.whens[:len(ur.whens)-1]
@@ -85,7 +90,11 @@ func (c *Context) unresImplement() error {
 		for mi < len(ur.musts) {
 			skip := false
 			for _, must := range ur.musts[mi].node.Musts {
-				if m := exprModules(must.Src, must.Ctx, true); m != nil {
+				if c.opts.RefImplemented {
+					if err := c.implementExpr(must.Src, must.Ctx); err != nil {
+						return err
+					}
+				} else if m := exprModules(must.Src, must.Ctx, true); m != nil {
 					c.warn("Must condition \"%s\" check skipped because referenced module \"%s\" is not implemented.", must.Src, m[0].Name)
 					skip = true
 				}
@@ -106,27 +115,50 @@ func (c *Context) unresImplement() error {
 // implementLeafrefs is lys_compile_expr_implement(implement 1) for the leafref paths of n.
 func (c *Context) implementLeafrefs(n *schema.Node) error {
 	for _, t := range leafrefs(n) {
-		for _, sm := range exprModules(t.Path, t.Prefixes, false) {
-			var m *Module
-			for _, lm := range c.Modules {
-				if lm.Schema == sm {
-					m = lm
-				}
-			}
-			if m == nil {
-				continue
-			}
-			if !m.Implemented {
-				if err := c.implement(m, c.importFeatures()); err != nil {
-					return err
-				}
-			}
-			if !m.compiled {
-				if err := c.compile(m); err != nil {
-					return err
-				}
-			}
+		if err := c.implementExpr(t.Path, t.Prefixes); err != nil {
+			return err
 		}
+	}
+	return nil
+}
+
+// implementExpr is lys_compile_expr_implement(implement 1): every module the expression's
+// prefixes name is implemented with the import features and compiled.
+func (c *Context) implementExpr(src string, ns schema.NSCtx) error {
+	for _, sm := range exprModules(src, ns, false) {
+		if err := c.implementRef(sm, true); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// implementRef implements and compiles the module of sm unless it is already (the
+// lys_compile_expr_implement step, importFeatures; lyplg_type_make_implemented without features,
+// which also skips the compile of an implemented module).
+func (c *Context) implementRef(sm *schema.Module, importFeatures bool) error {
+	var m *Module
+	for _, lm := range c.Modules {
+		if lm.Schema == sm {
+			m = lm
+		}
+	}
+	switch {
+	case m == nil:
+		return nil
+	case m.Implemented && !importFeatures:
+		return nil // lyplg_type_make_implemented
+	case !m.Implemented:
+		var f []string
+		if importFeatures {
+			f = c.importFeatures()
+		}
+		if err := c.implement(m, f); err != nil {
+			return err
+		}
+	}
+	if !m.compiled {
+		return c.compile(m)
 	}
 	return nil
 }

@@ -29488,3 +29488,88 @@ fixtures:
       searchdirs: [schemas]
       modules: [{"name": "ietf-netconf-with-defaults"}, {"name": "yang"}]
     golden: golden/internal-with-defaults-yang.json
+
+  # LY_CTX_REF_IMPLEMENTED (issue #147): defaults, whens and musts implement the modules they
+  # reference; without the option the same modules stay import-only
+  # an identityref default naming an import-only module
+  - id: ref-impl/identityref-default
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#5.6.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ref-impl-ident"}]
+      context_options: ["ref_implemented"]
+    golden: golden/ref-impl-identityref-default.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#5.6.5"]
+      deviation: null
+
+  # the same without the option: identity in a non-implemented module
+  - id: ref-impl/identityref-default-off
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#5.6.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ref-impl-ident"}]
+    golden: golden/ref-impl-identityref-default-off.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#5.6.5"]
+      deviation: null
+
+  # an instance-identifier default
+  - id: ref-impl/instid-default
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#5.6.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ref-impl-instid"}]
+      context_options: ["ref_implemented"]
+    golden: golden/ref-impl-instid-default.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#5.6.5"]
+      deviation: null
+
+  # the same without the option
+  - id: ref-impl/instid-default-off
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#5.6.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ref-impl-instid"}]
+    golden: golden/ref-impl-instid-default-off.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#5.6.5"]
+      deviation: null
+
+  # a must and a when are checked (no skip warning)
+  - id: ref-impl/must-when
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#5.6.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ref-impl-must"}]
+      context_options: ["ref_implemented"]
+    golden: golden/ref-impl-must-when.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#5.6.5"]
+      deviation: null

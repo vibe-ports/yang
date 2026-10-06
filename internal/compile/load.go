@@ -48,6 +48,10 @@ type Options struct {
 	// CompileObsolete keeps obsolete nodes in the compiled tree (LY_CTX_COMPILE_OBSOLETE);
 	// by default they are compiled like disabled nodes and removed.
 	CompileObsolete bool
+	// RefImplemented implements the modules that when/must expressions and identityref and
+	// instance-identifier defaults reference (LY_CTX_REF_IMPLEMENTED); by default such a when or
+	// must is not checked and such a default is invalid.
+	RefImplemented bool
 }
 
 // Level is a diagnostic's log level.
