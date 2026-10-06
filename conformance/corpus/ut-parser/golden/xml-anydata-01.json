@@ -1,0 +1,167 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"a:any\": {\n    \"element1\": {\n      \"element2\": \"a:data\",\n      \"@element2\": {\n        \"attr2\": \"test\"\n      }\n    },\n    \"element1a\": [null]\n  }\n}\n",
+    "xml": "<any xmlns=\"urn:tests:a\">\n  <element1>\n    <element2 xmlns=\"urn:x\" xmlns:x=\"urn:x\" x:attr2=\"test\" xmlns:a=\"urn:tests:a\">a:data</element2>\n  </element1>\n  <element1a/>\n</any>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:c",
+      "schema": "/a:c",
+      "value": null
+    },
+    {
+      "any": {
+        "text": "{\n  \"a:element1\": {\n    \"element2\": \"a:data\",\n    \"@element2\": {\n      \"attr2\": \"test\"\n    }\n  },\n  \"a:element1a\": [null]\n}\n",
+        "value_type": "datatree"
+      },
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "anydata",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:any",
+      "schema": "/a:any",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "element1",
+        "namespace": "urn:tests:a",
+        "prefix": null
+      },
+      "path": "/a:any/element1",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "string"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [
+        {
+          "module": "urn:x",
+          "name": "attr2",
+          "value": "test"
+        }
+      ],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "element2",
+        "namespace": "urn:x",
+        "prefix": "x"
+      },
+      "path": "/a:any/element1/element2",
+      "schema": null,
+      "value": {
+        "canonical": "a:data",
+        "hints": [
+          "string"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "element1a",
+        "namespace": "urn:tests:a",
+        "prefix": null
+      },
+      "path": "/a:any/element1a",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "string",
+          "empty"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:foo2",
+      "schema": "/a:foo2",
+      "value": {
+        "canonical": "default-val",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

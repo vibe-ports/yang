@@ -1,0 +1,97 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"a:l1\": [\n    {\n      \"a\": \"val_a\",\n      \"b\": \"val_b\",\n      \"c\": 3\n    }\n  ]\n}\n",
+    "xml": "<l1 xmlns=\"urn:tests:a\">\n  <a>val_a</a>\n  <b>val_b</b>\n  <c>3</c>\n</l1>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:l1[a='val_a'][b='val_b'][c='3']",
+      "schema": "/a:l1",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:l1[a='val_a'][b='val_b'][c='3']/a",
+      "schema": "/a:l1/a",
+      "value": {
+        "canonical": "val_a",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:l1[a='val_a'][b='val_b'][c='3']/b",
+      "schema": "/a:l1/b",
+      "value": {
+        "canonical": "val_b",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:l1[a='val_a'][b='val_b'][c='3']/c",
+      "schema": "/a:l1/c",
+      "value": {
+        "canonical": "3",
+        "type": "int16",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

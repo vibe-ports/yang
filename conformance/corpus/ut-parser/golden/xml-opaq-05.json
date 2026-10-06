@@ -1,0 +1,138 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"a:l1\": {\n    \"a\": \"val_a\",\n    \"b\": \"val_b\",\n    \"d\": \"val_d\"\n  }\n}\n",
+    "xml": "<l1 xmlns=\"urn:tests:a\">\n  <a>val_a</a>\n  <b>val_b</b>\n  <d>val_d</d>\n</l1>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "l1",
+        "namespace": "urn:tests:a",
+        "prefix": null
+      },
+      "path": "/a:l1",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "string"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "a",
+        "namespace": "urn:tests:a",
+        "prefix": null
+      },
+      "path": "/a:l1/a",
+      "schema": null,
+      "value": {
+        "canonical": "val_a",
+        "hints": [
+          "string"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "b",
+        "namespace": "urn:tests:a",
+        "prefix": null
+      },
+      "path": "/a:l1/b",
+      "schema": null,
+      "value": {
+        "canonical": "val_b",
+        "hints": [
+          "string"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "d",
+        "namespace": "urn:tests:a",
+        "prefix": null
+      },
+      "path": "/a:l1/d",
+      "schema": null,
+      "value": {
+        "canonical": "val_d",
+        "hints": [
+          "string"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

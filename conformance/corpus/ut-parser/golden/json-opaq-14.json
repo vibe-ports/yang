@@ -1,0 +1,820 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"ietf-netconf-nmda:get-data\": {\n    \"data\": {\n      \"ietf-keystore:keystore\": {\n        \"asymmetric-keys\": {\n          \"asymmetric-key\": [\n            {\n              \"name\": \"genkey\",\n              \"algorithm\": \"rsa2048\"\n            }\n          ]\n        }\n      },\n      \"ietf-netconf-server:netconf-server\": {\n        \"listen\": {\n          \"idle-timeout\": 3600,\n          \"endpoint\": [\n            {\n              \"name\": \"default-ssh\",\n              \"ssh\": {\n                \"tcp-server-parameters\": {\n                  \"local-address\": \"0.0.0.0\",\n                  \"local-port\": 830\n                },\n                \"ssh-server-parameters\": {\n                  \"server-identity\": {\n                    \"host-key\": [\n                      {\n                        \"name\": \"default-key\",\n                        \"public-key\": {\n                          \"keystore-reference\": \"genkey\"\n                        }\n                      }\n                    ]\n                  },\n                  \"client-authentication\": {\n                    \"supported-authentication-methods\": {\n                      \"publickey\": [null],\n                      \"passsword\": [null],\n                      \"other\": [\n                        \"interactive\",\n                        \"gssapi\"\n                      ]\n                    }\n                  }\n                }\n              }\n            }\n          ]\n        }\n      }\n    }\n  }\n}\n",
+    "xml": "<get-data>\n  <data>\n    <keystore>\n      <asymmetric-keys>\n        <asymmetric-key>\n          <name>genkey</name>\n          <algorithm>rsa2048</algorithm>\n        </asymmetric-key>\n      </asymmetric-keys>\n    </keystore>\n    <netconf-server>\n      <listen>\n        <idle-timeout>3600</idle-timeout>\n        <endpoint>\n          <name>default-ssh</name>\n          <ssh>\n            <tcp-server-parameters>\n              <local-address>0.0.0.0</local-address>\n              <local-port>830</local-port>\n            </tcp-server-parameters>\n            <ssh-server-parameters>\n              <server-identity>\n                <host-key>\n                  <name>default-key</name>\n                  <public-key>\n                    <keystore-reference>genkey</keystore-reference>\n                  </public-key>\n                </host-key>\n              </server-identity>\n              <client-authentication>\n                <supported-authentication-methods>\n                  <publickey/>\n                  <passsword/>\n                  <other>interactive</other>\n                  <other>gssapi</other>\n                </supported-authentication-methods>\n              </client-authentication>\n            </ssh-server-parameters>\n          </ssh>\n        </endpoint>\n      </listen>\n    </netconf-server>\n  </data>\n</get-data>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-netconf-nmda",
+        "name": "get-data",
+        "namespace": null,
+        "prefix": "ietf-netconf-nmda"
+      },
+      "path": "/get-data",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "container"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-netconf-nmda",
+        "name": "data",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/get-data/data",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "container"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-keystore",
+        "name": "keystore",
+        "namespace": null,
+        "prefix": "ietf-keystore"
+      },
+      "path": "/get-data/data/keystore",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "container"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-keystore",
+        "name": "asymmetric-keys",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/get-data/data/keystore/asymmetric-keys",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "container"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-keystore",
+        "name": "asymmetric-key",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/get-data/data/keystore/asymmetric-keys/asymmetric-key",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "list"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-keystore",
+        "name": "name",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/get-data/data/keystore/asymmetric-keys/asymmetric-key/name",
+      "schema": null,
+      "value": {
+        "canonical": "genkey",
+        "hints": [
+          "string",
+          "num64"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-keystore",
+        "name": "algorithm",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/get-data/data/keystore/asymmetric-keys/asymmetric-key/algorithm",
+      "schema": null,
+      "value": {
+        "canonical": "rsa2048",
+        "hints": [
+          "string",
+          "num64"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-netconf-server",
+        "name": "netconf-server",
+        "namespace": null,
+        "prefix": "ietf-netconf-server"
+      },
+      "path": "/get-data/data/netconf-server",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "container"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-netconf-server",
+        "name": "listen",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/get-data/data/netconf-server/listen",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "container"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-netconf-server",
+        "name": "idle-timeout",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/get-data/data/netconf-server/listen/idle-timeout",
+      "schema": null,
+      "value": {
+        "canonical": "3600",
+        "hints": [
+          "decnum"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-netconf-server",
+        "name": "endpoint",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/get-data/data/netconf-server/listen/endpoint",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "list"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-netconf-server",
+        "name": "name",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/get-data/data/netconf-server/listen/endpoint/name",
+      "schema": null,
+      "value": {
+        "canonical": "default-ssh",
+        "hints": [
+          "string",
+          "num64"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-netconf-server",
+        "name": "ssh",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/get-data/data/netconf-server/listen/endpoint/ssh",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "container"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-netconf-server",
+        "name": "tcp-server-parameters",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/get-data/data/netconf-server/listen/endpoint/ssh/tcp-server-parameters",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "container"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-netconf-server",
+        "name": "local-address",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/get-data/data/netconf-server/listen/endpoint/ssh/tcp-server-parameters/local-address",
+      "schema": null,
+      "value": {
+        "canonical": "0.0.0.0",
+        "hints": [
+          "string",
+          "num64"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-netconf-server",
+        "name": "local-port",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/get-data/data/netconf-server/listen/endpoint/ssh/tcp-server-parameters/local-port",
+      "schema": null,
+      "value": {
+        "canonical": "830",
+        "hints": [
+          "decnum"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-netconf-server",
+        "name": "ssh-server-parameters",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/get-data/data/netconf-server/listen/endpoint/ssh/ssh-server-parameters",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "container"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-netconf-server",
+        "name": "server-identity",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/get-data/data/netconf-server/listen/endpoint/ssh/ssh-server-parameters/server-identity",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "container"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-netconf-server",
+        "name": "host-key",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/get-data/data/netconf-server/listen/endpoint/ssh/ssh-server-parameters/server-identity/host-key",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "list"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-netconf-server",
+        "name": "name",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/get-data/data/netconf-server/listen/endpoint/ssh/ssh-server-parameters/server-identity/host-key/name",
+      "schema": null,
+      "value": {
+        "canonical": "default-key",
+        "hints": [
+          "string",
+          "num64"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-netconf-server",
+        "name": "public-key",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/get-data/data/netconf-server/listen/endpoint/ssh/ssh-server-parameters/server-identity/host-key/public-key",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "container"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-netconf-server",
+        "name": "keystore-reference",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/get-data/data/netconf-server/listen/endpoint/ssh/ssh-server-parameters/server-identity/host-key/public-key/keystore-reference",
+      "schema": null,
+      "value": {
+        "canonical": "genkey",
+        "hints": [
+          "string",
+          "num64"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-netconf-server",
+        "name": "client-authentication",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/get-data/data/netconf-server/listen/endpoint/ssh/ssh-server-parameters/client-authentication",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "container"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-netconf-server",
+        "name": "supported-authentication-methods",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/get-data/data/netconf-server/listen/endpoint/ssh/ssh-server-parameters/client-authentication/supported-authentication-methods",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "container"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-netconf-server",
+        "name": "publickey",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/get-data/data/netconf-server/listen/endpoint/ssh/ssh-server-parameters/client-authentication/supported-authentication-methods/publickey",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "empty"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-netconf-server",
+        "name": "passsword",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/get-data/data/netconf-server/listen/endpoint/ssh/ssh-server-parameters/client-authentication/supported-authentication-methods/passsword",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "empty"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-netconf-server",
+        "name": "other",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/get-data/data/netconf-server/listen/endpoint/ssh/ssh-server-parameters/client-authentication/supported-authentication-methods/other",
+      "schema": null,
+      "value": {
+        "canonical": "interactive",
+        "hints": [
+          "string",
+          "num64",
+          "leaflist"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-netconf-server",
+        "name": "other",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/get-data/data/netconf-server/listen/endpoint/ssh/ssh-server-parameters/client-authentication/supported-authentication-methods/other",
+      "schema": null,
+      "value": {
+        "canonical": "gssapi",
+        "hints": [
+          "string",
+          "num64",
+          "leaflist"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

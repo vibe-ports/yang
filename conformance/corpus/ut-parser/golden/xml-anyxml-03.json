@@ -1,0 +1,281 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"a:anyx\": {\n    \"x\": [\n      1,\n      0,\n      -1,\n      4294967295,\n      \"4294967296\",\n      -2147483648,\n      \"-2147483649\"\n    ]\n  }\n}\n",
+    "xml": "<anyx xmlns=\"urn:tests:a\">\n  <x>1</x>\n  <x>0</x>\n  <x>-1</x>\n  <x>4294967295</x>\n  <x>4294967296</x>\n  <x>-2147483648</x>\n  <x>-2147483649</x>\n</anyx>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:c",
+      "schema": "/a:c",
+      "value": null
+    },
+    {
+      "any": {
+        "text": "{\n  \"a:x\": [\n    1,\n    0,\n    -1,\n    4294967295,\n    \"4294967296\",\n    -2147483648,\n    \"-2147483649\"\n  ]\n}\n",
+        "value_type": "datatree"
+      },
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "anyxml",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:anyx",
+      "schema": "/a:anyx",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "x",
+        "namespace": "urn:tests:a",
+        "prefix": null
+      },
+      "path": "/a:anyx/x",
+      "schema": null,
+      "value": {
+        "canonical": "1",
+        "hints": [
+          "decnum",
+          "leaflist"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "x",
+        "namespace": "urn:tests:a",
+        "prefix": null
+      },
+      "path": "/a:anyx/x",
+      "schema": null,
+      "value": {
+        "canonical": "0",
+        "hints": [
+          "decnum",
+          "leaflist"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "x",
+        "namespace": "urn:tests:a",
+        "prefix": null
+      },
+      "path": "/a:anyx/x",
+      "schema": null,
+      "value": {
+        "canonical": "-1",
+        "hints": [
+          "decnum",
+          "leaflist"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "x",
+        "namespace": "urn:tests:a",
+        "prefix": null
+      },
+      "path": "/a:anyx/x",
+      "schema": null,
+      "value": {
+        "canonical": "4294967295",
+        "hints": [
+          "decnum",
+          "leaflist"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "x",
+        "namespace": "urn:tests:a",
+        "prefix": null
+      },
+      "path": "/a:anyx/x",
+      "schema": null,
+      "value": {
+        "canonical": "4294967296",
+        "hints": [
+          "decnum",
+          "num64",
+          "leaflist"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "x",
+        "namespace": "urn:tests:a",
+        "prefix": null
+      },
+      "path": "/a:anyx/x",
+      "schema": null,
+      "value": {
+        "canonical": "-2147483648",
+        "hints": [
+          "decnum",
+          "leaflist"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "x",
+        "namespace": "urn:tests:a",
+        "prefix": null
+      },
+      "path": "/a:anyx/x",
+      "schema": null,
+      "value": {
+        "canonical": "-2147483649",
+        "hints": [
+          "decnum",
+          "num64",
+          "leaflist"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:foo2",
+      "schema": "/a:foo2",
+      "value": {
+        "canonical": "default-val",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

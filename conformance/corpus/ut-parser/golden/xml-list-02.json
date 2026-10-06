@@ -1,0 +1,52 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [
+    {
+      "apptag": null,
+      "code": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "data_path": null,
+      "level": "warning",
+      "line": 0,
+      "msg": "Invalid position of the key \"b\" in a list.",
+      "phase": "data",
+      "schema_path": null,
+      "vecode": 0,
+      "vecode_name": "LYVE_SUCCESS"
+    },
+    {
+      "apptag": null,
+      "code": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "data_path": "/a:l1[b='b'][c='1']",
+      "level": "error",
+      "line": 1,
+      "msg": "List instance is missing its key \"a\".",
+      "phase": "data",
+      "schema_path": null,
+      "vecode": 9,
+      "vecode_name": "LYVE_DATA"
+    }
+  ],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 7,
+    "name": "LY_EVALID"
+  },
+  "tree": null,
+  "verdict": "invalid"
+}

@@ -26874,3 +26874,2471 @@ fixtures:
       rfc: ["RFC7950#7.6.1", "RFC7950#7.21.5", "RFC6243#3"]
       deviation: null
 # END ut-validation-ops
+
+# BEGIN ut-parser (generated from libyang tests/utests/data/test_parser_{json,xml}.c by conformance/tools/extract-utests, reviewed)
+
+  - id: ut-parser/json-leaf-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaf:140
+    rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:foo\":\"foo value\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-leaf-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-parser/json-leaf-02
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaf:157
+    rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:foo2\":\"default-val\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-leaf-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-parser/json-leaf-03
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaf:171
+    rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1, ../ietf]
+      modules: [{name: "a"}, {name: "ietf-netconf-with-defaults"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:foo2\":\"default-val\",\"@a:foo2\":{\"ietf-netconf-with-defaults:default\":true}}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-leaf-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-parser/json-leaf-04
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaf:186
+    rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:cp\":{\"x\":\"val\",\"y\":\"valy\",\"z\":5}}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-leaf-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-parser/json-leaf-05
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaf:194
+    rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"@a:foo\":{\"a:hint\":1,\"a:hint\":2,\"x:xxx\":{\"value\":\"/x:no/x:yes\"}},\"a:foo\":\"xxx\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-leaf-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-parser/json-leaf-06
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaf:204
+    rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"@a:foo\":{\"a:hint\":1,\"a:hint\":2,\"x:xxx\":{\"value\":\"/x:no/x:yes\"}},\"a:foo\":\"xxx\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "reject"
+    golden: golden/json-leaf-06.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-parser/json-leaf-07
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaf:208
+    rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"@a:foo\" : { \"a:hint\" : 1 }}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-leaf-07.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-parser/json-leaf-08
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaf:212
+    rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:foo\" : \"value\", \"@a:foo\" : { \"hint\" : 1 }}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-leaf-08.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-parser/json-leaf-09
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaf:217
+    rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:l1\" : [{ \"a\" : \"val-a\", \"b\" : \"val-b\", \"c\" : 1, \"cont\" : { \"e\" : \"0\" } }]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-leaf-09.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-parser/json-leaf-10
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaf:222
+    rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"@a:foo\":{\"a:hi\\nt\":1},\"a:foo\":\"xxx\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-leaf-10.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-parser/json-leaf-11
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaf:226
+    rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:foo\": null}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-leaf-11.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-parser/json-leaf-12
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaf:227
+    rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:foo\": null}"
+      parse_only: false
+      parse_options: ["json_null"]
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-leaf-12.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-parser/json-leaf-13
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaf:232
+    rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:foo3\":\"1234\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "reject"
+    golden: golden/json-leaf-13.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-parser/json-leaf-14
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaf:237
+    rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:foo3\":1234}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-leaf-14.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-parser/json-leaf-15
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaf:242
+    rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:foo3\":\"1234\"}"
+      parse_only: false
+      parse_options: ["json_string_datatypes"]
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-leaf-15.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.6", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-parser/json-leaflist-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaflist:254
+    rfc: ["RFC7950#7.7", "RFC7951#5.4"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:ll1\":[10,11]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-leaflist-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.7", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-parser/json-leaflist-02
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaflist:273
+    rfc: ["RFC7950#7.7", "RFC7951#5.4"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:ll1\":[]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-leaflist-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.7", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-parser/json-leaflist-03
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaflist:278
+    rfc: ["RFC7950#7.7", "RFC7951#5.4"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:ll1\":[10,11],\"@a:ll1\":[null,{\"a:hint\":2}]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-leaflist-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.7", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-parser/json-leaflist-04
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaflist:300
+    rfc: ["RFC7950#7.7", "RFC7951#5.4"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"@a:ll1\" : [{\"a:hint\" : 1, \"x:xxx\" :  { \"value\" : \"/x:no/x:yes\" }, \"a:hint\" : 10},null,{\"a:hint\" : 3}], \"a:ll1\" : [1,2,3]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-leaflist-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.7", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-parser/json-leaflist-05
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaflist:330
+    rfc: ["RFC7950#7.7", "RFC7951#5.4"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:ll1\":6}"
+      parse_only: true
+      parse_options: ["no_state"]
+      validate_options: []
+      unknown: "reject"
+    golden: golden/json-leaflist-05.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.7", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-parser/json-leaflist-06
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaflist:334
+    rfc: ["RFC7950#7.7", "RFC7951#5.4"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"@a:ll1\":[{\"a:hint\":1}]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-leaflist-06.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.7", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-parser/json-leaflist-07
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaflist:337
+    rfc: ["RFC7950#7.7", "RFC7951#5.4"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:ll1\":[1],\"@a:ll1\":[{\"a:hint\":1},{\"a:hint\":2}]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-leaflist-07.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.7", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-parser/json-leaflist-08
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaflist:340
+    rfc: ["RFC7950#7.7", "RFC7951#5.4"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"@a:ll1\":[{\"a:hint\":1},{\"a:hint\":2},{\"a:hint\":3}],\"a:ll1\" : [1, 2]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-leaflist-08.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.7", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-parser/json-anydata-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_anydata:351
+    rfc: ["RFC7950#7.10", "RFC7951#5.3"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:any\":{\"x:element1\":{\"element2\":\"/a:some/a:path\",\"list\":[{},{\"key\":\"a\"}]}}}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-anydata-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.10", "RFC7951#5.3"]
+      deviation: null
+
+  - id: ut-parser/json-anydata-02
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_anydata:360
+    rfc: ["RFC7950#7.10", "RFC7951#5.3"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:any\":{}}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-anydata-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.10", "RFC7951#5.3"]
+      deviation: null
+
+  - id: ut-parser/json-anydata-03
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_anydata:369
+    rfc: ["RFC7950#7.10", "RFC7951#5.3"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:any\":{\"node\":20}}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-anydata-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.10", "RFC7951#5.3"]
+      deviation: null
+
+  - id: ut-parser/json-anydata-04
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_anydata:378
+    rfc: ["RFC7950#7.10", "RFC7951#5.3"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:any\": null}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-anydata-04.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.10", "RFC7951#5.3"]
+      deviation: null
+
+  - id: ut-parser/json-anydata-05
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_anydata:379
+    rfc: ["RFC7950#7.10", "RFC7951#5.3"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:any\": null}"
+      parse_only: false
+      parse_options: ["json_null"]
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-anydata-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.10", "RFC7951#5.3"]
+      deviation: null
+
+  - id: ut-parser/json-anydata-strict-validation-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_anydata_strict_validation:394
+    rfc: ["RFC7950#7.10"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:any\":{\"x:element1\":{\"element2\":\"/a:some/a:path\",\"list\":[{},{\"key\":\"a\"}]}}}"
+      parse_only: false
+      parse_options: ["anydata_strict"]
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-anydata-strict-validation-01.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.10"]
+      deviation: null
+
+  - id: ut-parser/json-anydata-strict-validation-02
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_anydata_strict_validation:399
+    rfc: ["RFC7950#7.10"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:any\":{\"a:fooA\":{\"element2\":\"/a:some/a:path\",\"list\":[{},{\"key\":\"a\"}]}}}"
+      parse_only: false
+      parse_options: ["anydata_strict"]
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-anydata-strict-validation-02.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.10"]
+      deviation: null
+
+  - id: ut-parser/json-anydata-strict-validation-03
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_anydata_strict_validation:403
+    rfc: ["RFC7950#7.10"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:any\":{\"foo\":\"default-val\"}}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-anydata-strict-validation-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.10"]
+      deviation: null
+
+  - id: ut-parser/json-anyxml-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_anyxml:419
+    rfc: ["RFC7950#7.11", "RFC7951#5.3"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:axml\":\"some-value in string\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-anyxml-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.11", "RFC7951#5.3"]
+      deviation: null
+
+  - id: ut-parser/json-anyxml-02
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_anyxml:427
+    rfc: ["RFC7950#7.11", "RFC7951#5.3"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:axml\":\"\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-anyxml-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.11", "RFC7951#5.3"]
+      deviation: null
+
+  - id: ut-parser/json-anyxml-03
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_anyxml:435
+    rfc: ["RFC7950#7.11", "RFC7951#5.3"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:axml\":55}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-anyxml-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.11", "RFC7951#5.3"]
+      deviation: null
+
+  - id: ut-parser/json-anyxml-04
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_anyxml:443
+    rfc: ["RFC7950#7.11", "RFC7951#5.3"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:axml\":false}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-anyxml-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.11", "RFC7951#5.3"]
+      deviation: null
+
+  - id: ut-parser/json-anyxml-05
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_anyxml:451
+    rfc: ["RFC7950#7.11", "RFC7951#5.3"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:axml\":null}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-anyxml-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.11", "RFC7951#5.3"]
+      deviation: null
+
+  - id: ut-parser/json-anyxml-06
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_anyxml:459
+    rfc: ["RFC7950#7.11", "RFC7951#5.3"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:axml\":[null,true,false]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-anyxml-06.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.11", "RFC7951#5.3"]
+      deviation: null
+
+  - id: ut-parser/json-anyxml-07
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_anyxml:467
+    rfc: ["RFC7950#7.11", "RFC7951#5.3"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:axml\":[null,true,{\"name\":[25,40, false]}]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-anyxml-07.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.11", "RFC7951#5.3"]
+      deviation: null
+
+  - id: ut-parser/json-anyxml-08
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_anyxml:476
+    rfc: ["RFC7950#7.11", "RFC7951#5.3"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:axml\":{\"x:element1\":{\"element2\":\"/a:some/a:path\",\"list\":[{},{\"key\":\"a\"}]}}}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-anyxml-08.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.11", "RFC7951#5.3"]
+      deviation: null
+
+  - id: ut-parser/json-anyxml-09
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_anyxml:484
+    rfc: ["RFC7950#7.11", "RFC7951#5.3"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:axml\":{}}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-anyxml-09.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.11", "RFC7951#5.3"]
+      deviation: null
+
+  - id: ut-parser/json-list-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_list:502
+    rfc: ["RFC7950#7.8", "RFC7951#5.4"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:l1\":[{\"a\":\"one\",\"b\":\"one\",\"c\":1}]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-list-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-parser/json-list-02
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_list:514
+    rfc: ["RFC7950#7.8", "RFC7951#5.4"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:l1\":[]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-list-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-parser/json-list-03
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_list:518
+    rfc: ["RFC7950#7.8", "RFC7951#5.4"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{ \"a:l1\": [ {\"c\" : 1, \"b\" : \"b\"}]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-list-03.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-parser/json-list-04
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_list:521
+    rfc: ["RFC7950#7.8", "RFC7951#5.4"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{ \"a:l1\": [ {\"a\" : \"a\"}]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-list-04.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-parser/json-list-05
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_list:524
+    rfc: ["RFC7950#7.8", "RFC7951#5.4"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{ \"a:l1\": [ {\"b\" : \"b\", \"a\" : \"a\"}]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-list-05.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-parser/json-list-06
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_list:528
+    rfc: ["RFC7950#7.8", "RFC7951#5.4"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{ \"a:l1\": [ {\"c\" : 1, \"b\" : \"b\", \"a\" : \"a\", \"c\" : 1}]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-list-06.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-parser/json-list-07
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_list:532
+    rfc: ["RFC7950#7.8", "RFC7951#5.4"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{ \"a:l1\": [ {\"d\" : \"d\", \"a\" : \"a\", \"c\" : 1, \"b\" : \"b\"}]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-list-07.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-parser/json-list-08
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_list:549
+    rfc: ["RFC7950#7.8", "RFC7951#5.4"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:l1\":[{\"c\":1,\"b\":\"b\",\"a\":\"a\"}]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "reject"
+    golden: golden/json-list-08.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-parser/json-list-09
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_list:569
+    rfc: ["RFC7950#7.8", "RFC7951#5.4"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:l1\":[{\"a\":\"val_a\",\"b\":\"val_b\",\"c\":3,\"counters\":{\"count1\":\"c1\",\"count2\":\"c2\"}}]}"
+      parse_only: true
+      parse_options: []
+      validate_options: []
+      unknown: "skip"
+    golden: golden/json-list-09.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-parser/json-list-10
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_list:574
+    rfc: ["RFC7950#7.8", "RFC7951#5.4"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:cp\":{\"@\":{\"a:hint\":1}}}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-list-10.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-parser/json-container-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_container:592
+    rfc: ["RFC7950#7.5", "RFC7951#5.1"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:c\":{}}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-container-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.5", "RFC7951#5.1"]
+      deviation: null
+
+  - id: ut-parser/json-container-02
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_container:602
+    rfc: ["RFC7950#7.5", "RFC7951#5.1"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:cp\":{}}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-container-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.5", "RFC7951#5.1"]
+      deviation: null
+
+  - id: ut-parser/json-container-03
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_container:614
+    rfc: ["RFC7950#7.5", "RFC7951#5.1"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:unknown\":{\"a\":\"val\",\"b\":5}}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-container-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.5", "RFC7951#5.1"]
+      deviation: null
+
+  - id: ut-parser/json-container-04
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_container:619
+    rfc: ["RFC7950#7.5", "RFC7951#5.1"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:c\": null}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-container-04.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.5", "RFC7951#5.1"]
+      deviation: null
+
+  - id: ut-parser/json-container-05
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_container:620
+    rfc: ["RFC7950#7.5", "RFC7951#5.1"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:c\": null}"
+      parse_only: false
+      parse_options: ["json_null"]
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-container-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.5", "RFC7951#5.1"]
+      deviation: null
+
+  - id: ut-parser/json-opaq-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_opaq:632
+    rfc: []
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:foo3\":[null]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-opaq-01.json
+    assert:
+      verdict: invalid
+      rfc: []
+      deviation: null
+
+  - id: ut-parser/json-opaq-02
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_opaq:636
+    rfc: []
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:foo3\":[null]}"
+      parse_only: true
+      parse_options: []
+      validate_options: []
+      unknown: "opaque"
+    golden: golden/json-opaq-02.json
+    assert:
+      verdict: valid
+      rfc: []
+      deviation: null
+
+  - id: ut-parser/json-opaq-03
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_opaq:643
+    rfc: []
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:foo3\":\"ab\\\"\\\\\\r\\t\"}"
+      parse_only: true
+      parse_options: []
+      validate_options: []
+      unknown: "opaque"
+    golden: golden/json-opaq-03.json
+    assert:
+      verdict: valid
+      rfc: []
+      deviation: null
+
+  - id: ut-parser/json-opaq-04
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_opaq:649
+    rfc: []
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:foo3\":\"25\"}"
+      parse_only: true
+      parse_options: []
+      validate_options: []
+      unknown: "opaque"
+    golden: golden/json-opaq-04.json
+    assert:
+      verdict: valid
+      rfc: []
+      deviation: null
+
+  - id: ut-parser/json-opaq-05
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_opaq:655
+    rfc: []
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:foo4\":25}"
+      parse_only: true
+      parse_options: []
+      validate_options: []
+      unknown: "opaque"
+    golden: golden/json-opaq-05.json
+    assert:
+      verdict: valid
+      rfc: []
+      deviation: null
+
+  - id: ut-parser/json-opaq-06
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_opaq:662
+    rfc: []
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:l1\":[{\"a\":\"val_a\",\"b\":\"val_b\",\"d\":\"val_d\"}]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-opaq-06.json
+    assert:
+      verdict: invalid
+      rfc: []
+      deviation: null
+
+  - id: ut-parser/json-opaq-07
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_opaq:666
+    rfc: []
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:l1\":[{\"a\":\"val_a\",\"b\":\"val_b\",\"d\":\"val_d\"}]}"
+      parse_only: true
+      parse_options: []
+      validate_options: []
+      unknown: "opaque"
+    golden: golden/json-opaq-07.json
+    assert:
+      verdict: valid
+      rfc: []
+      deviation: null
+
+  - id: ut-parser/json-opaq-08
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_opaq:673
+    rfc: []
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:l1\":[{\"a\":\"val_a\",\"b\":\"val_b\",\"c\":\"val_c\"}]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-opaq-08.json
+    assert:
+      verdict: invalid
+      rfc: []
+      deviation: null
+
+  - id: ut-parser/json-opaq-09
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_opaq:677
+    rfc: []
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:l1\":[{\"a\":\"val_a\",\"b\":\"val_b\",\"c\":\"val_c\"}]}"
+      parse_only: true
+      parse_options: []
+      validate_options: []
+      unknown: "opaque"
+    golden: golden/json-opaq-09.json
+    assert:
+      verdict: valid
+      rfc: []
+      deviation: null
+
+  - id: ut-parser/json-opaq-10
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_opaq:683
+    rfc: []
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:l1\":[{\"a\":\"val_a\",\"b\":\"val_b\",\"c\":{\"val\":\"val_c\"}}]}"
+      parse_only: true
+      parse_options: []
+      validate_options: []
+      unknown: "opaque"
+    golden: golden/json-opaq-10.json
+    assert:
+      verdict: valid
+      rfc: []
+      deviation: null
+
+  - id: ut-parser/json-opaq-11
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_opaq:689
+    rfc: []
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:l1\":[{\"a\":\"val_a\",\"b\":\"val_b\"}]}"
+      parse_only: true
+      parse_options: []
+      validate_options: []
+      unknown: "opaque"
+    golden: golden/json-opaq-11.json
+    assert:
+      verdict: valid
+      rfc: []
+      deviation: null
+
+  - id: ut-parser/json-opaq-12
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_opaq:696
+    rfc: []
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"@a:foo\":\"str\",\"@a:foo3\":1,\"a:foo3\":2}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-opaq-12.json
+    assert:
+      verdict: invalid
+      rfc: []
+      deviation: null
+
+  - id: ut-parser/json-opaq-13
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_opaq:700
+    rfc: []
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"@a:foo\":{\"\":0}}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-opaq-13.json
+    assert:
+      verdict: invalid
+      rfc: []
+      deviation: null
+
+  - id: ut-parser/json-opaq-14
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_opaq:759
+    rfc: []
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\n  \"ietf-netconf-nmda:get-data\": {\n    \"data\": {\n      \"ietf-keystore:keystore\": {\n        \"asymmetric-keys\": {\n          \"asymmetric-key\": [\n            {\n              \"name\": \"genkey\",\n              \"algorithm\": \"rsa2048\"\n            }\n          ]\n        }\n      },\n      \"ietf-netconf-server:netconf-server\": {\n        \"listen\": {\n          \"idle-timeout\": 3600,\n          \"endpoint\": [\n            {\n              \"name\": \"default-ssh\",\n              \"ssh\": {\n                \"tcp-server-parameters\": {\n                  \"local-address\": \"0.0.0.0\",\n                  \"local-port\": 830\n                },\n                \"ssh-server-parameters\": {\n                  \"server-identity\": {\n                    \"host-key\": [\n                      {\n                        \"name\": \"default-key\",\n                        \"public-key\": {\n                          \"keystore-reference\": \"genkey\"\n                        }\n                      }\n                    ]\n                  },\n                  \"client-authentication\": {\n                    \"supported-authentication-methods\": {\n                      \"publickey\": [null],\n                      \"passsword\": [null],\n                      \"other\": [\n                        \"interactive\",\n                        \"gssapi\"\n                      ]\n                    }\n                  }\n                }\n              }\n            }\n          ]\n        }\n      }\n    }\n  }\n}\n"
+      parse_only: true
+      parse_options: []
+      validate_options: []
+      unknown: "opaque"
+    golden: golden/json-opaq-14.json
+    assert:
+      verdict: valid
+      rfc: []
+      deviation: null
+
+  - id: ut-parser/json-metadata-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_metadata:1035
+    rfc: ["RFC7952#5"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"a:c\":{\"x\":\"xval\",\"@x\":{\"a:hint\":\"value\"}}}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-metadata-01.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7952#5"]
+      deviation: null
+
+  - id: ut-parser/json-action-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_action:841 (oracle requires the parent container c in the operational tree)
+    rfc: ["RFC7950#7.15"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "rpc"
+      data: "{\"a:c\":{\"act\":{\"al\":\"value\"}}}"
+      unknown: "reject"
+      operational: "{\"a:c\":{}}"
+    golden: golden/json-action-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.15"]
+      deviation: null
+
+  - id: ut-parser/json-notification-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_notification:866 (oracle requires the parent container c in the operational tree)
+    rfc: ["RFC7950#7.16"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "notif"
+      data: "{\"a:c\":{\"n1\":{\"nl\":\"value\"}}}"
+      unknown: "reject"
+      operational: "{\"a:c\":{}}"
+    golden: golden/json-notification-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.16"]
+      deviation: null
+
+  - id: ut-parser/json-notification-02
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_notification:880
+    rfc: ["RFC7950#7.16"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "notif"
+      data: "{\"a:n2\":{}}"
+      unknown: "reject"
+    golden: golden/json-notification-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.16"]
+      deviation: null
+
+  - id: ut-parser/json-reply-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_reply:907 (oracle requires the parent container c in the operational tree)
+    rfc: ["RFC7950#7.14"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "reply"
+      data: "{\"a:c\":{\"act\":{\"al\":25}}}"
+      unknown: "reject"
+      operational: "{\"a:c\":{}}"
+    golden: golden/json-reply-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.14"]
+      deviation: null
+
+  - id: ut-parser/xml-leaf-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaf:81
+    rfc: ["RFC7950#7.6"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<foo xmlns=\"urn:tests:a\">foo value</foo>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-leaf-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.6"]
+      deviation: null
+
+  - id: ut-parser/xml-leaf-02
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaf:95
+    rfc: ["RFC7950#7.6"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<foo2 xmlns=\"urn:tests:a\">default-val</foo2>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-leaf-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.6"]
+      deviation: null
+
+  - id: ut-parser/xml-leaf-03
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaf:108
+    rfc: ["RFC7950#7.6"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<foo2 xmlns=\"urn:tests:a\" xmlns:wd=\"urn:ietf:params:xml:ns:netconf:default:1.0\" wd:default=\"true\" xmlns:x=\"urn:x\" x:xxx=\"false\">default-val</foo2>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-leaf-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.6"]
+      deviation: null
+
+  - id: ut-parser/xml-leaf-04
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaf:120
+    rfc: ["RFC7950#7.6"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:a\"><a>val-a</a><b>val-b</b><c>1</c><cont><e>0</e></cont></l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "reject"
+    golden: golden/xml-leaf-04.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.6"]
+      deviation: null
+
+  - id: ut-parser/xml-anydata-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_anydata:137
+    rfc: ["RFC7950#7.10"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<any xmlns=\"urn:tests:a\">\n  <element1>\n    <x:element2 x:attr2=\"test\" xmlns:a=\"urn:tests:a\" xmlns:x=\"urn:x\">a:data</x:element2>\n  </element1>\n  <element1a/>\n</any>\n"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-anydata-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.10"]
+      deviation: null
+
+  - id: ut-parser/xml-anydata-strict-validation-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_anydata_strict_validation:178
+    rfc: ["RFC7950#7.10"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<any xmlns=\"urn:tests:a\">\n  <x:element1 xmlns:x=\"urn:tests:no:schema\">\n    <x:element2>default-val</x:element2>\n  </x:element1>\n</any>\n"
+      parse_only: false
+      parse_options: ["anydata_strict"]
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-anydata-strict-validation-01.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.10"]
+      deviation: null
+
+  - id: ut-parser/xml-anydata-strict-validation-02
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_anydata_strict_validation:187
+    rfc: ["RFC7950#7.10"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<any xmlns=\"urn:tests:a\">\n  <element1>default-val</element1>\n</any>\n"
+      parse_only: false
+      parse_options: ["anydata_strict"]
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-anydata-strict-validation-02.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.10"]
+      deviation: null
+
+  - id: ut-parser/xml-anydata-strict-validation-03
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_anydata_strict_validation:195
+    rfc: ["RFC7950#7.10"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<any xmlns=\"urn:tests:a\">\n  <foo>default-val</foo>\n</any>\n"
+      parse_only: false
+      parse_options: ["anydata_strict"]
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-anydata-strict-validation-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.10"]
+      deviation: null
+
+  - id: ut-parser/xml-anyxml-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_anyxml:231
+    rfc: ["RFC7950#7.11"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<anyx xmlns=\"urn:tests:a\">\n  <element1>\n    <element2 x:attr2=\"test\" xmlns:x=\"urn:x\">data</element2>\n  </element1>\n  <element1a/>\n</anyx>\n"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-anyxml-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.11"]
+      deviation: null
+
+  - id: ut-parser/xml-anyxml-02
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_anyxml:254
+    rfc: ["RFC7950#7.11"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<anyx xmlns=\"urn:tests:a\">&lt;text/&gt;</anyx>\n"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-anyxml-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.11"]
+      deviation: null
+
+  - id: ut-parser/xml-anyxml-03
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_anyxml:264
+    rfc: ["RFC7950#7.11"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<anyx xmlns=\"urn:tests:a\"><x>1</x><x>0</x><x>-1</x><x>4294967295</x><x>4294967296</x><x>-2147483648</x><x>-2147483649</x></anyx>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-anyxml-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.11"]
+      deviation: null
+
+  - id: ut-parser/xml-list-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_list:286
+    rfc: ["RFC7950#7.8"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:a\"><a>one</a><b>one</b><c>1</c></l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-list-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8"]
+      deviation: null
+
+  - id: ut-parser/xml-list-02
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_list:296
+    rfc: ["RFC7950#7.8"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:a\"><c>1</c><b>b</b></l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-list-02.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8"]
+      deviation: null
+
+  - id: ut-parser/xml-list-03
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_list:300
+    rfc: ["RFC7950#7.8"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:a\"><a>a</a></l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-list-03.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8"]
+      deviation: null
+
+  - id: ut-parser/xml-list-04
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_list:303
+    rfc: ["RFC7950#7.8"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:a\"><b>b</b><a>a</a></l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-list-04.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8"]
+      deviation: null
+
+  - id: ut-parser/xml-list-05
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_list:308
+    rfc: ["RFC7950#7.8"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:a\"><c>1</c><b>b</b><a>a</a><c>1</c></l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-list-05.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8"]
+      deviation: null
+
+  - id: ut-parser/xml-list-06
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_list:314
+    rfc: ["RFC7950#7.8"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:a\"><d>d</d><a>a</a><c>1</c><b>b</b></l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-list-06.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8"]
+      deviation: null
+
+  - id: ut-parser/xml-list-07
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_list:330
+    rfc: ["RFC7950#7.8"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:a\"><c>1</c><b>b</b><a>a</a></l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-list-07.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8"]
+      deviation: null
+
+  - id: ut-parser/xml-list-08
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_list:343
+    rfc: ["RFC7950#7.8"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:a\"><c>1</c><b>b</b><a>a</a></l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "reject"
+    golden: golden/xml-list-08.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8"]
+      deviation: null
+
+  - id: ut-parser/xml-container-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_container:353
+    rfc: ["RFC7950#7.5"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<c xmlns=\"urn:tests:a\"/>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-container-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.5"]
+      deviation: null
+
+  - id: ut-parser/xml-container-02
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_container:359
+    rfc: ["RFC7950#7.5"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<cp xmlns=\"urn:tests:a\"/>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-container-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.5"]
+      deviation: null
+
+  - id: ut-parser/xml-opaq-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_opaq:377
+    rfc: []
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<foo3 xmlns=\"urn:tests:a\"/>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-opaq-01.json
+    assert:
+      verdict: invalid
+      rfc: []
+      deviation: null
+
+  - id: ut-parser/xml-opaq-02
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_opaq:381
+    rfc: []
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<foo3 xmlns=\"urn:tests:a\"/>"
+      parse_only: true
+      parse_options: []
+      validate_options: []
+      unknown: "opaque"
+    golden: golden/xml-opaq-02.json
+    assert:
+      verdict: valid
+      rfc: []
+      deviation: null
+
+  - id: ut-parser/xml-opaq-03
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_opaq:388
+    rfc: []
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:a\"/>"
+      parse_only: true
+      parse_options: []
+      validate_options: []
+      unknown: "opaque"
+    golden: golden/xml-opaq-03.json
+    assert:
+      verdict: valid
+      rfc: []
+      deviation: null
+
+  - id: ut-parser/xml-opaq-04
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_opaq:399
+    rfc: []
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:a\">\n  <a>val_a</a>\n  <b>val_b</b>\n  <d>val_d</d>\n</l1>\n"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-opaq-04.json
+    assert:
+      verdict: invalid
+      rfc: []
+      deviation: null
+
+  - id: ut-parser/xml-opaq-05
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_opaq:403
+    rfc: []
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:a\">\n  <a>val_a</a>\n  <b>val_b</b>\n  <d>val_d</d>\n</l1>\n"
+      parse_only: true
+      parse_options: []
+      validate_options: []
+      unknown: "opaque"
+    golden: golden/xml-opaq-05.json
+    assert:
+      verdict: valid
+      rfc: []
+      deviation: null
+
+  - id: ut-parser/xml-opaq-06
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_opaq:414
+    rfc: []
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:a\">\n  <a>val_a</a>\n  <b>val_b</b>\n  <c>val_c</c>\n</l1>\n"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-opaq-06.json
+    assert:
+      verdict: invalid
+      rfc: []
+      deviation: null
+
+  - id: ut-parser/xml-opaq-07
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_opaq:418
+    rfc: []
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:a\">\n  <a>val_a</a>\n  <b>val_b</b>\n  <c>val_c</c>\n</l1>\n"
+      parse_only: true
+      parse_options: []
+      validate_options: []
+      unknown: "opaque"
+    golden: golden/xml-opaq-07.json
+    assert:
+      verdict: valid
+      rfc: []
+      deviation: null
+
+  - id: ut-parser/xml-opaq-08
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_opaq:424
+    rfc: []
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<a xmlns=\"ns\">\n  <b>x</b>\n  <c xmld:id=\"D\">1</c>\n</a>\n"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "opaque"
+    golden: golden/xml-opaq-08.json
+    assert:
+      verdict: invalid
+      rfc: []
+      deviation: null
+
+  - id: ut-parser/xml-metadata-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_metadata:1068
+    rfc: ["RFC7952#5"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<c xmlns=\"urn:tests:a\" xmlns:a=\"urn:tests:a\"><x a:attr=\"value\">xval</x></c>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-metadata-01.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7952#5"]
+      deviation: null
+
+  - id: ut-parser/xml-data-skip-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_skip:1043
+    rfc: []
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<foo xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-metadata\"><u/></foo>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-data-skip-01.json
+    assert:
+      verdict: valid
+      rfc: []
+      deviation: null
+
+  - id: ut-parser/xml-data-skip-02
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_skip:1048
+    rfc: []
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<fooX xmlns=\"urn:tests:a\"><u/><list><value/></list></fooX>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-data-skip-02.json
+    assert:
+      verdict: valid
+      rfc: []
+      deviation: null
+
+  - id: ut-parser/xml-data-skip-03
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_skip:1053
+    rfc: []
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<fooX xmlns=\"urn:tests:a\"><u/></fooX>  <foo xmlns=\"urn:tests:a\">foo value</foo>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-data-skip-03.json
+    assert:
+      verdict: valid
+      rfc: []
+      deviation: null
+
+  - id: ut-parser/xml-subtree-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_subtree:1086
+    rfc: []
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:a\">\n  <a>val_a</a>\n  <b>val_b</b>\n  <c>1</c>\n</l1>\n"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-subtree-01.json
+    assert:
+      verdict: valid
+      rfc: []
+      deviation: null
+
+  - id: ut-parser/xml-rpc-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_rpc:463
+    rfc: ["RFC7950#7.14"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2, ../ietf]
+      modules: [{name: "a"}, {name: "ietf-netconf", features: ["writable-running"]}]
+      format: "xml"
+      data_type: "rpc"
+      data: "<edit-config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\n  <target>\n    <running/>\n  </target>\n  <config xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\n    <l1 xmlns=\"urn:tests:a\" nc:operation=\"replace\">\n      <a>val_a</a>\n      <b>val_b</b>\n      <c>val_c</c>\n    </l1>\n    <cp xmlns=\"urn:tests:a\">\n      <z nc:operation=\"delete\"/>\n    </cp>\n  </config>\n</edit-config>\n"
+      unknown: "reject"
+    golden: golden/xml-rpc-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.14"]
+      deviation: null
+
+  - id: ut-parser/xml-action-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_action:530 (oracle requires the parent container c in the operational tree)
+    rfc: ["RFC7950#7.15"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "rpc"
+      data: "<c xmlns=\"urn:tests:a\">\n  <act>\n    <al>value</al>\n  </act>\n</c>\n"
+      unknown: "reject"
+      operational: "<c xmlns=\"urn:tests:a\"/>"
+    golden: golden/xml-action-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.15"]
+      deviation: null
+
+  - id: ut-parser/xml-notification-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_notification:565 (oracle requires the parent container c in the operational tree)
+    rfc: ["RFC7950#7.16"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "notif"
+      data: "<c xmlns=\"urn:tests:a\">\n  <n1>\n    <nl>value</nl>\n  </n1>\n</c>\n"
+      unknown: "reject"
+      operational: "<c xmlns=\"urn:tests:a\"/>"
+    golden: golden/xml-notification-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.16"]
+      deviation: null
+
+  - id: ut-parser/xml-notification-02
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_notification:580
+    rfc: ["RFC7950#7.16"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "notif"
+      data: "<n2 xmlns=\"urn:tests:a\"/>\n"
+      unknown: "reject"
+    golden: golden/xml-notification-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.16"]
+      deviation: null
+
+  - id: ut-parser/xml-reply-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_reply:611 (oracle requires the parent container c in the operational tree)
+    rfc: ["RFC7950#7.14"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "reply"
+      data: "<c xmlns=\"urn:tests:a\">\n  <act>\n    <al>25</al>\n  </act>\n</c>\n"
+      unknown: "reject"
+      operational: "<c xmlns=\"urn:tests:a\"/>"
+    golden: golden/xml-reply-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.14"]
+      deviation: null
+# END ut-parser

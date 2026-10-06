@@ -1,0 +1,15 @@
+module a {
+    namespace urn:tests:a;
+    prefix a;
+    yang-version 1.1;
+    import ietf-yang-metadata {prefix md;}    list l1 { key "a b c"; leaf a {type string;} leaf b {type string;} leaf c {type int16;}        leaf d {type string;}        container cont {leaf e {type boolean;}}    }    leaf foo { type string;}
+    container c {
+        leaf x {type string;}
+        action act { input { leaf al {type string;} } output { leaf al {type uint8;} } }
+        notification n1 { leaf nl {type string;}}}
+    container cp {presence "container switch"; leaf y {type string;} leaf z {type int8;}}
+    anydata any {config false;}
+    anyxml anyx;
+    leaf foo2 { type string; default "default-val"; }
+    leaf foo3 { type uint32; }
+    notification n2;    md:annotation attr {type enumeration {enum val;}}}

@@ -1,0 +1,113 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"a:l1\": [\n    {\n      \"a\": \"val_a\",\n      \"b\": \"val_b\"\n    }\n  ]\n}\n",
+    "xml": "<l1 xmlns=\"urn:tests:a\">\n  <a>val_a</a>\n  <b>val_b</b>\n</l1>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "a",
+        "name": "l1",
+        "namespace": null,
+        "prefix": "a"
+      },
+      "path": "/a:l1",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "list",
+          "container"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "a",
+        "name": "a",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/a:l1/a",
+      "schema": null,
+      "value": {
+        "canonical": "val_a",
+        "hints": [
+          "string",
+          "num64"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "a",
+        "name": "b",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/a:l1/b",
+      "schema": null,
+      "value": {
+        "canonical": "val_b",
+        "hints": [
+          "string",
+          "num64"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

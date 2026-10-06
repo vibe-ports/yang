@@ -1,0 +1,218 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"a:any\": {\n    \"x:element1\": {\n      \"element2\": \"/a:some/a:path\",\n      \"list\": [\n        {},\n        {\n          \"key\": \"a\"\n        }\n      ]\n    }\n  }\n}\n",
+    "xml": "<any xmlns=\"urn:tests:a\">\n  <element1>\n    <element2>/a:some/a:path</element2>\n    <list/>\n    <list>\n      <key>a</key>\n    </list>\n  </element1>\n</any>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:c",
+      "schema": "/a:c",
+      "value": null
+    },
+    {
+      "any": {
+        "text": "{\n  \"x:element1\": {\n    \"element2\": \"/a:some/a:path\",\n    \"list\": [\n      {},\n      {\n        \"key\": \"a\"\n      }\n    ]\n  }\n}\n",
+        "value_type": "datatree"
+      },
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "anydata",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:any",
+      "schema": "/a:any",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "x",
+        "name": "element1",
+        "namespace": null,
+        "prefix": "x"
+      },
+      "path": "/a:any/element1",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "container"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "x",
+        "name": "element2",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/a:any/element1/element2",
+      "schema": null,
+      "value": {
+        "canonical": "/a:some/a:path",
+        "hints": [
+          "string",
+          "num64"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "x",
+        "name": "list",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/a:any/element1/list",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "list"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "x",
+        "name": "list",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/a:any/element1/list",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "list"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "x",
+        "name": "key",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/a:any/element1/list/key",
+      "schema": null,
+      "value": {
+        "canonical": "a",
+        "hints": [
+          "string",
+          "num64"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:foo2",
+      "schema": "/a:foo2",
+      "value": {
+        "canonical": "default-val",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

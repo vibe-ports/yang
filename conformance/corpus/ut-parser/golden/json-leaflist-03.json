@@ -1,0 +1,103 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"a:ll1\": [\n    10,\n    11\n  ],\n  \"@a:ll1\": [\n    null,\n    {\n      \"a:hint\": 2\n    }\n  ]\n}\n",
+    "xml": "<ll1 xmlns=\"urn:tests:a\">10</ll1>\n<ll1 xmlns=\"urn:tests:a\" xmlns:a=\"urn:tests:a\" a:hint=\"2\">11</ll1>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:c",
+      "schema": "/a:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:ll1[.='10']",
+      "schema": "/a:ll1",
+      "value": {
+        "canonical": "10",
+        "type": "uint8",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [
+        {
+          "module": "a",
+          "name": "hint",
+          "value": "2"
+        }
+      ],
+      "opaque": null,
+      "path": "/a:ll1[.='11']",
+      "schema": "/a:ll1",
+      "value": {
+        "canonical": "11",
+        "type": "uint8",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:foo2",
+      "schema": "/a:foo2",
+      "value": {
+        "canonical": "default-val",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

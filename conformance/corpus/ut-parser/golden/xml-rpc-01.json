@@ -1,0 +1,301 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ietf-netconf",
+      "revision": "2011-06-01"
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"ietf-netconf:edit-config\": {\n    \"target\": {\n      \"running\": [null]\n    },\n    \"config\": {\n      \"a:cp\": {\n        \"z\": [null],\n        \"@z\": {\n          \"ietf-netconf:operation\": \"delete\"\n        }\n      },\n      \"a:l1\": {\n        \"@\": {\n          \"ietf-netconf:operation\": \"replace\"\n        },\n        \"a\": \"val_a\",\n        \"b\": \"val_b\",\n        \"c\": \"val_c\"\n      }\n    }\n  }\n}\n",
+    "xml": "<edit-config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\n  <target>\n    <running/>\n  </target>\n  <config>\n    <cp xmlns=\"urn:tests:a\">\n      <z xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:operation=\"delete\"/>\n    </cp>\n    <l1 xmlns=\"urn:tests:a\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:operation=\"replace\">\n      <a>val_a</a>\n      <b>val_b</b>\n      <c>val_c</c>\n    </l1>\n  </config>\n</edit-config>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "rpc",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf:edit-config",
+      "schema": "/ietf-netconf:edit-config",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf:edit-config/target",
+      "schema": "/ietf-netconf:edit-config/input/target",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf:edit-config/target/running",
+      "schema": "/ietf-netconf:edit-config/input/target/config-target/running/running",
+      "value": {
+        "canonical": "",
+        "type": "empty",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf:edit-config/default-operation",
+      "schema": "/ietf-netconf:edit-config/input/default-operation",
+      "value": {
+        "canonical": "merge",
+        "type": "enumeration",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf:edit-config/error-option",
+      "schema": "/ietf-netconf:edit-config/input/error-option",
+      "value": {
+        "canonical": "stop-on-error",
+        "type": "enumeration",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": {
+        "text": "{\n  \"a:cp\": {\n    \"z\": [null],\n    \"@z\": {\n      \"ietf-netconf:operation\": \"delete\"\n    }\n  },\n  \"a:l1\": {\n    \"@\": {\n      \"ietf-netconf:operation\": \"replace\"\n    },\n    \"a\": \"val_a\",\n    \"b\": \"val_b\",\n    \"c\": \"val_c\"\n  }\n}\n",
+        "value_type": "datatree"
+      },
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "anyxml",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf:edit-config/config",
+      "schema": "/ietf-netconf:edit-config/input/edit-content/config/config",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf:edit-config/config/a:cp",
+      "schema": "/a:cp",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [
+        {
+          "module": "urn:ietf:params:xml:ns:netconf:base:1.0",
+          "name": "operation",
+          "value": "delete"
+        }
+      ],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "z",
+        "namespace": "urn:tests:a",
+        "prefix": null
+      },
+      "path": "/ietf-netconf:edit-config/config/a:cp/z",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "string",
+          "empty"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [
+        {
+          "module": "urn:ietf:params:xml:ns:netconf:base:1.0",
+          "name": "operation",
+          "value": "replace"
+        }
+      ],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "l1",
+        "namespace": "urn:tests:a",
+        "prefix": null
+      },
+      "path": "/ietf-netconf:edit-config/config/a:l1",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "string"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "a",
+        "namespace": "urn:tests:a",
+        "prefix": null
+      },
+      "path": "/ietf-netconf:edit-config/config/a:l1/a",
+      "schema": null,
+      "value": {
+        "canonical": "val_a",
+        "hints": [
+          "string"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "b",
+        "namespace": "urn:tests:a",
+        "prefix": null
+      },
+      "path": "/ietf-netconf:edit-config/config/a:l1/b",
+      "schema": null,
+      "value": {
+        "canonical": "val_b",
+        "hints": [
+          "string"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "c",
+        "namespace": "urn:tests:a",
+        "prefix": null
+      },
+      "path": "/ietf-netconf:edit-config/config/a:l1/c",
+      "schema": null,
+      "value": {
+        "canonical": "val_c",
+        "hints": [
+          "string"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}
