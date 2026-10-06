@@ -17,8 +17,8 @@ type Budget struct {
 	// MaxBitPosition caps bit positions (U-0031): a bits value carries a bitmap up to the
 	// highest position.
 	MaxBitPosition uint32
-	// MaxNodes caps the schema nodes compiled per Load (U-0034): grouping expansion is
-	// exponential in the schema text.
+	// MaxNodes caps the schema nodes compiled and uses instantiated per Load (U-0034, U-0037):
+	// grouping expansion is exponential in the schema text.
 	MaxNodes int
 	// MaxDepth caps the nesting of compiled nodes (U-0035): uses/augment chains are not bounded
 	// by the parser's block depth.

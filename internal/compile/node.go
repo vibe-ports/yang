@@ -45,20 +45,28 @@ const (
 
 // nodeCtx is the part of struct lysc_ctx the node walk uses, for one compiled module.
 type nodeCtx struct {
-	c       *Context
-	cur     *schema.Module // ctx->cur_mod
-	pm      *pmod          // ctx->pmod: the (sub)module whose text is compiled
-	opts    int            // ctx->compile_opts
-	path    cpath
-	fl      map[*schema.Node]int
-	data    []*schema.Node // cur_mod->compiled->data, rpcs, notifs
-	rpcs    []*schema.Node
-	notifs  []*schema.Node
-	parents []*parser.Node // parsed nodes being compiled, outermost first (lysp_node.parent chain)
-	depth   int
-	tc      *typeCtx // type compilation (design 06 C5)
-	seen    map[uniqKey]bool
-	scans   int // uniqueness scans run (index hits)
+	c      *Context
+	cur    *schema.Module // ctx->cur_mod
+	pm     *pmod          // ctx->pmod: the (sub)module whose text is compiled
+	opts   int            // ctx->compile_opts
+	path   cpath
+	fl     map[*schema.Node]int
+	data   []*schema.Node // cur_mod->compiled->data, rpcs, notifs
+	rpcs   []*schema.Node
+	notifs []*schema.Node
+	depth  int
+	tc     *typeCtx // type compilation (design 06 C5)
+	seen   map[uniqKey]bool
+	scans  int // uniqueness scans run (index hits)
+	// design 06 C6: groupings, uses, refines, augments
+	usesAugs  pending[*usesAug]                        // ctx->uses_augs
+	usesRfns  pending[*usesRfn]                        // ctx->uses_rfns
+	pendingOf map[*parser.Node]int                     // pending augments and refines per uses
+	groupings map[*parser.Node]bool                    // ctx->groupings: the uses stack
+	grpIdx    map[*parser.Node]map[string]*parser.Node // groupings by name per parent (module: &Parsed.Node)
+	pparent   map[*parser.Node]*parser.Node
+	indexed   map[*pmod]bool // pparent holds the nodes of these (sub)modules
+	from      map[any]*pmod  // origin: where values added by a refine are written
 }
 
 // compileNodes is the data-node part of lys_compile (SC:1776-1814), the entry point of the
@@ -80,8 +88,13 @@ func (c *Context) compileNodes(m *Module, out *schema.Module) error {
 			parsed[lm.mod] = lm
 		}
 	}
+	if c.usedGrp == nil {
+		c.usedGrp = map[*parser.Node]bool{}
+	}
 	w := &nodeCtx{c: c, cur: out, pm: &m.pmod, fl: map[*schema.Node]int{},
-		tc: &typeCtx{cur: out, pmod: &m.pmod, parsed: parsed, cache: c.typeCache, budget: c.opts.Budget, types: c.types}}
+		tc:      &typeCtx{cur: out, pmod: &m.pmod, parsed: parsed, cache: c.typeCache, budget: c.opts.Budget, types: c.types},
+		pparent: map[*parser.Node]*parser.Node{}, indexed: map[*pmod]bool{}, from: map[any]*pmod{},
+		pendingOf: map[*parser.Node]int{}, groupings: map[*parser.Node]bool{}, grpIdx: map[*parser.Node]map[string]*parser.Node{}}
 	w.tc.iff = w.iffeatures
 	w.path.init(out)
 	defer func() { out.Top, c.types = slices.Concat(w.data, w.rpcs, w.notifs), w.tc.types }()
@@ -99,13 +112,16 @@ func (c *Context) compileNodes(m *Module, out *schema.Module) error {
 		}
 	}
 	w.pm = &m.pmod
-	return w.unresMod(nil) // P5; C6 passes the augments it left unapplied
+	if err := w.validateGroupings(m); err != nil {
+		return err
+	}
+	return w.unresMod(nil) // P5; the top-level augments come with design 06 C6 part 2
 }
 
 func (w *nodeCtx) topLevel(p *parser.Module) error {
 	for _, list := range [][]*parser.Node{p.Children, p.Actions, p.Notifications} {
 		for _, pn := range list {
-			if err := w.node(pn, nil, nil); err != nil {
+			if err := w.node(pn, nil, 0, nil); err != nil {
 				return err
 			}
 		}
@@ -134,14 +150,15 @@ var kinds = map[string]schema.Kind{
 
 type specFunc func(w *nodeCtx, pn *parser.Node, n *schema.Node) error
 
-// node is lys_compile_node.
-func (w *nodeCtx) node(pn *parser.Node, parent *schema.Node, childSet *[]*schema.Node) error {
+// node is lys_compile_node; inherited is the statusOf value of an enclosing uses or augment.
+func (w *nodeCtx) node(pn *parser.Node, parent *schema.Node, inherited int, childSet *[]*schema.Node) error {
 	if pn.Kind == "uses" {
 		w.path.update(nil, "{uses}")
 		w.path.update(nil, pn.Name)
+		err := w.uses(pn, parent, inherited, childSet)
 		w.path.pop()
 		w.path.pop()
-		return fmt.Errorf("%w: uses (design 06 C6)", ErrUnsupported)
+		return err
 	}
 	var pmodule *schema.Module
 	if parent != nil {
@@ -192,22 +209,40 @@ func (w *nodeCtx) node(pn *parser.Node, parent *schema.Node, childSet *[]*schema
 	default:
 		return fmt.Errorf("compile: unexpected %q statement in the node tree", pn.Kind)
 	}
-	err := w.nodeGeneric(pn, parent, spec, &schema.Node{Kind: kinds[pn.Kind]}, childSet)
+	err := w.nodeGeneric(pn, parent, inherited, spec, &schema.Node{Kind: kinds[pn.Kind]}, childSet)
 	w.opts = prev
 	w.path.pop()
 	return err
 }
 
-// nodeGeneric is lys_compile_node_ (the inherited status of an enclosing uses/augment comes with
-// design 06 C6).
-func (w *nodeCtx) nodeGeneric(pn *parser.Node, parent *schema.Node, spec specFunc, n *schema.Node, childSet *[]*schema.Node) error {
+// nodeGeneric is lys_compile_node_.
+func (w *nodeCtx) nodeGeneric(pn *parser.Node, parent *schema.Node, inherited int, spec specFunc, n *schema.Node,
+	childSet *[]*schema.Node) error {
 	if w.c.nodes++; w.c.nodes > orDefault(w.c.opts.Budget.MaxNodes, DefaultMaxNodes) {
 		return fmt.Errorf("%w: more than %d compiled schema nodes", ErrBudget, orDefault(w.c.opts.Budget.MaxNodes, DefaultMaxNodes))
 	}
+	n.Module, n.Parent = w.cur, parent
+	// refines of the node (deviations: M2)
+	dev, err := w.nodeRefines(pn, parent)
+	if err != nil {
+		return err
+	}
+	if dev == nil {
+		return w.nodeGenericRest(pn, parent, inherited, spec, n, childSet)
+	}
+	err = w.nodeGenericRest(dev, parent, inherited, spec, n, childSet)
+	var r rc
+	if errors.As(err, &r) {
+		_ = w.errf(ly.Other, "Compilation of a deviated and/or refined node failed.")
+	}
+	return err
+}
+
+// nodeGenericRest is lys_compile_node_ after the refines.
+func (w *nodeCtx) nodeGenericRest(pn *parser.Node, parent *schema.Node, inherited int, spec specFunc, n *schema.Node,
+	childSet *[]*schema.Node) error {
 	prev := w.opts
 	defer func() { w.opts = prev }()
-	n.Module, n.Parent = w.cur, parent
-	// deviations and refines of the node: design 06 C6 / M2
 	n.Name = pn.Name
 	if n.Kind == schema.Input || n.Kind == schema.Output {
 		n.Name = pn.Kind
@@ -219,7 +254,7 @@ func (w *nodeCtx) nodeGeneric(pn *parser.Node, parent *schema.Node, spec specFun
 	if !enabled {
 		w.disable(n)
 	}
-	if err := w.nodeFlags(pn, 0, n); err != nil {
+	if err := w.nodeFlags(pn, inherited, n); err != nil {
 		return err
 	}
 	if n.Status == schema.Obsolete && !w.c.opts.CompileObsolete {
@@ -239,10 +274,7 @@ func (w *nodeCtx) nodeGeneric(pn *parser.Node, parent *schema.Node, spec specFun
 		n.Whens = append(n.Whens, wh)
 		w.addWhen(wh, n)
 	}
-	w.parents = append(w.parents, pn)
-	err = spec(w, pn, n)
-	w.parents = w.parents[:len(w.parents)-1]
-	if err != nil {
+	if err := spec(w, pn, n); err != nil {
 		return err
 	}
 	if n.Exts, err = w.compileExts(pn.Stmt, n, n.Exts); err != nil {
@@ -619,7 +651,7 @@ func (w *nodeCtx) when(pw *parser.Restr, n, ctxNode *schema.Node) (*schema.When,
 // musts is COMPILE_ARRAY of lys_compile_must (adding them to unres is design 06 C7).
 func (w *nodeCtx) musts(pn *parser.Node, n *schema.Node) error {
 	for _, pm := range pn.Musts {
-		ns := nsCtx(w.pm)
+		ns := nsCtx(w.origin(pm))
 		e, err := w.xpathCompile(pm.Arg, ns)
 		if err != nil {
 			return err
@@ -636,15 +668,12 @@ func (w *nodeCtx) musts(pn *parser.Node, n *schema.Node) error {
 
 func (w *nodeCtx) children(list []*parser.Node, n *schema.Node) error {
 	for _, c := range list {
-		if err := w.node(c, n, nil); err != nil {
+		if err := w.node(c, n, 0, nil); err != nil {
 			return err
 		}
 	}
 	return nil
 }
-
-// augments is lys_compile_node_augments: applying uses and top-level augments (design 06 C6).
-func (w *nodeCtx) augments(*schema.Node) error { return nil }
 
 // container is lys_compile_node_container.
 func (w *nodeCtx) container(pn *parser.Node, n *schema.Node) error {
@@ -700,7 +729,7 @@ func (w *nodeCtx) leaf(pn *parser.Node, n *schema.Node) error {
 	}
 	if len(pn.Defaults) > 0 {
 		if w.opts&(optDisabled|optGrouping) == 0 {
-			n.Default = []schema.DefaultValue{{Lex: pn.Defaults[0], NS: nsCtx(w.pm)}}
+			n.Default = []schema.DefaultValue{{Lex: pn.Defaults[0], NS: nsCtx(w.origin(dfltKey{pn}))}}
 		}
 		w.addDflt(n)
 		w.fl[n] |= flSetDflt
@@ -732,7 +761,7 @@ func (w *nodeCtx) leafList(pn *parser.Node, n *schema.Node) error {
 			return w.errf(ly.Semantics, "Leaf-list default values are allowed only in YANG 1.1 modules.")
 		}
 		if w.opts&(optDisabled|optGrouping) == 0 {
-			ns := nsCtx(w.pm)
+			ns := nsCtx(w.origin(dfltKey{pn}))
 			n.Default = nil
 			for _, d := range pn.Defaults {
 				n.Default = append(n.Default, schema.DefaultValue{Lex: d, NS: ns})
@@ -1066,7 +1095,7 @@ func (w *nodeCtx) choice(pn *parser.Node, n *schema.Node) error {
 		return err
 	}
 	if len(pn.Defaults) > 0 {
-		return w.choiceDflt(pn.Defaults[0], w.pm, n)
+		return w.choiceDflt(pn.Defaults[0], w.origin(dfltKey{pn}), n)
 	}
 	return nil
 }
@@ -1074,10 +1103,10 @@ func (w *nodeCtx) choice(pn *parser.Node, n *schema.Node) error {
 // choiceChild is lys_compile_node_choice_child: a non-case child gets an implicit case.
 func (w *nodeCtx) choiceChild(c *parser.Node, n *schema.Node, childSet *[]*schema.Node) error {
 	if c.Kind == "case" {
-		return w.node(c, n, childSet)
+		return w.node(c, n, 0, childSet)
 	}
 	cs := &parser.Node{Kind: "case", Name: c.Name, Children: []*parser.Node{c}}
-	if err := w.node(cs, n, childSet); err != nil {
+	if err := w.node(cs, n, 0, childSet); err != nil {
 		return err
 	}
 	for _, cc := range n.Children { // find our case node
@@ -1145,7 +1174,7 @@ func (w *nodeCtx) action(pn *parser.Node, n *schema.Node) error {
 			p = &parser.Node{Kind: io.kind}
 		}
 		inout := &schema.Node{Kind: kinds[io.kind]}
-		err := w.nodeGeneric(p, n, (*nodeCtx).inout, inout, nil)
+		err := w.nodeGeneric(p, n, 0, (*nodeCtx).inout, inout, nil)
 		w.path.pop()
 		if err != nil {
 			return err
@@ -1183,14 +1212,11 @@ func (w *nodeCtx) notif(pn *parser.Node, n *schema.Node) error {
 }
 
 // compileLeafType joins the type compiler (typeCtx.compileNodeType, design 06 C5) to the walk:
-// the scope chain is the parsed nodes being compiled, innermost first (pn itself has no
-// typedefs), and the typedef default keeps the prefixes of the (sub)module it is written in.
+// the scope chain is pn's parsed ancestors (lysp_node.parent), innermost first, and the typedef
+// default keeps the prefixes of the (sub)module it is written in.
 func (w *nodeCtx) compileLeafType(n *schema.Node, pn *parser.Node, wantUnits bool) (
 	units *string, dflt *schema.DefaultValue, err error) {
-	var sc *scope
-	for _, p := range w.parents {
-		sc = &scope{node: p, up: sc}
-	}
+	sc := w.scopeOf(pn)
 	w.tc.pmod = w.pm
 	t, units, td, err := w.tc.compileNodeType(sc, n, pn.Type, w.pm, wantUnits)
 	if err != nil {

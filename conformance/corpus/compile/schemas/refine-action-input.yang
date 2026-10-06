@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+// A refine may target an action's input by its keyword; libyang's refined copy of the input
+// loses its children (D-0080).
+module refine-action-input {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:refine-action-input";
+  prefix refine-action-input;
+  grouping g { action a { input { leaf i { type string; } } } }
+  container c { uses g { refine a/input { description "x"; } } }
+}

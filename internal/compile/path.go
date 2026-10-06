@@ -25,6 +25,12 @@ func (p *cpath) init(cur *schema.Module) {
 
 func (p *cpath) String() string { return string(p.b[:p.n]) }
 
+// set replaces the path (strncpy into ctx->path, truncated like it).
+func (p *cpath) set(s string) {
+	p.n = copy(p.b[:lyscCtxBufsize-1], s)
+	p.b[p.n] = 0
+}
+
 // pop is lysc_update_path(ctx, NULL, NULL): remove the last segment.
 func (p *cpath) pop() {
 	if p.b[p.n-1] == '}' {

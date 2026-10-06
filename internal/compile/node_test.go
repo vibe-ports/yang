@@ -11,11 +11,13 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
 
 	"github.com/vibe-ports/yang/internal/lyxp"
+	"github.com/vibe-ports/yang/internal/parser"
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
 )
@@ -66,14 +68,55 @@ func (h *nodeHarness) loadFeatures(name string, features []string) (mod *schema.
 	return m.mod, loadDiags, h.c.diags, nil, err
 }
 
-// augmented reports whether a module outside libyang's internal ones has an augment.
+// pmods are the module and its submodules.
+func (m *Module) pmods() []*pmod {
+	pms := []*pmod{&m.pmod}
+	for _, inc := range m.Includes {
+		if inc.Sub != nil {
+			pms = append(pms, &inc.Sub.pmod)
+		}
+	}
+	return pms
+}
+
+// amendIfFeature reports whether a module outside libyang's internal ones has an if-feature on
+// a uses, augment or refine: C6's ifFeature hook counts them as enabled until it is wired to
+// design 06 C4b's evaluator.
+func (h *nodeHarness) amendIfFeature() bool {
+	var walk func(list []*parser.Node) bool
+	walk = func(list []*parser.Node) bool {
+		for _, n := range list {
+			if n == nil {
+				continue
+			}
+			switch n.Kind {
+			case "uses", "augment", "refine":
+				if len(n.IfFeatures) > 0 {
+					return true
+				}
+			}
+			if walk(n.Children) || walk(n.Groupings) || walk(n.Actions) || walk(n.Notifications) ||
+				walk(n.Augments) || walk(n.Refines) || walk([]*parser.Node{n.Input, n.Output}) {
+				return true
+			}
+		}
+		return false
+	}
+	for _, m := range h.c.Modules[len(internalModules):] {
+		for _, pm := range m.pmods() {
+			if walk([]*parser.Node{&pm.Parsed.Node}) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// augmented reports whether a module outside libyang's internal ones has a top-level augment.
 func (h *nodeHarness) augmented() bool {
 	for _, m := range h.c.Modules[len(internalModules):] {
-		if len(m.Parsed.Augments) > 0 {
-			return true
-		}
-		for _, inc := range m.Includes {
-			if inc.Sub != nil && len(inc.Sub.Parsed.Augments) > 0 {
+		for _, pm := range m.pmods() {
+			if len(pm.Parsed.Augments) > 0 {
 				return true
 			}
 		}
@@ -217,6 +260,34 @@ var c4aMessages = []string{
 	"Leafref type ", "Invalid type \"", "Deref function", "Unexpected XPath token", "Not implemented module",
 	"When condition ", "Invalid when condition", "Invalid must condition", "Unknown/non-implemented module",
 	"Unexpected XPath expression end",
+	// design 06 C6
+	"Grouping \"", "Invalid prefix used for grouping", "Invalid child ", "Augment target node ", "Refine(s) target node ",
+	"Invalid refine of ", "Invalid augment ", "Invalid schema-nodeid nametest",
+}
+
+// c6Warnings are the compile warnings the walk reports for C6.
+var c6Warnings = []string{"Locally scoped grouping ", "Refining config inside "}
+
+// knownDeviations turn the schema tree of a golden into the one a recorded deviation expects.
+var knownDeviations = map[string]func(tree []gNode) []gNode{
+	// D-0080: the refined action keeps its named input and output
+	"uses-refine-action-description": func(tree []gNode) []gNode {
+		io := []string{"input", "output"}
+		for i := range tree {
+			if strings.HasSuffix(tree[i].Path, "/(null)") {
+				tree[i].Path = strings.TrimSuffix(tree[i].Path, "(null)") + io[0]
+				io = io[1:]
+			}
+		}
+		return tree
+	},
+	// D-0080: the refined input keeps its children
+	"refine-action-input": func(tree []gNode) []gNode {
+		i := slices.IndexFunc(tree, func(n gNode) bool { return n.Path == "/refine-action-input:c/a/input" })
+		leaf := gNode{Path: "/refine-action-input:c/a/input/i", Nodetype: "leaf", Module: "refine-action-input",
+			Status: "current", Mandatory: new(bool), Type: &gType{Base: "string"}}
+		return slices.Insert(tree, i+1, leaf)
+	},
 }
 
 // checkedWarnings are the warnings this harness compares: plugins (C4b), when/must status and
@@ -338,7 +409,7 @@ func TestNodeGoldens(t *testing.T) {
 				_, _, _ = pre.c.Load(gm.Name, "", nil)
 			}
 			if pre.augmented() {
-				t.Skip("augments are applied by design 06 C6")
+				t.Skip("top-level augments: design 06 C6 part 2")
 			}
 			h := newNodeHarness(t, opts, schemas)
 			for _, gm := range g.Modules {
@@ -377,22 +448,29 @@ func TestNodeGoldens(t *testing.T) {
 				case errors.Is(err, ErrUnsupported):
 					t.Skip(err)
 				case h.augmented():
-					t.Skip("augments are applied by design 06 C6")
+					t.Skip("top-level augments: design 06 C6 part 2")
+				case h.amendIfFeature():
+					t.Skip("if-feature of a uses, augment or refine (C6 hook not wired yet)")
 				}
-				var want []goldenDiag
+				var want, got []goldenDiag
+				var first *goldenDiag
 				for _, d := range gm.Diagnostics {
-					if d.Level == "error" {
+					if d.Level == "error" || matchesAny(d.Msg, c6Warnings) {
 						want = append(want, d)
+					}
+					if d.Level == "error" && first == nil {
+						first = &d
+					}
+				}
+				for _, d := range diags {
+					if d.Level == LevelError || matchesAny(d.Msg, c6Warnings) {
+						d.Phase = "compile"
+						got = append(got, d.golden())
 					}
 				}
 				if !gm.Accepted {
-					if !matchesAny(want[0].Msg, c4aMessages) || strings.Contains(want[0].SchemaPath, "{grouping=") {
-						t.Skipf("first error is a later PR's: %s", want[0].Msg)
-					}
-					var got []goldenDiag
-					for _, d := range diags {
-						d.Phase = "compile"
-						got = append(got, d.golden())
+					if !matchesAny(first.Msg, c4aMessages) {
+						t.Skipf("first error is a later PR's: %s", first.Msg)
 					}
 					if err == nil || rcName(err) != gm.Rc.Name || !reflect.DeepEqual(got, want) {
 						t.Fatalf("%s: got %v %+v\nwant %s %+v", gm.Name, err, got, gm.Rc.Name, want)
@@ -420,10 +498,16 @@ func TestNodeGoldens(t *testing.T) {
 				if !reflect.DeepEqual(gotW, wantW) {
 					t.Fatalf("%s: plugin warnings %+v\nwant %+v", gm.Name, gotW, wantW)
 				}
+				if !reflect.DeepEqual(got, want) {
+					t.Fatalf("%s: errors and C6 warnings %+v\nwant %+v", gm.Name, got, want)
+				}
 				if gm.Tree == nil {
 					continue // no schema dump in this request
 				}
-				wantTree := *gm.Tree
+				wantTree := slices.Clone(*gm.Tree)
+				if dev := knownDeviations[id]; dev != nil {
+					wantTree = dev(wantTree)
+				}
 				if got := dumpTree(mod); len(got)+len(wantTree) > 0 && !reflect.DeepEqual(got, wantTree) {
 					gj, _ := json.MarshalIndent(got, "", " ")
 					wj, _ := json.MarshalIndent(wantTree, "", " ")

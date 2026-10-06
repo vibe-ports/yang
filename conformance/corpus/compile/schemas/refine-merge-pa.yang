@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+// The refine merge compares the inner refine "w/q" (written in refine-merge-pb) with this
+// pending "a:z/a:w" through refine-merge-pb's prefixes, where "a" is not defined: libyang logs
+// it and goes on.
+module refine-merge-pa {
+  namespace "urn:vibe-ports:yang:conformance:refine-merge-pa";
+  prefix a;
+  import refine-merge-pb { prefix b; }
+  container c { uses b:gb { refine "a:z/a:w" { description o; } } }
+}

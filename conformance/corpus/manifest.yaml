@@ -12911,3 +12911,32 @@ fixtures:
       parse_only: true
       data: '<c xmlns="urn:vibe-ports:ty4"><loc>own</loc><unk>hello</unk><unk2><a>b</a></unk2><x xmlns="urn:other">v &amp; w</x></c>'
     golden: golden/print-opaque-xml.json
+  # a refine targets an action's input by its keyword; libyang's refined copy of the input
+  # loses its children (D-0080: we keep them)
+  - id: refine/action-input
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.13.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "refine-action-input"}]
+    golden: golden/refine-action-input.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.13.2"]
+      deviation: null
+
+  # the refine merge resolves the prefixes of every pending refine of the same length in the
+  # module of the new refine: "a" of the outer refine is not defined in refine-merge-pb
+  - id: refine/merge-prefix-other-module
+    dir: compile
+    source: *own
+    rfc: []   # observed only: libyang logs the undefined prefix and still accepts the module
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "refine-merge-pa"}]
+    golden: golden/refine-merge-prefix-other-module.json

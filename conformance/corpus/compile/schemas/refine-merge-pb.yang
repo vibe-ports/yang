@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module refine-merge-pb {
+  namespace "urn:vibe-ports:yang:conformance:refine-merge-pb";
+  prefix b;
+  grouping gi { container w { leaf q { type string; } } }
+  grouping gb { container z { uses gi { refine "w/q" { description d; } } } }
+}

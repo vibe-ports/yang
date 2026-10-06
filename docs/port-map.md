@@ -182,15 +182,14 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | src/tree_schema_common.c | lys_nodetype2str | compile.lysNodetype2str | ported | compile/list-unique-leaf-list | |
 | src/tree_schema.c | ly_schema_resolve_prefix | compile.resolvePrefix | ported | compile/list-unique-prefix-undefined, choice-default-case-wrong-module | |
 | src/ly_common.c | lys_parse_id, ly_parse_nodeid | compile.parseID (in resolveNodeid) | ported | compile/list-unique-bad-separator | |
-| src/schema_compile_node.c | lys_compile_node | compile.nodeCtx.node | partial | compile/* | uses: C6 (ErrUnsupported) |
-| src/schema_compile_node.c | lys_compile_node_ | compile.nodeCtx.nodeGeneric | partial | compile/* | if-feature, obsolete, ext instances: C4b; deviations/refines: C6/M2 (ErrUnsupported until then) |
-| src/schema_compile_node.c | lys_compile_node_ | compile.nodeCtx.node_ | partial | compile/*, compile/iff-*, compile/obsolete-*, compile/ext-* | if-feature, obsolete (Options.CompileObsolete), ext instances: C4b; deviations/refines: C6/M2 (ErrUnsupported until then) |
+| src/schema_compile_node.c | lys_compile_node | compile.nodeCtx.node | ported | compile/* | |
+| src/schema_compile_node.c | lys_compile_node_ | compile.nodeCtx.nodeGeneric, compile.nodeCtx.nodeGenericRest | partial | compile/*, compile/iff-*, compile/obsolete-*, compile/ext-*, compile/refine-* | if-feature, obsolete (Options.CompileObsolete), ext instances: C4b; refines: C6; deviations: M2 (U-0020) |
 | src/schema_compile_node.c | lys_compile_node_flags | compile.nodeCtx.nodeFlags | ported | compile/node-config-*, status-* | |
 | src/schema_compile_node.c | lys_compile_status | compile.nodeCtx.status | ported | compile/status-child-*, node-container-config-status-inherit | |
 | src/schema_compile_node.c | lys_compile_config | compile.nodeCtx.config | ported | compile/config-under-state, node-config-* | |
 | src/schema_compile_node.c | lys_compile_node_connect | compile.nodeCtx.connect | ported | compile/*, order/two-augmenters (C6) | Go test TestConnectOrder |
 | src/schema_compile_node.c | lys_compile_node_uniqness | compile.nodeCtx.uniqueness | ported | compile/node-dup-*, notif-duplicate-*, rpc-duplicate-* | the libyang scan runs only on a hit of a per-(scope, module, name) index (TestUniquenessIndex) |
-| src/schema_compile_node.c | lys_compile_when, lys_compile_when_ | compile.nodeCtx.when | partial | compile/choice-default-shorthand-when | own when only; shared when (uses/augment): C6; unres: C7 |
+| src/schema_compile_node.c | lys_compile_when, lys_compile_when_ | compile.nodeCtx.when, compile.nodeCtx.sharedWhen | partial | compile/choice-default-shorthand-when, uses-when-context-is-parent, uses-when-shared-with-submodule-grouping | unres: C7 |
 | src/schema_compile_node.c | lys_compile_must | compile.nodeCtx.musts | partial | compile/notif-in-container-must | unres: C7 |
 | src/schema_compile_node.c | lys_compile_node_container | compile.nodeCtx.container | ported | compile/mand-*, notif-in-container-* | |
 | src/schema_compile_node.c | lys_compile_node_leaf | compile.nodeCtx.leaf | ported | compile/node-leaf-mandatory-default, mand-leaf-with-typedef-default-ignored | the SC:1026 rule (no typedef default on a mandatory leaf) is applied here, not in unres |
@@ -201,11 +200,10 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | src/schema_compile_node.c | lys_compile_node_choice | compile.nodeCtx.choice | ported | compile/choice-* | |
 | src/schema_compile_node.c | lys_compile_node_choice_child | compile.nodeCtx.choiceChild | ported | compile/choice-case-name-vs-shorthand | |
 | src/schema_compile_node.c | lys_compile_node_choice_dflt | compile.nodeCtx.choiceDflt | ported | compile/choice-default-* | |
-| src/schema_compile_node.c | lys_compile_node_case | compile.nodeCtx.caseNode | partial | compile/choice-* | implicit case of augment/grouping: C6 |
+| src/schema_compile_node.c | lys_compile_node_case | compile.nodeCtx.caseNode | ported | compile/choice-*, uses-grouping-with-choice-in-case | |
 | src/schema_compile_node.c | lys_compile_node_any | compile.nodeCtx.any | ported | compile/anyd-* | |
 | src/schema_compile_node.c | lys_compile_node_action, lys_compile_node_action_inout | compile.nodeCtx.action, compile.nodeCtx.inout | ported | compile/rpc-* | |
 | src/schema_compile_node.c | lys_compile_node_notif | compile.nodeCtx.notif | ported | compile/notif-* | |
-| src/schema_compile_node.c | lys_compile_mandatory_parents | compile.mandatoryParents | partial | compile/mand-* | set only; unset (SCA:2036): C6 |
 | src/json.c | lyjson_token2str | lyjson.Token.String | ported | — | |
 | src/json.c | lyjson_ctx_status, lyjson_ctx_depth | lyjson.Lexer.Status, lyjson.Lexer.Depth | ported | — | |
 | src/json.c | lyjson_ctx_new | lyjson.New | ported | json/* | input is []byte, first NUL ends it (libyang lexes NUL-terminated memory); `subtree` argument of the header does not exist in 5.8.6 |
@@ -278,3 +276,18 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | src/printer_xml.c, src/xml.c | xml_print_data, xml_print_node, xml_print_inner, xml_print_term, xml_print_node_open, xml_print_meta, xml_print_ns, xml_print_opaq, lyxml_dump_text | data.(*Tree).PrintXML, xmlPrinter.* | ported | data/print_test (TestPrintOracle, TestPrintOpaque, TestPrintShrink), types/print-opaque-xml | namespaces in scope tracked as libyang does; value prefixes through types.PrintCtx.Used, redeclared per element; opaque attributes and value prefix data and NETCONF filter attributes not ported; the default attribute is the internal module "default" (dflt), printed only when ietf-netconf-with-defaults is in the set |
 | src/out.c | lyd_metadata_should_print, lyd_node_should_print | PrintOptions.shouldPrint, hasPrintableMeta | ported | data/print_test, data/print_wd_test (testdata/wd-*: yanglint output for explicit, trim, all, all-tagged, implicit-tagged) | no internal metadata exist; LYD_PRINT_EMPTY_CONT is not exposed; the state-data branches of explicit/trim are derived from the C (the oracle creates no state defaults for config data) |
 | src/tree_data_common.c | lyd_is_default, lysc_value_cmp | data.isDefault | ported | data/print_wd_test | the canonical form of each stored schema default (types.StoreDefault) against the node's canonical value |
+| src/schema_compile_node.c | lys_compile_mandatory_parents | compile.mandatoryParents | partial | compile/mand-* | set only; the only unset (SCA:2036) precedes a compile error, so it is not observable |
+| src/schema_compile_node.c | lys_compile_uses | compile.nodeCtx.uses | partial | compile/uses-*, grp-*, errpath-uses, status-same-module-error | if-feature through the nodeCtx.ifFeature hook (C4b); uses/grouping extension instances: C4b; uses also count against MaxNodes (U-0037) |
+| src/schema_compile_node.c | lys_compile_uses_find_grouping, match_grouping | compile.nodeCtx.findGrouping, compile.nodeCtx.groupingNamed | ported | compile/uses-grouping-not-found, uses-prefix-undefined, grp-typedef-scoped-in-grouping | |
+| src/schema_compile_node.c | lys_compile_uses_children | compile.nodeCtx.usesChildren | ported | compile/uses-when-*, grp-nested-uses-three-levels | |
+| src/schema_compile_node.c | lys_compile_grouping, lys_compile_grouping_pathlog | compile.nodeCtx.grouping, compile.nodeCtx.groupingPathlog | ported | compile/grp-unused-*, errpath-grouping | |
+| src/schema_compile.c | lys_compile (validation of unused groupings) | compile.nodeCtx.validateGroupings | ported | compile/grp-unused-local-warning, grp-nested-unused-not-validated, grp-used-elsewhere-first | LYS_USED_GRP = Context.usedGrp (D-0046) |
+| src/schema_compile_amend.c | lys_precompile_uses_augments_refines | compile.nodeCtx.precompileUsesAugmentsRefines | ported | compile/refine-*, uses-augment-* | |
+| src/schema_compile_amend.c | lys_nodeid_mod_check (descendant), lys_precompile_nodeid, lys_schema_node_get_module | compile.nodeCtx.nodeidModCheck, compile.nodeCtx.nodeidMod | ported | compile/refine-prefix-undefined | the absolute variant is the loader's (design 06 C1b) |
+| src/schema_compile_amend.c | lys_abs_schema_nodeid_match | compile.nodeCtx.absNodeidMatch | ported | compile/refine-nested-same-target, refine-same-text, refine-same-text-leak | D-0048 |
+| src/schema_compile_amend.c | lysp_schema_nodeid_match, lysp_schema_nodeid_match_node | compile.nodeCtx.nodeidMatch | partial | compile/refine-*, uses-augment-* | no extension instances |
+| src/schema_compile_amend.c | lys_compile_node_deviations_refines, lysp_dup_single, lysp_node_dup | compile.nodeCtx.nodeRefines | partial | compile/refine-* | refines; deviations: M2 (U-0020); the copy keeps an action's input/output and a notification's children (D-0080) |
+| src/schema_compile_amend.c | lys_apply_refine | compile.nodeCtx.applyRefine, compile.nodeCtx.refineNode | ported | compile/refine-*, errpath-refine, refine-config-in-rpc-warning | added values keep their module through nodeCtx.origin (lysp_qname.mod) |
+| src/schema_compile_amend.c | lys_compile_augment, lys_compile_augment_children | compile.nodeCtx.compileAugment, compile.nodeCtx.augmentChildren | partial | compile/uses-augment-*, aug-* | if-feature through the nodeCtx.ifFeature hook (C4b); augment extension instances: C4b |
+| src/schema_compile_amend.c | lys_compile_node_augments | compile.nodeCtx.augments | partial | compile/uses-augment-* | uses augments; top-level augments: design 06 C6 part 2 |
+| src/set.c | ly_set_add, ly_set_rm_index | compile.pending.add, compile.pending.remove, compile.scan | ported | compile/refine-nested-same-target, refine-merge-prefix-other-module | the last item fills the gap; indexed by node-id names and prefixes (pending.scan, pending.mergeCandidates), lookups counted in Context.work (TestUsesWork, TestUsesWorkWildcard) |

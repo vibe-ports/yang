@@ -170,6 +170,10 @@ type Context struct {
 	// nodeWalk turns on the node walk (compileNodes) in compile; off until
 	// design 06 C4b and C6 make the internal modules compile
 	nodeWalk bool
+	// LYS_USED_GRP of parsed groupings: set by any instantiating uses, never cleared
+	usedGrp map[*parser.Node]bool
+	// work counts index entries and pending items looked at by the C6 lookups (tests bound it)
+	work int
 }
 
 // internal_modules[] of context.c.
