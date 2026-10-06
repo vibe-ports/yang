@@ -201,3 +201,15 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | src/json.c | lyjson_exp_number_copy_num_part, lyjson_exp_number | lyjson.expNumberCopyNumPart, lyjson.Lexer.expNumber | ported | (planned, D12) json/exp-number | libyang's wrong rewrite of 0.5e1 (".") and 0.123e3 ("12.") is reproduced on purpose |
 | src/json.c | lyjson_number | lyjson.Lexer.number | ported | (planned, D12) json/exp-number | |
 | src/json.c | lyjson_next_object_name, lyjson_next_value, lyjson_next_object_item, lyjson_next_array_item | lyjson.Lexer.nextObjectName, nextValue, nextObjectItem, nextArrayItem | ported | (planned, D12) json/*, depth/json-5000 | status stack limit 5000 checked only after lyjson_next_value pushes (values, `{`, `[`, `]` of an empty array), so depth may reach 5001 (error wraps lyjson.ErrNesting); D5 obligation: wrap it in compile.ErrBudget (home of yang.ErrBudget) |
+| src/xml.c | lyxml_ctx_new, lyxml_ctx_next | lyxml.New, (*Ctx).Next | ported | unit (test_xml.c cases, yanglint probes); xml/doctype, xml/entity, xml/cdata, depth/xml-500 with D6 | NUL-terminated input as libyang; LOGVAL errors are LYVE_SYNTAX (not _XML) |
+| src/xml.c | lyxml_ctx_peek | lyxml.(*Ctx).Peek | ported | unit | restores the input pointer but not the line counter, as libyang |
+| src/xml.c | lyxml_ctx_backup, lyxml_ctx_restore | lyxml.(*Ctx).Backup, lyxml.(*Ctx).Restore | ported | unit | O(1): the element and namespace stacks are shared and copied on write below the backed-up depth; single use and LIFO like the C backup (Restore or Discard once) |
+| src/xml.c | lyxml_ctx_free, lyxml_ns_rm_all | lyxml.Ctx | replaced | — | garbage collected |
+| src/xml.c | lyxml_ns_add, lyxml_ns_rm, lyxml_ns_get | lyxml.(*Ctx).nsAdd, lyxml.(*Ctx).nsRm, lyxml.GetNS | ported | unit (test_ns, test_ns2) | duplicate check per element via a map (libyang scans, quadratic); Backup shares the stacks (O(1)) |
+| src/xml.c | lyxml_open_element, lyxml_close_element | lyxml.(*Ctx).openElement, lyxml.(*Ctx).closeElement | ported | unit; depth/xml-500 with D6 | LY_MAX_BLOCK_DEPTH 500, LOGERR without vecode (wraps lyxml.ErrBudget) |
+| src/xml.c | lyxml_next_element, lyxml_next_attribute, lyxml_next_attr_content, lyxml_skip_until_end_or_after_otag, skip_section | lyxml.(*Ctx).nextElement, nextAttribute, nextAttrContent, skipUntilEndOrAfterOTag, skipSection | ported | unit | comments/declarations skipped, DOCTYPE refused |
+| src/xml.c | lyxml_parse_identifier, lyxml_parse_qname | lyxml.(*Ctx).parseIdentifier, parseQName | ported | unit | |
+| src/xml.c | lyxml_parse_value, lyxml_parse_value_use_buf | lyxml.(*Ctx).parseValue | ported | unit | predefined entities and char refs only, CDATA, whitespace-only text kept (WSOnly); uint32 overflow guards replaced by a 4 GiB input check in New |
+| src/ly_common.c | ly_getutf8, ly_pututf8 | lyxml.(*Ctx).getUTF8, lyxml.putUTF8 | ported | unit | libyang's ranges incl. four-byte start at U+1000 |
+| src/xml.c | lyxml_dump_text | lyxml.AppendText | ported | unit | |
+| src/xml.c | lyxml_value_compare | — | skipped | — | needs schema prefix data; ported with the data package (design 07 D4/D6) |

@@ -225,7 +225,7 @@ options). Implicit diff: `lyd_val_diff_add` (VAL:188) → `lyd_diff_add` (DIFF:3
 
 Files (each ported file carries the provenance header of its C source; `docs/port-map.md` rows per
 function): `node.go` (Node, flags, iteration), `insert.go` (TD:503-865 + TDS ordering), `path.go`
-(`lyd_path`, find/new path over `internal/lyxp`), `xmllex.go` (XM), `jsonlex.go` (JS), `parse.go` (TD
+(`lyd_path`, find/new path over `internal/lyxp`), `internal/lyxml` (XM) and `internal/lyjson` (JS) as separate packages, `parse.go` (TD
 `lyd_parse`, PC), `parse_json.go`, `parse_xml.go`, `opaque.go`, `meta.go`, `defaults.go` (TDN implicit,
 TDC `lyd_np_cont_dflt_*`), `validate.go` + `when.go` (VAL), `xpathnode.go` (adapters for
 `xpath.Node`/`SchemaNode`/`Value` and `types.Tree`), `print_json.go`, `print_xml.go`, `wd.go` (OUT),
