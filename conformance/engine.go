@@ -294,13 +294,11 @@ func nodeJSON(n *yang.SchemaNode) map[string]any {
 	if musts != nil {
 		o["musts"] = musts
 	}
-	// ponytail: an exts array that exists but is empty (all instances dropped by a plugin) is
-	// dumped as [] by the oracle; the handles cannot tell it from none (one fixture differs).
-	var exts []any
-	for e := range n.Extensions() {
-		exts = append(exts, map[string]any{"module": e.Module(), "name": e.Name(), "argument": opt(e.Argument())})
-	}
-	if exts != nil {
+	if n.HasExtensionList() { // [] when every instance was dropped, as the oracle dumps it
+		exts := []any{}
+		for e := range n.Extensions() {
+			exts = append(exts, map[string]any{"module": e.Module(), "name": e.Name(), "argument": opt(e.Argument())})
+		}
 		o["extensions"] = exts
 	}
 	return o

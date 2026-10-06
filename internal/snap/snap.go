@@ -375,6 +375,11 @@ func (n *Node) Whens() iter.Seq[*When] {
 // Extensions yields the extension instances of the node.
 func (n *Node) Extensions() iter.Seq[*Extension] { return exts(n.n.Exts) }
 
+// HasExtensionList reports whether the node has an extension-instance list at all: true also when
+// every instance written on it was dropped by an extension plugin (libyang keeps the empty array,
+// e.g. a misplaced NACM instance), false when none was written.
+func (n *Node) HasExtensionList() bool { return n.n.Exts != nil }
+
 // LeafrefTargets yields every leafref of the node's type (the type itself or its union members,
 // in member order) with its target compiled from this node, nil when it does not resolve.
 func (n *Node) LeafrefTargets() iter.Seq2[*Type, *Node] {
