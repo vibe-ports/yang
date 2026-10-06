@@ -128,15 +128,16 @@ It fast-forwards `main` to the PR head only if, for the PR's current **full** he
   at least as long), and reviewers `codex-*` or `port-reviewer-*`. `scripts/astra review
   --trusted` posts `(codex-<model>)`; after a local Opus `port-reviewer` review the lead posts the
   line signed `(port-reviewer-opus)`. `claude-*` is never accepted: it is the ai-review bot's
-  signature, so a pasted bot line can't count. A later `changes` revokes; bot comments, quoted or
-  fenced lines, edited comments and short SHAs don't count;
+  signature, so a pasted bot line can't count. A later `changes` revokes, even in an edited
+  comment; bot comments, quoted or fenced lines, approvals in edited comments and short SHAs don't
+  count;
 - or, if no attestation names the head: the PR's newest attestation approves an earlier head `A`
   (GitHub's force-push record of this PR, GraphQL `HeadRefForcePushedEvent`) and the head is a
   patch-identical rebase of `A` — same number of commits, in order, each with the same
   `git patch-id --verbatim`, message, author and author date, and replaying `A`'s commits onto
   the new base with `git merge-tree` yields exactly the head's trees (so a hunk can't move and a
-  conflict resolution is never carried). The log says `approval of <A> carried over:
-  patch-identical rebase`;
+  conflict resolution is never carried; the checkout must be clean, with no extra attribute
+  files). The log says `approval of <A> carried over: patch-identical rebase`;
 - every run of `.github/workflows/ci.yml` for exactly that SHA (cancelled ones aside, at least
   one) concluded `success`, read from the Actions runs API
   (CI checks out the PR head, not the merge commit);

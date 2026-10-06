@@ -7,6 +7,7 @@
 # Merges only if, for the PR's current FULL head SHA:
 #  - the PR is open, not a draft, targets main of this repository (origin);
 #  - review: the LATEST canonical attestation line naming that SHA — in a never-edited PR comment
+#    (a "changes" line counts even in an edited one)
 #    authored by the maintainer (numeric id MAINTAINER_ID, default 1056050), outside code fences —
 #    is   VERDICT: approve <40-hex head sha> (<reviewer>)   with reviewer codex-* or port-reviewer-*
 #    (not claude-*: that is the ai-review bot's signature, and a pasted bot line must not count)
@@ -67,9 +68,11 @@ verdict=$(gh api --paginate --slurp "repos/$repo/issues/$pr/comments" | jq -r --
       | if $c != null and $c.m[0:1] == .f[0:1] and ($c.m | length) >= (.f | length) then .f = null
         else . end
     end) | .out[];
-  [ .[][] | select(.user.id == $uid and .updated_at == .created_at) | . as $c
+  # An edited comment can still revoke (changes), never approve.
+  [ .[][] | select(.user.id == $uid) | . as $c
     | (.body // "" | unfenced
        | capture("^VERDICT: (?<v>approve|changes) (?<s>[0-9a-f]{40}) \\((codex-[A-Za-z0-9_.-]+|port-reviewer-[A-Za-z0-9_.-]+)\\)$"))
+    | select(.v == "changes" or $c.updated_at == $c.created_at)
     | {t: $c.created_at, id: $c.id, v, s} ]
   | sort_by([.t, .id]) | (map(select(.s == $sha)) | last | .v // "none") as $h | (last // {v: "none", s: "-"})
   | "\($h) \(.v) \(.s)"')
@@ -79,7 +82,7 @@ read -r verdict last_v last_s <<<"$verdict"
 carried=
 [[ $verdict == none && $last_v == approve ]] && carried=$last_s
 [[ $verdict == approve || -n $carried ]] ||
-  fail "latest maintainer attestation for $head is '$verdict', need 'VERDICT: approve $head (codex-…)'"
+  fail "latest maintainer attestation for $head is '$verdict', need 'VERDICT: approve $head (codex-…)' (newest attestation of the PR: $last_v $last_s)"
 
 # A head SHA can have several ci.yml runs (push + pull_request, reopen); each run reports its
 # latest attempt. Every run must have succeeded; runs cancelled by a newer one don't count, but at
@@ -107,9 +110,14 @@ if [[ -n $carried ]]; then
         timelineItems(first: 100, after: $endCursor, itemTypes: [HEAD_REF_FORCE_PUSHED_EVENT]) {
           pageInfo { hasNextPage endCursor }
           nodes { ... on HeadRefForcePushedEvent { beforeCommit { oid } afterCommit { oid } } } } } } }' \
-    --jq '.data.repository.pullRequest.timelineItems.nodes[] | (.beforeCommit.oid, .afterCommit.oid) | values')
+    --jq '.data.repository.pullRequest.timelineItems.nodes[] | (.beforeCommit.oid, .afterCommit.oid) | values') ||
+    nope "cannot read the PR's force-push history"
   grep -qxF "$A" <<<"$heads" || nope "it was never a head of PR #$pr"
   git fetch -q origin "$A" && [[ $(git rev-parse FETCH_HEAD) == "$A" ]] || nope "cannot fetch it"
+  # merge-tree honours the checkout's attribute files (merge drivers, eol): only main's may apply.
+  [[ -z $(git status --porcelain --ignored -- ':(glob)**/.gitattributes') && -z $(git status --porcelain) &&
+    ! -s $(git rev-parse --git-path info/attributes) ]] ||
+    nope "the checkout is not clean (git status, .gitattributes, \$GIT_DIR/info/attributes)"
   # Same commits in the same order, each with an identical patch (--verbatim: whitespace counts),
   # message and author. patch-id ignores line numbers, so replaying A's commits onto H's base with
   # git's own merge must also give H's trees exactly: no hunk lands elsewhere, no binary change

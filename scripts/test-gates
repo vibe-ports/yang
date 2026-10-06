@@ -108,17 +108,26 @@ echo "$*" >>"$FX/calls"
 [[ $1 == repo ]] && { echo vibe-ports/yang; exit 0; }
 [[ $1 == label || $1 == issue ]] && exit 0  # jev-triage: only the call log matters
 shift  # api
-method=GET jqx= input= path=
+method=GET jqx= input= path= q=
 while (($#)); do case $1 in
   -X) method=$2; shift 2 ;; --jq) jqx=$2; shift 2 ;; --input) input=1; shift 2 ;;
-  -H | -f | -F) shift 2 ;; --paginate | --slurp) shift ;; *) path=$1; shift ;; esac; done
+  -f) q=$2; shift 2 ;; -H | -F) shift 2 ;; --paginate | --slurp) shift ;; *) path=$1; shift ;; esac; done
 [[ -f $FX/fail ]] && { echo "HTTP 500" >&2; exit 1; }
+if [[ $path == graphql ]]; then  # --paginate like gh: graphql.json, graphql.2.json, … while hasNextPage
+  [[ -f $FX/graphql-fail ]] && { echo "HTTP 502" >&2; exit 1; }
+  [[ $q == *'$endCursor'* && $q == *'pageInfo { hasNextPage endCursor }'* ]] || { echo "bad paginated query" >&2; exit 1; }
+  p=$FX/graphql.json n=1
+  while [[ -f $p ]] || { echo "no fixture $p" >&2; exit 1; }; do
+    jq -r "$jqx" "$p"
+    [[ $(jq '[.. | .hasNextPage? | select(. == true)] | length' "$p") == 0 ]] && exit 0
+    n=$((n + 1)) p=$FX/graphql.$n.json
+  done
+fi
 if [[ $method != GET ]]; then
   n=$(ls "$FX" | grep -c '^req' || true)
   { echo "$method $path"; [[ -n $input ]] && cat; } >"$FX/req$n"; echo '{}'; exit 0
 fi
 case $path in
-  graphql) f=graphql ;;
   */pulls/*/comments) f=empty ;; */pulls/*/reviews) f=reviews ;;
   */pulls/*) f=pull
     # Lease-race hook: runs on the 2nd PR lookup (merge-pr's re-check before pushing).
@@ -247,12 +256,21 @@ printf "${blk/X/Y}$blk" >"$m/f"; git -C "$m" commit -qam 'feat: first block'
 Aold=$(git -C "$m" rev-parse HEAD); git -C "$m" push -q -f origin HEAD:refs/pull/7/head
 git -C "$t/racer" fetch -q origin; git -C "$t/racer" checkout -q --detach origin/main
 echo m >"$t/racer/m"; git -C "$t/racer" add m; git -C "$t/racer" commit -qm main2; git -C "$t/racer" push -q origin HEAD:refs/heads/main
-forced() { jq -n --arg b "$1" --arg a "$head" '{data:{repository:{pullRequest:{timelineItems:{nodes:[{beforeCommit:{oid:$b},afterCommit:{oid:$a}}]}}}}}' >"$FX/graphql.json"; }
+forced() { # forced <A> [<other>]: A → H force push on page 1, or on page 2 after <other> → H
+  rm -f "$FX"/graphql.*.json
+  page() { jq -n --arg b "$1" --arg a "$head" --argjson more "$2" '{data:{repository:{pullRequest:{timelineItems:{
+    pageInfo:{hasNextPage:$more,endCursor:"c"},nodes:[{beforeCommit:{oid:$b},afterCommit:{oid:$a}},{beforeCommit:null,afterCommit:null}]}}}}}'; }
+  if (($# == 1)); then page "$1" false >"$FX/graphql.json"; else page "$2" true >"$FX/graphql.json"; page "$1" false >"$FX/graphql.2.json"; fi; }
 rebased() { git -C "$m" fetch -q origin; git -C "$m" checkout -q --detach "$Aold"; git -C "$m" rebase -q origin/main; }
 AA="VERDICT: approve $Aold (codex-gpt-6-astra)"
-publish() { # H = the checkout's HEAD; A approved, A → H force push recorded, CI green on H
+publish() { # publish [<A>]: H = the checkout's HEAD; A approved, A → H force push recorded, CI green on H
+  local a=${1:-$Aold}
   head=$(git -C "$m" rev-parse HEAD); git -C "$m" push -q -f origin HEAD:refs/pull/7/head
-  pull; runs success; comments 1056050 $D1 "$AA"; forced "$Aold"; onmain; }
+  pull; runs success; comments 1056050 $D1 "VERDICT: approve $a (codex-gpt-6-astra)"; forced "$a"; onmain; }
+on_main() { # on_main <file> <content>: the racer commits a file straight to main
+  git -C "$t/racer" fetch -q origin; git -C "$t/racer" checkout -q --detach origin/main
+  printf "$2" >"$t/racer/$1"; git -C "$t/racer" add "$1"; git -C "$t/racer" commit -qm "main: $1"
+  git -C "$t/racer" push -q origin HEAD:refs/heads/main; }
 NOCO="approval of $Aold does not carry over"
 rebased; echo bb >"$m/b"; git -C "$m" commit -qa --amend --no-edit; publish
 expect 1 "merge-pr carry-over: a changed patch is refused" "$NOCO.*commit 3 differs" mp
@@ -273,9 +291,31 @@ rebased; git -C "$m" commit -q --amend --no-edit --date="1700000001 +0000"; publ
 expect 1 "merge-pr carry-over: a changed author date is refused" "$NOCO.*commit 3 differs" mp
 rebased; printf "$blk${blk/X/Y}" >"$m/f"; git -C "$m" commit -qa --amend --no-edit; publish
 expect 1 "merge-pr carry-over: same patch-id, hunk applied elsewhere is refused" "$NOCO.*commit 3 is not a pure rebase" mp
-rebased; publish
+git -C "$m" checkout -q --detach origin/main; echo s >"$m/s"; git -C "$m" add s; git -C "$m" commit -qm side
+side=$(git -C "$m" rev-parse HEAD)
+rebased; git -C "$m" merge -q --no-ff -m merge "$side"; publish
+expect 1 "merge-pr carry-over: a merge commit in the head's range is refused" "$NOCO.*merge commits" mp
+git -C "$m" checkout -q --detach "$Aold"; git -C "$m" merge -q --no-ff -m merge "$side"
+Am=$(git -C "$m" rev-parse HEAD); git -C "$m" push -q -f origin HEAD:refs/pull/7/head
+rebased; publish "$Am"
+expect 1 "merge-pr carry-over: a merge commit in A's range is refused" "approval of $Am does not carry over.*merge commits" mp
+rebased; publish "$(git -C "$m" rev-parse origin/main~1)"
+expect 1 "merge-pr carry-over: an A already in main is refused" "does not carry over.*commit count differs" mp
+nx=0123456789abcdef0123456789abcdef01234567
+rebased; publish $nx
+expect 1 "merge-pr carry-over: an unfetchable A is refused" "approval of $nx does not carry over.*cannot fetch it" mp
+rebased; publish; touch "$FX/graphql-fail"
+expect 1 "merge-pr carry-over: GraphQL failure is refused" "$NOCO.*cannot read the PR's force-push history" mp
+rm "$FX/graphql-fail"; echo '* merge=union' >"$m/.gitattributes"
+expect 1 "merge-pr carry-over: an untracked .gitattributes is refused" "$NOCO.*not clean" mp
+rm "$m/.gitattributes"; ia=$m/$(git -C "$m" rev-parse --git-path info/attributes); mkdir -p "${ia%/*}"
+echo '* merge=union' >"$ia"
+expect 1 "merge-pr carry-over: \$GIT_DIR/info/attributes is refused" "$NOCO.*not clean" mp
+rm "$ia"
 comments 1056050 $D1 "$AA" 1056050 $D2 "VERDICT: changes $Aold (codex-x)"
-expect 1 "merge-pr carry-over: a later 'changes' for A wins" "$NOAPP .* is 'none'" mp
+expect 1 "merge-pr carry-over: a later 'changes' for A wins (and is named)" "$NOAPP .* is 'none'.*newest attestation of the PR: changes $Aold" mp
+comments 1056050 $D1 "$AA" 1056050 $D2 "VERDICT: changes $Aold (codex-x)"; edit_last
+expect 1 "merge-pr carry-over: 'changes' in an edited comment still wins" "newest attestation of the PR: changes $Aold" mp
 comments 1056050 $D1 "$AA" 1056050 $D2 "VERDICT: changes $(git -C "$m" rev-parse "$Aold~1") (codex-x)"
 expect 1 "merge-pr carry-over: a later 'changes' for another head wins" "$NOAPP .* is 'none'" mp
 comments 1056050 $D1 "VERDICT: changes $head (codex-x)" 1056050 $D2 "$AA"
@@ -284,8 +324,15 @@ comments 1056050 $D1 "$AA"; forced "$(git -C "$m" rev-parse "$Aold~1")"
 expect 1 "merge-pr carry-over: A never a head of the PR is refused" "$NOCO .*: it was never a head" mp
 forced "$Aold"; runs failure
 expect 1 "merge-pr carry-over: CI on the exact head is still required" "are 'completed/failure'" mp
-runs success
-expect 0 "merge-pr carry-over: patch-identical rebase merges (trusted wrapper)" - mpw
+# Conflicting replay: main changes block 1 of g after A did; H applies A's identical hunk to block 2.
+on_main g "$blk$blk"; git -C "$m" fetch -q origin; git -C "$m" checkout -q --detach origin/main
+printf "${blk/X/Y}$blk" >"$m/g"; git -C "$m" commit -qam 'feat: g'; A2=$(git -C "$m" rev-parse HEAD)
+git -C "$m" push -q -f origin HEAD:refs/pull/7/head
+on_main g "${blk/X/Z}$blk"; git -C "$m" fetch -q origin; git -C "$m" checkout -q --detach origin/main
+printf "${blk/X/Z}${blk/X/Y}" >"$m/g"; git -C "$m" commit -qam 'feat: g'; publish "$A2"
+expect 1 "merge-pr carry-over: a replay that conflicts is refused" "approval of $A2 does not carry over.*commit 1 does not replay cleanly" mp
+rebased; publish; forced "$Aold" "$(git -C "$m" rev-parse "$Aold~1")"
+expect 0 "merge-pr carry-over: patch-identical rebase merges, A on GraphQL page 2 (trusted wrapper)" - mpw
 has "merge-pr carry-over: log names the carried approval" "approval of $Aold carried over: patch-identical rebase" "$t/out"
 [[ $(git -C "$bare" rev-parse main) == "$head" ]] && ok "merge-pr carry-over: main == rebased head" || no "merge-pr carry-over: main != head"
 
