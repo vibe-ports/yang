@@ -1272,12 +1272,25 @@ op_xpath(const cJSON *req)
     ly_bool b = 0;
     LY_XPATH_TYPE t;
     LY_ERR rc;
+    struct lyxp_var *vars = NULL;
+    const cJSON *jv = cJSON_GetObjectItemCaseSensitive(req, "vars"), *v;
 
     if (!ctx) {
         return;
     }
     if (!expr) {
         die("missing xpath%s", NULL);
+    }
+    if (jv && !cJSON_IsObject(jv)) {
+        die("vars must be an object%s", NULL);
+    }
+    cJSON_ArrayForEach(v, jv) {
+        if (!cJSON_IsString(v)) {
+            die("vars value of %s must be a string", v->string);
+        }
+        if (lyxp_vars_set(&vars, v->string, v->valuestring)) {
+            die("lyxp_vars_set %s failed", v->string);
+        }
     }
     rc = parse_one(ctx, &p, input_of(req, "data"), NULL, &tree, diag, "data");
     if (rc || !tree) {
@@ -1298,7 +1311,8 @@ op_xpath(const cJSON *req)
         set = NULL;
     }
 
-    rc = lyd_eval_xpath4(cnode, tree, cur, expr, LY_VALUE_JSON, NULL, NULL, &t, &set, &str, &num, &b);
+    rc = lyd_eval_xpath4(cnode, tree, cur, expr, LY_VALUE_JSON, NULL, vars, &t, &set, &str, &num, &b);
+    lyxp_vars_free(vars);
     collect(ctx, diag, "xpath");
     set_verdict(rc);
     if (rc) {

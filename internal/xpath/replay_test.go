@@ -6,8 +6,10 @@ import (
 	"bufio"
 	"encoding/json"
 	"errors"
+	"maps"
 	"math"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -23,6 +25,17 @@ type oracleCase struct {
 	Res   json.RawMessage `json:"result,omitempty"`
 	Error json.RawMessage `json:"error,omitempty"` // {"err","vecode","msg"} of the first error diagnostic
 	Crash bool            `json:"crash,omitempty"` // lyoracle died (libyang crashed, D-0012)
+	// Vars are the request's variables; lyoracle receives them as a JSON object, keys sorted.
+	Vars map[string]string `json:"vars,omitempty"`
+}
+
+// vars is c.Vars in the order lyoracle sets them (JSON object keys, sorted).
+func (c oracleCase) vars() []Var {
+	var vs []Var
+	for _, k := range slices.Sorted(maps.Keys(c.Vars)) {
+		vs = SetVar(vs, k, c.Vars[k])
+	}
+	return vs
 }
 
 func readCases(t *testing.T, name string) []oracleCase {
@@ -83,7 +96,7 @@ func replay(t *testing.T, cases []oracleCase) {
 			tree = top(cont("pv2:c", mk(KindAnydata, "any", &tval{})))
 		}
 		schema = tinfo{tree: tree}
-		ec := EvalContext{Tree: tree, IgnoreWhen: true, Schema: schema, Deref: pv2Deref(tree)}
+		ec := EvalContext{Tree: tree, IgnoreWhen: true, Schema: schema, Deref: pv2Deref(tree), Vars: c.vars()}
 		if c.CP != "" {
 			ec.Node = tree[0]
 		}

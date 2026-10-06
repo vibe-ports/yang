@@ -61,6 +61,9 @@ func parsePhase(msg string) bool {
 // it, and a rejection carries libyang's message.
 func replayCompile(t *testing.T, cases []oracleCase) {
 	for _, c := range cases {
+		if len(c.Vars) > 0 && strings.Contains(c.X, "$") {
+			continue // a parse error may come from a variable's value, found only by evaluation
+		}
 		var want struct{ Err, Vecode, Msg string }
 		if c.Error != nil {
 			if err := json.Unmarshal(c.Error, &want); err != nil {

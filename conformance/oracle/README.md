@@ -242,7 +242,8 @@ matches. Examples (`pv2` `u2`: `percent | leafref ../l/k`): `"a"` → {"index": 
 
 ```json
 {"op": "xpath", "...data fields...": "", "data_file": "data/valid.json",
- "context_path": "/basic:sys", "xpath": "count(iface[type = 'eth'])", "cur_module": null}
+ "context_path": "/basic:sys", "xpath": "count(iface[type = 'eth'])", "cur_module": null,
+ "vars": {"min": "3"}}
 ```
 ```json
 {"verdict": "valid", "result": {"type": "number", "value": 1}}
@@ -250,7 +251,9 @@ matches. Examples (`pv2` `u2`: `percent | leafref ../l/k`): `"a"` → {"index": 
 `result.type`: `node-set` (`nodes`: list of `lyd_path(LYD_PATH_STD)`), `string`, `number`
 (`NaN`/`Infinity`/`-Infinity` as strings), `boolean`. The tree is parsed/validated as in `data`
 (`verdict: "data-error"` if that fails). `context_path` is an XPath that must select exactly one
-node; omitted = document root.
+node; omitted = document root. `vars` (optional) binds XPath variables: each member goes to
+`lyxp_vars_set` in member order (the value is an XPath expression, `"'x'"` for a string) and the
+list to `lyd_eval_xpath4`.
 
 ## op: diff
 

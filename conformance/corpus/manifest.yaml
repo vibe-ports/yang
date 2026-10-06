@@ -4321,6 +4321,242 @@ fixtures:
       context_path: /pv2:c
       xpath: "count(l[k=../ref])"
     golden: golden/xpath-aug-key-relative-leaf.json
+
+  # ---- protocol-v2: XPath variables (op xpath `vars`, lyxp_vars_set); Go side: internal/xpath TestVars, data TestFindXPath ----
+
+  - id: protocol-v2/xpath-vars-value
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3.1"]
+    areas: [xpath]
+    # a variable's value is an expression evaluated where it is referenced
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "$abc * 2"
+      vars: {"abc": "1 + 2", "s": "'x'", "bad": "1 +", "und": "$nope", "lx": "'"}
+    golden: golden/xpath-vars-value.json
+
+  - id: protocol-v2/xpath-vars-prefix-match
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3.1"]
+    areas: [xpath]
+    # lyxp_vars_find compares the reference's length only (strncmp): $ab finds abc
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "$ab"
+      vars: {"abc": "1 + 2", "s": "'x'", "bad": "1 +", "und": "$nope", "lx": "'"}
+    golden: golden/xpath-vars-prefix-match.json
+
+  - id: protocol-v2/xpath-vars-in-predicate
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3.1"]
+    areas: [xpath]
+    # a variable in a predicate, evaluated per node
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "ll[. = $s]"
+      vars: {"abc": "1 + 2", "s": "'x'", "bad": "1 +", "und": "$nope", "lx": "'"}
+    golden: golden/xpath-vars-in-predicate.json
+
+  - id: protocol-v2/xpath-vars-undefined
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3.1"]
+    areas: [xpath]
+    # a name longer than every variable is not defined
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "$abcd"
+      vars: {"abc": "1 + 2", "s": "'x'", "bad": "1 +", "und": "$nope", "lx": "'"}
+    golden: golden/xpath-vars-undefined.json
+
+  - id: protocol-v2/xpath-vars-skip-and
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3.1"]
+    areas: [xpath]
+    # LYXP_SKIP_EXPR still looks references up: the skipped operand fails
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "false() and $x"
+      vars: {"abc": "1 + 2", "s": "'x'", "bad": "1 +", "und": "$nope", "lx": "'"}
+    golden: golden/xpath-vars-skip-and.json
+
+  - id: protocol-v2/xpath-vars-skip-or-nested
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3.1"]
+    areas: [xpath]
+    # a skipped reference's value is parsed and its references looked up
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "true() or $und"
+      vars: {"abc": "1 + 2", "s": "'x'", "bad": "1 +", "und": "$nope", "lx": "'"}
+    golden: golden/xpath-vars-skip-or-nested.json
+
+  - id: protocol-v2/xpath-vars-skip-ok
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3.1"]
+    areas: [xpath]
+    # a skipped reference that resolves leaves the result alone
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "true() or $s"
+      vars: {"abc": "1 + 2", "s": "'x'", "bad": "1 +", "und": "$nope", "lx": "'"}
+    golden: golden/xpath-vars-skip-ok.json
+
+  - id: protocol-v2/xpath-vars-empty-predicate
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3.1"]
+    areas: [xpath]
+    # the predicate of an empty node set is skipped, its references looked up
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "l[k = 'zz'][$x]"
+      vars: {"abc": "1 + 2", "s": "'x'", "bad": "1 +", "und": "$nope", "lx": "'"}
+    golden: golden/xpath-vars-empty-predicate.json
+
+  - id: protocol-v2/xpath-vars-value-reparse-error
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3.1"]
+    areas: [xpath]
+    # a reparse error in the value is logged without a node
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "$bad"
+      vars: {"abc": "1 + 2", "s": "'x'", "bad": "1 +", "und": "$nope", "lx": "'"}
+    golden: golden/xpath-vars-value-reparse-error.json
+
+  - id: protocol-v2/xpath-vars-value-lex-error
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3.1"]
+    areas: [xpath]
+    # a lexer error in the value is logged at the current node
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "$lx"
+      vars: {"abc": "1 + 2", "s": "'x'", "bad": "1 +", "und": "$nope", "lx": "'"}
+    golden: golden/xpath-vars-value-lex-error.json
+
+  - id: protocol-v2/xpath-vars-eval-error-location
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3.1"]
+    areas: [xpath]
+    # an evaluation error (LOGVAL_DXPATH) is logged at the current node
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "/zz:c"
+      vars: {"abc": "1 + 2", "s": "'x'", "bad": "1 +", "und": "$nope", "lx": "'"}
+    golden: golden/xpath-vars-eval-error-location.json
+
+  - id: protocol-v2/xpath-vars-reparse-error-location
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3.1"]
+    areas: [xpath]
+    # a reparse error of the expression is logged without a node
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "l["
+      vars: {"abc": "1 + 2", "s": "'x'", "bad": "1 +", "und": "$nope", "lx": "'"}
+    golden: golden/xpath-vars-reparse-error-location.json
+
+  - id: protocol-v2/xpath-vars-lex-error-location
+    dir: protocol-v2
+    source: *own
+    rfc: ["XPath1.0#3.1"]
+    areas: [xpath]
+    # a lexer error of the expression is logged at the context node
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "l['"
+      vars: {"abc": "1 + 2", "s": "'x'", "bad": "1 +", "und": "$nope", "lx": "'"}
+    golden: golden/xpath-vars-lex-error-location.json
   # ---- ctypes: type compilation (design 06 §2.3-2.4, C5); Go side: internal/compile type tests ----
 
   - id: types/unchanged-typedef-reuse

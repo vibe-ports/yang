@@ -64,7 +64,7 @@ The invocation policy lives only in `request` — never implied by the runner:
 | parse vs validate | `parse_only`, `parse_options`, `validate_options` |
 | with-defaults mode | `with_defaults` |
 | external operational tree / rpc request | `operational_file`, `rpc_file` |
-| xpath / diff inputs | `xpath`, `context_path`, `cur_module` / `first_file`, `second_file`, `diff_options` |
+| xpath / diff inputs | `xpath`, `context_path`, `cur_module`, `vars` / `first_file`, `second_file`, `diff_options` |
 
 Goldens are the full oracle response (JSON, indent 2, sorted keys, ASCII escapes, trailing newline). What the Go
 harness compares from them is fixed by PLAN.md §5: accepted/phase, compiled dump, verdict +
