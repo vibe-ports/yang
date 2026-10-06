@@ -61,9 +61,10 @@ type evaluator struct {
 	ns     NamespaceCtx
 	ec     *EvalContext
 	ctx    context.Context
-	cur    item       // current()
-	op     SchemaNode // set->context_op: the RPC/action/notification of current()
-	steps  int
+	cur    item                  // current()
+	op     SchemaNode            // set->context_op: the RPC/action/notification of current()
+	steps  int                   // remaining budget
+	budget int                   // initial budget
 	err    error                 // sticky budget / cancellation error
 	sib    map[Node]map[Node]int // per parent (nil: top level), index of each child; built lazily
 	keys   map[Node][]int        // sibling indexes from the top level down to the node
@@ -79,6 +80,7 @@ func newEvaluator(e *Expr, ec *EvalContext) *evaluator {
 	if ev.steps <= 0 {
 		ev.steps = DefaultMaxSteps
 	}
+	ev.budget = ev.steps
 	switch {
 	case ec.Current != nil:
 		ev.cur = item{ec.Current, itElem}

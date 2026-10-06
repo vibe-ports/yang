@@ -157,6 +157,9 @@ type Result struct {
 	Bool  bool
 	Num   float64
 	Str   string
+	// Steps is the budget the evaluation consumed (also set on error), for
+	// callers that keep a cumulative budget across evaluations.
+	Steps int64
 }
 
 // Error is an XPath error with libyang's LY_ERR / LYVE codes.
@@ -217,18 +220,19 @@ func (e *Expr) Eval(ec EvalContext) (Result, error) {
 	if err == nil {
 		err = ev.err
 	}
+	used := int64(ev.budget) - int64(max(ev.steps, 0))
 	if err != nil {
-		return Result{}, err
+		return Result{Steps: used}, err
 	}
 	switch v.t {
 	case vBool:
-		return Result{Type: Boolean, Bool: v.b}, nil
+		return Result{Type: Boolean, Bool: v.b, Steps: used}, nil
 	case vNum:
-		return Result{Type: Number, Num: v.f.float()}, nil
+		return Result{Type: Number, Num: v.f.float(), Steps: used}, nil
 	case vStr:
-		return Result{Type: String, Str: v.s}, nil
+		return Result{Type: String, Str: v.s, Steps: used}, nil
 	}
-	r := Result{Type: NodeSet}
+	r := Result{Type: NodeSet, Steps: used}
 	for _, it := range v.nodes {
 		if it.t == itElem {
 			r.Nodes = append(r.Nodes, it.n)
