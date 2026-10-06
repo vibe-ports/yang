@@ -1,0 +1,86 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module uses-augment-into-grouping-container {\n  namespace \"urn:vibe-ports:yang:conformance:uses-augment-into-grouping-container\";\n  prefix uses-augment-into-grouping-container;\n\n  container top {\n    config true;\n    status current;\n    container g {\n      config true;\n      status current;\n      leaf x {\n        type int8;\n        config true;\n        status current;\n      }\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "uses-augment-into-grouping-container",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "uses-augment-into-grouping-container",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/uses-augment-into-grouping-container:top",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "uses-augment-into-grouping-container",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/uses-augment-into-grouping-container:top/g",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "uses-augment-into-grouping-container",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/uses-augment-into-grouping-container:top/g/x",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "int8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

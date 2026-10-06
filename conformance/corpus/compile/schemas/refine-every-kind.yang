@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_refine.
+module refine-every-kind {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:refine-every-kind";
+  prefix refine-every-kind;
+  import refine-every-kind-h1 { prefix g; }
+
+  feature fa;
+  uses g:grp { refine c/l { default hello; config false; }
+    refine c/ll { default hello; default world; }
+    refine c/ch { default cb; config true; if-feature fa; }
+    refine c/x { mandatory false; must ../ll; description refined; reference refined; }
+    refine c/a { mandatory true; must 1; description refined; reference refined; }
+    refine c/ll { max-elements 5; }
+    refine c/c { config true; presence indispensable; } }
+}

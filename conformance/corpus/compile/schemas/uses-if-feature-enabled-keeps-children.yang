@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module uses-if-feature-enabled-keeps-children {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:uses-if-feature-enabled-keeps-children";
+  prefix uses-if-feature-enabled-keeps-children;
+  feature f;
+  grouping grp { container g; leaf l { type string; } }
+  uses grp { if-feature f; }
+}

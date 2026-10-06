@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_refine.
+module refine-mandatory-false-and-default {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:refine-mandatory-false-and-default";
+  prefix refine-mandatory-false-and-default;
+  import refine-mandatory-false-and-default-h1 { prefix g; }
+  uses g:grp { status deprecated; refine c/x { default hello; mandatory false; } }
+}

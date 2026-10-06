@@ -1,0 +1,70 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module refine-max-elements-list {\n  namespace \"urn:vibe-ports:yang:conformance:refine-max-elements-list\";\n  prefix refine-max-elements-list;\n\n  list l {\n    key \"k\";\n    config true;\n    min-elements 1;\n    max-elements 4;\n    ordered-by system;\n    status current;\n    leaf k {\n      type string;\n      config true;\n      status current;\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "refine-max-elements-list",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "k"
+          ],
+          "mandatory": true,
+          "max_elements": 4,
+          "min_elements": 1,
+          "module": "refine-max-elements-list",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "system",
+          "path": "/refine-max-elements-list:l",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "refine-max-elements-list",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/refine-max-elements-list:l/k",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

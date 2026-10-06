@@ -1,0 +1,24 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module uses-if-feature-disabled-removes-children {\n  namespace \"urn:vibe-ports:yang:conformance:uses-if-feature-disabled-removes-children\";\n  prefix uses-if-feature-disabled-removes-children;\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": false,
+          "name": "f"
+        }
+      ],
+      "identities": [],
+      "name": "uses-if-feature-disabled-removes-children",
+      "revision": null,
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

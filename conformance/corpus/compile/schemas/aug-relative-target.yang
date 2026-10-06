@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_augment.
+module aug-relative-target {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:aug-relative-target";
+  prefix aug-relative-target;
+  container top;
+  augment ../top { leaf x { type int8; } }
+}

@@ -1,0 +1,107 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module refine-bits-default {\n  namespace \"urn:vibe-ports:yang:conformance:refine-bits-default\";\n  prefix refine-bits-default;\n\n  container conf {\n    config true;\n    status current;\n    leaf alg2 {\n      type bits {\n        bit \"ftp\" {\n          position 0;\n          status current;\n        }\n        bit \"h323-q931\" {\n          position 1;\n          status current;\n        }\n        bit \"h323-ras\" {\n          position 2;\n          status current;\n        }\n        bit \"pptp\" {\n          position 3;\n          status current;\n        }\n        bit \"rtsp\" {\n          position 4;\n          status current;\n        }\n        bit \"sip-tcp\" {\n          position 5;\n          status current;\n        }\n        bit \"sip-udp\" {\n          position 6;\n          status current;\n        }\n        bit \"tftp\" {\n          position 7;\n          status current;\n        }\n        bit \"dns-udp\" {\n          position 8;\n          status current;\n        }\n      }\n      default \"dns-udp\";\n      config true;\n      status current;\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "refine-bits-default",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "refine-bits-default",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/refine-bits-default:conf",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "dns-udp"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "refine-bits-default",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/refine-bits-default:conf/alg2",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "bits",
+            "bases": null,
+            "bits": [
+              {
+                "name": "ftp",
+                "position": 0
+              },
+              {
+                "name": "h323-q931",
+                "position": 1
+              },
+              {
+                "name": "h323-ras",
+                "position": 2
+              },
+              {
+                "name": "pptp",
+                "position": 3
+              },
+              {
+                "name": "rtsp",
+                "position": 4
+              },
+              {
+                "name": "sip-tcp",
+                "position": 5
+              },
+              {
+                "name": "sip-udp",
+                "position": 6
+              },
+              {
+                "name": "tftp",
+                "position": 7
+              },
+              {
+                "name": "dns-udp",
+                "position": 8
+              }
+            ],
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

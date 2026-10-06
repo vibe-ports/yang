@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module refine-max-elements-list {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:refine-max-elements-list";
+  prefix refine-max-elements-list;
+  grouping g { list l { key k; leaf k { type string; } } }
+  uses g { refine l { min-elements 1; max-elements 4; } }
+}

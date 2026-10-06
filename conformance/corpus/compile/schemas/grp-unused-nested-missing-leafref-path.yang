@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_grouping.
+module grp-unused-nested-missing-leafref-path {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:grp-unused-nested-missing-leafref-path";
+  prefix grp-unused-nested-missing-leafref-path;
+  container a { grouping grp { leaf x { type leafref; } } }
+}

@@ -1,0 +1,50 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module refine-leaflist-mandatory-h1 {\n  namespace \"urn:vibe-ports:yang:conformance:refine-leaflist-mandatory-h1\";\n  prefix refine-leaflist-mandatory-h1;\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": true,
+          "name": "f"
+        }
+      ],
+      "identities": [],
+      "name": "refine-leaflist-mandatory-h1",
+      "revision": null,
+      "schema_tree": []
+    },
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Invalid refine of leaf-list node - it is not possible to replace \"mandatory\" property.",
+          "phase": "compile",
+          "schema_path": "/refine-leaflist-mandatory:{uses='g:grp'}/refine-leaflist-mandatory:c/ll/{refine='c/ll'}",
+          "vecode": 4,
+          "vecode_name": "LYVE_REFERENCE"
+        }
+      ],
+      "name": "refine-leaflist-mandatory",
+      "phase": "compile",
+      "rc": {
+        "err": 7,
+        "name": "LY_EVALID"
+      }
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

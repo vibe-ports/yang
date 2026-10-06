@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_uses.
+module uses-unique-in-imported-grouping-h1 {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:uses-unique-in-imported-grouping-h1";
+  prefix uses-unique-in-imported-grouping-h1;
+  grouping grp { list l { key "k"; unique "l"; leaf k { type string; } leaf l { type string; } } }
+}

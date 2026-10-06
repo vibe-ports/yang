@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_uses.
+module uses-duplicate-leaf-defined-before {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:uses-duplicate-leaf-defined-before";
+  prefix uses-duplicate-leaf-defined-before;
+  grouping grp { leaf l { type string; } }
+  leaf l { type int8; }
+  uses grp;
+}

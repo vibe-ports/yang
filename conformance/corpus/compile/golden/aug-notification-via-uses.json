@@ -1,0 +1,56 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module aug-notification-via-uses {\n  namespace \"urn:vibe-ports:yang:conformance:aug-notification-via-uses\";\n  prefix aug-notification-via-uses;\n\n  container root {\n    config true;\n    status current;\n    notification grp-notif {\n      status current;\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "aug-notification-via-uses",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "aug-notification-via-uses",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/aug-notification-via-uses:root",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "aug-notification-via-uses",
+          "musts": null,
+          "nodetype": "notif",
+          "ordered_by": null,
+          "path": "/aug-notification-via-uses:root/grp-notif",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_refine.
+module refine-bits-default {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:refine-bits-default";
+  prefix refine-bits-default;
+  grouping alg { leaf alg2 { type bits { bit ftp; bit h323-q931; bit h323-ras; bit pptp; bit rtsp; bit sip-tcp; bit sip-udp; bit tftp; bit dns-udp; } } }
+  container conf { uses alg { refine alg2 { default "dns-udp"; } } }
+}

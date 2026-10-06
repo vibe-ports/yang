@@ -1,0 +1,50 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module refine-leaf-presence-h1 {\n  namespace \"urn:vibe-ports:yang:conformance:refine-leaf-presence-h1\";\n  prefix refine-leaf-presence-h1;\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": true,
+          "name": "f"
+        }
+      ],
+      "identities": [],
+      "name": "refine-leaf-presence-h1",
+      "revision": null,
+      "schema_tree": []
+    },
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Invalid refine of leaf node - it is not possible to replace \"presence\" property.",
+          "phase": "compile",
+          "schema_path": "/refine-leaf-presence:{uses='g:grp'}/refine-leaf-presence:c/x/{refine='c/x'}",
+          "vecode": 4,
+          "vecode_name": "LYVE_REFERENCE"
+        }
+      ],
+      "name": "refine-leaf-presence",
+      "phase": "compile",
+      "rc": {
+        "err": 7,
+        "name": "LY_EVALID"
+      }
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module uses-when-context-is-parent {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:uses-when-context-is-parent";
+  prefix uses-when-context-is-parent;
+  grouping g { leaf y { type string; } }
+  container c { leaf x { type string; } uses g { when "../x = 'a'"; } }
+}

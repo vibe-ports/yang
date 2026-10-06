@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module grp-iffeature-uses-grouping-prefix {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:grp-iffeature-uses-grouping-prefix";
+  prefix grp-iffeature-uses-grouping-prefix;
+  import grp-iffeature-uses-grouping-prefix-h1 { prefix g; }
+  container c { uses g:grp; }
+}

@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module aug-notification-into-container {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:aug-notification-into-container";
+  prefix aug-notification-into-container;
+  container c;
+  augment /c { notification n { leaf x { type string; } } }
+}

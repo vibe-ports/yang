@@ -1,0 +1,71 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module aug-target-if-feature-disabled-no-xpath-warning-h1 {\n  namespace \"urn:vibe-ports:yang:conformance:aug-target-if-feature-disabled-no-xpath-warning-h1\";\n  prefix aug-target-if-feature-disabled-no-xpath-warning-h1;\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": false,
+          "name": "f"
+        }
+      ],
+      "identities": [],
+      "name": "aug-target-if-feature-disabled-no-xpath-warning-h1",
+      "revision": null,
+      "schema_tree": []
+    },
+    {
+      "accepted": true,
+      "compiled": "module aug-target-if-feature-disabled-no-xpath-warning {\n  namespace \"urn:vibe-ports:yang:conformance:aug-target-if-feature-disabled-no-xpath-warning\";\n  prefix aug-target-if-feature-disabled-no-xpath-warning;\n\n  leaf c {\n    when \"/k:c/aug-target-if-feature-disabled-no-xpath-warning:b\";\n    type string;\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "aug-target-if-feature-disabled-no-xpath-warning",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "aug-target-if-feature-disabled-no-xpath-warning",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/aug-target-if-feature-disabled-no-xpath-warning:c",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/aug-target-if-feature-disabled-no-xpath-warning:c",
+              "expr": "/k:c/aug-target-if-feature-disabled-no-xpath-warning:b",
+              "module": "aug-target-if-feature-disabled-no-xpath-warning"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

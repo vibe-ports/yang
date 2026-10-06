@@ -1,0 +1,118 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module aug-target-input-without-prefix-h1 {\n  namespace \"urn:vibe-ports:yang:conformance:aug-target-input-without-prefix-h1\";\n  prefix aug-target-input-without-prefix-h1;\n\n  container top {\n    config true;\n    status current;\n  }\n\n  rpc func {\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "aug-target-input-without-prefix-h1",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "aug-target-input-without-prefix-h1",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/aug-target-input-without-prefix-h1:top",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "aug-target-input-without-prefix-h1",
+          "musts": null,
+          "nodetype": "rpc",
+          "ordered_by": null,
+          "path": "/aug-target-input-without-prefix-h1:func",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "aug-target-input-without-prefix-h1",
+          "musts": null,
+          "nodetype": "input",
+          "ordered_by": null,
+          "path": "/aug-target-input-without-prefix-h1:func/input",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "aug-target-input-without-prefix-h1",
+          "musts": null,
+          "nodetype": "output",
+          "ordered_by": null,
+          "path": "/aug-target-input-without-prefix-h1:func/output",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Augment target node \"/hi:func/input\" from module \"aug-target-input-without-prefix\" was not found.",
+          "phase": "compile",
+          "schema_path": "/aug-target-input-without-prefix:{augment='/hi:func/input'}",
+          "vecode": 4,
+          "vecode_name": "LYVE_REFERENCE"
+        }
+      ],
+      "name": "aug-target-input-without-prefix",
+      "phase": "compile",
+      "rc": {
+        "err": 5,
+        "name": "LY_ENOTFOUND"
+      }
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

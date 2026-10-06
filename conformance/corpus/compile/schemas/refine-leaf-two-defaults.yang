@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_refine.
+module refine-leaf-two-defaults {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:refine-leaf-two-defaults";
+  prefix refine-leaf-two-defaults;
+  import refine-leaf-two-defaults-h1 { prefix g; }
+  uses g:grp { refine c/l { default hello; default world; } }
+}

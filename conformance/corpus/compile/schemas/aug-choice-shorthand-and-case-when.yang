@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_augment.
+module aug-choice-shorthand-and-case-when {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:aug-choice-shorthand-and-case-when";
+  prefix aug-choice-shorthand-and-case-when;
+  choice ch { leaf a { type string; } }
+  augment /ch/c { when 1; leaf lc2 { type uint16; } }
+  augment /ch { when 1; leaf b { type int8; } case c { leaf lc1 { type uint8; } } }
+}

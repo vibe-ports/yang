@@ -1,0 +1,38 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module refine-description-reference-presence {\n  namespace \"urn:vibe-ports:yang:conformance:refine-description-reference-presence\";\n  prefix refine-description-reference-presence;\n\n  container c {\n    presence \"true\";\n    config true;\n    status current;\n    description\n      \"new\";\n    reference\n      \"ref\";\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "refine-description-reference-presence",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "refine-description-reference-presence",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/refine-description-reference-presence:c",
+          "presence": true,
+          "status": "current",
+          "type": null,
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_augment.
+module aug-case-into-container {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:aug-case-into-container";
+  prefix aug-case-into-container;
+  container c { leaf a { type string; } }
+  augment /c { case b { leaf d { type int8; } } }
+}

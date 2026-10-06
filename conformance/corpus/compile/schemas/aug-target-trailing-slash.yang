@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_augment.
+module aug-target-trailing-slash {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:aug-target-trailing-slash";
+  prefix aug-target-trailing-slash;
+  container c { leaf a { type string; } }
+  augment /x/ { leaf a { type int8; } }
+}

@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module grp-leafref-resolved-per-instance {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:grp-leafref-resolved-per-instance";
+  prefix grp-leafref-resolved-per-instance;
+  grouping g { leaf ref { type leafref { path "../target"; } } }
+  container a { leaf target { type string; } uses g; }
+  container b { leaf target { type int8; } uses g; }
+}

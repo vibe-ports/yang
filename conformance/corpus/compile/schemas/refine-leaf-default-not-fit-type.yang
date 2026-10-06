@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module refine-leaf-default-not-fit-type {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:refine-leaf-default-not-fit-type";
+  prefix refine-leaf-default-not-fit-type;
+  grouping g { leaf x { type uint8; } }
+  uses g { refine x { default "abc"; } }
+}

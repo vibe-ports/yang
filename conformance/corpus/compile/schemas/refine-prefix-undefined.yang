@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_refine.
+module refine-prefix-undefined {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:refine-prefix-undefined";
+  prefix refine-prefix-undefined;
+  grouping test-group { container cont { leaf my-leaf { type string; } } }
+  container test-container { uses test-group { refine "invalid:my-leaf" { description "test"; } } }
+}

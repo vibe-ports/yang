@@ -1,0 +1,35 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Augment target node \"/func\" from module \"aug-target-rpc-without-input\" was not found.",
+          "phase": "compile",
+          "schema_path": "/aug-target-rpc-without-input:{augment='/func'}",
+          "vecode": 4,
+          "vecode_name": "LYVE_REFERENCE"
+        }
+      ],
+      "name": "aug-target-rpc-without-input",
+      "phase": "compile",
+      "rc": {
+        "err": 5,
+        "name": "LY_ENOTFOUND"
+      }
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

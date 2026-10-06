@@ -1,0 +1,80 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module uses-status-deprecated-inherited {\n  namespace \"urn:vibe-ports:yang:conformance:uses-status-deprecated-inherited\";\n  prefix uses-status-deprecated-inherited;\n\n  leaf l {\n    type string;\n    config true;\n    status deprecated;\n  }\n  leaf k {\n    type string;\n    config true;\n    status deprecated;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "uses-status-deprecated-inherited",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "uses-status-deprecated-inherited",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/uses-status-deprecated-inherited:l",
+          "presence": null,
+          "status": "deprecated",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "uses-status-deprecated-inherited",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/uses-status-deprecated-inherited:k",
+          "presence": null,
+          "status": "deprecated",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

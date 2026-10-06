@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_grouping.
+module grp-unused-leafref-and-when-not-resolved {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:grp-unused-leafref-and-when-not-resolved";
+  prefix grp-unused-leafref-and-when-not-resolved;
+  grouping grp { leaf ref { type leafref { path "../name"; } } leaf cond { type string; when "../name = 'specialone'"; } }
+}

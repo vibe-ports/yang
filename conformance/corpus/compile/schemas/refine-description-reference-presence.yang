@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module refine-description-reference-presence {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:refine-description-reference-presence";
+  prefix refine-description-reference-presence;
+  grouping g { container c { presence "orig"; description d; } }
+  uses g { refine c { description "new"; reference "ref"; presence "newp"; } }
+}

@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_uses.
+module uses-prefix-order-and-import-h1 {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:uses-prefix-order-and-import-h1";
+  prefix uses-prefix-order-and-import-h1;
+  typedef mytype { type string; } feature f; grouping grp { leaf x { type mytype; } leaf y { type string; if-feature f; } }
+}

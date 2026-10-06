@@ -1,0 +1,97 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module grp-identityref-default-from-grouping-module-h1 {\n  namespace \"urn:vibe-ports:yang:conformance:grp-identityref-default-from-grouping-module-h1\";\n  prefix grp-identityref-default-from-grouping-module-h1;\n\n  identity base_identity {\n    derived id1;\n  }\n\n  identity id1 {\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [
+        {
+          "bases": [],
+          "derived": [
+            "grp-identityref-default-from-grouping-module-h1:id1"
+          ],
+          "name": "grp-identityref-default-from-grouping-module-h1:base_identity"
+        },
+        {
+          "bases": [
+            "grp-identityref-default-from-grouping-module-h1:base_identity"
+          ],
+          "derived": [],
+          "name": "grp-identityref-default-from-grouping-module-h1:id1"
+        }
+      ],
+      "name": "grp-identityref-default-from-grouping-module-h1",
+      "revision": null,
+      "schema_tree": []
+    },
+    {
+      "accepted": true,
+      "compiled": "module grp-identityref-default-from-grouping-module {\n  namespace \"urn:vibe-ports:yang:conformance:grp-identityref-default-from-grouping-module\";\n  prefix grp-identityref-default-from-grouping-module;\n\n  container root {\n    config true;\n    status current;\n    leaf name {\n      type identityref {\n        base base_identity;\n      }\n      default \"id1\";\n      config true;\n      status current;\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "grp-identityref-default-from-grouping-module",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "grp-identityref-default-from-grouping-module",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/grp-identityref-default-from-grouping-module:root",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "grp-identityref-default-from-grouping-module-h1:id1"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "grp-identityref-default-from-grouping-module",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/grp-identityref-default-from-grouping-module:root/name",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "identityref",
+            "bases": [
+              "grp-identityref-default-from-grouping-module-h1:base_identity"
+            ],
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

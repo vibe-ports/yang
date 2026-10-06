@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_uses.
+module uses-status-deprecated-inherited {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:uses-status-deprecated-inherited";
+  prefix uses-status-deprecated-inherited;
+  grouping grp { leaf l { type string; } leaf k { type string; } }
+  uses grp { status deprecated; }
+}

@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_uses.
+module uses-status-conflict-with-grouping-child {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:uses-status-conflict-with-grouping-child";
+  prefix uses-status-conflict-with-grouping-child;
+  grouping grp { leaf l { type string; status deprecated; } }
+  uses grp { status obsolete; }
+}

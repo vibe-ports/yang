@@ -1,0 +1,35 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Action \"a\" is placed inside notification.",
+          "phase": "compile",
+          "schema_path": "/uses-action-in-notif-via-grouping:n/c/{uses='grp'}/a",
+          "vecode": 6,
+          "vecode_name": "LYVE_SEMANTICS"
+        }
+      ],
+      "name": "uses-action-in-notif-via-grouping",
+      "phase": "compile",
+      "rc": {
+        "err": 7,
+        "name": "LY_EVALID"
+      }
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

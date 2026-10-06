@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_augment.
+module aug-mandatory-allowed-variants {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:aug-mandatory-allowed-variants";
+  prefix aug-mandatory-allowed-variants;
+  import aug-mandatory-allowed-variants-h1 { prefix hi; }
+  container top;
+  augment /hi:top { container p { presence XXX; leaf x { mandatory true; type string; } } }
+  augment /hi:top { list ll { key x; leaf x { type string; } leaf y { mandatory true; type string; } } }
+  augment /hi:top { leaf l { type string; mandatory true; config false; } }
+  augment /top { leaf l { type string; mandatory true; } }
+}

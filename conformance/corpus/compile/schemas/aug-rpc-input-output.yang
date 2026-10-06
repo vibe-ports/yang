@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_augment.
+module aug-rpc-input-output {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:aug-rpc-input-output";
+  prefix aug-rpc-input-output;
+  import aug-rpc-input-output-h1 { prefix hi; }
+  augment /hi:func/hi:input { leaf x { type string; } }
+  augment /hi:func/hi:output { leaf y { type string; } }
+}

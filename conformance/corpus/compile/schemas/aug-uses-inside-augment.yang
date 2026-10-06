@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_augment.
+module aug-uses-inside-augment {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:aug-uses-inside-augment";
+  prefix aug-uses-inside-augment;
+  grouping g { leaf a { type string; } }
+  container c;
+  augment /c { uses g; }
+}

@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_grouping.
+module grp-config-lists-from-imported-grouping {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:grp-config-lists-from-imported-grouping";
+  prefix grp-config-lists-from-imported-grouping;
+  import grp-config-lists-from-imported-grouping-h1 { prefix z1; } import grp-config-lists-from-imported-grouping-h2 { prefix z2; }
+  grouping grp_a_top { leaf a1 { type int8; } }
+  grouping list_group { list mylist { key "name"; unique "value"; uses z2:leafs_group; } }
+  augment /z1:root { uses list_group; }
+}

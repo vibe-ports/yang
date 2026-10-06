@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module aug-in-grouping-with-uses-augment {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:aug-in-grouping-with-uses-augment";
+  prefix aug-in-grouping-with-uses-augment;
+  grouping g { container c; }
+  container top { uses g { augment c { leaf x { type string; } } } }
+  augment /top/c { leaf y { type string; } }
+}

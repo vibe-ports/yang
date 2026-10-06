@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_uses.
+module uses-top-level-augment-and-refine {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:uses-top-level-augment-and-refine";
+  prefix uses-top-level-augment-and-refine;
+  grouping grp { container g; }
+  uses grp { augment g { leaf x { type int8; } } refine g { description "dsc"; } }
+}

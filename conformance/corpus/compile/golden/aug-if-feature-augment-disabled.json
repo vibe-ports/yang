@@ -1,0 +1,61 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module aug-if-feature-augment-disabled {\n  namespace \"urn:vibe-ports:yang:conformance:aug-if-feature-augment-disabled\";\n  prefix aug-if-feature-augment-disabled;\n\n  container root {\n    config true;\n    status current;\n    container cont {\n      config true;\n      status current;\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": false,
+          "name": "f"
+        }
+      ],
+      "identities": [],
+      "name": "aug-if-feature-augment-disabled",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "aug-if-feature-augment-disabled",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/aug-if-feature-augment-disabled:root",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "aug-if-feature-augment-disabled",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/aug-if-feature-augment-disabled:root/cont",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

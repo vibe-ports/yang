@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_uses.
+module uses-if-feature-disabled-removes-children {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:uses-if-feature-disabled-removes-children";
+  prefix uses-if-feature-disabled-removes-children;
+  feature f;
+  grouping grp { container g; leaf l { type string; } }
+  uses grp { if-feature f; }
+}

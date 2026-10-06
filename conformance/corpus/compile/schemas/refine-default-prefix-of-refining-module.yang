@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module refine-default-prefix-of-refining-module {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:refine-default-prefix-of-refining-module";
+  prefix refine-default-prefix-of-refining-module;
+  import refine-default-prefix-of-refining-module-h1 { prefix o; }
+  identity mine { base o:b; }
+  uses o:g { refine x { default mine; } }
+}

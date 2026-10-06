@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module uses-grouping-status-obsolete-from-current {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:uses-grouping-status-obsolete-from-current";
+  prefix uses-grouping-status-obsolete-from-current;
+  grouping g { status obsolete; leaf x { status obsolete; type string; } }
+  container c { uses g; }
+}

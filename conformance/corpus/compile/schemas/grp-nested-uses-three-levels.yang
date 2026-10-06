@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module grp-nested-uses-three-levels {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:grp-nested-uses-three-levels";
+  prefix grp-nested-uses-three-levels;
+  grouping g1 { leaf a { type string; } }
+  grouping g2 { uses g1; leaf b { type string; } }
+  grouping g3 { uses g2; leaf c { type string; } }
+  container top { uses g3; }
+}

@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module aug-status-inherited-deprecated {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:aug-status-inherited-deprecated";
+  prefix aug-status-inherited-deprecated;
+  container c;
+  augment /c { status deprecated; leaf x { type string; } }
+}

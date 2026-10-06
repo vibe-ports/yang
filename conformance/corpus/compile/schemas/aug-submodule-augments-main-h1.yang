@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_augment.
+submodule aug-submodule-augments-main-h1 {
+  yang-version 1;
+  belongs-to aug-submodule-augments-main { prefix aug-submodule-augments-main; }
+  augment /c { container sub; }
+}

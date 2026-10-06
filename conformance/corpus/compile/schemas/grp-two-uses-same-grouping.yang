@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module grp-two-uses-same-grouping {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:grp-two-uses-same-grouping";
+  prefix grp-two-uses-same-grouping;
+  grouping g { leaf x { type string; } }
+  container a { uses g; }
+  container b { uses g; }
+}

@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_refine.
+module refine-leaflist-default-in-10-module {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:refine-leaflist-default-in-10-module";
+  prefix refine-leaflist-default-in-10-module;
+  import refine-leaflist-default-in-10-module-h1 { prefix g; }
+  uses g:grp { refine c/ll { default hello; default world; } }
+}

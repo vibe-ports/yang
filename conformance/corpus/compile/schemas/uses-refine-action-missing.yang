@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_uses.
+module uses-refine-action-missing {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:uses-refine-action-missing";
+  prefix uses-refine-action-missing;
+  grouping grp { action g { description "super g"; } }
+  container top { action i; uses grp { refine i { description "ultra i"; } } }
+}

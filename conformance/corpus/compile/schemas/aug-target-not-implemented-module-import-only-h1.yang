@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module aug-target-not-implemented-module-import-only-h1 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:aug-target-not-implemented-module-import-only-h1";
+  prefix aug-target-not-implemented-module-import-only-h1;
+  container top;
+}

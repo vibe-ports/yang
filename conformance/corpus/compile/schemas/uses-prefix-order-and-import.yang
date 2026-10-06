@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_uses.
+module uses-prefix-order-and-import {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:uses-prefix-order-and-import";
+  prefix uses-prefix-order-and-import;
+  import uses-prefix-order-and-import-h1 { prefix g; }
+  grouping grp_a_top { leaf a1 { type int8; } }
+  container a { uses grp_a; uses grp_a_top; uses g:grp; grouping grp_a { leaf a2 { type uint8; } } }
+}

@@ -1,0 +1,35 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Refine(s) target node \"h\" in grouping \"grp\" was not found.",
+          "phase": "compile",
+          "schema_path": "/uses-refine-notification-missing:top/{uses='grp'}",
+          "vecode": 4,
+          "vecode_name": "LYVE_REFERENCE"
+        }
+      ],
+      "name": "uses-refine-notification-missing",
+      "phase": "compile",
+      "rc": {
+        "err": 5,
+        "name": "LY_ENOTFOUND"
+      }
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

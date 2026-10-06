@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_augment.
+module aug-chain-of-three-modules {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:aug-chain-of-three-modules";
+  prefix aug-chain-of-three-modules;
+  import aug-chain-of-three-modules-h1 { prefix a; } import aug-chain-of-three-modules-h2 { prefix c; }
+  augment /a:top/c:c { leaf d { type a:atype; } leaf c { type string; } }
+}

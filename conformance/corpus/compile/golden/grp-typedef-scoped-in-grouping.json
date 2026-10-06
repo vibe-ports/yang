@@ -1,0 +1,70 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module grp-typedef-scoped-in-grouping {\n  namespace \"urn:vibe-ports:yang:conformance:grp-typedef-scoped-in-grouping\";\n  prefix grp-typedef-scoped-in-grouping;\n\n  container a {\n    config true;\n    status current;\n    leaf x {\n      type uint8 {\n        range \"1..5\";\n      }\n      config true;\n      status current;\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "grp-typedef-scoped-in-grouping",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "grp-typedef-scoped-in-grouping",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/grp-typedef-scoped-in-grouping:a",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "grp-typedef-scoped-in-grouping",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/grp-typedef-scoped-in-grouping:a/x",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "1..5",
+            "typedefs": [
+              "t"
+            ],
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

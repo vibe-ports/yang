@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_refine.
+module refine-leaf-mandatory-true-with-default {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:refine-leaf-mandatory-true-with-default";
+  prefix refine-leaf-mandatory-true-with-default;
+  import refine-leaf-mandatory-true-with-default-h1 { prefix g; }
+  uses g:grp { refine c/l { mandatory true; } }
+}

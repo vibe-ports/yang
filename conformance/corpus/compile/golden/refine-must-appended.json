@@ -1,0 +1,61 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module refine-must-appended {\n  namespace \"urn:vibe-ports:yang:conformance:refine-must-appended\";\n  prefix refine-must-appended;\n\n  leaf x {\n    type string;\n    must \"1\";\n    must \"2\";\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "refine-must-appended",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "refine-must-appended",
+          "musts": [
+            {
+              "apptag": null,
+              "expr": "1",
+              "message": null
+            },
+            {
+              "apptag": null,
+              "expr": "2",
+              "message": null
+            }
+          ],
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/refine-must-appended:x",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_grouping.
+module grp-identityref-default-from-grouping-module {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:grp-identityref-default-from-grouping-module";
+  prefix grp-identityref-default-from-grouping-module;
+  import grp-identityref-default-from-grouping-module-h1 { prefix y1; }
+  container root { uses y1:attrs_group; }
+}

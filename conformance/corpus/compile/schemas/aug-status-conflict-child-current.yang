@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module aug-status-conflict-child-current {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:aug-status-conflict-child-current";
+  prefix aug-status-conflict-child-current;
+  container c;
+  augment /c { status obsolete; leaf x { status current; type string; } }
+}

@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_refine.
+module refine-choice-must {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:refine-choice-must";
+  prefix refine-choice-must;
+  import refine-choice-must-h1 { prefix g; }
+  uses g:grp { refine c/ch { must 1; } }
+}

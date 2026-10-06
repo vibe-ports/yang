@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module grp-typedef-scoped-in-grouping {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:grp-typedef-scoped-in-grouping";
+  prefix grp-typedef-scoped-in-grouping;
+  grouping g { typedef t { type uint8 { range "1..5"; } } leaf x { type t; } }
+  container a { uses g; }
+}

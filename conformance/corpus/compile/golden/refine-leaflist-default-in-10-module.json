@@ -1,0 +1,50 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module refine-leaflist-default-in-10-module-h1 {\n  namespace \"urn:vibe-ports:yang:conformance:refine-leaflist-default-in-10-module-h1\";\n  prefix refine-leaflist-default-in-10-module-h1;\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": true,
+          "name": "f"
+        }
+      ],
+      "identities": [],
+      "name": "refine-leaflist-default-in-10-module-h1",
+      "revision": null,
+      "schema_tree": []
+    },
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Invalid refine of default in leaf-list - the default statement is allowed only in YANG 1.1 modules.",
+          "phase": "compile",
+          "schema_path": "/refine-leaflist-default-in-10-module:{uses='g:grp'}/refine-leaflist-default-in-10-module:c/ll/{refine='c/ll'}",
+          "vecode": 6,
+          "vecode_name": "LYVE_SEMANTICS"
+        }
+      ],
+      "name": "refine-leaflist-default-in-10-module",
+      "phase": "compile",
+      "rc": {
+        "err": 7,
+        "name": "LY_EVALID"
+      }
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

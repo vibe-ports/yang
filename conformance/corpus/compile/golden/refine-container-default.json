@@ -1,0 +1,50 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module refine-container-default-h1 {\n  namespace \"urn:vibe-ports:yang:conformance:refine-container-default-h1\";\n  prefix refine-container-default-h1;\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": true,
+          "name": "f"
+        }
+      ],
+      "identities": [],
+      "name": "refine-container-default-h1",
+      "revision": null,
+      "schema_tree": []
+    },
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Invalid refine of container node - it is not possible to replace \"default\" property.",
+          "phase": "compile",
+          "schema_path": "/refine-container-default:{uses='g:grp'}/refine-container-default:c/{refine='c'}",
+          "vecode": 4,
+          "vecode_name": "LYVE_REFERENCE"
+        }
+      ],
+      "name": "refine-container-default",
+      "phase": "compile",
+      "rc": {
+        "err": 7,
+        "name": "LY_EVALID"
+      }
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

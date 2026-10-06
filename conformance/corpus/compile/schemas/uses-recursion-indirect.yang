@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_uses.
+module uses-recursion-indirect {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:uses-recursion-indirect";
+  prefix uses-recursion-indirect;
+  uses grp;
+  grouping grp { leaf a { type string; } uses grp1; }
+  grouping grp1 { leaf b { type string; } uses grp2; }
+  grouping grp2 { leaf c { type string; } uses grp; }
+}

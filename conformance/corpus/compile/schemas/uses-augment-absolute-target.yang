@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_uses.
+module uses-augment-absolute-target {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:uses-augment-absolute-target";
+  prefix uses-augment-absolute-target;
+  grouping grp { container g; }
+  leaf g { type string; }
+  container top { uses grp { augment /g { leaf x { type int8; } } } }
+}

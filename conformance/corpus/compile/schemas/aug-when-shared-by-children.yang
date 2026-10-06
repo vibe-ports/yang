@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module aug-when-shared-by-children {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:aug-when-shared-by-children";
+  prefix aug-when-shared-by-children;
+  container c;
+  augment /c { when "../x"; leaf a { type string; } leaf b { type string; } }
+  leaf x { type string; }
+}

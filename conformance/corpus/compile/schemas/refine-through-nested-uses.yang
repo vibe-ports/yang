@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module refine-through-nested-uses {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:refine-through-nested-uses";
+  prefix refine-through-nested-uses;
+  grouping inner { leaf x { type string; } }
+  grouping outer { container c { uses inner; } }
+  uses outer { refine c/x { description via-path; } }
+}

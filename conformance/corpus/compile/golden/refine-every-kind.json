@@ -1,0 +1,360 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module refine-every-kind-h1 {\n  namespace \"urn:vibe-ports:yang:conformance:refine-every-kind-h1\";\n  prefix refine-every-kind-h1;\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": true,
+          "name": "f"
+        }
+      ],
+      "identities": [],
+      "name": "refine-every-kind-h1",
+      "revision": null,
+      "schema_tree": []
+    },
+    {
+      "accepted": true,
+      "compiled": "module refine-every-kind {\n  namespace \"urn:vibe-ports:yang:conformance:refine-every-kind\";\n  prefix refine-every-kind;\n\n  container c {\n    config true;\n    status current;\n    leaf l {\n      type string;\n      default \"hello\";\n      config false;\n      status current;\n    }\n    leaf-list ll {\n      type string;\n      default \"hello\";\n      default \"world\";\n      config true;\n      min-elements 0;\n      max-elements 5;\n      ordered-by system;\n      status current;\n    }\n    choice ch {\n      default \"cb\";\n      config true;\n      status current;\n      case ca {\n        config true;\n        status current;\n        leaf ca {\n          type int8;\n          config true;\n          status current;\n        }\n      }\n      case cb {\n        config true;\n        status current;\n        leaf cb {\n          type uint8;\n          config true;\n          status current;\n        }\n      }\n    }\n    leaf x {\n      type string;\n      must \"1\";\n      must \"../ll\";\n      default \"cheers!\";\n      config true;\n      mandatory false;\n      status current;\n      description\n        \"refined\";\n      reference\n        \"refined\";\n    }\n    anydata a {\n      must \"1\";\n      config true;\n      mandatory true;\n      status current;\n      description\n        \"refined\";\n      reference\n        \"refined\";\n    }\n    container c {\n      presence \"true\";\n      config true;\n      status current;\n      leaf l {\n        type string;\n        config true;\n        status current;\n      }\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": true,
+          "name": "fa"
+        }
+      ],
+      "identities": [],
+      "name": "refine-every-kind",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "refine-every-kind",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/refine-every-kind:c",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": [
+            "hello"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "refine-every-kind",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/refine-every-kind:c/l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "mytype"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "hello",
+            "world"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": 5,
+          "min_elements": 0,
+          "module": "refine-every-kind",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "system",
+          "path": "/refine-every-kind:c/ll",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "mytype"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "cb"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "refine-every-kind",
+          "musts": null,
+          "nodetype": "choice",
+          "ordered_by": null,
+          "path": "/refine-every-kind:c/ch",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "refine-every-kind",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/refine-every-kind:c/ch/ca",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "refine-every-kind",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/refine-every-kind:c/ch/ca/ca",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "int8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "refine-every-kind",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/refine-every-kind:c/ch/cb",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "refine-every-kind",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/refine-every-kind:c/ch/cb/cb",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "cheers!"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "refine-every-kind",
+          "musts": [
+            {
+              "apptag": null,
+              "expr": "1",
+              "message": null
+            },
+            {
+              "apptag": null,
+              "expr": "../ll",
+              "message": null
+            }
+          ],
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/refine-every-kind:c/x",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "mytype"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "refine-every-kind",
+          "musts": [
+            {
+              "apptag": null,
+              "expr": "1",
+              "message": null
+            }
+          ],
+          "nodetype": "anydata",
+          "ordered_by": null,
+          "path": "/refine-every-kind:c/a",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "refine-every-kind",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/refine-every-kind:c/c",
+          "presence": true,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "refine-every-kind",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/refine-every-kind:c/c/l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

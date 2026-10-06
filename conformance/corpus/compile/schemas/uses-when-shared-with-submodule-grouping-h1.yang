@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_uses.
+submodule uses-when-shared-with-submodule-grouping-h1 {
+  yang-version 1;
+  belongs-to uses-when-shared-with-submodule-grouping { prefix uses-when-shared-with-submodule-grouping; }
+  grouping grp { leaf b { when 1; type string; } leaf c { type string; } }
+}

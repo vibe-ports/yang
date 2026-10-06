@@ -1,0 +1,35 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Duplicate identifier \"/uses-duplicate-leaf-defined-after:m\" of data definition/RPC/action/notification statement.",
+          "phase": "compile",
+          "schema_path": "/uses-duplicate-leaf-defined-after:m",
+          "vecode": 2,
+          "vecode_name": "LYVE_SYNTAX_YANG"
+        }
+      ],
+      "name": "uses-duplicate-leaf-defined-after",
+      "phase": "compile",
+      "rc": {
+        "err": 4,
+        "name": "LY_EEXIST"
+      }
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

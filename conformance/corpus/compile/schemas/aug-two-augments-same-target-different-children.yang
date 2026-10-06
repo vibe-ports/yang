@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module aug-two-augments-same-target-different-children {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:aug-two-augments-same-target-different-children";
+  prefix aug-two-augments-same-target-different-children;
+  container c;
+  augment /c { leaf a { type string; } }
+  augment /c { leaf b { type string; } }
+}

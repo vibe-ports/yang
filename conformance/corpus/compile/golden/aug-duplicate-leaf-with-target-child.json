@@ -1,0 +1,35 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Duplicate identifier \"/aug-duplicate-leaf-with-target-child:c/a\" of data definition/RPC/action/notification statement.",
+          "phase": "compile",
+          "schema_path": "/aug-duplicate-leaf-with-target-child:{augment='/c'}/a",
+          "vecode": 2,
+          "vecode_name": "LYVE_SYNTAX_YANG"
+        }
+      ],
+      "name": "aug-duplicate-leaf-with-target-child",
+      "phase": "compile",
+      "rc": {
+        "err": 4,
+        "name": "LY_EEXIST"
+      }
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

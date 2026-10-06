@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module uses-action-in-notif-via-grouping {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:uses-action-in-notif-via-grouping";
+  prefix uses-action-in-notif-via-grouping;
+  grouping grp { action a { input { leaf x { type string; } } } }
+  notification n { container c { uses grp; } }
+}
