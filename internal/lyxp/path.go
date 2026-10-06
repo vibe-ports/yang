@@ -199,6 +199,7 @@ func (e *Expr) checkPredicate(i int, prefix Prefix, pred Pred) (int, string) {
 				return i, fmt.Sprintf("Redundant prefix for \"%s\" in path.", full)
 			}
 			name := full[c+1:] // c == -1 keeps all of it
+			e.work++
 			if seen[name] {
 				return i, fmt.Sprintf("Duplicate predicate key \"%s\" in path.", name)
 			}

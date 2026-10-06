@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 )
 
 var (
@@ -61,19 +60,22 @@ func TestTrunc15(t *testing.T) {
 	}
 }
 
-// 100k predicate keys must not take quadratic time (duplicate-key check).
+// 100k predicate keys must not take quadratic work (the duplicate-key check looks each key up
+// once, not against every previous key). Counted, not timed: a wall-clock bound flakes on slow
+// CI machines (#183).
 func TestManyKeys(t *testing.T) {
+	const n = 100000
 	var b strings.Builder
 	b.WriteString("/m:a")
-	for i := 0; i < 100000; i++ {
+	for i := 0; i < n; i++ {
 		fmt.Fprintf(&b, "[k%d='1']", i)
 	}
-	start := time.Now()
-	if _, msg := ParsePath(b.String(), instID); msg != "" {
+	e, msg := ParsePath(b.String(), instID)
+	if msg != "" {
 		t.Fatal(msg)
 	}
-	if d := time.Since(start); d > 5*time.Second {
-		t.Errorf("took %v", d)
+	if limit := 2 * n; e.work > limit {
+		t.Errorf("%d key lookups for %d keys, limit %d", e.work, n, limit)
 	}
 }
 
