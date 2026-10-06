@@ -1,0 +1,1 @@
+module i {namespace urn:i;prefix i;list l1 {key a; leaf a {type string;} leaf b {type string;} leaf c {type string;}}list l2 {key a; unique "b c"; unique "d"; leaf a {type string;} leaf b {type string;}         leaf c {type string;} leaf d {type string;}}}

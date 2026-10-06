@@ -1,0 +1,115 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module f {\n  namespace \"urn:f\";\n  prefix f;\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "f",
+      "revision": null,
+      "schema_tree": []
+    },
+    {
+      "accepted": true,
+      "compiled": "module g {\n  namespace \"urn:g\";\n  prefix g;\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "g",
+      "revision": null,
+      "schema_tree": []
+    },
+    {
+      "accepted": true,
+      "compiled": "module h {\n  namespace \"urn:h\";\n  prefix h;\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "h",
+      "revision": null,
+      "schema_tree": []
+    },
+    {
+      "accepted": true,
+      "compiled": "module q {\n  namespace \"urn:q\";\n  prefix q;\n\n  leaf q {\n    type instance-identifier {\n      require-instance true;\n    }\n    default \"/e:d2[.='a']\";\n    config true;\n    status current;\n  }\n  leaf-list ql {\n    type instance-identifier {\n      require-instance true;\n    }\n    default \"/e:d[.='b']\";\n    default \"/e:d2[.='c']\";\n    config true;\n    min-elements 0;\n    max-elements 4294967295;\n    ordered-by system;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "q",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": [
+            "/e:d2[.='a']"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "q",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/q:q",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "instance-identifier",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "/e:d[.='b']",
+            "/e:d2[.='c']"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "q",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "system",
+          "path": "/q:ql",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "instance-identifier",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

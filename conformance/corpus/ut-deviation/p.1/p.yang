@@ -1,0 +1,1 @@
+module p {yang-version 1.1; namespace urn:p;prefix p; typedef mytype {type int8; default 1;}leaf a {type string; default 10;} leaf-list b {type string;}deviation /a {deviate replace {type mytype;}}deviation /b {deviate replace {type mytype;}}}

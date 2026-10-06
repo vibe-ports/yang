@@ -23251,3 +23251,1356 @@ fixtures:
       rfc: ["RFC7950#7.19"]
       deviation: null
 # END ut-compile-types
+
+# BEGIN ut-deviation (generated from libyang tests/utests/schema/test_tree_schema_compile.c test_deviation, reviewed)
+
+  - id: ut-deviation/001-b
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3085 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.1", "RFC7950#7.20.3.4"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [a.1, b.1]
+      modules: [{name: b}]
+    golden: golden/001-b.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.1", "RFC7950#7.20.3.4"]
+      deviation: null
+
+  - id: ut-deviation/002-c
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3113 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2", "RFC7950#7.20.3.3", "RFC7950#7.20.3.4"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [c.1]
+      modules: [{name: c}]
+    golden: golden/002-c.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2", "RFC7950#7.20.3.3", "RFC7950#7.20.3.4"]
+      deviation: null
+
+  - id: ut-deviation/003-d
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3128 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2", "RFC7950#7.20.3.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [d.1]
+      modules: [{name: d}]
+    golden: golden/003-d.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2", "RFC7950#7.20.3.3"]
+      deviation: null
+
+  - id: ut-deviation/004-f
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3151 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [e.1, f.1]
+      modules: [{name: f}]
+    golden: golden/004-f.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.3"]
+      deviation: null
+
+  - id: ut-deviation/005-g
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3172 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [e.1, f.1, g.1]
+      modules: [{name: f}, {name: g}]
+    golden: golden/005-g.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/006-h
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3200 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [e.1, f.1, g.1, h.1]
+      modules: [{name: f}, {name: g}, {name: h}]
+    golden: golden/006-h.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+      deviation: null
+
+  - id: ut-deviation/007-j
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3216 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2", "RFC7950#7.20.3.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [i.1, j.1]
+      modules: [{name: j}]
+    golden: golden/007-j.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2", "RFC7950#7.20.3.3"]
+      deviation: null
+
+  - id: ut-deviation/008-k
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3234 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [k.1]
+      modules: [{name: k}]
+    golden: golden/008-k.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/009-l
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3251 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [l.1]
+      modules: [{name: l}]
+    golden: golden/009-l.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+      deviation: null
+
+  - id: ut-deviation/010-m
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3265 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2", "RFC7950#7.20.3.4"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [m.1]
+      modules: [{name: m}]
+    golden: golden/010-m.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2", "RFC7950#7.20.3.4"]
+      deviation: null
+
+  - id: ut-deviation/011-n
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3279 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2", "RFC7950#7.20.3.3", "RFC7950#7.20.3.4"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [n.1]
+      modules: [{name: n}]
+    golden: golden/011-n.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2", "RFC7950#7.20.3.3", "RFC7950#7.20.3.4"]
+      deviation: null
+
+  - id: ut-deviation/012-o
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3293 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2", "RFC7950#7.20.3.4"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [o.1]
+      modules: [{name: o}]
+    golden: golden/012-o.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2", "RFC7950#7.20.3.4"]
+      deviation: null
+
+  - id: ut-deviation/013-p
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3319 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [p.1]
+      modules: [{name: p}]
+    golden: golden/013-p.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+      deviation: null
+
+  - id: ut-deviation/014-q
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3334 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [e.1, f.1, g.1, h.1, q.1]
+      modules: [{name: f}, {name: g}, {name: h}, {name: q}]
+    golden: golden/014-q.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3"]
+      deviation: null
+
+  - id: ut-deviation/015-qdev
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3337 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [q.1, e.1, f.1, g.1, h.1, qdev.1]
+      modules: [{name: f}, {name: g}, {name: h}, {name: q}, {name: qdev}]
+    golden: golden/015-qdev.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+      deviation: null
+
+  - id: ut-deviation/016-r
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3347 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [r.1]
+      modules: [{name: r}]
+    golden: golden/016-r.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+      deviation: null
+
+  - id: ut-deviation/017-s
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3359 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [s.1]
+      modules: [{name: s}]
+    golden: golden/017-s.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+      deviation: null
+
+  - id: ut-deviation/018-u
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3369 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [t.1, u.1]
+      modules: [{name: u}]
+    golden: golden/018-u.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+      deviation: null
+
+  - id: ut-deviation/019-v
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3379 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [v.1]
+      modules: [{name: v}]
+    golden: golden/019-v.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3"]
+      deviation: null
+
+  - id: ut-deviation/020-w
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3386 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [w-sub.1, v.1, w.1]
+      modules: [{name: v}, {name: w}]
+    golden: golden/020-w.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3"]
+      deviation: null
+
+  - id: ut-deviation/021-x
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3389 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [w.1, v.1, w-sub.1, x.1]
+      modules: [{name: v}, {name: w}, {name: x}]
+    golden: golden/021-x.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+      deviation: null
+
+  - id: ut-deviation/022-z
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3401 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [y.1, z.1]
+      modules: [{name: z}]
+    golden: golden/022-z.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+      deviation: null
+
+  - id: ut-deviation/023-m-base
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3416 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [m-base.1]
+      modules: [{name: m-base}]
+    golden: golden/023-m-base.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3"]
+      deviation: null
+
+  - id: ut-deviation/024-m-dev
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3427 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [m-base-aug.1, m-base-aug2.1, m-base.1, m-dev.1]
+      modules: [{name: m-base}, {name: m-dev}]
+    golden: golden/024-m-dev.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.1"]
+      deviation: null
+
+  - id: ut-deviation/025-amod-a
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3438 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [amod-a.1]
+      modules: [{name: amod-a}]
+    golden: golden/025-amod-a.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3"]
+      deviation: null
+
+  - id: ut-deviation/026-amod-b
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3440 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [amod-b.1]
+      modules: [{name: amod-b}]
+    golden: golden/026-amod-b.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3"]
+      deviation: null
+
+  - id: ut-deviation/027-amod-c
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3442 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [amod-a.1, amod-b.1, amod-c.1]
+      modules: [{name: amod-a}, {name: amod-b}, {name: amod-c}]
+    golden: golden/027-amod-c.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/028-bmod-a
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3452 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [bmod-a.1]
+      modules: [{name: bmod-a}]
+    golden: golden/028-bmod-a.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3"]
+      deviation: null
+
+  - id: ut-deviation/029-bmod-b
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3455 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [bmod-a.1, bmod-b.1]
+      modules: [{name: bmod-a}, {name: bmod-b}]
+    golden: golden/029-bmod-b.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.3"]
+      deviation: null
+
+  - id: ut-deviation/030-cmod-a
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3465 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [cmod-a.1]
+      modules: [{name: cmod-a}]
+    golden: golden/030-cmod-a.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3"]
+      deviation: null
+
+  - id: ut-deviation/031-cmod-b
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3468 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [cmod-a.1, cmod-b.1]
+      modules: [{name: cmod-a}, {name: cmod-b}]
+    golden: golden/031-cmod-b.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+      deviation: null
+
+  - id: ut-deviation/032-a1
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3484 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [a1-imp.1, a1.1]
+      modules: [{name: a1}]
+    golden: golden/032-a1.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/033-a2
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3494 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [a2-imp.1, a2.1]
+      modules: [{name: a2}]
+    golden: golden/033-a2.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/034-a3
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3504 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [a3-imp.1, a3.1]
+      modules: [{name: a3}]
+    golden: golden/034-a3.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/035-a4
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3514 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [a4-imp.1, a4.1]
+      modules: [{name: a4}]
+    golden: golden/035-a4.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+      deviation: null
+
+  - id: ut-deviation/036-a5
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3525 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [a5-imp.1, a5.1]
+      modules: [{name: a5}]
+    golden: golden/036-a5.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/037-aa1
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3530 (expected LY_ENOTFOUND)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [a.1, b.1, aa1.1]
+      modules: [{name: b}, {name: aa1}]
+    golden: golden/037-aa1.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.1"]
+      deviation: null
+
+  - id: ut-deviation/038-aa2
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3535 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.1", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [a.1, b.1, aa2.1]
+      modules: [{name: b}, {name: aa2}]
+    golden: golden/038-aa2.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.1", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/039-bb
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3541 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [a.1, b.1, bb.1]
+      modules: [{name: b}, {name: bb}]
+    golden: golden/039-bb.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.1"]
+      deviation: null
+
+  - id: ut-deviation/040-cc
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3546 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [cc.1]
+      modules: [{name: cc}]
+    golden: golden/040-cc.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/041-cd
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3550 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [cd.1]
+      modules: [{name: cd}]
+    golden: golden/041-cd.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/042-dd1
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3555 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [dd1.1]
+      modules: [{name: dd1}]
+    golden: golden/042-dd1.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.3"]
+      deviation: null
+
+  - id: ut-deviation/043-dd2
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3559 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [dd2.1]
+      modules: [{name: dd2}]
+    golden: golden/043-dd2.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.3"]
+      deviation: null
+
+  - id: ut-deviation/044-dd3
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3563 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [dd3.1]
+      modules: [{name: dd3}]
+    golden: golden/044-dd3.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.3"]
+      deviation: null
+
+  - id: ut-deviation/045-ee1
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3568 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [ee1.1]
+      modules: [{name: ee1}]
+    golden: golden/045-ee1.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+      deviation: null
+
+  - id: ut-deviation/046-ee2
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3572 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [ee2.1]
+      modules: [{name: ee2}]
+    golden: golden/046-ee2.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+      deviation: null
+
+  - id: ut-deviation/047-ff1
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3578 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [e.1, f.1, g.1, h.1, ff1.1]
+      modules: [{name: f}, {name: g}, {name: h}, {name: ff1}]
+    golden: golden/047-ff1.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.3"]
+      deviation: null
+
+  - id: ut-deviation/048-ff3
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3582 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [e.1, f.1, g.1, h.1, ff3.1]
+      modules: [{name: f}, {name: g}, {name: h}, {name: ff3}]
+    golden: golden/048-ff3.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.3"]
+      deviation: null
+
+  - id: ut-deviation/049-ff5
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3586 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [ff5.1]
+      modules: [{name: ff5}]
+    golden: golden/049-ff5.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.3"]
+      deviation: null
+
+  - id: ut-deviation/050-ff6
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3590 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [e.1, f.1, g.1, h.1, ff6.1]
+      modules: [{name: f}, {name: g}, {name: h}, {name: ff6}]
+    golden: golden/050-ff6.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.3"]
+      deviation: null
+
+  - id: ut-deviation/051-ff7
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3594 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [e.1, f.1, g.1, h.1, ff7.1]
+      modules: [{name: f}, {name: g}, {name: h}, {name: ff7}]
+    golden: golden/051-ff7.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.3"]
+      deviation: null
+
+  - id: ut-deviation/052-gg1
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3599 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [e.1, f.1, g.1, h.1, gg1.1]
+      modules: [{name: f}, {name: g}, {name: h}, {name: gg1}]
+    golden: golden/052-gg1.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/053-gg2
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3603 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [e.1, f.1, g.1, h.1, gg2.1]
+      modules: [{name: f}, {name: g}, {name: h}, {name: gg2}]
+    golden: golden/053-gg2.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/054-gg3
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3607 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [e.1, f.1, g.1, h.1, gg3.1]
+      modules: [{name: f}, {name: g}, {name: h}, {name: gg3}]
+    golden: golden/054-gg3.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/055-gg4
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3611 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [e.1, f.1, g.1, h.1, gg4.1]
+      modules: [{name: f}, {name: g}, {name: h}, {name: gg4}]
+    golden: golden/055-gg4.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/056-gg4
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3615 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [e.1, f.1, g.1, h.1, gg4.2]
+      modules: [{name: f}, {name: g}, {name: h}, {name: gg4}]
+    golden: golden/056-gg4.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/057-gg5
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3619 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [gg5.1]
+      modules: [{name: gg5}]
+    golden: golden/057-gg5.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/058-hh1
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3624 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [e.1, f.1, g.1, h.1, hh1.1]
+      modules: [{name: f}, {name: g}, {name: h}, {name: hh1}]
+    golden: golden/058-hh1.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+      deviation: null
+
+  - id: ut-deviation/059-ii1
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3629 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [i.1, j.1, ii1.1]
+      modules: [{name: j}, {name: ii1}]
+    golden: golden/059-ii1.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.3"]
+      deviation: null
+
+  - id: ut-deviation/060-ii2
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3633 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [i.1, j.1, ii2.1]
+      modules: [{name: j}, {name: ii2}]
+    golden: golden/060-ii2.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.3"]
+      deviation: null
+
+  - id: ut-deviation/061-ii3
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3637 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [ii3.1]
+      modules: [{name: ii3}]
+    golden: golden/061-ii3.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.3"]
+      deviation: null
+
+  - id: ut-deviation/062-ii4
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3640 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [ii4.1]
+      modules: [{name: ii4}]
+    golden: golden/062-ii4.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/063-jj1
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3644 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [jj1.1]
+      modules: [{name: jj1}]
+    golden: golden/063-jj1.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/064-jj2
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3647 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [jj2.1]
+      modules: [{name: jj2}]
+    golden: golden/064-jj2.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/065-jj4
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3651 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [jj4.1]
+      modules: [{name: jj4}]
+    golden: golden/065-jj4.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+      deviation: null
+
+  - id: ut-deviation/066-jj5
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3655 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [jj5.1]
+      modules: [{name: jj5}]
+    golden: golden/066-jj5.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/067-jj6
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3659 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [jj6.1]
+      modules: [{name: jj6}]
+    golden: golden/067-jj6.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/068-kk1
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3664 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [kk1.1]
+      modules: [{name: kk1}]
+    golden: golden/068-kk1.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/069-kk2
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3668 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [kk2.1]
+      modules: [{name: kk2}]
+    golden: golden/069-kk2.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+      deviation: null
+
+  - id: ut-deviation/070-kk4
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3672 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [kk4.1]
+      modules: [{name: kk4}]
+    golden: golden/070-kk4.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/071-ll1
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3677 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [ll1.1]
+      modules: [{name: ll1}]
+    golden: golden/071-ll1.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/072-ll2
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3681 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [ll2.1]
+      modules: [{name: ll2}]
+    golden: golden/072-ll2.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/073-ll2
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3685 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [ll2.2]
+      modules: [{name: ll2}]
+    golden: golden/073-ll2.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/074-mm1
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3690 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [mm1.1]
+      modules: [{name: mm1}]
+    golden: golden/074-mm1.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/075-mm2
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3694 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [mm2.1]
+      modules: [{name: mm2}]
+    golden: golden/075-mm2.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/076-mm3
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3698 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [mm3.1]
+      modules: [{name: mm3}]
+    golden: golden/076-mm3.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+      deviation: null
+
+  - id: ut-deviation/077-mm4
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3702 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [mm4.1]
+      modules: [{name: mm4}]
+    golden: golden/077-mm4.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+      deviation: null
+
+  - id: ut-deviation/078-mm5
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3706 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [mm5.1]
+      modules: [{name: mm5}]
+    golden: golden/078-mm5.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/079-mm6
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3710 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [mm6.1]
+      modules: [{name: mm6}]
+    golden: golden/079-mm6.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/080-mm7
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3714 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [mm7.1]
+      modules: [{name: mm7}]
+    golden: golden/080-mm7.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/081-mm8
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3718 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [mm8.1]
+      modules: [{name: mm8}]
+    golden: golden/081-mm8.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/082-nn1
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3723 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [nn1.1]
+      modules: [{name: nn1}]
+    golden: golden/082-nn1.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+      deviation: null
+
+  - id: ut-deviation/083-nn2
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3726 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [nn2.1]
+      modules: [{name: nn2}]
+    golden: golden/083-nn2.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+      deviation: null
+
+  - id: ut-deviation/084-oo1
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3731 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [oo1.1]
+      modules: [{name: oo1}]
+    golden: golden/084-oo1.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+      deviation: null
+
+  - id: ut-deviation/085-oo2
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3735 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [oo2.1]
+      modules: [{name: oo2}]
+    golden: golden/085-oo2.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.4"]
+      deviation: null
+
+  - id: ut-deviation/086-oo3
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3740 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [oo3.1]
+      modules: [{name: oo3}]
+    golden: golden/086-oo3.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: ut-deviation/087-pp
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3745 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [pp.1]
+      modules: [{name: pp}]
+    golden: golden/087-pp.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3"]
+      deviation: null
+
+  - id: ut-deviation/088-pp1
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3748 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [pp.1, pp1.1]
+      modules: [{name: pp}, {name: pp1}]
+    golden: golden/088-pp1.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.1"]
+      deviation: null
+
+  - id: ut-deviation/089-emod-a
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3753 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [emod-a.1]
+      modules: [{name: emod-a}]
+    golden: golden/089-emod-a.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3"]
+      deviation: null
+
+  - id: ut-deviation/090-emod-b
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3756 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [emod-a.1, emod-b.1]
+      modules: [{name: emod-a}, {name: emod-b}]
+    golden: golden/090-emod-b.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.3"]
+      deviation: null
+# END ut-deviation

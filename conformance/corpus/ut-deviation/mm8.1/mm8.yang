@@ -1,0 +1,1 @@
+module mm8 {namespace urn:mm8;prefix mm8; list x {config false; max-elements 5;}deviation /x {deviate add {max-elements 1;}}}

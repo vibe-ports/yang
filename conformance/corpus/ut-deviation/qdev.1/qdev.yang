@@ -1,0 +1,1 @@
+module qdev {yang-version 1.1; namespace urn:qdev;prefix qd; import q {prefix q;}deviation /q:q { deviate replace {type string;}}deviation /q:ql { deviate replace {type string;}}}

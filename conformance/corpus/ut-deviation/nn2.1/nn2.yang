@@ -1,0 +1,1 @@
+module nn2 {namespace urn:nn2;prefix nn2; leaf-list x {type string;}deviation /x {deviate replace {type empty;}}}

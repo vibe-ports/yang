@@ -1,0 +1,1 @@
+module a3 {namespace urn:a3;prefix a3;import a3-imp {prefix a3i;}deviation "/a3i:l" {deviate add {must "string-length(/a3i:k) > 0";}}}

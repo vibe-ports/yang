@@ -1,0 +1,1 @@
+module k {namespace urn:k;prefix k; leaf a {type string;}container top {leaf x {type string;} leaf y {type string; config false;}}deviation /a {deviate add {config false; }}deviation /top {deviate add {config false;}}}

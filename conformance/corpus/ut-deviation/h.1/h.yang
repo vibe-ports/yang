@@ -1,0 +1,1 @@
+module h {yang-version 1.1; namespace urn:h;prefix h;import e {prefix x;}deviation /x:b {deviate replace {default x:ba;}}deviation /x:c {deviate replace {default hello;}}}

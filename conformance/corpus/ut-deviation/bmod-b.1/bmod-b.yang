@@ -1,0 +1,1 @@
+module bmod-b {namespace urn:bmod-b;prefix b;import bmod-a {prefix a;}deviation "/a:cont/a:l" {deviate delete {a:ext1;}}}

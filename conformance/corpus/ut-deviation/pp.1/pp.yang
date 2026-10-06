@@ -1,0 +1,1 @@
+module pp {namespace urn:pp;prefix pp;leaf l { type leafref {path /c/x;}}container c {leaf x {type string;} leaf y {type string;}}}

@@ -1,0 +1,1 @@
+module s {yang-version 1.1; namespace urn:s;prefix s;leaf s {type instance-identifier {require-instance true;} default /s:x;}leaf x {type string;} leaf y {type string;}deviation /s:s {deviate replace {default /s:y;}}}

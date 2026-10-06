@@ -1,0 +1,1 @@
+module q {yang-version 1.1; namespace urn:q;prefix q; import e {prefix e;}leaf q {type instance-identifier; default "/e:d2[.='a']";}leaf-list ql {type instance-identifier; default "/e:d[.='b']"; default "/e:d2[.='c']";}}

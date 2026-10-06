@@ -1,0 +1,25 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module u {\n  namespace \"urn:u\";\n  prefix u;\n\n  identity ident {\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [
+        {
+          "bases": [],
+          "derived": [],
+          "name": "u:ident"
+        }
+      ],
+      "name": "u",
+      "revision": null,
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

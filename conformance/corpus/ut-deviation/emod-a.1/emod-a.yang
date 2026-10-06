@@ -1,0 +1,1 @@
+module emod-a {namespace urn:emod-a;prefix a;extension ext1; extension ext2 {argument arg;}container cont {leaf l {type string; a:ext2 my-arg;}}}

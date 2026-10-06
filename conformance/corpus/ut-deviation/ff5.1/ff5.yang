@@ -1,0 +1,1 @@
+module ff5 {namespace urn:ff5;prefix ff5; anyxml a;deviation /a {deviate delete {default x;}}}

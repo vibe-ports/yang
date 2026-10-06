@@ -1,0 +1,1 @@
+module ll2 {namespace urn:ll2;prefix ll2; choice ch {default a; leaf a {type string;} leaf b {type string;}}deviation /ch {deviate add {mandatory true;}}}

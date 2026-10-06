@@ -1,0 +1,1 @@
+module bmod-a {namespace urn:bmod-a;prefix a;extension ext1;container cont {leaf l {type string; a:ext1;}}}

@@ -1,0 +1,19 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module a1 {\n  namespace \"urn:a1\";\n  prefix a1;\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "a1",
+      "revision": null,
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

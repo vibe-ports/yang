@@ -1,0 +1,1 @@
+module pp1 {namespace urn:pp1;prefix pp1; import pp {prefix pp;}deviation /pp:c/pp:x {deviate not-supported;}}

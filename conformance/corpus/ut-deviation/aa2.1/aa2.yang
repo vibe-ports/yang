@@ -1,0 +1,1 @@
+module aa2 {namespace urn:aa2;prefix aa2;import a {prefix a;}deviation /a:top/a:a {deviate not-supported;}deviation /a:top/a:a {deviate add {default error;}}}

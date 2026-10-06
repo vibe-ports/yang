@@ -1,0 +1,1 @@
+module a1-imp {namespace urn:a1-imp;prefix a1i;identity id-base;identity id1 {base id-base; status deprecated;}leaf l {type identityref {base "id-base";}}}

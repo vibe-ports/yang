@@ -1,0 +1,1 @@
+module jj5 {namespace urn:jj5;prefix jj5; container top {leaf x {type string; config true;}}deviation /top {deviate add {config false;}}}

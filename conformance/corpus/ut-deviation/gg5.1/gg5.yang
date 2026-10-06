@@ -1,0 +1,1 @@
+module gg5 {namespace urn:gg5;prefix gg5; leaf x {type string; mandatory true;}deviation /x {deviate add {default error;}}}

@@ -1,0 +1,1 @@
+module d {namespace urn:d;prefix d; leaf c1 {type string; must 1;}container c2 {presence yes; must 1; must 2;} leaf c3 {type string; must 1; must 3;}deviation /c1 {deviate add {must 3;}}deviation /c2 {deviate delete {must 2;}}deviation /c3 {deviate delete {must 3; must 1;}}}

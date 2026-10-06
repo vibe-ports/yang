@@ -1,0 +1,1 @@
+module mm2 {namespace urn:mm2;prefix mm2; leaf-list x {max-elements 10; type string;}deviation /x {deviate add {min-elements 20;}}}

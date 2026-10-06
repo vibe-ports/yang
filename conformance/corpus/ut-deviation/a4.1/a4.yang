@@ -1,0 +1,1 @@
+module a4 {namespace urn:a4;prefix a4;import a4-imp {prefix a4i;}deviation "/a4i:l" {deviate replace {type leafref {path "/a4i:k";}}}}

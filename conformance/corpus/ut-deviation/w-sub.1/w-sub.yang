@@ -1,0 +1,1 @@
+submodule w-sub { belongs-to w { prefix w; }import v { prefix v_pref; }leaf l { type string; default "v_pref:ident2"; }}

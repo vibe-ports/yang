@@ -1,0 +1,1 @@
+module jj1 {namespace urn:jj1;prefix jj1; choice ch {case a {leaf a{type string;}}}deviation /ch/a {deviate add {config false;}}}

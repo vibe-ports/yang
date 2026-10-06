@@ -1,0 +1,1 @@
+module a {namespace urn:a;prefix a;container top {leaf a {type string;} leaf b {type string;} leaf c {type string;}}choice ch {default c; case b {leaf b{type string;}} case a {leaf a{type string;} leaf x {type string;}} case c {leaf c{type string;}}}rpc func1 { input { leaf x {type int8;}} output {leaf y {type int8;}}}rpc func2;}

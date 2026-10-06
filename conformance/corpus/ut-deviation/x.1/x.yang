@@ -1,0 +1,1 @@
+module x {namespace urn:x;prefix x;import w { prefix w_pref; } import v { prefix v_pref; }deviation /w_pref:l { deviate replace { type identityref { base v_pref:ident; } } }}

@@ -1,0 +1,1 @@
+module m-dev {namespace urn:m-dev;prefix md;import m-base-aug {prefix mba;} import m-base-aug2 {prefix mba2;}deviation /mba:cont2/mba2:augl2 {deviate not-supported;}}

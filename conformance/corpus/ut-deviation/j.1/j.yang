@@ -1,0 +1,1 @@
+module j {namespace urn:j;prefix j;import i {prefix i;}augment /i:l1 {leaf j_c {type string;}}deviation /i:l1 {deviate add {unique "b j:j_c"; }}deviation /i:l1 {deviate add {unique "i:c";}}deviation /i:l2 {deviate delete {unique "d"; unique "b c";}}}

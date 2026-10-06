@@ -1,0 +1,84 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module cmod-a {\n  namespace \"urn:cmod-a\";\n  prefix a;\n\n  container cont {\n    config true;\n    status current;\n    leaf l {\n      cmod-a:ext1;\n      type string;\n      config true;\n      status current;\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "cmod-a",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "cmod-a",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/cmod-a:cont",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "cmod-a",
+              "name": "ext1"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "cmod-a",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/cmod-a:cont/l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module cmod-b {\n  namespace \"urn:cmod-b\";\n  prefix b;\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "cmod-b",
+      "revision": null,
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

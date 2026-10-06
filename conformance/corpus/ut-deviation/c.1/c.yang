@@ -1,0 +1,1 @@
+module c {namespace urn:c;prefix c; typedef mytype {type string; units kilometers;}leaf c1 {type mytype;} leaf c2 {type mytype; units meters;} leaf c3 {type mytype; units meters;}deviation /c1 {deviate add {units meters;}}deviation /c2 {deviate delete {units meters;}}deviation /c3 {deviate replace {units centimeters;}}}

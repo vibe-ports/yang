@@ -1,0 +1,1 @@
+module m {namespace urn:m;prefix m;container a {leaf a {type string;}}container b {leaf b {mandatory true; type string;}}deviation /a/a {deviate add {mandatory true;}}deviation /b/b {deviate replace {mandatory false;}}}

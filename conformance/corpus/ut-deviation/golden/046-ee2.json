@@ -1,0 +1,35 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Invalid deviation replacing \"units\" property \"meters\" which is not present.",
+          "phase": "compile",
+          "schema_path": "/ee2:{deviation='/c'}",
+          "vecode": 4,
+          "vecode_name": "LYVE_REFERENCE"
+        }
+      ],
+      "name": "ee2",
+      "phase": "compile",
+      "rc": {
+        "err": 7,
+        "name": "LY_EVALID"
+      }
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

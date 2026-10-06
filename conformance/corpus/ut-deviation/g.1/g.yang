@@ -1,0 +1,1 @@
+module g {yang-version 1.1; namespace urn:g;prefix g;import e {prefix x;}deviation /x:b {deviate add {default x:ba;}}deviation /x:c {deviate add {default bye;}}deviation /x:d {deviate add {default all; default people;}}deviation /x:c2 {deviate add {default hi; must 1;}}deviation /x:d2 {deviate add {default hi; default all;}}}

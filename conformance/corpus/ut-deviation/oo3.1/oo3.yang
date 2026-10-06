@@ -1,0 +1,1 @@
+module oo3 {namespace urn:oo3;prefix oo3; leaf x {type uint8;}deviation /x {deviate add {default 300;}}}

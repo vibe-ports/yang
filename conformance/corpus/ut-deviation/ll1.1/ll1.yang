@@ -1,0 +1,1 @@
+module ll1 {namespace urn:ll1;prefix ll1; leaf x {default test; type string;}deviation /x {deviate add {mandatory true;}}}

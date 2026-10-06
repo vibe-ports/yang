@@ -1,0 +1,1 @@
+module oo1 {namespace urn:oo1;prefix oo1; leaf x {type uint16; default 300;}deviation /x {deviate replace {type uint8;}}}

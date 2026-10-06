@@ -1,0 +1,1 @@
+module ii2 {namespace urn:ii2;prefix ii2; import i {prefix i;} leaf x { type string;}deviation /i:l2 {deviate delete {unique d;}}}

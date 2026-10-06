@@ -1,0 +1,1 @@
+module a3-imp {namespace urn:a3-imp;prefix a3i;leaf l {type string;}leaf k {type string; status deprecated;}}

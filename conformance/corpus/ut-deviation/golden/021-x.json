@@ -1,0 +1,89 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module v {\n  namespace \"urn:v\";\n  prefix v;\n\n  identity ident {\n    derived ident2;\n  }\n\n  identity ident2 {\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [
+        {
+          "bases": [],
+          "derived": [
+            "v:ident2"
+          ],
+          "name": "v:ident"
+        },
+        {
+          "bases": [
+            "v:ident"
+          ],
+          "derived": [],
+          "name": "v:ident2"
+        }
+      ],
+      "name": "v",
+      "revision": null,
+      "schema_tree": []
+    },
+    {
+      "accepted": true,
+      "compiled": "module w {\n  namespace \"urn:w\";\n  prefix w;\n\n  leaf l {\n    type identityref {\n      base ident;\n    }\n    default \"v_pref:ident2\";\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "w",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": [
+            "v:ident2"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "w",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/w:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "identityref",
+            "bases": [
+              "v:ident"
+            ],
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module x {\n  namespace \"urn:x\";\n  prefix x;\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "x",
+      "revision": null,
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

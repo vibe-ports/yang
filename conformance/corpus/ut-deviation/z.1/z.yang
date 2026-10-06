@@ -1,0 +1,1 @@
+module z {namespace urn:z;prefix z;import y {prefix y;}deviation "/y:l1" {deviate replace {type leafref {path "/l2";}}}deviation "/y:l2" {deviate replace {type leafref {path "/z:al2";}}}leaf al2 {type string;}}

@@ -1,0 +1,1 @@
+module mm4 {namespace urn:mm4;prefix mm4; list x {min-elements 5; max-elements 10; config false;}deviation /x {deviate replace {min-elements 20;}}}

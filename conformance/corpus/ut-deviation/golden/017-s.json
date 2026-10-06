@@ -1,0 +1,112 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module s {\n  namespace \"urn:s\";\n  prefix s;\n\n  leaf s {\n    type instance-identifier {\n      require-instance true;\n    }\n    default \"/s:y\";\n    config true;\n    status current;\n  }\n  leaf x {\n    type string;\n    config true;\n    status current;\n  }\n  leaf y {\n    type string;\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "s",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": [
+            "/s:y"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "s",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/s:s",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "instance-identifier",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "s",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/s:x",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "s",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/s:y",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

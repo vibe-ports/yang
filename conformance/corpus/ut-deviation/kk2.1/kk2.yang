@@ -1,0 +1,1 @@
+module kk2 {namespace urn:kk2;prefix kk2; container top {leaf a{type string;}}deviation /top {deviate replace {mandatory true;}}}

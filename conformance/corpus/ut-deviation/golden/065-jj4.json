@@ -1,0 +1,35 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Invalid deviation of case node - it is not possible to replace \"config\" property.",
+          "phase": "compile",
+          "schema_path": "/jj4:{deviation='/ch/a'}",
+          "vecode": 4,
+          "vecode_name": "LYVE_REFERENCE"
+        }
+      ],
+      "name": "jj4",
+      "phase": "compile",
+      "rc": {
+        "err": 7,
+        "name": "LY_EVALID"
+      }
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

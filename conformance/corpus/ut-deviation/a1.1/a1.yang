@@ -1,0 +1,1 @@
+module a1 {namespace urn:a1;prefix a1;import a1-imp {prefix a1i;}deviation "/a1i:l" {deviate add {default "a1i:id1";}}}

@@ -1,0 +1,1 @@
+module amod-a {namespace urn:amod-a;prefix a;container cont {leaf l {type string;} leaf l2 {type string;}}}

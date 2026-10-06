@@ -1,0 +1,1 @@
+module y {namespace urn:y;prefix y;leaf l1 {type string;}leaf l2 {type string;}}

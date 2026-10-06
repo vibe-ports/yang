@@ -1,0 +1,1 @@
+module amod-c {namespace urn:amod-c;prefix c;import amod-a {prefix a;} import amod-b {prefix b;}deviation "/a:cont/a:l" {deviate add {b:ext1;}}}

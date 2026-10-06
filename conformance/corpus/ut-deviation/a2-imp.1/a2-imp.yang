@@ -1,0 +1,1 @@
+module a2-imp {namespace urn:a2-imp;prefix a2i;leaf l {type instance-identifier;}leaf k {type string; status deprecated;}}

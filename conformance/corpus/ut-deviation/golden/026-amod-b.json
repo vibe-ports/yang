@@ -1,0 +1,19 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module amod-b {\n  namespace \"urn:amod-b\";\n  prefix b;\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "amod-b",
+      "revision": null,
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

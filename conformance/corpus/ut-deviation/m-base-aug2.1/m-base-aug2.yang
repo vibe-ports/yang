@@ -1,0 +1,1 @@
+module m-base-aug2 {namespace urn:m-base-aug2;prefix mba2;import m-base {prefix mb;} import m-base-aug {prefix mba;}augment /mb:cont {leaf augl1 {type string;}}augment /mba:cont2 {leaf augl2 {type string;}}}

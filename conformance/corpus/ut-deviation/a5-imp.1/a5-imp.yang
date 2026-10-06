@@ -1,0 +1,1 @@
+module a5-imp {namespace urn:a5-imp;prefix a5i;list l1 {key "k";  leaf k {type string;}  leaf l {type string; status deprecated;}}}

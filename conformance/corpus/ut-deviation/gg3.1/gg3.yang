@@ -1,0 +1,1 @@
+module gg3 {namespace urn:gg3;prefix gg3; import e {prefix e;}deviation /e:a {deviate add {default a;}}}
