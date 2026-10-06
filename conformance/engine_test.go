@@ -11,7 +11,7 @@ import (
 
 // agreeFloor is the number of fixtures that agree (with or without skipped fields) on main; a
 // change that lowers it is a regression.
-const agreeFloor = 72
+const agreeFloor = 488
 
 // nodeWalk reports whether Load compiles schema nodes (design 06 C6 lifts the gate).
 func nodeWalk(t *testing.T) bool {

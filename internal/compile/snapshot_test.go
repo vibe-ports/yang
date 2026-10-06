@@ -77,14 +77,13 @@ func reach(v reflect.Value, seen map[uintptr]reflect.Type) {
 	}
 }
 
-// snapHarness loads modules through the whole Load (dep sets, unres) with the node walk on.
+// snapHarness is a context over files whose Loads run the whole compile (dep sets, unres).
 func snapHarness(t *testing.T, files map[string]string) *Context {
 	t.Helper()
 	c, _, err := NewContext(Options{}, mapFS(files))
 	if err != nil {
 		t.Fatal(err)
 	}
-	c.nodeWalk = true
 	return c
 }
 

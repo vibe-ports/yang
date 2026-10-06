@@ -59,6 +59,18 @@ func (c *Context) Snapshot() *schema.Set {
 		}
 		n.Exts = cp.exts(o.Exts)
 	}
+	// A choice keeps its default case even when that case was removed as disabled (libyang
+	// leaves lysc_node_choice.dflt pointing at the freed case, whose name it still dumps): copy
+	// such a case detached, its parent the choice, outside the choice's children.
+	var detached [][2]*schema.Node
+	for o, n := range cp.nodes {
+		if o.DefaultCase != nil && cp.nodes[o.DefaultCase] == nil {
+			detached = append(detached, [2]*schema.Node{o.DefaultCase, n})
+		}
+	}
+	for _, d := range detached {
+		cp.tree(d[0], d[1])
+	}
 	for o, n := range cp.nodes { // references to other nodes, once all are copied
 		cp.refs(o, n)
 	}
