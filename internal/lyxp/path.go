@@ -306,3 +306,21 @@ func Trunc15(s string) string {
 }
 
 func isDigit(c byte) bool { return c >= '0' && c <= '9' }
+
+// ParsePredicate ports ly_path_parse_predicate (without the schema node, which only provides the
+// log location): it tokenizes src as an XPath expression, checks it is a sequence of predicates of
+// the given kind and returns the tokens or libyang's LYVE_XPATH message.
+func ParsePredicate(src string, prefix Prefix, pred Pred) (*Expr, string) {
+	e, msg := Lex(src)
+	if msg != "" {
+		return nil, msg
+	}
+	i, msg := e.checkPredicate(0, prefix, pred)
+	if msg != "" {
+		return nil, msg
+	}
+	if i < len(e.Toks) {
+		return nil, fmt.Sprintf("Unparsed characters \"%s\" left at the end of predicate.", e.Rest(i))
+	}
+	return e, ""
+}

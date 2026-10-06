@@ -374,16 +374,19 @@ func TestXPath10(t *testing.T) {
 		"1 c:d e:": {"1 ", "c", ":", "d ", "e", ":"},
 	} {
 		var got []string
-		for rest := s; rest != ""; {
-			n, isPrefix, next := valuePrefixNext(rest)
+		for i := 0; ; {
+			n, isPrefix, next := valuePrefixNext(s, i)
 			if n == 0 {
 				break
 			}
-			got = append(got, rest[:n])
+			got = append(got, s[i:i+n])
 			if isPrefix {
 				got = append(got, ":")
 			}
-			rest = next
+			if next < 0 {
+				break
+			}
+			i = next
 		}
 		if !slices.Equal(got, want) {
 			t.Errorf("%q: %q, want %q", s, got, want)
