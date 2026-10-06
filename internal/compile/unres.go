@@ -104,10 +104,11 @@ func (c *Context) unres() error {
 		}
 	}
 	ur := &c.ur
-	defer func() { c.ur = unresSets{} }()
+	defer func() { c.ur, c.disabled = unresSets{}, nil }() // lys_compile_unres_depset_erase
 	if err := c.unresImplement(); err != nil {
 		return err
 	}
+	c.identitiesDisabled() // the identity values when/must and defaults are checked against
 	for len(ur.disabledLeafrefs) > 0 {
 		l := ur.disabledLeafrefs[len(ur.disabledLeafrefs)-1]
 		for _, t := range leafrefs(l.node) {
@@ -155,7 +156,6 @@ func (c *Context) unres() error {
 		}
 		ur.bitenums = ur.bitenums[:len(ur.bitenums)-1]
 	}
-	c.identitiesDisabled()
 	for len(ur.dflts) > 0 {
 		n := ur.dflts[len(ur.dflts)-1]
 		if err := c.unresDflts(n); err != nil {
@@ -264,8 +264,10 @@ func circular(t, lref *schema.Type) bool {
 	return false
 }
 
-// unresBitenum is lys_compile_unres_disabled_bitenum. Compiled types are shared (typedef cache,
-// earlier snapshots), so a list with disabled items is replaced by a new one, never edited.
+// unresBitenum is lys_compile_unres_disabled_bitenum. The type object itself may be held by
+// several leaves (typedef cache), which all see the removal, as in libyang; its item list is
+// replaced by a new slice rather than edited, so a reader of the old slice is not disturbed.
+// Published snapshots are deep copies (Snapshot) and never see either.
 func (c *Context) unresBitenum(n *schema.Node) error {
 	has := false
 	for _, t := range members(n.Type) {
@@ -300,6 +302,9 @@ func (c *Context) unresDflts(n *schema.Node) error {
 	for _, d := range n.Default {
 		// LY_EINCOMPLETE (a value that needs the data tree) is success
 		if _, diag := types.Store(n.Type, d.Lex, types.FormatSchema, types.HintSchema, d.NS, n); diag != nil {
+			if diag.Msg == "" {
+				return c.logPath(ly.Semantics, n.LogPath(), "Invalid default - value does not fit the type.")
+			}
 			return c.logPath(ly.Semantics, n.LogPath(), "Invalid default - value does not fit the type (%s).", diag.Msg)
 		}
 	}

@@ -41,13 +41,26 @@ type AtomizeContext struct {
 	Schema      SchemaInfo
 	Warn        func(msg string) // LOGWRN; nil drops warnings
 	MaxSteps    int              // 0 = DefaultMaxSteps
+	// Steps, when set, is a budget shared by several walks: the walk starts from *Steps (MaxSteps is
+	// ignored) and leaves what remains there, ErrBudget once it is used up.
+	Steps *int
 }
 
 // Atomize walks e over the schema (lyxp_atomize) and returns every schema
 // node it reaches, in libyang's set order, the context node first.
 func (e *Expr) Atomize(ac AtomizeContext) ([]Atom, error) {
-	a := newAtomizer(e.ns, ac.Schema, ac.Node, ac.Node, rootType(ac.Node, ac.SchemaRules), ac.Output, ac.Warn, ac.MaxSteps)
+	steps := ac.MaxSteps
+	if ac.Steps != nil {
+		if *ac.Steps <= 0 {
+			return nil, ErrBudget
+		}
+		steps = *ac.Steps
+	}
+	a := newAtomizer(e.ns, ac.Schema, ac.Node, ac.Node, rootType(ac.Node, ac.SchemaRules), ac.Output, ac.Warn, steps)
 	set, err := a.run(e.src, e.root)
+	if ac.Steps != nil {
+		*ac.Steps = max(a.steps, 0)
+	}
 	if err != nil {
 		return nil, err
 	}

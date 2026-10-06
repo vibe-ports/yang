@@ -19,6 +19,7 @@ import (
 	"github.com/vibe-ports/yang/internal/parser"
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
+	"github.com/vibe-ports/yang/internal/xpath"
 )
 
 var (
@@ -158,6 +159,9 @@ type Context struct {
 	typeCache                         *typeCache     // compiled typedefs (design 06 §2.3); entries leave with their module (revert)
 	disabled                          []*schema.Node // lys_depset_unres.disabled: if-feature-disabled and obsolete nodes
 	ur                                unresSets      // the other lys_depset_unres sets (design 06 P6)
+	// xpathSteps is what remains of Budget.MaxXPathSteps in this Load: every when/must check
+	// over the schema takes its steps from it (U-0036).
+	xpathSteps int
 	// extArrs are the exts arrays whose instances a plugin parse callback removed (LY_ENOT),
 	// by owner statement, in libyang's order after the removal.
 	extArrs map[*parser.Stmt][]*parser.Stmt
@@ -214,6 +218,7 @@ func NewContext(opts Options, dirs ...fs.FS) (*Context, []Diagnostic, error) {
 		}
 	}
 	c.phase = "compile" // the oracle's ly_ctx_compile after ly_ctx_new
+	c.xpathSteps = orDefault(c.opts.Budget.MaxXPathSteps, xpath.DefaultMaxSteps)
 	if err := c.compileCtx(); err != nil {
 		return nil, c.diags, err
 	}
@@ -237,6 +242,7 @@ func NewContext(opts Options, dirs ...fs.FS) (*Context, []Diagnostic, error) {
 func (c *Context) Load(name, rev string, features []string) (*Module, []Diagnostic, error) {
 	c.diags, c.creating, c.implementing, c.compiling, c.sets = nil, nil, nil, nil, nil
 	c.nodes, c.types, c.disabled, c.ur = 0, 0, nil, unresSets{}
+	c.xpathSteps = orDefault(c.opts.Budget.MaxXPathSteps, xpath.DefaultMaxSteps)
 	c.phase = "parse"
 	m, err := c.parseLoad(name, rev)
 	if err == nil {

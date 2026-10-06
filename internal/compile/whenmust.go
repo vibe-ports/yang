@@ -165,13 +165,12 @@ func (c *Context) atomize(e any, ctxNode, n *schema.Node, output bool) ([]xpath.
 		return nil, fmt.Errorf("compile: condition of %s not compiled", n.LogPath())
 	}
 	atoms, err := ex.Atomize(xpath.AtomizeContext{Node: wrap(ctxNode), SchemaRules: true, Output: output,
-		Schema: schemaInfo{c}, Warn: func(msg string) { c.warn("%s", msg) },
-		MaxSteps: orDefault(c.opts.Budget.MaxXPathSteps, xpath.DefaultMaxSteps)})
+		Schema: schemaInfo{c}, Warn: func(msg string) { c.warn("%s", msg) }, Steps: &c.xpathSteps})
 	var xe *xpath.Error
 	switch {
 	case errors.Is(err, xpath.ErrBudget):
-		return nil, fmt.Errorf("%w: XPath condition of %s needs more than %d steps", ErrBudget, n.LogPath(),
-			orDefault(c.opts.Budget.MaxXPathSteps, xpath.DefaultMaxSteps))
+		return nil, fmt.Errorf("%w: the when/must checks of one Load need more than %d XPath steps (at %s)", ErrBudget,
+			orDefault(c.opts.Budget.MaxXPathSteps, xpath.DefaultMaxSteps), n.LogPath())
 	case errors.As(err, &xe):
 		code := ly.XPath
 		for k := ly.Success; k <= ly.Other; k++ {
@@ -411,6 +410,46 @@ func (s snode) Child(module, name string) xpath.SchemaNode {
 
 // Canonical is not needed over the schema (Atomize compares no values).
 func (s snode) Canonical(string) (string, bool) { return "", false }
+
+// Type is the leaf's type, nil for other nodes.
+func (s snode) Type() xpath.SchemaType {
+	if s.n.Type == nil {
+		return nil
+	}
+	return stype{s.n.Type}
+}
+
+// CheckValue stores lexical with the prefixes of the when/must being checked (compile.CheckValue).
+func (s snode) CheckValue(lexical string, pc xpath.NamespaceCtx) (string, bool) {
+	var ns schema.NSCtx
+	if x, ok := pc.(xpathNS); ok {
+		ns = x.ctx
+	}
+	return CheckValue(s.n, lexical, ns)
+}
+
+// stype adapts a compiled type (xpath.BaseType has schema.BaseType's values).
+type stype struct{ t *schema.Type }
+
+func (t stype) Base() xpath.BaseType { return xpath.BaseType(t.t.Base) }
+
+func (t stype) Union() []xpath.SchemaType {
+	if t.t.Base != schema.Union {
+		return nil
+	}
+	out := make([]xpath.SchemaType, len(t.t.Union))
+	for i, m := range t.t.Union {
+		out[i] = stype{m}
+	}
+	return out
+}
+
+func (t stype) Realtype() xpath.SchemaType {
+	if t.t.Realtype == nil {
+		return nil
+	}
+	return stype{t.t.Realtype}
+}
 
 func (s snode) Parent() xpath.SchemaNode          { return wrap(s.n.Parent) }
 func (s snode) Children() []xpath.SchemaNode      { return wrapAll(s.n.Children) }

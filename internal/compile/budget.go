@@ -23,8 +23,9 @@ type Budget struct {
 	// MaxDepth caps the nesting of compiled nodes (U-0035): uses/augment chains are not bounded
 	// by the parser's block depth.
 	MaxDepth int
-	// MaxXPathSteps caps the work of checking one when or must condition over the schema
-	// (U-0036): a wildcard predicate in a large context is quadratic in the schema size.
+	// MaxXPathSteps caps the XPath steps all when and must checks over the schema of one Load
+	// take together (U-0036): a wildcard predicate in a large context is quadratic in the
+	// schema size, and a chain of whens makes the cycle checks quadratic in its length.
 	MaxXPathSteps int
 }
 

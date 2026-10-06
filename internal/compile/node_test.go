@@ -220,8 +220,10 @@ var c4aMessages = []string{
 }
 
 // checkedWarnings are the warnings this harness compares: plugins (C4b), when/must status and
-// not-implemented module, schema nodes not found by the XPath schema walk (C2a, C7).
-var checkedWarnings = []string{"Ext plugin ", "When condition ", "Must condition ", "Schema node "}
+// not-implemented module, schema nodes not found by the XPath schema walk (C2a, C7), the value and
+// operand warnings with their subexpression trailer (C2b).
+var checkedWarnings = []string{"Ext plugin ", "When condition ", "Must condition ", "Schema node ", "Invalid value \"",
+	"Previous warning generated", "Identityref \"", "Incompatible types"}
 
 // c4bParseMessages are the parse-phase errors and warnings of the ported extension plugins
 // (design 06 C4b); other parse-phase failures are the loader's.
