@@ -33,6 +33,7 @@ type tschema struct {
 	ops       [2][]SchemaNode
 	lref      *tschema
 	typ       *ttype
+	check     func(string) (string, bool) // CheckValue; nil accepts everything
 }
 
 type tval struct {
@@ -93,6 +94,12 @@ func (s *tschema) Type() SchemaType {
 		return nil
 	}
 	return s.typ
+}
+func (s *tschema) CheckValue(v string, _ NamespaceCtx) (string, bool) {
+	if s.check == nil {
+		return "", true
+	}
+	return s.check(v)
 }
 func (s *tschema) LeafrefTarget() SchemaNode {
 	if s.lref == nil {

@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+// Schema-mode XPath: an identityref compared with an unprefixed literal (warn_equality_value).
+module must-identityref-no-prefix {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:must-identityref-no-prefix";
+  prefix minp;
+  identity base;
+  identity der { base base; }
+  container top {
+    leaf id { type identityref { base base; } }
+    leaf-list ids { type identityref { base base; } }
+    leaf s { type string; }
+    must "id = 'der'";
+    must "'der' = id";
+    must "id != 'minp:der'";
+    must "ids = 'der' and s = 'x'";
+    must "id = s";
+  }
+}

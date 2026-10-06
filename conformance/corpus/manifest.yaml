@@ -8872,3 +8872,25 @@ fixtures:
       searchdirs: [schemas]
       modules: [{"name": "must-operand-incompatible"}]
     golden: golden/must-operand-incompatible-warning.json
+
+  - id: must/identityref-no-prefix-warning
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.5.3", "RFC7950#9.10"]
+    areas: ["schema", "xpath"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "must-identityref-no-prefix"}]
+    golden: golden/must-identityref-no-prefix-warning.json
+
+  - id: must/value-not-fit-sides-warning
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.5.3", "RFC7950#7.5.3"]
+    areas: ["schema", "xpath"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "must-value-nofit-sides"}]
+    golden: golden/must-value-not-fit-sides-warning.json

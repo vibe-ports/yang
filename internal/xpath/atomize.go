@@ -306,8 +306,13 @@ func (a *atomizer) chain(x chainExpr, s *scset) error {
 			s.merge(s2)
 		case op == "|":
 			s.merge(s2)
-		default: // warn_equality_value is C2b
-			a.warnOperands(s, s2, op != "=" && op != "!=", x.pos[i])
+		default:
+			eq := op == "=" || op == "!="
+			a.warnOperands(s, s2, !eq, x.prev[i].pos)
+			if eq { // the right token against the left set, then the left token against the right set
+				a.warnEqualityValue(s, x.last[i], x.prev[i], x.last[i])
+				a.warnEqualityValue(s2, x.prev[i], x.prev[i], x.last[i])
+			}
 			s.merge(s2)
 			s.clearCtx(AtomVal)
 		}

@@ -108,6 +108,11 @@ type SchemaNode interface {
 	Path() string                // lysc_path(LYSC_PATH_LOG), for warnings
 	// Type is lysc_node_leaf.type of a leaf or leaf-list, nil for other nodes.
 	Type() SchemaType
+	// CheckValue stores lexical, written in the expression's prefixes pc, as a value of this
+	// leaf or leaf-list's type (libyang type plugin store with LYD_HINT_DATA; an incomplete value
+	// is fine). ok=false with the type's error message (empty when it gave none) if it does not
+	// fit. xpath cannot import the types package: the compiled schema provides this.
+	CheckValue(lexical string, pc NamespaceCtx) (errMsg string, ok bool)
 	// LeafrefTarget is the target of a leaf/leaf-list whose type itself is a
 	// leafref (base type LY_TYPE_LEAFREF; a union with a leafref member does
 	// not count), its path compiled for the node's input/output; nil

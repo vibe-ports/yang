@@ -56,9 +56,9 @@ type (
 	chainExpr struct {
 		ops  []string // or and = != < <= > >= + - * div mod |
 		args []ast
-		// pos[i] is the source offset of the token BEFORE ops[i]: libyang passes
-		// tok_pos[this_op - 1] to warn_operands (schema mode warnings)
-		pos []int
+		// prev[i] is the token BEFORE ops[i] (libyang passes tok_pos[this_op - 1] to the schema
+		// mode warnings), last[i] the last token of args[i+1]
+		prev, last []token
 	}
 	// negExpr is an odd number of unary '-'; pos is the offset of the first one.
 	negExpr struct {
@@ -162,13 +162,14 @@ func (p *parser) binary(depth int, next func(int) (ast, error), k tokKind, ops .
 		if !ok {
 			break
 		}
-		pos := p.toks[p.i-1].pos
+		prev := p.toks[p.i-1]
 		p.i++
 		r, err := next(depth)
 		if err != nil {
 			return nil, err
 		}
-		c.ops, c.args, c.pos = append(c.ops, op), append(c.args, r), append(c.pos, pos)
+		c.ops, c.args = append(c.ops, op), append(c.args, r)
+		c.prev, c.last = append(c.prev, prev), append(c.last, p.toks[p.i-1])
 	}
 	if len(c.ops) == 0 {
 		return first, nil
