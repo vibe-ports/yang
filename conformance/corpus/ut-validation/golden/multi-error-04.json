@@ -1,0 +1,135 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ii",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"ii:cont\": {\n    \"l\": \"wrong\",\n    \"l\": \"wrong2\",\n    \"l2\": \"val\",\n    \"l3\": \"val\",\n    \"ll\": [\n      25\n    ]\n  }\n}\n",
+    "xml": "<cont xmlns=\"urn:tests:ii\">\n  <l>wrong</l>\n  <l>wrong2</l>\n  <l2>val</l2>\n  <l3>val</l3>\n  <ll>25</ll>\n</cont>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ii:cont",
+      "schema": "/ii:cont",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ii:cont/l",
+      "schema": "/ii:cont/l",
+      "value": {
+        "canonical": "wrong",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ii:cont/l",
+      "schema": "/ii:cont/l",
+      "value": {
+        "canonical": "wrong2",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ii:cont/l2",
+      "schema": "/ii:cont/l2",
+      "value": {
+        "canonical": "val",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ii:cont/l3",
+      "schema": "/ii:cont/l3",
+      "value": {
+        "canonical": "val",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/ii:cont/ll[.='25']",
+      "schema": "/ii:cont/ll",
+      "value": {
+        "canonical": "25",
+        "type": "uint32",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

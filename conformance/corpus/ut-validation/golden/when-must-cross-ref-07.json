@@ -1,0 +1,711 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module twm {\n  namespace \"urn:tests:twm\";\n  prefix twm;\n\n  container top {\n    config true;\n    status current;\n    leaf flag {\n      type boolean;\n      default \"false\";\n      config true;\n      status current;\n    }\n    leaf gated {\n      when \"../flag = 'true'\";\n      type string;\n      config true;\n      status current;\n    }\n    leaf checker {\n      type string;\n      must \"/twm:top/twm:gated = 'expected'\" {\n        error-message\n          \"checker requires gated=expected\";\n        error-app-tag \"checker-bad\";\n      }\n      config true;\n      status current;\n    }\n    leaf dep-when {\n      when \"/twm:top/twm:gated = 'expected'\";\n      type string;\n      config true;\n      mandatory true;\n      status current;\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "twm",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "twm",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/twm:top",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "false"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "twm",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/twm:top/flag",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "boolean",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "twm",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/twm:top/gated",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/twm:top/gated",
+              "expr": "../flag = 'true'",
+              "module": "twm"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "twm",
+          "musts": [
+            {
+              "apptag": "checker-bad",
+              "expr": "/twm:top/twm:gated = 'expected'",
+              "message": "checker requires gated=expected"
+            }
+          ],
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/twm:top/checker",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "twm",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/twm:top/dep-when",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/twm:top/dep-when",
+              "expr": "/twm:top/twm:gated = 'expected'",
+              "module": "twm"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module twm2 {\n  namespace \"urn:tests:twm2\";\n  prefix twm2;\n\n  container top {\n    config true;\n    status current;\n    leaf flag {\n      type boolean;\n      config true;\n      status current;\n    }\n    list item {\n      key \"name\";\n      config true;\n      min-elements 0;\n      max-elements 4294967295;\n      ordered-by system;\n      status current;\n      leaf name {\n        type string;\n        config true;\n        status current;\n      }\n    }\n    container gated {\n      when \"../flag = 'true'\";\n      config true;\n      status current;\n      leaf ref {\n        type leafref {\n          path \"../../item/name\";\n          require-instance true;\n          type string;\n        }\n        config true;\n        status current;\n      }\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "twm2",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "twm2",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/twm2:top",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "twm2",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/twm2:top/flag",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "boolean",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "name"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "twm2",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "system",
+          "path": "/twm2:top/item",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "twm2",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/twm2:top/item/name",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "twm2",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/twm2:top/gated",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": [
+            {
+              "context": "/twm2:top/gated",
+              "expr": "../flag = 'true'",
+              "module": "twm2"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "twm2",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/twm2:top/gated/ref",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "../../item/name",
+              "require_instance": true,
+              "target": "/twm2:top/item/name"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module twm3 {\n  namespace \"urn:tests:twm3\";\n  prefix twm3;\n\n  container top {\n    config true;\n    status current;\n    leaf flag {\n      type boolean;\n      config true;\n      status current;\n    }\n    list item {\n      key \"name\";\n      config true;\n      min-elements 0;\n      max-elements 4294967295;\n      ordered-by system;\n      status current;\n      leaf name {\n        type string;\n        config true;\n        status current;\n      }\n    }\n    leaf selector {\n      when \"../flag = 'true'\";\n      type string;\n      config true;\n      status current;\n    }\n    leaf ref {\n      when \"../flag = 'true'\";\n      type leafref {\n        path \"/twm3:top/twm3:item[twm3:name = current()/../selector]/twm3:name\";\n        require-instance true;\n        type string;\n      }\n      config true;\n      status current;\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "twm3",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "twm3",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/twm3:top",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "twm3",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/twm3:top/flag",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "boolean",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "name"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "twm3",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "system",
+          "path": "/twm3:top/item",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "twm3",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/twm3:top/item/name",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "twm3",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/twm3:top/selector",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/twm3:top/selector",
+              "expr": "../flag = 'true'",
+              "module": "twm3"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "twm3",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/twm3:top/ref",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "/twm3:top/twm3:item[twm3:name = current()/../selector]/twm3:name",
+              "require_instance": true,
+              "target": "/twm3:top/item/name"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/twm3:top/ref",
+              "expr": "../flag = 'true'",
+              "module": "twm3"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module twm4 {\n  namespace \"urn:tests:twm4\";\n  prefix twm4;\n\n  container top {\n    config true;\n    status current;\n    leaf flag {\n      type boolean;\n      config true;\n      status current;\n    }\n    list item {\n      when \"../flag = 'true'\";\n      key \"name\";\n      config true;\n      min-elements 0;\n      max-elements 4294967295;\n      ordered-by system;\n      status current;\n      leaf name {\n        type string;\n        config true;\n        status current;\n      }\n      leaf value {\n        type string;\n        config true;\n        status current;\n      }\n    }\n    leaf checker {\n      type string;\n      must \"/twm4:top/twm4:item[twm4:name = 'a']/twm4:value = 'expected'\" {\n        error-message\n          \"checker requires item[a]/value=expected\";\n        error-app-tag \"checker-bad\";\n      }\n      config true;\n      status current;\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "twm4",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "twm4",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/twm4:top",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "twm4",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/twm4:top/flag",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "boolean",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "name"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "twm4",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "system",
+          "path": "/twm4:top/item",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": [
+            {
+              "context": "/twm4:top/item",
+              "expr": "../flag = 'true'",
+              "module": "twm4"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "twm4",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/twm4:top/item/name",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "twm4",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/twm4:top/item/value",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "twm4",
+          "musts": [
+            {
+              "apptag": "checker-bad",
+              "expr": "/twm4:top/twm4:item[twm4:name = 'a']/twm4:value = 'expected'",
+              "message": "checker requires item[a]/value=expected"
+            }
+          ],
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/twm4:top/checker",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

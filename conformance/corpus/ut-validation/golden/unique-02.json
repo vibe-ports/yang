@@ -1,0 +1,111 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "d",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"d:lt\": [\n    {\n      \"k\": \"val1\",\n      \"l1\": \"same\"\n    },\n    {\n      \"k\": \"val2\"\n    }\n  ]\n}\n",
+    "xml": "<lt xmlns=\"urn:tests:d\">\n  <k>val1</k>\n  <l1>same</l1>\n</lt>\n<lt xmlns=\"urn:tests:d\">\n  <k>val2</k>\n</lt>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/d:lt[k='val1']",
+      "schema": "/d:lt",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/d:lt[k='val1']/k",
+      "schema": "/d:lt/k",
+      "value": {
+        "canonical": "val1",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/d:lt[k='val1']/l1",
+      "schema": "/d:lt/l1",
+      "value": {
+        "canonical": "same",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/d:lt[k='val2']",
+      "schema": "/d:lt",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/d:lt[k='val2']/k",
+      "schema": "/d:lt/k",
+      "value": {
+        "canonical": "val2",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

@@ -1,0 +1,83 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "c",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"c:l\": [\n    \"val1\",\n    \"val2\",\n    \"val3\"\n  ]\n}\n",
+    "xml": "<l xmlns=\"urn:tests:c\">val1</l>\n<l xmlns=\"urn:tests:c\">val2</l>\n<l xmlns=\"urn:tests:c\">val3</l>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/c:l[.='val1']",
+      "schema": "/c:choic/b/l",
+      "value": {
+        "canonical": "val1",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/c:l[.='val2']",
+      "schema": "/c:choic/b/l",
+      "value": {
+        "canonical": "val2",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/c:l[.='val3']",
+      "schema": "/c:choic/b/l",
+      "value": {
+        "canonical": "val3",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

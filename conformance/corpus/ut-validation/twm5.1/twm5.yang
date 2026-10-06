@@ -1,0 +1,18 @@
+module twm5 {
+    namespace urn:tests:twm5;
+    prefix twm5;
+    yang-version 1.1;
+
+    container top {
+        leaf flag {
+            type boolean;
+        }
+        container outer {
+            when "../flag = 'true'";
+            leaf inner {
+                when "../../flag = 'true'";
+                type string;
+            }
+        }
+    }
+}

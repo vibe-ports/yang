@@ -1,0 +1,82 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [
+    {
+      "apptag": null,
+      "code": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "data_path": "/ii:cont/ll",
+      "level": "error",
+      "line": 6,
+      "msg": "Invalid type uint32 value \"ahoy\".",
+      "phase": "data",
+      "schema_path": null,
+      "vecode": 9,
+      "vecode_name": "LYVE_DATA"
+    },
+    {
+      "apptag": "must-violation",
+      "code": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "data_path": "/ii:cont/l2",
+      "level": "error",
+      "line": 0,
+      "msg": "Must condition \"../l = 'right'\" not satisfied.",
+      "phase": "data",
+      "schema_path": null,
+      "vecode": 9,
+      "vecode_name": "LYVE_DATA"
+    },
+    {
+      "apptag": "not-left",
+      "code": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "data_path": "/ii:cont/l3",
+      "level": "error",
+      "line": 0,
+      "msg": "l leaf is not left",
+      "phase": "data",
+      "schema_path": null,
+      "vecode": 9,
+      "vecode_name": "LYVE_DATA"
+    },
+    {
+      "apptag": "too-few-elements",
+      "code": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "data_path": "/ii:cont/ll",
+      "level": "error",
+      "line": 0,
+      "msg": "Too few \"ll\" instances.",
+      "phase": "data",
+      "schema_path": null,
+      "vecode": 9,
+      "vecode_name": "LYVE_DATA"
+    }
+  ],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ii",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 7,
+    "name": "LY_EVALID"
+  },
+  "tree": null,
+  "verdict": "invalid"
+}

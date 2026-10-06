@@ -1,0 +1,148 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module a {\n  namespace \"urn:tests:a\";\n  prefix a;\n\n  identity d3 {\n  }\n\n  identity d2 {\n    derived d3;\n  }\n\n  identity d1 {\n    derived d2;\n  }\n\n  leaf a {\n    type identityref {\n      base d1;\n    }\n    config true;\n    status current;\n  }\n  leaf b {\n    type string;\n    must \"derived-from-or-self(/a, 'd2')\";\n    config true;\n    status current;\n  }\n  leaf c {\n    when \"derived-from(/a, 'd2')\";\n    type string;\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [
+        {
+          "bases": [
+            "a:d2"
+          ],
+          "derived": [],
+          "name": "a:d3"
+        },
+        {
+          "bases": [
+            "a:d1"
+          ],
+          "derived": [
+            "a:d3"
+          ],
+          "name": "a:d2"
+        },
+        {
+          "bases": [],
+          "derived": [
+            "a:d2"
+          ],
+          "name": "a:d1"
+        }
+      ],
+      "name": "a",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "a",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/a:a",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "identityref",
+            "bases": [
+              "a:d1"
+            ],
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "a",
+          "musts": [
+            {
+              "apptag": null,
+              "expr": "derived-from-or-self(/a, 'd2')",
+              "message": null
+            }
+          ],
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/a:b",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "a",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/a:c",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/a:c",
+              "expr": "derived-from(/a, 'd2')",
+              "module": "a"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

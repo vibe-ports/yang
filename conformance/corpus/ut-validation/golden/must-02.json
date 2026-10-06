@@ -1,0 +1,37 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [
+    {
+      "apptag": "must-violation",
+      "code": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "data_path": "/i:cont/l2",
+      "level": "error",
+      "line": 0,
+      "msg": "Must condition \"../l = 'right'\" not satisfied.",
+      "phase": "data",
+      "schema_path": null,
+      "vecode": 9,
+      "vecode_name": "LYVE_DATA"
+    }
+  ],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "i",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 7,
+    "name": "LY_EVALID"
+  },
+  "tree": null,
+  "verdict": "invalid"
+}

@@ -1,0 +1,48 @@
+module e {
+    namespace urn:tests:e;
+    prefix e;
+    yang-version 1.1;
+
+    choice choic {
+        leaf a {
+            type string;
+        }
+        case b {
+            leaf-list l {
+                type string;
+            }
+        }
+    }
+    list lt {
+        key "k";
+        leaf k {
+            type string;
+        }
+    }
+    leaf d {
+        type uint32;
+    }
+    leaf-list ll {
+        type string;
+    }
+    container cont {
+        list lt {
+            key "k";
+            leaf k {
+                type string;
+            }
+        }
+        leaf d {
+            type uint32;
+        }
+        leaf-list ll {
+            type string;
+        }
+        leaf-list ll2 {
+            type enumeration {
+                enum one;
+                enum two;
+            }
+        }
+    }
+}

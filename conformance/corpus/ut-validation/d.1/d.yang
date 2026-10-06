@@ -1,0 +1,48 @@
+module d {
+ namespace urn:tests:d;
+ prefix d;
+ yang-version 1.1;
+
+ list lt {
+ key "k";
+ unique "l1";
+ leaf k {
+ type string;
+ }
+ leaf l1 {
+ type string;
+ }
+ }
+ list lt2 {
+ key "k";
+ unique "cont/l2 l4";
+ unique "l5 l6";
+ leaf k {
+ type string;
+ }
+ container cont {
+ leaf l2 {
+ type string;
+ }
+ }
+ leaf l4 {
+ type string;
+ }
+ leaf l5 {
+ type string;
+ }
+ leaf l6 {
+ type string;
+ }
+ list lt3 {
+ key "kk";
+ unique "l3";
+ leaf kk {
+ type string;
+ }
+ leaf l3 {
+ type string;
+ }
+ }
+ }
+}

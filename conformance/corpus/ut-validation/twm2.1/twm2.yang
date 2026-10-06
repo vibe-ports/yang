@@ -1,0 +1,23 @@
+module twm2 {
+    namespace urn:tests:twm2;
+    prefix twm2;
+    yang-version 1.1;
+
+    container top {
+        leaf flag {
+            type boolean;
+        }
+        list item {
+            key "name";
+            leaf name { type string; }
+        }
+        container gated {
+            when "../flag = 'true'";
+            leaf ref {
+                type leafref {
+                    path "../../item/name";
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,22 @@
+module i {
+    namespace urn:tests:i;
+    prefix i;
+    yang-version 1.1;
+
+    container cont {
+        leaf l {
+            type string;
+        }
+        leaf l2 {
+            must "../l = 'right'";
+            type string;
+        }
+        leaf l3 {
+            must "../l = 'left'" {
+                error-app-tag "not-left";
+                error-message "l leaf is not left";
+            }
+            type string;
+        }
+    }
+}

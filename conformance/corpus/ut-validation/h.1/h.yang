@@ -1,0 +1,14 @@
+module h {
+    namespace urn:tests:h;
+    prefix h;
+    yang-version 1.1;
+
+    container cont {
+        container cont2 {
+            config false;
+            leaf l {
+                type string;
+            }
+        }
+    }
+}

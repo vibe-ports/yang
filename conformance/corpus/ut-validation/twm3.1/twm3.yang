@@ -1,0 +1,25 @@
+module twm3 {
+    namespace urn:tests:twm3;
+    prefix twm3;
+    yang-version 1.1;
+
+    container top {
+        leaf flag {
+            type boolean;
+        }
+        list item {
+            key "name";
+            leaf name { type string; }
+        }
+        leaf selector {
+            when "../flag = 'true'";
+            type string;
+        }
+        leaf ref {
+            when "../flag = 'true'";
+            type leafref {
+                path "/twm3:top/twm3:item[twm3:name = current()/../selector]/twm3:name";
+            }
+        }
+    }
+}

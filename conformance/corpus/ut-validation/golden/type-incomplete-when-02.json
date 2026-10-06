@@ -1,0 +1,97 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"a:cont\": {\n    \"a\": \"val_c\",\n    \"b\": \"val\"\n  },\n  \"a:c\": \"val_c\"\n}\n",
+    "xml": "<cont xmlns=\"urn:tests:a\">\n  <a>val_c</a>\n  <b>val</b>\n</cont>\n<c xmlns=\"urn:tests:a\">val_c</c>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": true
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:cont",
+      "schema": "/a:cont",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:cont/a",
+      "schema": "/a:cont/a",
+      "value": {
+        "canonical": "val_c",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:cont/b",
+      "schema": "/a:cont/b",
+      "value": {
+        "canonical": "val",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:c",
+      "schema": "/a:c",
+      "value": {
+        "canonical": "val_c",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

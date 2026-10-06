@@ -1,0 +1,28 @@
+module twm {
+    namespace urn:tests:twm;
+    prefix twm;
+    yang-version 1.1;
+
+    container top {
+        leaf flag {
+            type boolean;
+            default "false";
+        }
+        leaf gated {
+            when "../flag = 'true'";
+            type string;
+        }
+        leaf checker {
+            must "/twm:top/twm:gated = 'expected'" {
+                error-app-tag "checker-bad";
+                error-message "checker requires gated=expected";
+            }
+            type string;
+        }
+        leaf dep-when {
+            when "/twm:top/twm:gated = 'expected'";
+            mandatory true;
+            type string;
+        }
+    }
+}

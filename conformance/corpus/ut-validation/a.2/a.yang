@@ -1,0 +1,24 @@
+module a {
+    namespace urn:tests:a;
+    prefix a;
+    yang-version 1.1;
+
+    container cont {
+        leaf a {
+            type string;
+        }
+        leaf b {
+            when "../a = 'val_a'";
+            mandatory true;
+            type string;
+        }
+    }
+    leaf c {
+        type string;
+    }
+    leaf d {
+        when "../c = 'val_c'";
+        mandatory true;
+        type string;
+    }
+}

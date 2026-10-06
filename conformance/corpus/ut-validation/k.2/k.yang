@@ -1,0 +1,11 @@
+module k {
+ namespace urn:tests:k;
+ prefix k;
+ yang-version 1.1;
+
+ leaf l {
+ type string {
+ pattern '.*a.*';
+ }
+ }
+}

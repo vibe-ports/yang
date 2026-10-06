@@ -1,0 +1,20 @@
+module a {
+    namespace urn:tests:a;
+    prefix a;
+    yang-version 1.1;
+
+    container cont {
+        when "../c = 'val_c'";
+        leaf a {
+            type leafref {
+                path "/a:c";
+            }
+        }
+        leaf b {
+            type string;
+        }
+    }
+    leaf c {
+        type string;
+    }
+}

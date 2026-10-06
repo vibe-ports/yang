@@ -1,0 +1,13 @@
+module a {
+    namespace urn:tests:a;
+    prefix a;
+    yang-version 1.1;
+
+    identity d3 {base d2;}
+    identity d2 {base d1;}
+    identity d1;
+
+    leaf a {type identityref {base d1;}}
+    leaf b {type string; must "derived-from-or-self(/a, 'd2')";}
+    leaf c {type string; when "derived-from(/a, 'd2')";}
+}

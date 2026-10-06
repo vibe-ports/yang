@@ -24604,3 +24604,1561 @@ fixtures:
       rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
       deviation: null
 # END ut-deviation
+
+# BEGIN ut-validation (generated from libyang tests/utests/data/list.c by conformance/tools/extract-utests, reviewed)
+
+  - id: ut-validation/when-01
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_when:57
+    rfc: ["RFC7950#7.21.5"]
+    areas: [validation]
+    request:
+      op: "schema"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+    golden: golden/when-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.21.5"]
+      deviation: null
+
+  - id: ut-validation/when-02
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_when:59
+    rfc: ["RFC7950#7.21.5"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<c xmlns=\"urn:tests:a\">hey</c>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/when-02.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.21.5"]
+      deviation: null
+
+  - id: ut-validation/when-03
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_when:62
+    rfc: ["RFC7950#7.21.5"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<cont xmlns=\"urn:tests:a\"><b>val_b</b></cont><c xmlns=\"urn:tests:a\">hey</c>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/when-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.21.5"]
+      deviation: null
+
+  - id: ut-validation/when-04
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_when:67
+    rfc: ["RFC7950#7.21.5"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<cont xmlns=\"urn:tests:a\"><a>val</a><b>val_b</b></cont><c xmlns=\"urn:tests:a\">val_c</c>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/when-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.21.5"]
+      deviation: null
+
+  - id: ut-validation/mandatory-01
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_mandatory:264
+    rfc: ["RFC7950#7.6.5", "RFC7950#7.9"]
+    areas: [validation]
+    request:
+      op: "schema"
+      searchdirs: [b.1]
+      modules: [{name: "b"}]
+    golden: golden/mandatory-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.6.5", "RFC7950#7.9"]
+      deviation: null
+
+  - id: ut-validation/mandatory-02
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_mandatory:266
+    rfc: ["RFC7950#7.6.5", "RFC7950#7.9"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [b.1]
+      modules: [{name: "b"}]
+      format: "xml"
+      data_type: "data"
+      data: "<d xmlns=\"urn:tests:b\"/>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/mandatory-02.json
+    assert:
+      verdict: invalid
+      diagnostics: [{apptag: "missing-choice"}]
+      rfc: ["RFC7950#7.6.5", "RFC7950#7.9"]
+      deviation: null
+
+  - id: ut-validation/mandatory-03
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_mandatory:269
+    rfc: ["RFC7950#7.6.5", "RFC7950#7.9"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [b.1]
+      modules: [{name: "b"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l xmlns=\"urn:tests:b\">string</l><d xmlns=\"urn:tests:b\"/>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/mandatory-03.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.6.5", "RFC7950#7.9"]
+      deviation: null
+
+  - id: ut-validation/mandatory-04
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_mandatory:272
+    rfc: ["RFC7950#7.6.5", "RFC7950#7.9"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [b.1]
+      modules: [{name: "b"}]
+      format: "xml"
+      data_type: "data"
+      data: "<a xmlns=\"urn:tests:b\">string</a>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/mandatory-04.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.6.5", "RFC7950#7.9"]
+      deviation: null
+
+  - id: ut-validation/mandatory-05
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_mandatory:275
+    rfc: ["RFC7950#7.6.5", "RFC7950#7.9"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [b.1]
+      modules: [{name: "b"}]
+      format: "xml"
+      data_type: "data"
+      data: "<a xmlns=\"urn:tests:b\">string</a><c xmlns=\"urn:tests:b\">string2</c>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/mandatory-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.6.5", "RFC7950#7.9"]
+      deviation: null
+
+  - id: ut-validation/mandatory-when-01
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_mandatory_when:142
+    rfc: ["RFC7950#7.21.5", "RFC7950#7.6.5"]
+    areas: [validation]
+    request:
+      op: "schema"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+    golden: golden/mandatory-when-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.21.5", "RFC7950#7.6.5"]
+      deviation: null
+
+  - id: ut-validation/mandatory-when-02
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_mandatory_when:144
+    rfc: ["RFC7950#7.21.5", "RFC7950#7.6.5"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<d xmlns=\"urn:tests:a\">hey</d>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/mandatory-when-02.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.21.5", "RFC7950#7.6.5"]
+      deviation: null
+
+  - id: ut-validation/mandatory-when-03
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_mandatory_when:147
+    rfc: ["RFC7950#7.21.5", "RFC7950#7.6.5"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<cont xmlns=\"urn:tests:a\"><b>hey</b></cont>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/mandatory-when-03.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.21.5", "RFC7950#7.6.5"]
+      deviation: null
+
+  - id: ut-validation/mandatory-when-04
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_mandatory_when:150
+    rfc: ["RFC7950#7.21.5", "RFC7950#7.6.5"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<c xmlns=\"urn:tests:a\">val_c</c><d xmlns=\"urn:tests:a\">hey</d>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/mandatory-when-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.21.5", "RFC7950#7.6.5"]
+      deviation: null
+
+  - id: ut-validation/mandatory-when-05
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_mandatory_when:155
+    rfc: ["RFC7950#7.21.5", "RFC7950#7.6.5"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<cont xmlns=\"urn:tests:a\"><a>val_a</a><b>hey</b></cont>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/mandatory-when-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.21.5", "RFC7950#7.6.5"]
+      deviation: null
+
+  - id: ut-validation/type-incomplete-when-01
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_incomplete_when:188
+    rfc: ["RFC7950#7.21.5"]
+    areas: [validation]
+    request:
+      op: "schema"
+      searchdirs: [a.3]
+      modules: [{name: "a"}]
+    golden: golden/type-incomplete-when-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.21.5"]
+      deviation: null
+
+  - id: ut-validation/type-incomplete-when-02
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_incomplete_when:190
+    rfc: ["RFC7950#7.21.5"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [a.3]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<cont xmlns=\"urn:tests:a\"><a>val_c</a><b>val</b></cont><c xmlns=\"urn:tests:a\">val_c</c>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/type-incomplete-when-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.21.5"]
+      deviation: null
+
+  - id: ut-validation/unprefixed-ident-01
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_unprefixed_ident:222
+    rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3"]
+    areas: [validation]
+    request:
+      op: "schema"
+      searchdirs: [a.4]
+      modules: [{name: "a"}]
+    golden: golden/unprefixed-ident-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3"]
+      deviation: null
+
+  - id: ut-validation/unprefixed-ident-02
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_unprefixed_ident:224
+    rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [a.4]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<b xmlns=\"urn:tests:a\">hey</b>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/unprefixed-ident-02.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3"]
+      deviation: null
+
+  - id: ut-validation/unprefixed-ident-03
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_unprefixed_ident:227
+    rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [a.4]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<c xmlns=\"urn:tests:a\">hey</c>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/unprefixed-ident-03.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3"]
+      deviation: null
+
+  - id: ut-validation/unprefixed-ident-04
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_unprefixed_ident:230
+    rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [a.4]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<a xmlns=\"urn:tests:a\">d3</a><b xmlns=\"urn:tests:a\">b-val</b><c xmlns=\"urn:tests:a\">c-val</c>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/unprefixed-ident-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3"]
+      deviation: null
+
+  - id: ut-validation/minmax-01
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_minmax:312
+    rfc: ["RFC7950#7.8.5", "RFC7950#7.8.6", "RFC7950#7.8.2", "RFC7950#7.9"]
+    areas: [validation]
+    request:
+      op: "schema"
+      searchdirs: [c.1]
+      modules: [{name: "c"}]
+    golden: golden/minmax-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8.5", "RFC7950#7.8.6", "RFC7950#7.8.2", "RFC7950#7.9"]
+      deviation: null
+
+  - id: ut-validation/minmax-02
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_minmax:314
+    rfc: ["RFC7950#7.8.5", "RFC7950#7.8.6", "RFC7950#7.8.2", "RFC7950#7.9"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [c.1]
+      modules: [{name: "c"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l xmlns=\"urn:tests:c\">mate</l><d xmlns=\"urn:tests:c\"/>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/minmax-02.json
+    assert:
+      verdict: invalid
+      diagnostics: [{apptag: "too-few-elements"}]
+      rfc: ["RFC7950#7.8.5", "RFC7950#7.8.6", "RFC7950#7.8.2", "RFC7950#7.9"]
+      deviation: null
+
+  - id: ut-validation/minmax-03
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_minmax:319
+    rfc: ["RFC7950#7.8.5", "RFC7950#7.8.6", "RFC7950#7.8.2", "RFC7950#7.9"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [c.1]
+      modules: [{name: "c"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l xmlns=\"urn:tests:c\">val1</l><l xmlns=\"urn:tests:c\">val2</l>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/minmax-03.json
+    assert:
+      verdict: invalid
+      diagnostics: [{apptag: "too-few-elements"}]
+      rfc: ["RFC7950#7.8.5", "RFC7950#7.8.6", "RFC7950#7.8.2", "RFC7950#7.9"]
+      deviation: null
+
+  - id: ut-validation/minmax-04
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_minmax:324
+    rfc: ["RFC7950#7.8.5", "RFC7950#7.8.6", "RFC7950#7.8.2", "RFC7950#7.9"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [c.1]
+      modules: [{name: "c"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l xmlns=\"urn:tests:c\">val1</l><l xmlns=\"urn:tests:c\">val2</l><l xmlns=\"urn:tests:c\">val3</l>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/minmax-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8.5", "RFC7950#7.8.6", "RFC7950#7.8.2", "RFC7950#7.9"]
+      deviation: null
+
+  - id: ut-validation/minmax-05
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_minmax:329
+    rfc: ["RFC7950#7.8.5", "RFC7950#7.8.6", "RFC7950#7.8.2", "RFC7950#7.9"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [c.1]
+      modules: [{name: "c"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l xmlns=\"urn:tests:c\">val1</l><l xmlns=\"urn:tests:c\">val2</l><l xmlns=\"urn:tests:c\">val3</l><lt xmlns=\"urn:tests:c\"><k>val1</k></lt><lt xmlns=\"urn:tests:c\"><k>val2</k></lt><lt xmlns=\"urn:tests:c\"><k>val3</k></lt><lt xmlns=\"urn:tests:c\"><k>val4</k></lt><lt xmlns=\"urn:tests:c\"><k>val5</k></lt><lt xmlns=\"urn:tests:c\"><k>val6</k></lt>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/minmax-05.json
+    assert:
+      verdict: invalid
+      diagnostics: [{apptag: "too-many-elements"}]
+      rfc: ["RFC7950#7.8.5", "RFC7950#7.8.6", "RFC7950#7.8.2", "RFC7950#7.9"]
+      deviation: null
+
+  - id: ut-validation/unique-01
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_unique:396
+    rfc: ["RFC7950#7.8.3", "RFC7950#7.8.2"]
+    areas: [validation]
+    request:
+      op: "schema"
+      searchdirs: [d.1]
+      modules: [{name: "d"}]
+    golden: golden/unique-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8.3", "RFC7950#7.8.2"]
+      deviation: null
+
+  - id: ut-validation/unique-02
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_unique:398
+    rfc: ["RFC7950#7.8.3", "RFC7950#7.8.2"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [d.1]
+      modules: [{name: "d"}]
+      format: "xml"
+      data_type: "data"
+      data: "<lt xmlns=\"urn:tests:d\">\n    <k>val1</k>\n    <l1>same</l1>\n</lt>\n<lt xmlns=\"urn:tests:d\">\n    <k>val2</k>\n</lt>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/unique-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8.3", "RFC7950#7.8.2"]
+      deviation: null
+
+  - id: ut-validation/unique-03
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_unique:407
+    rfc: ["RFC7950#7.8.3", "RFC7950#7.8.2"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [d.1]
+      modules: [{name: "d"}]
+      format: "xml"
+      data_type: "data"
+      data: "<lt xmlns=\"urn:tests:d\">\n    <k>val1</k>\n    <l1>same</l1>\n</lt>\n<lt xmlns=\"urn:tests:d\">\n    <k>val2</k>\n    <l1>not-same</l1>\n</lt>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/unique-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8.3", "RFC7950#7.8.2"]
+      deviation: null
+
+  - id: ut-validation/unique-04
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_unique:417
+    rfc: ["RFC7950#7.8.3", "RFC7950#7.8.2"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [d.1]
+      modules: [{name: "d"}]
+      format: "xml"
+      data_type: "data"
+      data: "<lt xmlns=\"urn:tests:d\">\n    <k>val1</k>\n    <l1>same</l1>\n</lt>\n<lt xmlns=\"urn:tests:d\">\n    <k>val2</k>\n    <l1>same</l1>\n</lt>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/unique-04.json
+    assert:
+      verdict: invalid
+      diagnostics: [{apptag: "data-not-unique"}]
+      rfc: ["RFC7950#7.8.3", "RFC7950#7.8.2"]
+      deviation: null
+
+  - id: ut-validation/unique-05
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_unique:429
+    rfc: ["RFC7950#7.8.3", "RFC7950#7.8.2"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [d.1]
+      modules: [{name: "d"}]
+      format: "xml"
+      data_type: "data"
+      data: "<lt xmlns=\"urn:tests:d\">\n    <k>val1</k>\n    <l1>1</l1>\n</lt>\n<lt xmlns=\"urn:tests:d\">\n    <k>val2</k>\n    <l1>2</l1>\n</lt>\n<lt xmlns=\"urn:tests:d\">\n    <k>val3</k>\n    <l1>3</l1>\n</lt>\n<lt xmlns=\"urn:tests:d\">\n    <k>val4</k>\n    <l1>4</l1>\n</lt>\n<lt xmlns=\"urn:tests:d\">\n    <k>val5</k>\n    <l1>5</l1>\n</lt>\n<lt xmlns=\"urn:tests:d\">\n    <k>val6</k>\n    <l1>6</l1>\n</lt>\n<lt xmlns=\"urn:tests:d\">\n    <k>val7</k>\n    <l1>7</l1>\n</lt>\n<lt xmlns=\"urn:tests:d\">\n    <k>val8</k>\n    <l1>8</l1>\n</lt>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/unique-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8.3", "RFC7950#7.8.2"]
+      deviation: null
+
+  - id: ut-validation/unique-06
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_unique:463
+    rfc: ["RFC7950#7.8.3", "RFC7950#7.8.2"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [d.1]
+      modules: [{name: "d"}]
+      format: "xml"
+      data_type: "data"
+      data: "<lt xmlns=\"urn:tests:d\">\n    <k>val1</k>\n    <l1>1</l1>\n</lt>\n<lt xmlns=\"urn:tests:d\">\n    <k>val2</k>\n    <l1>2</l1>\n</lt>\n<lt xmlns=\"urn:tests:d\">\n    <k>val3</k>\n    <l1>3</l1>\n</lt>\n<lt xmlns=\"urn:tests:d\">\n    <k>val4</k>\n</lt>\n<lt xmlns=\"urn:tests:d\">\n    <k>val5</k>\n    <l1>5</l1>\n</lt>\n<lt xmlns=\"urn:tests:d\">\n    <k>val6</k>\n    <l1>6</l1>\n</lt>\n<lt xmlns=\"urn:tests:d\">\n    <k>val7</k>\n</lt>\n<lt xmlns=\"urn:tests:d\">\n    <k>val8</k>\n</lt>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/unique-06.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8.3", "RFC7950#7.8.2"]
+      deviation: null
+
+  - id: ut-validation/unique-07
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_unique:494
+    rfc: ["RFC7950#7.8.3", "RFC7950#7.8.2"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [d.1]
+      modules: [{name: "d"}]
+      format: "xml"
+      data_type: "data"
+      data: "<lt xmlns=\"urn:tests:d\">\n    <k>val1</k>\n    <l1>1</l1>\n</lt>\n<lt xmlns=\"urn:tests:d\">\n    <k>val2</k>\n    <l1>2</l1>\n</lt>\n<lt xmlns=\"urn:tests:d\">\n    <k>val3</k>\n</lt>\n<lt xmlns=\"urn:tests:d\">\n    <k>val4</k>\n    <l1>4</l1>\n</lt>\n<lt xmlns=\"urn:tests:d\">\n    <k>val5</k>\n</lt>\n<lt xmlns=\"urn:tests:d\">\n    <k>val6</k>\n</lt>\n<lt xmlns=\"urn:tests:d\">\n    <k>val7</k>\n    <l1>2</l1>\n</lt>\n<lt xmlns=\"urn:tests:d\">\n    <k>val8</k>\n    <l1>8</l1>\n</lt>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/unique-07.json
+    assert:
+      verdict: invalid
+      diagnostics: [{apptag: "data-not-unique"}]
+      rfc: ["RFC7950#7.8.3", "RFC7950#7.8.2"]
+      deviation: null
+
+  - id: ut-validation/unique-nested-01
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_unique_nested:532
+    rfc: ["RFC7950#7.8.3", "RFC7950#7.8.2"]
+    areas: [validation]
+    request:
+      op: "schema"
+      searchdirs: [d.1]
+      modules: [{name: "d"}]
+    golden: golden/unique-nested-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8.3", "RFC7950#7.8.2"]
+      deviation: null
+
+  - id: ut-validation/unique-nested-02
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_unique_nested:535
+    rfc: ["RFC7950#7.8.3", "RFC7950#7.8.2"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [d.1]
+      modules: [{name: "d"}]
+      format: "xml"
+      data_type: "data"
+      data: "<lt2 xmlns=\"urn:tests:d\">\n    <k>val1</k>\n    <cont>\n        <l2>1</l2>\n    </cont>\n    <l4>1</l4>\n</lt2>\n<lt2 xmlns=\"urn:tests:d\">\n    <k>val2</k>\n    <cont>\n        <l2>2</l2>\n    </cont>\n    <l4>2</l4>\n    <lt3>\n        <kk>val1</kk>\n        <l3>1</l3>\n    </lt3>\n    <lt3>\n        <kk>val2</kk>\n        <l3>2</l3>\n    </lt3>\n</lt2>\n<lt2 xmlns=\"urn:tests:d\">\n    <k>val3</k>\n    <cont>\n        <l2>3</l2>\n    </cont>\n    <l4>3</l4>\n    <lt3>\n        <kk>val1</kk>\n        <l3>2</l3>\n    </lt3>\n</lt2>\n<lt2 xmlns=\"urn:tests:d\">\n    <k>val4</k>\n    <cont>\n        <l2>4</l2>\n    </cont>\n    <l4>4</l4>\n    <lt3>\n        <kk>val1</kk>\n        <l3>3</l3>\n    </lt3>\n</lt2>\n<lt2 xmlns=\"urn:tests:d\">\n    <k>val5</k>\n    <cont>\n        <l2>5</l2>\n    </cont>\n    <l4>5</l4>\n    <lt3>\n        <kk>val1</kk>\n        <l3>3</l3>\n    </lt3>\n</lt2>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/unique-nested-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8.3", "RFC7950#7.8.2"]
+      deviation: null
+
+  - id: ut-validation/unique-nested-03
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_unique_nested:592
+    rfc: ["RFC7950#7.8.3", "RFC7950#7.8.2"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [d.1]
+      modules: [{name: "d"}]
+      format: "xml"
+      data_type: "data"
+      data: "<lt2 xmlns=\"urn:tests:d\">\n    <k>val1</k>\n    <cont>\n        <l2>1</l2>\n    </cont>\n    <l4>1</l4>\n</lt2>\n<lt2 xmlns=\"urn:tests:d\">\n    <k>val2</k>\n    <cont>\n        <l2>2</l2>\n    </cont>\n    <lt3>\n        <kk>val1</kk>\n        <l3>1</l3>\n    </lt3>\n    <lt3>\n        <kk>val2</kk>\n        <l3>2</l3>\n    </lt3>\n    <lt3>\n        <kk>val3</kk>\n        <l3>1</l3>\n    </lt3>\n</lt2>\n<lt2 xmlns=\"urn:tests:d\">\n    <k>val3</k>\n    <cont>\n        <l2>3</l2>\n    </cont>\n    <l4>1</l4>\n    <lt3>\n        <kk>val1</kk>\n        <l3>2</l3>\n    </lt3>\n</lt2>\n<lt2 xmlns=\"urn:tests:d\">\n    <k>val4</k>\n    <cont>\n        <l2>4</l2>\n    </cont>\n    <lt3>\n        <kk>val1</kk>\n        <l3>3</l3>\n    </lt3>\n</lt2>\n<lt2 xmlns=\"urn:tests:d\">\n    <k>val5</k>\n    <cont>\n        <l2>5</l2>\n    </cont>\n    <lt3>\n        <kk>val1</kk>\n        <l3>3</l3>\n    </lt3>\n</lt2>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/unique-nested-03.json
+    assert:
+      verdict: invalid
+      diagnostics: [{apptag: "data-not-unique"}]
+      rfc: ["RFC7950#7.8.3", "RFC7950#7.8.2"]
+      deviation: null
+
+  - id: ut-validation/unique-nested-04
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_unique_nested:651
+    rfc: ["RFC7950#7.8.3", "RFC7950#7.8.2"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [d.1]
+      modules: [{name: "d"}]
+      format: "xml"
+      data_type: "data"
+      data: "<lt2 xmlns=\"urn:tests:d\">\n    <k>val1</k>\n    <cont>\n        <l2>1</l2>\n    </cont>\n    <l4>1</l4>\n</lt2>\n<lt2 xmlns=\"urn:tests:d\">\n    <k>val2</k>\n    <cont>\n        <l2>2</l2>\n    </cont>\n    <l4>2</l4>\n</lt2>\n<lt2 xmlns=\"urn:tests:d\">\n    <k>val3</k>\n    <cont>\n        <l2>3</l2>\n    </cont>\n    <l4>3</l4>\n</lt2>\n<lt2 xmlns=\"urn:tests:d\">\n    <k>val4</k>\n    <cont>\n        <l2>2</l2>\n    </cont>\n    <l4>2</l4>\n</lt2>\n<lt2 xmlns=\"urn:tests:d\">\n    <k>val5</k>\n    <cont>\n        <l2>5</l2>\n    </cont>\n    <l4>5</l4>\n</lt2>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/unique-nested-04.json
+    assert:
+      verdict: invalid
+      diagnostics: [{apptag: "data-not-unique"}]
+      rfc: ["RFC7950#7.8.3", "RFC7950#7.8.2"]
+      deviation: null
+
+  - id: ut-validation/unique-nested-05
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_unique_nested:689
+    rfc: ["RFC7950#7.8.3", "RFC7950#7.8.2"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [d.1]
+      modules: [{name: "d"}]
+      format: "xml"
+      data_type: "data"
+      data: "<lt2 xmlns=\"urn:tests:d\">\n    <k>val1</k>\n    <cont>\n        <l2>1</l2>\n    </cont>\n    <l4>1</l4>\n    <l5>1</l5>\n    <l6>1</l6>\n</lt2>\n<lt2 xmlns=\"urn:tests:d\">\n    <k>val2</k>\n    <cont>\n        <l2>2</l2>\n    </cont>\n    <l4>1</l4>\n    <l5>1</l5>\n</lt2>\n<lt2 xmlns=\"urn:tests:d\">\n    <k>val3</k>\n    <cont>\n        <l2>3</l2>\n    </cont>\n    <l4>1</l4>\n    <l5>3</l5>\n    <l6>3</l6>\n</lt2>\n<lt2 xmlns=\"urn:tests:d\">\n    <k>val4</k>\n    <cont>\n        <l2>4</l2>\n    </cont>\n    <l4>1</l4>\n    <l6>1</l6>\n</lt2>\n<lt2 xmlns=\"urn:tests:d\">\n    <k>val5</k>\n    <cont>\n        <l2>5</l2>\n    </cont>\n    <l4>1</l4>\n    <l5>3</l5>\n    <l6>3</l6>\n</lt2>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/unique-nested-05.json
+    assert:
+      verdict: invalid
+      diagnostics: [{apptag: "data-not-unique"}]
+      rfc: ["RFC7950#7.8.3", "RFC7950#7.8.2"]
+      deviation: null
+
+  - id: ut-validation/dup-01
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_dup:790
+    rfc: ["RFC7950#7.8.2", "RFC7950#7.9"]
+    areas: [validation]
+    request:
+      op: "schema"
+      searchdirs: [e.1]
+      modules: [{name: "e"}]
+    golden: golden/dup-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8.2", "RFC7950#7.9"]
+      deviation: null
+
+  - id: ut-validation/dup-02
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_dup:792
+    rfc: ["RFC7950#7.8.2", "RFC7950#7.9"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [e.1]
+      modules: [{name: "e"}]
+      format: "xml"
+      data_type: "data"
+      data: "<d xmlns=\"urn:tests:e\">25</d><d xmlns=\"urn:tests:e\">50</d>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/dup-02.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8.2", "RFC7950#7.9"]
+      deviation: null
+
+  - id: ut-validation/dup-03
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_dup:796
+    rfc: ["RFC7950#7.8.2", "RFC7950#7.9"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [e.1]
+      modules: [{name: "e"}]
+      format: "xml"
+      data_type: "data"
+      data: "<lt xmlns=\"urn:tests:e\"><k>A</k></lt><lt xmlns=\"urn:tests:e\"><k>B</k></lt><lt xmlns=\"urn:tests:e\"><k>A</k></lt>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/dup-03.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8.2", "RFC7950#7.9"]
+      deviation: null
+
+  - id: ut-validation/dup-04
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_dup:802
+    rfc: ["RFC7950#7.8.2", "RFC7950#7.9"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [e.1]
+      modules: [{name: "e"}]
+      format: "xml"
+      data_type: "data"
+      data: "<ll xmlns=\"urn:tests:e\">A</ll><ll xmlns=\"urn:tests:e\">B</ll><ll xmlns=\"urn:tests:e\">B</ll>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/dup-04.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8.2", "RFC7950#7.9"]
+      deviation: null
+
+  - id: ut-validation/dup-05
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_dup:808
+    rfc: ["RFC7950#7.8.2", "RFC7950#7.9"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [e.1]
+      modules: [{name: "e"}]
+      format: "xml"
+      data_type: "data"
+      data: "<cont xmlns=\"urn:tests:e\"></cont><cont xmlns=\"urn:tests:e\"/>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/dup-05.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8.2", "RFC7950#7.9"]
+      deviation: null
+
+  - id: ut-validation/dup-06
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_dup:813
+    rfc: ["RFC7950#7.8.2", "RFC7950#7.9"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [e.1]
+      modules: [{name: "e"}]
+      format: "xml"
+      data_type: "data"
+      data: "<cont xmlns=\"urn:tests:e\"><d>25</d><d>50</d><ll>1</ll><ll>2</ll><ll>3</ll><ll>4</ll></cont>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/dup-06.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8.2", "RFC7950#7.9"]
+      deviation: null
+
+  - id: ut-validation/dup-07
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_dup:817
+    rfc: ["RFC7950#7.8.2", "RFC7950#7.9"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [e.1]
+      modules: [{name: "e"}]
+      format: "xml"
+      data_type: "data"
+      data: "<cont xmlns=\"urn:tests:e\"><ll>1</ll><ll>2</ll><ll>3</ll><ll>4</ll><lt><k>a</k></lt><lt><k>b</k></lt><lt><k>c</k></lt><lt><k>d</k></lt><lt><k>c</k></lt></cont>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/dup-07.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8.2", "RFC7950#7.9"]
+      deviation: null
+
+  - id: ut-validation/dup-08
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_dup:826
+    rfc: ["RFC7950#7.8.2", "RFC7950#7.9"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [e.1]
+      modules: [{name: "e"}]
+      format: "xml"
+      data_type: "data"
+      data: "<cont xmlns=\"urn:tests:e\"><ll>1</ll><ll>2</ll><ll>3</ll><ll>4</ll><ll>a</ll><ll>b</ll><ll>c</ll><ll>d</ll><ll>d</ll></cont>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/dup-08.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8.2", "RFC7950#7.9"]
+      deviation: null
+
+  - id: ut-validation/dup-09
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_dup:832
+    rfc: ["RFC7950#7.8.2", "RFC7950#7.9"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [e.1]
+      modules: [{name: "e"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l xmlns=\"urn:tests:e\">a</l><l xmlns=\"urn:tests:e\">b</l><l xmlns=\"urn:tests:e\">c</l><l xmlns=\"urn:tests:e\">b</l>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/dup-09.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8.2", "RFC7950#7.9"]
+      deviation: null
+
+  - id: ut-validation/dup-10
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_dup:839
+    rfc: ["RFC7950#7.8.2", "RFC7950#7.9"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [e.1]
+      modules: [{name: "e"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l xmlns=\"urn:tests:e\">a</l><l xmlns=\"urn:tests:e\">b</l><l xmlns=\"urn:tests:e\">c</l><a xmlns=\"urn:tests:e\">aa</a>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/dup-10.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8.2", "RFC7950#7.9"]
+      deviation: null
+
+  - id: ut-validation/state-01
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_state:1155
+    rfc: ["RFC7950#7.21.1"]
+    areas: [validation]
+    request:
+      op: "schema"
+      searchdirs: [h.1]
+      modules: [{name: "h"}]
+    golden: golden/state-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.21.1"]
+      deviation: null
+
+  - id: ut-validation/state-02
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_state:1162
+    rfc: ["RFC7950#7.21.1"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [h.1]
+      modules: [{name: "h"}]
+      format: "xml"
+      data_type: "data"
+      data: "<cont xmlns=\"urn:tests:h\">\n  <cont2>\n    <l>val</l>\n  </cont2>\n</cont>\n"
+      parse_only: true
+      parse_options: ["no_state"]
+      validate_options: []
+      unknown: "skip"
+    golden: golden/state-02.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.21.1"]
+      deviation: null
+
+  - id: ut-validation/state-03
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_state:1165
+    rfc: ["RFC7950#7.21.1"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [h.1]
+      modules: [{name: "h"}]
+      format: "xml"
+      data_type: "data"
+      data: "<cont xmlns=\"urn:tests:h\">\n  <cont2>\n    <l>val</l>\n  </cont2>\n</cont>\n"
+      parse_only: true
+      parse_options: []
+      validate_options: []
+      unknown: "skip"
+    golden: golden/state-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.21.1"]
+      deviation: null
+
+  - id: ut-validation/state-04
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_state:1166
+    rfc: ["RFC7950#7.21.1"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [h.1]
+      modules: [{name: "h"}]
+      format: "xml"
+      data_type: "data"
+      data: "<cont xmlns=\"urn:tests:h\">\n  <cont2>\n    <l>val</l>\n  </cont2>\n</cont>\n"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present", "no_state"]
+      unknown: "skip"
+    golden: golden/state-04.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.21.1"]
+      deviation: null
+
+  - id: ut-validation/must-01
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_must:1199
+    rfc: ["RFC7950#7.5.3"]
+    areas: [validation]
+    request:
+      op: "schema"
+      searchdirs: [i.1]
+      modules: [{name: "i"}]
+    golden: golden/must-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.5.3"]
+      deviation: null
+
+  - id: ut-validation/must-02
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_must:1201
+    rfc: ["RFC7950#7.5.3"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [i.1]
+      modules: [{name: "i"}]
+      format: "xml"
+      data_type: "data"
+      data: "<cont xmlns=\"urn:tests:i\">\n  <l>wrong</l>\n  <l2>val</l2>\n</cont>\n"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/must-02.json
+    assert:
+      verdict: invalid
+      diagnostics: [{apptag: "must-violation"}]
+      rfc: ["RFC7950#7.5.3"]
+      deviation: null
+
+  - id: ut-validation/must-03
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_must:1207
+    rfc: ["RFC7950#7.5.3"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [i.1]
+      modules: [{name: "i"}]
+      format: "xml"
+      data_type: "data"
+      data: "<cont xmlns=\"urn:tests:i\">\n  <l>right</l>\n  <l2>val</l2>\n</cont>\n"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/must-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.5.3"]
+      deviation: null
+
+  - id: ut-validation/must-04
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_must:1213
+    rfc: ["RFC7950#7.5.3"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [i.1]
+      modules: [{name: "i"}]
+      format: "xml"
+      data_type: "data"
+      data: "<cont xmlns=\"urn:tests:i\">\n  <l>wrong</l>\n  <l3>val</l3>\n</cont>\n"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/must-04.json
+    assert:
+      verdict: invalid
+      diagnostics: [{apptag: "not-left"}]
+      rfc: ["RFC7950#7.5.3"]
+      deviation: null
+
+  - id: ut-validation/multi-error-01
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_multi_error:1253
+    rfc: ["RFC7950#7.5.3", "RFC7950#7.8.5"]
+    areas: [validation]
+    request:
+      op: "schema"
+      searchdirs: [ii.1]
+      modules: [{name: "ii"}]
+    golden: golden/multi-error-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.5.3", "RFC7950#7.8.5"]
+      deviation: null
+
+  - id: ut-validation/multi-error-02
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_multi_error:1264
+    rfc: ["RFC7950#7.5.3", "RFC7950#7.8.5"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [ii.1]
+      modules: [{name: "ii"}]
+      format: "xml"
+      data_type: "data"
+      data: "<cont xmlns=\"urn:tests:ii\">\n  <l>wrong</l>\n  <l>wrong2</l>\n  <l2>val</l2>\n  <l3>val</l3>\n  <ll>ahoy</ll>\n</cont>\n"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present", "multi_error"]
+      unknown: "skip"
+    golden: golden/multi-error-02.json
+    assert:
+      verdict: invalid
+      diagnostics: [{apptag: "too-few-elements"}]
+      rfc: ["RFC7950#7.5.3", "RFC7950#7.8.5"]
+      deviation: null
+
+  - id: ut-validation/multi-error-03
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_multi_error:1280
+    rfc: ["RFC7950#7.5.3", "RFC7950#7.8.5"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [ii.1]
+      modules: [{name: "ii"}]
+      format: "json"
+      data_type: "data"
+      data: "{\n  \"ii:cont\": {\n    \"l\": \"wrong\",\n    \"l\": \"wrong2\",\n    \"l2\": \"val\",\n    \"l3\": \"val\",\n    \"ll\": [\"ahoy\"]\n  }\n}\n"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present", "multi_error"]
+      unknown: "skip"
+    golden: golden/multi-error-03.json
+    assert:
+      verdict: invalid
+      diagnostics: [{apptag: "too-few-elements"}]
+      rfc: ["RFC7950#7.5.3", "RFC7950#7.8.5"]
+      deviation: null
+
+  - id: ut-validation/multi-error-04
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_multi_error:1296
+    rfc: ["RFC7950#7.5.3", "RFC7950#7.8.5"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [ii.1]
+      modules: [{name: "ii"}]
+      format: "json"
+      data_type: "data"
+      data: "{\n  \"ii:cont\": {\n    \"l\": \"wrong\",\n    \"l\": \"wrong2\",\n    \"l2\": \"val\",\n    \"l3\": \"val\",\n    \"ll\": [25]\n  }\n}\n"
+      parse_only: true
+      parse_options: []
+      validate_options: []
+      unknown: "skip"
+    golden: golden/multi-error-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.5.3", "RFC7950#7.8.5"]
+      deviation: null
+
+  - id: ut-validation/multi-error-05
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_multi_error:1297
+    rfc: ["RFC7950#7.5.3", "RFC7950#7.8.5"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [ii.1]
+      modules: [{name: "ii"}]
+      format: "json"
+      data_type: "data"
+      data: "{\n  \"ii:cont\": {\n    \"l\": \"wrong\",\n    \"l\": \"wrong2\",\n    \"l2\": \"val\",\n    \"l3\": \"val\",\n    \"ll\": [25]\n  }\n}\n"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present", "multi_error"]
+      unknown: "skip"
+    golden: golden/multi-error-05.json
+    assert:
+      verdict: invalid
+      diagnostics: [{apptag: "too-few-elements"}]
+      rfc: ["RFC7950#7.5.3", "RFC7950#7.8.5"]
+      deviation: null
+
+  - id: ut-validation/case-01
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_case:1568
+    rfc: ["RFC7950#7.9"]
+    areas: [validation]
+    request:
+      op: "schema"
+      searchdirs: [k.1]
+      modules: [{name: "k"}]
+    golden: golden/case-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.9"]
+      deviation: null
+
+  - id: ut-validation/case-02
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_case:1570
+    rfc: ["RFC7950#7.9"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [k.1]
+      modules: [{name: "k"}]
+      format: "json"
+      data_type: "data"
+      data: "{\n  \"k:ch\": {\n    \"g0\": \"value_g0\",\n    \"g7\": \"value_g7\"\n  }\n}\n"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/case-02.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.9"]
+      deviation: null
+
+  - id: ut-validation/case-03
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_case:1579
+    rfc: ["RFC7950#7.9"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [k.1]
+      modules: [{name: "k"}]
+      format: "json"
+      data_type: "data"
+      data: "{\n  \"k:ch\": {\n    \"g7\": \"value_g7\",\n    \"g0\": \"value_g0\"\n  }\n}\n"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/case-03.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.9"]
+      deviation: null
+
+  - id: ut-validation/store-only-01
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_store_only:1621
+    rfc: ["RFC7950#9.4.5"]
+    areas: [validation]
+    request:
+      op: "schema"
+      searchdirs: [k.2]
+      modules: [{name: "k"}]
+    golden: golden/store-only-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: null
+
+  - id: ut-validation/store-only-02
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_store_only:1625
+    rfc: ["RFC7950#9.4.5"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [k.2]
+      modules: [{name: "k"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l xmlns=\"urn:tests:k\">no-lowercAse-A</l>"
+      parse_only: false
+      parse_options: ["store_only"]
+      validate_options: []
+      unknown: "reject"
+    golden: golden/store-only-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: null
+
+  - id: ut-validation/store-only-03
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_store_only:1631
+    rfc: ["RFC7950#9.4.5"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [k.2]
+      modules: [{name: "k"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l xmlns=\"urn:tests:k\">no-lowercAse-A</l>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "reject"
+    golden: golden/store-only-03.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: null
+
+  - id: ut-validation/when-must-cross-ref-01
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_when_must_cross_ref:1681
+    rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3", "RFC7950#7.6.5"]
+    areas: [validation]
+    request:
+      op: "schema"
+      searchdirs: [twm.1]
+      modules: [{name: "twm"}]
+    golden: golden/when-must-cross-ref-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3", "RFC7950#7.6.5"]
+      deviation: null
+
+  - id: ut-validation/when-must-cross-ref-02
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_when_must_cross_ref:1687
+    rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3", "RFC7950#7.6.5"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [twm.1]
+      modules: [{name: "twm"}]
+      format: "xml"
+      data_type: "data"
+      data: "<top xmlns=\"urn:tests:twm\">\n  <gated>x</gated>\n  <checker>val</checker>\n</top>\n"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present", "multi_error"]
+      unknown: "skip"
+    golden: golden/when-must-cross-ref-02.json
+    assert:
+      verdict: invalid
+      diagnostics: [{apptag: "checker-bad"}]
+      rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3", "RFC7950#7.6.5"]
+      deviation: null
+
+  - id: ut-validation/when-must-cross-ref-03
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_when_must_cross_ref:1728
+    rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3", "RFC7950#7.6.5", "RFC7950#7.8.2"]
+    areas: [validation]
+    request:
+      op: "schema"
+      searchdirs: [twm.1, twm2.1]
+      modules: [{name: "twm"}, {name: "twm2"}]
+    golden: golden/when-must-cross-ref-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3", "RFC7950#7.6.5", "RFC7950#7.8.2"]
+      deviation: null
+
+  - id: ut-validation/when-must-cross-ref-04
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_when_must_cross_ref:1731
+    rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3", "RFC7950#7.6.5", "RFC7950#7.8.2"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [twm.1, twm2.1]
+      modules: [{name: "twm"}, {name: "twm2"}]
+      format: "xml"
+      data_type: "data"
+      data: "<top xmlns=\"urn:tests:twm2\">\n  <flag>false</flag>\n  <item><name>x</name></item>\n  <gated><ref>x</ref></gated>\n</top>\n"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present", "multi_error"]
+      unknown: "skip"
+    golden: golden/when-must-cross-ref-04.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3", "RFC7950#7.6.5", "RFC7950#7.8.2"]
+      deviation: null
+
+  - id: ut-validation/when-must-cross-ref-05
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_when_must_cross_ref:1776
+    rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3", "RFC7950#7.6.5", "RFC7950#7.8.2"]
+    areas: [validation]
+    request:
+      op: "schema"
+      searchdirs: [twm.1, twm2.1, twm3.1]
+      modules: [{name: "twm"}, {name: "twm2"}, {name: "twm3"}]
+    golden: golden/when-must-cross-ref-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3", "RFC7950#7.6.5", "RFC7950#7.8.2"]
+      deviation: null
+
+  - id: ut-validation/when-must-cross-ref-06
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_when_must_cross_ref:1779
+    rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3", "RFC7950#7.6.5", "RFC7950#7.8.2"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [twm.1, twm2.1, twm3.1]
+      modules: [{name: "twm"}, {name: "twm2"}, {name: "twm3"}]
+      format: "xml"
+      data_type: "data"
+      data: "<top xmlns=\"urn:tests:twm3\">\n  <flag>false</flag>\n  <item><name>x</name></item>\n  <selector>x</selector>\n  <ref>x</ref>\n</top>\n"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present", "multi_error"]
+      unknown: "skip"
+    golden: golden/when-must-cross-ref-06.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3", "RFC7950#7.6.5", "RFC7950#7.8.2"]
+      deviation: null
+
+  - id: ut-validation/when-must-cross-ref-07
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_when_must_cross_ref:1825
+    rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3", "RFC7950#7.6.5", "RFC7950#7.8.2"]
+    areas: [validation]
+    request:
+      op: "schema"
+      searchdirs: [twm.1, twm2.1, twm3.1, twm4.1]
+      modules: [{name: "twm"}, {name: "twm2"}, {name: "twm3"}, {name: "twm4"}]
+    golden: golden/when-must-cross-ref-07.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3", "RFC7950#7.6.5", "RFC7950#7.8.2"]
+      deviation: null
+
+  - id: ut-validation/when-must-cross-ref-08
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_when_must_cross_ref:1831
+    rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3", "RFC7950#7.6.5", "RFC7950#7.8.2"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [twm.1, twm2.1, twm3.1, twm4.1]
+      modules: [{name: "twm"}, {name: "twm2"}, {name: "twm3"}, {name: "twm4"}]
+      format: "xml"
+      data_type: "data"
+      data: "<top xmlns=\"urn:tests:twm4\">\n  <flag>false</flag>\n  <item><name>a</name><value>expected</value></item>\n  <checker>val</checker>\n</top>\n"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present", "multi_error"]
+      unknown: "skip"
+    golden: golden/when-must-cross-ref-08.json
+    assert:
+      verdict: invalid
+      diagnostics: [{apptag: "checker-bad"}]
+      rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3", "RFC7950#7.6.5", "RFC7950#7.8.2"]
+      deviation: null
+
+  - id: ut-validation/when-must-cross-ref-09
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_when_must_cross_ref:1870
+    rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3", "RFC7950#7.6.5", "RFC7950#7.8.2"]
+    areas: [validation]
+    request:
+      op: "schema"
+      searchdirs: [twm.1, twm2.1, twm3.1, twm4.1, twm5.1]
+      modules: [{name: "twm"}, {name: "twm2"}, {name: "twm3"}, {name: "twm4"}, {name: "twm5"}]
+    golden: golden/when-must-cross-ref-09.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3", "RFC7950#7.6.5", "RFC7950#7.8.2"]
+      deviation: null
+
+  - id: ut-validation/when-must-cross-ref-10
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_when_must_cross_ref:1872
+    rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3", "RFC7950#7.6.5", "RFC7950#7.8.2"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [twm.1, twm2.1, twm3.1, twm4.1, twm5.1]
+      modules: [{name: "twm"}, {name: "twm2"}, {name: "twm3"}, {name: "twm4"}, {name: "twm5"}]
+      format: "xml"
+      data_type: "data"
+      data: "<top xmlns=\"urn:tests:twm5\">\n  <flag>false</flag>\n  <outer><inner>x</inner></outer>\n</top>\n"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present", "multi_error"]
+      unknown: "skip"
+    golden: golden/when-must-cross-ref-10.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3", "RFC7950#7.6.5", "RFC7950#7.8.2"]
+      deviation: null
+# END ut-validation

@@ -1,0 +1,27 @@
+module c {
+    namespace urn:tests:c;
+    prefix c;
+    yang-version 1.1;
+
+    choice choic {
+        leaf a {
+            type string;
+        }
+        case b {
+            leaf-list l {
+                min-elements 3;
+                type string;
+            }
+        }
+    }
+    list lt {
+        max-elements 4;
+        key "k";
+        leaf k {
+            type string;
+        }
+    }
+    leaf d {
+        type empty;
+    }
+}

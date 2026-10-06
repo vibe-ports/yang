@@ -1,0 +1,59 @@
+module k {
+  namespace urn:tests:k;
+  prefix k;
+  yang-version 1.1;
+
+  container ch {
+    choice a0 {
+      case v0 {
+        leaf g0 {
+          type string;
+        }
+      }
+      case v1 {
+        choice a1 {
+          case r0 {
+            leaf g1 {
+              type string;
+            }
+          }
+          case r1 {
+            leaf g2 {
+              type string;
+            }
+            leaf g3 {
+              type string;
+            }
+          }
+          case r2 {
+            leaf g4 {
+              type string;
+            }
+          }
+        }
+      }
+      case v2 {
+        choice a2 {
+          case y0 {
+            leaf g5 {
+              type string;
+            }
+          }
+          case y1 {
+            leaf g6 {
+              type string;
+            }
+            leaf g7 {
+              type string;
+            }
+          }
+          case y2 {
+            leaf g8 {
+              type string;
+            }
+          }
+        }
+      }
+    }
+  }
+}
