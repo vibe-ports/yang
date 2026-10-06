@@ -172,14 +172,26 @@ func kindName(k schema.Kind) string {
 var formatNames = map[Format]string{FormatCanon: "canonical", FormatSchema: "schema imports",
 	FormatSchemaResolved: "schema stored mapping", FormatXML: "XML prefixes", FormatJSON: "JSON module names"}
 
-// pathCompile ports _ly_path_compile (not leafref, LY_PATH_TARGET_SINGLE, not XPath).
+// pathCompile ports _ly_path_compile (not leafref, LY_PATH_TARGET_SINGLE, not XPath) for an
+// absolute instance-identifier.
 func pathCompile(a *storeArgs, e *lyxp.Expr) (Path, string) {
-	output := a.ctx != nil && a.ctx.InOutput()
+	return pathCompileAt(a, e, nil, a.ctx != nil && a.ctx.InOutput(), false)
+}
+
+// pathCompileAt ports _ly_path_compile (not leafref, not XPath): a relative path starts at
+// ctxNode; many is LY_PATH_TARGET_MANY (no list or leaf-list needs a predicate).
+func pathCompileAt(a *storeArgs, e *lyxp.Expr, ctxNode *schema.Node, output, many bool) (Path, string) {
 	var path Path
 	var parent *schema.Node
 	i := 1
+	if !e.Is(0, lyxp.TokOperPath) { // relative path
+		if ctxNode == nil {
+			return nil, "No initial schema parent for a relative path."
+		}
+		i, parent = 0, ctxNode
+	}
 	for {
-		if n := len(path); n > 0 && path[n-1].Node.Kind == schema.List && path[n-1].Preds == nil {
+		if n := len(path); !many && n > 0 && path[n-1].Node.Kind == schema.List && path[n-1].Preds == nil {
 			return nil, fmt.Sprintf("Predicate missing for %s \"%s\" in path.", kindName(schema.List), path[n-1].Node.Name)
 		}
 		if msg := e.Check(i, lyxp.TokNameTest); msg != "" {
@@ -204,7 +216,7 @@ func pathCompile(a *storeArgs, e *lyxp.Expr) (Path, string) {
 	if i < len(e.Toks) {
 		return nil, fmt.Sprintf("Unexpected XPath token \"%s\" (\"%s\").", e.Toks[i], lyxp.Trunc15(e.Rest(i)))
 	}
-	if last := path[len(path)-1]; (last.Node.Kind == schema.List || last.Node.Kind == schema.LeafList) && last.Preds == nil {
+	if last := path[len(path)-1]; !many && (last.Node.Kind == schema.List || last.Node.Kind == schema.LeafList) && last.Preds == nil {
 		return nil, fmt.Sprintf("Predicate missing for %s \"%s\" in path.", kindName(last.Node.Kind), last.Node.Name)
 	}
 	return path, ""

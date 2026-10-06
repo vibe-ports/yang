@@ -105,10 +105,9 @@ var oracleKinds = map[schema.Kind]string{
 
 // dumpTree is lysc_module_dfs_full with snode_cb: a node, its actions and notifications
 // subtrees, then its children.
-func dumpTree(m *schema.Module) []gNode {
+func dumpTree(m *schema.Module) []gNode { // lysc_module_dfs_full order (Module.DFS)
 	var out []gNode
-	var dfs func(n *schema.Node)
-	dfs = func(n *schema.Node) {
+	for n := range m.DFS() {
 		g := gNode{Path: n.LogPath(), Nodetype: oracleKinds[n.Kind], Module: n.Module.Name,
 			Status: [...]string{"current", "deprecated", "obsolete"}[n.Status]}
 		noConfig := false
@@ -172,18 +171,6 @@ func dumpTree(m *schema.Module) []gNode {
 			g.Exts = &exts
 		}
 		out = append(out, g)
-		for _, a := range n.Actions {
-			dfs(a)
-		}
-		for _, a := range n.Notifs {
-			dfs(a)
-		}
-		for _, c := range n.Children {
-			dfs(c)
-		}
-	}
-	for _, n := range m.Top {
-		dfs(n)
 	}
 	return out
 }
