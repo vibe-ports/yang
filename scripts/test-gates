@@ -310,12 +310,7 @@ rebased; publish $nx
 expect 1 "merge-pr carry-over: an unfetchable A is refused" "approval of $nx does not carry over.*cannot fetch it" mp
 rebased; publish; touch "$FX/graphql-fail"
 expect 1 "merge-pr carry-over: GraphQL failure is refused" "$NOCO.*cannot read the PR's force-push history" mp
-rm "$FX/graphql-fail"; echo '* merge=union' >"$m/.gitattributes"
-expect 1 "merge-pr carry-over: an untracked .gitattributes is refused" "$NOCO.*not clean" mp
-rm "$m/.gitattributes"; ia=$m/$(git -C "$m" rev-parse --git-path info/attributes); mkdir -p "${ia%/*}"
-echo '* merge=union' >"$ia"
-expect 1 "merge-pr carry-over: \$GIT_DIR/info/attributes is refused" "$NOCO.*not clean" mp
-rm "$ia"
+rm "$FX/graphql-fail"
 comments 1056050 $D1 "$AA" 1056050 $D2 "VERDICT: changes $Aold (codex-x)"
 expect 1 "merge-pr carry-over: a later 'changes' for A wins (and is named)" "$NOAPP .* is 'none'.*newest attestation of the PR: changes $Aold" mp
 comments 1056050 $D1 "$AA" 1056050 $D2 "VERDICT: changes $Aold (codex-x)"; edited
@@ -339,8 +334,29 @@ git -C "$m" push -q -f origin HEAD:refs/pull/7/head
 on_main g "${blk/X/Z}$blk"; git -C "$m" fetch -q origin; git -C "$m" checkout -q --detach origin/main
 printf "${blk/X/Z}${blk/X/Y}" >"$m/g"; git -C "$m" commit -qam 'feat: g'; publish "$A2"
 expect 1 "merge-pr carry-over: a replay that conflicts is refused" "approval of $A2 does not carry over.*commit 1 does not replay cleanly" mp
+# Local git config and attributes must not reach the replay: a merge driver that writes the
+# head's g would turn that conflict into a "pure rebase" of an unreviewed, relocated hunk.
+git -C "$m" show "$head:g" >"$t/hg"; CONFL="approval of $A2 does not carry over.*commit 1 does not replay cleanly"
+printf '[merge "evil"]\n\tdriver = cat %s >%%A\n' "$t/hg" >"$t/gcfg"; echo 'g merge=evil' >"$t/gattr"
+printf '[core]\n\tattributesFile = %s\n' "$t/gattr" >>"$t/gcfg"
+GIT_CONFIG_GLOBAL=$t/gcfg expect 1 "merge-pr carry-over: core.attributesFile with a merge driver is ignored" "$CONFL" mp
+mkdir -p "$t/xdg/git"; echo 'g merge=evil' >"$t/xdg/git/attributes"; head -2 "$t/gcfg" >"$t/gcfg2"
+XDG_CONFIG_HOME=$t/xdg GIT_CONFIG_GLOBAL=$t/gcfg2 expect 1 "merge-pr carry-over: a global gitattributes file is ignored" "$CONFL" mp
+git -C "$m" config merge.evil.driver "cat $t/hg >%A"; git -C "$m" config merge.default evil
+expect 1 "merge-pr carry-over: a repo-local merge driver (merge.default) is ignored" "$CONFL" mp
+git -C "$m" config core.attributesFile "$t/gattr"
+expect 1 "merge-pr carry-over: a repo-local core.attributesFile + driver is ignored" "$CONFL" mp
+git -C "$m" config --remove-section merge.evil; git -C "$m" config --unset merge.default; git -C "$m" config --unset core.attributesFile
+GIT_CONFIG_COUNT=2 GIT_CONFIG_KEY_0=merge.evil.driver GIT_CONFIG_VALUE_0="cat $t/hg >%A" GIT_CONFIG_KEY_1=merge.default \
+  GIT_CONFIG_VALUE_1=evil expect 1 "merge-pr carry-over: a merge driver from the environment is ignored" "$CONFL" mp
+ia=$m/$(git -C "$m" rev-parse --git-path info/attributes); mkdir -p "${ia%/*}"; echo 'g merge=union' >"$ia"
+expect 1 "merge-pr carry-over: \$GIT_DIR/info/attributes merge=union is ignored" "$CONFL" mp
+rm "$ia"; echo 'g merge=union' >"$m/.gitattributes"
+expect 1 "merge-pr carry-over: an untracked .gitattributes is ignored" "$CONFL" mp
+rm "$m/.gitattributes"
 rebased; publish; forced "$Aold" "$(git -C "$m" rev-parse "$Aold~1")"
-expect 0 "merge-pr carry-over: patch-identical rebase merges, A on GraphQL page 2 (trusted wrapper)" - mpw
+echo 'f merge=union' >"$ia"  # the maintainer's clone has info/attributes: carry-over must still work
+expect 0 "merge-pr carry-over: patch-identical rebase merges, A on GraphQL page 2, info/attributes present (trusted wrapper)" - mpw
 has "merge-pr carry-over: log names the carried approval" "approval of $Aold carried over: patch-identical rebase" "$t/out"
 [[ $(git -C "$bare" rev-parse main) == "$head" ]] && ok "merge-pr carry-over: main == rebased head" || no "merge-pr carry-over: main != head"
 

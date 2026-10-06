@@ -15,7 +15,8 @@
 #    or, when no attestation names the head, the PR's newest attestation approves an older head A
 #    (a force-pushed-away head of this PR) and the head is a patch-identical rebase of A: same
 #    commits in order with identical patches, messages, authors and author dates, and replaying A
-#    onto the new base gives exactly the head's trees ("approval of A carried over" is logged);
+#    onto the new base gives exactly the head's trees, under main's committed attributes only and
+#    no local git config ("approval of A carried over" is logged);
 #  - CI: every (non-cancelled) run of .github/workflows/ci.yml for exactly that SHA succeeded;
 #  - every branch commit has +0000 author/committer dates and the head fast-forwards main.
 # Then pushes <head>:main with a lease on the main SHA it checked; GitHub marks the PR merged.
@@ -117,30 +118,40 @@ if [[ -n $carried ]]; then
     nope "cannot read the PR's force-push history"
   grep -qxF "$A" <<<"$heads" || nope "it was never a head of PR #$pr"
   git fetch -q origin "$A" && [[ $(git rev-parse FETCH_HEAD) == "$A" ]] || nope "cannot fetch it"
-  # merge-tree honours the checkout's attribute files (merge drivers, eol): only main's may apply.
-  [[ -z $(git status --porcelain --ignored -- ':(glob)**/.gitattributes') && -z $(git status --porcelain) &&
-    ! -s $(git rev-parse --git-path info/attributes) ]] ||
-    nope "the checkout is not clean (git status, .gitattributes, \$GIT_DIR/info/attributes)"
+  # git's merge and diff honour config and attributes from outside main (merge drivers and
+  # merge.default in any config file or the environment, core.attributesFile, system and
+  # $GIT_DIR/info/attributes, the worktree's .gitattributes) and replace refs. So the comparison
+  # runs in a throwaway bare repository with no config or refs that borrows this clone's objects;
+  # the only attributes are main's committed .gitattributes (GIT_ATTR_SOURCE), whose drivers
+  # (union) are builtins that need no config.
+  iso=$(mktemp -d) && trap 'rm -rf "$iso"' EXIT || nope "cannot create a temporary directory"
+  objs=$(cd "$(git rev-parse --git-path objects)" && pwd) || nope "cannot find the object store"
+  clean=(env -u GIT_CONFIG_PARAMETERS -u GIT_CONFIG_COUNT -u GIT_OBJECT_DIRECTORY -u GIT_INDEX_FILE
+    -u GIT_WORK_TREE -u GIT_NAMESPACE -u GIT_REPLACE_REF_BASE -u GIT_EXTERNAL_DIFF
+    GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_ATTR_NOSYSTEM=1 GIT_NO_REPLACE_OBJECTS=1)
+  "${clean[@]}" git init -q --bare --template= "$iso" || nope "cannot create the isolated repository"
+  g() { "${clean[@]}" GIT_DIR="$iso" GIT_ALTERNATE_OBJECT_DIRECTORIES="$objs" GIT_ATTR_SOURCE="$base" \
+    git -c core.attributesFile=/dev/null "$@"; }
   # Same commits in the same order, each with an identical patch (--verbatim: whitespace counts),
   # message and author. patch-id ignores line numbers, so replaying A's commits onto H's base with
   # git's own merge must also give H's trees exactly: no hunk lands elsewhere, no binary change
   # hides behind "Binary files differ", no conflict resolution is carried over.
   commits() { # <merge base> <commits oldest first>; fails on merge commits
-    local mb l m; mb=$(git merge-base "$base" "$1") && l=$(git rev-list --reverse "$mb..$1") &&
-      m=$(git rev-list --merges "$mb..$1") && [[ -z $m ]] && echo "$mb" $l
+    local mb l m; mb=$(g merge-base "$base" "$1") && l=$(g rev-list --reverse "$mb..$1") &&
+      m=$(g rev-list --merges "$mb..$1") && [[ -z $m ]] && echo "$mb" $l
   }
   ident() { # --verbatim = --stable without stripping whitespace (git rejects both together)
-    local p; p=$(git diff-tree -p --binary "$1^" "$1" | git patch-id --verbatim) || return 1
-    echo "$p"; git log -1 --format='%an <%ae> %ad%n%B' --date=raw "$1"
+    local p; p=$(g diff-tree -p --binary "$1^" "$1" | g patch-id --verbatim) || return 1
+    echo "$p"; g log -1 --format='%an <%ae> %ad%n%B' --date=raw "$1"
   }
   la=($(commits "$A")) && lh=($(commits "$head")) || nope "no merge base, or merge commits"
   ((${#la[@]} == ${#lh[@]} && ${#la[@]} > 1)) || nope "commit count differs"
   for ((i = 1; i < ${#la[@]}; i++)); do
     ia=$(ident "${la[i]}") && ih=$(ident "${lh[i]}") || nope "cannot read commit $i"
     [[ $ia == "$ih" ]] || nope "commit $i differs (patch, message or author)"
-    tree=$(git merge-tree --write-tree --merge-base="${la[i]}^" "${lh[i - 1]}" "${la[i]}") ||
+    tree=$(g merge-tree --write-tree --merge-base="${la[i]}^" "${lh[i - 1]}" "${la[i]}") ||
       nope "commit $i does not replay cleanly"
-    [[ $tree == "$(git rev-parse "${lh[i]}^{tree}")" ]] || nope "commit $i is not a pure rebase"
+    [[ $tree == "$(g rev-parse "${lh[i]}^{tree}")" ]] || nope "commit $i is not a pure rebase"
   done
 fi
 
