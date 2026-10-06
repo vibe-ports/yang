@@ -1,0 +1,86 @@
+module a {
+    namespace urn:tests:a;
+    prefix a;
+    yang-version 1.1;
+
+    identity id_a;
+    identity id_b {
+        base id_a;
+    }
+    identity id_c {
+        base id_b;
+    }
+
+    list l1 {
+        key "a b";
+        leaf a {
+            type string;
+        }
+        leaf b {
+            type string;
+        }
+        leaf c {
+            type string;
+        }
+    }
+    leaf foo {
+        type string;
+    }
+    leaf foo2 {
+        type uint8;
+    }
+    leaf foo3 {
+        type identityref {
+            base id_a;
+        }
+    }
+    leaf foo4 {
+        type decimal64 {
+            fraction-digits 5;
+        }
+    }
+    leaf foo5 {
+        type decimal64 {
+            fraction-digits 1;
+            range "0.5 .. 99.5";
+        }
+        must "(. - 0.5) mod 0.5 = 0";
+    }
+    anydata any;
+    container c {
+        leaf x {
+            type string;
+        }
+        list ll {
+            key "a";
+            leaf a {
+                type string;
+            }
+            list ll {
+                key "a";
+                leaf a {
+                    type string;
+                }
+                leaf b {
+                    type string;
+                }
+            }
+        }
+        leaf-list ll2 {
+            type string;
+        }
+    }
+
+    rpc r {
+        input {
+            leaf l {
+                type string;
+            }
+        }
+        output {
+            leaf l {
+                type string;
+            }
+        }
+    }
+}

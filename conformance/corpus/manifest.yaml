@@ -20719,3 +20719,986 @@ fixtures:
       rfc: ["RFC7950#9.12"]
       deviation: null
 # END ut-lref-union
+
+# BEGIN ut-xpath (generated from libyang tests/utests/basic/test_xpath.c, reviewed)
+
+  - id: ut-xpath/predicate-01
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_predicate:201 (expected 0 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<foo2 xmlns=\"urn:tests:a\">50</foo2><l1 xmlns=\"urn:tests:a\">  <a>a1</a>  <b>b1</b>  <c>c1</c></l1><l1 xmlns=\"urn:tests:a\">  <a>a2</a>  <b>b2</b></l1><l1 xmlns=\"urn:tests:a\">  <a>a3</a>  <b>b3</b></l1><l1 xmlns=\"urn:tests:a\">  <a>a4</a>  <b>b4</b>  <c>c4</c></l1><l1 xmlns=\"urn:tests:a\">  <a>a5</a>  <b>b5</b>  <c>c5</c></l1><c xmlns=\"urn:tests:a\">  <x>key2</x>  <ll>    <a>key1</a>    <ll>      <a>key11</a>      <b>val11</b>    </ll>    <ll>      <a>key12</a>      <b>val12</b>    </ll>    <ll>      <a>key13</a>      <b>val13</b>    </ll>  </ll>  <ll>    <a>key2</a>    <ll>      <a>key21</a>      <b>val21</b>    </ll>    <ll>      <a>key22</a>      <b>val22</b>    </ll>  </ll>  <ll>    <a>key3</a>    <ll>      <a>key31</a>      <b>val31</b>    </ll>    <ll>      <a>key32</a>      <b>val32</b>    </ll>  </ll></c>"
+      xpath: "/foo2[4[3 = 3]]"
+    golden: golden/predicate-01.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/predicate-02
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_predicate:206 (expected 1 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<foo2 xmlns=\"urn:tests:a\">50</foo2><l1 xmlns=\"urn:tests:a\">  <a>a1</a>  <b>b1</b>  <c>c1</c></l1><l1 xmlns=\"urn:tests:a\">  <a>a2</a>  <b>b2</b></l1><l1 xmlns=\"urn:tests:a\">  <a>a3</a>  <b>b3</b></l1><l1 xmlns=\"urn:tests:a\">  <a>a4</a>  <b>b4</b>  <c>c4</c></l1><l1 xmlns=\"urn:tests:a\">  <a>a5</a>  <b>b5</b>  <c>c5</c></l1><c xmlns=\"urn:tests:a\">  <x>key2</x>  <ll>    <a>key1</a>    <ll>      <a>key11</a>      <b>val11</b>    </ll>    <ll>      <a>key12</a>      <b>val12</b>    </ll>    <ll>      <a>key13</a>      <b>val13</b>    </ll>  </ll>  <ll>    <a>key2</a>    <ll>      <a>key21</a>      <b>val21</b>    </ll>    <ll>      <a>key22</a>      <b>val22</b>    </ll>  </ll>  <ll>    <a>key3</a>    <ll>      <a>key31</a>      <b>val31</b>    </ll>    <ll>      <a>key32</a>      <b>val32</b>    </ll>  </ll></c>"
+      xpath: "/c/child::ll[2]/preceding::ll[3]"
+    golden: golden/predicate-02.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/predicate-03
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_predicate:212 (expected 1 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<foo2 xmlns=\"urn:tests:a\">50</foo2><l1 xmlns=\"urn:tests:a\">  <a>a1</a>  <b>b1</b>  <c>c1</c></l1><l1 xmlns=\"urn:tests:a\">  <a>a2</a>  <b>b2</b></l1><l1 xmlns=\"urn:tests:a\">  <a>a3</a>  <b>b3</b></l1><l1 xmlns=\"urn:tests:a\">  <a>a4</a>  <b>b4</b>  <c>c4</c></l1><l1 xmlns=\"urn:tests:a\">  <a>a5</a>  <b>b5</b>  <c>c5</c></l1><c xmlns=\"urn:tests:a\">  <x>key2</x>  <ll>    <a>key1</a>    <ll>      <a>key11</a>      <b>val11</b>    </ll>    <ll>      <a>key12</a>      <b>val12</b>    </ll>    <ll>      <a>key13</a>      <b>val13</b>    </ll>  </ll>  <ll>    <a>key2</a>    <ll>      <a>key21</a>      <b>val21</b>    </ll>    <ll>      <a>key22</a>      <b>val22</b>    </ll>  </ll>  <ll>    <a>key3</a>    <ll>      <a>key31</a>      <b>val31</b>    </ll>    <ll>      <a>key32</a>      <b>val32</b>    </ll>  </ll></c>"
+      xpath: "/a:l1[a=concat('a', '1')][b=substring('ab1',2)]"
+    golden: golden/predicate-03.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/predicate-04
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_predicate:216 (expected 1 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<foo2 xmlns=\"urn:tests:a\">50</foo2><l1 xmlns=\"urn:tests:a\">  <a>a1</a>  <b>b1</b>  <c>c1</c></l1><l1 xmlns=\"urn:tests:a\">  <a>a2</a>  <b>b2</b></l1><l1 xmlns=\"urn:tests:a\">  <a>a3</a>  <b>b3</b></l1><l1 xmlns=\"urn:tests:a\">  <a>a4</a>  <b>b4</b>  <c>c4</c></l1><l1 xmlns=\"urn:tests:a\">  <a>a5</a>  <b>b5</b>  <c>c5</c></l1><c xmlns=\"urn:tests:a\">  <x>key2</x>  <ll>    <a>key1</a>    <ll>      <a>key11</a>      <b>val11</b>    </ll>    <ll>      <a>key12</a>      <b>val12</b>    </ll>    <ll>      <a>key13</a>      <b>val13</b>    </ll>  </ll>  <ll>    <a>key2</a>    <ll>      <a>key21</a>      <b>val21</b>    </ll>    <ll>      <a>key22</a>      <b>val22</b>    </ll>  </ll>  <ll>    <a>key3</a>    <ll>      <a>key31</a>      <b>val31</b>    </ll>    <ll>      <a>key32</a>      <b>val32</b>    </ll>  </ll></c>"
+      xpath: "/a:c/ll[a=../x]"
+    golden: golden/predicate-04.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/predicate-05
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_predicate:221 (expected 3 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<foo2 xmlns=\"urn:tests:a\">50</foo2><l1 xmlns=\"urn:tests:a\">  <a>a1</a>  <b>b1</b>  <c>c1</c></l1><l1 xmlns=\"urn:tests:a\">  <a>a2</a>  <b>b2</b></l1><l1 xmlns=\"urn:tests:a\">  <a>a3</a>  <b>b3</b></l1><l1 xmlns=\"urn:tests:a\">  <a>a4</a>  <b>b4</b>  <c>c4</c></l1><l1 xmlns=\"urn:tests:a\">  <a>a5</a>  <b>b5</b>  <c>c5</c></l1><c xmlns=\"urn:tests:a\">  <x>key2</x>  <ll>    <a>key1</a>    <ll>      <a>key11</a>      <b>val11</b>    </ll>    <ll>      <a>key12</a>      <b>val12</b>    </ll>    <ll>      <a>key13</a>      <b>val13</b>    </ll>  </ll>  <ll>    <a>key2</a>    <ll>      <a>key21</a>      <b>val21</b>    </ll>    <ll>      <a>key22</a>      <b>val22</b>    </ll>  </ll>  <ll>    <a>key3</a>    <ll>      <a>key31</a>      <b>val31</b>    </ll>    <ll>      <a>key32</a>      <b>val32</b>    </ll>  </ll></c>"
+      xpath: "/a:c/ll[a=substring(ll/a,1,4)]"
+    golden: golden/predicate-05.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/predicate-06
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_predicate:226 (expected 0 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<foo2 xmlns=\"urn:tests:a\">50</foo2><l1 xmlns=\"urn:tests:a\">  <a>a1</a>  <b>b1</b>  <c>c1</c></l1><l1 xmlns=\"urn:tests:a\">  <a>a2</a>  <b>b2</b></l1><l1 xmlns=\"urn:tests:a\">  <a>a3</a>  <b>b3</b></l1><l1 xmlns=\"urn:tests:a\">  <a>a4</a>  <b>b4</b>  <c>c4</c></l1><l1 xmlns=\"urn:tests:a\">  <a>a5</a>  <b>b5</b>  <c>c5</c></l1><c xmlns=\"urn:tests:a\">  <x>key2</x>  <ll>    <a>key1</a>    <ll>      <a>key11</a>      <b>val11</b>    </ll>    <ll>      <a>key12</a>      <b>val12</b>    </ll>    <ll>      <a>key13</a>      <b>val13</b>    </ll>  </ll>  <ll>    <a>key2</a>    <ll>      <a>key21</a>      <b>val21</b>    </ll>    <ll>      <a>key22</a>      <b>val22</b>    </ll>  </ll>  <ll>    <a>key3</a>    <ll>      <a>key31</a>      <b>val31</b>    </ll>    <ll>      <a>key32</a>      <b>val32</b>    </ll>  </ll></c>"
+      xpath: "/a:c/a:ll[a:a=string(/a:l1[a:a='foo']/a:a)]/a:a"
+    golden: golden/predicate-06.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/union-01
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_union:259 (expected success)
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\">\n    <a>a1</a>\n    <b>b1</b>\n    <c>c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n    <a>a2</a>\n    <b>b2</b>\n</l1><l1 xmlns=\"urn:tests:a\">\n    <a>a3</a>\n    <b>b3</b>\n    <c>c3</c>\n</l1>"
+      xpath: "/l1[c[../a = 'a1'] | c]/a"
+    golden: golden/union-01.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/invalid-01
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_invalid:276 (expected LY_EVALID)
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<foo2 xmlns=\"urn:tests:a\">50</foo2>"
+      xpath: "/a:foo2[.=]"
+    golden: golden/invalid-01.json
+    assert:
+      verdict: invalid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/invalid-02
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_invalid:280 (expected LY_EVALID)
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<foo2 xmlns=\"urn:tests:a\">50</foo2>"
+      xpath: "/a:"
+    golden: golden/invalid-02.json
+    assert:
+      verdict: invalid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/hash-01
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_hash:349 (expected 1 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\">\n    <a>a1</a>\n    <b>b1</b>\n    <c>c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n    <a>a2</a>\n    <b>b2</b>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n    <a>a3</a>\n    <b>b3</b>\n    <c>c3</c>\n</l1>\n<foo xmlns=\"urn:tests:a\">foo value</foo>\n<c xmlns=\"urn:tests:a\">\n    <x>val</x>\n    <ll>\n        <a>val_a</a>\n        <ll>\n            <a>val_a</a>\n            <b>val</b>\n        </ll>\n        <ll>\n            <a>val_b</a>\n        </ll>\n    </ll>\n    <ll>\n        <a>val_b</a>\n        <ll>\n            <a>val_a</a>\n        </ll>\n        <ll>\n            <a>val_b</a>\n            <b>val</b>\n        </ll>\n    </ll>\n    <ll>\n        <a>val_c</a>\n        <ll>\n            <a>val_a</a>\n        </ll>\n        <ll>\n            <a>val_b</a>\n        </ll>\n    </ll>\n    <ll2>one</ll2>\n    <ll2>two</ll2>\n    <ll2>three</ll2>\n    <ll2>four</ll2>\n</c>"
+      xpath: "/a:l1[a='a3'][b='b3']"
+    golden: golden/hash-01.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/hash-02
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_hash:361 (expected 1 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\">\n    <a>a1</a>\n    <b>b1</b>\n    <c>c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n    <a>a2</a>\n    <b>b2</b>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n    <a>a3</a>\n    <b>b3</b>\n    <c>c3</c>\n</l1>\n<foo xmlns=\"urn:tests:a\">foo value</foo>\n<c xmlns=\"urn:tests:a\">\n    <x>val</x>\n    <ll>\n        <a>val_a</a>\n        <ll>\n            <a>val_a</a>\n            <b>val</b>\n        </ll>\n        <ll>\n            <a>val_b</a>\n        </ll>\n    </ll>\n    <ll>\n        <a>val_b</a>\n        <ll>\n            <a>val_a</a>\n        </ll>\n        <ll>\n            <a>val_b</a>\n            <b>val</b>\n        </ll>\n    </ll>\n    <ll>\n        <a>val_c</a>\n        <ll>\n            <a>val_a</a>\n        </ll>\n        <ll>\n            <a>val_b</a>\n        </ll>\n    </ll>\n    <ll2>one</ll2>\n    <ll2>two</ll2>\n    <ll2>three</ll2>\n    <ll2>four</ll2>\n</c>"
+      xpath: "/a:c/ll[a='val_b']/ll[a='val_b']"
+    golden: golden/hash-02.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/hash-03
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_hash:376 (expected 4 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\">\n    <a>a1</a>\n    <b>b1</b>\n    <c>c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n    <a>a2</a>\n    <b>b2</b>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n    <a>a3</a>\n    <b>b3</b>\n    <c>c3</c>\n</l1>\n<foo xmlns=\"urn:tests:a\">foo value</foo>\n<c xmlns=\"urn:tests:a\">\n    <x>val</x>\n    <ll>\n        <a>val_a</a>\n        <ll>\n            <a>val_a</a>\n            <b>val</b>\n        </ll>\n        <ll>\n            <a>val_b</a>\n        </ll>\n    </ll>\n    <ll>\n        <a>val_b</a>\n        <ll>\n            <a>val_a</a>\n        </ll>\n        <ll>\n            <a>val_b</a>\n            <b>val</b>\n        </ll>\n    </ll>\n    <ll>\n        <a>val_c</a>\n        <ll>\n            <a>val_a</a>\n        </ll>\n        <ll>\n            <a>val_b</a>\n        </ll>\n    </ll>\n    <ll2>one</ll2>\n    <ll2>two</ll2>\n    <ll2>three</ll2>\n    <ll2>four</ll2>\n</c>"
+      xpath: "/a:c//ll[a='val_b']"
+    golden: golden/hash-03.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/hash-04
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_hash:382 (expected 1 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\">\n    <a>a1</a>\n    <b>b1</b>\n    <c>c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n    <a>a2</a>\n    <b>b2</b>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n    <a>a3</a>\n    <b>b3</b>\n    <c>c3</c>\n</l1>\n<foo xmlns=\"urn:tests:a\">foo value</foo>\n<c xmlns=\"urn:tests:a\">\n    <x>val</x>\n    <ll>\n        <a>val_a</a>\n        <ll>\n            <a>val_a</a>\n            <b>val</b>\n        </ll>\n        <ll>\n            <a>val_b</a>\n        </ll>\n    </ll>\n    <ll>\n        <a>val_b</a>\n        <ll>\n            <a>val_a</a>\n        </ll>\n        <ll>\n            <a>val_b</a>\n            <b>val</b>\n        </ll>\n    </ll>\n    <ll>\n        <a>val_c</a>\n        <ll>\n            <a>val_a</a>\n        </ll>\n        <ll>\n            <a>val_b</a>\n        </ll>\n    </ll>\n    <ll2>one</ll2>\n    <ll2>two</ll2>\n    <ll2>three</ll2>\n    <ll2>four</ll2>\n</c>"
+      xpath: "/a:c/ll2[. = 'three']"
+    golden: golden/hash-04.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/hash-05
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_hash:392 (expected 0 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\">\n    <a>a1</a>\n    <b>b1</b>\n    <c>c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n    <a>a2</a>\n    <b>b2</b>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n    <a>a3</a>\n    <b>b3</b>\n    <c>c3</c>\n</l1>\n<foo xmlns=\"urn:tests:a\">foo value</foo>\n<c xmlns=\"urn:tests:a\">\n    <x>val</x>\n    <ll>\n        <a>val_a</a>\n        <ll>\n            <a>val_a</a>\n            <b>val</b>\n        </ll>\n        <ll>\n            <a>val_b</a>\n        </ll>\n    </ll>\n    <ll>\n        <a>val_b</a>\n        <ll>\n            <a>val_a</a>\n        </ll>\n        <ll>\n            <a>val_b</a>\n            <b>val</b>\n        </ll>\n    </ll>\n    <ll>\n        <a>val_c</a>\n        <ll>\n            <a>val_a</a>\n        </ll>\n        <ll>\n            <a>val_b</a>\n        </ll>\n    </ll>\n    <ll2>one</ll2>\n    <ll2>two</ll2>\n    <ll2>three</ll2>\n    <ll2>four</ll2>\n</c>"
+      xpath: "/a:c/ll[a='val_d']"
+    golden: golden/hash-05.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/hash-06
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_hash:398 (expected 1 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\">\n    <a>a1</a>\n    <b>b1</b>\n    <c>c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n    <a>a2</a>\n    <b>b2</b>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n    <a>a3</a>\n    <b>b3</b>\n    <c>c3</c>\n</l1>\n<foo xmlns=\"urn:tests:a\">foo value</foo>\n<c xmlns=\"urn:tests:a\">\n    <x>val</x>\n    <ll>\n        <a>val_a</a>\n        <ll>\n            <a>val_a</a>\n            <b>val</b>\n        </ll>\n        <ll>\n            <a>val_b</a>\n        </ll>\n    </ll>\n    <ll>\n        <a>val_b</a>\n        <ll>\n            <a>val_a</a>\n        </ll>\n        <ll>\n            <a>val_b</a>\n            <b>val</b>\n        </ll>\n    </ll>\n    <ll>\n        <a>val_c</a>\n        <ll>\n            <a>val_a</a>\n        </ll>\n        <ll>\n            <a>val_b</a>\n        </ll>\n    </ll>\n    <ll2>one</ll2>\n    <ll2>two</ll2>\n    <ll2>three</ll2>\n    <ll2>four</ll2>\n</c>"
+      xpath: "/a:c/ll[ \na = 'val_c' ]"
+    golden: golden/hash-06.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/toplevel-01
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_toplevel:488 (expected 5 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1, b.1]
+      modules: [{name: a}, {name: b}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\">\n    <a>a1</a>\n    <b>b1</b>\n    <c>c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n    <a>a2</a>\n    <b>b2</b>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n    <a>a3</a>\n    <b>b3</b>\n    <c>c3</c>\n</l1>\n<foo xmlns=\"urn:tests:a\">foo value</foo>\n<l2 xmlns=\"urn:tests:b\">\n    <a>1</a>\n    <b>1</b>\n</l2>\n<l2 xmlns=\"urn:tests:b\">\n    <a>2</a>\n    <b>1</b>\n</l2>\n<l2 xmlns=\"urn:tests:b\">\n    <a>3</a>\n    <b>1</b>\n</l2>"
+      xpath: "/a:*"
+    golden: golden/toplevel-01.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/toplevel-02
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_toplevel:494 (expected 8 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1, b.1]
+      modules: [{name: a}, {name: b}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\">\n    <a>a1</a>\n    <b>b1</b>\n    <c>c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n    <a>a2</a>\n    <b>b2</b>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n    <a>a3</a>\n    <b>b3</b>\n    <c>c3</c>\n</l1>\n<foo xmlns=\"urn:tests:a\">foo value</foo>\n<l2 xmlns=\"urn:tests:b\">\n    <a>1</a>\n    <b>1</b>\n</l2>\n<l2 xmlns=\"urn:tests:b\">\n    <a>2</a>\n    <b>1</b>\n</l2>\n<l2 xmlns=\"urn:tests:b\">\n    <a>3</a>\n    <b>1</b>\n</l2>"
+      xpath: "/*"
+    golden: golden/toplevel-02.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/toplevel-03
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_toplevel:500 (expected 13 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1, b.1]
+      modules: [{name: a}, {name: b}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\">\n    <a>a1</a>\n    <b>b1</b>\n    <c>c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n    <a>a2</a>\n    <b>b2</b>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n    <a>a3</a>\n    <b>b3</b>\n    <c>c3</c>\n</l1>\n<foo xmlns=\"urn:tests:a\">foo value</foo>\n<l2 xmlns=\"urn:tests:b\">\n    <a>1</a>\n    <b>1</b>\n</l2>\n<l2 xmlns=\"urn:tests:b\">\n    <a>2</a>\n    <b>1</b>\n</l2>\n<l2 xmlns=\"urn:tests:b\">\n    <a>3</a>\n    <b>1</b>\n</l2>"
+      xpath: "//a:*"
+    golden: golden/toplevel-03.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/toplevel-04
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_toplevel:506 (expected 22 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1, b.1]
+      modules: [{name: a}, {name: b}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\">\n    <a>a1</a>\n    <b>b1</b>\n    <c>c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n    <a>a2</a>\n    <b>b2</b>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n    <a>a3</a>\n    <b>b3</b>\n    <c>c3</c>\n</l1>\n<foo xmlns=\"urn:tests:a\">foo value</foo>\n<l2 xmlns=\"urn:tests:b\">\n    <a>1</a>\n    <b>1</b>\n</l2>\n<l2 xmlns=\"urn:tests:b\">\n    <a>2</a>\n    <b>1</b>\n</l2>\n<l2 xmlns=\"urn:tests:b\">\n    <a>3</a>\n    <b>1</b>\n</l2>"
+      xpath: "//*"
+    golden: golden/toplevel-04.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/toplevel-05
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_toplevel:512 (expected 22 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1, b.1]
+      modules: [{name: a}, {name: b}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\">\n    <a>a1</a>\n    <b>b1</b>\n    <c>c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n    <a>a2</a>\n    <b>b2</b>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n    <a>a3</a>\n    <b>b3</b>\n    <c>c3</c>\n</l1>\n<foo xmlns=\"urn:tests:a\">foo value</foo>\n<l2 xmlns=\"urn:tests:b\">\n    <a>1</a>\n    <b>1</b>\n</l2>\n<l2 xmlns=\"urn:tests:b\">\n    <a>2</a>\n    <b>1</b>\n</l2>\n<l2 xmlns=\"urn:tests:b\">\n    <a>3</a>\n    <b>1</b>\n</l2>"
+      xpath: "//."
+    golden: golden/toplevel-05.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/canonize-01
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_canonize:634 (expected 1 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<foo2 xmlns=\"urn:tests:a\">50</foo2><foo3 xmlns=\"urn:tests:a\" xmlns:a=\"urn:tests:a\">a:id_b</foo3><foo4 xmlns=\"urn:tests:a\">250.5</foo4>"
+      xpath: "/a:foo2[.='050']"
+    golden: golden/canonize-01.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/canonize-02
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_canonize:639 (expected 1 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<foo2 xmlns=\"urn:tests:a\">50</foo2><foo3 xmlns=\"urn:tests:a\" xmlns:a=\"urn:tests:a\">a:id_b</foo3><foo4 xmlns=\"urn:tests:a\">250.5</foo4>"
+      xpath: "/a:foo3[.='id_b']"
+    golden: golden/canonize-02.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/canonize-03
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_canonize:644 (expected 1 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<foo2 xmlns=\"urn:tests:a\">50</foo2><foo3 xmlns=\"urn:tests:a\" xmlns:a=\"urn:tests:a\">a:id_b</foo3><foo4 xmlns=\"urn:tests:a\">250.5</foo4>"
+      xpath: "/a:foo4[.='0250.500']"
+    golden: golden/canonize-03.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/derived-from-01
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_derived_from:662 (expected 1 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<foo3 xmlns=\"urn:tests:a\">id_c</foo3>"
+      xpath: "/a:foo3[derived-from(., 'a:id_b')]"
+    golden: golden/derived-from-01.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/derived-from-02
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_derived_from:666 (expected 1 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<foo3 xmlns=\"urn:tests:a\">id_c</foo3>"
+      xpath: "/a:foo3[derived-from(., 'a:id_a')]"
+    golden: golden/derived-from-02.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/augment-01
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_augment:710 (expected 4 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1, b.2]
+      modules: [{name: a}, {name: b}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<c xmlns=\"urn:tests:a\">\n    <x>value</x>\n    <ll>\n        <a>key</a>\n    </ll>\n    <a xmlns=\"urn:tests:b\">25</a>\n    <ll2>c1</ll2>\n</c>"
+      xpath: "/a:c/*"
+    golden: golden/augment-01.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/axes-01
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_axes:1030 (expected 8 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a>a1</a>\n  <b yang:operation=\"replace\">b1</b>\n  <c yang:operation=\"none\">c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n  <a>a2</a>\n  <b>b2</b>\n</l1><l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a yang:operation=\"none\" yang:key=\"[no-key='no-value']\">a3</a>\n  <b>b3</b>\n  <c yang:value=\"no-val\">c3</c>\n</l1><c xmlns=\"urn:tests:a\">  <x>val</x>  <ll>    <a>key1</a>    <ll>      <a>key11</a>      <b>val11</b>    </ll>    <ll>      <a>key12</a>      <b>val12</b>    </ll>    <ll>      <a>key13</a>      <b>val13</b>    </ll>  </ll>  <ll>    <a>key2</a>    <ll>      <a>key21</a>      <b>val21</b>    </ll>    <ll>      <a>key22</a>      <b>val22</b>    </ll>  </ll></c>"
+      xpath: "//ll[a and b]/a/ancestor::node()"
+    golden: golden/axes-01.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/axes-02
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_axes:1035 (expected 7 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a>a1</a>\n  <b yang:operation=\"replace\">b1</b>\n  <c yang:operation=\"none\">c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n  <a>a2</a>\n  <b>b2</b>\n</l1><l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a yang:operation=\"none\" yang:key=\"[no-key='no-value']\">a3</a>\n  <b>b3</b>\n  <c yang:value=\"no-val\">c3</c>\n</l1><c xmlns=\"urn:tests:a\">  <x>val</x>  <ll>    <a>key1</a>    <ll>      <a>key11</a>      <b>val11</b>    </ll>    <ll>      <a>key12</a>      <b>val12</b>    </ll>    <ll>      <a>key13</a>      <b>val13</b>    </ll>  </ll>  <ll>    <a>key2</a>    <ll>      <a>key21</a>      <b>val21</b>    </ll>    <ll>      <a>key22</a>      <b>val22</b>    </ll>  </ll></c>"
+      xpath: "//ll[a and b]/ancestor-or-self::ll"
+    golden: golden/axes-02.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/axes-03
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_axes:1040 (expected 0 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a>a1</a>\n  <b yang:operation=\"replace\">b1</b>\n  <c yang:operation=\"none\">c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n  <a>a2</a>\n  <b>b2</b>\n</l1><l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a yang:operation=\"none\" yang:key=\"[no-key='no-value']\">a3</a>\n  <b>b3</b>\n  <c yang:value=\"no-val\">c3</c>\n</l1><c xmlns=\"urn:tests:a\">  <x>val</x>  <ll>    <a>key1</a>    <ll>      <a>key11</a>      <b>val11</b>    </ll>    <ll>      <a>key12</a>      <b>val12</b>    </ll>    <ll>      <a>key13</a>      <b>val13</b>    </ll>  </ll>  <ll>    <a>key2</a>    <ll>      <a>key21</a>      <b>val21</b>    </ll>    <ll>      <a>key22</a>      <b>val22</b>    </ll>  </ll></c>"
+      xpath: "/l1/@operation"
+    golden: golden/axes-03.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/axes-04
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_axes:1044 (expected 0 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a>a1</a>\n  <b yang:operation=\"replace\">b1</b>\n  <c yang:operation=\"none\">c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n  <a>a2</a>\n  <b>b2</b>\n</l1><l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a yang:operation=\"none\" yang:key=\"[no-key='no-value']\">a3</a>\n  <b>b3</b>\n  <c yang:value=\"no-val\">c3</c>\n</l1><c xmlns=\"urn:tests:a\">  <x>val</x>  <ll>    <a>key1</a>    <ll>      <a>key11</a>      <b>val11</b>    </ll>    <ll>      <a>key12</a>      <b>val12</b>    </ll>    <ll>      <a>key13</a>      <b>val13</b>    </ll>  </ll>  <ll>    <a>key2</a>    <ll>      <a>key21</a>      <b>val21</b>    </ll>    <ll>      <a>key22</a>      <b>val22</b>    </ll>  </ll></c>"
+      xpath: "/l1/attribute::key"
+    golden: golden/axes-04.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/axes-05
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_axes:1049 (expected 3 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a>a1</a>\n  <b yang:operation=\"replace\">b1</b>\n  <c yang:operation=\"none\">c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n  <a>a2</a>\n  <b>b2</b>\n</l1><l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a yang:operation=\"none\" yang:key=\"[no-key='no-value']\">a3</a>\n  <b>b3</b>\n  <c yang:value=\"no-val\">c3</c>\n</l1><c xmlns=\"urn:tests:a\">  <x>val</x>  <ll>    <a>key1</a>    <ll>      <a>key11</a>      <b>val11</b>    </ll>    <ll>      <a>key12</a>      <b>val12</b>    </ll>    <ll>      <a>key13</a>      <b>val13</b>    </ll>  </ll>  <ll>    <a>key2</a>    <ll>      <a>key21</a>      <b>val21</b>    </ll>    <ll>      <a>key22</a>      <b>val22</b>    </ll>  </ll></c>"
+      xpath: "/child::l1/child::a"
+    golden: golden/axes-05.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/axes-06
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_axes:1054 (expected 5 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a>a1</a>\n  <b yang:operation=\"replace\">b1</b>\n  <c yang:operation=\"none\">c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n  <a>a2</a>\n  <b>b2</b>\n</l1><l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a yang:operation=\"none\" yang:key=\"[no-key='no-value']\">a3</a>\n  <b>b3</b>\n  <c yang:value=\"no-val\">c3</c>\n</l1><c xmlns=\"urn:tests:a\">  <x>val</x>  <ll>    <a>key1</a>    <ll>      <a>key11</a>      <b>val11</b>    </ll>    <ll>      <a>key12</a>      <b>val12</b>    </ll>    <ll>      <a>key13</a>      <b>val13</b>    </ll>  </ll>  <ll>    <a>key2</a>    <ll>      <a>key21</a>      <b>val21</b>    </ll>    <ll>      <a>key22</a>      <b>val22</b>    </ll>  </ll></c>"
+      xpath: "/descendant::c/descendant::b"
+    golden: golden/axes-06.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/axes-07
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_axes:1059 (expected 3 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a>a1</a>\n  <b yang:operation=\"replace\">b1</b>\n  <c yang:operation=\"none\">c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n  <a>a2</a>\n  <b>b2</b>\n</l1><l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a yang:operation=\"none\" yang:key=\"[no-key='no-value']\">a3</a>\n  <b>b3</b>\n  <c yang:value=\"no-val\">c3</c>\n</l1><c xmlns=\"urn:tests:a\">  <x>val</x>  <ll>    <a>key1</a>    <ll>      <a>key11</a>      <b>val11</b>    </ll>    <ll>      <a>key12</a>      <b>val12</b>    </ll>    <ll>      <a>key13</a>      <b>val13</b>    </ll>  </ll>  <ll>    <a>key2</a>    <ll>      <a>key21</a>      <b>val21</b>    </ll>    <ll>      <a>key22</a>      <b>val22</b>    </ll>  </ll></c>"
+      xpath: "//c"
+    golden: golden/axes-07.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/axes-08
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_axes:1063 (expected 3 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a>a1</a>\n  <b yang:operation=\"replace\">b1</b>\n  <c yang:operation=\"none\">c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n  <a>a2</a>\n  <b>b2</b>\n</l1><l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a yang:operation=\"none\" yang:key=\"[no-key='no-value']\">a3</a>\n  <b>b3</b>\n  <c yang:value=\"no-val\">c3</c>\n</l1><c xmlns=\"urn:tests:a\">  <x>val</x>  <ll>    <a>key1</a>    <ll>      <a>key11</a>      <b>val11</b>    </ll>    <ll>      <a>key12</a>      <b>val12</b>    </ll>    <ll>      <a>key13</a>      <b>val13</b>    </ll>  </ll>  <ll>    <a>key2</a>    <ll>      <a>key21</a>      <b>val21</b>    </ll>    <ll>      <a>key22</a>      <b>val22</b>    </ll>  </ll></c>"
+      xpath: "/descendant-or-self::node()/c"
+    golden: golden/axes-08.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/axes-09
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_axes:1068 (expected 7 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a>a1</a>\n  <b yang:operation=\"replace\">b1</b>\n  <c yang:operation=\"none\">c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n  <a>a2</a>\n  <b>b2</b>\n</l1><l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a yang:operation=\"none\" yang:key=\"[no-key='no-value']\">a3</a>\n  <b>b3</b>\n  <c yang:value=\"no-val\">c3</c>\n</l1><c xmlns=\"urn:tests:a\">  <x>val</x>  <ll>    <a>key1</a>    <ll>      <a>key11</a>      <b>val11</b>    </ll>    <ll>      <a>key12</a>      <b>val12</b>    </ll>    <ll>      <a>key13</a>      <b>val13</b>    </ll>  </ll>  <ll>    <a>key2</a>    <ll>      <a>key21</a>      <b>val21</b>    </ll>    <ll>      <a>key22</a>      <b>val22</b>    </ll>  </ll></c>"
+      xpath: "/c/x/following::a"
+    golden: golden/axes-09.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/axes-10
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_axes:1073 (expected 2 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a>a1</a>\n  <b yang:operation=\"replace\">b1</b>\n  <c yang:operation=\"none\">c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n  <a>a2</a>\n  <b>b2</b>\n</l1><l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a yang:operation=\"none\" yang:key=\"[no-key='no-value']\">a3</a>\n  <b>b3</b>\n  <c yang:value=\"no-val\">c3</c>\n</l1><c xmlns=\"urn:tests:a\">  <x>val</x>  <ll>    <a>key1</a>    <ll>      <a>key11</a>      <b>val11</b>    </ll>    <ll>      <a>key12</a>      <b>val12</b>    </ll>    <ll>      <a>key13</a>      <b>val13</b>    </ll>  </ll>  <ll>    <a>key2</a>    <ll>      <a>key21</a>      <b>val21</b>    </ll>    <ll>      <a>key22</a>      <b>val22</b>    </ll>  </ll></c>"
+      xpath: "/c/x/following-sibling::ll"
+    golden: golden/axes-10.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/axes-11
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_axes:1078 (expected 2 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a>a1</a>\n  <b yang:operation=\"replace\">b1</b>\n  <c yang:operation=\"none\">c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n  <a>a2</a>\n  <b>b2</b>\n</l1><l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a yang:operation=\"none\" yang:key=\"[no-key='no-value']\">a3</a>\n  <b>b3</b>\n  <c yang:value=\"no-val\">c3</c>\n</l1><c xmlns=\"urn:tests:a\">  <x>val</x>  <ll>    <a>key1</a>    <ll>      <a>key11</a>      <b>val11</b>    </ll>    <ll>      <a>key12</a>      <b>val12</b>    </ll>    <ll>      <a>key13</a>      <b>val13</b>    </ll>  </ll>  <ll>    <a>key2</a>    <ll>      <a>key21</a>      <b>val21</b>    </ll>    <ll>      <a>key22</a>      <b>val22</b>    </ll>  </ll></c>"
+      xpath: "/child::*/c/parent::l1"
+    golden: golden/axes-11.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/axes-12
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_axes:1082 (expected 8 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a>a1</a>\n  <b yang:operation=\"replace\">b1</b>\n  <c yang:operation=\"none\">c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n  <a>a2</a>\n  <b>b2</b>\n</l1><l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a yang:operation=\"none\" yang:key=\"[no-key='no-value']\">a3</a>\n  <b>b3</b>\n  <c yang:value=\"no-val\">c3</c>\n</l1><c xmlns=\"urn:tests:a\">  <x>val</x>  <ll>    <a>key1</a>    <ll>      <a>key11</a>      <b>val11</b>    </ll>    <ll>      <a>key12</a>      <b>val12</b>    </ll>    <ll>      <a>key13</a>      <b>val13</b>    </ll>  </ll>  <ll>    <a>key2</a>    <ll>      <a>key21</a>      <b>val21</b>    </ll>    <ll>      <a>key22</a>      <b>val22</b>    </ll>  </ll></c>"
+      xpath: "/child::c//.."
+    golden: golden/axes-12.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/axes-13
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_axes:1087 (expected 3 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a>a1</a>\n  <b yang:operation=\"replace\">b1</b>\n  <c yang:operation=\"none\">c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n  <a>a2</a>\n  <b>b2</b>\n</l1><l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a yang:operation=\"none\" yang:key=\"[no-key='no-value']\">a3</a>\n  <b>b3</b>\n  <c yang:value=\"no-val\">c3</c>\n</l1><c xmlns=\"urn:tests:a\">  <x>val</x>  <ll>    <a>key1</a>    <ll>      <a>key11</a>      <b>val11</b>    </ll>    <ll>      <a>key12</a>      <b>val12</b>    </ll>    <ll>      <a>key13</a>      <b>val13</b>    </ll>  </ll>  <ll>    <a>key2</a>    <ll>      <a>key21</a>      <b>val21</b>    </ll>    <ll>      <a>key22</a>      <b>val22</b>    </ll>  </ll></c>"
+      xpath: "/c/preceding::a"
+    golden: golden/axes-13.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/axes-14
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_axes:1092 (expected 2 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a>a1</a>\n  <b yang:operation=\"replace\">b1</b>\n  <c yang:operation=\"none\">c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n  <a>a2</a>\n  <b>b2</b>\n</l1><l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a yang:operation=\"none\" yang:key=\"[no-key='no-value']\">a3</a>\n  <b>b3</b>\n  <c yang:value=\"no-val\">c3</c>\n</l1><c xmlns=\"urn:tests:a\">  <x>val</x>  <ll>    <a>key1</a>    <ll>      <a>key11</a>      <b>val11</b>    </ll>    <ll>      <a>key12</a>      <b>val12</b>    </ll>    <ll>      <a>key13</a>      <b>val13</b>    </ll>  </ll>  <ll>    <a>key2</a>    <ll>      <a>key21</a>      <b>val21</b>    </ll>    <ll>      <a>key22</a>      <b>val22</b>    </ll>  </ll></c>"
+      xpath: "/c/ll/preceding-sibling::node()"
+    golden: golden/axes-14.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/axes-15
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_axes:1097 (expected 5 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a>a1</a>\n  <b yang:operation=\"replace\">b1</b>\n  <c yang:operation=\"none\">c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n  <a>a2</a>\n  <b>b2</b>\n</l1><l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a yang:operation=\"none\" yang:key=\"[no-key='no-value']\">a3</a>\n  <b>b3</b>\n  <c yang:value=\"no-val\">c3</c>\n</l1><c xmlns=\"urn:tests:a\">  <x>val</x>  <ll>    <a>key1</a>    <ll>      <a>key11</a>      <b>val11</b>    </ll>    <ll>      <a>key12</a>      <b>val12</b>    </ll>    <ll>      <a>key13</a>      <b>val13</b>    </ll>  </ll>  <ll>    <a>key2</a>    <ll>      <a>key21</a>      <b>val21</b>    </ll>    <ll>      <a>key22</a>      <b>val22</b>    </ll>  </ll></c>"
+      xpath: "/c/self::c/ll/ll/b/self::b"
+    golden: golden/axes-15.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/anydata-01
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_anydata:1285 (expected 1 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<any xmlns=\"urn:tests:a\"><c><ll><a>val</a></ll></c></any>"
+      xpath: "/a:any/c/ll[a='val']"
+    golden: golden/anydata-01.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/number-01
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_number:1304 (expected result true)
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<foo4 xmlns=\"urn:tests:a\">250.5</foo4>"
+      xpath: "25.2 > 1.0"
+    golden: golden/number-01.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/number-02
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_number:1307 (expected result true)
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<foo4 xmlns=\"urn:tests:a\">250.5</foo4>"
+      xpath: "25.200 = 25.2"
+    golden: golden/number-02.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/number-03
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_number:1310 (expected result true)
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<foo4 xmlns=\"urn:tests:a\">250.5</foo4>"
+      xpath: "75 < 100"
+    golden: golden/number-03.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/number-04
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_number:1313 (expected result true)
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<foo4 xmlns=\"urn:tests:a\">250.5</foo4>"
+      xpath: "2 <= 20"
+    golden: golden/number-04.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/number-05
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_number:1317 (expected result true)
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<foo4 xmlns=\"urn:tests:a\">250.5</foo4>"
+      xpath: "-25.2 < -1.0"
+    golden: golden/number-05.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/number-06
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_number:1320 (expected result true)
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<foo4 xmlns=\"urn:tests:a\">250.5</foo4>"
+      xpath: "-75 > -100"
+    golden: golden/number-06.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+
+  - id: ut-xpath/number-07
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_number:1324 (expected result true)
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<foo4 xmlns=\"urn:tests:a\">250.5</foo4>"
+      xpath: "-0 = 0"
+    golden: golden/number-07.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
+# END ut-xpath

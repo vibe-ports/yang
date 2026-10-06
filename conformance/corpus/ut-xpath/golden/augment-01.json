@@ -1,0 +1,35 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "b",
+      "revision": null
+    }
+  ],
+  "op": "xpath",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "result": {
+    "nodes": [
+      "/a:c/x",
+      "/a:c/ll[a='key']",
+      "/a:c/ll2[.='c1']",
+      "/a:c/b:a"
+    ],
+    "type": "node-set"
+  },
+  "verdict": "valid"
+}

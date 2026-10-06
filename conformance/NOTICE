@@ -53,6 +53,7 @@ with the libyang file, tag/commit and license):
   - conformance/corpus/ut-int/ (tests/utests/types/int8.c … uint64.c).
   - conformance/corpus/ut-schema-load/ (tests/utests/schema/test_tree_schema_compile.c, test_schema.c).
   - conformance/corpus/ut-bits-enum/ (tests/utests/types/bits.c, enumeration.c).
+  - conformance/corpus/ut-xpath/ (tests/utests/basic/test_xpath.c).
 - docs/conformance/utests-inventory.md quotes counts and file names from that suite.
 
 The names of CESNET and of its contributors are not used to endorse or promote anything here.
