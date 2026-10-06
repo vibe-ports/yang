@@ -86,14 +86,15 @@ func (vc *valCtx) topNodes() []xpath.Node {
 	return vc.top
 }
 
-// xpathErr logs an evaluation error as lyxp_eval does (LOGVAL without a data node).
-func (vc *valCtx) xpathErr(err error) error {
+// xpathErr logs an evaluation error as lyxp_eval does: LOGVAL_DXPATH at the current node cur
+// (the must's node, the when's context node, the leafref), LOGERR errors without a location.
+func (vc *valCtx) xpathErr(err error, cur *Node) error {
 	var xe *xpath.Error
 	if errors.As(err, &xe) {
 		if xe.VECode == "" {
 			return vc.log.logErr(xe.Err, "%s", xe.Msg)
 		}
-		_ = vc.log.item(nil, nil, false, xe.Err, codeOf(xe.VECode), "", xe.Msg)
+		_ = vc.log.item(cur, nil, false, xe.Err, codeOf(xe.VECode), "", xe.Msg)
 		return errLogged
 	}
 	return err // budget, cancellation, errIncomplete
@@ -119,7 +120,7 @@ func (vc *valCtx) whenOf(n *Node, sn *schema.Node, root *xpath.RootKind) (*schem
 			}
 			r, err := vc.eval(e, ctx, rk, false)
 			if err != nil {
-				return nil, vc.xpathErr(err)
+				return nil, vc.xpathErr(err, ctx)
 			}
 			if !truthy(r) {
 				return w, nil
@@ -336,7 +337,7 @@ func (tt *typeTree) LeafrefTarget(t *schema.Type, v types.Value) (bool, error) {
 	if err != nil {
 		var xe *xpath.Error
 		if errors.As(err, &xe) {
-			_ = tt.vc.xpathErr(err) // lyxp_eval logs it, then the plugin its own message
+			_ = tt.vc.xpathErr(err, tt.n) // lyxp_eval logs it, then the plugin its own message
 			return false, errors.New(xe.Msg)
 		}
 		tt.err = err
@@ -535,7 +536,7 @@ func (vc *valCtx) validateMust(n *Node) error {
 				"Must \"%s\" depends on a node with a when condition, which has not been evaluated.", m.Src)
 		}
 		if err != nil {
-			return vc.xpathErr(err)
+			return vc.xpathErr(err, n)
 		}
 		if truthy(r) {
 			continue

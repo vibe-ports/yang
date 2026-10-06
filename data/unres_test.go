@@ -555,3 +555,29 @@ func TestDeadSubtree(t *testing.T) {
 		t.Fatalf("p linked %v, z flags %x", pn.tree != nil, zn.flags)
 	}
 }
+
+// TestXPathErrorLocation: an evaluation error of a must or when (LOGVAL_DXPATH, here count() of
+// a number, which compiles) is logged at lyxp_eval's current node: the must's node, the when's
+// context node (oracle fixtures protocol-v2/xperr-must, xperr-when).
+func TestXPathErrorLocation(t *testing.T) {
+	f := newUnresFixture(t)
+	const src = "count(1) >= 0"
+	e, err := xpath.Compile(src, testNS("u"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.mm.Musts = []*schema.Must{{Src: src, Compiled: e}}
+	f.a.Whens = []*schema.When{{Src: src, ContextNode: f.a, Compiled: e}}
+	const msg = "Wrong type of argument #1 (number) for the XPath function count(node-set)."
+
+	vc, _, nodes := f.build(t, ValidateOptions{}, f.mm, "v")
+	if err := vc.validateMust(nodes["m=v"]); err == nil ||
+		!reflect.DeepEqual(diagCodes(vc.log.diags), []string{"LY_EVALID LYVE_XPATH /u:c/m: " + msg}) {
+		t.Errorf("must: %v %v", err, diagCodes(vc.log.diags))
+	}
+	vc, _, _ = f.build(t, ValidateOptions{}, f.a, "v")
+	if err := vc.unres(); err == nil ||
+		!reflect.DeepEqual(diagCodes(vc.log.diags), []string{"LY_EVALID LYVE_XPATH /u:c/a: " + msg}) {
+		t.Errorf("when: %v %v", err, diagCodes(vc.log.diags))
+	}
+}

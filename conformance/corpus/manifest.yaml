@@ -2122,6 +2122,38 @@ fixtures:
       data_type: config
       data: '<c xmlns="urn:vibe-ports:ty3"><dt>2005-05-25T12:00:00-00:30</dt></c>'
     golden: golden/dt-minus-half-hour.json
+  # ---- protocol-v2: evaluation errors of musts and whens in data (LOGVAL_DXPATH at cur_node); Go side: data TestXPathErrorLocation ----
+
+  - id: protocol-v2/xperr-must
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#7.5.3", "XPath1.0#4.1"]
+    areas: [validation, xpath]
+    # a must whose evaluation fails is logged at the must's node
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2-xperr}]
+      format: json
+      data_type: config
+      data_file: data/xperr-must.json
+    golden: golden/xperr-must.json
+
+  - id: protocol-v2/xperr-when
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#7.5.3", "XPath1.0#4.1"]
+    areas: [validation, xpath]
+    # a when whose evaluation fails is logged at its context node
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2-xperr}]
+      format: json
+      data_type: config
+      data_file: data/xperr-when.json
+    golden: golden/xperr-when.json
+
   # ---- protocol-v2: XPath (op xpath) over data/xpath.json, parse-only (no implicit defaults) ----
 
   - id: protocol-v2/xpath-l

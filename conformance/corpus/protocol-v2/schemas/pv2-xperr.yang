@@ -1,0 +1,22 @@
+module pv2-xperr {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-xperr";
+  prefix xe;
+
+  description "Musts and whens whose evaluation fails in data (LOGVAL_DXPATH errors).";
+
+  container c {
+    leaf a {
+      type string;
+      must "count(1) >= 0";
+    }
+    leaf b {
+      type string;
+      must "name(1) = 'x'";
+    }
+    leaf w {
+      when "count(1) >= 0";
+      type string;
+    }
+  }
+}
