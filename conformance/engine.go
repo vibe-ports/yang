@@ -195,7 +195,7 @@ func dumpSchema(m map[string]any, s *yang.Schema, mod *yang.Module) {
 		for o := range s.Modules() { // bases by scanning the context, as the oracle
 			for b := range o.Identities() {
 				for d := range b.Derived() {
-					if d.Name() == id.Name() && d.Module().Name() == mod.Name() {
+					if d.Name() == id.Name() && d.Module().Name() == mod.Name() && d.Module().Revision() == mod.Revision() {
 						bases = append(bases, identName(b))
 					}
 				}

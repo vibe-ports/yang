@@ -11,7 +11,8 @@ import (
 // Snapshot returns a deep copy of the compiled schema of every module in the context, in context
 // order (design 06 §4): modules, nodes, identities, features, types, musts, whens and extension
 // instances are new objects, so a later Load, which edits the compiled modules in place, never
-// touches it. Compiled XPath expressions and patterns are immutable and shared. The features are
+// touches it. Compiled XPath expressions and patterns are immutable and shared; an expression's
+// prefix bindings still name the context-side modules, read only for their (immutable) Name. The features are
 // the parsed flags (lys_feature_value): a failed Load keeps a changed flag without recompiling.
 // A leafref's PathCompiled is not copied (it names nodes; readers compile the path themselves).
 //

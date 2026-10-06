@@ -8,7 +8,34 @@ import (
 	"testing"
 
 	"github.com/vibe-ports/yang/internal/schema"
+	"github.com/vibe-ports/yang/internal/snap"
 )
+
+// useHandles calls the handle methods that compute (types.Store, the leafref path compile) on
+// every node of x.
+func useHandles(x *snap.Schema) (uses int) {
+	var walk func(n *snap.Node)
+	walk = func(n *snap.Node) {
+		for range n.Defaults() {
+			uses++
+		}
+		for range n.LeafrefTargets() {
+			uses++
+		}
+		for c := range n.Children() {
+			walk(c)
+		}
+		for c := range n.Actions() {
+			walk(c)
+		}
+	}
+	for m := range x.Modules() {
+		for n := range m.Top() {
+			walk(n)
+		}
+	}
+	return uses
+}
 
 // reach collects every schema object reachable from v (pointers to schema structs), skipping
 // the opaque compiled expressions and patterns, which are immutable and may be shared.
@@ -120,6 +147,7 @@ func TestSnapshotRace(t *testing.T) {
 			defer wg.Done()
 			for range 20 {
 				reach(reflect.ValueOf(s), map[uintptr]reflect.Type{})
+				useHandles(snap.New(s)) // canonical defaults and leafref targets compute on the copy
 			}
 		}()
 	}

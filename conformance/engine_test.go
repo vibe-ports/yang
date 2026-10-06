@@ -4,7 +4,31 @@ package conformance
 
 import (
 	"testing"
+	"testing/fstest"
+
+	"github.com/vibe-ports/yang"
 )
+
+// agreeFloor is the number of fixtures that agree (with or without skipped fields) on main; a
+// change that lowers it is a regression.
+const agreeFloor = 72
+
+// nodeWalk reports whether Load compiles schema nodes (design 06 C6 lifts the gate).
+func nodeWalk(t *testing.T) bool {
+	t.Helper()
+	ctx, _, err := yang.NewContext(yang.Options{}, fstest.MapFS{"p.yang": {Data: []byte(
+		"module p { namespace urn:p; prefix p; leaf l { type string; } }")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ctx.Load("p", "", nil); err != nil {
+		t.Fatal(err)
+	}
+	for range ctx.Schema().Implemented("p").Top() {
+		return true
+	}
+	return false
+}
 
 // TestYangEngineSchema runs every fixture through package yang and logs the tally.
 func TestYangEngineSchema(t *testing.T) {
@@ -19,12 +43,17 @@ func TestYangEngineSchema(t *testing.T) {
 	}
 	t.Logf("agree %d, agree (skipped fields) %d, differ %d, deviation %d, unsupported %d", counts[Agree],
 		counts[AgreeSkipped], counts[Differ], counts[Deviation], counts[Unsupported])
+	if n := counts[Agree] + counts[AgreeSkipped]; n < agreeFloor {
+		t.Errorf("%d fixtures agree, fewer than %d", n, agreeFloor)
+	}
 }
 
 // TestYangEngineTargets: the m1 schema dumps agree with the oracle (compiled printout skipped).
-// Until the node walk runs in Load (design 06 C6 lifts the gate) the trees are empty and the
-// test skips.
+// It skips while the node walk is gated (until design 06 C6).
 func TestYangEngineTargets(t *testing.T) {
+	if !nodeWalk(t) {
+		t.Skip("the node walk is gated until design 06 C6")
+	}
 	m := load(t)
 	for _, f := range m.Fixtures {
 		if f.ID != "m1/schema-tree" && f.ID != "m1/schema-tree-no-features" {
@@ -33,9 +62,6 @@ func TestYangEngineTargets(t *testing.T) {
 		got, err := Yang{}.Run(Request{ID: f.ID, BaseDir: fixtureDir(m, f), Params: f.Request})
 		if err != nil {
 			t.Fatal(f.ID, err)
-		}
-		if mods := list(got["modules"]); len(mods) == 0 || len(list(mods[0].(map[string]any)["schema_tree"])) == 0 {
-			t.Skip("no schema tree: the node walk is gated until design 06 C6")
 		}
 		golden, err := LoadGolden(m.GoldenPath(f))
 		if err != nil {

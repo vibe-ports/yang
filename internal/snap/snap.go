@@ -4,6 +4,8 @@
 // §0.4). Package yang aliases them; they have no exported fields and return values and iterators,
 // never internal slices or writable structs. A Schema is immutable: the compiler publishes a deep
 // copy per Load, so handles stay valid and consistent while the context loads more modules.
+// Handles are fresh wrappers per call: compare what they return (names, paths), never the
+// handles themselves with ==.
 package snap
 
 import (
@@ -131,14 +133,6 @@ func (m *Module) Namespace() string { return m.m.Namespace }
 // Prefix is the module's own prefix.
 func (m *Module) Prefix() string { return m.m.Prefix }
 
-// YANGVersion is "1" or "1.1".
-func (m *Module) YANGVersion() string {
-	if m.m.Version == schema.Version11 {
-		return "1.1"
-	}
-	return "1"
-}
-
 // Implemented reports whether the module is implemented (not import-only).
 func (m *Module) Implemented() bool { return m.m.Implemented }
 
@@ -174,9 +168,6 @@ func (m *Module) Identities() iter.Seq[*Identity] {
 // Top yields the top-level data nodes, then the rpcs, then the notifications.
 func (m *Module) Top() iter.Seq[*Node] { return nodes(m.m.Top) }
 
-// Extensions yields the extension instances of the module statement.
-func (m *Module) Extensions() iter.Seq[*Extension] { return exts(m.m.Exts) }
-
 // --- Identity ---
 
 // Identity is a compiled identity.
@@ -187,12 +178,6 @@ func (i *Identity) Name() string { return i.i.Name }
 
 // Module is the module defining the identity.
 func (i *Identity) Module() *Module { return &Module{i.i.Module} }
-
-// Status is the identity's status.
-func (i *Identity) Status() Status { return Status(i.i.Status) }
-
-// Enabled reports whether every if-feature of the identity is true.
-func (i *Identity) Enabled() bool { return !i.i.Disabled }
 
 // Derived yields the identities naming this one as a base directly.
 func (i *Identity) Derived() iter.Seq[*Identity] {

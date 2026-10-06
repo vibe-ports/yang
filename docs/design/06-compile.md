@@ -559,24 +559,32 @@ whole `Load` (§1.6); there is no partially compiled module.
 6. `Set.All(name)` iterator over every revision (import-only included) for the loader.
 
 **Public read-only handles (package `yang`)** — the handle types and their methods are defined in
-`internal/snap` (imports only `internal/schema`) and `yang` re-exports them by alias, so `data` can
-reach the inner set without exporting it (design 07 §0.4). Reason: the API PLAN §1 promises; each wraps an
-internal pointer, returns values/iterators, never slices or writable structs:
-`Context`: `NewContext`, `Load`, `Module(name, rev)`, `Implemented(name)`, `Modules() iter.Seq[*Module]`,
-`FindSchema(path) (*SchemaNode, error)`. `Module`: `Name, Revision, Namespace, Prefix, Implemented,
-FeatureEnabled(name), Features() iter.Seq2[string,bool], Identities(), Top()`. `SchemaNode`:
-`Kind, Name, Module, Parent, Children(), Actions(), Notifications(), Child(mod, name), Path()`
-(LYSC_PATH_LOG), `Config, Mandatory, Presence, UserOrdered, Keys(), MinElements, MaxElements,
-Defaults() []string` (lexical), `DefaultCase, Type, Musts(), Whens(), Status, Units, Extensions()`.
-`Type`: `Base, Typedef, Members(), LeafrefPath, RequireInstance, FractionDigits, Enums(), Bits(),
-Bases()`. `Identity`: `Name, Module, Derived()`. `Must`/`When`: `Expr, ErrorAppTag, ErrorMessage,
-ContextNode`. **Immutability:** the loader's `schema.Module`s are working state that later loads
-write (§1.7), so after a successful `Load` C8 publishes a **deep copy** of every module, sharing
-nothing with `c.Modules[*].Schema` (compiled `schema.Type`s may stay shared: the typedef cache never
-writes a type after creating it). That copy is never written again. `Load` publishes it through
-`atomic.Pointer` under a mutex (one writer); handles keep their
-snapshot alive (old handles stay valid and consistent, they just do not see later loads — documented).
-An external test proves no returned value aliases internal storage; `-race` test with concurrent
+`internal/snap` (imports `internal/schema` and the leaf packages `internal/types`, `internal/lyxp`, for
+canonical defaults and leafref targets) and `yang` re-exports them by alias, so `data` can reach the
+inner set through `snap.Set` without exporting it (design 07 §0.4). Reason: the API PLAN §1 promises;
+each wraps an internal pointer and returns values/iterators, never slices, maps or writable structs.
+Handles are fresh wrappers per call: compare what they return (names, paths), not the handles (`==`).
+`Context`: `NewContext`, `Load`, `Schema() *Schema`. `Schema`: `Modules() iter.Seq[*Module]`,
+`Module(name, rev)`, `Implemented(name)`, `FindSchema(path) (*SchemaNode, error)`. `Module`: `Name,
+Revision, Namespace, Prefix, Implemented, FeatureEnabled(name), Features() iter.Seq2[string,bool],
+Identities(), Top()`. `SchemaNode`: `Kind, Name, Module, Parent, Children(), Actions(),
+Notifications(), Child(mod, name), Path()` (LYSC_PATH_LOG), `Config, Mandatory, Presence,
+UserOrdered, Keys(), MinElements, MaxElements, Defaults() iter.Seq[string]` (canonical, the text when
+it cannot be stored without data: lyd_value_validate_dflt), `DefaultCase, Type, Musts(), Whens(),
+Status, Units, Extensions(), HasExtensionList, LeafrefTargets()`. `Type`: `Base, Typedef, Members(),
+LeafrefPath, RequireInstance, FractionDigits, Enums(), Bits(), Bases(), Patterns(), Range(),
+Length()`. `Identity`: `Name, Module, Derived()`. `Must`: `Expr, ErrorAppTag, ErrorMessage`. `When`:
+`Expr, ContextNode, Module`. `Extension`: `Module, Name, Argument`. **Immutability:** the loader's
+`schema.Module`s are working state that later loads write (§1.7), so after every `Load` (and
+`NewContext`) C8 publishes a **deep copy** of every module, sharing nothing with
+`c.Modules[*].Schema`: modules, nodes, identities, features, musts, whens, extension instances and
+**types** (one copy per type object, sharing between types kept). Types are copied too because a
+shared type would keep pointing at context-side identities, whose `Derived` lists a later `Load`
+appends to. Only compiled XPath expressions (whose prefix bindings name context-side modules, read
+for their immutable `Name` only) and patterns are shared. That copy is never written again. `Load`
+publishes it through `atomic.Pointer` under a mutex (one writer); handles keep their snapshot alive
+(old handles stay valid and consistent, they just do not see later loads — documented). An external
+test proves no handle exposes a field or returns a slice or map; `-race` tests with concurrent
 readers during `Load`.
 
 ## 5. Budgets / DoS (`compile.Budget`, zero = default; exceeding → error wrapping `ErrBudget`)
