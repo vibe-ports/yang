@@ -30153,6 +30153,7 @@ fixtures:
   - id: types/date-time-sort-wide
     dir: types
     source: *own
+    host: amd64   # golden pinned to the amd64 oracle (D-0028): libyang UB, `oracle-check` skips it elsewhere
     rfc: []   # libyang UB (C11 §6.3.1.4), no RFC behaviour; see D-0028
     areas: [types]
     request:

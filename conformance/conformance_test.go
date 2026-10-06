@@ -455,3 +455,18 @@ func TestParseResponseTrailing(t *testing.T) {
 		t.Error("trailing data accepted")
 	}
 }
+
+func TestFixtureRunsOn(t *testing.T) {
+	if !(Fixture{}).RunsOn("arm64") || !(Fixture{Host: "amd64"}).RunsOn("amd64") || (Fixture{Host: "amd64"}).RunsOn("arm64") {
+		t.Fatal("RunsOn: an unpinned fixture runs everywhere, a pinned one only on its host")
+	}
+}
+
+func TestHostFixtureIsPinned(t *testing.T) {
+	m := load(t)
+	for _, f := range m.Fixtures {
+		if f.ID == "types/date-time-sort-wide" && f.Host != "amd64" {
+			t.Errorf("%s: host = %q, want amd64 (D-0028)", f.ID, f.Host)
+		}
+	}
+}

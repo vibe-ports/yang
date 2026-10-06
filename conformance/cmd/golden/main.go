@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"time"
 
 	"github.com/vibe-ports/yang/conformance"
@@ -53,6 +54,10 @@ func do(check bool, run, oracle, manifest string, reqProto bool) error {
 	bad := 0
 	for _, f := range m.Fixtures {
 		if !re.MatchString(f.ID) {
+			continue
+		}
+		if check && !f.RunsOn(runtime.GOARCH) {
+			fmt.Println("skip", f.ID, "(golden pinned to", f.Host+")")
 			continue
 		}
 		resp, err := runOracle(oracle, m.Corpus(), f, reqProto, !check)

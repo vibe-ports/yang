@@ -45,7 +45,14 @@ type Fixture struct {
 	Request map[string]any `yaml:"request"` // lyoracle request, verbatim
 	Golden  string         `yaml:"golden"`  // relative to Dir; OBSERVED oracle output
 	Assert  *Assert        `yaml:"assert"`  // NORMATIVE expectation, optional
+	// Host, when set (a GOARCH, only "amd64" is used), says the golden is pinned to that oracle
+	// architecture because libyang's behaviour there is undefined (C11 UB, deviation D-0028):
+	// `cmd/golden -check` skips the fixture on other architectures.
+	Host string `yaml:"host"`
 }
+
+// RunsOn reports whether the fixture's golden is comparable on goarch (always, unless it is host-specific).
+func (f Fixture) RunsOn(goarch string) bool { return f.Host == "" || f.Host == goarch }
 
 // Source says where a fixture's inputs came from. Commit is nil for hand-written inputs.
 type Source struct {
@@ -164,6 +171,9 @@ func (m *Manifest) validate() error {
 			if !slices.Contains(Areas, a) {
 				fail("%s: unknown area %q", id, a)
 			}
+		}
+		if f.Host != "" && f.Host != "amd64" {
+			fail("%s: host %q is not amd64", id, f.Host)
 		}
 		if f.Assert == nil {
 			continue
