@@ -135,7 +135,9 @@ func (vc *valCtx) firstData(sib *siblings, parent *schema.Node) (first *Node) {
 	return first
 }
 
-// configR is LYS_CONFIG_R: a state node (nodes of operations have no config flag).
+// configR is LYS_CONFIG_R: a state node. lys_compile_config sets no config flag at all on an rpc,
+// action or notification and on everything inside it (LYS_COMPILE_NO_CONFIG is set before the
+// operation node itself is compiled), so those are never state.
 func configR(sn *schema.Node) bool {
 	for p := sn; p != nil; p = p.Parent {
 		switch p.Kind {

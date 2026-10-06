@@ -62,10 +62,6 @@ func inOpNotif(s *schema.Node) bool {
 	return false
 }
 
-// configR is the LYS_CONFIG_R flag: state data (the nodes of input, output and notifications have
-// neither config flag).
-func configR(s *schema.Node) bool { return !s.Config && !inOpNotif(s) }
-
 // isDefault is lyd_is_default: a leaf or leaf-list instance whose value is a default of its
 // schema node (the canonical form of the default stored for the node).
 func isDefault(n *Node) bool {
