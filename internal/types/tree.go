@@ -52,7 +52,8 @@ func ValidateTree(t *schema.Type, v Value, tree Tree) (Value, *Diag) {
 		}
 	case schema.InstanceID:
 		if t.RequireInstance && !tree.InstanceExists(v.path) {
-			return v, &Diag{Code: CodeData, AppTag: "instance-required",
+			// the error item carries ly_path_eval's LY_ENOTFOUND (lyplg_type_validate_tree_instanceid)
+			return v, &Diag{Code: CodeData, AppTag: "instance-required", Err: "LY_ENOTFOUND",
 				Msg: fmt.Sprintf("Invalid instance-identifier \"%s\" value - required instance not found.", v.canon)}
 		}
 	case schema.Union:

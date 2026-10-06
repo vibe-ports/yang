@@ -6,9 +6,11 @@ package data
 
 // nodeSet is struct ly_set of data nodes as the validation queues use it. The removal kind
 // matters: libyang drains node_types with ly_set_rm_index, which moves the last item into the
-// hole, so removals change the order later items are visited in. A node is in a queue at most
-// once (the parser and the implicit nodes add each node once), so a position index makes
-// contains O(1); it is kept up to date by the removals.
+// hole, so removals change the order later items are visited in. contains (node_types only)
+// uses a position index kept up to date by the removals, which needs a node to be in the set at
+// most once: true for node_types (one entry per stored value). node_when may hold a node several
+// times (the JSON parser queues a node once per metadata member, as libyang); its pass indexes
+// the entries itself (whenPass.pos).
 type nodeSet struct {
 	items []*Node
 	pos   map[*Node]int

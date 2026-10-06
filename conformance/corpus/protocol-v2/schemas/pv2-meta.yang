@@ -1,0 +1,17 @@
+// A node with a when and metadata is queued for its when once per metadata member (JSON).
+module pv2-meta {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-meta";
+  prefix pm;
+  import ietf-yang-metadata { prefix md; }
+  md:annotation ann { type string; }
+  container c {
+    leaf x { type string; }
+    leaf s { when "../x = 'y'"; type string; }
+    leaf t { type string; }
+    container w {
+      when "../x = 'y'";
+      leaf u { when "../../x = 'y'"; type string; }
+    }
+  }
+}

@@ -125,6 +125,7 @@ type Diag struct {
 	Code   string
 	Msg    string
 	AppTag string
+	Err    string // the LY_ERR of the plugin's error item when not LY_EVALID ("" = LY_EVALID)
 }
 
 func (d *Diag) Error() string { return d.Msg }

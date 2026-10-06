@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/vibe-ports/yang"
@@ -148,38 +149,61 @@ func truthy(r xpath.Result) bool {
 
 // whenPass is the state of one lyd_validate_unres_when pass. Removals from node_when are
 // tombstones (nil) compacted once at the end of the pass, which keeps the order of
-// ly_set_rm_index_ordered without moving the queue per removal; pos maps a queued node to its
-// index, built when a when-false subtree needs it.
+// ly_set_rm_index_ordered without moving the queue per removal; live counts the entries left.
+// pos maps a queued node to its live indices in increasing order (a node is queued once per
+// lyd_parser_set_data_flags call, so the JSON parser queues a node with metadata several times
+// and ly_set_contains finds the first entry), built when a when-false subtree needs it.
 type whenPass struct {
 	vc     *valCtx
-	pos    map[*Node]int
+	live   int
+	pos    map[*Node][]int
 	dead   []*Node // WhenTrue nodes deleted by this pass, unlinked at its end
 	builds int     // pos maps built (one per pass at most; work tests)
 }
 
-// whenFalse is lyd_validate_when_false: the node stays, flagged WhenFalse; its subtree leaves
-// node_types and its descendants leave node_when.
-func (p *whenPass) whenFalse(n *Node) {
+// drop is ly_set_rm_index_ordered of entry i (a tombstone).
+func (p *whenPass) drop(i int) {
+	q := p.vc.nodeWhen
+	n := q.items[i]
+	q.items[i] = nil
+	p.live--
+	if l := p.pos[n]; l != nil {
+		p.pos[n] = slices.DeleteFunc(l, func(j int) bool { return j == i })
+	}
+}
+
+// whenFalse is lyd_validate_when_false for the entry i of n: the node stays, flagged WhenFalse;
+// its subtree leaves node_types and the first entry of each descendant leaves node_when. When
+// that removed anything, the pass goes on from the first entry of n (libyang refreshes its index
+// with ly_set_contains): that entry is the one resolved next, and the entries between it and i
+// wait for the next pass.
+func (p *whenPass) whenFalse(n *Node, i int) int {
 	vc := p.vc
 	n.flags |= FlagWhenFalse
 	vc.dropTypes(n)
-	if vc.nodeWhen.len() > 1 {
-		if p.pos == nil {
-			p.builds++
-			p.pos = make(map[*Node]int, vc.nodeWhen.len())
-			for i, q := range vc.nodeWhen.items {
-				if q != nil {
-					p.pos[q] = i
-				}
-			}
-		}
-		for d := range n.All() {
-			if i, ok := p.pos[d]; ok && d != n {
-				vc.nodeWhen.items[i] = nil
-				delete(p.pos, d)
+	if p.live <= 1 {
+		return i
+	}
+	if p.pos == nil {
+		p.builds++
+		p.pos = make(map[*Node][]int, p.live)
+		for j, q := range vc.nodeWhen.items {
+			if q != nil {
+				p.pos[q] = append(p.pos[q], j)
 			}
 		}
 	}
+	removed := false
+	for d := range n.All() {
+		if l := p.pos[d]; d != n && len(l) > 0 {
+			p.drop(l[0])
+			removed = true
+		}
+	}
+	if l := p.pos[n]; removed && len(l) > 0 {
+		return l[0]
+	}
+	return i
 }
 
 // del is the autodelete of a WhenTrue node whose when became false. The node is unlinked at the
@@ -204,7 +228,7 @@ func (p *whenPass) del(n *Node) {
 // leaves the queue (order kept); a false when deletes a WhenTrue node silently, warns for
 // operational data, else is an error (the node kept as WhenFalse under multi-error).
 func (vc *valCtx) unresWhen() error {
-	p := &whenPass{vc: vc}
+	p := &whenPass{vc: vc, live: vc.nodeWhen.len()}
 	defer p.finish()
 	var rc error
 	for i := vc.nodeWhen.len() - 1; i >= 0; i-- {
@@ -213,7 +237,7 @@ func (vc *valCtx) unresWhen() error {
 			continue // removed with a when-false ancestor
 		}
 		if n.flags&flagDead != 0 {
-			vc.nodeWhen.items[i] = nil // a second entry of a node deleted by this pass
+			p.drop(i) // a second entry of a node deleted by this pass
 			continue
 		}
 		w, err := vc.whenOf(n, n.schema, nil)
@@ -233,15 +257,15 @@ func (vc *valCtx) unresWhen() error {
 			vc.log.warn("When condition \"%s\" not satisfied.", w.Src)
 		default:
 			if vc.opts.MultiError {
-				p.whenFalse(n)
+				i = p.whenFalse(n, i)
 			}
 			err := vc.log.val(n, "", ly.Data, "When condition \"%s\" not satisfied.", w.Src)
 			if rc = err; vc.stop(err) {
-				vc.nodeWhen.items[i] = nil
+				p.drop(i)
 				return rc
 			}
 		}
-		vc.nodeWhen.items[i] = nil // resolved
+		p.drop(i) // resolved
 	}
 	return rc
 }
@@ -308,7 +332,11 @@ func (vc *valCtx) validateIncomplete(n *Node) error {
 		return tt.err // budget or cancellation
 	}
 	if d != nil {
-		return vc.log.item(n, nil, false, "LY_EVALID", codeOf(d.Code), d.AppTag, d.Msg)
+		rc := "LY_EVALID"
+		if d.Err != "" {
+			rc = d.Err
+		}
+		return vc.log.item(n, nil, false, rc, codeOf(d.Code), d.AppTag, d.Msg)
 	}
 	if v.Canonical() != n.value.Canonical() || !types.Equal(v, n.value) {
 		sib := n.siblingsOf()
