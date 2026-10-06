@@ -127,32 +127,46 @@ func (t *Tree) upper(l []*Node, lo int, after func(*Node) bool) int {
 	return lo + i
 }
 
-// insertPos is where lyd_insert_node links n among l.
-// Siblings are monotone in (module name at the top level, schema rank) with opaque nodes last;
-// every search relies on it, so insertLast never breaks it: libyang appends a schema node after
-// an opaque tail too, which only LYD_PARSE_ORDERED input with unknown nodes reaches (not used by
-// the M1 fixtures; VERIFY(order/ordered-opaque) if it is ever exported).
+// insertPos is where lyd_insert_node links the schema node n among sib.list (opaque nodes are
+// kept apart, always last).
+// Schema nodes are monotone in (module name at the top level, schema rank); every search relies
+// on it, so insertLast never breaks it: libyang appends after the last sibling whatever it is,
+// which only LYD_PARSE_ORDERED input that is not in schema order, or that has unknown nodes,
+// reaches (D-0058 candidate, design 07 §7).
 func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 	l := sib.list
-	if n.schema == nil || len(l) == 0 {
-		return len(l) // lyd_insert_node_last
+	if len(l) == 0 {
+		return 0
 	}
 	afterN := func(a *Node) bool { return t.after(a, n) }
-	tail := len(l) // start of the opaque tail
-	for tail > 0 && l[tail-1].schema == nil {
-		tail--
-	}
 	if order == insertDefault && sortedSupported(n) {
-		lo := t.upper(l[:tail], 0, func(a *Node) bool { return t.sameOrAfter(a, n) })
-		hi := t.upper(l[:tail], lo, afterN)
+		lo := t.upper(l, 0, func(a *Node) bool { return t.sameOrAfter(a, n) })
+		hi := t.upper(l, lo, afterN)
 		if lo == hi {
-			return hi // no instance yet: by schema
+			return hi // no instance yet: by schema, no RB tree for a single instance
 		}
-		if sib.unsorted[n.schema] {
-			// lyds_additionally_create_rb_tree: the run built without its RB tree is sorted now,
-			// stably (rb_insert_node puts equal values after the existing ones)
+		n.inRB = true
+		if !sib.rbTree[n.schema] {
+			// lyds_additionally_create_rb_tree: the run gets its RB tree from all its instances,
+			// inserted in order, so it is sorted stably (rb_insert_node puts equal values after
+			// the existing ones)
 			slices.SortStableFunc(l[lo:hi], compareSorted)
-			delete(sib.unsorted, n.schema)
+			for _, a := range l[lo:hi] {
+				a.inRB = true
+			}
+			markRB(sib, n.schema)
+		} else if sib.unsorted[n.schema] {
+			// instances appended after the tree was made are not in it (only diff.c's
+			// LAST_BY_SCHEMA does that): lyds_link_data_node puts n right after its RB
+			// predecessor, the greatest tree member not above it, or before the leader
+			at := lo
+			for i := lo; i < hi; i++ {
+				t.work++
+				if l[i].inRB && compareSorted(l[i], n) <= 0 {
+					at = i + 1
+				}
+			}
+			return at
 		}
 		// after the equal values (rb_insert_node goes right on 0); append fast path
 		t.work++
@@ -162,19 +176,28 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 		return t.upper(l[:hi], lo, func(a *Node) bool { return compareSorted(a, n) > 0 })
 	}
 	// lyd_insert_node_ordby_schema; append fast path
-	at := tail
+	at := len(l)
 	t.work++
-	if tail > 0 && t.after(l[tail-1], n) {
-		at = t.upper(l[:tail], 0, afterN)
+	if t.after(l[at-1], n) {
+		at = t.upper(l, 0, afterN)
 	}
-	if order != insertDefault && sortedSupported(n) && at > 0 && l[at-1].schema == n.schema && compareSorted(l[at-1], n) > 0 {
-		markUnsorted(sib, n.schema)
+	if order != insertDefault && sortedSupported(n) && sib.rbTree[n.schema] {
+		markUnsorted(sib, n.schema) // n is not in the run's RB tree
 	}
 	return at
 }
 
-// markUnsorted records that the run of s no longer is in value order: it was appended without
-// libyang's RB tree, which the next sorted insertion creates and so re-sorts the run.
+// markRB records that the run of s has libyang's RB tree (created by its first sorted insertion
+// into an existing run).
+func markRB(sib *siblings, s *schema.Node) {
+	if sib.rbTree == nil {
+		sib.rbTree = map[*schema.Node]bool{}
+	}
+	sib.rbTree[s] = true
+}
+
+// markUnsorted records that the run of s has instances outside its RB tree (appended by
+// insertLast/insertLastBySchema after the tree was made).
 func markUnsorted(sib *siblings, s *schema.Node) {
 	if sib.unsorted == nil {
 		sib.unsorted = map[*schema.Node]bool{}
@@ -186,7 +209,11 @@ func markUnsorted(sib *siblings, s *schema.Node) {
 // A list instance must have all its keys (libyang links it into its parent only then).
 func (t *Tree) insert(parent, n *Node, order insertOrder) {
 	sib := t.childrenOf(parent)
-	t.link(parent, sib, n, t.insertPos(sib, n, order))
+	at := -1 // opaque: appended to the opaque nodes
+	if n.schema != nil {
+		at = t.insertPos(sib, n, order)
+	}
+	t.link(parent, sib, n, at)
 }
 
 // insertBefore is lyd_insert_before for a user-ordered instance: n goes right before anchor,
@@ -203,15 +230,19 @@ func (t *Tree) childrenOf(parent *Node) *siblings {
 	return &parent.kids
 }
 
-// link puts the unlinked n at position at of sib (under parent) and updates the children index
-// and the default flags of the NP-container ancestors.
+// link puts the unlinked n at position at of sib.list (an opaque node: after the other opaque
+// nodes) under parent, and updates the children index and the default flags of the NP-container
+// ancestors.
 func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) {
 	if n.parent != nil || n.tree != nil {
 		panic("data: inserting a linked node") // internal invariant: callers unlink first
 	}
-	if at == len(sib.list) {
+	switch {
+	case n.schema == nil:
+		sib.opq = append(sib.opq, n)
+	case at == len(sib.list):
 		sib.list = append(sib.list, n)
-	} else {
+	default:
 		// ponytail: insertion in the middle moves the tail (O(n) per insert, like design 02's
 		// slice); the parsers append and sort runs lazily, a tree structure if API-built
 		// reversed inputs ever matter.
@@ -261,24 +292,30 @@ func unlink(n *Node) {
 	if sib == nil {
 		return
 	}
-	if i := slices.Index(sib.list, n); i >= 0 {
+	if n.schema == nil {
+		if i := slices.Index(sib.opq, n); i >= 0 {
+			sib.opq = slices.Delete(sib.opq, i, i+1)
+		}
+	} else if i := slices.Index(sib.list, n); i >= 0 {
 		sib.list = slices.Delete(sib.list, i, i+1)
 	}
-	detach(sib, n)
+	sib.hashRemove(n)
+	if n.schema != nil && !sib.has(n.schema) {
+		sib.runGone(n.schema)
+	}
+	npContDfltSet(detach(n)) // the last non-default node may be gone
 }
 
-// detach clears the links of n, already removed from sib.list.
-func detach(sib *siblings, n *Node) {
-	sib.hashRemove(n)
+// detach clears the links of n, already removed from its siblings and their index, and returns
+// its former parent.
+func detach(n *Node) *Node {
 	parent := n.parent
 	wasKey := n.isKey()
-	n.parent, n.tree = nil, nil
-	if parent != nil {
-		npContDfltSet(parent) // the last non-default node may be gone
-		if wasKey {
-			rehashParent(parent)
-		}
+	n.parent, n.tree, n.inRB = nil, nil, false
+	if wasKey {
+		rehashParent(parent)
 	}
+	return parent
 }
 
 // freeTree is lyd_free_tree: a list key is refused, nothing is freed.
@@ -293,30 +330,71 @@ func freeTree(n *Node) error {
 // unlinkAll unlinks every node of ns with one compaction per sibling list, for the bulk
 // removals of validation (auto-deleted nodes) and lyd_free_siblings. A list key is refused
 // before anything is unlinked.
-func unlinkAll(ns []*Node) error {
+func (t *Tree) unlinkAll(ns []*Node) error {
 	for _, n := range ns {
 		if err := unlinkCheck(n); err != nil {
 			return err
 		}
 	}
 	gone := map[*Node]bool{}
-	var sibs []*siblings
+	sibs := map[*siblings]map[idxKey]bool{} // touched lists and their touched buckets
+	var order []*siblings
 	for _, n := range ns {
-		if sib := n.siblingsOf(); sib != nil && !gone[n] {
-			gone[n] = true
-			if !slices.Contains(sibs, sib) {
-				sibs = append(sibs, sib)
+		sib := n.siblingsOf()
+		if sib == nil || gone[n] {
+			continue
+		}
+		gone[n] = true
+		if sibs[sib] == nil {
+			sibs[sib] = map[idxKey]bool{}
+			order = append(order, sib)
+		}
+		if n.hashed {
+			sibs[sib][n.hkey] = true
+			n.hashed = false
+		}
+	}
+	isGone := func(n *Node) bool { t.work++; return gone[n] }
+	for _, sib := range order {
+		sib.list = slices.DeleteFunc(sib.list, isGone)
+		sib.opq = slices.DeleteFunc(sib.opq, isGone)
+		for k := range sibs[sib] { // each bucket compacted once
+			if b := slices.DeleteFunc(sib.ht[k], isGone); len(b) > 0 {
+				sib.ht[k] = b
+			} else {
+				delete(sib.ht, k)
 			}
 		}
 	}
-	for _, sib := range sibs {
-		sib.list = slices.DeleteFunc(sib.list, func(n *Node) bool { return gone[n] })
+	for _, sib := range order {
+		present := map[*schema.Node]bool{}
+		for _, n := range sib.list {
+			present[n.schema] = true
+		}
+		for s := range sib.rbTree {
+			if !present[s] {
+				sib.runGone(s)
+			}
+		}
+		for s := range sib.unsorted {
+			if !present[s] {
+				sib.runGone(s)
+			}
+		}
 	}
+	var parents []*Node
+	seen := map[*Node]bool{}
 	for _, n := range ns {
 		if gone[n] {
 			delete(gone, n)
-			detach(n.siblingsOf(), n)
+			if p := detach(n); p != nil && !seen[p] {
+				seen[p] = true
+				parents = append(parents, p)
+			}
 		}
+	}
+	for _, p := range parents { // once per parent, not per removed child
+		npContDfltSet(p)
 	}
 	return nil
 }
@@ -328,7 +406,7 @@ func isNPCont(s *schema.Node) bool { return s != nil && s.Kind == schema.Contain
 // default, up the ancestors.
 func npContDfltSet(p *Node) {
 	for ; p != nil && p.flags&FlagDefault == 0 && isNPCont(p.schema); p = p.parent {
-		for _, c := range p.kids.list {
+		for c := range p.kids.all() {
 			if c.flags&FlagDefault == 0 {
 				return
 			}

@@ -426,6 +426,7 @@ entries owned by this stream: **D-0001** (candidate: `when` reading a top-level 
 | D-0055 (candidate) | dummy-when: an unresolvable `when` on an absent mandatory node skips the check under multi-error but is `LY_EINT` otherwise | RFC 7950 §7.21.5 |
 | D-0056 (candidate) | a must reaching a node left unresolved after a when error fails with `LY_EINCOMPLETE` (LOGERR, no vecode) | — |
 | D-0057 (candidate) | a tree of only top-level opaque nodes reports the opaque error once per implemented module | — |
+| D-0058 (candidate) | **not mirrored**: `LYD_INSERT_NODE_LAST` (`LYD_PARSE_ORDERED`) appends after the last sibling whatever it is; the port keeps schema nodes in schema order and before all opaque nodes (opaque nodes are a separate slice), so input that is not in schema order or mixes unknown nodes is placed by schema | RFC 7950 §7.5.7 (data order is the schema order; libyang's own default insertion agrees) |
 | U-0040 | input size budget | libyang reads anything |
 | U-0041 | node-count budget | — |
 | U-0042 | cumulative XPath step budget per Parse/Validate | — |

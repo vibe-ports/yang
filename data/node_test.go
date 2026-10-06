@@ -244,20 +244,20 @@ func TestUnlinkAll(t *testing.T) {
 	d := f.term(t, f.z, "d")
 	d.flags = FlagDefault
 	tr.insert(c, d, insertDefault)
-	if err := unlinkAll(odd); err != nil {
+	if err := tr.unlinkAll(odd); err != nil {
 		t.Fatal(err)
 	}
 	if len(c.kids.list) != 501 || odd[0].parent != nil {
 		t.Fatalf("%d children left", len(c.kids.list))
 	}
-	if err := unlinkAll(slices.Clone(c.kids.list[:500])); err != nil {
+	if err := tr.unlinkAll(slices.Clone(c.kids.list[:500])); err != nil {
 		t.Fatal(err)
 	}
 	if len(c.kids.list) != 1 || len(c.kids.ht) != 1 || c.flags&FlagDefault == 0 {
 		t.Fatalf("left %v, index %d, flags %x", names(c.Children()), len(c.kids.ht), c.flags)
 	}
 	key := f.list(t, tr, c, "k", "").kids.list[0]
-	if err := unlinkAll([]*Node{d, key}); err == nil || d.parent == nil {
+	if err := tr.unlinkAll([]*Node{d, key}); err == nil || d.parent == nil {
 		t.Fatal("a key in the batch must refuse the whole batch")
 	}
 }
@@ -523,4 +523,50 @@ func TestConcurrentReads(t *testing.T) {
 		}()
 	}
 	wg.Wait()
+}
+
+// TestBulkWork: removing many instances that share a bucket (equal state leaf-list values) and
+// alternating opaque/schema inserts cost linear work (counted, not timed).
+func TestBulkWork(t *testing.T) {
+	f := newFixture()
+	tr := newTree(f.set)
+	c := newInner(f.c)
+	tr.insert(nil, c, insertDefault)
+	const n = 20000
+	var all []*Node
+	for range n {
+		s := f.term(t, f.sl, "1")
+		tr.insert(c, s, insertDefault)
+		all = append(all, s)
+		tr.insert(c, newOpaque(opaque{Name: "o"}), insertDefault)
+	}
+	if tr.work > 4*n || len(c.kids.opq) != n {
+		t.Fatalf("alternating inserts: %d comparisons", tr.work)
+	}
+	tr.work = 0
+	if err := tr.unlinkAll(all); err != nil {
+		t.Fatal(err)
+	}
+	if tr.work > 4*n || len(c.kids.list) != 0 || len(c.kids.ht) != 0 {
+		t.Fatalf("bulk unlink: %d steps, %d left, %d buckets", tr.work, len(c.kids.list), len(c.kids.ht))
+	}
+}
+
+// TestRBTreeRun: instances appended to a run after its RB tree exists stay outside it; the next
+// sorted insertion goes right after its RB predecessor (lyds_link_data_node), the run is not
+// re-sorted: [3,4,5] sorted, 1 appended by schema, then 6 → 3,4,5,6,1.
+func TestRBTreeRun(t *testing.T) {
+	f := newFixture()
+	tr := newTree(f.set)
+	c := newInner(f.c)
+	tr.insert(nil, c, insertDefault)
+	for _, v := range []string{"4", "3", "5"} {
+		tr.insert(c, f.term(t, f.ll, v), insertDefault)
+	}
+	tr.insert(c, f.term(t, f.ll, "1"), insertLastBySchema)
+	tr.insert(c, f.term(t, f.ll, "6"), insertDefault)
+	tr.insert(c, f.term(t, f.ll, "0"), insertDefault)
+	if got := names(c.Children()); !reflect.DeepEqual(got, []string{"ll=0", "ll=3", "ll=4", "ll=5", "ll=6", "ll=1"}) {
+		t.Fatalf("%v", got)
+	}
 }

@@ -23,10 +23,31 @@ const htMinItems = 4
 // index: buckets of instances per hash key, each bucket in insertion order like lyht_find
 // returns colliding records. It is written only by insertions and removals; lookups read.
 type siblings struct {
-	list     []*Node
+	list     []*Node // schema nodes, in order
+	opq      []*Node // opaque nodes, after all schema nodes (libyang keeps them last)
 	ht       map[idxKey][]*Node
-	unsorted map[*schema.Node]bool // runs appended out of value order (no RB tree yet)
+	unsorted map[*schema.Node]bool // runs appended out of value order
+	rbTree   map[*schema.Node]bool // runs that have libyang's RB tree (lyds)
 }
+
+// has reports whether an instance of s is in the list.
+func (s *siblings) has(sn *schema.Node) bool {
+	for _, n := range s.list {
+		if n.schema == sn {
+			return true
+		}
+	}
+	return false
+}
+
+// runGone forgets the run state of s once its last instance left (the RB tree goes with it).
+func (s *siblings) runGone(sn *schema.Node) {
+	delete(s.rbTree, sn)
+	delete(s.unsorted, sn)
+}
+
+// len is the number of siblings, opaque ones included.
+func (s *siblings) len() int { return len(s.list) + len(s.opq) }
 
 // idxKey stands for lyd_hash: the schema node, plus the canonical text of a leaf-list value or
 // of a list's keys. libyang hashes the LYB form of the values; buckets of equal canonical text
@@ -39,6 +60,11 @@ type idxKey struct {
 func (s *siblings) all() iter.Seq[*Node] {
 	return func(yield func(*Node) bool) {
 		for _, n := range s.list {
+			if !yield(n) {
+				return
+			}
+		}
+		for _, n := range s.opq {
 			if !yield(n) {
 				return
 			}
@@ -79,13 +105,7 @@ func (s *siblings) hashAdd(parent, n *Node) {
 		s.hashPut(n)
 		return
 	}
-	cnt := 0
-	for _, c := range s.list {
-		if c.schema != nil {
-			cnt++
-		}
-	}
-	if cnt < htMinItems {
+	if len(s.list) < htMinItems {
 		return
 	}
 	s.ht = map[idxKey][]*Node{}
@@ -155,10 +175,10 @@ func isDupInstList(s *schema.Node) bool {
 // ponytail: keyless lists compare whole subtrees per instance (O(n·subtree), libyang parity);
 // parsers and validation never search them, Merge/diff must run under a step budget.
 func (t *Tree) findFirst(s *siblings, target *Node) *Node {
-	if len(s.list) == 0 {
+	if s.len() == 0 {
 		return nil
 	}
-	if f := s.list[0]; f.schema != nil && target.schema != nil && f.schema.DataParent() != target.schema.DataParent() {
+	if len(s.list) > 0 && target.schema != nil && s.list[0].schema.DataParent() != target.schema.DataParent() {
 		return nil // schema mismatch
 	}
 	dup := isDupInstList(target.schema)
@@ -189,7 +209,7 @@ func (t *Tree) findFirst(s *siblings, target *Node) *Node {
 		}
 		return nil
 	}
-	for _, n := range s.list {
+	for n := range s.all() {
 		if compareSingle(t, n, target, dup) {
 			return n
 		}
@@ -269,9 +289,10 @@ func compareSingle(t *Tree, a, b *Node, full bool) bool {
 // compareSiblings is lyd_compare_siblings_: pairwise in order, except that a system-ordered
 // keyed list or config leaf-list instance is looked up among b's siblings.
 func compareSiblings(t *Tree, a, b *siblings) bool {
+	al, bl := slices.Concat(a.list, a.opq), slices.Concat(b.list, b.opq)
 	i := 0
-	for ; i < len(a.list) && i < len(b.list); i++ {
-		n, m := a.list[i], b.list[i]
+	for ; i < len(al) && i < len(bl); i++ {
+		n, m := al[i], bl[i]
 		if n.schema != m.schema {
 			return false
 		}
@@ -284,5 +305,5 @@ func compareSiblings(t *Tree, a, b *siblings) bool {
 			return false
 		}
 	}
-	return i == len(a.list) && i == len(b.list)
+	return i == len(al) && i == len(bl)
 }

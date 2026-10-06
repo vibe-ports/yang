@@ -54,6 +54,7 @@ type Node struct {
 	flags  Flags
 	hkey   idxKey // bucket of the node in its parent's children index (lyd_node.hash)
 	hashed bool
+	inRB   bool // in its run's RB tree (lyds) of a system-ordered list or leaf-list
 }
 
 // Tree is a data tree: its top-level siblings and the schema snapshot it is built over.
@@ -118,6 +119,9 @@ func (n *Node) All() iter.Seq[*Node] {
 			stack = stack[:len(stack)-1]
 			if !yield(c) {
 				return
+			}
+			for i := len(c.kids.opq) - 1; i >= 0; i-- {
+				stack = append(stack, c.kids.opq[i])
 			}
 			for i := len(c.kids.list) - 1; i >= 0; i-- {
 				stack = append(stack, c.kids.list[i])
