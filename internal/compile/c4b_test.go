@@ -55,11 +55,3 @@ func TestCheckDisabledUnique(t *testing.T) {
 		t.Fatalf("uniques %v children %v", l.Uniques, l.Children)
 	}
 }
-
-// TestIffTokens: the operands of an expression the second pass of lys_compile_iffeature tokenizes
-// (used for "processing error" expressions, D-0036).
-func TestIffTokens(t *testing.T) {
-	if got := iffTokens("not a and (b or c)"); !reflect.DeepEqual(got, []string{"a", "b", "c"}) {
-		t.Fatalf("got %q", got)
-	}
-}

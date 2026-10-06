@@ -230,8 +230,7 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | src/ly_common.c | ly_getutf8, ly_pututf8 | lyxml.(*Ctx).getUTF8, lyxml.putUTF8 | ported | unit | libyang's ranges incl. four-byte start at U+1000 |
 | src/xml.c | lyxml_dump_text | lyxml.AppendText | ported | unit | |
 | src/xml.c | lyxml_value_compare | — | skipped | — | needs schema prefix data; ported with the data package (design 07 D4/D6) |
-| src/schema_features.c | lys_eval_iffeatures, lys_compile_iffeature (nodes, enums/bits, annotations), lysc_iffeature_value | compile.nodeCtx.iffeatures, compile.nodeCtx.iffValue, compile.iffTokens | ported | compile/iff-* | errors at the compile path; lookup right to left, processing error after it (D-0036) |
-| src/schema_features.c | lysp_feature_find | compile.Context.feature | partial | compile/iff-* | enabled flag from schema.Module.Features until #40 (C1b) keeps it on the parsed features |
+| src/schema_features.c | lys_eval_iffeatures, lysc_iffeature_value (nodes, enums/bits, annotations) | compile.nodeCtx.iffeatures, compile.nodeCtx.iffValue | ported | compile/iff-* | through compileIff with the errors at the compile path; LY_EINT for a processing error (D-0036) |
 | src/schema_compile.c | lys_compile_unres_check_disabled, P6 disabled-node loop | compile.Context.removeDisabled, compile.Context.checkDisabled | ported | compile/list-key-iffeature-disabled, compile/iff-disabled-nodes-removed | called by the node-walk tests until the P6 loop (C7) |
 | src/tree_schema_free.c | lysc_node_free (unlink part) | compile.unlink | ported | compile/iff-disabled-nodes-removed, compile/obsolete-removed | |
 | src/schema_compile.c | lys_compile_ext, COMPILE_EXTS_GOTO | compile.nodeCtx.compileExt, compile.nodeCtx.compileExts | ported | compile/ext-instance-*, compile/errpath-ext-inst | empty-but-present exts array kept (ext/nacm-placement-warning); must/when instances compile to nothing observable |

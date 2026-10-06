@@ -66,27 +66,31 @@ func iffValue(e *parser.IffExpr, fs []*feature) bool {
 
 // compileIff is lys_compile_iffeature for an if-feature written in pm:
 // the parser's syntax error, or the features, looked up right to left as
-// libyang does (so the last unknown one is reported).
-func (c *Context) compileIff(pm *pmod, main *Module, iff *parser.IfFeature) ([]*feature, error) {
+// libyang does (so the last unknown one is reported). Errors are logged at
+// path: the compile path for nodes, none for features (P0). An expression
+// the second pass cannot process is reported after the lookup, with
+// LY_EINT (D-0036).
+func (c *Context) compileIff(pm *pmod, main *Module, iff *parser.IfFeature, path string) ([]*feature, error) {
 	var names []string
 	switch {
-	case iff.Err != nil && strings.HasSuffix(iff.Err.Msg, "processing error."):
+	case iff.Err != nil && iff.Processing:
 		// detected after the second pass, which has looked the features up
 		names = iffOperands(iff.Expr)
 	case iff.Err != nil:
-		return nil, c.logVal(iff.Err.Code, 0, "%s", iff.Err.Msg)
+		return nil, c.logPath(iff.Err.Code, path, "%s", iff.Err.Msg)
 	default:
 		names = iffNames(iff.AST)
 	}
 	fs := make([]*feature, len(names))
 	for i := len(names) - 1; i >= 0; i-- {
 		if fs[i] = c.featureFind(pm, main, names[i], true); fs[i] == nil {
-			return nil, c.logVal(ly.SyntaxYang, 0, "Invalid value \"%s\" of if-feature - unable to find feature \"%s\".",
+			return nil, c.logPath(ly.SyntaxYang, path, "Invalid value \"%s\" of if-feature - unable to find feature \"%s\".",
 				iff.Expr, names[i])
 		}
 	}
 	if iff.Err != nil {
-		return nil, c.logVal(iff.Err.Code, 0, "%s", iff.Err.Msg)
+		_ = c.logPath(iff.Err.Code, path, "%s", iff.Err.Msg)
+		return nil, rc("LY_EINT")
 	}
 	return fs, nil
 }
@@ -130,7 +134,7 @@ func (c *Context) compileFeatureIffeatures(m *Module) error {
 			continue
 		}
 		for _, iff := range f.p.IfFeatures {
-			fs, err := c.compileIff(f.pm, m, iff)
+			fs, err := c.compileIff(f.pm, m, iff, "")
 			if err != nil {
 				return err
 			}
