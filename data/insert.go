@@ -237,6 +237,7 @@ func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) {
 	if n.parent != nil || n.tree != nil {
 		panic("data: inserting a linked node") // internal invariant: callers unlink first
 	}
+	sib.work = &t.work
 	switch {
 	case n.schema == nil && (at < 0 || at >= len(sib.opq)):
 		sib.opq = append(sib.opq, n)

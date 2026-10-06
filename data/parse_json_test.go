@@ -312,7 +312,9 @@ func FuzzParseJSON(f *testing.F) {
 }
 
 // TestParseJSONLinear: attaching metadata is linear in the number of siblings. work counts the
-// parser's sibling visits and the insertions; 4× the input must cost about 4× the work. Cases: a
+// insertions and every sibling visit: those of siblings.all and siblings.indexOf (which any
+// sibling scan goes through, the quadratic ones of the old parser included) and the parser's own
+// slice walks; 4× the input must cost about 4× the work. Cases: a
 // leaf-list metadata array after and before its instances, and the metadata of many opaque
 // siblings after and before them.
 func TestParseJSONLinear(t *testing.T) {

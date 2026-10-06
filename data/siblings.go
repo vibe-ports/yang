@@ -29,6 +29,25 @@ type siblings struct {
 	unsorted map[*schema.Node]bool // runs appended out of value order
 	rbTree   map[*schema.Node]bool // runs that have libyang's RB tree (lyds)
 	gen      uint64                // changes with every insertion and removal
+	work     *int                  // the tree's work counter once a node was linked: all and indexOf count visits
+}
+
+// visit counts one sibling visit in the tree's work counter.
+func (s *siblings) visit() {
+	if s.work != nil {
+		*s.work++
+	}
+}
+
+// indexOf is the position of n in l, one of s's lists, -1 if absent.
+func (s *siblings) indexOf(l []*Node, n *Node) int {
+	for i, c := range l {
+		s.visit()
+		if c == n {
+			return i
+		}
+	}
+	return -1
 }
 
 // has reports whether an instance of s is in the list.
@@ -61,11 +80,13 @@ type idxKey struct {
 func (s *siblings) all() iter.Seq[*Node] {
 	return func(yield func(*Node) bool) {
 		for _, n := range s.list {
+			s.visit()
 			if !yield(n) {
 				return
 			}
 		}
 		for _, n := range s.opq {
+			s.visit()
 			if !yield(n) {
 				return
 			}

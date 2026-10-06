@@ -431,7 +431,7 @@ func (lc *lydCtx) nodeInsert(parent, anchor, n *Node) {
 		// lyd_insert_after of the XML parser's anchor (lydxml_get_hints_opaq): an opaque node
 		// right after the last opaque sibling with the same name, among the opaque nodes
 		sib := anchor.siblingsOf()
-		lc.tree.link(anchor.parent, sib, n, indexOf(sib.opq, anchor)+1)
+		lc.tree.link(anchor.parent, sib, n, sib.indexOf(sib.opq, anchor)+1)
 	case anchor != nil:
 		// libyang's only insert anchor is the opaque one above
 		panic("data: insert anchor of a schema node")
@@ -440,15 +440,6 @@ func (lc *lydCtx) nodeInsert(parent, anchor, n *Node) {
 	default:
 		lc.tree.insert(parent, n, insertDefault)
 	}
-}
-
-func indexOf(l []*Node, n *Node) int {
-	for i, c := range l {
-		if c == n {
-			return i
-		}
-	}
-	return -1
 }
 
 // nodeFree is lyd_parser_node_free: a key is never freed (its list goes instead).
