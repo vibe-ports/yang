@@ -185,7 +185,7 @@ func (e *Expr) checkPredicate(i int, prefix Prefix, pred Pred) (int, string) {
 	switch {
 	case e.Is(i, TokNameTest): // key predicates (all three preds)
 		leafref := pred == PredLeafref
-		seen := map[string]bool{}
+		seen := keySet{m: map[string]bool{}, work: &e.work}
 		for {
 			if msg = e.Check(i, TokNameTest); msg != "" {
 				return i, msg
@@ -199,11 +199,10 @@ func (e *Expr) checkPredicate(i int, prefix Prefix, pred Pred) (int, string) {
 				return i, fmt.Sprintf("Redundant prefix for \"%s\" in path.", full)
 			}
 			name := full[c+1:] // c == -1 keeps all of it
-			e.work++
-			if seen[name] {
+			if seen.has(name) {
 				return i, fmt.Sprintf("Duplicate predicate key \"%s\" in path.", name)
 			}
-			seen[name] = true
+			seen.m[name] = true
 			if i, msg = e.next(i+1, TokOperEqual); msg != "" {
 				return i, msg
 			}
@@ -248,6 +247,18 @@ func (e *Expr) checkPredicate(i int, prefix Prefix, pred Pred) (int, string) {
 		return i, fmt.Sprintf("Unexpected XPath token \"%s\" (\"%s\").", e.Toks[i], Trunc15(e.Rest(i)))
 	}
 	return e.next(i, TokBrack2)
+}
+
+// keySet is the set of key names a predicate has seen; has counts each probe in *work, so the
+// work is one per key for a hashed set and grows with the set for a scan.
+type keySet struct {
+	m    map[string]bool
+	work *int
+}
+
+func (s keySet) has(name string) bool {
+	*s.work++
+	return s.m[name]
 }
 
 // leafrefKey is the right side of a leafref predicate: current()/..(/..)*/name(/name)*.

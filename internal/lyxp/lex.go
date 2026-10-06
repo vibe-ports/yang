@@ -58,7 +58,7 @@ type Expr struct {
 	Toks []Tok
 	Pos  []int
 	Len  []int
-	work int // key lookups made by the predicate checks (tests bound it)
+	work int // probes of the duplicate-key checks (keySet.has; tests bound it)
 }
 
 // Text is the text of token i.

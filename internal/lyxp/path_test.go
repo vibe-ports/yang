@@ -75,7 +75,7 @@ func TestManyKeys(t *testing.T) {
 		t.Fatal(msg)
 	}
 	if limit := 2 * n; e.work > limit {
-		t.Errorf("%d key lookups for %d keys, limit %d", e.work, n, limit)
+		t.Errorf("%d key probes for %d keys, limit %d", e.work, n, limit)
 	}
 }
 
