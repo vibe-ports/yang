@@ -7950,11 +7950,11 @@ fixtures:
       modules: [{name: fa, features: []}, {name: fa, features: [a]}, {name: fa}]
     golden: golden/feature-rollback-3load.json
 
-  # libyang checks only the first if-feature of an enabled feature (D-0043)
+  # libyang checks only the first if-feature of an enabled feature (D-0036)
   - id: load/feature-first-iffeature-only
     dir: load
     source: *own
-    rfc: []   # RFC 7950 §7.20.2 requires all if-features; libyang checks the first (D-0043)
+    rfc: []   # RFC 7950 §7.20.2 requires all if-features; libyang checks the first (D-0036)
     areas: [schema]
     request:
       op: schema
@@ -7992,7 +7992,7 @@ fixtures:
     request:
       op: schema
       searchdirs: [iff]
-      modules: [{name: fu1}, {name: fu2}, {name: fu3}, {name: fu4}]
+      modules: [{name: fu1}, {name: fu2}, {name: fu3}, {name: fu4}, {name: fu5}]
     golden: golden/iff-unknown-feature.json
 
   - id: ident/cycle

@@ -1,0 +1,6 @@
+module fu5 {
+  yang-version 1.1;
+  namespace "urn:fu5";
+  prefix fu5;
+  feature a { if-feature "not (not x)"; }
+}

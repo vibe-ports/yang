@@ -68,10 +68,16 @@ func iffValue(e *parser.IffExpr, fs []*feature) bool {
 // the parser's syntax error, or the features, looked up right to left as
 // libyang does (so the last unknown one is reported).
 func (c *Context) compileIff(pm *pmod, main *Module, iff *parser.IfFeature) ([]*feature, error) {
-	if iff.Err != nil {
+	var names []string
+	switch {
+	case iff.Err != nil && strings.HasSuffix(iff.Err.Msg, "processing error."):
+		// detected after the second pass, which has looked the features up
+		names = iffOperands(iff.Expr)
+	case iff.Err != nil:
 		return nil, c.logVal(iff.Err.Code, 0, "%s", iff.Err.Msg)
+	default:
+		names = iffNames(iff.AST)
 	}
-	names := iffNames(iff.AST)
 	fs := make([]*feature, len(names))
 	for i := len(names) - 1; i >= 0; i-- {
 		if fs[i] = c.featureFind(pm, main, names[i], true); fs[i] == nil {
@@ -79,8 +85,42 @@ func (c *Context) compileIff(pm *pmod, main *Module, iff *parser.IfFeature) ([]*
 				iff.Expr, names[i])
 		}
 	}
+	if iff.Err != nil {
+		return nil, c.logVal(iff.Err.Code, 0, "%s", iff.Err.Msg)
+	}
 	return fs, nil
 }
+
+// iffOperands are the feature operands of an if-feature expression in text
+// order, tokenized as the second pass of lys_compile_iffeature does (right
+// to left: ')' and '(' alone, a token runs left to a space or '('; "not",
+// "and", "or" followed by a space are operators).
+func iffOperands(e string) []string {
+	if i := strings.IndexByte(e, 0); i >= 0 {
+		e = e[:i]
+	}
+	var names []string
+	for i := len(e) - 1; i >= 0; i-- {
+		if e[i] == '(' || e[i] == ')' || isCSpace(e[i]) {
+			continue
+		}
+		end := i + 1
+		for i >= 0 && !isCSpace(e[i]) && e[i] != '(' {
+			i--
+		}
+		i++
+		op := false
+		for _, o := range []string{"not", "and", "or"} {
+			op = op || strings.HasPrefix(e[i:], o) && i+len(o) < len(e) && isCSpace(e[i+len(o)])
+		}
+		if !op {
+			names = append([]string{e[i:end]}, names...)
+		}
+	}
+	return names
+}
+
+func isCSpace(b byte) bool { return b == ' ' || b >= '\t' && b <= '\r' }
 
 // compileFeatureIffeatures is lys_compile_feature_iffeatures (P0): compile
 // the if-features of every feature of m and reject circular references.
@@ -171,7 +211,7 @@ func (c *Context) setFeatures(m *Module, features []string) (bool, error) {
 
 // checkFeatures is lys_check_features (P1). libyang passes the array of
 // compiled if-features as one, so only the first if-feature of an enabled
-// feature is checked (D-0043).
+// feature is checked (D-0036).
 func (c *Context) checkFeatures(m *Module) error {
 	for _, f := range m.features {
 		if !f.enabled || len(f.iffs) == 0 {
