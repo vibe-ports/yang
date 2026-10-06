@@ -423,9 +423,13 @@ func TestWhenFalseSubtree(t *testing.T) {
 	}
 }
 
-// TestUnresWork: the work of n evaluations does not grow with the top level (its view is built
-// once), n when-false nodes under multi-error and n deleted WhenTrue nodes cost linear work
-// (counted, not timed).
+// TestUnresWork counts the work that used to be quadratic, so reverting a fix fails it:
+//   - n musts over a big top level build the evaluations' top-level view once (it was rebuilt per
+//     evaluation);
+//   - n top-level WhenTrue nodes deleted in one pass do not rebuild that view (each deletion
+//     changed it before);
+//   - n when-false nodes under multi-error build one position map per pass and scan node_types
+//     linearly (the map was dropped and rebuilt per removal).
 func TestUnresWork(t *testing.T) {
 	f := newUnresFixture(t)
 	const n = 5000
@@ -446,13 +450,32 @@ func TestUnresWork(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if vc.budget.steps > 10*n {
-		t.Fatalf("musts over a big top level: %d steps", vc.budget.steps)
+	if vc.topBuilds != 1 {
+		t.Fatalf("musts over a big top level: %d view builds", vc.topBuilds)
 	}
 
-	// n when-false nodes (multi-error), then n WhenTrue nodes deleted in one pass
-	w := &schema.Node{Kind: schema.LeafList, Name: "w", Module: f.m, Parent: f.c, Type: &schema.Type{Base: schema.Uint16}, Config: true}
+	// n top-level WhenTrue nodes whose when is false: deleted in one pass, the view built once
 	ef, _ := xpath.Compile("false()", testNS("u"))
+	tw := &schema.Node{Kind: schema.LeafList, Name: "tw", Module: f.m, Type: &schema.Type{Base: schema.Uint16}, Config: true}
+	tw.Whens = []*schema.When{{Src: "false()", ContextNode: tw, Compiled: ef}}
+	f.m.Top = append(f.m.Top, tw)
+	vc, _, _ = f.build(t, ValidateOptions{})
+	for i := range n {
+		v, _ := types.Store(tw.Type, fmt.Sprint(i), types.FormatJSON, types.JSONHints("number"), nil, tw)
+		x := newTerm(tw, v)
+		x.flags = FlagWhenTrue
+		vc.t.insert(nil, x, insertDefault)
+		vc.nodeWhen.add(x)
+	}
+	if err := vc.unres(); err != nil {
+		t.Fatal(err)
+	}
+	if vc.topBuilds != 1 || vc.t.top.len() != 1 {
+		t.Fatalf("top-level deletions: %d view builds, %d left", vc.topBuilds, vc.t.top.len())
+	}
+
+	// n when-false nodes (multi-error) with queued values, then n WhenTrue nodes deleted
+	w := &schema.Node{Kind: schema.LeafList, Name: "w", Module: f.m, Parent: f.c, Type: &schema.Type{Base: schema.Uint16}, Config: true}
 	w.Whens = []*schema.When{{Src: "false()", ContextNode: w, Compiled: ef}}
 	f.c.Children = append(f.c.Children, w)
 	for _, whenTrue := range []bool{false, true} {
@@ -461,18 +484,40 @@ func TestUnresWork(t *testing.T) {
 			args = append(args, w, fmt.Sprint(i))
 		}
 		vc, c, _ := f.build(t, ValidateOptions{MultiError: true}, args...)
-		if whenTrue {
-			for x := range c.Children() {
+		for x := range c.Children() {
+			vc.nodeTypes.add(x)
+			if whenTrue {
 				x.flags |= FlagWhenTrue
 			}
 		}
 		vc.t.work = 0
 		_ = vc.unres()
-		if vc.t.work > 4*n || vc.nodeWhen.len() != 0 {
-			t.Fatalf("whenTrue %v: %d steps, %d queued", whenTrue, vc.t.work, vc.nodeWhen.len())
+		if vc.posBuilds > 2 || vc.nodeTypes.scans > 2*n || vc.t.work > 4*n || vc.nodeWhen.len() != 0 {
+			t.Fatalf("whenTrue %v: %d position maps, %d queue scans, %d unlink steps, %d queued",
+				whenTrue, vc.posBuilds, vc.nodeTypes.scans, vc.t.work, vc.nodeWhen.len())
 		}
 		if whenTrue && c.kids.len() != 0 || !whenTrue && len(vc.log.diags) != n {
 			t.Fatalf("whenTrue %v: %d left, %d errors", whenTrue, c.kids.len(), len(vc.log.diags))
 		}
+	}
+}
+
+// TestWhenTwiceQueued: a node queued twice (the JSON parser queues one per metadata member) whose
+// when is false is deleted once, with one diff entry.
+func TestWhenTwiceQueued(t *testing.T) {
+	f := newUnresFixture(t)
+	vc, c, nodes := f.build(t, ValidateOptions{}, f.a, "off", f.b, "x")
+	b := nodes["b=x"]
+	b.flags |= FlagWhenTrue
+	vc.nodeWhen.add(b)
+	deletes := 0
+	vc.diff = func(_ *Node, op diffOp) error {
+		if op == diffDelete {
+			deletes++
+		}
+		return nil
+	}
+	if err := vc.unres(); err != nil || deletes != 1 || vc.t.findSchema(&c.kids, f.b) != nil {
+		t.Fatalf("%v: %d deletes", err, deletes)
 	}
 }

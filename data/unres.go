@@ -78,11 +78,10 @@ func (vc *valCtx) topNodes() []xpath.Node {
 	}
 	vc.top = vc.top[:0]
 	for n := range vc.t.top.all() {
-		if n.flags&flagDead == 0 {
-			vc.top = append(vc.top, xn{n, vc.t.set})
-		}
+		vc.top = append(vc.top, xn{n, vc.t.set}) // dead nodes are WhenFalse (xn.When)
 	}
 	vc.topGen = vc.t.top.gen
+	vc.topBuilds++
 	vc.budget.steps += int64(len(vc.top)) + 1
 	return vc.top
 }
@@ -151,9 +150,10 @@ func truthy(r xpath.Result) bool {
 // ly_set_rm_index_ordered without moving the queue per removal; pos maps a queued node to its
 // index, built when a when-false subtree needs it.
 type whenPass struct {
-	vc   *valCtx
-	pos  map[*Node]int
-	dead []*Node // WhenTrue nodes deleted by this pass, unlinked at its end
+	vc     *valCtx
+	pos    map[*Node]int
+	dead   []*Node // WhenTrue nodes deleted by this pass, unlinked at its end
+	builds int     // pos maps built (one per pass at most; work tests)
 }
 
 // whenFalse is lyd_validate_when_false: the node stays, flagged WhenFalse; its subtree leaves
@@ -164,6 +164,7 @@ func (p *whenPass) whenFalse(n *Node) {
 	vc.dropTypes(n)
 	if vc.nodeWhen.len() > 1 {
 		if p.pos == nil {
+			p.builds++
 			p.pos = make(map[*Node]int, vc.nodeWhen.len())
 			for i, q := range vc.nodeWhen.items {
 				if q != nil {
@@ -183,16 +184,18 @@ func (p *whenPass) whenFalse(n *Node) {
 // del is the autodelete of a WhenTrue node whose when became false. The node is unlinked at the
 // end of the pass (one compaction per sibling list instead of one per node); until then it is
 // dead: the XPath adapters do not see it, exactly as if it was gone already.
+// A dead node reads as WhenFalse to XPath (xn.When), so no view needs rebuilding. A node queued
+// twice (the JSON parser queues a node once per metadata member) is deleted once.
 func (p *whenPass) del(n *Node) {
+	if n.flags&flagDead != 0 {
+		return
+	}
 	vc := p.vc
 	if vc.diff != nil {
 		_ = vc.diff(n, diffDelete)
 	}
 	vc.dropTypes(n)
 	n.flags |= flagDead
-	if s := n.siblingsOf(); s != nil {
-		s.gen++ // the top-level view of the evaluations changes
-	}
 	p.dead = append(p.dead, n)
 }
 
@@ -207,6 +210,10 @@ func (vc *valCtx) unresWhen() error {
 		n := vc.nodeWhen.items[i]
 		if n == nil {
 			continue // removed with a when-false ancestor
+		}
+		if n.flags&flagDead != 0 {
+			vc.nodeWhen.items[i] = nil // a second entry of a node deleted by this pass
+			continue
 		}
 		w, err := vc.whenOf(n, n.schema, nil)
 		switch {
@@ -249,6 +256,7 @@ func (p *whenPass) finish() {
 	}
 	clear(q.items[len(live):])
 	q.items, q.pos = live, nil
+	p.vc.posBuilds += p.builds
 	for _, n := range p.dead {
 		n.flags &^= flagDead
 	}

@@ -53,7 +53,9 @@ type valCtx struct {
 	budget  xpathBudget  // MaxXPathSteps and cancellation (U-0042)
 	top     []xpath.Node // the top-level view of the evaluations (topNodes)
 	topGen  uint64
-	lrefs   map[lrefKey]*lrefTemplate // leafref target-path templates per type and node
+	// work counters for the tests: top-level view builds, when-pass position maps
+	topBuilds, posBuilds int
+	lrefs                map[lrefKey]*lrefTemplate // leafref target-path templates per type and node
 }
 
 type getnextKey struct {

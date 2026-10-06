@@ -59,7 +59,7 @@ func (x xn) Value() xpath.Value {
 // evaluated true yet; else true.
 func (x xn) When() xpath.WhenState {
 	switch {
-	case x.n.flags&FlagWhenFalse != 0:
+	case x.n.flags&(FlagWhenFalse|flagDead) != 0: // a node deleted by the running when pass too
 		return xpath.WhenFalse
 	case x.n.schema != nil && hasWhen(x.n.schema) && x.n.flags&FlagWhenTrue == 0:
 		return xpath.WhenUnresolved

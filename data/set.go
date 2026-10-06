@@ -12,6 +12,7 @@ package data
 type nodeSet struct {
 	items []*Node
 	pos   map[*Node]int
+	scans int // items visited building pos (work tests)
 }
 
 // add is ly_set_add with list = 1 (appended).
@@ -40,6 +41,7 @@ func (s *nodeSet) rmIndex(i int) {
 func (s *nodeSet) contains(n *Node) int {
 	if s.pos == nil {
 		s.pos = make(map[*Node]int, len(s.items))
+		s.scans += len(s.items)
 		for i, m := range s.items {
 			if _, dup := s.pos[m]; !dup {
 				s.pos[m] = i
