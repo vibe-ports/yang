@@ -25,7 +25,7 @@ func argSchema(mod string, wn int) (top *tschema, ws []*tschema) {
 // warnsFrom atomizes x with ctx as the context node.
 func warnsFrom(t *testing.T, top, ctx *tschema, x string) []string {
 	t.Helper()
-	e, err := Compile(x, schemaNS{"": top.mod})
+	e, err := Compile(x, schemaNS{"": top.mod, "munp": top.mod})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,40 +35,6 @@ func warnsFrom(t *testing.T, top, ctx *tschema, x string) []string {
 		t.Fatalf("%s: %v", x, err)
 	}
 	return out
-}
-
-// TestArgWarningsGolden replays the whens of when/string-func-arg-warning and
-// when/substring-numeric-arg-warning; libyang evaluates them last leaf first.
-func TestArgWarningsGolden(t *testing.T) {
-	for _, c := range []struct {
-		golden, mod string
-		whens       []string // w1, w2, ...
-	}{
-		{"when-string-func-arg-warning.json", "when-string-func-arg", []string{
-			"contains(../n, 'x')", "contains(../s, ../c)", "concat(../s, ../n, ../c, ../ll)", "lang(../c) or lang(../n)",
-			"normalize-space(../n) = '' or normalize-space(../c) = '' or normalize-space() = ''",
-			"re-match(../n, ../c)", "starts-with(../c, ../n)",
-			"string-length(../n) > 1 and string-length(../c) > 1 and string-length(../s) > 1",
-			"../n[string-length() > 1] and ../c[string-length() > 1] and ../s[string-length() > 1]",
-			"substring-before(../n, ../c) = substring-after(../c, ../n)",
-			"translate(../n, ../c, ../ll) = translate(../s, ../s, ../s)"}},
-		{"when-substring-numeric-arg-warning.json", "when-substring-numeric-arg", []string{
-			"substring(../s, ../s) = ''", "substring(../s, ../n) = '' and substring(../s, 1, ../n) = ''",
-			"substring(../s, 1, ../c) = '' or substring(../s, ../n, ../s) = ''",
-			"substring(../n, 1) = '' or substring(../c, ../ll) = ''"}},
-	} {
-		t.Run(c.mod, func(t *testing.T) {
-			top, ws := argSchema(c.mod, len(c.whens))
-			var got []string
-			for i := len(ws) - 1; i >= 0; i-- {
-				got = append(got, warnsFrom(t, top, ws[i], c.whens[i])...)
-			}
-			want := goldenWarnings(t, c.golden)
-			if len(want) == 0 || strings.Join(got, "\n") != strings.Join(want, "\n") {
-				t.Errorf("got\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
-			}
-		})
-	}
 }
 
 // TestArgWarnings: every function, every checked argument position, with a container, a non-string

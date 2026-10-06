@@ -1,0 +1,342 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module must-unknown-node-parent {\n  namespace \"urn:vibe-ports:yang:conformance:must-unknown-node-parent\";\n  prefix munp;\n\n  container c {\n    must \"d/nope = 1\";\n    must \"/nope\";\n    must \"/munp:c/zz and a = 'x'\";\n    must \"d/nope[bad = 1]/also/gone\";\n    must \"d/e[nothere = 1] and ../a\";\n    must \"a | d/nada | d/e\";\n    config true;\n    status current;\n    leaf a {\n      type string;\n      config true;\n      status current;\n    }\n    container d {\n      config true;\n      status current;\n      leaf e {\n        type string;\n        config true;\n        status current;\n      }\n    }\n  }\n  container st {\n    must \"/nope\";\n    must \"v/leaf = 1\";\n    config false;\n    status current;\n    leaf v {\n      type string;\n      config false;\n      status current;\n    }\n  }\n}\n",
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Schema node \"nope\" for parent \"<root>\" not found; in expr \"/nope\" with context node \"/must-unknown-node-parent:st\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Schema node \"leaf\" for parent \"/must-unknown-node-parent:st/v\" not found; in expr \"v/leaf\" with context node \"/must-unknown-node-parent:st\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Schema node \"nope\" for parent \"/must-unknown-node-parent:c/d\" not found; in expr \"d/nope\" with context node \"/must-unknown-node-parent:c\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Schema node \"nope\" for parent \"<config-root>\" not found; in expr \"/nope\" with context node \"/must-unknown-node-parent:c\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Schema node \"zz\" for parent \"/must-unknown-node-parent:c\" not found; in expr \"/munp:c/zz\" with context node \"/must-unknown-node-parent:c\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Schema node \"nope\" for parent \"/must-unknown-node-parent:c/d\" not found; in expr \"d/nope\" with context node \"/must-unknown-node-parent:c\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Schema node \"nothere\" for parent \"/must-unknown-node-parent:c/d/e\" not found; in expr \"d/e[nothere\" with context node \"/must-unknown-node-parent:c\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Schema node \"a\" for parent \"<config-root>\" not found; in expr \"d/e[nothere = 1] and ../a\" with context node \"/must-unknown-node-parent:c\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Schema node \"nada\" for parent \"/must-unknown-node-parent:c/d\" not found; in expr \"a | d/nada\" with context node \"/must-unknown-node-parent:c\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "features": [],
+      "identities": [],
+      "name": "must-unknown-node-parent",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "must-unknown-node-parent",
+          "musts": [
+            {
+              "apptag": null,
+              "expr": "d/nope = 1",
+              "message": null
+            },
+            {
+              "apptag": null,
+              "expr": "/nope",
+              "message": null
+            },
+            {
+              "apptag": null,
+              "expr": "/munp:c/zz and a = 'x'",
+              "message": null
+            },
+            {
+              "apptag": null,
+              "expr": "d/nope[bad = 1]/also/gone",
+              "message": null
+            },
+            {
+              "apptag": null,
+              "expr": "d/e[nothere = 1] and ../a",
+              "message": null
+            },
+            {
+              "apptag": null,
+              "expr": "a | d/nada | d/e",
+              "message": null
+            }
+          ],
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/must-unknown-node-parent:c",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "must-unknown-node-parent",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/must-unknown-node-parent:c/a",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "must-unknown-node-parent",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/must-unknown-node-parent:c/d",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "must-unknown-node-parent",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/must-unknown-node-parent:c/d/e",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "must-unknown-node-parent",
+          "musts": [
+            {
+              "apptag": null,
+              "expr": "/nope",
+              "message": null
+            },
+            {
+              "apptag": null,
+              "expr": "v/leaf = 1",
+              "message": null
+            }
+          ],
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/must-unknown-node-parent:st",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "must-unknown-node-parent",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/must-unknown-node-parent:st/v",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

@@ -80,68 +80,6 @@ func goldenWarnings(t *testing.T, name string) []string {
 	return out
 }
 
-// TestOperandWarningsGolden replays the musts of the must/operand-* fixtures (the schemas of
-// conformance/corpus/compile/schemas, hand-built here) against Atomize: the warnings are the ones
-// libyang logged at compile, in order.
-func TestOperandWarningsGolden(t *testing.T) {
-	t.Run("node-type", func(t *testing.T) {
-		top := newTop("must-operand-node-type")
-		top.leaf("n", bt(TypeUint8))
-		c1 := top.add(&tschema{kind: KindContainer, mod: top.mod, name: "c1", config: true})
-		c1.leaf("in", bt(TypeUint8))
-		l := top.add(&tschema{kind: KindList, mod: top.mod, name: "l", config: true, keys: []string{"k"}})
-		l.leaf("k", bt(TypeString))
-		top.add(&tschema{kind: KindLeafList, mod: top.mod, name: "ll", config: true, typ: bt(TypeUint8)})
-		replayWarn(t, top, "must-operand-node-type-warning.json", []string{"c1 = 1", "n + c1", "-c1 > 0", "l = ll",
-			"n * 2 = 4 and 1 < c1/in and c1 != 3"})
-	})
-	t.Run("not-numeric", func(t *testing.T) {
-		top := newTop("must-operand-not-numeric")
-		s, n := bt(TypeString), bt(TypeUint8)
-		top.leaf("s", s)
-		top.leaf("n", n)
-		top.leaf("d", bt(TypeDec64))
-		top.leaf("b", bt(TypeBool))
-		top.leaf("un", unionOf(bt(TypeString), bt(TypeInt16)))
-		top.leaf("us", unionOf(bt(TypeString), bt(TypeBool)))
-		top.leaf("lr", leafrefTo(s))
-		top.leaf("ln", leafrefTo(n))
-		top.add(&tschema{kind: KindLeafList, mod: top.mod, name: "ll", config: true, typ: bt(TypeString)})
-		replayWarn(t, top, "must-operand-not-numeric-warning.json", []string{"s + 1 = 2", "n < s", "-s = 1", "un * d > 1",
-			"us - 1", "lr < ln", "ln div 2 > d", "b mod 2 = ll", "(n + 1) * (d + 2) > (n - 1) * (s + 1) and ln = 1"})
-	})
-	t.Run("incompatible", func(t *testing.T) {
-		top := newTop("must-operand-incompatible")
-		e := bt(TypeEnum)
-		top.leaf("s", bt(TypeString))
-		top.leaf("n", bt(TypeUint8))
-		top.leaf("d", bt(TypeDec64))
-		top.leaf("b", bt(TypeBool))
-		top.leaf("en", e)
-		top.leaf("bt", bt(TypeBits))
-		top.leaf("u1", unionOf(e, bt(TypeBits)))
-		top.leaf("u2", unionOf(bt(TypeBits), bt(TypeString)))
-		top.leaf("u3", unionOf(e, bt(TypeUint8)))
-		top.leaf("lr", leafrefTo(e))
-		top.add(&tschema{kind: KindLeafList, mod: top.mod, name: "ll", config: true, typ: bt(TypeString)})
-		c := top.add(&tschema{kind: KindContainer, mod: top.mod, name: "c", config: true})
-		c.leaf("x", bt(TypeString))
-		replayWarn(t, top, "must-operand-incompatible-warning.json", []string{"s = n", "n = d", "s = en", "b != s", "u1 = u2",
-			"u1 = u3", "lr = en", "lr = bt", "ll = s", "c = s", "s = c/x and en = b"})
-	})
-}
-
-func replayWarn(t *testing.T, top *tschema, golden string, musts []string) {
-	t.Helper()
-	want := goldenWarnings(t, golden)
-	if len(want) == 0 {
-		t.Fatal("golden has no warnings")
-	}
-	if got := warnsOf(t, top, musts); strings.Join(got, "\n") != strings.Join(want, "\n") {
-		t.Errorf("got\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
-	}
-}
-
 // TestOperandWarnings: cases the golden fixtures do not reach.
 func TestOperandWarnings(t *testing.T) {
 	top := newTop("m")

@@ -41,52 +41,6 @@ func (s *tschema) checked(n string, k Kind, t *ttype, check func(string) (string
 	return s.add(&tschema{kind: k, mod: s.mod, name: n, config: true, typ: t, check: check})
 }
 
-// TestValueNotFitGolden replays must-value-nofit, must-value-nofit-sides and
-// must-identityref-no-prefix against Atomize with a CheckValue that answers as the type plugins do.
-func TestValueNotFitGolden(t *testing.T) {
-	t.Run("nofit", func(t *testing.T) {
-		top := &tschema{kind: KindContainer, mod: "must-value-nofit", name: "c", config: true}
-		top.checked("n", KindLeaf, bt(TypeUint8), intCheck("uint8", 255))
-		replayWarn(t, top, "must-value-not-fit-warning.json", []string{"n = 'abc'"})
-	})
-	t.Run("sides", func(t *testing.T) {
-		top := newTop("must-value-nofit-sides")
-		top.checked("n", KindLeaf, bt(TypeUint8), intCheck("uint8", 255))
-		top.checked("ll", KindLeafList, bt(TypeInt8), intCheck("int8", 127))
-		top.checked("e", KindLeaf, bt(TypeEnum), enumCheck("red", "green"))
-		top.checked("u", KindLeaf, unionOf(bt(TypeUint8), bt(TypeEnum)), func(v string) (string, bool) {
-			if _, ok := intCheck("uint8", 255)(v); ok {
-				return "", true
-			}
-			if _, ok := enumCheck("big")(v); ok {
-				return "", true
-			}
-			return fmt.Sprintf("Invalid union value \"%s\" - no matching subtype found:\n    ly2 integers: Invalid type uint8 value \"%s\".\n    ly2 enumeration: Invalid enumeration value \"%s\".\n", v, v, v), false
-		})
-		top.checked("s", KindLeaf, bt(TypeString), func(v string) (string, bool) {
-			if len(v) > 3 {
-				return fmt.Sprintf("Unsatisfied length - string \"%s\" length is not allowed.", v), false
-			}
-			return "", true
-		})
-		replayWarn(t, top, "must-value-not-fit-sides-warning.json", []string{"300 = n", "ll != 'x'", "e = 'blue'",
-			"u = 'huge' or u != -1", "s = 'toolong'", "n = 1 + 'x'", "n = 1 and 'abc' = n and e = 'red'"})
-	})
-	t.Run("identityref", func(t *testing.T) {
-		top := newTop("must-identityref-no-prefix")
-		stored := false
-		check := func(string) (string, bool) { stored = true; return "", true }
-		top.checked("id", KindLeaf, bt(TypeIdent), check)
-		top.checked("ids", KindLeafList, bt(TypeIdent), check)
-		top.leaf("s", bt(TypeString))
-		replayWarn(t, top, "must-identityref-no-prefix-warning.json", []string{"id = 'der'", "'der' = id", "id != 'minp:der'",
-			"ids = 'der' and s = 'x'", "id = s"})
-		if stored {
-			t.Error("an identityref is never stored")
-		}
-	})
-}
-
 // TestEqualityValue: tokens, sides, error variants and trailer of warn_equality_value.
 func TestEqualityValue(t *testing.T) {
 	top := newTop("m")

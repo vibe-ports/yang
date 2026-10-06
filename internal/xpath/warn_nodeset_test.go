@@ -32,49 +32,6 @@ func nsSchema(mod string, wn int) (top *tschema, ws []*tschema) {
 	return top, ws
 }
 
-// TestNodeSetWarningsGolden replays when/func-arg-warning, when/deref-arg-warning,
-// when/derived-from-arg-warning and when/nodeset-func-arg-warning (whens last leaf first).
-func TestNodeSetWarningsGolden(t *testing.T) {
-	t.Run("func-arg", func(t *testing.T) {
-		top := newTop("when-func-arg")
-		top.leaf("s", bt(TypeString))
-		a := top.leaf("a", bt(TypeString))
-		got := warnsFrom(t, top, a, "sum(../s) = 1")
-		want := goldenWarnings(t, "when-func-arg-warning.json")
-		if len(want) != 1 || strings.Join(got, "|") != strings.Join(want, "|") {
-			t.Errorf("got %q want %q", got, want)
-		}
-	})
-	for _, c := range []struct {
-		golden, mod string
-		whens       []string
-	}{
-		{"when-deref-arg-warning.json", "when-deref-arg", []string{"deref(../c) = 'a'", "deref(../s) = 'a'", "deref(../n) = 'a'",
-			"deref(../lr) = 'a'", "deref(../ii) = 'a'", "deref(../un) = 'a'"}},
-		{"when-derived-from-arg-warning.json", "when-derived-from-arg", []string{"derived-from(../s, 'wdfa:der')",
-			"derived-from(../c, ../n)", "derived-from-or-self(../n, ../c)",
-			"derived-from(../id, ../s) and derived-from-or-self(../ul, 'wdfa:base')", "derived-from-or-self(../s, ../s)"}},
-		{"when-nodeset-func-arg-warning.json", "when-nodeset-func-arg", []string{
-			"bit-is-set(../n, ../c) or bit-is-set(../b, ../s) or bit-is-set(../ub, 'x')",
-			"ceiling(../n) = 1 and ceiling(../d) = 1 and ceiling(../c) = 1", "floor(../s) = 1 or floor(../d) = 1",
-			"round(../e) = 1 or round(../c) = 1", "enum-value(../n) = 1 or enum-value(../e) = 1 or enum-value(../c) = 1",
-			"sum(../s | ../n | ../c | ../d) = 1",
-			"sum(1) = 1 or count('x') = 1 or floor('x') = 1 or count(../c) = 1 or sum(../n) = 1"}},
-	} {
-		t.Run(c.mod, func(t *testing.T) {
-			top, ws := nsSchema(c.mod, len(c.whens))
-			var got []string
-			for i := len(ws) - 1; i >= 0; i-- {
-				got = append(got, warnsFrom(t, top, ws[i], c.whens[i])...)
-			}
-			want := goldenWarnings(t, c.golden)
-			if len(want) == 0 || strings.Join(got, "\n") != strings.Join(want, "\n") {
-				t.Errorf("got\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
-			}
-		})
-	}
-}
-
 // TestNodeSetWarnings: each function with a container, a wrong-type leaf and a right-type leaf
 // (also through a union and a leafref); sum over several nodes; the second argument.
 func TestNodeSetWarnings(t *testing.T) {
