@@ -1,0 +1,46 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Invalid character '",
+          "phase": "parse",
+          "schema_path": "/aug-blank-nodeid:{augment=' '}",
+          "vecode": 5,
+          "vecode_name": "LYVE_XPATH"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Invalid absolute-schema-nodeid value \" \" - invalid syntax.",
+          "phase": "parse",
+          "schema_path": "/aug-blank-nodeid:{augment=' '}",
+          "vecode": 2,
+          "vecode_name": "LYVE_SYNTAX_YANG"
+        }
+      ],
+      "name": "aug-blank-nodeid",
+      "phase": "parse"
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

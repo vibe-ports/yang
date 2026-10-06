@@ -36,6 +36,10 @@ func FuzzLoad(f *testing.F) {
 	f.Add([]byte("module a { namespace urn:a; prefix a; typedef u { type union { type u; } } }"))
 	f.Add([]byte("module a { namespace urn:a; prefix a; leaf x { type bits { bit b { position 4294967295; } } } }"))
 	f.Add([]byte("module a { namespace urn:a; prefix a; leaf x { type union { type union { type uint8; type string; } type int8; } } }"))
+	// empty and blank node-ids (issue #124)
+	f.Add([]byte(`module a { namespace urn:a; prefix a; container c; augment "" { leaf x { type string; } } }`))
+	f.Add([]byte(`module a { namespace urn:a; prefix a; container c; augment " " { leaf x { type string; } } }`))
+	f.Add([]byte(`module a { namespace urn:a; prefix a; grouping g { container a; } container c { uses g { refine "" { description x; } augment "" { leaf x { type string; } } } } }`))
 	// the schemas of the conformance corpus
 	paths, _ := filepath.Glob("../../conformance/corpus/*/schemas/*.yang")
 	more, _ := filepath.Glob("../../conformance/corpus/ctypes/*/*.yang")

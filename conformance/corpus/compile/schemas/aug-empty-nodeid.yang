@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo, issue #124).
+module aug-empty-nodeid {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:aug-empty-nodeid";
+  prefix aug-empty-nodeid;
+  container c; augment "" { leaf x { type string; } }
+}

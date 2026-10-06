@@ -51,6 +51,9 @@ func nodeidModCheck(pm *pmod, str string, abs bool, logf func(code ly.Code, form
 		typ, i = "descendant-schema-nodeid", 1
 	}
 	e, msg := lyxp.Lex(str)
+	if msg == "" && len(e.Toks) == 0 { // defensive: Lex returns a message for empty/blank input (issue #124)
+		msg = "Unexpected XPath expression end."
+	}
 	if msg != "" {
 		_ = logf(ly.XPath, "%s", msg)
 		return nil, nil, logf(ly.SyntaxYang, "Invalid %s value \"%s\" - invalid syntax.", typ, str)

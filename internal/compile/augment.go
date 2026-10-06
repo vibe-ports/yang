@@ -33,7 +33,7 @@ func (w *nodeCtx) precompileOwnAugments(m *Module) {
 		for _, pm := range pms {
 			for _, a := range pm.Parsed.Augments {
 				e, msg := lyxp.Lex(a.Name)
-				if msg != "" {
+				if msg != "" || len(e.Toks) == 0 { // defensive: Lex returns a message for empty/blank input
 					continue // reported when the augmenting module was implemented
 				}
 				nid := precompileNodeid(e)

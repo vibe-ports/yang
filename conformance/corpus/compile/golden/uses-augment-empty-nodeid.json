@@ -1,0 +1,65 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Empty argument of augment statement does not make sense.",
+          "phase": "parse",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Unexpected XPath expression end.",
+          "phase": "compile",
+          "schema_path": "/uses-augment-empty-nodeid:c/{uses='g'}/{augment=''}",
+          "vecode": 5,
+          "vecode_name": "LYVE_XPATH"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Invalid descendant-schema-nodeid value \"\" - invalid syntax.",
+          "phase": "compile",
+          "schema_path": "/uses-augment-empty-nodeid:c/{uses='g'}/{augment=''}",
+          "vecode": 2,
+          "vecode_name": "LYVE_SYNTAX_YANG"
+        }
+      ],
+      "name": "uses-augment-empty-nodeid",
+      "phase": "compile",
+      "rc": {
+        "err": 7,
+        "name": "LY_EVALID"
+      }
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

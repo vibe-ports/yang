@@ -29361,3 +29361,47 @@ fixtures:
       rfc: ["RFC7950#7.14"]
       deviation: null
 # END ut-parser
+
+  - id: aug/empty-nodeid
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#6.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "aug-empty-nodeid"}]
+    golden: golden/aug-empty-nodeid.json
+
+  - id: aug/blank-nodeid
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#6.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "aug-blank-nodeid"}]
+    golden: golden/aug-blank-nodeid.json
+
+  - id: refine/empty-nodeid
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#6.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "refine-empty-nodeid"}]
+    golden: golden/refine-empty-nodeid.json
+
+  - id: uses/augment-empty-nodeid
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#6.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "uses-augment-empty-nodeid"}]
+    golden: golden/uses-augment-empty-nodeid.json
