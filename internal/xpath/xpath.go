@@ -146,9 +146,7 @@ const (
 	TypeInt64
 )
 
-// SchemaType is the lysc_type view the schema-mode warnings need. Implementations must be
-// comparable and give the same (==) value for the same compiled type: warn_is_equal_type
-// resumes a union walk by type identity.
+// SchemaType is the lysc_type view the schema-mode warnings need.
 type SchemaType interface {
 	Base() BaseType
 	// Union is lysc_type_union.types of a union, in order; nil for other types.
