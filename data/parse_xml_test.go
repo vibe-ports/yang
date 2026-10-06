@@ -5,11 +5,13 @@ package data
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/vibe-ports/yang"
+	"github.com/vibe-ports/yang/internal/lyxml"
 	"github.com/vibe-ports/yang/internal/schema"
 )
 
@@ -149,8 +151,8 @@ func TestParseXML(t *testing.T) {
 }
 
 // TestParseXMLUnsupported: anydata/anyxml instances are yang.ErrUnsupported (U-0043); an RPC in
-// datastore data is rejected as libyang does; a lexer failure libyang does not log is an error
-// without diagnostics.
+// datastore data is rejected as libyang does; a lexer failure libyang does not log is a
+// *ValidationError without diagnostics wrapping the lexer's error.
 func TestParseXMLUnsupported(t *testing.T) {
 	set := pjSchema()
 	if _, diags, err := parseXMLString(set, `<ad xmlns="urn:pj"><x/></ad>`, Reject, true); !errors.Is(err, yang.ErrUnsupported) || len(diags) != 0 {
@@ -173,7 +175,9 @@ func TestParseXMLUnsupported(t *testing.T) {
 	// an invalid UTF-8 sequence where an attribute may start: libyang fails without a message
 	_, diags, err = parseXMLString(set, "<c xmlns=\"urn:pj\" \xff/>", Reject, true)
 	var ve *ValidationError
-	if err == nil || errors.As(err, &ve) || len(diags) != 0 {
+	var xe *lyxml.Error
+	if !errors.As(err, &ve) || len(ve.Diags) != 0 || !errors.As(err, &xe) || len(diags) != 0 ||
+		err.Error() != xe.Error() {
 		t.Fatalf("silent lexer error: %v %v", err, diags)
 	}
 }
@@ -210,8 +214,8 @@ func TestParseXMLFlags(t *testing.T) {
 }
 
 // FuzzParseXML: parsing any input over the probe schema terminates without panicking, and every
-// error is a non-empty *ValidationError, a lexer error libyang does not log, or wraps
-// yang.ErrUnsupported/yang.ErrBudget.
+// error is a *ValidationError (non-empty unless it wraps a lexer error libyang does not log) or
+// wraps yang.ErrUnsupported/yang.ErrBudget.
 func FuzzParseXML(f *testing.F) {
 	for _, s := range []string{
 		`<c xmlns="urn:pj" xmlns:pj="urn:pj"><s pj:ann="x">a</s><ll>3</ll><ll>1</ll><l><k>a</k></l><l2><b>2</b><a>1</a></l2></c>`,
@@ -224,17 +228,122 @@ func FuzzParseXML(f *testing.F) {
 	f.Fuzz(func(t *testing.T, in []byte, unknown uint8, multi bool) {
 		_, diags, err := parseXMLString(set, string(in), UnknownPolicy(unknown%3), multi)
 		var ve *ValidationError
+		var xe *lyxml.Error
 		switch {
 		case err == nil:
 		case errors.As(err, &ve):
-			if len(ve.Diags) == 0 || len(diags) == 0 {
+			if (len(ve.Diags) == 0 || len(diags) == 0) && !errors.As(err, &xe) {
 				t.Fatal("validation error without diagnostics")
 			}
 		case errors.Is(err, yang.ErrUnsupported), errors.Is(err, yang.ErrBudget):
 		default:
-			if !strings.HasPrefix(err.Error(), "xml: invalid input") {
-				t.Fatalf("unexpected error %v", err)
-			}
+			t.Fatalf("unexpected error %v", err)
 		}
 	})
+}
+
+// TestXMLNamespaceSync: the parser's namespace index agrees with the lexer's stack after every
+// step and after every restored backup of the opaque checks (lists, containers, terms).
+func TestXMLNamespaceSync(t *testing.T) {
+	set := pjSchema()
+	c := set.Modules[1].Top[0]
+	in := `<c xmlns="urn:pj" xmlns:a="urn:a1"><l xmlns:a="urn:a2"><k xmlns:b="urn:b">x</k><v xmlns="urn:v"/></l>` +
+		`<in xmlns:b="urn:b2"><x>t</x></in><s xmlns:a="urn:a3">a:z</s></c><top xmlns="urn:pj" xmlns:b="urn:b3"/>`
+	x, err := lyxml.New([]byte(in))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lc := &lydCtx{ctx: context.Background(), tree: newTree(set), log: &logger{set: set}}
+	p := &xmlParser{lc: lc, x: x, opaq: true, nsMap: map[string][]string{}}
+	p.syncNS()
+	for x.Status != lyxml.End {
+		if x.Status == lyxml.Element {
+			for _, sn := range c.Children {
+				if sn.Name == x.Name {
+					b := x.Backup() // the check runs from after the element name
+					if err := p.next(); err != nil {
+						t.Fatal(err)
+					}
+					if _, err := p.checkOpaq(sn); err != nil {
+						t.Fatal(err)
+					}
+					x.Restore(b)
+					p.syncNS()
+				}
+			}
+		}
+		ns := x.NS()
+		if len(p.nsPfx) != len(ns) {
+			t.Fatalf("stack %d, index %d", len(ns), len(p.nsPfx))
+		}
+		for _, d := range ns {
+			want, _ := x.GetNS(d.Prefix)
+			if got, _ := p.getNS(d.Prefix); got != want.URI {
+				t.Fatalf("%q: %q, lexer %q", d.Prefix, got, want.URI)
+			}
+		}
+		if err := p.next(); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// TestParseXMLLinear: the namespace prefixes of values and elements cost no more than the value
+// and the declarations themselves. work counts the parser's namespace steps and the insertions;
+// 4× the input must cost about 4× the work. Cases: many declarations on the container and many
+// values in it (terms, prefixed terms, opaque nodes, metadata), and a declaration on every value.
+func TestParseXMLLinear(t *testing.T) {
+	set := pjSchema()
+	c := set.Modules[1].Top[0]
+	c.Children = append(c.Children, &schema.Node{Kind: schema.LeafList, Name: "ls", Module: c.Module, Parent: c,
+		Type: &schema.Type{Base: schema.String}, Config: true})
+	rep := func(n int, f func(i int) string) string {
+		var b strings.Builder
+		for i := range n {
+			b.WriteString(f(i))
+		}
+		return b.String()
+	}
+	decls := func(n int) string {
+		return rep(n, func(i int) string { return fmt.Sprintf(` xmlns:p%d="urn:x%d"`, i, i) })
+	}
+	cases := []struct {
+		name    string
+		unknown UnknownPolicy
+		in      func(n int) string
+	}{
+		{"terms", Reject, func(n int) string {
+			return `<c xmlns="urn:pj"` + decls(n) + `>` + rep(n, func(i int) string { return fmt.Sprintf(`<ls>v%07d</ls>`, i) }) + `</c>`
+		}},
+		{"prefixed-terms", Reject, func(n int) string {
+			return `<c xmlns="urn:pj"` + decls(n) + `>` + rep(n, func(i int) string { return fmt.Sprintf(`<ls>p%d:v</ls>`, i) }) + `</c>`
+		}},
+		{"opaque", Opaque, func(n int) string {
+			return `<c xmlns="urn:pj"` + decls(n) + `>` + rep(n, func(i int) string { return fmt.Sprintf(`<q>p%d:v</q>`, i) }) + `</c>`
+		}},
+		{"metadata", Reject, func(n int) string {
+			return `<c xmlns="urn:pj" xmlns:pj="urn:pj"` + decls(n) + `>` +
+				rep(n, func(i int) string { return fmt.Sprintf(`<ls pj:ann="p%d:a">v%07d</ls>`, i, i) }) + `</c>`
+		}},
+		{"declaration-per-value", Reject, func(n int) string {
+			return `<c xmlns="urn:pj"` + decls(n) + `>` +
+				rep(n, func(i int) string { return fmt.Sprintf(`<ls xmlns:y="urn:y%d">y:v%07d</ls>`, i, i) }) + `</c>`
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			work := func(n int) int {
+				var lc *lydCtx
+				o := parseOpts{ParseOptions: ParseOptions{Unknown: tc.unknown, ParseOnly: true}}
+				if _, diags, err := parseWith(context.Background(), strings.NewReader(tc.in(n)), set, o, parseXML,
+					func(l *lydCtx) { lc = l }); err != nil {
+					t.Fatalf("%v %v", err, diags)
+				}
+				return lc.tree.work
+			}
+			if w1, w4 := work(1000), work(4000); w4 > 5*w1 {
+				t.Fatalf("work %d for 1000 values, %d for 4000: not linear", w1, w4)
+			}
+		})
+	}
 }

@@ -19,6 +19,10 @@ type xmlParser struct {
 	lc           *lydCtx
 	x            *lyxml.Ctx
 	strict, opaq bool // LYD_PARSE_STRICT, LYD_PARSE_OPAQ
+	// The namespaces in scope by prefix, innermost last, kept in step with the lexer's stack
+	// (syncNS): lyxml_ns_get without scanning the stack.
+	nsPfx []string            // the prefixes of the lexer's stack, in order
+	nsMap map[string][]string // prefix -> URIs, innermost last
 }
 
 // parseXML is lyd_parse_xml for datastore data (LYD_INTOPT_WITH_SIBLINGS, no parent): every
@@ -31,7 +35,9 @@ func parseXML(lc *lydCtx, in []byte) error {
 	}
 	lc.log.pushInput(func() int { return int(x.Line()) }) //nolint:gosec // line numbers fit
 	defer lc.log.popInput()
-	p := &xmlParser{lc: lc, x: x, strict: lc.opts.Unknown == Reject, opaq: lc.opts.Unknown == Opaque}
+	p := &xmlParser{lc: lc, x: x, strict: lc.opts.Unknown == Reject, opaq: lc.opts.Unknown == Opaque,
+		nsMap: map[string][]string{}}
+	p.syncNS()
 	var rc error
 	for x.Status == lyxml.Element {
 		if r := p.subtree(nil); r != nil {
@@ -45,21 +51,86 @@ func parseXML(lc *lydCtx, in []byte) error {
 
 // next is lyxml_ctx_next with its error logged (lexErr).
 func (p *xmlParser) next() error {
-	if err := p.x.Next(); err != nil {
+	err := p.x.Next()
+	p.syncNS()
+	if err != nil {
 		return p.lc.lexErr(err)
 	}
 	return nil
 }
 
-// prefixes is the prefix context of a value at the current position (ly_store_prefix_data with
-// LY_VALUE_XML): the namespaces in scope, innermost first. A snapshot, because a stored union
-// value or an opaque node keeps it.
-func (p *xmlParser) prefixes() types.PrefixCtx {
+// syncNS brings nsMap in step with the lexer's namespace stack. One lexer step opens or closes
+// one element, so the stack only grew (declarations of the opened element) or only shrank since
+// the last sync; a restored backup only shrinks it (the checks never leave their element).
+func (p *xmlParser) syncNS() {
+	ns := p.x.NS()
+	for len(p.nsPfx) > len(ns) {
+		k := p.nsPfx[len(p.nsPfx)-1]
+		p.nsPfx = p.nsPfx[:len(p.nsPfx)-1]
+		if u := p.nsMap[k]; len(u) > 1 {
+			p.nsMap[k] = u[:len(u)-1]
+		} else {
+			delete(p.nsMap, k)
+		}
+		p.lc.tree.work++
+	}
+	for _, d := range ns[len(p.nsPfx):] {
+		p.nsPfx = append(p.nsPfx, d.Prefix)
+		p.nsMap[d.Prefix] = append(p.nsMap[d.Prefix], d.URI)
+		p.lc.tree.work++
+	}
+}
+
+// getNS is lyxml_ns_get: the URI of prefix ("" the default namespace) in scope.
+func (p *xmlParser) getNS(prefix string) (string, bool) {
+	u := p.nsMap[prefix]
+	if len(u) == 0 {
+		return "", false
+	}
+	return u[len(u)-1], true
+}
+
+// prefixes is the prefix context of value at the current position (ly_store_prefix_data with
+// LY_VALUE_XML): the default namespace and the in-scope namespaces of the prefixes the value
+// uses. A snapshot, because a stored union value or an opaque node keeps it.
+func (p *xmlParser) prefixes(value string) types.PrefixCtx {
+	p.lc.tree.work++
 	ns := map[string]string{}
-	for _, d := range p.x.NS() {
-		ns[d.Prefix] = d.URI // innermost last: it wins
+	if u, ok := p.getNS(""); ok {
+		ns[""] = u
+	}
+	for i := 0; i < len(value); {
+		// ly_value_prefix_next: an XML name followed by ':'
+		if !isNameStartByte(value[i]) {
+			i++
+			continue
+		}
+		j := i + 1
+		for j < len(value) && isNameByte(value[j]) {
+			j++
+		}
+		if j < len(value) && value[j] == ':' {
+			if _, done := ns[value[i:j]]; !done {
+				if u, ok := p.getNS(value[i:j]); ok {
+					ns[value[i:j]] = u
+				}
+			}
+			j++
+		}
+		i = j
 	}
 	return types.XMLNamespaces{Set: p.lc.tree.set, NS: ns}
+}
+
+// isNameStartByte and isNameByte approximate is_xmlqnamestartchar/is_xmlqnamechar per byte (any
+// non-ASCII byte counts as a name character): a superset of the prefixes libyang collects, which
+// resolves the same way.
+func isNameStartByte(b byte) bool {
+	return b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z' || b == '_' || b >= 0x80
+}
+
+func isNameByte(b byte) bool {
+	return isNameStartByte(b) || b >= '0' && b <= '9' || b == '-' || b == '.'
 }
 
 // namespaceErr is lydxml_log_namespace_err.
@@ -129,15 +200,15 @@ func (p *xmlParser) metadata(sparent *schema.Node, lnode *Node) (metas []*meta, 
 			}
 			continue
 		default:
-			ns, ok := x.GetNS(x.Prefix)
+			ns, ok := p.getNS(x.Prefix)
 			if !ok {
 				return nil, notFound(func() error { return p.namespaceErr(lnode, x.Prefix, x.Name) })
 			}
-			if mod = lc.tree.set.ByNamespace(ns.URI); mod == nil {
+			if mod = lc.tree.set.ByNamespace(ns); mod == nil {
 				if p.strict {
 					return nil, notFound(func() error {
 						return lc.log.val(lnode, "", ly.Reference,
-							"Unknown (or not implemented) YANG module with namespace \"%s\" for metadata \"%s:%s\".", ns.URI, x.Prefix, x.Name)
+							"Unknown (or not implemented) YANG module with namespace \"%s\" for metadata \"%s:%s\".", ns, x.Prefix, x.Name)
 					})
 				}
 				if err := p.skipAttr(); err != nil {
@@ -150,7 +221,7 @@ func (p *xmlParser) metadata(sparent *schema.Node, lnode *Node) (metas []*meta, 
 		if err := p.next(); err != nil { // the value
 			return nil, err
 		}
-		if err := lc.createMeta(nil, &metas, mod, name, x.Value, types.FormatXML, p.prefixes(), types.HintData, sparent, lnode); err != nil {
+		if err := lc.createMeta(nil, &metas, mod, name, x.Value, types.FormatXML, p.prefixes(x.Value), types.HintData, sparent, lnode); err != nil {
 			return nil, err
 		}
 		if err := p.next(); err != nil {
@@ -175,14 +246,14 @@ func (p *xmlParser) attrs(lnode *Node) ([]attr, error) {
 		}
 		var uri string
 		if prefix != "" {
-			ns, ok := x.GetNS(prefix)
+			u, ok := p.getNS(prefix)
 			if !ok {
 				return nil, p.namespaceErr(lnode, prefix, name)
 			}
-			uri = ns.URI
+			uri = u
 		}
 		out = append(out, attr{Name: name, Prefix: prefix, ModuleNS: uri, Value: x.Value, Format: types.FormatXML,
-			Prefixes: p.prefixes(), Hints: types.HintData})
+			Prefixes: p.prefixes(x.Value), Hints: types.HintData})
 		if err := p.next(); err != nil {
 			return nil, err
 		}
@@ -193,7 +264,7 @@ func (p *xmlParser) attrs(lnode *Node) ([]attr, error) {
 // valueValid is ly_value_validate without a context: whether the current value stores as sn's
 // type, nothing logged.
 func (p *xmlParser) valueValid(sn *schema.Node) bool {
-	_, d := types.Store(sn.Type, p.x.Value, types.FormatXML, types.HintData, p.prefixes(), sn)
+	_, d := types.Store(sn.Type, p.x.Value, types.FormatXML, types.HintData, p.prefixes(p.x.Value), sn)
 	return d == nil
 }
 
@@ -284,7 +355,7 @@ func (p *xmlParser) checkOpaq(sn *schema.Node) (*schema.Node, error) {
 		return sn, nil
 	}
 	b := x.Backup()
-	defer x.Restore(b)
+	defer func() { x.Restore(b); p.syncNS() }()
 	for x.Status == lyxml.Attribute {
 		if err := p.skipAttr(); err != nil {
 			return sn, err
@@ -395,9 +466,9 @@ func (p *xmlParser) getSnode(parent *Node, prefix, name string) (*schema.Node, e
 	if parent != nil && parent.schema != nil && !isAny(parent.schema) {
 		sparent = parent.schema
 	}
-	ns, nsOK := p.x.GetNS(prefix)
+	ns, nsOK := p.getNS(prefix)
 	if nsOK {
-		if mod := set.ByNamespace(ns.URI); mod != nil {
+		if mod := set.ByNamespace(ns); mod != nil {
 			if sn := schema.FindChild(sparent, mod.Top, mod, name, 0); sn != nil {
 				if err := lc.checkSchema(sn); err != nil {
 					return nil, err
@@ -412,10 +483,10 @@ func (p *xmlParser) getSnode(parent *Node, prefix, name string) (*schema.Node, e
 	if !p.strict {
 		return nil, nil
 	}
-	mod := set.ByNamespace(ns.URI)
+	mod := set.ByNamespace(ns)
 	switch {
 	case mod == nil:
-		return nil, lc.log.val(parent, "", ly.Reference, "No module with namespace \"%s\" in the context.", ns.URI)
+		return nil, lc.log.val(parent, "", ly.Reference, "No module with namespace \"%s\" in the context.", ns)
 	case sparent != nil:
 		return nil, lc.log.val(parent, "", ly.Reference, "Node \"%s\" not found as a child of \"%s\" node.", name, sparent.Name)
 	}
@@ -426,10 +497,10 @@ func (p *xmlParser) getSnode(parent *Node, prefix, name string) (*schema.Node, e
 // and its text; on any error the node is freed again.
 func (p *xmlParser) subtreeOpaq(prefix, name string, parent *Node) (node *Node, rc error) {
 	lc, x := p.lc, p.x
-	value, wsOnly, pc := x.Value, x.WSOnly, p.prefixes()
-	ns, _ := x.GetNS(prefix)
-	h, anchor := hintsOpaq(name, value, lc.tree.childrenOf(parent), ns.URI)
-	node, err := lc.createOpaq(opaque{Name: name, Prefix: prefix, ModuleNS: ns.URI, Format: types.FormatXML,
+	value, wsOnly, pc := x.Value, x.WSOnly, p.prefixes(x.Value)
+	ns, _ := p.getNS(prefix)
+	h, anchor := hintsOpaq(name, value, lc.tree.childrenOf(parent), ns)
+	node, err := lc.createOpaq(opaque{Name: name, Prefix: prefix, ModuleNS: ns, Format: types.FormatXML,
 		Prefixes: pc, Hints: h})
 	if err != nil {
 		return nil, err
@@ -480,7 +551,7 @@ func nextAnchor(n *Node) *Node {
 // child elements.
 func (p *xmlParser) subtreeTerm(sn *schema.Node, parent *Node) (*Node, error) {
 	lc, x := p.lc, p.x
-	node, rc := lc.createTerm(sn, parent, x.Value, types.FormatXML, p.prefixes(), types.HintData)
+	node, rc := lc.createTerm(sn, parent, x.Value, types.FormatXML, p.prefixes(x.Value), types.HintData)
 	if rc != nil && lc.fatal(rc) {
 		return nil, rc
 	}

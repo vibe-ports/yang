@@ -15,13 +15,15 @@ import (
 )
 
 // ValidationError is the error of a parse or validation that logged at least one error; Diags
-// holds every diagnostic in log order, warnings included.
+// holds every diagnostic in log order, warnings included. An XML lexer error that libyang fails
+// on without logging is a ValidationError wrapping the lexer's error, possibly without Diags.
 type ValidationError struct {
 	Diags []yang.Diagnostic
-	err   error // yang.ErrBudget when a libyang nesting limit stopped the parse
+	err   error // yang.ErrBudget after a libyang nesting limit, or the XML lexer's silent error
 }
 
-// Unwrap returns yang.ErrBudget when a nesting limit of the input stopped the parse.
+// Unwrap returns yang.ErrBudget when a nesting limit of the input stopped the parse, or the XML
+// lexer's error that libyang does not log.
 func (e *ValidationError) Unwrap() error { return e.err }
 
 func (e *ValidationError) Error() string {
@@ -29,6 +31,9 @@ func (e *ValidationError) Error() string {
 		if !d.Warning {
 			return d.Msg
 		}
+	}
+	if e.err != nil {
+		return e.err.Error()
 	}
 	return "validation failed"
 }

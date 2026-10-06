@@ -154,6 +154,9 @@ func parseWith(ctx context.Context, r io.Reader, s *schema.Set, o parseOpts, fp 
 		err = &ValidationError{Diags: lc.log.diags}
 	}
 	var ve *ValidationError
+	if errors.As(err, &ve) && ve.Diags == nil {
+		ve.Diags = lc.log.diags // a silent lexer error keeps what was logged before it
+	}
 	if lc.limitHit && errors.As(err, &ve) {
 		ve.err = yang.ErrBudget
 	}
@@ -192,7 +195,7 @@ func (lc *lydCtx) lexErr(err error) error {
 	case errors.As(err, &xe):
 		switch {
 		case xe.Msg == "":
-			return err // libyang fails without logging: an error without diagnostics
+			return &ValidationError{err: err} // libyang fails without logging: no diagnostic of its own
 		case xe.Code == ly.Success:
 			_ = lc.log.logErr("LY_EINVAL", "%s", xe.Msg)
 		default:
