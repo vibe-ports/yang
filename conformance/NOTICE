@@ -58,6 +58,7 @@ with the libyang file, tag/commit and license):
   - conformance/corpus/ut-deviation/ (tests/utests/schema/test_tree_schema_compile.c, test_deviation).
   - conformance/corpus/ut-validation/ (tests/utests/data/test_validation.c).
   - conformance/corpus/ut-identity/ (tests/utests/schema/test_tree_schema_compile.c and test_schema.c, test_identity).
+  - conformance/corpus/ut-validation-ops/ (tests/utests/data/test_validation.c, operations and defaults).
 - docs/conformance/utests-inventory.md quotes counts and file names from that suite.
 
 The names of CESNET and of its contributors are not used to endorse or promote anything here.

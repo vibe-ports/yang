@@ -1,0 +1,19 @@
+module a {
+    namespace urn:tests:a;
+    prefix a;
+    yang-version 1.1;
+
+    rpc rpc1 {
+        output {
+            container c1 {
+                when "../c = 'val_c'";
+                leaf a {
+                    type string;
+                }
+            }
+            leaf c {
+                type string;
+            }
+        }
+    }
+}

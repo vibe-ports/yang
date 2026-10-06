@@ -1,0 +1,48 @@
+module j {
+    namespace urn:tests:j;
+    prefix j;
+    yang-version 1.1;
+
+    feature feat1;
+
+    container cont {
+        must "false()";
+        list l1 {
+            key "k";
+            leaf k {
+                type string;
+            }
+            action act {
+                if-feature feat1;
+                input {
+                    must "../../lf1 = 'true'";
+                    leaf lf2 {
+                        type leafref {
+                            path /lf3;
+                        }
+                    }
+                }
+                output {
+                    must "../../lf1 = 'true2'";
+                    leaf lf2 {
+                        type leafref {
+                            path /lf4;
+                        }
+                    }
+                }
+            }
+        }
+
+        leaf lf1 {
+            type string;
+        }
+    }
+
+    leaf lf3 {
+        type string;
+    }
+
+    leaf lf4 {
+        type string;
+    }
+}

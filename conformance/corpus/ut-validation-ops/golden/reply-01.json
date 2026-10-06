@@ -1,0 +1,68 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [
+    {
+      "apptag": "instance-required",
+      "code": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "data_path": "/j:cont/l1[k='val1']/act/lf2",
+      "level": "error",
+      "line": 0,
+      "msg": "Invalid leafref value \"target\" - no target instance \"/lf4\" with the same value.",
+      "phase": "validate_op",
+      "schema_path": null,
+      "vecode": 9,
+      "vecode_name": "LYVE_DATA"
+    }
+  ],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Schema node \"lf1\" for parent \"/j:cont/l1\" not found; in expr \"../../lf1\" with context node \"/j:cont/l1/act/output\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Schema node \"lf1\" for parent \"/j:cont/l1\" not found; in expr \"../../lf1\" with context node \"/j:cont/l1/act/input\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "name": "j",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 7,
+    "name": "LY_EVALID"
+  },
+  "tree": null,
+  "verdict": "invalid"
+}

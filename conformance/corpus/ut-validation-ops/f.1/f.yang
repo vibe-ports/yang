@@ -1,0 +1,74 @@
+module f {
+    namespace urn:tests:f;
+    prefix f;
+    yang-version 1.1;
+
+    choice choic {
+        default "c";
+        leaf a {
+            type string;
+        }
+        case b {
+            leaf l {
+                type string;
+            }
+        }
+        case c {
+            leaf-list ll1 {
+                type string;
+                default "def1";
+                default "def2";
+                default "def3";
+            }
+        }
+    }
+    leaf d {
+        type uint32;
+        default 15;
+    }
+    leaf dd {
+        type uint32;
+        when '../d = 666';
+        default 15;
+    }
+    leaf-list ll2 {
+        type string;
+        default "dflt1";
+        default "dflt2";
+    }
+    container cont {
+        choice choic {
+            default "c";
+            leaf a {
+                type string;
+            }
+            case b {
+                leaf l {
+                    type string;
+                }
+            }
+            case c {
+                leaf-list ll1 {
+                    type string;
+                    default "def1";
+                    default "def2";
+                    default "def3";
+                }
+            }
+        }
+        leaf d {
+            type uint32;
+            default 15;
+        }
+        leaf dd {
+            type uint32;
+            when '../d = 666';
+            default 15;
+        }
+        leaf-list ll2 {
+            type string;
+            default "dflt1";
+            default "dflt2";
+        }
+    }
+}

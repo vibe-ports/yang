@@ -1,0 +1,137 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Schema node \"lf1\" for parent \"/j:cont/l1\" not found; in expr \"../../lf1\" with context node \"/j:cont/l1/act/output\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Schema node \"lf1\" for parent \"/j:cont/l1\" not found; in expr \"../../lf1\" with context node \"/j:cont/l1/act/input\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "name": "j",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"j:cont\": {\n    \"l1\": [\n      {\n        \"k\": \"val1\",\n        \"act\": {\n          \"lf2\": \"target\"\n        }\n      }\n    ]\n  }\n}\n",
+    "xml": "<cont xmlns=\"urn:tests:j\">\n  <l1>\n    <k>val1</k>\n    <act>\n      <lf2>target</lf2>\n    </act>\n  </l1>\n</cont>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/j:cont",
+      "schema": "/j:cont",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/j:cont/l1[k='val1']",
+      "schema": "/j:cont/l1",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/j:cont/l1[k='val1']/k",
+      "schema": "/j:cont/l1/k",
+      "value": {
+        "canonical": "val1",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "action",
+      "meta": [],
+      "opaque": null,
+      "path": "/j:cont/l1[k='val1']/act",
+      "schema": "/j:cont/l1/act",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/j:cont/l1[k='val1']/act/lf2",
+      "schema": "/j:cont/l1/act/output/lf2",
+      "value": {
+        "canonical": "target",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

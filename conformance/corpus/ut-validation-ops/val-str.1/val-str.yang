@@ -1,0 +1,20 @@
+module val-str {
+  namespace "urn:vstr";
+  prefix v;
+
+  rpc modify-user-password {
+    input {
+      leaf old-password {
+        type string {
+          length "4..8";
+        }
+      }
+      leaf new-password {
+        type string {
+          length "4..8";
+        }
+      }
+    }
+  }
+}
+

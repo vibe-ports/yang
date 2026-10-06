@@ -26703,3 +26703,174 @@ fixtures:
       rfc: ["RFC7950#7.18", "RFC7950#9.10"]
       deviation: null
 # END ut-identity
+
+# BEGIN ut-validation-ops (generated from libyang tests/utests/data/test_validation.c, operations and defaults, reviewed)
+
+  - id: ut-validation-ops/when-rpc-reply-01
+    dir: ut-validation-ops
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_when_rpc_reply:106 (reply parse + lyd_validate_op)
+    rfc: ["RFC7950#7.21.5"]
+    areas: [validation]
+    request: {"op": "data", "searchdirs": ["a.1"], "modules": [{"name": "a"}], "format": "json", "data_type": "reply", "data": "{\"a:rpc1\": {\"c\":\"wrong\"}}"}
+    golden: golden/when-rpc-reply-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.21.5"]
+      deviation: null
+
+  - id: ut-validation-ops/action-01
+    dir: ut-validation-ops
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_action:1380 (missing leafref)
+    rfc: ["RFC7950#7.5.3", "RFC7950#7.14"]
+    areas: [validation]
+    request: {"op": "data", "searchdirs": ["j.1"], "modules": [{"name": "j", "features": ["feat1"]}], "format": "xml", "data_type": "rpc", "data": "<cont xmlns=\"urn:tests:j\">\n  <l1>\n    <k>val1</k>\n    <act>\n      <lf2>target</lf2>\n    </act>\n  </l1>\n</cont>\n"}
+    golden: golden/action-01.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.5.3", "RFC7950#7.14"]
+      deviation: null
+
+  - id: ut-validation-ops/action-02
+    dir: ut-validation-ops
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_action:1392 (input must false)
+    rfc: ["RFC7950#7.5.3", "RFC7950#7.14"]
+    areas: [validation]
+    request: {"op": "data", "searchdirs": ["j.1"], "modules": [{"name": "j", "features": ["feat1"]}], "format": "xml", "data_type": "rpc", "data": "<cont xmlns=\"urn:tests:j\">\n  <l1>\n    <k>val1</k>\n    <act>\n      <lf2>target</lf2>\n    </act>\n  </l1>\n</cont>\n", "operational": "<cont xmlns=\"urn:tests:j\">\n  <l1><k>val1</k></l1>\n  <lf1>not true</lf1>\n</cont>\n<lf3 xmlns=\"urn:tests:j\">target</lf3>\n"}
+    golden: golden/action-02.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.5.3", "RFC7950#7.14"]
+      deviation: null
+
+  - id: ut-validation-ops/action-03
+    dir: ut-validation-ops
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_action:1403 (success (operational tree also holds the l1 parent that the oracle requires))
+    rfc: ["RFC7950#7.5.3", "RFC7950#7.14"]
+    areas: [validation]
+    request: {"op": "data", "searchdirs": ["j.1"], "modules": [{"name": "j", "features": ["feat1"]}], "format": "xml", "data_type": "rpc", "data": "<cont xmlns=\"urn:tests:j\">\n  <l1>\n    <k>val1</k>\n    <act>\n      <lf2>target</lf2>\n    </act>\n  </l1>\n</cont>\n", "operational": "<cont xmlns=\"urn:tests:j\">\n  <l1><k>val1</k></l1>\n  <lf1>true</lf1>\n</cont>\n<lf3 xmlns=\"urn:tests:j\">target</lf3>\n"}
+    golden: golden/action-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.5.3", "RFC7950#7.14"]
+      deviation: null
+
+  - id: ut-validation-ops/reply-01
+    dir: ut-validation-ops
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_reply:1475 (missing leafref)
+    rfc: ["RFC7950#7.5.3", "RFC7950#7.14"]
+    areas: [validation]
+    request: {"op": "data", "searchdirs": ["j.1"], "modules": [{"name": "j", "features": ["feat1"]}], "format": "xml", "data_type": "reply", "data": "<cont xmlns=\"urn:tests:j\">\n  <l1>\n    <k>val1</k>\n    <act>\n      <lf2>target</lf2>\n    </act>\n  </l1>\n</cont>\n"}
+    golden: golden/reply-01.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.5.3", "RFC7950#7.14"]
+      deviation: null
+
+  - id: ut-validation-ops/reply-02
+    dir: ut-validation-ops
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_reply:1486 (output must false)
+    rfc: ["RFC7950#7.5.3", "RFC7950#7.14"]
+    areas: [validation]
+    request: {"op": "data", "searchdirs": ["j.1"], "modules": [{"name": "j", "features": ["feat1"]}], "format": "xml", "data_type": "reply", "data": "<cont xmlns=\"urn:tests:j\">\n  <l1>\n    <k>val1</k>\n    <act>\n      <lf2>target</lf2>\n    </act>\n  </l1>\n</cont>\n", "operational": "<cont xmlns=\"urn:tests:j\">\n  <l1><k>val1</k></l1>\n  <lf1>not true</lf1>\n</cont>\n<lf4 xmlns=\"urn:tests:j\">target</lf4>\n"}
+    golden: golden/reply-02.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.5.3", "RFC7950#7.14"]
+      deviation: null
+
+  - id: ut-validation-ops/reply-03
+    dir: ut-validation-ops
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_reply:1497 (success (operational tree also holds the l1 parent that the oracle requires))
+    rfc: ["RFC7950#7.5.3", "RFC7950#7.14"]
+    areas: [validation]
+    request: {"op": "data", "searchdirs": ["j.1"], "modules": [{"name": "j", "features": ["feat1"]}], "format": "xml", "data_type": "reply", "data": "<cont xmlns=\"urn:tests:j\">\n  <l1>\n    <k>val1</k>\n    <act>\n      <lf2>target</lf2>\n    </act>\n  </l1>\n</cont>\n", "operational": "<cont xmlns=\"urn:tests:j\">\n  <l1><k>val1</k></l1>\n  <lf1>true2</lf1>\n</cont>\n<lf4 xmlns=\"urn:tests:j\">target</lf4>\n"}
+    golden: golden/reply-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.5.3", "RFC7950#7.14"]
+      deviation: null
+
+  - id: ut-validation-ops/rpc-01
+    dir: ut-validation-ops
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_rpc:1444 (length violation in rpc input)
+    rfc: ["RFC7950#7.14", "RFC7950#9.4.4"]
+    areas: [validation]
+    request: {"op": "data", "searchdirs": ["val-str.1"], "modules": [{"name": "val-str"}], "format": "xml", "data_type": "rpc", "data": "<modify-user-password xmlns=\"urn:vstr\">\n   <old-password>12345</old-password>\n   <new-password>123</new-password>\n</modify-user-password>"}
+    golden: golden/rpc-01.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.14", "RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-validation-ops/defaults-02
+    dir: ut-validation-ops
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_defaults:976 (create another explicit case and validate (the C test reaches this state from lyd_validate_module on an empty tree, which the oracle cannot do: parse of l + validate_all instead, the implicit diff differs))
+    rfc: ["RFC7950#7.6.1", "RFC7950#7.7.2", "RFC7950#7.9.3", "RFC6243#3"]
+    areas: [validation]
+    request: {"op": "sequence", "searchdirs": ["f.1", "../ietf"], "modules": [{"name": "f"}, {"name": "ietf-netconf-with-defaults"}], "steps": [{"do": "parse", "format": "xml", "data_type": "data", "data": "<l xmlns=\"urn:tests:f\">value</l>", "parse_only": true}, {"do": "validate", "data_type": "data", "validate_options": ["present"]}, {"do": "dump", "with_defaults": "implicit-tagged"}]}
+    golden: golden/defaults-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.6.1", "RFC7950#7.7.2", "RFC7950#7.9.3", "RFC6243#3"]
+      deviation: null
+
+  - id: ut-validation-ops/defaults-03
+    dir: ut-validation-ops
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_defaults:1005 (explicit leaf d, then validate (the explicit leaf-list ll2=dflt2 step is NOT reproduced: the oracle has no way to make a default leaf-list instance explicit, lyd_new_path UPDATE and merge both keep the default flag))
+    rfc: ["RFC7950#7.6.1", "RFC7950#7.7.2", "RFC7950#7.9.3", "RFC6243#3"]
+    areas: [validation]
+    request: {"op": "sequence", "searchdirs": ["f.1", "../ietf"], "modules": [{"name": "f"}, {"name": "ietf-netconf-with-defaults"}], "steps": [{"do": "parse", "format": "xml", "data_type": "data", "data": "<l xmlns=\"urn:tests:f\">value</l>", "parse_only": true}, {"do": "validate", "data_type": "data", "validate_options": ["present"]}, {"do": "dump", "with_defaults": "implicit-tagged"}, {"do": "edit", "set": {"path": "/f:d", "value": "15"}}, {"do": "validate", "data_type": "data", "validate_options": ["present"]}, {"do": "dump", "with_defaults": "implicit-tagged"}]}
+    golden: golden/defaults-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.6.1", "RFC7950#7.7.2", "RFC7950#7.9.3", "RFC6243#3"]
+      deviation: null
+
+  - id: ut-validation-ops/defaults-04
+    dir: ut-validation-ops
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_defaults:1035 (first explicit container (should become implicit; the oracle updates the existing node))
+    rfc: ["RFC7950#7.6.1", "RFC7950#7.7.2", "RFC7950#7.9.3", "RFC6243#3"]
+    areas: [validation]
+    request: {"op": "sequence", "searchdirs": ["f.1", "../ietf"], "modules": [{"name": "f"}, {"name": "ietf-netconf-with-defaults"}], "steps": [{"do": "parse", "format": "xml", "data_type": "data", "data": "<l xmlns=\"urn:tests:f\">value</l>", "parse_only": true}, {"do": "validate", "data_type": "data", "validate_options": ["present"]}, {"do": "dump", "with_defaults": "implicit-tagged"}, {"do": "edit", "set": {"path": "/f:d", "value": "15"}}, {"do": "validate", "data_type": "data", "validate_options": ["present"]}, {"do": "dump", "with_defaults": "implicit-tagged"}, {"do": "edit", "set": {"path": "/f:cont"}}, {"do": "validate", "data_type": "data", "validate_options": ["present"]}, {"do": "dump", "with_defaults": "implicit-tagged"}]}
+    golden: golden/defaults-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.6.1", "RFC7950#7.7.2", "RFC7950#7.9.3", "RFC6243#3"]
+      deviation: null
+
+  - id: ut-validation-ops/defaults-05
+    dir: ut-validation-ops
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_defaults:1057 (second explicit container (the C test inserts a duplicate; the oracle set path updates the same node))
+    rfc: ["RFC7950#7.6.1", "RFC7950#7.7.2", "RFC7950#7.9.3", "RFC6243#3"]
+    areas: [validation]
+    request: {"op": "sequence", "searchdirs": ["f.1", "../ietf"], "modules": [{"name": "f"}, {"name": "ietf-netconf-with-defaults"}], "steps": [{"do": "parse", "format": "xml", "data_type": "data", "data": "<l xmlns=\"urn:tests:f\">value</l>", "parse_only": true}, {"do": "validate", "data_type": "data", "validate_options": ["present"]}, {"do": "dump", "with_defaults": "implicit-tagged"}, {"do": "edit", "set": {"path": "/f:d", "value": "15"}}, {"do": "validate", "data_type": "data", "validate_options": ["present"]}, {"do": "dump", "with_defaults": "implicit-tagged"}, {"do": "edit", "set": {"path": "/f:cont"}}, {"do": "validate", "data_type": "data", "validate_options": ["present"]}, {"do": "dump", "with_defaults": "implicit-tagged"}, {"do": "edit", "set": {"path": "/f:cont"}}, {"do": "validate", "data_type": "data", "validate_options": ["present"]}, {"do": "dump", "with_defaults": "implicit-tagged"}]}
+    golden: golden/defaults-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.6.1", "RFC7950#7.7.2", "RFC7950#7.9.3", "RFC6243#3"]
+      deviation: null
+
+  - id: ut-validation-ops/defaults-06
+    dir: ut-validation-ops
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_defaults:1079 (nested explicit leaf d replaces the nested default (the explicit nested leaf-lists ll1=def3, ll2=non-dflt are NOT reproduced, same oracle limit))
+    rfc: ["RFC7950#7.6.1", "RFC7950#7.7.2", "RFC7950#7.9.3", "RFC6243#3"]
+    areas: [validation]
+    request: {"op": "sequence", "searchdirs": ["f.1", "../ietf"], "modules": [{"name": "f"}, {"name": "ietf-netconf-with-defaults"}], "steps": [{"do": "parse", "format": "xml", "data_type": "data", "data": "<l xmlns=\"urn:tests:f\">value</l>", "parse_only": true}, {"do": "validate", "data_type": "data", "validate_options": ["present"]}, {"do": "dump", "with_defaults": "implicit-tagged"}, {"do": "edit", "set": {"path": "/f:d", "value": "15"}}, {"do": "validate", "data_type": "data", "validate_options": ["present"]}, {"do": "dump", "with_defaults": "implicit-tagged"}, {"do": "edit", "set": {"path": "/f:cont"}}, {"do": "validate", "data_type": "data", "validate_options": ["present"]}, {"do": "dump", "with_defaults": "implicit-tagged"}, {"do": "edit", "set": {"path": "/f:cont"}}, {"do": "validate", "data_type": "data", "validate_options": ["present"]}, {"do": "dump", "with_defaults": "implicit-tagged"}, {"do": "edit", "set": {"path": "/f:cont/d", "value": "5"}}, {"do": "validate", "data_type": "data", "validate_options": ["present"]}, {"do": "dump", "with_defaults": "explicit"}]}
+    golden: golden/defaults-06.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.6.1", "RFC7950#7.7.2", "RFC7950#7.9.3", "RFC6243#3"]
+      deviation: null
+
+  - id: ut-validation-ops/defaults-07
+    dir: ut-validation-ops
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_defaults:1110 (when enabled node: leaf dd default becomes present)
+    rfc: ["RFC7950#7.6.1", "RFC7950#7.21.5", "RFC6243#3"]
+    areas: [validation]
+    request: {"op": "sequence", "searchdirs": ["f.1", "../ietf"], "modules": [{"name": "f"}, {"name": "ietf-netconf-with-defaults"}], "steps": [{"do": "parse", "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<d xmlns=\"urn:tests:f\">666</d><cont xmlns=\"urn:tests:f\"><d>666</d></cont>"}, {"do": "dump", "with_defaults": "all"}]}
+    golden: golden/defaults-07.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.6.1", "RFC7950#7.21.5", "RFC6243#3"]
+      deviation: null
+# END ut-validation-ops
