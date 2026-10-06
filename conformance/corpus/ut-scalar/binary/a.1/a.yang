@@ -1,0 +1,5 @@
+module a {
+  yang-version 1.1;
+  namespace "urn:tests:a";
+  prefix pref;
+leaf l {type binary;} leaf k {type binary {length 4..8;}}}

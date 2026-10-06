@@ -1,0 +1,5 @@
+module defs {
+  yang-version 1.1;
+  namespace "urn:tests:defs";
+  prefix pref;
+typedef tempty {type empty;}leaf l1 {type empty;}leaf l2 {type tempty;}}

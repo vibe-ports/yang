@@ -17677,3 +17677,792 @@ fixtures:
       deviation: null
 
 # END ut-string-data
+
+# BEGIN ut-scalar (generated from libyang tests/utests/types/{boolean,decimal64,empty,binary}.c, reviewed)
+
+  - id: ut-scalar/boolean-01
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/boolean.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:72
+    rfc: ["RFC7950#9.5"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [boolean/defs.1]
+      modules: [{name: "defs"}]
+    golden: golden/boolean-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.5"]
+      deviation: null
+
+  - id: ut-scalar/boolean-02
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/boolean.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:74
+    rfc: ["RFC7950#9.5"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [boolean/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\">true</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/boolean-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.5"]
+      deviation: null
+
+  - id: ut-scalar/boolean-03
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/boolean.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:76
+    rfc: ["RFC7950#9.5"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [boolean/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\">false</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/boolean-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.5"]
+      deviation: null
+
+  - id: ut-scalar/boolean-04
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/boolean.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:78
+    rfc: ["RFC7950#9.5"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [boolean/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l2 xmlns=\"urn:tests:defs\">false</l2>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/boolean-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.5"]
+      deviation: null
+
+  - id: ut-scalar/boolean-05
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/boolean.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:81
+    rfc: ["RFC7950#9.5"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [boolean/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\">unsure</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/boolean-05.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.5"]
+      deviation: null
+
+  - id: ut-scalar/boolean-06
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/boolean.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:84
+    rfc: ["RFC7950#9.5"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [boolean/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\"> true</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/boolean-06.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.5"]
+      deviation: null
+
+  - id: ut-scalar/decimal64-01
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/decimal64.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:79
+    rfc: ["RFC7950#9.3", "RFC7950#9.3.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [decimal64/defs.1]
+      modules: [{name: "defs"}]
+    golden: golden/decimal64-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.3", "RFC7950#9.3.4"]
+      deviation: null
+
+  - id: ut-scalar/decimal64-02
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/decimal64.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:81
+    rfc: ["RFC7950#9.3", "RFC7950#9.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [decimal64/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\">\n +8 \t\n  </l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/decimal64-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.3", "RFC7950#9.3.4"]
+      deviation: null
+
+  - id: ut-scalar/decimal64-03
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/decimal64.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:82
+    rfc: ["RFC7950#9.3", "RFC7950#9.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [decimal64/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\">8.00</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/decimal64-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.3", "RFC7950#9.3.4"]
+      deviation: null
+
+  - id: ut-scalar/decimal64-04
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/decimal64.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:84
+    rfc: ["RFC7950#9.3", "RFC7950#9.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [decimal64/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l2 xmlns=\"urn:tests:defs\">-9.223372036854775808</l2>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/decimal64-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.3", "RFC7950#9.3.4"]
+      deviation: null
+
+  - id: ut-scalar/decimal64-05
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/decimal64.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:86
+    rfc: ["RFC7950#9.3", "RFC7950#9.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [decimal64/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l2 xmlns=\"urn:tests:defs\">9.223372036854775807</l2>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/decimal64-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.3", "RFC7950#9.3.4"]
+      deviation: null
+
+  - id: ut-scalar/decimal64-06
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/decimal64.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:88
+    rfc: ["RFC7950#9.3", "RFC7950#9.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [decimal64/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\">\n 15 \t\n  </l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/decimal64-06.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.3", "RFC7950#9.3.4"]
+      deviation: null
+
+  - id: ut-scalar/decimal64-07
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/decimal64.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:91
+    rfc: ["RFC7950#9.3", "RFC7950#9.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [decimal64/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\">\n 0 \t\n  </l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/decimal64-07.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.3", "RFC7950#9.3.4"]
+      deviation: null
+
+  - id: ut-scalar/decimal64-08
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/decimal64.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:94
+    rfc: ["RFC7950#9.3", "RFC7950#9.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [decimal64/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\">xxx</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/decimal64-08.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.3", "RFC7950#9.3.4"]
+      deviation: null
+
+  - id: ut-scalar/decimal64-09
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/decimal64.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:97
+    rfc: ["RFC7950#9.3", "RFC7950#9.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [decimal64/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\"></l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/decimal64-09.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.3", "RFC7950#9.3.4"]
+      deviation: null
+
+  - id: ut-scalar/decimal64-10
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/decimal64.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:100
+    rfc: ["RFC7950#9.3", "RFC7950#9.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [decimal64/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\">8.5  xxx</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/decimal64-10.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.3", "RFC7950#9.3.4"]
+      deviation: null
+
+  - id: ut-scalar/decimal64-11
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/decimal64.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:103
+    rfc: ["RFC7950#9.3", "RFC7950#9.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [decimal64/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\">8.55  xxx</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/decimal64-11.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.3", "RFC7950#9.3.4"]
+      deviation: null
+
+  - id: ut-scalar/decimal64-12
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/decimal64.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:107
+    rfc: ["RFC7950#9.3", "RFC7950#9.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [decimal64/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\">\n 15 \t\n  </l1>"
+      parse_only: false
+      parse_options: ["store_only"]
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/decimal64-12.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.3", "RFC7950#9.3.4"]
+      deviation: null
+
+  - id: ut-scalar/empty-01
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/empty.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:72
+    rfc: ["RFC7950#9.11"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [empty/defs.1]
+      modules: [{name: "defs"}]
+    golden: golden/empty-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.11"]
+      deviation: null
+
+  - id: ut-scalar/empty-02
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/empty.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:74
+    rfc: ["RFC7950#9.11"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [empty/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\"></l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/empty-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.11"]
+      deviation: null
+
+  - id: ut-scalar/empty-03
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/empty.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:76
+    rfc: ["RFC7950#9.11"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [empty/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l2 xmlns=\"urn:tests:defs\"></l2>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/empty-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.11"]
+      deviation: null
+
+  - id: ut-scalar/empty-04
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/empty.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:79
+    rfc: ["RFC7950#9.11"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [empty/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\">x</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/empty-04.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.11"]
+      deviation: null
+
+  - id: ut-scalar/empty-05
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/empty.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:82
+    rfc: ["RFC7950#9.11"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [empty/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\"> </l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/empty-05.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.11"]
+      deviation: null
+
+  - id: ut-scalar/binary-01
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/binary.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_plugin_store:61
+    rfc: ["RFC7950#9.8", "RFC4648#4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [binary/a.1]
+      modules: [{name: "a"}]
+    golden: golden/binary-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.8", "RFC4648#4"]
+      deviation: null
+
+  - id: ut-scalar/binary-02
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/binary.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_plugin_store:69 (the LY_VALUE_XML store step, replayed as a data parse)
+    rfc: ["RFC7950#9.8", "RFC4648#4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [binary/a.1]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l xmlns=\"urn:tests:a\">YWhveQ==</l>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/binary-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.8", "RFC4648#4"]
+      deviation: null
+
+  - id: ut-scalar/binary-03
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/binary.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_plugin_store:84 (the LY_VALUE_XML store step, replayed as a data parse)
+    rfc: ["RFC7950#9.8", "RFC4648#4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [binary/a.1]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l xmlns=\"urn:tests:a\">YWhveWo=</l>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/binary-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.8", "RFC4648#4"]
+      deviation: null
+
+  - id: ut-scalar/binary-04
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/binary.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_plugin_store:99 (the LY_VALUE_XML store step, replayed as a data parse)
+    rfc: ["RFC7950#9.8", "RFC4648#4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [binary/a.1]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l xmlns=\"urn:tests:a\">YWhveWoy</l>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/binary-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.8", "RFC4648#4"]
+      deviation: null
+
+  - id: ut-scalar/binary-05
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/binary.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_plugin_store:114 (the LY_VALUE_XML store step, replayed as a data parse)
+    rfc: ["RFC7950#9.8", "RFC4648#4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [binary/a.1]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l xmlns=\"urn:tests:a\">q80=</l>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/binary-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.8", "RFC4648#4"]
+      deviation: null
+
+  - id: ut-scalar/binary-06
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/binary.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_plugin_store:130 (the LY_VALUE_XML store step, replayed as a data parse)
+    rfc: ["RFC7950#9.8", "RFC4648#4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [binary/a.1]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l xmlns=\"urn:tests:a\">MIIEAzCCAuugAwIBAgIURc4sipHvJSlNrQIhRhZilBvV4RowDQYJKoZIhvcNAQEL\nBQAwgZAxCzAJBgNVBAYTAkNaMRYwFAYDVQQIDA1Tb3V0aCBNb3JhdmlhMQ0wCwYD\nVQQHDARCcm5vMRgwFgYDVQQKDA9DRVNORVQgei5zLnAuby4xDDAKBgNVBAsMA1RN\nQzETMBEGA1UEAwwKZXhhbXBsZSBDQTEdMBsGCSqGSIb3DQEJARYOY2FAZXhhbXBs\nZS5vcmcwHhcNMjEwOTAzMTAyMTAxWhcNMzEwOTAxMTAyMTAxWjCBkDELMAkGA1UE\nBhMCQ1oxFjAUBgNVBAgMDVNvdXRoIE1vcmF2aWExDTALBgNVBAcMBEJybm8xGDAW\nBgNVBAoMD0NFU05FVCB6LnMucC5vLjEMMAoGA1UECwwDVE1DMRMwEQYDVQQDDApl\neGFtcGxlIENBMR0wGwYJKoZIhvcNAQkBFg5jYUBleGFtcGxlLm9yZzCCASIwDQYJ\nKoZIhvcNAQEBBQADggEPADCCAQoCggEBAN4Ld3JDDocyy9KXNJhEUPeZpQW3UdUN\nXloeh5n/bxasgThkBuQ7oF/nKyVUe517U1CJA993ZIc0jhIWThAnqXkz70DX5EZ7\nancPd01MidA6T8k1RYYJWr+vyIRYYBYzK7LSnU6wMWqPTgzZB+KMWwb065ooLEB5\nXwqAeTIMPLRqM1Galewl4ZSuRJnrXxRjfF3AWNyC9dZw6wIg8cppvoLdBGQiFJQf\n9SgiVy+HyedAytFEixqKAAIgQUJwhCgbEd6jGFbeaL8HT4MFp1VmaaUBQMkZj/Gn\nKBwCk5BEMu76EN1pzHc4Dd6DabQNGCnsqOPe31yhQGmNFy9R6zNnWZMCAwEAAaNT\nMFEwHQYDVR0OBBYEFM7w/pO8vk5oowvWPoCKo0RW/JcnMB8GA1UdIwQYMBaAFM7w\n/pO8vk5oowvWPoCKo0RW/JcnMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQEL\nBQADggEBAG/xfYuRKnCyiwYC/K7kAjHmCNnLCr1mx8P1ECsSJPme3OThDTNeGf8i\nN2952tGmMFDa+DaAwPc6Gt3cWTb/NYMTLWlt2yj5rJAcLXxIU0SMafBf+F7E/R8A\nb/HDDjs0pQaJ0EJhQJVkMdfj3Wq9l0dJT5iEBUrUQflDufiMdEJEIGKZh86MgzEL\nbcn1QX8dlLc91M2OifWStqLzXPicG+jjuoPUceC0flMQDb2qx03sxvJKfYfS5ArA\nCqvdWyXLoP7DI9THJrMI/vBHJKpl4Wtmsh2OLn9VHauFMzPSGke5GwjXCpbXGepj\n9qWN8Gd/FWgSDH2OBvZ6aHdB1pPjN9k=</l>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/binary-06.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.8", "RFC4648#4"]
+      deviation: null
+
+  - id: ut-scalar/binary-07
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/binary.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_plugin_store:158 (the LY_VALUE_XML store step, replayed as a data parse)
+    rfc: ["RFC7950#9.8", "RFC4648#4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [binary/a.1]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l xmlns=\"urn:tests:a\"></l>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/binary-07.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.8", "RFC4648#4"]
+      deviation: null
+
+  - id: ut-scalar/binary-08
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/binary.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_plugin_store:166 (the LY_VALUE_XML store step, replayed as a data parse)
+    rfc: ["RFC7950#9.8", "RFC4648#4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [binary/a.1]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l xmlns=\"urn:tests:a\">YQ==</l>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/binary-08.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.8", "RFC4648#4"]
+      deviation: null
+
+  - id: ut-scalar/binary-09
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/binary.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_plugin_store:181 (the LY_VALUE_XML store step, replayed as a data parse)
+    rfc: ["RFC7950#9.8", "RFC4648#4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [binary/a.1]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<k xmlns=\"urn:tests:a\">Zm91cg==</k>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/binary-09.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.8", "RFC4648#4"]
+      deviation: null
+
+  - id: ut-scalar/binary-10
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/binary.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_plugin_store:195 (the LY_VALUE_XML store step, replayed as a data parse)
+    rfc: ["RFC7950#9.8", "RFC4648#4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [binary/a.1]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<k xmlns=\"urn:tests:a\">ZWlnaHQwMTI=</k>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/binary-10.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.8", "RFC4648#4"]
+      deviation: null
+
+  - id: ut-scalar/binary-11
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/binary.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_plugin_store:212 (the LY_VALUE_XML store step, replayed as a data parse)
+    rfc: ["RFC7950#9.8", "RFC4648#4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [binary/a.1]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l xmlns=\"urn:tests:a\">q80.</l>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/binary-11.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.8", "RFC4648#4"]
+      deviation: null
+
+  - id: ut-scalar/binary-12
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/binary.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_plugin_store:220 (the LY_VALUE_XML store step, replayed as a data parse)
+    rfc: ["RFC7950#9.8", "RFC4648#4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [binary/a.1]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l xmlns=\"urn:tests:a\">q80</l>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/binary-12.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.8", "RFC4648#4"]
+      deviation: null
+
+  - id: ut-scalar/binary-13
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/binary.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_plugin_store:228 (the LY_VALUE_XML store step, replayed as a data parse)
+    rfc: ["RFC7950#9.8", "RFC4648#4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [binary/a.1]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<k xmlns=\"urn:tests:a\">MTIz</k>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/binary-13.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.8", "RFC4648#4"]
+      deviation: null
+
+  - id: ut-scalar/binary-14
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/binary.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_plugin_store:237 (the LY_VALUE_XML store step, replayed as a data parse)
+    rfc: ["RFC7950#9.8", "RFC4648#4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [binary/a.1]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<k xmlns=\"urn:tests:a\">MTIz</k>"
+      parse_only: true
+      parse_options: ["store_only"]
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/binary-14.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.8", "RFC4648#4"]
+      deviation: null
+# END ut-scalar
