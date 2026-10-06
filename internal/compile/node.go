@@ -82,8 +82,10 @@ func (c *Context) compileNodes(m *Module, out *schema.Module) error {
 	}
 	w := &nodeCtx{c: c, cur: out, pm: &m.pmod, fl: map[*schema.Node]int{},
 		tc: &typeCtx{cur: out, pmod: &m.pmod, parsed: parsed, cache: c.typeCache, budget: c.opts.Budget, types: c.types}}
+	w.tc.iff = w.iffeatures
 	w.path.init(out)
 	defer func() { out.Top, c.types = slices.Concat(w.data, w.rpcs, w.notifs), w.tc.types }()
+	out.Exts = nil
 	if err := w.topLevel(m.Parsed); err != nil {
 		return err
 	}
@@ -97,7 +99,7 @@ func (c *Context) compileNodes(m *Module, out *schema.Module) error {
 		}
 	}
 	w.pm = &m.pmod
-	return nil
+	return w.unresMod(nil) // P5; C6 passes the augments it left unapplied
 }
 
 func (w *nodeCtx) topLevel(p *parser.Module) error {
@@ -108,10 +110,9 @@ func (w *nodeCtx) topLevel(p *parser.Module) error {
 			}
 		}
 	}
-	if len(p.Exts) > 0 {
-		return fmt.Errorf("%w: module extension instances (design 06 C4b)", ErrUnsupported)
-	}
-	return nil
+	exts, err := w.compileExts(p.Stmt, nil, w.cur.Exts) // module extension instances
+	w.cur.Exts = exts
+	return err
 }
 
 // --- logging ---
@@ -211,15 +212,18 @@ func (w *nodeCtx) nodeGeneric(pn *parser.Node, parent *schema.Node, spec specFun
 	if n.Kind == schema.Input || n.Kind == schema.Output {
 		n.Name = pn.Kind
 	}
-	if len(pn.IfFeatures) > 0 {
-		return fmt.Errorf("%w: if-feature (design 06 C4b)", ErrUnsupported)
+	enabled, err := w.iffeatures(w.pm, pn.IfFeatures)
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		w.disable(n)
 	}
 	if err := w.nodeFlags(pn, 0, n); err != nil {
 		return err
 	}
-	if n.Status == schema.Obsolete {
-		// obsolete nodes are compiled as disabled and removed (design 06 C4b)
-		return fmt.Errorf("%w: obsolete node (design 06 C4b)", ErrUnsupported)
+	if n.Status == schema.Obsolete && !w.c.opts.CompileObsolete {
+		w.disable(n) // obsolete, will not be in the compiled tree
 	}
 	if n.Kind == schema.List || n.Kind == schema.LeafList { // list ordering
 		n.UserOrdered = w.fl[n]&(flConfigR|flIsOutput|flIsNotif) != 0 || pn.OrderedBy == "user"
@@ -235,13 +239,13 @@ func (w *nodeCtx) nodeGeneric(pn *parser.Node, parent *schema.Node, spec specFun
 		n.Whens = append(n.Whens, wh)
 	}
 	w.parents = append(w.parents, pn)
-	err := spec(w, pn, n)
+	err = spec(w, pn, n)
 	w.parents = w.parents[:len(w.parents)-1]
 	if err != nil {
 		return err
 	}
-	if len(pn.Exts) > 0 {
-		return fmt.Errorf("%w: extension instances (design 06 C4b)", ErrUnsupported)
+	if n.Exts, err = w.compileExts(pn.Stmt, n, n.Exts); err != nil {
+		return err
 	}
 	if n.Mandatory {
 		mandatoryParents(parent)
@@ -605,9 +609,8 @@ func (w *nodeCtx) when(pw *parser.Restr, n, ctxNode *schema.Node) (*schema.When,
 	if err != nil {
 		return nil, err
 	}
-	if len(pw.Exts) > 0 {
-		return nil, fmt.Errorf("%w: extension instances (design 06 C4b)", ErrUnsupported)
-	}
+	// its extension instances compile to nothing observable: schema.When keeps none, and the
+	// only plugins with effects reject or drop instances placed here at parse time
 	// lys_compile_status(0, node's parsed status, node): the node's own status
 	return &schema.When{Src: pw.Arg, Ctx: ns, ContextNode: ctxNode, Status: n.Status, Compiled: e}, nil
 }
@@ -619,9 +622,6 @@ func (w *nodeCtx) musts(pn *parser.Node, n *schema.Node) error {
 		e, err := w.xpathCompile(pm.Arg, ns)
 		if err != nil {
 			return err
-		}
-		if len(pm.Exts) > 0 {
-			return fmt.Errorf("%w: extension instances (design 06 C4b)", ErrUnsupported)
 		}
 		n.Musts = append(n.Musts, &schema.Must{Src: pm.Arg, Msg: pm.ErrorMessage, AppTag: pm.ErrorAppTag, Ctx: ns, Compiled: e})
 	}
@@ -822,7 +822,9 @@ func (w *nodeCtx) list(pn *parser.Node, n *schema.Node) error {
 			} else if len(key.Whens) > 0 {
 				return w.errf(ly.Semantics, "List's key must not have any \"when\" statement.")
 			}
-			// key status check (lysc_check_status): design 06 C4b
+			if err := checkStatus(n.Status, n.Module, n.Name, key.Status, key.Module, key.Name); err != nil {
+				return w.vlog(err)
+			}
 			key.Default = nil // keys ignore default values
 			w.fl[key] |= flKey
 			// move it after the previous key
@@ -905,7 +907,9 @@ func (w *nodeCtx) unique(u string, list *schema.Node) error {
 				return w.errf(ly.Semantics, "Unique statement \"%s\" refers to a leaf in nested list \"%s\".", u, p.Name)
 			}
 		}
-		// status check (lysc_check_status): design 06 C4b
+		if err := checkStatus(list.Status, w.pm.mod, list.Name, key.Status, key.Module, key.Name); err != nil {
+			return w.vlog(err)
+		}
 		leaves = append(leaves, key)
 		return nil
 	})

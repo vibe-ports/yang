@@ -44,6 +44,9 @@ type Options struct {
 	MaxSearchDirs int           // directories opened per search, default 10 000 (U-0022)
 	Parse         parser.Budget // per (sub)module text; MaxBytes also bounds reading a file
 	Budget        Budget        // compile limits per Load (design 06 §5)
+	// CompileObsolete keeps obsolete nodes in the compiled tree (LY_CTX_COMPILE_OBSOLETE);
+	// by default they are compiled like disabled nodes and removed.
+	CompileObsolete bool
 }
 
 // Level is a diagnostic's log level.
@@ -149,9 +152,13 @@ type Context struct {
 	creating, implementing, compiling []*Module
 	sets                              [][]*Module // dep_sets
 	unresHook                         func(*Context) error
-	nodes                             int        // schema nodes compiled (Budget.MaxNodes)
-	types                             int        // compiled types and union member slots (Budget.MaxTypes)
-	typeCache                         *typeCache // compiled typedefs (design 06 §2.3); entries leave with their module (revert)
+	nodes                             int            // schema nodes compiled (Budget.MaxNodes)
+	types                             int            // compiled types and union member slots (Budget.MaxTypes)
+	typeCache                         *typeCache     // compiled typedefs (design 06 §2.3); entries leave with their module (revert)
+	disabled                          []*schema.Node // lys_depset_unres.disabled: if-feature-disabled and obsolete nodes
+	// extArrs are the exts arrays whose instances a plugin parse callback removed (LY_ENOT),
+	// by owner statement, in libyang's order after the removal.
+	extArrs map[*parser.Stmt][]*parser.Stmt
 	// nodeWalk turns on the node walk (compileNodes) in compile; off until
 	// design 06 C4b and C6 make the internal modules compile
 	nodeWalk bool
@@ -225,7 +232,7 @@ func NewContext(opts Options, dirs ...fs.FS) (*Context, []Diagnostic, error) {
 // implemented before) stay, as in libyang.
 func (c *Context) Load(name, rev string, features []string) (*Module, []Diagnostic, error) {
 	c.diags, c.creating, c.implementing, c.compiling, c.sets = nil, nil, nil, nil, nil
-	c.nodes, c.types = 0, 0
+	c.nodes, c.types, c.disabled = 0, 0, nil
 	c.phase = "parse"
 	m, err := c.parseLoad(name, rev)
 	if err == nil {

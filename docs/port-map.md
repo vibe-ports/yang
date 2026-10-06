@@ -159,7 +159,7 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | src/schema_compile_node.c | lys_compile_type_range, range_part_minmax, range_part_check_value_syntax, range_part_check_ascendancy | compile.compileRange, rangeBound, rangeValueSyntax, ascending, moreLimiting | ported | internal/compile range_test; types/compile-errors (with the type compiler) | |
 | src/ly_common.c | ly_parse_int, ly_parse_uint | compile.parseRangeInt, parseRangeUint | ported | internal/compile range_test | range/length bounds (decimal digits only) |
 | src/schema_compile_node.c | lys_compile_type | compile.typeCtx.compileType | ported | types/unchanged-typedef-reuse, types/typedef-cycle, types/restriction-wrong-type, lref/typedef-prefix-direct, lref/union-typedef-direct, lref/union-typedef-via-derived-typedef, lref/typedef-across-loads | typedef chain, reuse rule SCN:2084, holder-count cache (typeCache); D-0040 |
-| src/schema_compile_node.c | lys_compile_type_, lys_new_type | compile.typeCtx.newType | partial | types/compile-errors | extension instances on types: C4b (Type.Exts empty, their presence already counts); D-0038 |
+| src/schema_compile_node.c | lys_compile_type_, lys_new_type | compile.typeCtx.newType | partial | types/compile-errors | extension instances on types are not compiled yet (Type.Exts empty; nothing observable: the ported plugins reject or drop instances there at parse time); D-0038 |
 | src/schema_compile_node.c | lys_compile_type_union | compile.typeCtx.compileUnion | ported | types/union-nested-index | Budget.MaxTypes, Budget.MaxUnionMembers (U-0030) |
 | src/schema_compile_node.c | lys_compile_type_enums | compile.typeCtx.compileEnums | ported | types/compile-errors, types/unchanged-typedef-reuse | if-features through typeCtx.iff (lys_eval_iffeatures, C4b), resolved in the (sub)module writing the items; Budget.MaxBitPosition (U-0031) |
 | src/schema_compile_node.c | lys_compile_type_patterns, lysc_patterns_dup | compile.typeCtx.newType (string) | partial | types/compile-errors | internal/xsdre (D-0039); openconfig regexp-posix: U-0025 (C4b) |
@@ -183,6 +183,7 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | src/ly_common.c | lys_parse_id, ly_parse_nodeid | compile.parseID (in resolveNodeid) | ported | compile/list-unique-bad-separator | |
 | src/schema_compile_node.c | lys_compile_node | compile.nodeCtx.node | partial | compile/* | uses: C6 (ErrUnsupported) |
 | src/schema_compile_node.c | lys_compile_node_ | compile.nodeCtx.nodeGeneric | partial | compile/* | if-feature, obsolete, ext instances: C4b; deviations/refines: C6/M2 (ErrUnsupported until then) |
+| src/schema_compile_node.c | lys_compile_node_ | compile.nodeCtx.node_ | partial | compile/*, compile/iff-*, compile/obsolete-*, compile/ext-* | if-feature, obsolete (Options.CompileObsolete), ext instances: C4b; deviations/refines: C6/M2 (ErrUnsupported until then) |
 | src/schema_compile_node.c | lys_compile_node_flags | compile.nodeCtx.nodeFlags | ported | compile/node-config-*, status-* | |
 | src/schema_compile_node.c | lys_compile_status | compile.nodeCtx.status | ported | compile/status-child-*, node-container-config-status-inherit | |
 | src/schema_compile_node.c | lys_compile_config | compile.nodeCtx.config | ported | compile/config-under-state, node-config-* | |
@@ -193,8 +194,8 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | src/schema_compile_node.c | lys_compile_node_container | compile.nodeCtx.container | ported | compile/mand-*, notif-in-container-* | |
 | src/schema_compile_node.c | lys_compile_node_leaf | compile.nodeCtx.leaf | ported | compile/node-leaf-mandatory-default, mand-leaf-with-typedef-default-ignored | the SC:1026 rule (no typedef default on a mandatory leaf) is applied here, not in unres |
 | src/schema_compile_node.c | lys_compile_node_leaflist | compile.nodeCtx.leafList | ported | compile/node-leaflist-* | |
-| src/schema_compile_node.c | lys_compile_node_list | compile.nodeCtx.list | partial | compile/list-*, node-list-* | key status check: C4b |
-| src/schema_compile_node.c | lys_compile_node_list_unique | compile.nodeCtx.unique | partial | compile/list-unique-*, node-list-unique-descendant-paths | status check: C4b |
+| src/schema_compile_node.c | lys_compile_node_list | compile.nodeCtx.list | partial | compile/list-*, node-list-*, compile/obsolete-key | |
+| src/schema_compile_node.c | lys_compile_node_list_unique | compile.nodeCtx.unique | partial | compile/list-unique-*, node-list-unique-descendant-paths | |
 | src/schema_compile_node.c | lysc_resolve_schema_nodeid | compile.nodeCtx.resolveNodeid | ported | compile/list-unique-* | LY_VALUE_SCHEMA only |
 | src/schema_compile_node.c | lys_compile_node_choice | compile.nodeCtx.choice | ported | compile/choice-* | |
 | src/schema_compile_node.c | lys_compile_node_choice_child | compile.nodeCtx.choiceChild | ported | compile/choice-case-name-vs-shorthand | |
@@ -229,3 +230,13 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | src/ly_common.c | ly_getutf8, ly_pututf8 | lyxml.(*Ctx).getUTF8, lyxml.putUTF8 | ported | unit | libyang's ranges incl. four-byte start at U+1000 |
 | src/xml.c | lyxml_dump_text | lyxml.AppendText | ported | unit | |
 | src/xml.c | lyxml_value_compare | — | skipped | — | needs schema prefix data; ported with the data package (design 07 D4/D6) |
+| src/schema_features.c | lys_eval_iffeatures, lys_compile_iffeature (nodes, enums/bits, annotations), lysc_iffeature_value | compile.nodeCtx.iffeatures, compile.nodeCtx.iffValue, compile.iffTokens | ported | compile/iff-* | errors at the compile path; lookup right to left, processing error after it (D-0036) |
+| src/schema_features.c | lysp_feature_find | compile.Context.feature | partial | compile/iff-* | enabled flag from schema.Module.Features until #40 (C1b) keeps it on the parsed features |
+| src/schema_compile.c | lys_compile_unres_check_disabled, P6 disabled-node loop | compile.Context.removeDisabled, compile.Context.checkDisabled | ported | compile/list-key-iffeature-disabled, compile/iff-disabled-nodes-removed | called by the node-walk tests until the P6 loop (C7) |
+| src/tree_schema_free.c | lysc_node_free (unlink part) | compile.unlink | ported | compile/iff-disabled-nodes-removed, compile/obsolete-removed | |
+| src/schema_compile.c | lys_compile_ext, COMPILE_EXTS_GOTO | compile.nodeCtx.compileExt, compile.nodeCtx.compileExts | ported | compile/ext-instance-*, compile/errpath-ext-inst | empty-but-present exts array kept (ext/nacm-placement-warning); must/when instances compile to nothing observable |
+| src/tree_schema.c | lysp_resolve_ext_instance_records (parse callback loop) | compile.Context.parseExtPlugins | ported | compile/ext-annotation-*, compile/ext-nacm-* | LY_ENOT removal swaps in the last instance |
+| src/plugins_exts/metadata.c | annotation_parse, annotation_compile | compile.annotationParse, compile.annotationCompile | ported | compile/ext-annotation-*, compile/errpath-ext-inst | substatement keyword/duplicate checks (lyplg_ext_parse_extension_instance) without a fixture |
+| src/plugins_exts/nacm.c | nacm_parse, nacm_compile, nacm_inherit_clb | compile.nacmParse, compile.nacmCompile | ported | compile/ext-nacm-* | |
+| src/plugins.c | lyplg_ext_plugin_find (ported ext plugins) | compile.pluginOf | ported | compile/ext-* | |
+| src/schema_compile.c | lys_compile_unres_mod | compile.nodeCtx.unresMod | partial | internal/compile TestUnresMod | augments: C6 passes ctx->augs; deviations: M2 (U-0020) |

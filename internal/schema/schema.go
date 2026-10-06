@@ -453,4 +453,5 @@ type ExtInstance struct {
 	Name     string  // extension name in Def
 	Argument string
 	Exts     []*ExtInstance // nested instances
+	Type     *Type          // ietf-yang-metadata annotation: the compiled type of the metadata value
 }

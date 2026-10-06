@@ -39,16 +39,26 @@ func mapFS(files map[string]string) fs.FS {
 	return fsys
 }
 
-// load parses name with the loader and compiles its data nodes. loadErr reports a parse-phase
-// failure; diags are the compile diagnostics only.
+// load parses name with the loader and compiles its data nodes, then removes the disabled ones
+// (P6 step j). loadErr reports a parse-phase failure; diags are the compile diagnostics only.
 func (h *nodeHarness) load(name string) (mod *schema.Module, diags []Diagnostic, loadErr, err error) {
-	m, _, loadErr := h.c.Load(name, "", nil)
+	mod, _, diags, loadErr, err = h.loadFeatures(name, nil)
+	return mod, diags, loadErr, err
+}
+
+// loadFeatures is load with the module's features (Load's argument) that also returns the
+// parse-phase diagnostics.
+func (h *nodeHarness) loadFeatures(name string, features []string) (mod *schema.Module, loadDiags, diags []Diagnostic,
+	loadErr, err error) {
+	m, loadDiags, loadErr := h.c.Load(name, "", features)
 	if loadErr != nil {
-		return nil, nil, loadErr, nil
+		return nil, loadDiags, nil, loadErr, nil
 	}
 	h.c.diags = nil
-	err = h.c.compileNodes(m, m.mod)
-	return m.mod, h.c.diags, nil, err
+	if err = h.c.compileNodes(m, m.mod); err == nil {
+		err = h.c.removeDisabled()
+	}
+	return m.mod, loadDiags, h.c.diags, nil, err
 }
 
 // augmented reports whether a module outside libyang's internal ones has an augment.
@@ -80,6 +90,13 @@ type gNode struct {
 	Min       *uint32  `json:"min_elements"`
 	Max       *uint32  `json:"max_elements"`
 	Defaults  []string `json:"defaults"` // choice only here (leaf defaults are unres, C7)
+	Exts      *[]gExt  `json:"extensions"`
+}
+
+type gExt struct {
+	Module   string  `json:"module"`
+	Name     string  `json:"name"`
+	Argument *string `json:"argument"`
 }
 
 var oracleKinds = map[schema.Kind]string{
@@ -135,6 +152,17 @@ func dumpTree(m *schema.Module) []gNode {
 		if n.DefaultCase != nil {
 			g.Defaults = []string{n.DefaultCase.Name}
 		}
+		if n.Exts != nil {
+			exts := []gExt{}
+			for _, e := range n.Exts {
+				x := gExt{Module: e.Def.Name, Name: e.Name}
+				if e.Argument != "" {
+					x.Argument = &e.Argument
+				}
+				exts = append(exts, x)
+			}
+			g.Exts = &exts
+		}
 		out = append(out, g)
 		for _, a := range n.Actions {
 			dfs(a)
@@ -163,11 +191,19 @@ var c4aMessages = []string{
 	"List's key must not have", "Unique's descendant-schema-nodeid", "Unique statement ",
 	"Invalid descendant-schema-nodeid", "Default case ", "Mandatory node \"", "Invalid mandatory choice",
 	"Leaf-list of type \"empty\"",
+	// design 06 C4b
+	"Invalid value \"", "A current definition ", "A deprecated definition ", "Key \"", "Referenced type ",
 }
 
+// c4bParseMessages are the parse-phase errors and warnings of the ported extension plugins
+// (design 06 C4b); other parse-phase failures are the loader's.
+var c4bParseMessages = []string{"Ext plugin "}
+
 type manifestEntry struct {
-	modules []string
-	skip    string // why the request is outside this harness
+	modules         []string
+	features        map[string][]string // per module, as requested
+	compileObsolete bool                // context option compile_obsolete
+	skip            string              // why the request is outside this harness
 }
 
 // compileManifest reads the request of every fixture in dir compile from manifest.yaml (a line
@@ -190,6 +226,8 @@ func compileManifest(t *testing.T) map[string]manifestEntry {
 			cur, inCompile = manifestEntry{}, false
 		case l == "dir: compile":
 			inCompile = true
+		case l == `context_options: ["compile_obsolete"]`:
+			cur.compileObsolete = true
 		case strings.HasPrefix(l, "context_options:") && l != "context_options: []":
 			cur.skip = "context options"
 		case strings.HasPrefix(l, "modules:"):
@@ -198,11 +236,21 @@ func compileManifest(t *testing.T) map[string]manifestEntry {
 				cur.skip = "modules: " + err.Error()
 				continue
 			}
+			cur.features = map[string][]string{}
 			for _, m := range mods {
-				if len(m) != 1 {
-					cur.skip = "module revision/features"
-				}
 				name, _ := m["name"].(string)
+				for k, v := range m {
+					switch fs, _ := v.([]any); {
+					case k == "features":
+						cur.features[name] = []string{}
+						for _, f := range fs {
+							s, _ := f.(string)
+							cur.features[name] = append(cur.features[name], s)
+						}
+					case k != "name":
+						cur.skip = "module " + k
+					}
+				}
 				cur.modules = append(cur.modules, name)
 			}
 		case strings.HasPrefix(l, "golden:") && inCompile:
@@ -254,19 +302,42 @@ func TestNodeGoldens(t *testing.T) {
 				t.Fatal(err)
 			}
 			schemas := os.DirFS(filepath.Join(dir, "schemas"))
-			pre := newNodeHarness(t, Options{}, schemas)
+			opts := Options{CompileObsolete: req.compileObsolete}
+			pre := newNodeHarness(t, opts, schemas)
 			for _, gm := range g.Modules {
 				_, _, _ = pre.c.Load(gm.Name, "", nil)
 			}
 			if pre.augmented() {
 				t.Skip("augments are applied by design 06 C6")
 			}
-			h := newNodeHarness(t, Options{}, schemas)
+			h := newNodeHarness(t, opts, schemas)
 			for _, gm := range g.Modules {
-				mod, diags, loadErr, err := h.load(gm.Name)
+				mod, loadDiags, diags, loadErr, err := h.loadFeatures(gm.Name, req.features[gm.Name])
+				if !gm.Accepted && gm.Phase == "parse" && len(gm.Diagnostics) > 0 &&
+					matchesAny(gm.Diagnostics[0].Msg, c4bParseMessages) {
+					var got []goldenDiag
+					for _, d := range loadDiags {
+						got = append(got, d.golden())
+					}
+					if loadErr == nil || !reflect.DeepEqual(got, gm.Diagnostics) {
+						t.Fatalf("%s: got %v %+v\nwant %+v", gm.Name, loadErr, got, gm.Diagnostics)
+					}
+					ran++
+					return
+				}
 				switch {
 				case loadErr != nil && !gm.Accepted && gm.Phase == "parse":
 					return // the parse phase is C1a's
+				case loadErr != nil && !gm.Accepted && gm.Phase == "compile":
+					var got []goldenDiag
+					for _, d := range loadDiags {
+						got = append(got, d.golden())
+					}
+					if !reflect.DeepEqual(got, gm.Diagnostics) { // a dep-set check of Load (design 06 C1b)
+						t.Fatalf("%s: got %v %+v\nwant %+v", gm.Name, loadErr, got, gm.Diagnostics)
+					}
+					ran++
+					return
 				case errors.Is(loadErr, ErrUnsupported):
 					t.Skip(loadErr) // U-0020, U-0023…U-0025: engine-only
 				case loadErr != nil:
@@ -288,6 +359,9 @@ func TestNodeGoldens(t *testing.T) {
 					if !matchesAny(want[0].Msg, c4aMessages) || strings.Contains(want[0].SchemaPath, "{grouping=") {
 						t.Skipf("first error is a later PR's: %s", want[0].Msg)
 					}
+					if err == nil && matchesAny(want[0].Msg, []string{"A current definition ", "A deprecated definition "}) {
+						t.Skipf("status check of a later PR (leafref targets are unres, C7): %s", want[0].Msg)
+					}
 					var got []goldenDiag
 					for _, d := range diags {
 						d.Phase = "compile"
@@ -301,6 +375,20 @@ func TestNodeGoldens(t *testing.T) {
 				}
 				if err != nil {
 					t.Fatalf("%s: %v %+v, golden accepted", gm.Name, err, diags)
+				}
+				var gotW, wantW []goldenDiag
+				for _, d := range append(loadDiags, diags...) {
+					if d.Level == LevelWarning && matchesAny(d.Msg, c4bParseMessages) {
+						gotW = append(gotW, d.golden())
+					}
+				}
+				for _, d := range gm.Diagnostics {
+					if d.Level == "warning" && matchesAny(d.Msg, c4bParseMessages) {
+						wantW = append(wantW, d)
+					}
+				}
+				if !reflect.DeepEqual(gotW, wantW) {
+					t.Fatalf("%s: plugin warnings %+v\nwant %+v", gm.Name, gotW, wantW)
 				}
 				if gm.Tree == nil {
 					continue // no schema dump in this request

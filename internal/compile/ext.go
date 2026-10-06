@@ -17,7 +17,7 @@ import (
 // parser contexts were merged) is bound to its definition
 // (lysp_ext_find_definition) and its argument checked
 // (lysp_ext_instance_resolve_argument). Errors carry libyang's
-// lysp_ext_instance_path and no line. Plugin parse callbacks are C1b's.
+// lysp_ext_instance_path and no line.
 func (c *Context) resolveExts(p *pctx) error {
 	pms := []*pmod{&p.main.pmod}
 	for _, s := range p.done {
@@ -64,7 +64,10 @@ func (c *Context) resolveExts(p *pctx) error {
 	}
 	// the second loop of lysp_resolve_ext_instance_records: plugin parse
 	// callbacks (annotation and NACM are design 06 C4b's)
-	return unsupported
+	if unsupported != nil {
+		return unsupported
+	}
+	return c.parseExtPlugins(p, pms)
 }
 
 // unsupportedPlugins are the libyang extension plugins (plugins.c) that are
