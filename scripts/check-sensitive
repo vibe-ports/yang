@@ -22,9 +22,10 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 mode=${1:---staged}; [[ $# -gt 0 ]] && shift
 
-# Generic rules (safe to publish). /home/dev (container user) and /home/runner (GitHub runners) are allowed.
+# Generic rules (safe to publish). The macOS home prefix /Users is matched case-sensitively, so a
+# lowercase "users" node in YANG data paths ("grup/users/name", issue #59) is not a hit. /home/dev (container user) and /home/runner (GitHub runners) are allowed.
 generic=$(printf '%s\n' \
-  '/Users/[\w.-]+' \
+  '(?-i:/Users)/[\w.-]+' \
   '/home/(?!dev\b|runner\b)[a-z][\w-]*' \
   '/private/tmp/|/var/folders/') # sensitive:allow (rule definitions)
 

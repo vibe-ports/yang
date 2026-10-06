@@ -43,6 +43,12 @@ echo 'see /Users/someone # sensitive:allow' >"$r/a.txt"; git -C "$r" add a.txt
 expect 0 "cs: inline marker waives a generic rule" - cs --staged
 echo 'see /Us''ers/someone' >"$r/a.txt"; git -C "$r" add a.txt  # split so this file stays clean
 expect 1 "cs: generic rule" "^a\.txt:1$" cs --staged
+echo 'at /System/Volumes/Data/Us''ers/someone' >"$r/a.txt"; git -C "$r" add a.txt
+expect 1 "cs: generic rule inside a longer path" "^a\.txt:1$" cs --staged
+echo '"path": "/T2:grup/us''ers/name"' >"$r/a.txt"; git -C "$r" add a.txt
+expect 0 "cs: a lowercase users segment inside a YANG path is not a home path" - cs --staged
+echo 'see /us''ers/someone' >"$r/a.txt"; git -C "$r" add a.txt
+expect 0 "cs: lowercase /users is not the macOS home prefix" - cs --staged
 echo clean >"$r/a.txt"; echo zorkhost >"$t/outside"; ln -s ../outside "$r/link"; git -C "$r" add a.txt link
 expect 0 "cs: symlink target is not followed" - cs --all
 git -C "$r" rm -q --cached link; rm "$r/link"
