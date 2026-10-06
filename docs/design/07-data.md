@@ -24,8 +24,8 @@ extension data (`LYD_EXT`), LYB, RESTCONF/NETCONF envelopes, full diff/merge opt
 1. **Parse and validate are interleaved, as in libyang.** `lyd_parse` (TD:101) does not parse a tree
    and then validate it: while parsing, every inner node is validated when it closes
    (`lyd_parser_validate_new_implicit`, PC:346: new-node checks + its implicit defaults — **only if
-   no error occurred inside that node**, `!rc` at PJ:1427 and the XML twin; under multi-error a bad
-   child therefore suppresses its parent's duplicate checks and implicit defaults, so a must reading
+   no error occurred inside that node**, `!rc` at PJ:1427 and the XML twin; the node's own missing-key
+   error counts too; under multi-error a bad child or key therefore suppresses its parent's duplicate checks and implicit defaults, so a must reading
    such a default later fails), and the
    parser collects the `when`, type and metadata work queues (`node_when`, `node_types`,
    `meta_types`) in parse order; `lyd_validate` (VAL:2106) then runs with `validate_subtree = 0` on
@@ -45,11 +45,13 @@ extension data (`LYD_EXT`), LYB, RESTCONF/NETCONF envelopes, full diff/merge opt
    exponent rewrite in `lyjson_exp_number`, JS:448), XML namespace scoping per element, the refusal of
    DOCTYPE and non-predefined entities (XM:323, XM:509) and libyang's nesting limits are all part of
    the observable behaviour. Port `json.c` and `xml.c`.
-4. **Internal core, thin public API.** The core takes `*schema.Set` (internal), so every PR below
-   is testable with hand-built `schema.Node`s that follow the invariants of design 06 §4. The
-   exported entry points take the public `*yang.Context` snapshot (C8) — an internal type in an
-   exported signature cannot be named by callers. `data` → `yang` is acyclic (`yang` never imports
-   `data`; the yang-library builder of M6 lives in `data`).
+4. **Schema snapshot, not a live context** (lead default, maintainer may revisit). `(*yang.Context)
+   .Schema()` returns `*yang.Schema`, an immutable snapshot handle; `yang.Schema` is an alias of
+   `schema.Set` (design 05 re-exports the schema types through aliases), so `data` uses it directly
+   and every PR is testable with hand-built `schema.Node`s that follow design 06 §4. A `Tree` pins
+   the snapshot it was parsed with; a later `Load` does not affect it. libyang trees use the live
+   `LYD_CTX` instead — **U-0045**. `data` → `yang` is acyclic (`yang` never imports `data`; the
+   yang-library builder of M6 lives in `data`). Design 05's graph/API line is amended accordingly.
 
 ## 1. libyang flow
 
@@ -120,7 +122,15 @@ subset:
 3. `lyd_validate_unres` (VAL:530): extension data (none in M1) → `when` queue (§1.6) → `node_types`
    **from the end** (`lyd_value_validate_incomplete` = `types.ValidateTree`) → `meta_types` from the
    end. PROBED: three dangling leafrefs in document order eth1, eth0, eth2 report eth2, eth0, eth1
-   (reverse parse order, not sorted order);
+   (reverse parse order, not sorted order). **The queues are not per module on the Parse path**:
+   `lyd_parse` hands the parser's shared queues to `lyd_validate` (TD:163), so the unres of the
+   *first* module in the traversal (context order: an internal module) drains them for every module —
+   all parse-time `when`/leafref/metadata errors come out in global reverse parse order, *before* the
+   top-level `lyd_validate_new` (duplicates, both-cases) of every later module. Probe (reviewer,
+   modules `za`, `aa`; input `aa:r, za:r, za:ll[d,d], aa:ll[e,e], za:w`): when `za:w` → leafref
+   `za:r` → leafref `aa:r` → dup `za` ×2 → dup `aa` ×2; with `present` (tree order) dup `aa` ×2 come
+   first. Only `Validate` (`lyd_validate_all`, own queues filled by `lyd_validate_tree` per module)
+   drains per module;
 4. after all modules, unless `LYD_VALIDATE_NOT_FINAL`: `lyd_validate_final_r` (VAL:1798) per module:
    for each sibling: unexpected state / output / input / rpc / action / notification
    (`Unexpected data %s node "%s" found.`), skip `WhenFalse` nodes, obsolete warning
@@ -128,7 +138,11 @@ subset:
    `lyd_validate_siblings_schema_r` (VAL:1597): choices (mandatory choice; recurse into the existing
    case only), then schema siblings in `lys_getnext` order: list min/max + unique, leaf-list min/max,
    mandatory leaf/container/any; then recurse into each child and `lyd_np_cont_dflt_set`. PROBED:
-   musts follow tree (sorted) order, then the mandatory error of a later sibling.
+   musts follow tree (sorted) order, then the mandatory error of a later sibling. A tree of only
+   top-level opaque nodes reports `lyd_parse_opaq_error` (TDC:859) **once per implemented module**:
+   `lyd_first_module_sibling` finds no data of the module and the walk starts at the opaque node again
+   (reviewer probe: `{"zz:x":1}` with `unknown: opaque`, config → 8 identical LYVE_REFERENCE errors;
+   once schema data exists, 1) — D-0057 candidate.
 
 **1.6 `when`.** Queue = `node_when`: parse post-order plus implicit nodes in creation order.
 `lyd_validate_unres_when` (VAL:462) walks it **from the end**, per node `lyd_validate_node_when`
@@ -212,6 +226,9 @@ TDC `lyd_np_cont_dflt_*`), `validate.go` + `when.go` (VAL), `xpathnode.go` (adap
 
 **Node** = design 02, children as an ordered slice. Flags `Default`, `WhenTrue`, `New`, and
 **`WhenFalse`** (libyang 5.8.6 `LYD_WHEN_FALSE` 0x10, VAL:408 — design 02 is amended in this PR).
+Only XPath (absent) and `lyd_validate_final_r` (no musts, no obsolete warning, no recursion into it,
+no NP-container default flag) honour `WhenFalse`; mandatory/min/max/unique of its siblings still
+count the node. It is cleared only when its `when` is re-evaluated true.
 `xpath.Node.When()` = `WhenFalse` if flagged; `WhenUnresolved` if the node or a choice/case ancestor
 has a `when` (`lysc_has_when`) and neither flag is set; else `WhenTrue` — the same test as
 xpath.c:5863/6378 (the context node itself is exempt there, handled by xpath). Values are
@@ -226,19 +243,18 @@ use a lazily built per-parent index keyed by schema node and canonical key text,
 type Format uint8                 // FormatJSON, FormatXML
 type UnknownPolicy uint8          // Reject (LYD_PARSE_STRICT), Skip, Opaque (LYD_PARSE_OPAQ)
 type ParseOptions struct {
-    Unknown                                    UnknownPolicy
-    ParseOnly, NoState, Ordered, WhenTrue      bool // LYD_PARSE_ONLY/NO_STATE/ORDERED/WHEN_TRUE
-    StoreOnly, JSONNull, JSONStringDatatypes   bool
-    Validate                                   ValidateOptions // ignored with ParseOnly
-    Budget                                     Budget
+    Unknown   UnknownPolicy
+    ParseOnly bool            // LYD_PARSE_ONLY
+    NoState   bool            // LYD_PARSE_NO_STATE (+ LYD_VALIDATE_NO_STATE for the validation part)
+    Validate  ValidateOptions // ignored with ParseOnly
+    Budget    Budget
 }
 type ValidateOptions struct {
-    NoState, Present, MultiError, Operational, NoDefaults, NotFinal bool // LYD_VALIDATE_*
-    Ctx context.Context // cancellation, checked every 1k nodes / XPath evaluations
+    NoState, Present, MultiError, Operational, NoDefaults bool // LYD_VALIDATE_*
 }
-func Parse(r io.Reader, f Format, ctx *yang.Context, o ParseOptions) (*Tree, Diagnostics, error)
-func (t *Tree) Validate(o ValidateOptions) (Diagnostics, error)
-func (t *Tree) ValidateDiff(o ValidateOptions) (diff *Tree, d Diagnostics, err error) // lyd_validate_all's diff
+func Parse(ctx context.Context, r io.Reader, f Format, s *yang.Schema, o ParseOptions) (*Tree, []yang.Diagnostic, error)
+func (t *Tree) Validate(ctx context.Context, o ValidateOptions) ([]yang.Diagnostic, error)
+func (t *Tree) ValidateDiff(ctx context.Context, o ValidateOptions) (diff *Tree, d []yang.Diagnostic, err error) // lyd_validate_all's diff
 func (t *Tree) Print(w io.Writer, f Format, o PrintOptions) error // PrintOptions{WithDefaults WD; Shrink bool}
 func (t *Tree) NewPath(path, value string, o NewPathOptions) (*Node, error) // o.Update
 func (t *Tree) Find(path string) (*Node, error)
@@ -247,13 +263,20 @@ func (t *Tree) Merge(src *Tree) error
 func (t *Tree) Top() iter.Seq[*Node]   // + Node: Schema(), Value(), Children(), Parent(), Path(), flags
 ```
 `ValidateDiff` is the second Validate method because the implicit diff is libyang's out-parameter
-(the oracle and NETCONF servers need it); PLAN §2's `Validate` signature stays. `ParseOptions` mirrors
-the oracle's `parse_options`/`unknown` knobs one-to-one so the M1-7 adapter is a table. The internal
-twins (`parse(r, f, set *schema.Set, o)`) are what the PRs and their tests use until C8 lands.
+(the oracle and NETCONF servers need it); PLAN §2's `Validate` shape stays, with `context.Context` as
+the first parameter (cancellation checked every 1k nodes and between XPath evaluations), never in an
+options struct (lead default, maintainer may revisit). Exported knobs are only those the M1 fixtures
+use (`unknown`, `parse_only`, the `data_type` presets = NoState/Operational, the oracle's
+MultiError, and NoDefaults/Present for §5's fixtures); `LYD_PARSE_ORDERED`, `WHEN_TRUE`,
+`STORE_ONLY`, `JSON_NULL`, `JSON_STRING_DATATYPES`, `LYD_VALIDATE_NOT_FINAL` exist internally where
+the port needs them and are exported later, when a fixture or user asks. The PRs and their tests call
+the same functions with hand-built `*schema.Set` values (= `*yang.Schema`, §0.4).
 
-**Diagnostics** (PLAN §2): `Diagnostic{Warning bool; Err string /* LY_ERR name */; Code ly.Code;
-DataPath, SchemaPath string; Line int; AppTag, Msg string}`; `error` is nil when only warnings were
-produced, else `*ValidationError{Diags}`, or an error wrapping `ErrBudget` / `ctx.Err()`. `Err` is
+**Diagnostics** (PLAN §2): reuse `yang.Diagnostic` as shipped (`Warning bool; Err, Code string`
+— LY_ERR and LY_VECODE names — plus the path/line/message fields; this stream adds `DataPath` and
+`AppTag` to it, additive) and the single `yang.ErrBudget` (lead default, maintainer may revisit);
+`internal/ly.Code` stays internal. `error` is nil when only warnings were produced, else
+`*ValidationError{Diags}`, or an error wrapping `yang.ErrBudget` / `ctx.Err()`. `Err` is
 `LY_EVALID` for LOGVAL sites, `LY_EINVAL` for the depth limits and the key refusal (LOGERR, code
 `LYVE_SUCCESS`), `LY_EINCOMPLETE` for `Must "%s" depends on a node with a when condition, which has
 not been evaluated.` (VAL:1749), `LY_EINT` for the dummy-when case (§1.6). Line numbers come from the
@@ -292,26 +315,33 @@ leafref/instance-identifier require-instance, missing keys, both cases, unknown 
 
 **3.3 Order under multi-error** — the contract the fixtures pin:
 1. parse, document order: per node on store/representation errors; per inner node at its close:
-   missing key, then — only if nothing inside it failed — `lyd_validate_new` of its children
-   (both-cases, duplicates) and its implicit defaults;
-2. per implemented module in context order: top-level `lyd_validate_new`, then `when` queue errors
-   (queue end first), then type `ValidateTree` errors (reverse parse order, PROBED), then metadata;
+   missing key, then — only if nothing inside it failed, the missing key included (`!rc`, PJ:1427) —
+   `lyd_validate_new` of its children (both-cases, duplicates) and its implicit defaults;
+2. **Parse path**: modules in traversal order (context order; `Present`: tree order). The first
+   module's top-level `lyd_validate_new`, then the shared queues drained once for all modules: `when`
+   errors (queue end first), type `ValidateTree` errors (global reverse parse order, PROBED), metadata;
+   then each later module's top-level `lyd_validate_new` (its queues are empty by then).
+   **Validate path**: per module: top-level `lyd_validate_new`, its `lyd_validate_tree`, then its own
+   `when` / type / metadata queues;
 3. per module: `lyd_validate_final_r` — unexpected nodes and musts per sibling in tree order, then
    that sibling set's choice/min/max/unique/mandatory, then children depth-first.
 Single-error mode stops at the first item of this sequence.
 
-## 4. Budgets for untrusted input (`data.Budget`, zero = default; exceeding → error wrapping `ErrBudget`)
+## 4. Budgets for untrusted input (`data.Budget`, zero = default; exceeding → error wrapping `yang.ErrBudget`)
 
 - **Nesting**: XML 500 open elements (`LY_MAX_BLOCK_DEPTH`, XM:730, `The maximum number of open
-  elements has been exceeded.` LY_EINVAL) and JSON 5000 nested values (JS:905, `Maximum number %d of
-  nestings has been exceeded.`): libyang's own limits, ported, no deviation. Parser recursion is
+  elements has been exceeded.` LY_EINVAL) and the JSON lexer's status stack (JS:905: count > 5000,
+  `Maximum number %d of nestings has been exceeded.`; reviewer probe: 4998 nested values pass, 4999
+  fail — boundary pinned by depth/json-5000 and its 4998 control): libyang's own limits, ported, no deviation. Parser recursion is
   therefore bounded; validation recursion follows tree depth, which is bounded by the input or, for
   API-built trees, by the schema depth.
 - **Input size** `MaxBytes` (default 256 MiB, read through `io.LimitReader` + 1) — **U-0040**.
 - **Nodes** `MaxNodes` per tree incl. implicit nodes (default 1<<22) — **U-0041**.
 - **XPath work**: per evaluation `xpath.DefaultMaxSteps`; per `Parse`/`Validate` a cumulative
-  `MaxXPathSteps` (default 1<<32) because the `when` queue may repeat passes (O(n²) evaluations) and
-  every node may carry musts — **U-0042**; `ValidateOptions.Ctx` checked between evaluations.
+  `MaxXPathSteps int64` (default 1<<30, < 2^31) because the `when` queue may repeat passes (O(n²)
+  evaluations) and every node may carry musts — **U-0042**. Needs a small xpath addition: `Eval`
+  reports the steps it consumed (task X1). Exceeding either budget **aborts** with an error wrapping
+  `yang.ErrBudget`; it is never turned into a must/when diagnostic. `ctx` checked between evaluations.
 - **Values**: lexemes are bounded by `MaxBytes`; pattern/union cost is `types`' budget.
 - **Ordering**: sibling order must be libyang's whenever anything reads it — JSON metadata
   attachment (`lydjson_parse_attribute` PJ:1166 and `lydjson_metadata_finish` PJ:583 attach `@ll` entries by position to the already
@@ -341,13 +371,14 @@ delete,union-member,choice-default-case,sequence-edits}, when/order-{a-after-b,b
 
 | area | fixtures |
 |---|---|
-| order (§3.3) | order/leafref-reverse (3 dangling leafrefs, PROBED), order/parse-unres-final (store error + must + mandatory in one input), order/module-context-order (modules loaded za then aa: errors in context order) + order/module-present (same with `present`: tree order), order/sorted-list +, order/sorted-leaflist +, order/sorted-leaflist-meta (reversed values with distinct annotations, `@ll` before and after the values), order/user-ordered-kept +, order/toplevel-module-sort +, order/sorted-dup (VERIFY) |
+| order (§3.3) | order/leafref-reverse (3 dangling leafrefs, PROBED), order/parse-cross-module (`aa:r, za:r, za:ll[d,d], aa:ll[e,e], za:w`: when, leafrefs, then dups — Parse path) + order/parse-cross-module-present + order/validate-cross-module (same input parse-only, then Validate: per-module order), order/parse-unres-final (store error + must + mandatory in one input), order/module-context-order (modules loaded za then aa: errors in context order) + order/module-present (same with `present`: tree order), order/sorted-list +, order/sorted-leaflist +, order/sorted-leaflist-meta (reversed values with distinct annotations, `@ll` before and after the values), order/user-ordered-kept +, order/toplevel-module-sort +, order/sorted-dup (VERIFY) |
 | parse/validate interplay (§0) | interplay/inner-close-guard (invalid child + duplicate siblings + a default + a must reading it), interplay/repr-then-mandatory (container given as a JSON number, then a missing mandatory leaf), dflt/no-defaults-parse vs dflt/no-defaults-parse-only-validate (JSON + XML), lref/shared-type-mixed (one valid, one dangling reference of one type, both input orders) |
 | when (§1.6) | when/implicit-default-false + (silently removed), when/explicit-false (error), when/dummy-mandatory + (mandatory under false when), when/false-subtree-no-cascade (dangling leafref below a false-when node: one error), when/oper-warning |
 | defaults (§1.8) | dflt/np-container-flags +, dflt/leaflist-replaced-by-explicit +, dflt/case-default-removed (sequence), dflt/no-defaults-option + |
 | choice/dup (§1.7) | choice/old-case-autodelete (sequence), dup/leaflist-config, dup/oper-leaflist-warning, dup/keyless-allowed + |
 | final (§1.5) | mand/top-level (schema path only), mand/choice (missing-choice), minmax/too-few, minmax/too-many (path of last instance), unique/violation, unique/default-participates, state/no-state-config (parse-time), oper/must-warning, oper/leafref-still-error |
-| codecs | json/representation, json/unqualified-top, json/exp-number, json/empty-null +, json/string-escapes + (print), xml/doctype, xml/entity, xml/cdata +, xml/unknown-namespace, xml/whitespace-string + (vs empty string), xml/keys-out-of-order (reject: LYVE_DATA), xml/keys-out-of-order-skip + (warning), json/keys-out-of-order +, depth/xml-500, depth/json-5000 |
+| codecs | json/representation, json/unqualified-top, json/exp-number, json/empty-null +, json/string-escapes + (print), xml/doctype, xml/entity, xml/cdata +, xml/unknown-namespace, xml/whitespace-string + (vs empty string), xml/keys-out-of-order (reject: LYVE_DATA), xml/keys-out-of-order-skip + (warning), json/keys-out-of-order +, depth/xml-500, depth/json-5000 (4999 nested: fail) + depth/json-4998 + |
+| opaque | opaque/toplevel-only (8× the same error, D-0057), opaque/toplevel-with-data (1×) |
 | paths (§1.10) | path/key-with-apostrophe, path/keyless-position, path/state-leaflist-position |
 | print (§1.9) | print/wd-trim, print/wd-all-tagged-xml, print/wd-explicit-state-in-default-container, print/xml-identityref-prefix |
 | edits (§1.11) | seq/new-path-clears-default, seq/free-key-refused (exists in sequence-edits), seq/merge-basic |
@@ -374,49 +405,57 @@ a fixture with `assert` (extractor, inventory §5.4).
 
 ## 7. Deviation candidates (D-0050…D-0069, U-0040…U-0059)
 
-Recorded in `conformance/deviations.md` by the PR that implements the behaviour, as for 06.
+Recorded in `conformance/deviations.md` by the PR that implements the behaviour, as for 06. Existing
+entries owned by this stream: **D-0001** (candidate: `when` reading a top-level default) and
+**D-0047** (candidate: data `when` evaluation order, design 03 rule 5) — D9 resolves or keeps them.
 | id | behaviour (mirrored unless stated) | RFC |
 |---|---|---|
 | D-0050 (candidate) | both members of a duplicate pair are reported (two identical errors) | RFC 7950 §7.8.3 |
 | D-0051 (candidate) | error path of a list with missing/invalid keys omits its ancestors (`/ietf-ip:address/ip`) | RFC 6241 §4.3 error-path |
 | D-0052 (candidate) | a key value containing both quote kinds yields an unparsable path predicate | RFC 7950 §9.13.2 |
-| D-0053 (candidate) | require-instance errors in reverse parse order | — (order unspecified) |
+| D-0053 (candidate) | Parse path: when/require-instance/metadata errors of **all** modules in one global reverse parse order, before later modules' top-level duplicate/case errors (§3.3) | — (order unspecified) |
 | D-0054 (candidate) | JSON numbers with exponent accepted for integer/decimal types after `lyjson_exp_number` rewriting | RFC 7951 §6.1 |
 | D-0055 (candidate) | dummy-when: an unresolvable `when` on an absent mandatory node skips the check under multi-error but is `LY_EINT` otherwise | RFC 7950 §7.21.5 |
 | D-0056 (candidate) | a must reaching a node left unresolved after a when error fails with `LY_EINCOMPLETE` (LOGERR, no vecode) | — |
+| D-0057 (candidate) | a tree of only top-level opaque nodes reports the opaque error once per implemented module | — |
 | U-0040 | input size budget | libyang reads anything |
 | U-0041 | node-count budget | — |
 | U-0042 | cumulative XPath step budget per Parse/Validate | — |
 | U-0043 | anydata/anyxml instances → `ErrUnsupported` until M5 | — |
 | U-0044 | engine: operation `data_type`s unsupported until M4 | — |
+| U-0045 | a `Tree` pins the schema snapshot it was parsed with; libyang trees see the live context (`LYD_CTX`) | — |
 
 ## 8. Task split (≤ ~1.5k Go lines incl. tests; own branch + PR + astra review)
 
 None of the code PRs needs the compiler: tests build `schema.Node`/`Type`/`Must`/`When` by hand
-(must/when via `xpath.Compile`, leafref `Path`/`Prefixes`/`Realtype` per design 06 §4 invariants).
-What needs compile (C7 for unres invariants, C8 for the public `yang.Context`) is the **public
-wrapper** and **oracle agreement on m1**, which is the gate of D12 and M1-7.
+(must/when via `xpath.Compile`, leafref `Path`/`Prefixes`/`Realtype` per design 06 §4 invariants),
+plus lexer/parser corpora. **Oracle agreement** (the `get` and all other data fixtures) needs compiled
+m1 schemas (C7) and the `yang.Schema` snapshot (C8): it is the gate of D12 and M1-7, not of D5/D6.
 
 | # | PR | ~LOC | Depends | Start | Worker |
 |---|---|---|---|---|---|
-| D0 | types additions: `Print(v, f, prefix-ctx)` (plugin print for XML/JSON prefixes, `prefix_data` capture for XML namespaces), `Validate(t, v)` (= `validate_value` restriction re-check), default store helper | 400 | #17 | now | Sonnet |
-| D1 | tree core: Node/Tree/flags, insertion (schema order, top-level module order, sorted system-ordered, opaque last), unlink/free + key refusal, `lyd_path`, sibling index, iterators, `diag.go` (Diagnostic, location stack, path builder §1.10) | 1.4k | schema C0 | now | Opus |
-| D2 | XML lexer (`xml.c`): elements, attributes, ns stack, values/entities/CDATA, DOCTYPE refusal, depth 500, lines, backup/restore + fuzz | 1.2k | — | now | Sonnet |
-| D3 | JSON lexer (`json.c`): status machine, strings/UTF-8, numbers incl. exp rewrite, depth 5000, backup/restore + fuzz | 1.0k | — | now | Sonnet |
-| D4 | parser common (`lyd_parse` driver, lydctx queues, create_term/meta, check_schema, check_keys, node_insert, set_data_flags, opaque + `lyd_parse_opaq_error`, multi-error continuation, budgets MaxBytes/MaxNodes) with a `validateNewImplicit` hook (no-op until D8) | 0.9k | D1 | after D1 | Opus |
-| D5 | JSON data parser (PJ minus ops/any/ext) + parse-only oracle tests (`get` fixtures) | 1.1k | D3, D4 | after D4 | Sonnet |
-| D6 | XML data parser (PX minus ops/any/ext) + parse-only tests | 1.0k | D2, D4 | after D4 | Sonnet |
-| D7 | printers JSON + XML + with-defaults filter + metadata printing | 1.4k | D0, D1 | after D1 | Sonnet |
-| D8 | `lyd_new_implicit[_r]`, `lyd_validate_new` (cases, autodel, duplicates), `np_cont_dflt_*`, implicit diff (`lyd_val_diff_add`, create/delete subset of `lyd_diff_add`/`merge_all`) | 1.3k | D1 | after D1 | Opus |
-| D9 | xpath/types adapters, `when` queue + auto-delete + `WhenFalse`, dummy when, `node_types` resolution, musts | 1.2k | D8, xpath #16 | after D8 | Opus |
-| D10 | `lyd_validate` module loop, `lyd_validate_tree`, `final_r`, siblings-schema (mandatory/min/max/unique), operational severities, Validate/ValidateDiff, parse → validate wiring, `MaxXPathSteps`/ctx | 1.3k | D9, D5 or D6 | after D9 | Opus |
-| D11 | edits: NewPath(Update) over `internal/lyxp`, Find, Remove, Merge (no options) | 1.1k | D1, D8 (flags) | after D8 | Sonnet |
-| D12 | public wrappers over `*yang.Context`, doc.go, Examples, parse fuzz targets, round-trip property, race test | 0.6k | C8, D10, D11 | after C8 | Sonnet |
-| F | fixtures of §5 (oracle goldens, asserts) | — | — | now | codex sol |
+| S1 | `internal/schema` helpers, one home for all users: `lys_getnext` order (with/without choice, output), `lysc_path(LYSC_PATH_LOG)`, `lysc_data_parent`, `lysc_has_when`; `internal/types` copies switch to them (C4a told the same) | 400 | C0 #24 | **now** | Sonnet |
+| X1 | xpath: `Eval` reports steps consumed (for `MaxXPathSteps`) | 100 | #16 | **now** (on #16) | Sonnet |
+| D0 | types additions: `Print(v, f, prefix-ctx)` (plugin print for XML/JSON prefixes, `prefix_data` capture for XML namespaces), `Validate(t, v)` (= `validate_value` restriction re-check), default store helper | 400 | #17 | **now** | Sonnet |
+| D1 | tree core: Node/Tree/flags, insertion (schema order, top-level module order, sorted system-ordered, opaque last), unlink/free + key refusal, sibling index, iterators | 1.1k | C0, S1 | **now** (S1 in parallel) | Opus |
+| D1b | `lyd_path` (STD), diagnostics (`yang.Diagnostic` fill, `ValidationError`), `LOG_LOCSET` location stack, error-path builder §1.10 | 0.5k | D1, S1 | after D1 | Sonnet |
+| D2 | XML lexer (`xml.c`): elements, attributes, ns stack, values/entities/CDATA, DOCTYPE refusal, depth 500, lines, backup/restore + fuzz | 1.2k | — | **now** | Sonnet |
+| D3 | JSON lexer (`json.c`): status machine, strings/UTF-8, numbers incl. exp rewrite, status-stack limit 5000, backup/restore + fuzz | 1.0k | — | **now** | Sonnet |
+| D4 | parser common (`lyd_parse` driver, shared queues, create_term/meta, check_schema, check_keys, node_insert, set_data_flags, opaque + `lyd_parse_opaq_error`, multi-error continuation, `!rc` close guard, budgets MaxBytes/MaxNodes) with a `validateNewImplicit` hook (no-op until D8) | 0.9k | D1b, D0 | after D1b | Opus |
+| D5 | JSON data parser (PJ minus ops/any/ext), hand-built-schema tests + parser corpus | 1.1k | D3, D4 | after D4 | Sonnet |
+| D6 | XML data parser (PX minus ops/any/ext, key-position check), hand-built-schema tests + parser corpus | 1.0k | D2, D4 | after D4 | Sonnet |
+| D7 | printers JSON + XML + metadata printing | 1.1k | D0, D1b | after D1b | Sonnet |
+| D7b | with-defaults filter (`lyd_node_should_print`, `lyd_is_default`), tagged modes | 0.4k | D7 | after D7 | Sonnet |
+| D8 | `lyd_new_implicit[_r]`, `lyd_validate_new` (cases, autodel, duplicates), `np_cont_dflt_*`, implicit diff (`lyd_val_diff_add`, create/delete subset of `lyd_diff_add`/`merge_all`) | 1.3k | D1b, D0 | after D1b | Opus |
+| D9 | xpath/types adapters, `when` queue + auto-delete + `WhenFalse`, dummy when, `node_types` resolution (per-value leafref predicate), musts | 1.2k | D8, #16 | after D8 | Opus |
+| D10 | `lyd_validate` (Parse path shared queues vs Validate path per module, `Present` order), `lyd_validate_tree`, `final_r`, siblings-schema (mandatory/min/max/unique), operational severities, Validate/ValidateDiff, parse → validate wiring, `MaxXPathSteps` + ctx | 1.3k | D9, X1, D5 or D6 | after D9 | Opus |
+| D11 | edits: NewPath(Update) over `internal/lyxp`, Find, Remove, Merge (no options) | 1.1k | D1b, D8 (flags) | after D8 | Sonnet |
+| D12 | public API over `*yang.Schema` (+ `Context.Schema()` if C8 has not added it), doc.go, Examples, parse fuzz targets, round-trip property, race test; first oracle-agreement run | 0.6k | C8, D7b, D10, D11 | after C8 | Sonnet |
+| F | fixtures of §5 (oracle goldens, asserts) | — | — | **now** | codex sol |
 
-Sum ≈ 13.9k incl. tests (≈ 9k libyang C lines in scope × 0.75 + tests). Waves: **now** {D0, D1, D2,
-D3, F} → **after D1** {D4, D7, D8} → {D5, D6, D9, D11} → D10 → D12 (needs C8) → M1-7 adapter. Exit
-of M1-6: every listed existing fixture and §5 fixture agrees through M1-7 (or is a recorded
+Sum ≈ 14.7k incl. tests (≈ 9k libyang C lines in scope × 0.75 + tests). Waves: **now** {S1, X1, D0,
+D1, D2, D3, F} → D1b → {D4, D7, D8} → {D5, D6, D7b, D9, D11} → D10 → D12 (needs C8) → M1-7 adapter.
+Exit of M1-6: every listed existing fixture and §5 fixture agrees through M1-7 (or is a recorded
 deviation), including the `sequence` fixtures with flags and implicit diffs.
 
 ## Riskiest points (review focus)
@@ -427,7 +466,8 @@ deviation), including the `sequence` fixtures with flags and implicit diffs.
 5. Error paths of not-yet-linked lists and schema-only errors (§1.10).
 6. with-defaults filtering incl. default containers with state descendants (§1.9).
 7. Lexer fidelity (line numbers, exponent rewrite, entity/DOCTYPE refusal) vs fuzz-hardening.
-8. Phase-dependent details found by review: the `!rc` guard on inner-node close, exact
+8. Parse-path shared queues vs Validate-path per-module queues (§1.5, §3.3).
+9. Phase-dependent details found by review: the `!rc` guard on inner-node close, exact
    `LYVE_SYNTAX` stop, `NoDefaults` honoured only outside the parser's per-node close, `PRESENT`
    traversal order.
 
@@ -440,3 +480,14 @@ plugins_types.c:994); inner-node close validation guarded by `!rc` (§0.1, PJ:14
 `LYVE_SYNTAX` (§0.2, parser_internal.h:43, TD:151); `NoDefaults` not forwarded by the parser's close
 (§1.8, PC:367); `PRESENT` traverses modules in tree order (§1.5, VAL:2130); XML key position is
 checked (STRICT error / warning), JSON is not (§1.3, PX:779). Each has a fixture in §5.
+
+## Review log — port-reviewer (Opus) on `aaa8a22`, 2026-10-06
+
+12 items, all accepted: Parse-path queues shared across modules (§1.5, §3.3, D-0053 restated, cross-
+module fixtures); opaque-only tree error per module (D-0057, fixtures); D5/D6 tested on hand-built
+schemas, oracle agreement moved to D12/M1-7; `yang.Schema` snapshot + U-0045 and design 05 amended;
+`yang.Diagnostic` + single `yang.ErrBudget` reused; `MaxXPathSteps int64` < 2^31 with xpath task X1,
+budget errors abort; `context.Context` first parameter, only M1 knobs exported; D8 needs D0, D12 needs
+D7b, schema helpers task S1, D1 split (D1b), D7 split (D7b); `WhenFalse` scope reworded (here and
+design 02); JSON limit boundary 4998/4999 pinned; `!rc` guard covers missing keys; D-0001/D-0047 cited.
+API decisions (4, 5, 7) and the budget type (6) are lead defaults; the maintainer may revisit them.

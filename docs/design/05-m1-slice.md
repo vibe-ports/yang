@@ -20,7 +20,7 @@ internal/xsdre    (stdlib)                    done
 internal/xpath    → xsdre                     parse + evaluate over xpath.Node / SchemaNode / Value (interfaces it owns; no schema import)
 internal/types    → schema, xsdre             value model (design 01): Store/Canonical/Compare/Resolve
 internal/compile  → parser, schema, types, xpath   parsed modules → compiled schema
-data              → schema, types, xpath      tree (design 02), JSON/XML codecs, defaults, validation
+data              → yang, schema, types, xpath   tree (design 02), JSON/XML codecs, defaults, validation (design 07)
 yang (root)       → parser, compile, schema   Context: load modules (fs.FS), compile; aliases for schema types
 cmd/yanglint-go, conformance engine → yang, data
 ```
@@ -55,9 +55,11 @@ returned collections cannot mutate the schema.
   imports/includes, typedef chains, grouping/uses/refine/augment (top-level + uses), if-feature,
   identities, choice/case, defaults canonicalised via types, xpath compile of must/when/leafref.
   Deviations are M2.
-- **data**: `Parse(r io.Reader, f Format, set *schema.Set, opts ParseOptions) (*Tree,
-  Diagnostics, error)`; `(*Tree).Validate(opts) (Diagnostics, error)` (design 02 flags, defaults,
-  when history); `Print(w, f, wd WithDefaults)`. M1: config + data types, unknown reject/skip.
+- **data** (amended by design 07 §0.4/§2): `Parse(ctx context.Context, r io.Reader, f Format,
+  s *yang.Schema, opts ParseOptions) (*Tree, []yang.Diagnostic, error)` where `yang.Schema` is the
+  immutable snapshot `(*yang.Context).Schema()` returns (alias of `schema.Set`; a Tree pins it);
+  `(*Tree).Validate(ctx, opts) ([]yang.Diagnostic, error)` (design 02 flags, defaults, when history);
+  `Print(w, f, PrintOptions)`. M1: datastore data types, unknown reject/skip/opaque.
 - **conformance engine** (in the conformance module): adapter implementing `conformance.Engine`
   for ops `schema` (schema_tree subset), `data` and `sequence` (retained tree, edits, validation
   implicit diff, per-step `typed` flags — M1-6 provides the tree API, M1-7 the adapter), so `go run ./cmd/report -engine go` reports

@@ -21,7 +21,9 @@ Status: draft (M0). Reference: libyang v5.8.6 `lyd_node_inner/term/any/opaq`, no
     This is the whole "fresh-invalid vs became-invalid" rule (review #2).
   - `New` — created/changed since last validation; limits what the next validation revisits.
   - `WhenFalse` — (libyang 5.8.6 `LYD_WHEN_FALSE`) `when` evaluated false during a multi-error
-    validation; the node is kept but invisible to XPath and skipped by later checks (design 07 §1.6).
+    validation; the node is kept, invisible to XPath and skipped by the final pass (its musts,
+    obsolete check, children, NP-container default), but still counted by its siblings'
+    mandatory/min/max/unique checks; cleared only when its `when` is re-evaluated true (design 07 §2).
 - anydata/anyxml payload variants: `Tree` (schema-bound subtree), `XML` (opaque XML with namespaces
   preserved), `JSON` (raw JSON value), `String`. Cross-format conversion that would lose
   information returns an explicit error.
