@@ -1,0 +1,5 @@
+module T11 {
+  yang-version 1.1;
+  namespace "urn:tests:T11";
+  prefix pref;
+typedef my_type {    type int8; default "25";}list user {   key uid;   leaf uid{type my_type;}   leaf name{type string;}   leaf group{type string;}}}

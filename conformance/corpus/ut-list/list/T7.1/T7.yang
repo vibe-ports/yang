@@ -1,0 +1,5 @@
+module T7 {
+  yang-version 1.1;
+  namespace "urn:tests:T7";
+  prefix pref;
+list user {key uid;unique name;ordered-by user;leaf uid{type int32;}leaf name{type string;}leaf group{type string;}}}

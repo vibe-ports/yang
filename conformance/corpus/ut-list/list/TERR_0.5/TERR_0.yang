@@ -1,0 +1,5 @@
+module TERR_0 {
+  yang-version 1.1;
+  namespace "urn:tests:TERR_0";
+  prefix pref;
+list user {key uid;key name;leaf uid{type int32;}leaf name{type string;}leaf group{type string;}}}

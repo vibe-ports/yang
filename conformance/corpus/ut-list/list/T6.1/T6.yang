@@ -1,0 +1,5 @@
+module T6 {
+  yang-version 1.1;
+  namespace "urn:tests:T6";
+  prefix pref;
+list user {config false;leaf uid{type int32;}leaf name{type string;}leaf group{type string;}}}

@@ -1,0 +1,393 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "T0",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "T1",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "T2",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"T2:user\": [\n    {\n      \"uid\": 0,\n      \"name\": \"Jan Kuba\",\n      \"group\": \"User\"\n    },\n    {\n      \"uid\": 1,\n      \"name\": \"Anton\u00edn Kuba\",\n      \"group\": \"User\"\n    },\n    {\n      \"uid\": 2,\n      \"name\": \"Anton\u00edn Kuba\",\n      \"group\": \"User\"\n    },\n    {\n      \"uid\": 3,\n      \"name\": \"Anton\u00edn Kuba\",\n      \"group\": \"User\"\n    },\n    {\n      \"uid\": 4,\n      \"name\": \"Tom\u00e1\u0161 Nov\u00e1k\",\n      \"group\": \"Admin\"\n    }\n  ]\n}\n",
+    "xml": "<user xmlns=\"urn:tests:T2\">\n  <uid>0</uid>\n  <name>Jan Kuba</name>\n  <group>User</group>\n</user>\n<user xmlns=\"urn:tests:T2\">\n  <uid>1</uid>\n  <name>Anton\u00edn Kuba</name>\n  <group>User</group>\n</user>\n<user xmlns=\"urn:tests:T2\">\n  <uid>2</uid>\n  <name>Anton\u00edn Kuba</name>\n  <group>User</group>\n</user>\n<user xmlns=\"urn:tests:T2\">\n  <uid>3</uid>\n  <name>Anton\u00edn Kuba</name>\n  <group>User</group>\n</user>\n<user xmlns=\"urn:tests:T2\">\n  <uid>4</uid>\n  <name>Tom\u00e1\u0161 Nov\u00e1k</name>\n  <group>Admin</group>\n</user>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/T2:user[uid='0']",
+      "schema": "/T2:user",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/T2:user[uid='0']/uid",
+      "schema": "/T2:user/uid",
+      "value": {
+        "canonical": "0",
+        "type": "uint32",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/T2:user[uid='0']/name",
+      "schema": "/T2:user/name",
+      "value": {
+        "canonical": "Jan Kuba",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/T2:user[uid='0']/group",
+      "schema": "/T2:user/group",
+      "value": {
+        "canonical": "User",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/T2:user[uid='1']",
+      "schema": "/T2:user",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/T2:user[uid='1']/uid",
+      "schema": "/T2:user/uid",
+      "value": {
+        "canonical": "1",
+        "type": "uint32",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/T2:user[uid='1']/name",
+      "schema": "/T2:user/name",
+      "value": {
+        "canonical": "Anton\u00edn Kuba",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/T2:user[uid='1']/group",
+      "schema": "/T2:user/group",
+      "value": {
+        "canonical": "User",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/T2:user[uid='2']",
+      "schema": "/T2:user",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/T2:user[uid='2']/uid",
+      "schema": "/T2:user/uid",
+      "value": {
+        "canonical": "2",
+        "type": "uint32",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/T2:user[uid='2']/name",
+      "schema": "/T2:user/name",
+      "value": {
+        "canonical": "Anton\u00edn Kuba",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/T2:user[uid='2']/group",
+      "schema": "/T2:user/group",
+      "value": {
+        "canonical": "User",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/T2:user[uid='3']",
+      "schema": "/T2:user",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/T2:user[uid='3']/uid",
+      "schema": "/T2:user/uid",
+      "value": {
+        "canonical": "3",
+        "type": "uint32",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/T2:user[uid='3']/name",
+      "schema": "/T2:user/name",
+      "value": {
+        "canonical": "Anton\u00edn Kuba",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/T2:user[uid='3']/group",
+      "schema": "/T2:user/group",
+      "value": {
+        "canonical": "User",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/T2:user[uid='4']",
+      "schema": "/T2:user",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/T2:user[uid='4']/uid",
+      "schema": "/T2:user/uid",
+      "value": {
+        "canonical": "4",
+        "type": "uint32",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/T2:user[uid='4']/name",
+      "schema": "/T2:user/name",
+      "value": {
+        "canonical": "Tom\u00e1\u0161 Nov\u00e1k",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/T2:user[uid='4']/group",
+      "schema": "/T2:user/group",
+      "value": {
+        "canonical": "Admin",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

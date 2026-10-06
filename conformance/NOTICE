@@ -44,6 +44,7 @@ with the libyang file, tag/commit and license):
   Each set is listed here when it lands:
   - conformance/corpus/ut-ietf-types/ (tests/utests/types/inet_types.c, yang_types.c).
   - conformance/corpus/ut-lref-union/ (tests/utests/types/leafref.c, union.c).
+  - conformance/corpus/ut-list/ (tests/utests/node/list.c).
   - conformance/corpus/ut-string-data/ (tests/utests/types/string.c, test_data_xml and test_data_json).
   - conformance/corpus/ut-scalar/ (tests/utests/types/boolean.c, decimal64.c, empty.c, binary.c).
   - conformance/corpus/ut-restriction/ (tests/utests/restriction/test_pattern.c, test_range.c).

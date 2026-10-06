@@ -31111,3 +31111,895 @@ fixtures:
         - {do: edit, set: {path: "/pv2-diff:c/mode", value: "off"}}
         - {do: validate, data_type: config}
     golden: golden/seq-diff-explicit-default.json
+
+# BEGIN ut-list (generated from libyang tests/utests/node/list.c by conformance/tools/extract-utests, reviewed)
+
+  - id: ut-list/schema-yang-01
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:63
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.1]
+      modules: [{name: "T0"}]
+    golden: golden/schema-yang-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+      deviation: null
+
+  - id: ut-list/schema-yang-02
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:82
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.1, list/T1.1]
+      modules: [{name: "T0"}, {name: "T1"}]
+    golden: golden/schema-yang-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+      deviation: null
+
+  - id: ut-list/schema-yang-03
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:96
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.1, list/T1.1, list/T2.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}]
+    golden: golden/schema-yang-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+      deviation: null
+
+  - id: ut-list/schema-yang-04
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:113
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.1, list/T1.1, list/T2.1, list/T3.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}]
+    golden: golden/schema-yang-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+      deviation: null
+
+  - id: ut-list/schema-yang-05
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:129
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.1, list/T1.1, list/T2.1, list/T3.1, list/T4.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}]
+    golden: golden/schema-yang-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+      deviation: null
+
+  - id: ut-list/schema-yang-06
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:149
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.1, list/T1.1, list/T2.1, list/T3.1, list/T4.1, list/T5.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}]
+    golden: golden/schema-yang-06.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+      deviation: null
+
+  - id: ut-list/schema-yang-07
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:171
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.1, list/T1.1, list/T2.1, list/T3.1, list/T4.1, list/T5.1, list/TERR_0.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "TERR_0"}]
+    golden: golden/schema-yang-07.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+      deviation: null
+
+  - id: ut-list/schema-yang-08
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:183
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.1, list/T1.1, list/T2.1, list/T3.1, list/T4.1, list/T5.1, list/TERR_0.2]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "TERR_0"}]
+    golden: golden/schema-yang-08.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+      deviation: null
+
+  - id: ut-list/schema-yang-09
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:195
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.1, list/T1.1, list/T2.1, list/T3.1, list/T4.1, list/T5.1, list/TERR_0.3]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "TERR_0"}]
+    golden: golden/schema-yang-09.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+      deviation: null
+
+  - id: ut-list/schema-yang-10
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:206
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.1, list/T1.1, list/T2.1, list/T3.1, list/T4.1, list/T5.1, list/TERR_0.4]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "TERR_0"}]
+    golden: golden/schema-yang-10.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+      deviation: null
+
+  - id: ut-list/schema-yang-11
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:217
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.1, list/T1.1, list/T2.1, list/T3.1, list/T4.1, list/T5.1, list/TERR_0.5]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "TERR_0"}]
+    golden: golden/schema-yang-11.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+      deviation: null
+
+  - id: ut-list/schema-yang-12
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:227
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.1, list/T1.1, list/T2.1, list/T3.1, list/T4.1, list/T5.1, list/T6.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}]
+    golden: golden/schema-yang-12.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+      deviation: null
+
+  - id: ut-list/schema-yang-13
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:246
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5", "RFC7950#7.7.7"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.1, list/T1.1, list/T2.1, list/T3.1, list/T4.1, list/T5.1, list/T6.1, list/T7.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "T7"}]
+    golden: golden/schema-yang-13.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5", "RFC7950#7.7.7"]
+      deviation: null
+
+  - id: ut-list/schema-yang-14
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:265
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5", "RFC7950#7.7.7"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.1, list/T1.1, list/T2.1, list/T3.1, list/T4.1, list/T5.1, list/T6.1, list/T7.1, list/T8.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "T7"}, {name: "T8"}]
+    golden: golden/schema-yang-14.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5", "RFC7950#7.7.7"]
+      deviation: null
+
+  - id: ut-list/schema-yang-15
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:284
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5", "RFC7950#7.7.7"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.1, list/T1.1, list/T2.1, list/T3.1, list/T4.1, list/T5.1, list/T6.1, list/T7.1, list/T8.1, list/TERROR0.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "T7"}, {name: "T8"}, {name: "TERROR0"}]
+    golden: golden/schema-yang-15.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5", "RFC7950#7.7.7"]
+      deviation: null
+
+  - id: ut-list/schema-yang-16
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:296
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5", "RFC7950#7.7.7"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.1, list/T1.1, list/T2.1, list/T3.1, list/T4.1, list/T5.1, list/T6.1, list/T7.1, list/T8.1, list/TERROR0.2]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "T7"}, {name: "T8"}, {name: "TERROR0"}]
+    golden: golden/schema-yang-16.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5", "RFC7950#7.7.7"]
+      deviation: null
+
+  - id: ut-list/schema-yang-17
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:308
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5", "RFC7950#7.7.7"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.1, list/T1.1, list/T2.1, list/T3.1, list/T4.1, list/T5.1, list/T6.1, list/T7.1, list/T8.1, list/T9.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "T7"}, {name: "T8"}, {name: "T9"}]
+    golden: golden/schema-yang-17.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5", "RFC7950#7.7.7"]
+      deviation: null
+
+  - id: ut-list/schema-yang-18
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:325
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5", "RFC7950#7.7.7"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.1, list/T1.1, list/T2.1, list/T3.1, list/T4.1, list/T5.1, list/T6.1, list/T7.1, list/T8.1, list/T9.1, list/T10.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "T7"}, {name: "T8"}, {name: "T9"}, {name: "T10"}]
+    golden: golden/schema-yang-18.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5", "RFC7950#7.7.7"]
+      deviation: null
+
+  - id: ut-list/schema-yang-19
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:346
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5", "RFC7950#7.7.7"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.1, list/T1.1, list/T2.1, list/T3.1, list/T4.1, list/T5.1, list/T6.1, list/T7.1, list/T8.1, list/T9.1, list/T10.1, list/T11.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "T7"}, {name: "T8"}, {name: "T9"}, {name: "T10"}, {name: "T11"}]
+    golden: golden/schema-yang-19.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5", "RFC7950#7.7.7"]
+      deviation: null
+
+  - id: ut-list/xml-01
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_xml:761
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.2]
+      modules: [{name: "T0"}]
+    golden: golden/xml-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+      deviation: null
+
+  - id: ut-list/xml-02
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_xml:776
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [list/T0.2]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<user xmlns=\"urn:tests:T0\">   <uid>0</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>User</group></user><user xmlns=\"urn:tests:T0\">   <uid>1</uid>   <name>Martin Nov\u00e1k</name>   <group>User</group></user>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+      deviation: null
+
+  - id: ut-list/xml-03
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_xml:815
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [list/T0.2]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<user xmlns=\"urn:tests:T0\">   <uid>0</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>User</group></user><user xmlns=\"urn:tests:T0\">   <uid>1</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>Admin</group></user>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+      deviation: null
+
+  - id: ut-list/xml-04
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_xml:853
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [list/T0.2]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<user xmlns=\"urn:tests:T0\">   <uid>0</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>User</group></user><user xmlns=\"urn:tests:T0\">   <uid>0</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>Admin</group></user>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-04.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+      deviation: null
+
+  - id: ut-list/xml-05
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_xml:869
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [list/T0.2]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<user xmlns=\"urn:tests:T0\">   <uid>0</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>User</group></user><user xmlns=\"urn:tests:T0\">   <uid>1</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>User</group></user>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-05.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+      deviation: null
+
+  - id: ut-list/xml-06
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_xml:881
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.2, list/T1.2]
+      modules: [{name: "T0"}, {name: "T1"}]
+    golden: golden/xml-06.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+      deviation: null
+
+  - id: ut-list/xml-07
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_xml:894
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [list/T0.2, list/T1.2]
+      modules: [{name: "T0"}, {name: "T1"}]
+      format: "xml"
+      data_type: "data"
+      data: "<user xmlns=\"urn:tests:T1\">   <uid>0</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>User</group></user><user xmlns=\"urn:tests:T1\">   <uid>0</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>Admin</group></user>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-07.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+      deviation: null
+
+  - id: ut-list/xml-08
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_xml:932
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [list/T0.2, list/T1.2]
+      modules: [{name: "T0"}, {name: "T1"}]
+      format: "xml"
+      data_type: "data"
+      data: "<user xmlns=\"urn:tests:T1\">   <uid>0</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>User</group></user><user xmlns=\"urn:tests:T1\">   <uid>0</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>User</group></user>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-08.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+      deviation: null
+
+  - id: ut-list/xml-09
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_xml:946
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.2, list/T1.2, list/T2.2]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}]
+    golden: golden/xml-09.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+      deviation: null
+
+  - id: ut-list/xml-10
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_xml:963
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [list/T0.2, list/T1.2, list/T2.2]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}]
+      format: "xml"
+      data_type: "data"
+      data: "<user xmlns=\"urn:tests:T2\">   <uid>0</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>User</group></user><user xmlns=\"urn:tests:T2\">   <uid>1</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>Admin</group></user><user xmlns=\"urn:tests:T2\">   <uid>2</uid>   <name>Tom\u00e1\u0161 Jak</name>   <group>Admin</group></user>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-10.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+      deviation: null
+
+  - id: ut-list/xml-11
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_xml:1027
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [list/T0.2, list/T1.2, list/T2.2]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}]
+      format: "xml"
+      data_type: "data"
+      data: "<user xmlns=\"urn:tests:T2\">   <uid>0</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>User</group></user><user xmlns=\"urn:tests:T2\">   <uid>1</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>Admin</group></user><user xmlns=\"urn:tests:T2\">   <uid>2</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>Admin</group></user><user xmlns=\"urn:tests:T2\">   <uid>3</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>Admin</group></user><user xmlns=\"urn:tests:T2\">   <uid>4</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>Admin</group></user>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-11.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+      deviation: null
+
+  - id: ut-list/xml-12
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_xml:1052
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [list/T0.2, list/T1.2, list/T2.2]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}]
+      format: "xml"
+      data_type: "data"
+      data: "<user xmlns=\"urn:tests:T2\">   <uid>0</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>User</group></user><user xmlns=\"urn:tests:T2\">   <uid>1</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>Admin</group></user>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-12.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+      deviation: null
+
+  - id: ut-list/xml-13
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_xml:1087
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [list/T0.2, list/T1.2, list/T2.2]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}]
+      format: "xml"
+      data_type: "data"
+      data: "<user xmlns=\"urn:tests:T2\">   <uid>0</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>User</group></user><user xmlns=\"urn:tests:T2\">   <uid>1</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>Admin</group></user><user xmlns=\"urn:tests:T2\">   <uid>2</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>Admin</group></user><user xmlns=\"urn:tests:T2\">   <uid>3</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>Admin</group></user><user xmlns=\"urn:tests:T2\">   <uid>4</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>Admin</group></user><user xmlns=\"urn:tests:T2\">   <uid>5</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>Admin</group></user>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-13.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+      deviation: null
+
+  - id: ut-list/xml-14
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_xml:1102
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.2, list/T1.2, list/T2.2, list/T_EMPTY_LIST.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_EMPTY_LIST"}]
+    golden: golden/xml-14.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+      deviation: null
+
+  - id: ut-list/xml-15
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_xml:1107
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [list/T0.2, list/T1.2, list/T2.2, list/T_EMPTY_LIST.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_EMPTY_LIST"}]
+      format: "xml"
+      data_type: "data"
+      data: "<user_list xmlns=\"urn:tests:T_EMPTY_LIST\"/>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-15.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+      deviation: null
+
+  - id: ut-list/json-01
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_json:1128
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.2]
+      modules: [{name: "T0"}]
+    golden: golden/json-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+      deviation: null
+
+  - id: ut-list/json-02
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_json:1137
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7951#5.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [list/T0.2]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:user\": [   {\"uid\":0, \"name\":\"Jan Kuba\", \"group\":\"User\"},   {\"uid\":1, \"name\":\"Martin Nov\u00e1k\", \"group\":\"User\"}]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-list/json-03
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_json:1171
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7951#5.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [list/T0.2]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:user\": [   {\"uid\":0, \"name\":\"Jan Kuba\", \"group\":\"User\"},   {\"uid\":1, \"name\":\"Jan Kuba\", \"group\":\"Admin\"}]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-list/json-04
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_json:1202
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7951#5.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [list/T0.2]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:user\": [   {\"uid\":0, \"name\":\"Jan Kuba\", \"group\":\"User\"},   {\"uid\":0, \"name\":\"Jan Kuba\", \"group\":\"Admin\"}]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-04.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-list/json-05
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_json:1211
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7951#5.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [list/T0.2]
+      modules: [{name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:user\": [   {\"uid\":0, \"name\":\"Jan Kuba\", \"group\":\"User\"},   {\"uid\":1, \"name\":\"Jan Kuba\", \"group\":\"User\"}]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-05.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-list/json-06
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_json:1223
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.2, list/T1.2]
+      modules: [{name: "T0"}, {name: "T1"}]
+    golden: golden/json-06.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+      deviation: null
+
+  - id: ut-list/json-07
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_json:1229
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7951#5.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [list/T0.2, list/T1.2]
+      modules: [{name: "T0"}, {name: "T1"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T1:user\": [   {\"uid\":0, \"name\":\"Jan Kuba\", \"group\":\"User\"},   {\"uid\":0, \"name\":\"Jan Kuba\", \"group\":\"Admin\"}]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-07.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-list/json-08
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_json:1261
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7951#5.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [list/T0.2, list/T1.2]
+      modules: [{name: "T0"}, {name: "T1"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T1:user\": [   {\"uid\":0, \"name\":\"Jan Kuba\", \"group\":\"User\"},   {\"uid\":0, \"name\":\"Jan Kuba\", \"group\":\"User\"}]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-08.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-list/json-09
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_json:1275
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.2, list/T1.2, list/T2.2]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}]
+    golden: golden/json-09.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+      deviation: null
+
+  - id: ut-list/json-10
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_json:1283
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5", "RFC7951#5.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [list/T0.2, list/T1.2, list/T2.2]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T2:user\": [   {\"uid\":0, \"name\":\"Jan Kuba\", \"group\":\"User\"},   {\"uid\":1, \"name\":\"Anton\u00edn Kuba\", \"group\":\"User\"},   {\"uid\":2, \"name\":\"Tom\u00e1\u0161 Nov\u00e1k\", \"group\":\"Admin\"}]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-10.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-list/json-11
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_json:1329
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5", "RFC7951#5.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [list/T0.2, list/T1.2, list/T2.2]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T2:user\": [   {\"uid\":0, \"name\":\"Jan Kuba\", \"group\":\"User\"},   {\"uid\":1, \"name\":\"Anton\u00edn Kuba\", \"group\":\"User\"},   {\"uid\":2, \"name\":\"Anton\u00edn Kuba\", \"group\":\"User\"},   {\"uid\":3, \"name\":\"Anton\u00edn Kuba\", \"group\":\"User\"},   {\"uid\":4, \"name\":\"Tom\u00e1\u0161 Nov\u00e1k\", \"group\":\"Admin\"}]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-11.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-list/json-12
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_json:1348
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5", "RFC7951#5.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [list/T0.2, list/T1.2, list/T2.2]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T2:user\": [   {\"uid\":0, \"name\":\"Jan Kuba\", \"group\":\"User\"},   {\"uid\":4, \"name\":\"Tom\u00e1\u0161 Nov\u00e1k\", \"group\":\"Admin\"}]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-12.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-list/json-13
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_json:1361
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5", "RFC7951#5.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [list/T0.2, list/T1.2, list/T2.2]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T2:user\": [   {\"uid\":0, \"name\":\"Jan Kuba\", \"group\":\"User\"},   {\"uid\":1, \"name\":\"Anton\u00edn Kuba\", \"group\":\"User\"},   {\"uid\":2, \"name\":\"Anton\u00edn Kuba\", \"group\":\"User\"},   {\"uid\":3, \"name\":\"Anton\u00edn Kuba\", \"group\":\"User\"},   {\"uid\":4, \"name\":\"Tom\u00e1\u0161 Nov\u00e1k\", \"group\":\"Admin\"},   {\"uid\":5, \"name\":\"Tom\u00e1\u0161 Nov\u00e1k\", \"group\":\"Admin\"}]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-13.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-list/json-14
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_json:1375
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.2, list/T1.2, list/T2.2, list/T_EMPTY_LIST.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_EMPTY_LIST"}]
+    golden: golden/json-14.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+      deviation: null
+
+  - id: ut-list/json-15
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_json:1383
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5", "RFC7951#5.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [list/T0.2, list/T1.2, list/T2.2, list/T_EMPTY_LIST.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_EMPTY_LIST"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T_EMPTY_LIST:user_list\": {}}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-15.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5", "RFC7951#5.4"]
+      deviation: null
+# END ut-list

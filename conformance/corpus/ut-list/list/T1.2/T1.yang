@@ -1,0 +1,5 @@
+module T1 {
+  yang-version 1.1;
+  namespace "urn:tests:T1";
+  prefix pref;
+list user {key "uid group";leaf uid{type uint32;}leaf name{type string;}leaf group{type string;}}}

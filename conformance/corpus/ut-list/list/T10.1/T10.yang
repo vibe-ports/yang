@@ -1,0 +1,5 @@
+module T10 {
+  yang-version 1.1;
+  namespace "urn:tests:T10";
+  prefix pref;
+list user {key uid;leaf uid{type int32; default "25";}leaf name{type string;}leaf group{type string;}}}

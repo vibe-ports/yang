@@ -1,0 +1,174 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "T0",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "T1",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"T1:user\": [\n    {\n      \"uid\": 0,\n      \"group\": \"Admin\",\n      \"name\": \"Tom\u00e1\u0161 Nov\u00e1k\"\n    },\n    {\n      \"uid\": 0,\n      \"group\": \"User\",\n      \"name\": \"Tom\u00e1\u0161 Nov\u00e1k\"\n    }\n  ]\n}\n",
+    "xml": "<user xmlns=\"urn:tests:T1\">\n  <uid>0</uid>\n  <group>Admin</group>\n  <name>Tom\u00e1\u0161 Nov\u00e1k</name>\n</user>\n<user xmlns=\"urn:tests:T1\">\n  <uid>0</uid>\n  <group>User</group>\n  <name>Tom\u00e1\u0161 Nov\u00e1k</name>\n</user>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/T1:user[uid='0'][group='Admin']",
+      "schema": "/T1:user",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/T1:user[uid='0'][group='Admin']/uid",
+      "schema": "/T1:user/uid",
+      "value": {
+        "canonical": "0",
+        "type": "uint32",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/T1:user[uid='0'][group='Admin']/group",
+      "schema": "/T1:user/group",
+      "value": {
+        "canonical": "Admin",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/T1:user[uid='0'][group='Admin']/name",
+      "schema": "/T1:user/name",
+      "value": {
+        "canonical": "Tom\u00e1\u0161 Nov\u00e1k",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/T1:user[uid='0'][group='User']",
+      "schema": "/T1:user",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/T1:user[uid='0'][group='User']/uid",
+      "schema": "/T1:user/uid",
+      "value": {
+        "canonical": "0",
+        "type": "uint32",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/T1:user[uid='0'][group='User']/group",
+      "schema": "/T1:user/group",
+      "value": {
+        "canonical": "User",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/T1:user[uid='0'][group='User']/name",
+      "schema": "/T1:user/name",
+      "value": {
+        "canonical": "Tom\u00e1\u0161 Nov\u00e1k",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}
