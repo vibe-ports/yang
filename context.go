@@ -32,6 +32,11 @@ type Options struct {
 	EnableImportFeatures bool
 	// CompileObsolete keeps obsolete nodes in the compiled tree (LY_CTX_COMPILE_OBSOLETE).
 	CompileObsolete bool
+	// RefImplemented implements the modules that when/must expressions and identityref and
+	// instance-identifier defaults refer to (LY_CTX_REF_IMPLEMENTED).
+	RefImplemented bool
+	// LeafrefExtended allows deref() in leafref paths (LY_CTX_LEAFREF_EXTENDED).
+	LeafrefExtended bool
 	// Loader supplies modules and submodules not found otherwise (libyang's
 	// import callback): the YANG text of module@revision, or of its submodule
 	// when submodule is not empty; ok false when it has none. It is called
@@ -90,7 +95,8 @@ func (x *Context) publish() { x.schema.Store(snap.New(x.c.Snapshot())) }
 func NewContext(opts Options, dirs ...fs.FS) (*Context, []Diagnostic, error) {
 	c, diags, err := compile.NewContext(compile.Options{AllImplemented: opts.AllImplemented,
 		NoYangLibrary: opts.NoYangLibrary, DisableSearchdirs: opts.DisableSearchdirs,
-		PreferSearchdirs: opts.PreferSearchdirs, EnableImportFeatures: opts.EnableImportFeatures, CompileObsolete: opts.CompileObsolete, Loader: opts.Loader, MaxSearchDirs: opts.MaxSearchDirs,
+		PreferSearchdirs: opts.PreferSearchdirs, EnableImportFeatures: opts.EnableImportFeatures, CompileObsolete: opts.CompileObsolete,
+		RefImplemented: opts.RefImplemented, LeafrefExtended: opts.LeafrefExtended, Loader: opts.Loader, MaxSearchDirs: opts.MaxSearchDirs,
 		Parse: parser.Budget(opts.ParseBudget)}, dirs...)
 	if err != nil {
 		return nil, convert(diags), err

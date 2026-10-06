@@ -384,6 +384,9 @@ type Type struct {
 	PathCompiled    any
 	Realtype        *Type
 	RequireInstance bool // leafref, instance-identifier
+	// PathExtended: the leafref path was compiled with LY_CTX_LEAFREF_EXTENDED (deref() allowed),
+	// so it is recompiled that way wherever it is resolved again.
+	PathExtended bool
 
 	// Union holds the member types with nested unions flattened into this list (libyang
 	// lys_compile_type_union does it): member indexes and the union error text depend on it.

@@ -46,6 +46,13 @@ var ctxOptions = map[string]func(*yang.Options){
 	"no_yanglibrary":      func(o *yang.Options) { o.NoYangLibrary = true },
 	"enable_imp_features": func(o *yang.Options) { o.EnableImportFeatures = true },
 	"compile_obsolete":    func(o *yang.Options) { o.CompileObsolete = true },
+	"ref_implemented":     func(o *yang.Options) { o.RefImplemented = true },
+	"leafref_extended":    func(o *yang.Options) { o.LeafrefExtended = true },
+}
+
+// ctxUnsupported are the oracle's context_options this engine refuses, with the reason.
+var ctxUnsupported = map[string]string{
+	"builtin_plugins_only": "(the port always applies its ietf-yang-types / ietf-inet-types handlers)",
 }
 
 // Run implements Engine for ops "schema" (lyoracle.c op_schema/build_ctx/dump_schema) and
@@ -93,7 +100,7 @@ func buildContext(r Request) (*yang.Context, map[string]any, []map[string]any, s
 	for _, o := range list(r.Params["context_options"]) {
 		set, ok := ctxOptions[fmt.Sprint(o)]
 		if !ok {
-			return nil, nil, nil, "", fmt.Errorf("%w: context option %v", ErrUnsupported, o)
+			return nil, nil, nil, "", fmt.Errorf("%w: context option %v %s", ErrUnsupported, o, ctxUnsupported[fmt.Sprint(o)])
 		}
 		set(&opts)
 	}

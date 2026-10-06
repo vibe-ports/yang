@@ -52,6 +52,8 @@ type Options struct {
 	// instance-identifier defaults reference (LY_CTX_REF_IMPLEMENTED); by default such a when or
 	// must is not checked and such a default is invalid.
 	RefImplemented bool
+	// LeafrefExtended allows deref() in leafref paths (LY_CTX_LEAFREF_EXTENDED).
+	LeafrefExtended bool
 }
 
 // Level is a diagnostic's log level.
@@ -486,7 +488,7 @@ func (c *Context) parse(d loadData, src []byte, main string) (*parser.Module, *p
 			}
 			return ""
 		},
-		Warn: func(msg string) { c.warn("%s", msg) }}
+		Warn: func(msg string) { c.warn("%s", msg) }, LeafrefExtended: c.opts.LeafrefExtended}
 	st, err := parser.ParseIn(pc, d.path, src, &c.opts.Parse)
 	if err != nil {
 		var pe *parser.Error

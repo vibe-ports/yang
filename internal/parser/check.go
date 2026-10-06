@@ -317,7 +317,8 @@ func (c *checker) close(l *lexer, pf, f *frame) error {
 			}
 		}
 		if s.Keyword == "path" && pf != nil && pf.s.Keyword == "type" { // parse_type, after parse_text_field
-			if _, msg := lyxp.ParsePath(s.Arg, lyxp.Opts{Begin: lyxp.BeginEither, Prefix: lyxp.PrefixOptional, Pred: lyxp.PredLeafref, Leafref: true}); msg != "" {
+			ext := c.ctx != nil && c.ctx.LeafrefExtended
+			if _, msg := lyxp.ParsePath(s.Arg, lyxp.Opts{Begin: lyxp.BeginEither, Prefix: lyxp.PrefixOptional, Pred: lyxp.PredLeafref, Leafref: true, Extended: ext}); msg != "" {
 				return l.errf(ly.XPath, "%s", msg)
 			}
 		}

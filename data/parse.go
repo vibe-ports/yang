@@ -54,8 +54,16 @@ type ParseOptions struct {
 	Unknown   UnknownPolicy
 	ParseOnly bool // LYD_PARSE_ONLY
 	NoState   bool // LYD_PARSE_NO_STATE (with ValidateOptions.NoState for the validation part)
-	Validate  ValidateOptions
-	Budget    Budget
+	// StoreOnly is LYD_PARSE_STORE_ONLY: values are stored without their restriction checks. It
+	// implies ParseOnly: libyang's flag value includes LYD_PARSE_ONLY.
+	StoreOnly bool
+	// JSONNull is LYD_PARSE_JSON_NULL: a JSON null value creates nothing.
+	JSONNull bool
+	// JSONStringDatatypes is LYD_PARSE_JSON_STRING_DATATYPES: JSON numbers and booleans may
+	// come as strings.
+	JSONStringDatatypes bool
+	Validate            ValidateOptions
+	Budget              Budget
 }
 
 // Budget limits what one Parse may use; zero fields take the defaults, exceeding one fails with

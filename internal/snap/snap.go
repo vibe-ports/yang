@@ -397,11 +397,11 @@ func (n *Node) LeafrefTargets() iter.Seq2[*Type, *Node] {
 
 func target(n *schema.Node, t *schema.Type) *schema.Node {
 	e, msg := lyxp.ParsePath(t.Path, lyxp.Opts{Begin: lyxp.BeginEither, Prefix: lyxp.PrefixOptional,
-		Pred: lyxp.PredLeafref, Leafref: true})
+		Pred: lyxp.PredLeafref, Leafref: true, Extended: t.PathExtended})
 	if msg != "" {
 		return nil
 	}
-	p, _, err := types.CompileLeafref(n, e, t.Prefixes, n.InOutput(), false)
+	p, _, err := types.CompileLeafref(n, e, t.Prefixes, n.InOutput(), t.PathExtended)
 	if err != nil || len(p) == 0 {
 		return nil
 	}

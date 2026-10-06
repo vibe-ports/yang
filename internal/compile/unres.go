@@ -192,12 +192,13 @@ func (c *Context) unres() error {
 // (the skipped deref() members first, D-0042/D-0043); ok false when it failed.
 func (c *Context) compileLeafref(node *schema.Node, t *schema.Type) (types.Path, bool) {
 	e, msg := lyxp.ParsePath(t.Path, lyxp.Opts{Begin: lyxp.BeginEither, Prefix: lyxp.PrefixOptional,
-		Pred: lyxp.PredLeafref, Leafref: true})
+		Pred: lyxp.PredLeafref, Leafref: true, Extended: c.opts.LeafrefExtended})
 	if msg != "" { // the parser checked the path already
 		_ = c.logPath(ly.XPath, node.LogPath(), "%s", msg)
 		return nil, false
 	}
-	p, logged, err := types.CompileLeafref(node, e, t.Prefixes, node.InOutput(), false)
+	t.PathExtended = c.opts.LeafrefExtended
+	p, logged, err := types.CompileLeafref(node, e, t.Prefixes, node.InOutput(), t.PathExtended)
 	if err != nil {
 		logged = append(logged, err)
 	}

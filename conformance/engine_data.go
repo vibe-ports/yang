@@ -25,8 +25,18 @@ var dataPresets = map[string]func(*data.ParseOptions){
 }
 
 var parseFlags = map[string]func(*data.ParseOptions){
-	"only":     func(o *data.ParseOptions) { o.ParseOnly = true },
-	"no_state": func(o *data.ParseOptions) { o.NoState = true },
+	"only":                  func(o *data.ParseOptions) { o.ParseOnly = true },
+	"no_state":              func(o *data.ParseOptions) { o.NoState = true },
+	"store_only":            func(o *data.ParseOptions) { o.StoreOnly = true },
+	"json_null":             func(o *data.ParseOptions) { o.JSONNull = true },
+	"json_string_datatypes": func(o *data.ParseOptions) { o.JSONStringDatatypes = true },
+}
+
+// parseUnsupported are the oracle's parse_options this engine refuses, with the reason.
+var parseUnsupported = map[string]string{
+	"anydata_strict": "(anydata/anyxml instances are M5, U-0043)",
+	"ordered":        "(not exported: LYD_PARSE_ORDERED input order, D-0058)",
+	"when_true":      "(not exported yet)",
 }
 
 var validateFlags = map[string]func(*data.ValidateOptions){
@@ -78,7 +88,7 @@ func runData(r Request, s *yang.Schema, resp map[string]any) error {
 	for _, f := range list(p["parse_options"]) {
 		set, ok := parseFlags[fmt.Sprint(f)]
 		if !ok {
-			return fmt.Errorf("%w: parse option %v", ErrUnsupported, f)
+			return fmt.Errorf("%w: parse option %v %s", ErrUnsupported, f, parseUnsupported[fmt.Sprint(f)])
 		}
 		set(&o)
 	}

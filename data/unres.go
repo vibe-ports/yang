@@ -467,7 +467,7 @@ func (vc *valCtx) template(t *schema.Type, sn *schema.Node) (*lrefTemplate, erro
 	if msg != "" {
 		return nil, errors.New(msg)
 	}
-	p, _, perr := types.CompileLeafref(sn, e, t.Prefixes, sn.InOutput(), false)
+	p, _, perr := types.CompileLeafref(sn, e, t.Prefixes, sn.InOutput(), t.PathExtended)
 	if perr != nil {
 		tp.disabled = true
 	} else if last := p[len(p)-1].Node; last.IsKey() && len(p) >= 2 && p[len(p)-2].Node.Kind == schema.List {
@@ -594,24 +594,39 @@ func (vc *valCtx) deref(x xpath.Node) ([]xpath.Node, error) {
 	if !ok || !m.n.isTerm() {
 		return nil, nil
 	}
-	t := m.n.schema.Type
+	out, _, err := vc.derefType(m.n, m.n.value, m.n.schema.Type)
+	return out, err
+}
+
+// derefType is xpath_deref_type: the targets of the value v of n for its type t; ok reports a
+// resolved leafref or instance-identifier. A union tries its members in order with the selected
+// member's value (value.subvalue->value) and takes the first that resolves.
+func (vc *valCtx) derefType(n *Node, v types.Value, t *schema.Type) (out []xpath.Node, ok bool, err error) {
 	switch t.Base {
 	case schema.Leafref:
-		_, nodes, err := vc.leafrefTargets(m.n, t, m.n.value)
+		found, nodes, err := vc.leafrefTargets(n, t, v)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
-		out := make([]xpath.Node, 0, len(nodes))
-		for _, n := range nodes {
-			out = append(out, xn{n, vc.t.set})
+		for _, target := range nodes {
+			out = append(out, xn{target, vc.t.set})
 		}
-		return out, nil
+		return out, found, nil
 	case schema.InstanceID:
-		if n := vc.pathEval(m.n.value.Path()); n != nil {
-			return []xpath.Node{xn{n, vc.t.set}}, nil
+		if target := vc.pathEval(v.Path()); target != nil {
+			return []xpath.Node{xn{target, vc.t.set}}, true, nil
+		}
+	case schema.Union:
+		if u := v.Union(); u != nil {
+			mv, _ := u.Member()
+			for _, mt := range t.Union {
+				if out, ok, err := vc.derefType(n, mv, mt); err != nil || ok {
+					return out, ok, err
+				}
+			}
 		}
 	}
-	return nil, nil
+	return nil, false, nil
 }
 
 // validateMust is lyd_validate_must for datastore data: every must of the node, false ones

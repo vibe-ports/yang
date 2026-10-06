@@ -135,6 +135,8 @@ type Context struct {
 	// name in the context (ly_ctx_get_submodule_latest), "" when none.
 	SubmoduleOf func(name string) string
 	Warn        func(msg string) // LOGWRN against the context
+	// LeafrefExtended is LY_CTX_LEAFREF_EXTENDED: a leafref path may start with deref().
+	LeafrefExtended bool
 }
 
 // Parse reads one YANG module or submodule (yang_parse_module / yang_parse_submodule

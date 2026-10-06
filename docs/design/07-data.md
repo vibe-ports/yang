@@ -255,6 +255,9 @@ type ParseOptions struct {
     NoState   bool            // LYD_PARSE_NO_STATE (+ LYD_VALIDATE_NO_STATE for the validation part)
     Validate  ValidateOptions // ignored with ParseOnly
     Budget    Budget
+    StoreOnly           bool  // LYD_PARSE_STORE_ONLY (implies ParseOnly)
+    JSONNull            bool  // LYD_PARSE_JSON_NULL
+    JSONStringDatatypes bool  // LYD_PARSE_JSON_STRING_DATATYPES
 }
 type ValidateOptions struct {
     NoState, Present, MultiError, Operational, NoDefaults bool // LYD_VALIDATE_*
@@ -275,9 +278,9 @@ func (e *ValidationError) RC() string // the call's LY_ERR name (LY_EVALID, LY_E
 the first parameter (cancellation checked every 1k nodes and between XPath evaluations), never in an
 options struct (lead default, maintainer may revisit). Exported knobs are only those the M1 fixtures
 use (`unknown`, `parse_only`, the `data_type` presets = NoState/Operational, the oracle's
-MultiError, and NoDefaults/Present for §5's fixtures); `LYD_PARSE_ORDERED`, `WHEN_TRUE`,
-`STORE_ONLY`, `JSON_NULL`, `JSON_STRING_DATATYPES`, `LYD_VALIDATE_NOT_FINAL` exist internally where
-the port needs them and are exported later, when a fixture or user asks. The PRs and their tests call
+MultiError, NoDefaults/Present for §5's fixtures, and StoreOnly/JSONNull/JSONStringDatatypes for
+the utests fixtures, #198); `LYD_PARSE_ORDERED`, `WHEN_TRUE`, `LYD_VALIDATE_NOT_FINAL` exist
+internally where the port needs them and are exported later, when a fixture or user asks. The PRs and their tests call
 the internal twins (`parse`/`validate` over `*schema.Set`, §0.4) with hand-built sets; D12 wraps them.
 
 **Diagnostics** (PLAN §2): reuse `yang.Diagnostic` as shipped (`Warning bool; Err, Code string`
