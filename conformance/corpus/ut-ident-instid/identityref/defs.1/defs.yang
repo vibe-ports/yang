@@ -1,0 +1,1 @@
+module defs {  yang-version 1.1;  namespace "urn:tests:defs";  prefix d;  import ident-base {prefix ib;}  identity ident1 {base ib:ident-base;}  leaf l1 {type identityref {base ib:ident-base;}}}

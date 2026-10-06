@@ -1,0 +1,169 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "mod",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "defs",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"defs:l1\": \"/defs:list2[id='a:xxx'][id2='y']/id2\",\n  \"defs:list2\": [\n    {\n      \"id\": \"a:xxx\",\n      \"id2\": \"y\"\n    },\n    {\n      \"id\": \"defs:xxx\",\n      \"id2\": \"x\"\n    }\n  ]\n}\n",
+    "xml": "<l1 xmlns=\"urn:tests:defs\" xmlns:pref=\"urn:tests:defs\">/pref:list2[pref:id='a:xxx'][pref:id2='y']/pref:id2</l1>\n<list2 xmlns=\"urn:tests:defs\">\n  <id>a:xxx</id>\n  <id2>y</id2>\n</list2>\n<list2 xmlns=\"urn:tests:defs\">\n  <id>defs:xxx</id>\n  <id2>x</id2>\n</list2>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:l1",
+      "schema": "/defs:l1",
+      "value": {
+        "canonical": "/defs:list2[id='a:xxx'][id2='y']/id2",
+        "type": "instance-identifier",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:cont",
+      "schema": "/defs:cont",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:list2[id='a:xxx'][id2='y']",
+      "schema": "/defs:list2",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:list2[id='a:xxx'][id2='y']/id",
+      "schema": "/defs:list2/id",
+      "value": {
+        "canonical": "a:xxx",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:list2[id='a:xxx'][id2='y']/id2",
+      "schema": "/defs:list2/id2",
+      "value": {
+        "canonical": "y",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:list2[id='defs:xxx'][id2='x']",
+      "schema": "/defs:list2",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:list2[id='defs:xxx'][id2='x']/id",
+      "schema": "/defs:list2/id",
+      "value": {
+        "canonical": "defs:xxx",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:list2[id='defs:xxx'][id2='x']/id2",
+      "schema": "/defs:list2/id2",
+      "value": {
+        "canonical": "x",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

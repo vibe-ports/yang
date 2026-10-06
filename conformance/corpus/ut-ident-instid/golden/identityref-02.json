@@ -1,0 +1,86 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ident-base {\n  namespace \"urn:tests:ident-base\";\n  prefix ib;\n\n  identity ident-base {\n    derived ident-imp;\n    derived d:ident1;\n  }\n\n  identity ident-imp {\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [
+        {
+          "bases": [],
+          "derived": [
+            "ident-base:ident-imp",
+            "defs:ident1"
+          ],
+          "name": "ident-base:ident-base"
+        },
+        {
+          "bases": [
+            "ident-base:ident-base"
+          ],
+          "derived": [],
+          "name": "ident-base:ident-imp"
+        }
+      ],
+      "name": "ident-base",
+      "revision": null,
+      "schema_tree": []
+    },
+    {
+      "accepted": true,
+      "compiled": "module defs {\n  namespace \"urn:tests:defs\";\n  prefix d;\n\n  identity ident1 {\n  }\n\n  leaf l1 {\n    type identityref {\n      base ident-base;\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [
+        {
+          "bases": [
+            "ident-base:ident-base"
+          ],
+          "derived": [],
+          "name": "defs:ident1"
+        }
+      ],
+      "name": "defs",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "defs",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/defs:l1",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "identityref",
+            "bases": [
+              "ident-base:ident-base"
+            ],
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

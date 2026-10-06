@@ -1,0 +1,5 @@
+module defs {
+  yang-version 1.1;
+  namespace "urn:tests:defs";
+  prefix pref;
+identity ident; identity ident-der1 {base ident;} identity ident-der2 {base ident;}leaf l1 {type instance-identifier {require-instance true;}}leaf l2 {type instance-identifier {require-instance false;}}container cont {leaf l {type empty;}}list list {key "id"; leaf id {type string;} leaf value {type string;}}leaf-list llist {type uint32;}list list-inst {key "id"; leaf id {type instance-identifier;} leaf value {type string;}}list list-ident {key "id"; leaf id {type identityref {base ident;}} leaf value {type string;}}list list2 {key "id id2"; leaf id {type string;} leaf id2 {type string;}}list list-keyless {config false; leaf value {type string;}}}

@@ -1,0 +1,169 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "mod",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "defs",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"defs:l1\": \"/defs:list-ident[id='defs:ident-der1']/value\",\n  \"defs:list-ident\": [\n    {\n      \"id\": \"ident-der1\",\n      \"value\": \"x\"\n    },\n    {\n      \"id\": \"ident-der2\",\n      \"value\": \"y\"\n    }\n  ]\n}\n",
+    "xml": "<l1 xmlns=\"urn:tests:defs\" xmlns:pref=\"urn:tests:defs\">/pref:list-ident[pref:id='pref:ident-der1']/pref:value</l1>\n<list-ident xmlns=\"urn:tests:defs\">\n  <id>ident-der1</id>\n  <value>x</value>\n</list-ident>\n<list-ident xmlns=\"urn:tests:defs\">\n  <id>ident-der2</id>\n  <value>y</value>\n</list-ident>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:l1",
+      "schema": "/defs:l1",
+      "value": {
+        "canonical": "/defs:list-ident[id='defs:ident-der1']/value",
+        "type": "instance-identifier",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:cont",
+      "schema": "/defs:cont",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:list-ident[id='defs:ident-der1']",
+      "schema": "/defs:list-ident",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:list-ident[id='defs:ident-der1']/id",
+      "schema": "/defs:list-ident/id",
+      "value": {
+        "canonical": "defs:ident-der1",
+        "type": "identityref",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:list-ident[id='defs:ident-der1']/value",
+      "schema": "/defs:list-ident/value",
+      "value": {
+        "canonical": "x",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:list-ident[id='defs:ident-der2']",
+      "schema": "/defs:list-ident",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:list-ident[id='defs:ident-der2']/id",
+      "schema": "/defs:list-ident/id",
+      "value": {
+        "canonical": "defs:ident-der2",
+        "type": "identityref",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:list-ident[id='defs:ident-der2']/value",
+      "schema": "/defs:list-ident/value",
+      "value": {
+        "canonical": "y",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

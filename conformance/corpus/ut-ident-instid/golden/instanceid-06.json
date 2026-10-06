@@ -1,0 +1,207 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "mod",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "defs",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"defs:l1\": \"/defs:list-inst[id=\\\"/defs:llist[.='1']\\\"]/value\",\n  \"defs:llist\": [\n    1,\n    2\n  ],\n  \"defs:list-inst\": [\n    {\n      \"id\": \"/defs:llist[.='1']\",\n      \"value\": \"x\"\n    },\n    {\n      \"id\": \"/defs:llist[.='2']\",\n      \"value\": \"y\"\n    }\n  ]\n}\n",
+    "xml": "<l1 xmlns=\"urn:tests:defs\" xmlns:pref=\"urn:tests:defs\">/pref:list-inst[pref:id=\"/pref:llist[.='1']\"]/pref:value</l1>\n<llist xmlns=\"urn:tests:defs\">1</llist>\n<llist xmlns=\"urn:tests:defs\">2</llist>\n<list-inst xmlns=\"urn:tests:defs\">\n  <id xmlns:pref=\"urn:tests:defs\">/pref:llist[.='1']</id>\n  <value>x</value>\n</list-inst>\n<list-inst xmlns=\"urn:tests:defs\">\n  <id xmlns:pref=\"urn:tests:defs\">/pref:llist[.='2']</id>\n  <value>y</value>\n</list-inst>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:l1",
+      "schema": "/defs:l1",
+      "value": {
+        "canonical": "/defs:list-inst[id=\"/defs:llist[.='1']\"]/value",
+        "type": "instance-identifier",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:cont",
+      "schema": "/defs:cont",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:llist[.='1']",
+      "schema": "/defs:llist",
+      "value": {
+        "canonical": "1",
+        "type": "uint32",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:llist[.='2']",
+      "schema": "/defs:llist",
+      "value": {
+        "canonical": "2",
+        "type": "uint32",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:list-inst[id=\"/defs:llist[.='1']\"]",
+      "schema": "/defs:list-inst",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:list-inst[id=\"/defs:llist[.='1']\"]/id",
+      "schema": "/defs:list-inst/id",
+      "value": {
+        "canonical": "/defs:llist[.='1']",
+        "type": "instance-identifier",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:list-inst[id=\"/defs:llist[.='1']\"]/value",
+      "schema": "/defs:list-inst/value",
+      "value": {
+        "canonical": "x",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:list-inst[id=\"/defs:llist[.='2']\"]",
+      "schema": "/defs:list-inst",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:list-inst[id=\"/defs:llist[.='2']\"]/id",
+      "schema": "/defs:list-inst/id",
+      "value": {
+        "canonical": "/defs:llist[.='2']",
+        "type": "instance-identifier",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:list-inst[id=\"/defs:llist[.='2']\"]/value",
+      "schema": "/defs:list-inst/value",
+      "value": {
+        "canonical": "y",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

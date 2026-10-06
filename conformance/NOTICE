@@ -46,6 +46,7 @@ with the libyang file, tag/commit and license):
   - conformance/corpus/ut-string-data/ (tests/utests/types/string.c, test_data_xml and test_data_json).
   - conformance/corpus/ut-scalar/ (tests/utests/types/boolean.c, decimal64.c, empty.c, binary.c).
   - conformance/corpus/ut-restriction/ (tests/utests/restriction/test_pattern.c, test_range.c).
+  - conformance/corpus/ut-ident-instid/ (tests/utests/types/identityref.c, instanceid.c, instanceid_keys.c).
   - conformance/corpus/ut-string-schema/ (tests/utests/types/string.c, test_schema_yang).
   - conformance/corpus/ut-ext/ (tests/utests/extensions/test_metadata.c, test_structure.c, test_yangdata.c, schema/test_schema.c).
   - conformance/corpus/ut-int/ (tests/utests/types/int8.c … uint64.c).

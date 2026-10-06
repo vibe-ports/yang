@@ -18876,3 +18876,944 @@ fixtures:
       rfc: ["RFC7950#9.2.4"]
       deviation: null
 # END ut-restriction
+
+# BEGIN ut-ident-instid (generated from libyang tests/utests/types/identityref.c, instanceid.c and instanceid_keys.c by conformance/tools/extract-utests, reviewed)
+
+  - id: ut-ident-instid/identityref-01
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/identityref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:69
+    rfc: ["RFC7950#9.10"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [identityref/ident-base.1]
+      modules: [{name: "ident-base"}]
+    golden: golden/identityref-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-ident-instid/identityref-02
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/identityref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:79
+    rfc: ["RFC7950#9.10"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [identityref/ident-base.1, identityref/defs.1]
+      modules: [{name: "ident-base"}, {name: "defs"}]
+    golden: golden/identityref-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-ident-instid/identityref-03
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/identityref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:83
+    rfc: ["RFC7950#9.10"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [identityref/ident-base.1, identityref/defs.1]
+      modules: [{name: "ident-base"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\">ident1</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/identityref-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-ident-instid/identityref-04
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/identityref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:91
+    rfc: ["RFC7950#9.10"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [identityref/ident-base.1, identityref/defs.1]
+      modules: [{name: "ident-base"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\" xmlns:ib=\"urn:tests:ident-base\">ib:ident-imp</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/identityref-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-ident-instid/identityref-05
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/identityref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:98
+    rfc: ["RFC7950#9.10"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [identityref/ident-base.1, identityref/defs.1]
+      modules: [{name: "ident-base"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\" >fast-ethernet</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/identityref-05.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-ident-instid/identityref-06
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/identityref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:101
+    rfc: ["RFC7950#9.10"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [identityref/ident-base.1, identityref/defs.1]
+      modules: [{name: "ident-base"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\" xmlns:x=\"urn:tests:defs\">x:slow-ethernet</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/identityref-06.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-ident-instid/identityref-07
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/identityref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:104
+    rfc: ["RFC7950#9.10"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [identityref/ident-base.1, identityref/defs.1]
+      modules: [{name: "ident-base"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\" xmlns:x=\"urn:tests:ident-base\">x:ident-base</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/identityref-07.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-ident-instid/identityref-08
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/identityref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:108
+    rfc: ["RFC7950#9.10"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [identityref/ident-base.1, identityref/defs.1]
+      modules: [{name: "ident-base"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\" xmlns:x=\"urn:tests:unknown\">x:ident-base</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/identityref-08.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-01
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:91
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [instanceid/mod.1]
+      modules: [{name: "mod"}]
+    golden: golden/instanceid-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-02
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:103
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+    golden: golden/instanceid-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-03
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:105
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<cont xmlns=\"urn:tests:defs\"><l/></cont><l1 xmlns=\"urn:tests:defs\" xmlns:xdf=\"urn:tests:defs\">/xdf:cont/xdf:l</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-04
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:108
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<list xmlns=\"urn:tests:defs\"><id>a</id></list><list xmlns=\"urn:tests:defs\"><id>b</id></list><xdf:l1 xmlns=\"urn:tests:defs\" xmlns:xdf=\"urn:tests:defs\">/xdf:list[xdf:id='b']/xdf:id</xdf:l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-05
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:112
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<llist xmlns=\"urn:tests:defs\">1</llist><llist xmlns=\"urn:tests:defs\">2</llist><xdf:l1 xmlns=\"urn:tests:defs\" xmlns:xdf=\"urn:tests:defs\">/xdf:llist[.='1']</xdf:l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-06
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:115
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<list-inst xmlns=\"urn:tests:defs\"><id xmlns:b=\"urn:tests:defs\">/b:llist[.='1']</id><value>x</value></list-inst><list-inst xmlns=\"urn:tests:defs\"><id xmlns:b=\"urn:tests:defs\">/b:llist[.='2']</id><value>y</value></list-inst><llist xmlns=\"urn:tests:defs\">1</llist><llist xmlns=\"urn:tests:defs\">2</llist><a:l1 xmlns=\"urn:tests:defs\" xmlns:a=\"urn:tests:defs\">/a:list-inst[a:id=\"/a:llist[.='1']\"]/a:value</a:l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-06.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-07
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:123
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<list-ident xmlns=\"urn:tests:defs\"><id xmlns:b=\"urn:tests:defs\">b:ident-der1</id><value>x</value></list-ident><list-ident xmlns=\"urn:tests:defs\"><id xmlns:b=\"urn:tests:defs\">b:ident-der2</id><value>y</value></list-ident><a:l1 xmlns=\"urn:tests:defs\" xmlns:a=\"urn:tests:defs\">/a:list-ident[a:id='a:ident-der1']/a:value</a:l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-07.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-08
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:130
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<list2 xmlns=\"urn:tests:defs\"><id>defs:xxx</id><id2>x</id2></list2><list2 xmlns=\"urn:tests:defs\"><id>a:xxx</id><id2>y</id2></list2><a:l1 xmlns=\"urn:tests:defs\" xmlns:a=\"urn:tests:defs\">/a:list2[a:id='a:xxx'][a:id2='y']/a:id2</a:l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-08.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-09
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:136
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<xdf:l1 xmlns=\"urn:tests:defs\" xmlns:xdf=\"urn:tests:defs\">/xdf:list[2]/xdf:value</xdf:l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-09.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-10
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:142
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<xdf:l1 xmlns=\"urn:tests:defs\" xmlns:xdf=\"urn:tests:defs\">/t:cont/t:1l</xdf:l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-10.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-11
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:147
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<xdf:l1 xmlns=\"urn:tests:defs\" xmlns:xdf=\"urn:tests:defs\">/t:cont:t:1l</xdf:l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-11.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-12
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:152
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<xdf:l1 xmlns=\"urn:tests:defs\" xmlns:xdf=\"urn:tests:defs\">/xdf:cont/xdf:invalid/xdf:path</xdf:l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-12.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-13
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:159
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\" xmlns:m=\"urn:tests:mod\">/m:cont/m:l2</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-13.json
+    assert:
+      verdict: invalid
+      diagnostics: [{apptag: "instance-required"}]
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-14
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:164
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\" xmlns:a=\"urn:tests:defs\">/a:llist[.='2']</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-14.json
+    assert:
+      verdict: invalid
+      diagnostics: [{apptag: "instance-required"}]
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-15
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:169
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\" xmlns:a=\"urn:tests:defs\">/a:list2[a:id='a'][a:id2='a']/a:id</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-15.json
+    assert:
+      verdict: invalid
+      diagnostics: [{apptag: "instance-required"}]
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-16
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:177
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\" xmlns:a=\"urn:tests:defs\">/a:llist[.='3']</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-16.json
+    assert:
+      verdict: invalid
+      diagnostics: [{apptag: "instance-required"}]
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-17
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:185
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\" xmlns:a=\"urn:tests:defs\">/a:list-keyless[3]</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-17.json
+    assert:
+      verdict: invalid
+      diagnostics: [{apptag: "instance-required"}]
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-18
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:191
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<t:l1 xmlns=\"urn:tests:defs\" xmlns:t=\"urn:tests:defs\">/t:llist[1</t:l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-18.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-19
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:196
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\" xmlns:m=\"urn:tests:mod\">/m:cont[1]</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-19.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-20
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:201
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\" xmlns:m=\"urn:tests:mod\">[1]</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-20.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-21
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:206
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\" xmlns:m=\"urn:tests:mod\">/m:cont/m:l2[l2='1']</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-21.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-22
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:211
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\" xmlns:m=\"urn:tests:mod\">/m:cont/m:l2[m:l2='1']</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-22.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-23
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:216
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<t:l1 xmlns=\"urn:tests:defs\" xmlns:t=\"urn:tests:defs\">/t:llist[4]</t:l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-23.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-24
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:221
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<xdf:l2 xmlns=\"urn:tests:defs\" xmlns:xdf=\"urn:tests:defs\">/t:llist[6]</xdf:l2>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-24.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-25
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:226
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<xdf:l2 xmlns=\"urn:tests:defs\" xmlns:xdf=\"urn:tests:defs\">/xdf:list[xdf:value='x']</xdf:l2>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-25.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-26
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:231
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<xdf:l2 xmlns=\"urn:tests:defs\" xmlns:xdf=\"urn:tests:defs\">/xdf:list[.='x']</xdf:l2>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-26.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-27
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:236
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<t:l1 xmlns=\"urn:tests:defs\" xmlns:t=\"urn:tests:defs\">/t:llist[.='x']</t:l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-27.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-28
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:241
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<xdf:l2 xmlns=\"urn:tests:defs\" xmlns:xdf=\"urn:tests:defs\">/t:llist[1][2]</xdf:l2>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-28.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-29
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:246
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<xdf:l2 xmlns=\"urn:tests:defs\" xmlns:xdf=\"urn:tests:defs\">/t:llist[.='a'][.='b']</xdf:l2>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-29.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-30
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:251
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<xdf:l2 xmlns=\"urn:tests:defs\" xmlns:xdf=\"urn:tests:defs\">/xdf:list[xdf:id='1'][xdf:id='2']/xdf:value</xdf:l2>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-30.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-31
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:256
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<xdf:l2 xmlns=\"urn:tests:defs\" xmlns:xdf=\"urn:tests:defs\">/xdf:list2[xdf:id='1']/xdf:value</xdf:l2>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-31.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-keys-01
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid_keys.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:54 (libyang-specific type yang:instance-identifier-keys, no RFC counterpart; the engine reports it unsupported, U-0010)
+    rfc: []
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [instanceid_keys/defs.1]
+      modules: [{name: "defs"}]
+    golden: golden/instanceid-keys-01.json
+    assert:
+      verdict: valid
+      rfc: []
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-keys-02
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid_keys.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:56 (libyang-specific type yang:instance-identifier-keys, no RFC counterpart; the engine reports it unsupported, U-0010)
+    rfc: []
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid_keys/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\" xmlns:px=\"urn:tests:defs\">[px:key='val']</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-keys-02.json
+    assert:
+      verdict: valid
+      rfc: []
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-keys-03
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid_keys.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:58 (libyang-specific type yang:instance-identifier-keys, no RFC counterpart; the engine reports it unsupported, U-0010)
+    rfc: []
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid_keys/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\">black</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-keys-03.json
+    assert:
+      verdict: invalid
+      rfc: []
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-keys-04
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid_keys.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:61 (libyang-specific type yang:instance-identifier-keys, no RFC counterpart; the engine reports it unsupported, U-0010)
+    rfc: []
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid_keys/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\">[this is not a valid xpath]</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-keys-04.json
+    assert:
+      verdict: invalid
+      rfc: []
+      deviation: null
+
+  - id: ut-ident-instid/instanceid-keys-05
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid_keys.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:64 (libyang-specific type yang:instance-identifier-keys, no RFC counterpart; the engine reports it unsupported, U-0010)
+    rfc: []
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid_keys/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\">[px:key='val']</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-keys-05.json
+    assert:
+      verdict: invalid
+      rfc: []
+      deviation: null
+# END ut-ident-instid
