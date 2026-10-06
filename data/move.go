@@ -128,9 +128,10 @@ func (t *Tree) insertSibling(sibling, n *Node) error {
 }
 
 // insertAfter is lyd_insert_after: the user-ordered instance n goes right after sibling, an
-// instance of the same schema node. Go keeps schema nodes before opaque ones, so a schema node
-// after an opaque sibling goes after the last schema sibling and an opaque node after a schema
-// sibling becomes the first opaque one (libyang links them where asked; D-0058 candidate).
+// instance of the same schema node. Go keeps schema nodes in schema order and before opaque
+// ones, so a schema node after an opaque sibling goes after the last instance of its own run
+// (insertLastBySchema) and an opaque node after a schema sibling becomes the first opaque one
+// (libyang links them where asked; D-0058 candidate).
 func (t *Tree) insertAfter(sibling, n *Node) error {
 	switch {
 	case sibling == nil:
@@ -161,7 +162,7 @@ func (t *Tree) insertAfter(sibling, n *Node) error {
 	at := 0
 	switch {
 	case n.schema != nil && sibling.schema == nil:
-		at = len(sib.list)
+		at = dt.insertPos(sib, n, insertLastBySchema)
 	case n.schema != nil:
 		at = slices.Index(sib.list, sibling) + 1
 	case sibling.schema == nil:
@@ -269,10 +270,13 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) {
 //     when neither has one): its instances are inserted one by one in data order, each after the
 //     equal values;
 //   - only the source run has one (lyds_merge_nodes2): the destination instances join the source
-//     tree, so equal values keep the source instances first;
+//     tree, so equal values keep the source instances first. libyang 5.8.6 crashes on most such
+//     inputs (D-0062); the port does the stable merge the C is written to do. A destination run
+//     without a tree is assumed sorted, as the C assumes: one with several unsorted instances
+//     (appended by schema) is merged as if sorted and then counts as sorted;
 //   - both have one (lyds_merge_nodes3): the source tree members are inserted one by one. libyang
-//     visits them in its tree's post-order (rb_iter_*), which only orders equal values (duplicate
-//     state leaf-list values); the port has no tree shape and uses data order (D-0061).
+//     visits them in rb_iter order, which decides the order of equal values only; the port has no
+//     tree shape and uses data order (D-0061).
 //
 // Source instances outside the source tree come last, one by one (lyds_merge_nodes1 from next_p).
 func (t *Tree) merge(parent *Node, dst *siblings, src *Tree, run []*Node) {

@@ -136,8 +136,9 @@ func TestMergeSorted(t *testing.T) {
 		t.Fatal("no trees: the source 4 must follow the destination 4")
 	}
 
-	// only the source has one: the destination instance joins the source tree, after the equal
-	// source value (lyds_merge_nodes2)
+	// only the source has one (lyds_merge_nodes2): libyang 5.8.6 crashes on this input (D-0062);
+	// the expected order is the stable merge _front/_among/_back are written to produce, the
+	// destination instance after the equal source value
 	src, sn := f.srcList(t, false, "5", "4", "3")
 	_, c, dst = move(t, []string{"4"}, false, src)
 	if got := names(c.Children()); !reflect.DeepEqual(got, []string{"ll=3", "ll=4", "ll=4", "ll=5", "z=z"}) {
@@ -255,8 +256,15 @@ func TestInsertAfter(t *testing.T) {
 		t.Fatalf("%v", got)
 	}
 	n4 := f.term(t, f.ul, "4")
+	// after an opaque sibling: after the last instance of its run, schema order kept
+	tr.insert(c, f.term(t, f.z, "z"), insertDefault)
 	if err := tr.insertAfter(op, n4); err != nil || c.kids.list[3] != n4 {
 		t.Fatalf("after opaque: %v %v", err, names(c.Children()))
+	}
+	n5 := f.term(t, f.ul, "5")
+	tr.insert(c, n5, insertDefault)
+	if c.kids.list[4] != n5 {
+		t.Fatalf("schema order broken: %v", names(c.Children()))
 	}
 	op2 := newOpaque(opaque{Name: "op2"})
 	if err := tr.insertAfter(ul[0], op2); err != nil || c.kids.opq[0] != op2 {
