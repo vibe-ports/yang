@@ -1,0 +1,1 @@
+module b {namespace urn:b; prefix b; import c {prefix c;} import a {prefix a;}identity id2 {base c:id3;}leaf lf {type identityref {base a:baseid;}}}

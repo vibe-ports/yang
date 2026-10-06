@@ -1,0 +1,51 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module identityone {\n  namespace \"urn:libyang:test:identityone\";\n  prefix identityone;\n\n  identity test {\n    identityone:ext;\n    /* identity \"test\" is disabled by if-feature(s) */\n    status current;\n    description\n      \"text\";\n    reference\n      \"another text\";\n  }\n\n  identity a {\n    derived test;\n  }\n\n  identity b {\n    derived test;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": false,
+          "name": "x"
+        },
+        {
+          "enabled": false,
+          "name": "y"
+        }
+      ],
+      "identities": [
+        {
+          "bases": [
+            "identityone:a",
+            "identityone:b"
+          ],
+          "derived": [],
+          "name": "identityone:test"
+        },
+        {
+          "bases": [],
+          "derived": [
+            "identityone:test"
+          ],
+          "name": "identityone:a"
+        },
+        {
+          "bases": [],
+          "derived": [
+            "identityone:test"
+          ],
+          "name": "identityone:b"
+        }
+      ],
+      "name": "identityone",
+      "revision": null,
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

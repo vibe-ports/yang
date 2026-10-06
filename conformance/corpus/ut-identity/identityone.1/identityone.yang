@@ -1,0 +1,1 @@
+module identityone {yang-version 1.1; namespace urn:libyang:test:identityone; prefix identityone; identity test {base "a";base b; description text;reference 'another text';status current; if-feature x;if-feature y; identityone:ext;}identity a; identity b; extension ext; feature x; feature y;}

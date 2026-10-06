@@ -1,0 +1,72 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module a {\n  namespace \"urn:libyang:test:a\";\n  prefix a;\n\n  identity a1 {\n    derived b:b3;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [
+        {
+          "bases": [],
+          "derived": [
+            "b:b3"
+          ],
+          "name": "a:a1"
+        }
+      ],
+      "name": "a",
+      "revision": null,
+      "schema_tree": []
+    },
+    {
+      "accepted": true,
+      "compiled": "module b {\n  namespace \"urn:libyang:test:b\";\n  prefix b;\n\n  identity b1 {\n    derived b3;\n    derived b4;\n  }\n\n  identity b2 {\n    derived b3;\n  }\n\n  identity b3 {\n    derived b4;\n  }\n\n  identity b4 {\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [
+        {
+          "bases": [],
+          "derived": [
+            "b:b3",
+            "b:b4"
+          ],
+          "name": "b:b1"
+        },
+        {
+          "bases": [],
+          "derived": [
+            "b:b3"
+          ],
+          "name": "b:b2"
+        },
+        {
+          "bases": [
+            "a:a1",
+            "b:b1",
+            "b:b2"
+          ],
+          "derived": [
+            "b:b4"
+          ],
+          "name": "b:b3"
+        },
+        {
+          "bases": [
+            "b:b1",
+            "b:b3"
+          ],
+          "derived": [],
+          "name": "b:b4"
+        }
+      ],
+      "name": "b",
+      "revision": null,
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

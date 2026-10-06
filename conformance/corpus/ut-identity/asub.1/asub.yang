@@ -1,0 +1,1 @@
+submodule asub {yang-version 1.1; belongs-to a {prefix a;}feature f2;feature f3;identity id1 { base a:baseid;}identity id2 { if-feature "f2"; base a:baseid;}identity id3 { if-feature "f3"; base a:baseid;}}

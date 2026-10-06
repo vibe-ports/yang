@@ -1,0 +1,1 @@
+module ident2 { namespace urn:libyang:test:ident2; prefix ident2; import base {prefix b;} leaf l {type identityref {base b:i1;} default b:i2;}}

@@ -1,0 +1,1 @@
+module a {namespace urn:a; prefix a;identity baseid;}

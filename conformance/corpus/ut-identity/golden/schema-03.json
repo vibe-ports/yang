@@ -1,0 +1,46 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 1,
+          "msg": "Duplicate keyword \"status\".",
+          "phase": "parse",
+          "schema_path": null,
+          "vecode": 2,
+          "vecode_name": "LYVE_SYNTAX_YANG"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 12,
+            "name": "LY_EOTHER"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Parsing module \"dup\" failed.",
+          "phase": "parse",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "name": "dup",
+      "phase": "parse"
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

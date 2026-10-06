@@ -1,0 +1,1 @@
+module inv { namespace urn:libyang:test:inv; prefix inv; identity i1 {base i2;}identity i2 {base i3;}identity i3 {base i1;}}

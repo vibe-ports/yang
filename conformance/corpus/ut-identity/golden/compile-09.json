@@ -1,0 +1,78 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module b {\n  namespace \"urn:b\";\n  prefix b;\n\n  identity baseid {\n    derived id2;\n    derived a:id1;\n  }\n\n  identity id2 {\n  }\n\n  leaf lf {\n    type identityref {\n      base baseid;\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [
+        {
+          "bases": [],
+          "derived": [
+            "b:id2",
+            "a:id1"
+          ],
+          "name": "b:baseid"
+        },
+        {
+          "bases": [
+            "b:baseid"
+          ],
+          "derived": [],
+          "name": "b:id2"
+        }
+      ],
+      "name": "b",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "b",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/b:lf",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "identityref",
+            "bases": [
+              "b:baseid"
+            ],
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module c {\n  namespace \"urn:c\";\n  prefix c;\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "c",
+      "revision": null,
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

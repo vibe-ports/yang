@@ -1,0 +1,103 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module a {\n  namespace \"urn:a\";\n  prefix a;\n\n  identity baseid {\n    derived b:id1;\n    derived b:id2;\n    derived b:id3;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [
+        {
+          "bases": [],
+          "derived": [
+            "b:id1",
+            "b:id2",
+            "b:id3"
+          ],
+          "name": "a:baseid"
+        }
+      ],
+      "name": "a",
+      "revision": null,
+      "schema_tree": []
+    },
+    {
+      "accepted": true,
+      "compiled": "module b {\n  namespace \"urn:b\";\n  prefix b;\n\n  identity id1 {\n  }\n\n  identity id2 {\n  }\n\n  identity id3 {\n    /* identity \"id3\" is disabled by if-feature(s) */\n  }\n\n  leaf lf {\n    type identityref {\n      base baseid;\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": true,
+          "name": "f2"
+        },
+        {
+          "enabled": false,
+          "name": "f3"
+        }
+      ],
+      "identities": [
+        {
+          "bases": [
+            "a:baseid"
+          ],
+          "derived": [],
+          "name": "b:id1"
+        },
+        {
+          "bases": [
+            "a:baseid"
+          ],
+          "derived": [],
+          "name": "b:id2"
+        },
+        {
+          "bases": [
+            "a:baseid"
+          ],
+          "derived": [],
+          "name": "b:id3"
+        }
+      ],
+      "name": "b",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "b",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/b:lf",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "identityref",
+            "bases": [
+              "a:baseid"
+            ],
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

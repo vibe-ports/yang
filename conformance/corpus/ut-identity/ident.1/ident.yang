@@ -1,0 +1,1 @@
+module ident { namespace urn:libyang:test:ident; prefix ident; import base {prefix b;} identity ii {base b:i1;}}

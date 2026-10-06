@@ -1,0 +1,51 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": "2014-05-08"
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "b",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"a:alf\": \"b:id1\"\n}\n",
+    "xml": "<alf xmlns=\"urn:a\" xmlns:b=\"urn:b\">b:id1</alf>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:alf",
+      "schema": "/a:alf",
+      "value": {
+        "canonical": "b:id1",
+        "type": "identityref",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

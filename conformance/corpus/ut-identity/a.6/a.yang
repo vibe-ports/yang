@@ -1,0 +1,1 @@
+module a { namespace urn:libyang:test:a; prefix a; identity a1;}

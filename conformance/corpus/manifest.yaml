@@ -26160,3 +26160,562 @@ fixtures:
       rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3", "RFC7950#7.6.5", "RFC7950#7.8.2"]
       deviation: null
 # END ut-validation
+
+# BEGIN ut-identity (hand-converted from libyang tests/utests/schema/test_tree_schema_compile.c and test_schema.c test_identity, reviewed)
+
+  - id: ut-identity/compile-01
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1351 (identity base in a non-implemented module; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+    areas: [schema]
+    request: {"op": "schema", "searchdirs": ["a.1", "b.1"], "modules": [{"name": "b"}]}
+    golden: golden/compile-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-identity/compile-02
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1353 (; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+    areas: [schema, validation]
+    request: {"op": "data", "searchdirs": ["a.1", "b.1"], "modules": [{"name": "b"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<lf xmlns=\"urn:b\">id2</lf>"}
+    golden: golden/compile-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-identity/compile-03
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1357 (; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+    areas: [schema, validation]
+    request: {"op": "data", "searchdirs": ["a.1", "b.1"], "modules": [{"name": "b"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<lf xmlns=\"urn:b\" xmlns:ids=\"urn:a\">ids:id1</lf>"}
+    golden: golden/compile-03.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-identity/compile-04
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1362 (; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+    areas: [schema, validation]
+    request: {"op": "data", "searchdirs": ["a.1", "b.1"], "modules": [{"name": "b"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<lf xmlns=\"urn:b\" xmlns:ids=\"urn:a\">ids:id3</lf>"}
+    golden: golden/compile-04.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-identity/compile-05
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1379 (two imported-only modules; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+    areas: [schema]
+    request: {"op": "schema", "searchdirs": ["a.1", "c.1", "b.2"], "modules": [{"name": "b"}]}
+    golden: golden/compile-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-identity/compile-06
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1381 (; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+    areas: [schema, validation]
+    request: {"op": "data", "searchdirs": ["a.1", "c.1", "b.2"], "modules": [{"name": "b"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<lf xmlns=\"urn:b\">id2</lf>"}
+    golden: golden/compile-06.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-identity/compile-07
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1385 (; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+    areas: [schema, validation]
+    request: {"op": "data", "searchdirs": ["a.1", "c.1", "b.2"], "modules": [{"name": "b"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<lf xmlns=\"urn:b\" xmlns:ids=\"urn:a\">ids:id1</lf>"}
+    golden: golden/compile-07.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-identity/compile-08
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1389 (; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+    areas: [schema, validation]
+    request: {"op": "data", "searchdirs": ["a.1", "c.1", "b.2"], "modules": [{"name": "b"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<lf xmlns=\"urn:b\" xmlns:ids=\"urn:c\">ids:id3</lf>"}
+    golden: golden/compile-08.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-identity/compile-09
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1400 (b implemented, then c which imports a; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+    areas: [schema]
+    request: {"op": "schema", "searchdirs": ["b.3", "a.2", "c.2"], "modules": [{"name": "b"}, {"name": "c"}]}
+    golden: golden/compile-09.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-identity/compile-10
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1409 (; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+    areas: [schema, validation]
+    request: {"op": "data", "searchdirs": ["b.3", "a.2", "c.2"], "modules": [{"name": "b"}, {"name": "c"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<lf xmlns=\"urn:b\">id2</lf>"}
+    golden: golden/compile-10.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-identity/compile-11
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1413 (; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+    areas: [schema, validation]
+    request: {"op": "data", "searchdirs": ["b.3", "a.2", "c.2"], "modules": [{"name": "b"}, {"name": "c"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<lf xmlns=\"urn:b\" xmlns:ids=\"urn:a\">ids:id1</lf>"}
+    golden: golden/compile-11.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-identity/compile-12
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1431 (id2 derives from c:id3 which derives from a:baseid; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+    areas: [schema]
+    request: {"op": "schema", "searchdirs": ["a.1", "c.1", "b.4"], "modules": [{"name": "b"}]}
+    golden: golden/compile-12.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-identity/compile-13
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1433 (; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+    areas: [schema, validation]
+    request: {"op": "data", "searchdirs": ["a.1", "c.1", "b.4"], "modules": [{"name": "b"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<lf xmlns=\"urn:b\">id2</lf>"}
+    golden: golden/compile-13.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-identity/compile-14
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1437 (; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+    areas: [schema, validation]
+    request: {"op": "data", "searchdirs": ["a.1", "c.1", "b.4"], "modules": [{"name": "b"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<lf xmlns=\"urn:b\">id1</lf>"}
+    golden: golden/compile-14.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-identity/compile-15
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1440 (; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+    areas: [schema, validation]
+    request: {"op": "data", "searchdirs": ["a.1", "c.1", "b.4"], "modules": [{"name": "b"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<lf xmlns=\"urn:b\">id3</lf>"}
+    golden: golden/compile-15.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-identity/compile-16
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1453 (b (unimplemented, imported by c) bases an identity on a missing prefix; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+    areas: [schema]
+    request: {"op": "schema", "searchdirs": ["b.5", "c.3"], "modules": [{"name": "c"}]}
+    golden: golden/compile-16.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-identity/compile-17
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1468 (a@2014-05-08 implemented, a@2015-05-08 available, b imports a without revision; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+    areas: [schema]
+    request: {"op": "schema", "searchdirs": ["a@2014-05-08.1", "a@2015-05-08.1", "b.6"], "modules": [{"name": "a", "revision": "2014-05-08"}, {"name": "b"}]}
+    golden: golden/compile-17.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-identity/compile-18
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1484 (; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+    areas: [schema, validation]
+    request: {"op": "data", "searchdirs": ["a@2014-05-08.1", "a@2015-05-08.1", "b.6"], "modules": [{"name": "a", "revision": "2014-05-08"}, {"name": "b"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<alf xmlns=\"urn:a\" xmlns:ids=\"urn:b\">ids:id1</alf>"}
+    golden: golden/compile-18.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-identity/compile-19
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1488 (; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+    areas: [schema, validation]
+    request: {"op": "data", "searchdirs": ["a@2014-05-08.1", "a@2015-05-08.1", "b.6"], "modules": [{"name": "a", "revision": "2014-05-08"}, {"name": "b"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<alf xmlns=\"urn:a\" xmlns:ids=\"urn:b\">ids:id2</alf>"}
+    golden: golden/compile-19.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-identity/compile-20
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1510 (b imports a@2014-05-08 (not implemented), then a@2015-05-08 is implemented; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+    areas: [schema]
+    request: {"op": "schema", "searchdirs": ["a@2014-05-08.1", "a@2015-05-08.1", "b.6"], "modules": [{"name": "b"}, {"name": "a", "revision": "2015-05-08"}]}
+    golden: golden/compile-20.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-identity/compile-21
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1523 (; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+    areas: [schema, validation]
+    request: {"op": "data", "searchdirs": ["a@2014-05-08.1", "a@2015-05-08.1", "b.6"], "modules": [{"name": "b"}, {"name": "a", "revision": "2015-05-08"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<alf xmlns=\"urn:a\" xmlns:ids=\"urn:b\">ids:id1</alf>"}
+    golden: golden/compile-21.json
+
+  - id: ut-identity/compile-22
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1525 (; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+    areas: [schema, validation]
+    request: {"op": "data", "searchdirs": ["a@2014-05-08.1", "a@2015-05-08.1", "b.6"], "modules": [{"name": "b"}, {"name": "a", "revision": "2015-05-08"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<alf xmlns=\"urn:a\" xmlns:ids=\"urn:b\">ids:id2</alf>"}
+    golden: golden/compile-22.json
+
+  - id: ut-identity/compile-23
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1543 (a is imported only; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+    areas: [schema]
+    request: {"op": "schema", "searchdirs": ["a.3", "b.7"], "modules": [{"name": "b"}]}
+    golden: golden/compile-23.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-identity/compile-24
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1545 (; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+    areas: [schema, validation]
+    request: {"op": "data", "searchdirs": ["a.3", "b.7"], "modules": [{"name": "b"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<lf xmlns=\"urn:b\">id1</lf>"}
+    golden: golden/compile-24.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-identity/compile-25
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1557 (a implemented with the feature disabled; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+    areas: [schema]
+    request: {"op": "schema", "searchdirs": ["a.3", "b.7"], "modules": [{"name": "a"}, {"name": "b"}]}
+    golden: golden/compile-25.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-identity/compile-26
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1564 (; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+    areas: [schema, validation]
+    request: {"op": "data", "searchdirs": ["a.3", "b.7"], "modules": [{"name": "a"}, {"name": "b"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<lf xmlns=\"urn:b\">id1</lf>"}
+    golden: golden/compile-26.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-identity/compile-27
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1585 (b with f2 enabled, f3 disabled; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+    areas: [schema]
+    request: {"op": "schema", "searchdirs": ["a.4", "b.8"], "modules": [{"name": "a"}, {"name": "b", "features": ["f2"]}]}
+    golden: golden/compile-27.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-identity/compile-28
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1587 (; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+    areas: [schema, validation]
+    request: {"op": "data", "searchdirs": ["a.4", "b.8"], "modules": [{"name": "a"}, {"name": "b", "features": ["f2"]}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<lf xmlns=\"urn:b\">id1</lf>"}
+    golden: golden/compile-28.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-identity/compile-29
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1591 (; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+    areas: [schema, validation]
+    request: {"op": "data", "searchdirs": ["a.4", "b.8"], "modules": [{"name": "a"}, {"name": "b", "features": ["f2"]}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<lf xmlns=\"urn:b\">id2</lf>"}
+    golden: golden/compile-29.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-identity/compile-30
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1595 (; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+    areas: [schema, validation]
+    request: {"op": "data", "searchdirs": ["a.4", "b.8"], "modules": [{"name": "a"}, {"name": "b", "features": ["f2"]}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<lf xmlns=\"urn:b\">id3</lf>"}
+    golden: golden/compile-30.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-identity/compile-31
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1613 (a includes asub, f2 enabled; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+    areas: [schema]
+    request: {"op": "schema", "searchdirs": ["asub.1", "a.5", "b.9"], "modules": [{"name": "a", "features": ["f2"]}, {"name": "b"}]}
+    golden: golden/compile-31.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-identity/compile-32
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1619 (; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+    areas: [schema, validation]
+    request: {"op": "data", "searchdirs": ["asub.1", "a.5", "b.9"], "modules": [{"name": "a", "features": ["f2"]}, {"name": "b"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<lf xmlns=\"urn:b\" xmlns:ids=\"urn:a\">ids:id1</lf>"}
+    golden: golden/compile-32.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-identity/compile-33
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1623 (; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+    areas: [schema, validation]
+    request: {"op": "data", "searchdirs": ["asub.1", "a.5", "b.9"], "modules": [{"name": "a", "features": ["f2"]}, {"name": "b"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<lf xmlns=\"urn:b\" xmlns:ids=\"urn:a\">ids:id2</lf>"}
+    golden: golden/compile-33.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-identity/compile-34
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1627 (; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+    areas: [schema, validation]
+    request: {"op": "data", "searchdirs": ["asub.1", "a.5", "b.9"], "modules": [{"name": "a", "features": ["f2"]}, {"name": "b"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<lf xmlns=\"urn:b\" xmlns:ids=\"urn:a\">ids:id3</lf>"}
+    golden: golden/compile-34.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-identity/schema-01
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1185 (duplicate description)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+    areas: [schema]
+    request: {"op": "schema", "searchdirs": ["dup.1"], "modules": [{"name": "dup"}]}
+    golden: golden/schema-01.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-identity/schema-02
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1186 (duplicate reference)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+    areas: [schema]
+    request: {"op": "schema", "searchdirs": ["dup.2"], "modules": [{"name": "dup"}]}
+    golden: golden/schema-02.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-identity/schema-03
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1187 (duplicate status)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+    areas: [schema]
+    request: {"op": "schema", "searchdirs": ["dup.3"], "modules": [{"name": "dup"}]}
+    golden: golden/schema-03.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-identity/schema-04
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1190 (full content)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+    areas: [schema]
+    request: {"op": "schema", "searchdirs": ["identityone.1"], "modules": [{"name": "identityone"}]}
+    golden: golden/schema-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-identity/schema-05
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1197 (invalid substatement)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+    areas: [schema]
+    request: {"op": "schema", "searchdirs": ["inv.1"], "modules": [{"name": "inv"}]}
+    golden: golden/schema-05.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-identity/schema-06
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1234 (derived identities across modules (a then b))
+    rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+    areas: [schema]
+    request: {"op": "schema", "searchdirs": ["a.6", "b.10"], "modules": [{"name": "a"}, {"name": "b"}]}
+    golden: golden/schema-06.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-identity/schema-07
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1254 (base declared after use)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+    areas: [schema]
+    request: {"op": "schema", "searchdirs": ["c.4"], "modules": [{"name": "c"}]}
+    golden: golden/schema-07.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-identity/schema-08
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1259 (identity base error)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+    areas: [schema]
+    request: {"op": "schema", "searchdirs": ["inv.2"], "modules": [{"name": "inv"}]}
+    golden: golden/schema-08.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-identity/schema-09
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1260 (identity base error)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+    areas: [schema]
+    request: {"op": "schema", "searchdirs": ["inv.3"], "modules": [{"name": "inv"}]}
+    golden: golden/schema-09.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-identity/schema-10
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1262 (identity base error)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+    areas: [schema]
+    request: {"op": "schema", "searchdirs": ["inv.4"], "modules": [{"name": "inv"}]}
+    golden: golden/schema-10.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-identity/schema-11
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1267 (base in a non-implemented module)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+    areas: [schema]
+    request: {"op": "schema", "searchdirs": ["base.1", "ident.1"], "modules": [{"name": "ident"}]}
+    golden: golden/schema-11.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-identity/schema-12
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1270 (default from a non-implemented module)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+    areas: [schema]
+    request: {"op": "schema", "searchdirs": ["base.1", "ident2.1"], "modules": [{"name": "ident2"}]}
+    golden: golden/schema-12.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+      deviation: null
+
+  - id: ut-identity/schema-13
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1275 (typedef default from a non-implemented module)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+    areas: [schema]
+    request: {"op": "schema", "searchdirs": ["base.1", "ident2.2"], "modules": [{"name": "ident2"}]}
+    golden: golden/schema-13.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+      deviation: null
+# END ut-identity

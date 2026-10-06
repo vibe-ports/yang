@@ -1,0 +1,1 @@
+module b {namespace urn:b; prefix b;import a {prefix a;}identity baseref { base a:baseid;}identity id1 { base baseref;}identity id2 { base baseref;}}

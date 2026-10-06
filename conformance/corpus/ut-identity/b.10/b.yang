@@ -1,0 +1,1 @@
+module b {yang-version 1.1; namespace urn:libyang:test:b; prefix b; import a {prefix a;}identity b1; identity b2; identity b3 {base b1; base b:b2; base a:a1;}identity b4 {base b:b1; base b3;}}

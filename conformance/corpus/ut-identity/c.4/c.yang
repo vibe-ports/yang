@@ -1,0 +1,1 @@
+module c {yang-version 1.1; namespace urn:libyang:test:c; prefix c; identity c2 {base c1;} identity c1;}

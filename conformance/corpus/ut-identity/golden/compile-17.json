@@ -1,0 +1,95 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module a {\n  namespace \"urn:a\";\n  prefix a;\n\n  revision 2014-05-08;\n\n  identity baseid {\n    derived b:baseref;\n  }\n\n  leaf alf {\n    type identityref {\n      base baseid;\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [
+        {
+          "bases": [],
+          "derived": [
+            "b:baseref"
+          ],
+          "name": "a:baseid"
+        }
+      ],
+      "name": "a",
+      "revision": "2014-05-08",
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "a",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/a:alf",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "identityref",
+            "bases": [
+              "a:baseid"
+            ],
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module b {\n  namespace \"urn:b\";\n  prefix b;\n\n  identity baseref {\n    derived id1;\n    derived id2;\n  }\n\n  identity id1 {\n  }\n\n  identity id2 {\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [
+        {
+          "bases": [
+            "a:baseid"
+          ],
+          "derived": [
+            "b:id1",
+            "b:id2"
+          ],
+          "name": "b:baseref"
+        },
+        {
+          "bases": [
+            "b:baseref"
+          ],
+          "derived": [],
+          "name": "b:id1"
+        },
+        {
+          "bases": [
+            "b:baseref"
+          ],
+          "derived": [],
+          "name": "b:id2"
+        }
+      ],
+      "name": "b",
+      "revision": null,
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}
