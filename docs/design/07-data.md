@@ -427,6 +427,8 @@ entries owned by this stream: **D-0001** (candidate: `when` reading a top-level 
 | D-0056 (candidate) | a must reaching a node left unresolved after a when error fails with `LY_EINCOMPLETE` (LOGERR, no vecode) | — |
 | D-0057 (candidate) | a tree of only top-level opaque nodes reports the opaque error once per implemented module | — |
 | D-0058 (candidate) | **not mirrored**: `LYD_INSERT_NODE_LAST` (`LYD_PARSE_ORDERED`) appends after the last sibling whatever it is; the port keeps schema nodes in schema order and before all opaque nodes (opaque nodes are a separate slice), so input that is not in schema order or mixes unknown nodes is placed by schema; likewise `lyd_insert_after` of a schema node after an opaque sibling (libyang links it there) places it after the last instance of its own run, keeping schema order | RFC 7950 §7.5.7 (data order is the schema order; libyang's own default insertion agrees) |
+| D-0061 (candidate) | **not mirrored**: moving a sorted run into a sorted run (`lyds_merge_nodes3`): equal source values in data order, libyang in `rb_iter` order (tree-shape dependent) | RFC 7950 §7.7.7 |
+| D-0062 | **not mirrored**: moving a sorted run into an untreed run (`lyds_merge_nodes2`): libyang is UB (SIGSEGV / allocation failure and hang); the port does the stable merge, source first on equal values | RFC 7950 §7.7.7 |
 | U-0040 | input size budget | libyang reads anything |
 | U-0041 | node-count budget | — |
 | U-0042 | cumulative XPath step budget per Parse/Validate | — |
