@@ -248,6 +248,14 @@ GIT_COMMITTER_DATE="1700000000 +0200" git -C "$m" commit -qm tz; head=$(git -C "
 git -C "$m" push -q -f origin HEAD:refs/pull/7/head
 onmain; pull; runs success; comments 1056050 $D1 "VERDICT: approve $head (codex-gpt-6-astra)"
 expect 1 "merge-pr: non-UTC committer date" "non-UTC dates" mp
+fake=$(git -C "$m" commit-tree "$head^{tree}" -p "$head^" -m tz); git -C "$m" replace "$head" "$fake"
+expect 1 "merge-pr: a replace ref can't hide a non-UTC date" "non-UTC dates" mp
+git -C "$m" replace -d "$head" >/dev/null
+head=$(git -C "$m" commit-tree "$head^{tree}" -p "$(git -C "$m" rev-parse origin/main~1)" -m side)
+git -C "$m" push -q -f origin "$head:refs/pull/7/head"; pull; runs success; comments 1056050 $D1 "VERDICT: approve $head (codex-gpt-6-astra)"
+git -C "$m" config advice.graftFileDeprecated false; echo "$head $(git -C "$m" rev-parse origin/main)" >"$m/.git/info/grafts"
+expect 1 "merge-pr: a graft can't fake a fast-forward" "does not fast-forward main" mp
+rm "$m/.git/info/grafts"
 
 # Approval of an older head A carries over to a patch-identical rebase H. The bare repo serves
 # force-pushed-away commits by SHA, like GitHub.

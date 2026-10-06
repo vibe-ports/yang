@@ -99,8 +99,11 @@ ci=$(gh api "repos/$repo/actions/workflows/ci.yml/runs?head_sha=$head&per_page=1
 
 git fetch -q origin "refs/pull/$pr/head"
 [[ $(git rev-parse FETCH_HEAD) == "$head" ]] || fail "fetched PR head differs from $head (PR moved?)"
-git merge-base --is-ancestor "$base" "$head" || fail "$short does not fast-forward main: rebase (UTC dates) and re-review"
-bad=$(git log --format='%h %ad %cd' --date=format:%z "$base..$head" | awk '$2!="+0000" || $3!="+0000"')
+# The real commits: replace refs or grafts in this clone must not fake ancestry or dates.
+real=(env GIT_NO_REPLACE_OBJECTS=1 GIT_GRAFT_FILE=/dev/null)
+"${real[@]}" git merge-base --is-ancestor "$base" "$head" ||
+  fail "$short does not fast-forward main: rebase (UTC dates) and re-review"
+bad=$("${real[@]}" git log --format='%h %ad %cd' --date=format:%z "$base..$head" | awk '$2!="+0000" || $3!="+0000"')
 [[ -z $bad ]] || fail "commits with non-UTC dates:"$'\n'"$bad"
 
 if [[ -n $carried ]]; then
@@ -127,8 +130,9 @@ if [[ -n $carried ]]; then
   iso=$(mktemp -d) && trap 'rm -rf "$iso"' EXIT || nope "cannot create a temporary directory"
   objs=$(cd "$(git rev-parse --git-path objects)" && pwd) || nope "cannot find the object store"
   clean=(env -u GIT_CONFIG_PARAMETERS -u GIT_CONFIG_COUNT -u GIT_OBJECT_DIRECTORY -u GIT_INDEX_FILE
-    -u GIT_WORK_TREE -u GIT_NAMESPACE -u GIT_REPLACE_REF_BASE -u GIT_EXTERNAL_DIFF
-    GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_ATTR_NOSYSTEM=1 GIT_NO_REPLACE_OBJECTS=1)
+    -u GIT_WORK_TREE -u GIT_COMMON_DIR -u GIT_NAMESPACE -u GIT_REPLACE_REF_BASE -u GIT_EXTERNAL_DIFF
+    GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null GIT_ATTR_NOSYSTEM=1 GIT_NO_REPLACE_OBJECTS=1
+    GIT_GRAFT_FILE=/dev/null)
   "${clean[@]}" git init -q --bare --template= "$iso" || nope "cannot create the isolated repository"
   g() { "${clean[@]}" GIT_DIR="$iso" GIT_ALTERNATE_OBJECT_DIRECTORIES="$objs" GIT_ATTR_SOURCE="$base" \
     git -c core.attributesFile=/dev/null "$@"; }
