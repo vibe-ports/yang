@@ -5,8 +5,10 @@ package data
 import (
 	"errors"
 	"fmt"
+	"math/bits"
 	"reflect"
 	"slices"
+	"sync"
 	"testing"
 
 	"github.com/vibe-ports/yang/internal/schema"
@@ -151,22 +153,112 @@ func TestInsertOrder(t *testing.T) {
 	}
 }
 
-// TestInsertReversedLinear: inserting n system-ordered values in reverse needs O(log n)
-// comparisons each (no quadratic search; design 07 §4).
-func TestInsertReversedLinear(t *testing.T) {
+// TestInsertWork: system-ordered values inserted in reverse cost O(log n) comparisons each, in
+// order O(1) beyond the run lookup (design 07 §4); counted, not timed.
+func TestInsertWork(t *testing.T) {
 	f := newFixture()
 	f.ll.Type = &schema.Type{Base: schema.Uint16}
+	const n = 20000
+	for _, reversed := range []bool{true, false} {
+		tr := newTree(f.set)
+		c := newInner(f.c)
+		tr.insert(nil, c, insertDefault)
+		tr.work = 0
+		for i := range n {
+			v := i + 1
+			if reversed {
+				v = n - i
+			}
+			tr.insert(c, f.term(t, f.ll, fmt.Sprint(v)), insertDefault)
+		}
+		for i, k := range c.kids.list {
+			if k.value.Canonical() != fmt.Sprint(i+1) {
+				t.Fatalf("position %d holds %s", i, k.value.Canonical())
+			}
+		}
+		if limit := n * (3*bits.Len(n) + 4); tr.work > limit {
+			t.Fatalf("reversed %v: %d comparisons, limit %d", reversed, tr.work, limit)
+		}
+	}
+}
+
+// TestResortRun: a run appended out of value order (no RB tree in libyang) is sorted by the next
+// sorted insertion (lyds_additionally_create_rb_tree): [9,1,5,7] + 6 = 1,5,6,7,9.
+func TestResortRun(t *testing.T) {
+	f := newFixture()
 	tr := newTree(f.set)
 	c := newInner(f.c)
 	tr.insert(nil, c, insertDefault)
-	const n = 20000
-	for i := n; i > 0; i-- {
-		tr.insert(c, f.term(t, f.ll, fmt.Sprint(i%65536)), insertDefault)
+	for _, v := range []string{"9", "1", "5", "7"} {
+		tr.insert(c, f.term(t, f.ll, v), insertLast)
 	}
-	for i, k := range c.kids.list {
-		if k.value.Canonical() != fmt.Sprint(i+1) {
-			t.Fatalf("position %d holds %s", i, k.value.Canonical())
+	if got := names(c.Children()); !reflect.DeepEqual(got, []string{"ll=9", "ll=1", "ll=5", "ll=7"}) {
+		t.Fatalf("appended: %v", got)
+	}
+	tr.insert(c, f.term(t, f.ll, "6"), insertDefault)
+	if got := names(c.Children()); !reflect.DeepEqual(got, []string{"ll=1", "ll=5", "ll=6", "ll=7", "ll=9"}) {
+		t.Fatalf("re-sorted: %v", got)
+	}
+}
+
+// TestOpaqueTail: insertLast keeps schema nodes before the opaque tail, and a node that would
+// break schema order is placed by schema, so siblings stay monotone for the binary searches.
+func TestOpaqueTail(t *testing.T) {
+	f := newFixture()
+	tr := newTree(f.set)
+	c := newInner(f.c)
+	tr.insert(nil, c, insertDefault)
+	tr.insert(c, f.term(t, f.z, "z"), insertLast)
+	tr.insert(c, newOpaque(opaque{Name: "op"}), insertLast)
+	tr.insert(c, f.term(t, f.x, "x"), insertLast)
+	tr.insert(c, f.term(t, f.ll, "1"), insertLast)
+	if got := names(c.Children()); !reflect.DeepEqual(got, []string{"ll=1", "x=x", "z=z", "op"}) {
+		t.Fatalf("%v", got)
+	}
+	if !panics(func() { tr.insert(c, c.kids.list[0], insertDefault) }) {
+		t.Fatal("inserting a linked node must panic")
+	}
+}
+
+func panics(f func()) (p bool) {
+	defer func() { p = recover() != nil }()
+	f()
+	return false
+}
+
+// TestUnlinkAll: one compaction per sibling list; the index and default flags follow.
+func TestUnlinkAll(t *testing.T) {
+	f := newFixture()
+	tr := newTree(f.set)
+	c := newInner(f.c)
+	c.flags = FlagDefault
+	tr.insert(nil, c, insertDefault)
+	var odd []*Node
+	for i := range 1000 {
+		n := f.term(t, f.ll, fmt.Sprint(i%256))
+		tr.insert(c, n, insertDefault)
+		if i%2 == 1 {
+			odd = append(odd, n)
 		}
+	}
+	d := f.term(t, f.z, "d")
+	d.flags = FlagDefault
+	tr.insert(c, d, insertDefault)
+	if err := unlinkAll(odd); err != nil {
+		t.Fatal(err)
+	}
+	if len(c.kids.list) != 501 || odd[0].parent != nil {
+		t.Fatalf("%d children left", len(c.kids.list))
+	}
+	if err := unlinkAll(slices.Clone(c.kids.list[:500])); err != nil {
+		t.Fatal(err)
+	}
+	if len(c.kids.list) != 1 || len(c.kids.ht) != 1 || c.flags&FlagDefault == 0 {
+		t.Fatalf("left %v, index %d, flags %x", names(c.Children()), len(c.kids.ht), c.flags)
+	}
+	key := f.list(t, tr, c, "k", "").kids.list[0]
+	if err := unlinkAll([]*Node{d, key}); err == nil || d.parent == nil {
+		t.Fatal("a key in the batch must refuse the whole batch")
 	}
 }
 
@@ -176,23 +268,23 @@ func TestNPContainerDefault(t *testing.T) {
 	f := newFixture()
 	tr := newTree(f.set)
 	c := newInner(f.c)
-	c.flags = Default
+	c.flags = FlagDefault
 	tr.insert(nil, c, insertDefault)
 	d := f.term(t, f.z, "d")
-	d.flags = Default
+	d.flags = FlagDefault
 	tr.insert(c, d, insertDefault)
-	if c.flags&Default == 0 {
+	if c.flags&FlagDefault == 0 {
 		t.Fatal("default child cleared Default")
 	}
 	e := f.term(t, f.x, "e")
 	tr.insert(c, e, insertDefault)
-	if c.flags&Default != 0 {
+	if c.flags&FlagDefault != 0 {
 		t.Fatal("explicit child kept Default")
 	}
 	if err := unlinkTree(e); err != nil {
 		t.Fatal(err)
 	}
-	if c.flags&Default == 0 || e.parent != nil {
+	if c.flags&FlagDefault == 0 || e.parent != nil {
 		t.Fatal("unlink: Default not set back")
 	}
 }
@@ -305,4 +397,130 @@ func TestAllPreOrder(t *testing.T) {
 	if got := names(c.All()); !reflect.DeepEqual(got, []string{"c", "l[a]", "k=a", "v=1", "z=z"}) {
 		t.Fatalf("%v", got)
 	}
+}
+
+// TestFindFirstHashOrder: with a children hash table (4+ schema children) libyang's lookup
+// returns the first record of the bucket in insertion order; without one, the first sibling.
+// User-ordered [1,2,3,4] with a new 3 inserted before 1: the old 3 with the table, the new one
+// without (VERIFY(dup/first-match)).
+func TestFindFirstHashOrder(t *testing.T) {
+	f := newFixture()
+	for _, withHT := range []bool{true, false} {
+		tr := newTree(f.set)
+		c := newInner(f.c)
+		tr.insert(nil, c, insertDefault)
+		vals := []string{"1", "2", "3", "4"}
+		if !withHT {
+			vals = vals[:2]
+			vals[1] = "3"
+		}
+		var old *Node
+		for _, v := range vals {
+			n := f.term(t, f.ul, v)
+			tr.insert(c, n, insertDefault)
+			if v == "3" {
+				old = n
+			}
+		}
+		fresh := f.term(t, f.ul, "3")
+		tr.insertBefore(c.kids.list[0], fresh)
+		want := old
+		if !withHT {
+			want = fresh
+		}
+		if (c.kids.ht != nil) != withHT || tr.findFirst(&c.kids, f.term(t, f.ul, "3")) != want {
+			t.Fatalf("hash table %v: wrong instance", withHT)
+		}
+	}
+}
+
+// TestCompareLiteral: lyd_compare_single as libyang has it. A plain leaf compares canonical
+// text (a union "1" stored as int equals "1" stored as string, VERIFY(cmp/union-leaf-text)); a
+// leaf-list also compares the hashed value, so those differ; opaque nodes compare values only
+// (VERIFY(cmp/opaque-value-only)); with a hash table a leaf target matches by schema node.
+func TestCompareLiteral(t *testing.T) {
+	f := newFixture()
+	u := &schema.Type{Base: schema.Union, Union: []*schema.Type{{Base: schema.Int8}, {Base: schema.String}}}
+	store := func(s *schema.Node, kind string) *Node {
+		v, d := types.Store(u, "1", types.FormatJSON, types.JSONHints(kind), nil, s)
+		if d != nil {
+			t.Fatal(d.Msg)
+		}
+		return newTerm(s, v)
+	}
+	f.z.Type, f.ll.Type = u, u
+	tr := newTree(f.set)
+	if !compareSingle(tr, store(f.z, "number"), store(f.z, "string"), false) {
+		t.Error("plain leaf: canonical text must decide")
+	}
+	if compareSingle(tr, store(f.ll, "number"), store(f.ll, "string"), false) {
+		t.Error("leaf-list: the hashed value must differ")
+	}
+	if !compareSingle(tr, newOpaque(opaque{Name: "a", Value: "v"}), newOpaque(opaque{Name: "b", Value: "v"}), true) {
+		t.Error("opaque: value only")
+	}
+	c := newInner(f.c)
+	tr.insert(nil, c, insertDefault)
+	for _, v := range []string{"1", "2", "3"} {
+		tr.insert(c, f.term(t, f.sl, v), insertDefault)
+	}
+	z := f.term(t, f.z, "zz")
+	f.z.Type = f.str
+	tr.insert(c, z, insertDefault)
+	if c.kids.ht == nil || tr.findFirst(&c.kids, f.term(t, f.z, "other")) != z {
+		t.Error("hash table: a leaf matches by schema node")
+	}
+	// a keyed list without its keys is never found
+	if tr.findFirst(&c.kids, newInner(f.l)) != nil {
+		t.Error("list target without keys")
+	}
+}
+
+// TestKeyUnlinkRehash: removing a key (internally) moves the list out of its old bucket in the
+// parent's table (lyd_unlink_hash leaves libyang's stale; the index must not serve it).
+func TestKeyUnlinkRehash(t *testing.T) {
+	f := newFixture()
+	tr := newTree(f.set)
+	c := newInner(f.c)
+	tr.insert(nil, c, insertDefault)
+	var l *Node
+	for _, k := range []string{"a", "b", "c", "d"} {
+		l = f.list(t, tr, c, k, "")
+	}
+	probe := newInner(f.l)
+	probe.kids.list = []*Node{f.term(t, f.lk, "d")}
+	if tr.findFirst(&c.kids, probe) != l {
+		t.Fatal("list d not found")
+	}
+	unlink(l.kids.list[0])
+	if tr.findFirst(&c.kids, probe) != nil {
+		t.Fatal("list found by a removed key")
+	}
+}
+
+// TestConcurrentReads: lookups and comparisons only read the tree (go test -race).
+func TestConcurrentReads(t *testing.T) {
+	f := newFixture()
+	tr := newTree(f.set)
+	c := newInner(f.c)
+	tr.insert(nil, c, insertDefault)
+	for i := range 50 {
+		tr.insert(c, f.term(t, f.ll, fmt.Sprint(i)), insertDefault)
+	}
+	f.list(t, tr, c, "a", "1")
+	probe := f.term(t, f.ll, "7")
+	var wg sync.WaitGroup
+	for range 8 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for range 100 {
+				if tr.findFirst(&c.kids, probe) == nil || tr.findSchema(&c.kids, f.z) != nil || !compareSingle(tr, c, c, true) {
+					t.Error("lookup failed")
+					return
+				}
+			}
+		}()
+	}
+	wg.Wait()
 }

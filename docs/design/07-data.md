@@ -231,7 +231,7 @@ TDC `lyd_np_cont_dflt_*`), `validate.go` + `when.go` (VAL), `xpathnode.go` (adap
 `xpath.Node`/`SchemaNode`/`Value` and `types.Tree`), `print_json.go`, `print_xml.go`, `wd.go` (OUT),
 `diff.go` (implicit diff subset), `edit.go`, `diag.go`, `budget.go`.
 
-**Node** = design 02, children as an ordered slice. Flags `Default`, `WhenTrue`, `New`, and
+**Node** = design 02, children as an ordered slice. Flags (Go names `FlagDefault`, `FlagWhenTrue`, `FlagNew`, `FlagWhenFalse`) `Default`, `WhenTrue`, `New`, and
 **`WhenFalse`** (libyang 5.8.6 `LYD_WHEN_FALSE` 0x10, VAL:408 — design 02 is amended in this PR).
 Only XPath (absent) and `lyd_validate_final_r` (no musts, no obsolete warning, no recursion into it,
 no NP-container default flag) honour `WhenFalse`; mandatory/min/max/unique of its siblings still
@@ -267,7 +267,7 @@ func (t *Tree) NewPath(path, value string, o NewPathOptions) (*Node, error) // o
 func (t *Tree) Find(path string) (*Node, error)
 func (n *Node) Remove() error
 func (t *Tree) Merge(src *Tree) error
-func (t *Tree) Top() iter.Seq[*Node]   // + Node: Schema(), Value(), Children(), Parent(), Path(), flags
+func (t *Tree) Top() iter.Seq[*Node]   // + Node: Schema(), Value(), Name(), Children(), All() (pre-order), Parent(), Path(), Flags()
 ```
 `ValidateDiff` is the second Validate method because the implicit diff is libyang's out-parameter
 (the oracle and NETCONF servers need it); PLAN §2's `Validate` shape stays, with `context.Context` as

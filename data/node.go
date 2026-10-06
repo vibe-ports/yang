@@ -8,6 +8,7 @@ package data
 
 import (
 	"iter"
+	"sync"
 
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
@@ -18,17 +19,17 @@ type Flags uint8
 
 // Node flags; the values are libyang's.
 const (
-	// Default marks an implicit node (added by validation) or an NP container with only
+	// FlagDefault marks an implicit node (added by validation) or an NP container with only
 	// default descendants (LYD_DEFAULT).
-	Default Flags = 0x01
-	// WhenTrue: all when conditions of the node were true at the last evaluation
+	FlagDefault Flags = 0x01
+	// FlagWhenTrue: all when conditions of the node were true at the last evaluation
 	// (LYD_WHEN_TRUE); such a node whose when turns false is deleted silently.
-	WhenTrue Flags = 0x02
-	// New: created or changed since the last validation (LYD_NEW).
-	New Flags = 0x04
-	// WhenFalse: a when condition was false during a multi-error validation; the node is kept,
+	FlagWhenTrue Flags = 0x02
+	// FlagNew: created or changed since the last validation (LYD_NEW).
+	FlagNew Flags = 0x04
+	// FlagWhenFalse: a when condition was false during a multi-error validation; the node is kept,
 	// XPath treats it as absent and the final checks skip it (LYD_WHEN_FALSE, design 07 §2).
-	WhenFalse Flags = 0x10
+	FlagWhenFalse Flags = 0x10
 )
 
 // opaque is the data of a node without a schema node (lyd_node_opaq): unknown input kept by
@@ -51,13 +52,19 @@ type Node struct {
 	value  types.Value
 	opaq   *opaque
 	flags  Flags
+	hkey   idxKey // bucket of the node in its parent's children index (lyd_node.hash)
+	hashed bool
 }
 
 // Tree is a data tree: its top-level siblings and the schema snapshot it is built over.
 type Tree struct {
-	set  *schema.Set
-	top  siblings
-	rank map[*schema.Node]int // schema position among its schema siblings (lys_getnext order)
+	set *schema.Set
+	top siblings
+	// rank caches the position of schema nodes among their schema siblings (lys_getnext
+	// order); lookups only read the tree otherwise, so the cache has its own lock.
+	rankMu sync.Mutex
+	rank   map[*schema.Node]int
+	work   int // comparisons made by insertions (tests count work, not time)
 }
 
 // newTree returns an empty tree over the compiled schema s (the public constructor over a
