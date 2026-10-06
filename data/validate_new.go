@@ -243,11 +243,18 @@ func (vc *valCtx) autodel(del []*Node, npContDiff bool) {
 	for _, n := range del {
 		vc.dropTypes(n)
 	}
+	if len(del) == 1 {
+		unlink(del[0]) // the usual single default: no batch bookkeeping
+		return
+	}
 	_ = vc.t.unlinkAll(del)
 }
 
 // dropTypes removes the terms of n's subtree from node_types the way libyang does
 // (ly_set_contains + ly_set_rm_index per node in DFS order: the last item fills each hole).
+// libyang removes only terms whose type has a validate_tree callback; every queued term has one,
+// so the set removed is the same, and removing any other term could only drop a node that is
+// being freed (the safer side: libyang would keep a freed node queued).
 func (vc *valCtx) dropTypes(n *Node) {
 	if vc.nodeTypes == nil || vc.nodeTypes.len() == 0 {
 		return

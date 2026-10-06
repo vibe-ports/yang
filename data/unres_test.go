@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"reflect"
 	"testing"
 
@@ -302,4 +303,176 @@ func TestWhenQueueWork(t *testing.T) {
 		t.Fatal(err, diagCodes(vc.log.diags))
 	}
 	t.Logf("leafrefs: %d steps for %d references", vc.budget.steps, n/4)
+}
+
+// TestPathEvalPositions: an instance-identifier position beyond the instances — including the
+// saturated 2^64-1 of a huge number — selects nothing (no panic); key and position predicates.
+func TestPathEvalPositions(t *testing.T) {
+	f := newUnresFixture(t)
+	vc, _, nodes := f.build(t, ValidateOptions{}, f.t, "1", f.t, "2")
+	seg := func(pos uint64) types.Path {
+		return types.Path{{Node: f.c}, {Node: f.t, Preds: []types.PathPred{{Kind: types.PredPosition, Position: pos}}}}
+	}
+	if vc.pathEval(seg(2)) != nodes["t=2"] || vc.pathEval(seg(3)) != nil || vc.pathEval(seg(0)) != nil ||
+		vc.pathEval(seg(math.MaxUint64)) != nil || vc.pathEval(seg(1<<63)) != nil {
+		t.Fatal("positions")
+	}
+	v, _ := types.Store(f.t.Type, "2", types.FormatJSON, types.JSONHints("number"), nil, f.t)
+	ll := types.Path{{Node: f.c}, {Node: f.t, Preds: []types.PathPred{{Kind: types.PredLeafList, Value: v}}}}
+	if vc.pathEval(ll) != nodes["t=2"] {
+		t.Fatal("leaf-list value predicate")
+	}
+}
+
+// listFixture adds `list l { key k; leaf k; leaf v { when "../k = 'on'"; } }`, `leaf lk { type
+// leafref { path "../l/k"; } }`, `leaf sr { type leafref { path "../a"; } }` and `leaf dis { type
+// leafref { path "../gone"; } }` (a target removed by if-feature) to the unres fixture.
+func listFixture(t *testing.T) (*unresFixture, *schema.Node, *schema.Node, *schema.Node, *schema.Node, *schema.Node, *schema.Node) {
+	f := newUnresFixture(t)
+	str := &schema.Type{Base: schema.String}
+	add := func(p *schema.Node, k schema.Kind, name string, ty *schema.Type) *schema.Node {
+		n := &schema.Node{Kind: k, Name: name, Module: f.m, Parent: p, Type: ty, Config: true}
+		p.Children = append(p.Children, n)
+		return n
+	}
+	l := add(f.c, schema.List, "l", nil)
+	k := add(l, schema.Leaf, "k", str)
+	l.Keys = []*schema.Node{k}
+	v := add(l, schema.Leaf, "v", str)
+	e, _ := xpath.Compile("../k = 'on'", testNS("u"))
+	v.Whens = []*schema.When{{Src: "../k = 'on'", ContextNode: v, Compiled: e}}
+	lref := func(name, path string, rt *schema.Type) *schema.Node {
+		return add(f.c, schema.Leaf, name, &schema.Type{Base: schema.Leafref, Path: path, Prefixes: schema.NSCtx{"": f.m},
+			RequireInstance: true, Realtype: rt})
+	}
+	return f, l, k, v, lref("lk", "../l/k", str), lref("sr", "../a", f.a.Type), lref("dis", "../gone", str)
+}
+
+// TestLeafrefForms: the list-key template (`../l[k='v']/k`), the both-quotes value (plain path,
+// then compared), a target removed by if-feature (success), and deref() of both kinds.
+func TestLeafrefForms(t *testing.T) {
+	f, l, k, _, lk, sr, dis := listFixture(t)
+	vc, c, nodes := f.build(t, ValidateOptions{MultiError: true}, f.a, `x'y"z`, f.t, "5", f.iid, "/u:c/t[.='5']")
+	inst := newInner(l)
+	key, _ := types.Store(k.Type, "k1", types.FormatJSON, types.JSONHints("string"), nil, k)
+	vc.t.insert(inst, newTerm(k, key), insertDefault)
+	vc.t.insert(c, inst, insertDefault)
+	tp, err := vc.template(lk.Type, lk)
+	if err != nil || !tp.listKey || tp.head != "../l" || tp.key != "k" {
+		t.Fatalf("template %+v %v", tp, err)
+	}
+	for _, tc := range []struct {
+		sn    *schema.Node
+		lex   string
+		found bool
+	}{
+		{lk, "k1", true}, {lk, "k2", false},
+		{sr, `x'y"z`, true}, {sr, `x'y"q`, false},
+		{dis, "anything", true},
+	} {
+		v, d := types.Store(tc.sn.Type, tc.lex, types.FormatJSON, types.JSONHints("string"), nil, tc.sn)
+		if d != nil {
+			t.Fatal(d.Msg)
+		}
+		n := newTerm(tc.sn, v)
+		vc.t.insert(c, n, insertDefault)
+		found, _, err := vc.leafrefTargets(n, tc.sn.Type, v)
+		if err != nil || found != tc.found {
+			t.Errorf("%s=%s: found %v, %v", tc.sn.Name, tc.lex, found, err)
+		}
+		unlink(n)
+	}
+	// deref(): the targets of a leafref, the node of an instance-identifier
+	v, _ := types.Store(lk.Type, "k1", types.FormatJSON, types.JSONHints("string"), nil, lk)
+	ref := newTerm(lk, v)
+	vc.t.insert(c, ref, insertDefault)
+	got, err := vc.deref(xn{ref, f.set})
+	if err != nil || len(got) != 1 || got[0].(xn).n != inst.kids.list[0] {
+		t.Fatalf("deref leafref: %v %v", got, err)
+	}
+	got, err = vc.deref(xn{nodes["iid=/u:c/t[.='5']"], f.set})
+	if err != nil || len(got) != 1 || got[0].(xn).n != nodes["t=5"] {
+		t.Fatalf("deref instance-identifier: %v %v", got, err)
+	}
+}
+
+// TestWhenFalseSubtree: under multi-error a when-false node keeps its queued descendants out of
+// the queue (one error, not two); its descendants' types are dropped.
+func TestWhenFalseSubtree(t *testing.T) {
+	f, l, k, v, _, _, _ := listFixture(t)
+	e, _ := xpath.Compile("../a = 'on'", testNS("u"))
+	l.Whens = []*schema.When{{Src: "../a = 'on'", ContextNode: l, Compiled: e}}
+	vc, c, _ := f.build(t, ValidateOptions{MultiError: true}, f.a, "off")
+	inst := newInner(l)
+	key, _ := types.Store(k.Type, "off", types.FormatJSON, types.JSONHints("string"), nil, k)
+	vc.t.insert(inst, newTerm(k, key), insertDefault)
+	val, _ := types.Store(v.Type, "x", types.FormatJSON, types.JSONHints("string"), nil, v)
+	vn := newTerm(v, val)
+	vc.t.insert(inst, vn, insertDefault)
+	vc.t.insert(c, inst, insertDefault)
+	vc.nodeWhen.add(vn) // post-order: the child before its list
+	vc.nodeWhen.add(inst)
+	if err := vc.unres(); err == nil {
+		t.Fatal("no error")
+	}
+	if got := diagCodes(vc.log.diags); len(got) != 1 || got[0] != `LY_EVALID LYVE_DATA /u:c/l[k='off']: When condition "../a = 'on'" not satisfied.` {
+		t.Fatalf("%v", got)
+	}
+	if inst.flags&FlagWhenFalse == 0 || vn.flags&(FlagWhenTrue|FlagWhenFalse) != 0 {
+		t.Fatalf("flags %x %x", inst.flags, vn.flags)
+	}
+}
+
+// TestUnresWork: the work of n evaluations does not grow with the top level (its view is built
+// once), n when-false nodes under multi-error and n deleted WhenTrue nodes cost linear work
+// (counted, not timed).
+func TestUnresWork(t *testing.T) {
+	f := newUnresFixture(t)
+	const n = 5000
+	tl := &schema.Node{Kind: schema.LeafList, Name: "tl", Module: f.m, Type: &schema.Type{Base: schema.Uint16}, Config: true}
+	e, _ := xpath.Compile("true()", testNS("u"))
+	tl.Musts = []*schema.Must{{Src: "true()", Compiled: e}}
+	f.m.Top = append(f.m.Top, tl)
+	vc, _, _ := f.build(t, ValidateOptions{})
+	var tops []*Node
+	for i := range n {
+		v, _ := types.Store(tl.Type, fmt.Sprint(i), types.FormatJSON, types.JSONHints("number"), nil, tl)
+		x := newTerm(tl, v)
+		vc.t.insert(nil, x, insertDefault)
+		tops = append(tops, x)
+	}
+	for _, x := range tops {
+		if err := vc.validateMust(x); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if vc.budget.steps > 10*n {
+		t.Fatalf("musts over a big top level: %d steps", vc.budget.steps)
+	}
+
+	// n when-false nodes (multi-error), then n WhenTrue nodes deleted in one pass
+	w := &schema.Node{Kind: schema.LeafList, Name: "w", Module: f.m, Parent: f.c, Type: &schema.Type{Base: schema.Uint16}, Config: true}
+	ef, _ := xpath.Compile("false()", testNS("u"))
+	w.Whens = []*schema.When{{Src: "false()", ContextNode: w, Compiled: ef}}
+	f.c.Children = append(f.c.Children, w)
+	for _, whenTrue := range []bool{false, true} {
+		var args []any
+		for i := range n {
+			args = append(args, w, fmt.Sprint(i))
+		}
+		vc, c, _ := f.build(t, ValidateOptions{MultiError: true}, args...)
+		if whenTrue {
+			for x := range c.Children() {
+				x.flags |= FlagWhenTrue
+			}
+		}
+		vc.t.work = 0
+		_ = vc.unres()
+		if vc.t.work > 4*n || vc.nodeWhen.len() != 0 {
+			t.Fatalf("whenTrue %v: %d steps, %d queued", whenTrue, vc.t.work, vc.nodeWhen.len())
+		}
+		if whenTrue && c.kids.len() != 0 || !whenTrue && len(vc.log.diags) != n {
+			t.Fatalf("whenTrue %v: %d left, %d errors", whenTrue, c.kids.len(), len(vc.log.diags))
+		}
+	}
 }

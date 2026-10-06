@@ -55,20 +55,36 @@ func (vc *valCtx) eval(e *xpath.Expr, ctx *Node, root xpath.RootKind, ignoreWhen
 	if per <= 0 {
 		return xpath.Result{}, fmt.Errorf("%w: more than %d XPath steps", yang.ErrBudget, limit)
 	}
-	top := make([]xpath.Node, 0, vc.t.top.len())
-	for n := range vc.t.top.all() {
-		top = append(top, xn{n, vc.t.set})
-	}
-	r, err := e.Eval(xpath.EvalContext{Ctx: b.ctx, Node: wrap(vc.t.set, ctx), Tree: top, Root: root, IgnoreWhen: ignoreWhen,
-		Schema: info{vc.t.set}, Deref: vc.deref, MaxSteps: int(per)})
+	r, err := e.Eval(xpath.EvalContext{Ctx: b.ctx, Node: wrap(vc.t.set, ctx), Tree: vc.topNodes(), Root: root,
+		IgnoreWhen: ignoreWhen, Schema: info{vc.t.set}, Deref: vc.deref, MaxSteps: int(per)})
 	b.steps += r.Steps
 	switch {
-	case errors.Is(err, xpath.ErrBudget) && per < int64(xpath.DefaultMaxSteps):
-		return r, fmt.Errorf("%w: more than %d XPath steps", yang.ErrBudget, limit)
+	case errors.Is(err, xpath.ErrBudget):
+		// the cumulative budget, or the per-evaluation cap xpath.DefaultMaxSteps (U-0042)
+		return r, fmt.Errorf("%w: XPath step budget (%d per evaluation, %d per operation): %w",
+			yang.ErrBudget, xpath.DefaultMaxSteps, limit, err)
 	case errors.Is(err, xpath.ErrIncomplete):
 		return r, errIncomplete
 	}
 	return r, err
+}
+
+// topNodes is the accessible tree of the evaluations: the live top-level siblings, rebuilt only
+// when the top level changed (siblings.gen) and charged to the step budget then, one step per
+// node.
+func (vc *valCtx) topNodes() []xpath.Node {
+	if vc.top != nil && vc.topGen == vc.t.top.gen {
+		return vc.top
+	}
+	vc.top = vc.top[:0]
+	for n := range vc.t.top.all() {
+		if n.flags&flagDead == 0 {
+			vc.top = append(vc.top, xn{n, vc.t.set})
+		}
+	}
+	vc.topGen = vc.t.top.gen
+	vc.budget.steps += int64(len(vc.top)) + 1
+	return vc.top
 }
 
 // xpathErr logs an evaluation error as lyxp_eval does (LOGVAL without a data node).
@@ -130,29 +146,68 @@ func truthy(r xpath.Result) bool {
 	return len(r.Nodes) > 0
 }
 
+// whenPass is the state of one lyd_validate_unres_when pass. Removals from node_when are
+// tombstones (nil) compacted once at the end of the pass, which keeps the order of
+// ly_set_rm_index_ordered without moving the queue per removal; pos maps a queued node to its
+// index, built when a when-false subtree needs it.
+type whenPass struct {
+	vc   *valCtx
+	pos  map[*Node]int
+	dead []*Node // WhenTrue nodes deleted by this pass, unlinked at its end
+}
+
 // whenFalse is lyd_validate_when_false: the node stays, flagged WhenFalse; its subtree leaves
 // node_types and its descendants leave node_when.
-func (vc *valCtx) whenFalse(n *Node) {
+func (p *whenPass) whenFalse(n *Node) {
+	vc := p.vc
 	n.flags |= FlagWhenFalse
 	vc.dropTypes(n)
 	if vc.nodeWhen.len() > 1 {
-		for d := range n.All() {
-			if d != n {
-				if i := vc.nodeWhen.contains(d); i >= 0 {
-					vc.nodeWhen.rmIndexOrdered(i)
+		if p.pos == nil {
+			p.pos = make(map[*Node]int, vc.nodeWhen.len())
+			for i, q := range vc.nodeWhen.items {
+				if q != nil {
+					p.pos[q] = i
 				}
 			}
 		}
+		for d := range n.All() {
+			if i, ok := p.pos[d]; ok && d != n {
+				vc.nodeWhen.items[i] = nil
+				delete(p.pos, d)
+			}
+		}
 	}
+}
+
+// del is the autodelete of a WhenTrue node whose when became false. The node is unlinked at the
+// end of the pass (one compaction per sibling list instead of one per node); until then it is
+// dead: the XPath adapters do not see it, exactly as if it was gone already.
+func (p *whenPass) del(n *Node) {
+	vc := p.vc
+	if vc.diff != nil {
+		_ = vc.diff(n, diffDelete)
+	}
+	vc.dropTypes(n)
+	n.flags |= flagDead
+	if s := n.siblingsOf(); s != nil {
+		s.gen++ // the top-level view of the evaluations changes
+	}
+	p.dead = append(p.dead, n)
 }
 
 // unresWhen is lyd_validate_unres_when: one pass over node_when from the end. A resolved node
 // leaves the queue (order kept); a false when deletes a WhenTrue node silently, warns for
 // operational data, else is an error (the node kept as WhenFalse under multi-error).
 func (vc *valCtx) unresWhen() error {
+	p := &whenPass{vc: vc}
+	defer p.finish()
 	var rc error
 	for i := vc.nodeWhen.len() - 1; i >= 0; i-- {
 		n := vc.nodeWhen.items[i]
+		if n == nil {
+			continue // removed with a when-false ancestor
+		}
 		w, err := vc.whenOf(n, n.schema, nil)
 		switch {
 		case errors.Is(err, errIncomplete):
@@ -165,27 +220,39 @@ func (vc *valCtx) unresWhen() error {
 		case w == nil:
 			n.flags = n.flags&^FlagWhenFalse | FlagWhenTrue
 		case n.flags&FlagWhenTrue != 0:
-			// autodelete; nested queued nodes cannot exist (libyang asserts it)
-			if vc.diff != nil {
-				_ = vc.diff(n, diffDelete)
-			}
-			vc.dropTypes(n)
-			unlink(n)
+			p.del(n) // nested queued nodes cannot exist (libyang asserts it)
 		case vc.opts.Operational:
 			vc.log.warn("When condition \"%s\" not satisfied.", w.Src)
 		default:
 			if vc.opts.MultiError {
-				vc.whenFalse(n)
-				i = vc.nodeWhen.contains(n)
+				p.whenFalse(n)
 			}
 			err := vc.log.val(n, "", ly.Data, "When condition \"%s\" not satisfied.", w.Src)
 			if rc = err; vc.stop(err) {
+				vc.nodeWhen.items[i] = nil
 				return rc
 			}
 		}
-		vc.nodeWhen.rmIndexOrdered(i)
+		vc.nodeWhen.items[i] = nil // resolved
 	}
 	return rc
+}
+
+// finish compacts node_when and unlinks the nodes the pass deleted.
+func (p *whenPass) finish() {
+	q := p.vc.nodeWhen
+	live := q.items[:0]
+	for _, n := range q.items {
+		if n != nil {
+			live = append(live, n)
+		}
+	}
+	clear(q.items[len(live):])
+	q.items, q.pos = live, nil
+	for _, n := range p.dead {
+		n.flags &^= flagDead
+	}
+	_ = p.vc.t.unlinkAll(p.dead) // autodelete never reaches a key
 }
 
 // unres is the when and type part of lyd_validate_unres: when passes while the queue shrinks,
@@ -204,7 +271,7 @@ func (vc *valCtx) unres() error {
 				break
 			}
 		}
-		vc.nodeWhen.items = nil // left only after an error (ly_set_erase)
+		*vc.nodeWhen = nodeSet{} // left only after an error (ly_set_erase)
 	}
 	if vc.nodeTypes != nil {
 		for i := vc.nodeTypes.len() - 1; i >= 0; i-- {
@@ -257,16 +324,17 @@ type typeTree struct {
 // predicate (or the plain path when the value has both quote kinds, then compared), evaluated
 // ignoring whens.
 func (tt *typeTree) LeafrefTarget(t *schema.Type, v types.Value) (bool, error) {
-	nodes, err := tt.vc.leafrefTargets(tt.n, t, v)
+	found, _, err := tt.vc.leafrefTargets(tt.n, t, v)
 	if err != nil {
 		var xe *xpath.Error
 		if errors.As(err, &xe) {
+			_ = tt.vc.xpathErr(err) // lyxp_eval logs it, then the plugin its own message
 			return false, errors.New(xe.Msg)
 		}
 		tt.err = err
 		return false, nil
 	}
-	return len(nodes) > 0, nil
+	return found, nil
 }
 
 // InstanceExists is ly_path_eval: the instance-identifier target, found segment by segment.
@@ -315,20 +383,22 @@ func (vc *valCtx) template(t *schema.Type, sn *schema.Node) (*lrefTemplate, erro
 	return tp, nil
 }
 
-// leafrefTargets evaluates the leafref path of t for the node n with the value v: the target
-// instances equal to v (types of the same realtype, compared with types.Equal).
-func (vc *valCtx) leafrefTargets(n *Node, t *schema.Type, v types.Value) ([]*Node, error) {
-	tp, err := vc.template(t, n.schema)
-	if err != nil {
-		return nil, err
-	}
-	if tp.disabled {
-		return []*Node{n}, nil // the target was disabled and removed: success
-	}
+// leafrefTargets is lyplg_type_resolve_leafref: whether the leafref path of t, evaluated for the
+// node n with the value v, finds a target (with the value predicate: any node; with the plain path:
+// one of the same realtype and an equal value), and the targets of the same realtype and an equal
+// value (deref()).
+func (vc *valCtx) leafrefTargets(n *Node, t *schema.Type, v types.Value) (bool, []*Node, error) {
 	val := v.Canonical()
 	src := t.Path
 	exact := !strings.Contains(val, `"`) || !strings.Contains(val, "'")
 	if exact {
+		tp, err := vc.template(t, n.schema)
+		if err != nil {
+			return false, nil, err
+		}
+		if tp.disabled {
+			return true, nil, nil // the target was disabled and removed: success, no targets
+		}
 		q := "'"
 		if strings.Contains(val, "'") {
 			q = `"`
@@ -345,27 +415,22 @@ func (vc *valCtx) leafrefTargets(n *Node, t *schema.Type, v types.Value) ([]*Nod
 	}
 	e, err := xpath.Compile(src, lrefNS{t.Prefixes, def})
 	if err != nil {
-		return nil, err
+		return false, nil, err
 	}
 	r, err := vc.eval(e, n, xpath.RootAll, true)
 	if err != nil {
-		return nil, err
+		return false, nil, err
 	}
 	var out []*Node
 	for _, x := range r.Nodes {
-		m, ok := x.(xn)
-		if !ok || !m.n.isTerm() {
-			continue
-		}
-		if exact {
-			out = append(out, m.n)
-			continue
-		}
-		if m.n.value.Type() == v.Type() && types.Equal(m.n.value, v) {
+		if m, ok := x.(xn); ok && m.n.isTerm() && m.n.value.Type() == v.Type() && types.Equal(m.n.value, v) {
 			out = append(out, m.n)
 		}
 	}
-	return out, nil
+	if exact {
+		return len(r.Nodes) > 0, out, nil // the predicate selected them: no match check (i = 0)
+	}
+	return len(out) > 0, out, nil
 }
 
 // lrefNS binds a leafref path's prefixes (schema-resolved: "" is the instantiating module).
@@ -395,9 +460,10 @@ func (vc *valCtx) pathEval(p types.Path) *Node {
 		} else {
 			switch pr := seg.Preds[0]; pr.Kind {
 			case types.PredPosition:
-				i := vc.t.schemaIndex(sib, seg.Node)
-				if i >= 0 && pr.Position > 0 && i+int(pr.Position)-1 < len(sib.list) { //nolint:gosec // bounded
-					if c := sib.list[i+int(pr.Position)-1]; c.schema == seg.Node { //nolint:gosec // bounded
+				// the instance at that position; a position beyond the instances (strtoull
+				// saturates huge numbers, as ParseUint does) selects nothing
+				if i := vc.t.schemaIndex(sib, seg.Node); i >= 0 && pr.Position > 0 && pr.Position <= uint64(len(sib.list)-i) { //nolint:gosec // i < len
+					if c := sib.list[i+int(pr.Position)-1]; c.schema == seg.Node { //nolint:gosec // bounded above
 						node = c
 					}
 				}
@@ -411,7 +477,7 @@ func (vc *valCtx) pathEval(p types.Path) *Node {
 				node = vc.t.findFirst(sib, target)
 			}
 		}
-		if node == nil {
+		if node == nil || node.flags&flagDead != 0 {
 			return nil
 		}
 		sib = &node.kids
@@ -419,27 +485,26 @@ func (vc *valCtx) pathEval(p types.Path) *Node {
 	return node
 }
 
-// deref resolves deref(): a leafref's targets, or an instance-identifier's target.
+// deref resolves deref(): a leafref's targets (lyplg_type_resolve_leafref with targets), or an
+// instance-identifier's target.
 func (vc *valCtx) deref(x xpath.Node) ([]xpath.Node, error) {
 	m, ok := x.(xn)
 	if !ok || !m.n.isTerm() {
 		return nil, nil
 	}
 	t := m.n.schema.Type
-	if t.Base == schema.Leafref {
-		nodes, err := vc.leafrefTargets(m.n, t, m.n.value)
+	switch t.Base {
+	case schema.Leafref:
+		_, nodes, err := vc.leafrefTargets(m.n, t, m.n.value)
 		if err != nil {
 			return nil, err
 		}
 		out := make([]xpath.Node, 0, len(nodes))
 		for _, n := range nodes {
-			if n != m.n {
-				out = append(out, xn{n, vc.t.set})
-			}
+			out = append(out, xn{n, vc.t.set})
 		}
 		return out, nil
-	}
-	if t.Base == schema.InstanceID {
+	case schema.InstanceID:
 		if n := vc.pathEval(m.n.value.Path()); n != nil {
 			return []xpath.Node{xn{n, vc.t.set}}, nil
 		}
@@ -498,7 +563,7 @@ func (vc *valCtx) dummyWhen(parent *Node, sn *schema.Node) (*schema.When, error)
 	vc.t.insert(parent, dummy, insertDefault)
 	defer unlink(dummy)
 	root := xpath.RootAll
-	if sn.Config && !inOperationNode(sn) {
+	if sn.Config && !inOperation(sn) {
 		root = xpath.RootConfig
 	}
 	w, err := vc.whenOf(dummy, sn, &root)
@@ -509,15 +574,4 @@ func (vc *valCtx) dummyWhen(parent *Node, sn *schema.Node) (*schema.When, error)
 		return nil, vc.log.logErr("LY_EINT", "Internal error (dummy when).")
 	}
 	return w, err
-}
-
-// inOperationNode reports whether sn is inside an rpc, action or notification.
-func inOperationNode(sn *schema.Node) bool {
-	for p := sn; p != nil; p = p.Parent {
-		switch p.Kind {
-		case schema.RPC, schema.Action, schema.Notification:
-			return true
-		}
-	}
-	return false
 }

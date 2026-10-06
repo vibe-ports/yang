@@ -28,6 +28,7 @@ type siblings struct {
 	ht       map[idxKey][]*Node
 	unsorted map[*schema.Node]bool // runs appended out of value order
 	rbTree   map[*schema.Node]bool // runs that have libyang's RB tree (lyds)
+	gen      uint64                // changes with every insertion and removal
 }
 
 // has reports whether an instance of s is in the list.

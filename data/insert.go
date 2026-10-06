@@ -254,6 +254,7 @@ func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) {
 	if parent == nil {
 		n.tree = t
 	}
+	sib.gen++
 	sib.hashAdd(parent, n)
 	if n.flags&FlagDefault == 0 {
 		npContDfltDel(parent)
@@ -302,6 +303,7 @@ func unlink(n *Node) {
 		sib.list = slices.Delete(sib.list, i, i+1)
 	}
 	sib.hashRemove(n)
+	sib.gen++
 	if n.schema != nil && !sib.has(n.schema) {
 		sib.runGone(n.schema)
 	} else if n.inRB && !slices.ContainsFunc(sib.list, func(x *Node) bool { return x.schema == n.schema && x.inRB }) {
@@ -363,6 +365,7 @@ func (t *Tree) unlinkAll(ns []*Node) error {
 	}
 	isGone := func(n *Node) bool { t.work++; return gone[n] }
 	for _, sib := range order {
+		sib.gen++
 		sib.list = slices.DeleteFunc(sib.list, isGone)
 		sib.opq = slices.DeleteFunc(sib.opq, isGone)
 		for k := range sibs[sib] { // each bucket compacted once

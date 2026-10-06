@@ -29,7 +29,9 @@ func (x xn) Parent() xpath.Node { return wrap(x.set, x.n.parent) }
 func (x xn) Children() []xpath.Node {
 	out := make([]xpath.Node, 0, x.n.kids.len())
 	for c := range x.n.kids.all() {
-		out = append(out, xn{c, x.set})
+		if c.flags&flagDead == 0 {
+			out = append(out, xn{c, x.set})
+		}
 	}
 	return out
 }

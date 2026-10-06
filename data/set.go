@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Ported from libyang v5.8.6 src/set.c (ly_set_add, ly_set_rm_index, ly_set_rm_index_ordered,
-// ly_set_contains) (BSD-3-Clause, © CESNET).
+// Ported from libyang v5.8.6 src/set.c (ly_set_add, ly_set_rm_index, ly_set_contains)
+// (BSD-3-Clause, © CESNET).
 
 package data
 
@@ -34,14 +34,6 @@ func (s *nodeSet) rmIndex(i int) {
 	s.items[i] = s.items[last]
 	s.items[last] = nil
 	s.items = s.items[:last]
-}
-
-// rmIndexOrdered is ly_set_rm_index_ordered (the position index is dropped: positions shift).
-func (s *nodeSet) rmIndexOrdered(i int) {
-	s.pos = nil
-	copy(s.items[i:], s.items[i+1:])
-	s.items[len(s.items)-1] = nil
-	s.items = s.items[:len(s.items)-1]
 }
 
 // contains is ly_set_contains: the index of n, or -1.

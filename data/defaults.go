@@ -10,6 +10,7 @@ import (
 
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
+	"github.com/vibe-ports/yang/internal/xpath"
 )
 
 // diffOp is enum lyd_diff_op as the validation uses it.
@@ -49,7 +50,9 @@ type valCtx struct {
 	diff func(n *Node, op diffOp) error
 	// getnext caches lyd_val_getnext_get per schema parent (and output).
 	getnext map[getnextKey]getnextVal
-	budget  xpathBudget               // MaxXPathSteps and cancellation (U-0042)
+	budget  xpathBudget  // MaxXPathSteps and cancellation (U-0042)
+	top     []xpath.Node // the top-level view of the evaluations (topNodes)
+	topGen  uint64
 	lrefs   map[lrefKey]*lrefTemplate // leafref target-path templates per type and node
 }
 
@@ -199,11 +202,7 @@ func (vc *valCtx) newImplicit(parent *Node, sparent *schema.Node, mod *schema.Mo
 				if diag != nil { // the default fit the type at compile; kept as libyang logs it
 					return vc.log.item(parent, sn, false, "LY_EVALID", codeOf(diag.Code), diag.AppTag, diag.Msg)
 				}
-				n := newTerm(sn, v)
-				if v.NeedsTree() && vc.nodeTypes != nil {
-					vc.nodeTypes.add(n)
-				}
-				if err := vc.addImplicit(parent, n); err != nil {
+				if err := vc.addImplicit(parent, newTerm(sn, v)); err != nil {
 					return err
 				}
 			}
@@ -219,6 +218,9 @@ func (vc *valCtx) addImplicit(parent, n *Node) error {
 		if err := vc.charge(); err != nil {
 			return err
 		}
+	}
+	if n.isTerm() && n.value.NeedsTree() && vc.nodeTypes != nil {
+		vc.nodeTypes.add(n) // only once charged: a budget error leaves nothing queued
 	}
 	n.flags = FlagDefault
 	if hasWhen(n.schema) {

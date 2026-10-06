@@ -30,6 +30,9 @@ const (
 	// FlagWhenFalse: a when condition was false during a multi-error validation; the node is kept,
 	// XPath treats it as absent and the final checks skip it (LYD_WHEN_FALSE, design 07 §2).
 	FlagWhenFalse Flags = 0x10
+
+	// flagDead marks a node deleted by the running when pass but not unlinked yet (internal).
+	flagDead Flags = 0x80
 )
 
 // opaque is the data of a node without a schema node (lyd_node_opaq): unknown input kept by
