@@ -121,10 +121,6 @@ func (c *Context) precompileAugmentsDeviations(m *Module) error {
 // precompileModAugments is lys_precompile_mod_augments_deviations for the
 // (sub)module pm of m.
 func (c *Context) precompileModAugments(m *Module, pm *pmod, set *[]*Module) error {
-	if len(pm.Parsed.Augments) > 0 {
-		// lysc_update_path leaves its context path "/" as the log location (unres reads it)
-		c.locLeak = "/"
-	}
 	for _, aug := range pm.Parsed.Augments {
 		path := "/" + m.Name + ":{augment='" + aug.Name + "'}"
 		_, mods, err := nodeidModCheck(pm, aug.Name, true, func(code ly.Code, f string, a ...any) error {
@@ -145,6 +141,9 @@ func (c *Context) precompileModAugments(m *Module, pm *pmod, set *[]*Module) err
 				}
 			}
 		}
+	}
+	if len(pm.Parsed.Augments) > 0 || len(pm.Parsed.Deviations) > 0 {
+		c.locTop = "/" // lysc_update_path's context path, left on the log-location stack
 	}
 	if len(pm.Parsed.Deviations) > 0 {
 		return fmt.Errorf("%w: deviations of module %q are applied in M2 (U-0020)", ErrUnsupported, m.Name)
@@ -329,6 +328,8 @@ restart:
 // groupings, P5 unapplied augments). A failed compile leaves no compiled
 // module.
 func (c *Context) compile(m *Module) error {
+	c.locTop = "" // the first lysc_update_path replaces it, the end of lys_compile reverts it
+	defer func() { c.locTop = "" }()
 	for _, f := range m.features {
 		m.Schema.Features = append(m.Schema.Features, &schema.Feature{Name: f.p.Name, Module: m.Schema,
 			Enabled: f.enabled, Status: parsedStatus(f.p.Status)})

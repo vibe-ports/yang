@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module ref-impl-rc-xd {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:ref-impl-rc-xd";
+  prefix xd;
+  import ref-impl-rc-a {
+    prefix a;
+  }
+  deviation "/a:top" {
+    deviate not-supported;
+  }
+  container cx {
+    leaf lx {
+      type string;
+    }
+  }
+}

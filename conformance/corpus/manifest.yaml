@@ -29604,3 +29604,17 @@ fixtures:
       verdict: "valid"
       rfc: ["RFC7950#9.12"]
       deviation: null
+
+  # the same with a deviation of the preloaded module: the "/" left on libyang's log-location
+  # stack comes from precompiling deviations too (the port applies deviations in M2, U-0020)
+  - id: ref-impl/instid-recompile-deviation
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#5.6.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ref-impl-rc-a"}, {"name": "ref-impl-rc-bd"}]
+      context_options: ["ref_implemented"]
+    golden: golden/ref-impl-instid-recompile-deviation.json

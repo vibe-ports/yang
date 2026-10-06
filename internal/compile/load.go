@@ -175,9 +175,10 @@ type Context struct {
 	usedGrp map[*parser.Node]bool
 	// work counts index entries and pending items looked at by the C6 lookups (tests bound it)
 	work int
-	// locLeak is the log location libyang's lysc_update_path leaves behind when augments were
-	// precompiled: "/" appended to the schema path of a later message (see unresDflts)
-	locLeak string
+	// locTop is the top of libyang's log-location path stack outside a module's compile:
+	// lysc_update_path leaves "/" there after precompiling augments or deviations, and every
+	// later message gets it appended until lys_compile reverts it (ly_log_location_revert)
+	locTop string
 }
 
 // internal_modules[] of context.c.
@@ -285,7 +286,8 @@ func (c *Context) logVal(code ly.Code, line int, format string, a ...any) error 
 
 // logPath is LOGVAL with a log location path (ly_log_location), no line.
 func (c *Context) logPath(code ly.Code, path, format string, a ...any) error {
-	d := Diagnostic{Phase: c.phase, Level: LevelError, Err: string(eValid), Code: code, SchemaPath: path, Msg: fmt.Sprintf(format, a...)}
+	d := Diagnostic{Phase: c.phase, Level: LevelError, Err: string(eValid), Code: code, SchemaPath: path + c.locTop,
+		Msg: fmt.Sprintf(format, a...)}
 	c.diags = append(c.diags, d)
 	return eValid
 }
