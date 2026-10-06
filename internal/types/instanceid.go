@@ -175,37 +175,46 @@ var formatNames = map[Format]string{FormatCanon: "canonical", FormatSchema: "sch
 // pathCompile ports _ly_path_compile (not leafref, LY_PATH_TARGET_SINGLE, not XPath) for an
 // absolute instance-identifier.
 func pathCompile(a *storeArgs, e *lyxp.Expr) (Path, string) {
-	return pathCompileAt(a, e, nil, a.ctx != nil && a.ctx.InOutput(), false)
+	p, msg, _ := pathCompileAt(a, e, nil, a.ctx != nil && a.ctx.InOutput(), false)
+	return p, msg
 }
 
 // pathCompileAt ports _ly_path_compile (not leafref, not XPath): a relative path starts at
-// ctxNode; many is LY_PATH_TARGET_MANY (no list or leaf-list needs a predicate).
-func pathCompileAt(a *storeArgs, e *lyxp.Expr, ctxNode *schema.Node, output, many bool) (Path, string) {
+// ctxNode; many is LY_PATH_TARGET_MANY (no list or leaf-list needs a predicate). A failure also
+// returns the schema node libyang's LOGVAL_PATH locates it at: ctxNode (cur_node), else the
+// node the path stopped at (nil: no location).
+func pathCompileAt(a *storeArgs, e *lyxp.Expr, ctxNode *schema.Node, output, many bool) (Path, string, *schema.Node) {
+	fail := func(at *schema.Node, msg string) (Path, string, *schema.Node) {
+		if ctxNode != nil {
+			at = ctxNode
+		}
+		return nil, msg, at
+	}
 	var path Path
-	var parent *schema.Node
+	var parent, prev *schema.Node
 	i := 1
 	if !e.Is(0, lyxp.TokOperPath) { // relative path
 		if ctxNode == nil {
-			return nil, "No initial schema parent for a relative path."
+			return nil, "No initial schema parent for a relative path.", nil
 		}
 		i, parent = 0, ctxNode
 	}
 	for {
 		if n := len(path); !many && n > 0 && path[n-1].Node.Kind == schema.List && path[n-1].Preds == nil {
-			return nil, fmt.Sprintf("Predicate missing for %s \"%s\" in path.", kindName(schema.List), path[n-1].Node.Name)
+			return fail(prev, fmt.Sprintf("Predicate missing for %s \"%s\" in path.", kindName(schema.List), path[n-1].Node.Name))
 		}
 		if msg := e.Check(i, lyxp.TokNameTest); msg != "" {
-			return nil, msg
+			return fail(parent, msg)
 		}
 		node, msg := compileSNode(a, parent, e.Text(i), output)
 		if msg != "" {
-			return nil, msg
+			return fail(parent, msg)
 		}
 		i++
-		parent = node
+		prev, parent = parent, node
 		seg := PathSegment{Node: node}
 		if seg.Preds, i, msg = compilePredicate(a, node, e, i); msg != "" {
-			return nil, msg
+			return fail(node, msg)
 		}
 		path = append(path, seg)
 		if !e.Is(i, lyxp.TokOperPath) {
@@ -213,13 +222,14 @@ func pathCompileAt(a *storeArgs, e *lyxp.Expr, ctxNode *schema.Node, output, man
 		}
 		i++
 	}
+	last := path[len(path)-1]
 	if i < len(e.Toks) {
-		return nil, fmt.Sprintf("Unexpected XPath token \"%s\" (\"%s\").", e.Toks[i], lyxp.Trunc15(e.Rest(i)))
+		return fail(last.Node, fmt.Sprintf("Unexpected XPath token \"%s\" (\"%s\").", e.Toks[i], lyxp.Trunc15(e.Rest(i))))
 	}
-	if last := path[len(path)-1]; !many && (last.Node.Kind == schema.List || last.Node.Kind == schema.LeafList) && last.Preds == nil {
-		return nil, fmt.Sprintf("Predicate missing for %s \"%s\" in path.", kindName(last.Node.Kind), last.Node.Name)
+	if !many && (last.Node.Kind == schema.List || last.Node.Kind == schema.LeafList) && last.Preds == nil {
+		return fail(last.Node, fmt.Sprintf("Predicate missing for %s \"%s\" in path.", kindName(last.Node.Kind), last.Node.Name))
 	}
-	return path, ""
+	return path, "", nil
 }
 
 // resolveModule ports lys_find_module.

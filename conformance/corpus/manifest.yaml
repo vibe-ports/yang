@@ -30161,3 +30161,134 @@ fixtures:
       data_type: config
       data: '<c xmlns="urn:vibe-ports:ty3"><dl>2100-01-01Z</dl><dl>1900-01-01Z</dl><dl>2000-01-01Z</dl><dtl>2100-01-01T00:00:00Z</dtl><dtl>1900-01-01T00:00:00Z</dtl><dtl>2000-01-01T00:00:00Z</dtl><tl>12:00:00Z</tl><tl>00:30:00+01:00</tl><tl>06:00:00Z</tl></c>'
     golden: golden/date-time-sort-wide.json
+
+  # --- tree edits (design 07 §1.11, D11; Go side: data TestEditGoldens) ---
+  - id: seq/new-path-update
+    dir: protocol-v2
+    source: *own
+    rfc: []   # libyang API mechanics: lyd_new_path(UPDATE) creates parents, changes terms; flags
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: edit, set: {path: "/pv2-edit:c/a", value: "x"}}
+        - {do: edit, set: {path: "/pv2-edit:c/l[k='b']/v", value: "1"}}
+        - {do: edit, set: {path: "/pv2-edit:c/l[k='a']/v", value: "2"}}
+        - {do: edit, set: {path: "/pv2-edit:c/a", value: "y"}}
+        - {do: edit, set: {path: "/pv2-edit:c/a", value: "y"}}
+        - {do: edit, set: {path: "/pv2-edit:c/ll", value: "z"}}
+        - {do: edit, set: {path: "/pv2-edit:c/ll[.='m']", value: "ignored"}}
+        - {do: edit, set: {path: "/pv2-edit:c/ll", value: "z"}}
+        - {do: edit, set: {path: "/pv2-edit:c/st/x", value: "1"}}
+        - {do: edit, set: {path: "/pv2-edit:c/st/x", value: "1"}}
+        - {do: edit, set: {path: "/pv2-edit:c/st[1]/x", value: "2"}}
+        - {do: edit, set: {path: "/pv2-edit:c/sll", value: "s"}}
+        - {do: edit, set: {path: "/pv2-edit:c/sll", value: "s"}}
+        - {do: edit, set: {path: "/pv2-edit:c/np/d", value: "6"}}
+        - {do: edit, delete: "/pv2-edit:c/l[k='b']"}
+        - {do: edit, delete: "/pv2-edit:c/st[2]"}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/seq-new-path-update.json
+
+  - id: seq/new-path-predicate-missing
+    dir: protocol-v2
+    source: *own
+    rfc: []
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: edit, set: {path: "/pv2-edit:c/a", value: "x"}}
+        - {do: edit, set: {path: "/pv2-edit:c/l/v", value: "1"}}
+    golden: golden/seq-new-path-predicate-missing.json
+
+  - id: seq/new-path-invalid-value
+    dir: protocol-v2
+    source: *own
+    rfc: []
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: edit, set: {path: "/pv2-edit:c/a", value: "x"}}
+        - {do: edit, set: {path: "/pv2-edit:c/l[k='a']/v", value: "300"}}
+    golden: golden/seq-new-path-invalid-value.json
+
+  - id: seq/new-path-invalid-update
+    dir: protocol-v2
+    source: *own
+    rfc: []
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: edit, set: {path: "/pv2-edit:c/b", value: "1"}}
+        - {do: edit, set: {path: "/pv2-edit:c/b", value: "x"}}
+    golden: golden/seq-new-path-invalid-update.json
+
+  - id: seq/new-path-bad-path
+    dir: protocol-v2
+    source: *own
+    rfc: []
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: edit, set: {path: "/pv2-edit:c/nope", value: "1"}}
+    golden: golden/seq-new-path-bad-path.json
+
+  - id: seq/delete-not-found
+    dir: protocol-v2
+    source: *own
+    rfc: []
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: edit, set: {path: "/pv2-edit:c/a", value: "x"}}
+        - {do: edit, delete: "/pv2-edit:c/l[k='a']/v"}
+    golden: golden/seq-delete-not-found.json
+
+  - id: seq/delete-bad-path
+    dir: protocol-v2
+    source: *own
+    rfc: []
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: edit, set: {path: "/pv2-edit:c/a", value: "x"}}
+        - {do: edit, delete: "/pv2-edit:c/l"}
+    golden: golden/seq-delete-bad-path.json
+
+  - id: seq/merge-basic
+    dir: protocol-v2
+    source: *own
+    rfc: []   # lyd_merge_siblings: values replaced, missing instances added with New
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: edit, set: {path: "/pv2-edit:c/a", value: "x"}}
+        - {do: edit, set: {path: "/pv2-edit:c/l[k='a']/v", value: "1"}}
+        - {do: edit, set: {path: "/pv2-edit:c/ll", value: "b"}}
+        - {do: edit, set: {path: "/pv2-edit:c/st/x", value: "1"}}
+        - {do: edit, merge_file: data/edit-merge.json, format: json, data_type: data}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/seq-merge-basic.json

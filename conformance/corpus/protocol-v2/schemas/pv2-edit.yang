@@ -1,0 +1,46 @@
+module pv2-edit {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-edit";
+  prefix pe;
+
+  description
+    "Hand-written module for the tree edits of the oracle sequence op: lyd_new_path,
+     lyd_find_path + lyd_free_tree, lyd_merge_siblings.";
+
+  container c {
+    leaf a {
+      type string;
+    }
+    leaf b {
+      type uint8;
+    }
+    container np {
+      leaf d {
+        type uint8;
+        default "5";
+      }
+    }
+    list l {
+      key "k";
+      leaf k {
+        type string;
+      }
+      leaf v {
+        type uint8;
+      }
+    }
+    leaf-list ll {
+      type string;
+    }
+    list st {
+      config false;
+      leaf x {
+        type string;
+      }
+    }
+    leaf-list sll {
+      config false;
+      type string;
+    }
+  }
+}
