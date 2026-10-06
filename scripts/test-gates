@@ -111,13 +111,14 @@ shift  # api
 method=GET jqx= input= path=
 while (($#)); do case $1 in
   -X) method=$2; shift 2 ;; --jq) jqx=$2; shift 2 ;; --input) input=1; shift 2 ;;
-  -H) shift 2 ;; --paginate | --slurp) shift ;; *) path=$1; shift ;; esac; done
+  -H | -f | -F) shift 2 ;; --paginate | --slurp) shift ;; *) path=$1; shift ;; esac; done
 [[ -f $FX/fail ]] && { echo "HTTP 500" >&2; exit 1; }
 if [[ $method != GET ]]; then
   n=$(ls "$FX" | grep -c '^req' || true)
   { echo "$method $path"; [[ -n $input ]] && cat; } >"$FX/req$n"; echo '{}'; exit 0
 fi
 case $path in
+  graphql) f=graphql ;;
   */pulls/*/comments) f=empty ;; */pulls/*/reviews) f=reviews ;;
   */pulls/*) f=pull
     # Lease-race hook: runs on the 2nd PR lookup (merge-pr's re-check before pushing).
@@ -234,6 +235,59 @@ GIT_COMMITTER_DATE="1700000000 +0200" git -C "$m" commit -qm tz; head=$(git -C "
 git -C "$m" push -q -f origin HEAD:refs/pull/7/head
 onmain; pull; runs success; comments 1056050 $D1 "VERDICT: approve $head (codex-gpt-6-astra)"
 expect 1 "merge-pr: non-UTC committer date" "non-UTC dates" mp
+
+# Approval of an older head A carries over to a patch-identical rebase H. The bare repo serves
+# force-pushed-away commits by SHA, like GitHub.
+git -C "$bare" config uploadpack.allowAnySHA1InWant true
+onmain; git -C "$m" checkout -q -b co origin/main
+blk='1\n2\n3\nX\n4\n5\n6\n'  # two identical blocks: same hunk text, different line numbers
+printf "$blk$blk" >"$m/f"; git -C "$m" add f; git -C "$m" commit -qm 'feat: f'
+echo b >"$m/b"; git -C "$m" add b; git -C "$m" commit -qm 'feat: b'
+printf "${blk/X/Y}$blk" >"$m/f"; git -C "$m" commit -qam 'feat: first block'
+Aold=$(git -C "$m" rev-parse HEAD); git -C "$m" push -q -f origin HEAD:refs/pull/7/head
+git -C "$t/racer" fetch -q origin; git -C "$t/racer" checkout -q --detach origin/main
+echo m >"$t/racer/m"; git -C "$t/racer" add m; git -C "$t/racer" commit -qm main2; git -C "$t/racer" push -q origin HEAD:refs/heads/main
+forced() { jq -n --arg b "$1" --arg a "$head" '{data:{repository:{pullRequest:{timelineItems:{nodes:[{beforeCommit:{oid:$b},afterCommit:{oid:$a}}]}}}}}' >"$FX/graphql.json"; }
+rebased() { git -C "$m" fetch -q origin; git -C "$m" checkout -q --detach "$Aold"; git -C "$m" rebase -q origin/main; }
+AA="VERDICT: approve $Aold (codex-gpt-6-astra)"
+publish() { # H = the checkout's HEAD; A approved, A → H force push recorded, CI green on H
+  head=$(git -C "$m" rev-parse HEAD); git -C "$m" push -q -f origin HEAD:refs/pull/7/head
+  pull; runs success; comments 1056050 $D1 "$AA"; forced "$Aold"; onmain; }
+NOCO="approval of $Aold does not carry over"
+rebased; echo bb >"$m/b"; git -C "$m" commit -qa --amend --no-edit; publish
+expect 1 "merge-pr carry-over: a changed patch is refused" "$NOCO.*commit 3 differs" mp
+rebased; git -C "$m" checkout -q HEAD~1; echo 'b ' >"$m/b"; git -C "$m" commit -qa --amend --no-edit
+git -C "$m" cherry-pick "$Aold" >/dev/null; publish
+expect 1 "merge-pr carry-over: a whitespace-only change is refused" "$NOCO.*commit 2 differs" mp
+rebased; echo c >"$m/c"; git -C "$m" add c; git -C "$m" commit -qm 'feat: c'; publish
+expect 1 "merge-pr carry-over: an added commit is refused" "$NOCO.*commit count differs" mp
+rebased; git -C "$m" reset -q --hard HEAD~1; publish
+expect 1 "merge-pr carry-over: a removed commit is refused" "$NOCO.*commit count differs" mp
+git -C "$m" checkout -q --detach origin/main; git -C "$m" cherry-pick "$Aold~2" "$Aold" "$Aold~1" >/dev/null; publish
+expect 1 "merge-pr carry-over: reordered commits are refused" "$NOCO.*commit 2 differs" mp
+rebased; git -C "$m" commit -q --amend -m 'feat: first block!'; publish
+expect 1 "merge-pr carry-over: a changed message is refused" "$NOCO.*commit 3 differs" mp
+rebased; git -C "$m" commit -q --amend --no-edit --author='u <u@example.com>'; publish
+expect 1 "merge-pr carry-over: a changed author is refused" "$NOCO.*commit 3 differs" mp
+rebased; git -C "$m" commit -q --amend --no-edit --date="1700000001 +0000"; publish
+expect 1 "merge-pr carry-over: a changed author date is refused" "$NOCO.*commit 3 differs" mp
+rebased; printf "$blk${blk/X/Y}" >"$m/f"; git -C "$m" commit -qa --amend --no-edit; publish
+expect 1 "merge-pr carry-over: same patch-id, hunk applied elsewhere is refused" "$NOCO.*commit 3 is not a pure rebase" mp
+rebased; publish
+comments 1056050 $D1 "$AA" 1056050 $D2 "VERDICT: changes $Aold (codex-x)"
+expect 1 "merge-pr carry-over: a later 'changes' for A wins" "$NOAPP .* is 'none'" mp
+comments 1056050 $D1 "$AA" 1056050 $D2 "VERDICT: changes $(git -C "$m" rev-parse "$Aold~1") (codex-x)"
+expect 1 "merge-pr carry-over: a later 'changes' for another head wins" "$NOAPP .* is 'none'" mp
+comments 1056050 $D1 "VERDICT: changes $head (codex-x)" 1056050 $D2 "$AA"
+expect 1 "merge-pr carry-over: 'changes' on the head itself is not overridden" "$NOAPP .* is 'changes'" mp
+comments 1056050 $D1 "$AA"; forced "$(git -C "$m" rev-parse "$Aold~1")"
+expect 1 "merge-pr carry-over: A never a head of the PR is refused" "$NOCO .*: it was never a head" mp
+forced "$Aold"; runs failure
+expect 1 "merge-pr carry-over: CI on the exact head is still required" "are 'completed/failure'" mp
+runs success
+expect 0 "merge-pr carry-over: patch-identical rebase merges (trusted wrapper)" - mpw
+has "merge-pr carry-over: log names the carried approval" "approval of $Aold carried over: patch-identical rebase" "$t/out"
+[[ $(git -C "$bare" rev-parse main) == "$head" ]] && ok "merge-pr carry-over: main == rebased head" || no "merge-pr carry-over: main != head"
 
 # ---------------------------------------------------------------- import-goldens (libyang-sync)
 g=$t/ig; G=conformance/corpus/basic/golden; mkdir -p "$g/$G" "$g/scripts"

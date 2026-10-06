@@ -95,8 +95,10 @@ Do not comment on style that gofmt/golangci-lint already enforce.
   not a setting): for the PR's **full head SHA**, `ci.yml` concluded success and the latest
   maintainer-authored, never-edited attestation line `VERDICT: approve <full sha> (codex-…)` —
   posted by `scripts/astra review --trusted`, or by the lead as `(port-reviewer-opus)` after a
-  `port-reviewer` review — names that SHA. Bot verdicts (Claude `ai-review`, Codex app) are
-  advisory.
+  `port-reviewer` review — names that SHA. An approval of an earlier head of the same PR carries
+  over to a patch-identical rebase of it (same commits, patches, messages and authors; no later
+  `changes`), so merging another PR costs no re-review. Bot verdicts (Claude `ai-review`, Codex
+  app) are advisory.
 - **Policy files** — `AGENTS.md`, `CLAUDE.md`, `.claude/`, `.codex/`, `.agents/`, `Makefile`,
   `dev`, `Dockerfile`, `.devcontainer/`, `.gitattributes`, `scripts/`, `.github/`, `.githooks/` —
   decide what runs and what reviewers are

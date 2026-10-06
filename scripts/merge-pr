@@ -11,6 +11,10 @@
 #    is   VERDICT: approve <40-hex head sha> (<reviewer>)   with reviewer codex-* or port-reviewer-*
 #    (not claude-*: that is the ai-review bot's signature, and a pasted bot line must not count)
 #    (scripts/astra emits it; a later "VERDICT: changes <sha> …" revokes an earlier approve);
+#    or, when no attestation names the head, the PR's newest attestation approves an older head A
+#    (a force-pushed-away head of this PR) and the head is a patch-identical rebase of A: same
+#    commits in order with identical patches, messages, authors and author dates, and replaying A
+#    onto the new base gives exactly the head's trees ("approval of A carried over" is logged);
 #  - CI: every (non-cancelled) run of .github/workflows/ci.yml for exactly that SHA succeeded;
 #  - every branch commit has +0000 author/committer dates and the head fast-forwards main.
 # Then pushes <head>:main with a lease on the main SHA it checked; GitHub marks the PR merged.
@@ -66,9 +70,16 @@ verdict=$(gh api --paginate --slurp "repos/$repo/issues/$pr/comments" | jq -r --
   [ .[][] | select(.user.id == $uid and .updated_at == .created_at) | . as $c
     | (.body // "" | unfenced
        | capture("^VERDICT: (?<v>approve|changes) (?<s>[0-9a-f]{40}) \\((codex-[A-Za-z0-9_.-]+|port-reviewer-[A-Za-z0-9_.-]+)\\)$"))
-    | select(.s == $sha) | {t: $c.created_at, id: $c.id, v} ]
-  | sort_by([.t, .id]) | last | .v // "none"')
-[[ $verdict == approve ]] || fail "latest maintainer attestation for $head is '$verdict', need 'VERDICT: approve $head (codex-…)'"
+    | {t: $c.created_at, id: $c.id, v, s} ]
+  | sort_by([.t, .id]) | (map(select(.s == $sha)) | last | .v // "none") as $h | (last // {v: "none", s: "-"})
+  | "\($h) \(.v) \(.s)"')
+read -r verdict last_v last_s <<<"$verdict"
+# No attestation for the head itself: the PR's newest attestation (any SHA) may approve an older
+# head A, which carries over if the head is a patch-identical rebase of A (checked below).
+carried=
+[[ $verdict == none && $last_v == approve ]] && carried=$last_s
+[[ $verdict == approve || -n $carried ]] ||
+  fail "latest maintainer attestation for $head is '$verdict', need 'VERDICT: approve $head (codex-…)'"
 
 # A head SHA can have several ci.yml runs (push + pull_request, reopen); each run reports its
 # latest attempt. Every run must have succeeded; runs cancelled by a newer one don't count, but at
@@ -85,6 +96,43 @@ git merge-base --is-ancestor "$base" "$head" || fail "$short does not fast-forwa
 bad=$(git log --format='%h %ad %cd' --date=format:%z "$base..$head" | awk '$2!="+0000" || $3!="+0000"')
 [[ -z $bad ]] || fail "commits with non-UTC dates:"$'\n'"$bad"
 
+if [[ -n $carried ]]; then
+  A=$carried
+  nope() { fail "approval of $A does not carry over to $head: $*"; }
+  # A was a head of THIS PR: GitHub's record of force pushes to the PR branch (GraphQL; the REST
+  # timeline gives only the new SHA of a force push, not the replaced one).
+  heads=$(gh api graphql --paginate -F owner="${repo%/*}" -F name="${repo#*/}" -F pr="$pr" -f query='
+    query($owner: String!, $name: String!, $pr: Int!, $endCursor: String) {
+      repository(owner: $owner, name: $name) { pullRequest(number: $pr) {
+        timelineItems(first: 100, after: $endCursor, itemTypes: [HEAD_REF_FORCE_PUSHED_EVENT]) {
+          pageInfo { hasNextPage endCursor }
+          nodes { ... on HeadRefForcePushedEvent { beforeCommit { oid } afterCommit { oid } } } } } } }' \
+    --jq '.data.repository.pullRequest.timelineItems.nodes[] | (.beforeCommit.oid, .afterCommit.oid) | values')
+  grep -qxF "$A" <<<"$heads" || nope "it was never a head of PR #$pr"
+  git fetch -q origin "$A" && [[ $(git rev-parse FETCH_HEAD) == "$A" ]] || nope "cannot fetch it"
+  # Same commits in the same order, each with an identical patch (--verbatim: whitespace counts),
+  # message and author. patch-id ignores line numbers, so replaying A's commits onto H's base with
+  # git's own merge must also give H's trees exactly: no hunk lands elsewhere, no binary change
+  # hides behind "Binary files differ", no conflict resolution is carried over.
+  commits() { # <merge base> <commits oldest first>; fails on merge commits
+    local mb l m; mb=$(git merge-base "$base" "$1") && l=$(git rev-list --reverse "$mb..$1") &&
+      m=$(git rev-list --merges "$mb..$1") && [[ -z $m ]] && echo "$mb" $l
+  }
+  ident() { # --verbatim = --stable without stripping whitespace (git rejects both together)
+    local p; p=$(git diff-tree -p --binary "$1^" "$1" | git patch-id --verbatim) || return 1
+    echo "$p"; git log -1 --format='%an <%ae> %ad%n%B' --date=raw "$1"
+  }
+  la=($(commits "$A")) && lh=($(commits "$head")) || nope "no merge base, or merge commits"
+  ((${#la[@]} == ${#lh[@]} && ${#la[@]} > 1)) || nope "commit count differs"
+  for ((i = 1; i < ${#la[@]}; i++)); do
+    ia=$(ident "${la[i]}") && ih=$(ident "${lh[i]}") || nope "cannot read commit $i"
+    [[ $ia == "$ih" ]] || nope "commit $i differs (patch, message or author)"
+    tree=$(git merge-tree --write-tree --merge-base="${la[i]}^" "${lh[i - 1]}" "${la[i]}") ||
+      nope "commit $i does not replay cleanly"
+    [[ $tree == "$(git rev-parse "${lh[i]}^{tree}")" ]] || nope "commit $i is not a pure rebase"
+  done
+fi
+
 # Narrow the API race: the PR must still be open at the same head right before pushing.
 IFS=$'\t' read -r state draft _ _ head2 < <(pr_state)
 [[ $state == open && $draft == false && $head2 == "$head" ]] || fail "PR changed while checking (head $head2)"
@@ -92,4 +140,5 @@ IFS=$'\t' read -r state draft _ _ head2 < <(pr_state)
 git push --force-with-lease="refs/heads/main:$base" origin "$head:refs/heads/main" ||
   fail "push rejected (main moved since $base?)"
 git fetch -q origin "+refs/heads/main:refs/remotes/origin/main"
+[[ -z $carried ]] || echo "approval of $carried carried over: patch-identical rebase"
 echo "merged #$pr as $head"

@@ -41,7 +41,9 @@ family → less correlated blind spots). **codex gpt-5.6-sol/luna** writes indep
 4. **Merge gate** (AGENTS.md, CONTRIBUTING.md "Merge gate"): `scripts/merge-pr <n>`, run as
    main's copy from a checkout of `origin/main`, checks that
    `ci.yml` succeeded on the PR's full head SHA and that the latest maintainer-authored attestation
-   for that SHA is `approve`, then fast-forwards `main` with a lease. Only the lead merges. This is
+   for that SHA is `approve` (or that it is a patch-identical rebase of an approved earlier head of
+   the PR, so rebasing after another merge needs no new review round), then fast-forwards `main`
+   with a lease. Only the lead merges. This is
    a script, not branch protection (Free private plan); rulesets get enabled when the repo is
    public.
 
