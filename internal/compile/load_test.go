@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -100,39 +101,44 @@ func TestLoadGoldens(t *testing.T) {
 	fixtures := []struct {
 		id, dir string
 		revs    map[string]string // requested revision per module name
-		feats   map[int][]string  // features per module entry (missing: nil)
 		full    bool
 	}{
-		{"import-cycle", "import-cycle", nil, nil, false},
-		{"include-cycle", "include-cycle", nil, nil, false},
-		{"wrong-revision-file", "wrong-rev", map[string]string{"wr": "2020-01-01"}, nil, false},
-		{"imported-rev-binding", "imported-rev", nil, nil, false}, // r@2020-01-01 is the second module, see below
-		{"filename-warning", "filename", nil, nil, false},
-		{"import-not-found", "not-found", nil, nil, false},
-		{"symlink-dir", "symlink", nil, nil, false},
-		{"symlink-file", "symlink", nil, nil, false},
-		{"dup-typedef-scopes", "dup", nil, nil, false},
-		{"include-errors", "include", nil, nil, false},
-		{"submodule-collisions", "subcol", nil, nil, false},
-		{"ext-instance-resolution", "ext", nil, nil, false},
-		{"two-failures", "two-failures", nil, nil, false},
-		{"feature-not-found", "features", nil, map[int][]string{0: {"x"}}, true},
-		{"feature-not-satisfied", "features", nil, map[int][]string{0: {"a"}}, true},
-		{"feature-rollback-3load", "features", nil, map[int][]string{0: {}, 1: {"a"}}, true},
-		{"feature-first-iffeature-only", "features", nil, map[int][]string{0: {"a", "b"}}, true},
-		{"feature-iff-prefixed", "features", nil, map[int][]string{0: {"*"}}, true},
-		{"iff-feature-cycle", "iff", nil, nil, true},
-		{"iff-unknown-feature", "iff", nil, nil, true},
-		{"ident-cycle", "ident", nil, nil, true},
-		{"ident-unknown-base", "ident", nil, nil, true},
-		{"augment-implements-target", "implement", nil, nil, true},
-		{"augment-nodeid-errors", "implement", nil, nil, true},
-		{"deviation-import-only", "implement", nil, nil, true},
-		{"../../compile/golden/errpath-submodule-identity", "../compile/schemas", nil, nil, false},
+		{"import-cycle", "import-cycle", nil, false},
+		{"include-cycle", "include-cycle", nil, false},
+		{"wrong-revision-file", "wrong-rev", map[string]string{"wr": "2020-01-01"}, false},
+		{"imported-rev-binding", "imported-rev", nil, false}, // r@2020-01-01 is the second module, see below
+		{"filename-warning", "filename", nil, false},
+		{"import-not-found", "not-found", nil, false},
+		{"symlink-dir", "symlink", nil, false},
+		{"symlink-file", "symlink", nil, false},
+		{"dup-typedef-scopes", "dup", nil, false},
+		{"include-errors", "include", nil, false},
+		{"submodule-collisions", "subcol", nil, false},
+		{"ext-instance-resolution", "ext", nil, false},
+		{"two-failures", "two-failures", nil, false},
+		{"feature-not-found", "features", nil, true},
+		{"feature-not-satisfied", "features", nil, true},
+		{"feature-rollback-3load", "features", nil, true},
+		{"feature-first-iffeature-only", "features", nil, true},
+		{"feature-iff-prefixed", "features", nil, true},
+		{"iff-feature-cycle", "iff", nil, true},
+		{"iff-unknown-feature", "iff", nil, true},
+		{"ident-cycle", "ident", nil, true},
+		{"ident-unknown-base", "ident", nil, true},
+		{"augment-implements-target", "implement", nil, true},
+		{"augment-nodeid-errors", "implement", nil, true},
+		{"deviation-import-only", "implement", nil, true},
+		{"../../compile/golden/errpath-submodule-identity", "../compile/schemas", nil, false},
 	}
+	feats := manifestModules(t)
 	for _, f := range fixtures {
 		t.Run(filepath.Base(f.id), func(t *testing.T) {
-			b, err := os.ReadFile(filepath.Join(corpus, "load", "golden", f.id+".json"))
+			golden := filepath.Clean(filepath.Join("load", "golden", f.id+".json"))
+			mods, ok := feats[golden]
+			if f.full && !ok {
+				t.Fatalf("%s: no JSON modules line in the manifest", golden)
+			}
+			b, err := os.ReadFile(filepath.Join(corpus, golden))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -149,7 +155,11 @@ func TestLoadGoldens(t *testing.T) {
 				if f.id == "imported-rev-binding" && i == 1 {
 					rev = "2020-01-01"
 				}
-				m, diags, err := c.Load(gm.Name, rev, f.feats[i])
+				var features []string // nil: untouched
+				if i < len(mods) {
+					features = mods[i].Features
+				}
+				m, diags, err := c.Load(gm.Name, rev, features)
 				var want []goldenDiag
 				for _, d := range gm.Diagnostics {
 					if f.full || d.Phase == "parse" {
@@ -190,6 +200,42 @@ func TestLoadGoldens(t *testing.T) {
 			}
 		})
 	}
+}
+
+// manifestModule is one entry of a fixture's request modules.
+type manifestModule struct {
+	Name     string   `json:"name"`
+	Features []string `json:"features"` // nil when absent
+}
+
+// manifestModules maps each golden file (relative to the corpus) to the
+// request modules of its fixture, for the fixtures whose modules line is
+// JSON flow style (the conformance module's YAML reader is not imported here).
+func manifestModules(t *testing.T) map[string][]manifestModule {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join(corpus, "manifest.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := map[string][]manifestModule{}
+	var dir string
+	var mods []manifestModule
+	for _, l := range strings.Split(string(b), "\n") {
+		l = strings.TrimSpace(l)
+		switch {
+		case strings.HasPrefix(l, "- id:"):
+			dir, mods = "", nil
+		case strings.HasPrefix(l, "dir:"):
+			dir = strings.TrimSpace(strings.TrimPrefix(l, "dir:"))
+		case strings.HasPrefix(l, "modules:"):
+			if json.Unmarshal([]byte(strings.TrimPrefix(l, "modules:")), &mods) != nil {
+				mods = nil
+			}
+		case strings.HasPrefix(l, "golden:") && mods != nil:
+			out[filepath.Join(dir, strings.TrimSpace(strings.TrimPrefix(l, "golden:")))] = mods
+		}
+	}
+	return out
 }
 
 func js(v any) string {

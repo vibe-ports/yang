@@ -46,17 +46,6 @@ func (h *nodeHarness) load(name string) (mod *schema.Module, diags []Diagnostic,
 	if loadErr != nil {
 		return nil, nil, loadErr, nil
 	}
-	for _, lm := range h.c.Modules {
-		if lm.mod == nil {
-			v := schema.Version1
-			if lm.Parsed.Version == "1.1" {
-				v = schema.Version11
-			}
-			lm.mod = &schema.Module{Name: lm.Name, Revision: lm.Revision, Namespace: lm.Namespace,
-				Prefix: lm.Parsed.Prefix, Version: v}
-		}
-		lm.mod.Implemented = lm.Implemented
-	}
 	h.c.diags = nil
 	err = h.c.compileNodes(m, m.mod)
 	return m.mod, h.c.diags, nil, err

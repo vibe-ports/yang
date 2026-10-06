@@ -165,7 +165,49 @@ func TestDepSetRestart(t *testing.T) {
 	}
 }
 
-// TestDepSets: modules without features and anything to compile get their
+// TestDepSetLoneCompile: a module implemented by unres is compiled alone;
+// the modules before it lose to_compile, so a later LY_ERECOMPILE restart
+// compiles only it again (lys_compile_depset_r).
+func TestDepSetLoneCompile(t *testing.T) {
+	c := newCtx(t, Options{}, filepath.Join(corpus, "load", "features"))
+	fa, _, err := c.Load("fa", "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fb, _, err := c.Load("fb", "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fa.toCompile = true
+	calls := 0
+	var faFirst, fbFirst *schema.Feature
+	c.unresHook = func(*Context) error {
+		switch calls++; calls {
+		case 1: // unres implements fb
+			faFirst = fa.Schema.Features[0]
+			fb.toCompile, fb.compiled = true, false
+		case 2: // fb compiled alone; it needs the set again
+			fbFirst = fb.Schema.Features[0]
+			return errRecompile
+		}
+		return nil
+	}
+	if err := c.compileDepSet([]*Module{fa, fb}); err != nil {
+		t.Fatal(err)
+	}
+	switch {
+	case calls != 3:
+		t.Errorf("%d unres runs, want 3", calls)
+	case fa.Schema.Features[0] != faFirst:
+		t.Error("fa compiled again after the restart")
+	case fb.Schema.Features[0] == fbFirst:
+		t.Error("fb not compiled again after the restart")
+	case fa.toCompile || fb.toCompile:
+		t.Error("to_compile left set")
+	}
+}
+
+// TestDepSets:modules without features and anything to compile get their
 // own sets; a module with features is grouped with its importers.
 func TestDepSets(t *testing.T) {
 	c := newCtx(t, Options{}, filepath.Join(corpus, "load", "features"))

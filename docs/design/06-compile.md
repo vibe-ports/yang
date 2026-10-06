@@ -157,8 +157,10 @@ sets `to_compile`). Reproduced by astra with three loads of one module `m` (feat
 (3) `features: null` ("untouched") → fails again with the same error. C1b therefore ports
 `lys_unres_glob_revert` in place rather than restoring a copy-on-write snapshot: the parsed feature
 flags (and `to_compile`) of modules that were already implemented before the failed `Load` survive
-the rollback by construction, exactly as above (publishing an immutable snapshot to readers is C8's,
-§4). Fixture load/feature-rollback-3load (closed): (2) and (3) fail with the same error, no
+the rollback by construction, exactly as above. The loader's `c.Modules[*].Schema` is therefore
+**mutable working state**: a later `Load` appends `Identity.Derived` on older modules, sets
+`Implemented`, and `free` clears `Features`/`Top` before a recompilation. Readers never see it
+directly: C8 publishes a deep copy (§4). Fixture load/feature-rollback-3load (closed): (2) and (3) fail with the same error, no
 internal error is logged (nothing newly implemented, so no recompilation), and the final dump shows
 `a` enabled. An
 atomic rollback would be friendlier, but it changes observable verdicts, so it is not done (no
@@ -568,8 +570,11 @@ FeatureEnabled(name), Features() iter.Seq2[string,bool], Identities(), Top()`. `
 Defaults() []string` (lexical), `DefaultCase, Type, Musts(), Whens(), Status, Units, Extensions()`.
 `Type`: `Base, Typedef, Members(), LeafrefPath, RequireInstance, FractionDigits, Enums(), Bits(),
 Bases()`. `Identity`: `Name, Module, Derived()`. `Must`/`When`: `Expr, ErrorAppTag, ErrorMessage,
-ContextNode`. **Immutability:** a compiled `schema.Set` is never written after `Compile` returns;
-`Load` publishes a new snapshot through `atomic.Pointer` under a mutex (one writer); handles keep their
+ContextNode`. **Immutability:** the loader's `schema.Module`s are working state that later loads
+write (§1.7), so after a successful `Load` C8 publishes a **deep copy** of every module, sharing
+nothing with `c.Modules[*].Schema` (compiled `schema.Type`s may stay shared: the typedef cache never
+writes a type after creating it). That copy is never written again. `Load` publishes it through
+`atomic.Pointer` under a mutex (one writer); handles keep their
 snapshot alive (old handles stay valid and consistent, they just do not see later loads — documented).
 An external test proves no returned value aliases internal storage; `-race` test with concurrent
 readers during `Load`.

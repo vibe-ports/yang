@@ -322,36 +322,40 @@ func (c *Context) compileDepSetAll() error {
 // compileDepSet is lys_compile_depset_r: compile the flagged modules of the
 // set, resolve its unres; a module implemented by unres either restarts the
 // whole set (LY_ERECOMPILE) or is compiled alone and unres resolved again.
+// The success scan clears to_compile of the modules before such a module,
+// so a later restart does not compile them again.
 func (c *Context) compileDepSet(set []*Module) error {
+restart:
+	for _, m := range set {
+		if m.toCompile {
+			c.free(m)
+			if err := c.compile(m); err != nil {
+				return err
+			}
+		}
+	}
 	for {
-		for _, m := range set {
-			if m.toCompile {
-				c.free(m)
-				if err := c.compile(m); err != nil {
-					return err
-				}
-			}
-		}
 		err := c.unres()
-		for err == nil {
-			i := slices.IndexFunc(set, func(m *Module) bool { return m.toCompile && !m.compiled })
-			if i < 0 {
-				break
-			}
-			if err = c.compile(set[i]); err == nil {
-				err = c.unres()
-			}
-		}
 		switch {
 		case errors.Is(err, errRecompile):
-			continue
+			goto restart
 		case err != nil:
 			return err
 		}
+		var lone *Module
 		for _, m := range set {
+			if m.toCompile && !m.compiled {
+				lone = m
+				break
+			}
 			m.toCompile = false
 		}
-		return nil
+		if lone == nil {
+			return nil
+		}
+		if err := c.compile(lone); err != nil {
+			return err
+		}
 	}
 }
 

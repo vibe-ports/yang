@@ -176,9 +176,9 @@ var internalModules = []struct {
 // NewContext is ly_ctx_new with libyang's module directory (embedded) as the
 // first search directory, followed by dirs, and the internal modules loaded.
 // Option timing: the internal modules are loaded from the embedded directory
-// only, with AllImplemented, MaxSearchDirs and Parse applied; dirs, Loader,
-// DisableSearchdirs and PreferSearchdirs take effect after them (the oracle's
-// ly_ctx_new followed by ly_ctx_set_searchdir).
+// only, with AllImplemented, EnableImportFeatures, MaxSearchDirs and Parse
+// applied; dirs, Loader, DisableSearchdirs and PreferSearchdirs take effect
+// after them (the oracle's ly_ctx_new followed by ly_ctx_set_searchdir).
 func NewContext(opts Options, dirs ...fs.FS) (*Context, []Diagnostic, error) {
 	if opts.MaxSearchDirs <= 0 {
 		opts.MaxSearchDirs = 10000
@@ -186,7 +186,8 @@ func NewContext(opts Options, dirs ...fs.FS) (*Context, []Diagnostic, error) {
 	if opts.Parse.MaxBytes <= 0 {
 		opts.Parse.MaxBytes = 64 << 20 // the parser's default
 	}
-	c := &Context{opts: Options{AllImplemented: opts.AllImplemented, MaxSearchDirs: opts.MaxSearchDirs, Parse: opts.Parse},
+	c := &Context{opts: Options{AllImplemented: opts.AllImplemented, EnableImportFeatures: opts.EnableImportFeatures,
+		MaxSearchDirs: opts.MaxSearchDirs, Parse: opts.Parse},
 		dirs: []fs.FS{models.Libyang}, phase: "parse", typeCache: newTypeCache()}
 	n := len(internalModules)
 	if opts.NoYangLibrary {
@@ -195,7 +196,7 @@ func NewContext(opts Options, dirs ...fs.FS) (*Context, []Diagnostic, error) {
 	for _, im := range internalModules[:n] {
 		m, err := c.parseLoad(im.name, im.rev)
 		if err == nil && (im.implemented || opts.AllImplemented) {
-			err = c.implement(m, nil)
+			err = c.implement(m, c.importFeatures())
 		}
 		if err != nil && !errors.Is(err, errRecompile) {
 			return nil, c.diags, err

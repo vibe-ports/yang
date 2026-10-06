@@ -7924,7 +7924,7 @@ fixtures:
     request:
       op: schema
       searchdirs: [features]
-      modules: [{name: fa, features: [x]}]
+      modules: [{"name": "fa", "features": ["x"]}]
     golden: golden/feature-not-found.json
 
   - id: load/feature-not-satisfied
@@ -7935,7 +7935,7 @@ fixtures:
     request:
       op: schema
       searchdirs: [features]
-      modules: [{name: fa, features: [a]}]
+      modules: [{"name": "fa", "features": ["a"]}]
     golden: golden/feature-not-satisfied.json
 
   # design 06 §1.7: a failed compile does not revert the features of a module implemented before
@@ -7947,7 +7947,7 @@ fixtures:
     request:
       op: schema
       searchdirs: [features]
-      modules: [{name: fa, features: []}, {name: fa, features: [a]}, {name: fa}]
+      modules: [{"name": "fa", "features": []}, {"name": "fa", "features": ["a"]}, {"name": "fa"}]
     golden: golden/feature-rollback-3load.json
 
   # libyang checks only the first if-feature of an enabled feature (D-0036)
@@ -7959,7 +7959,7 @@ fixtures:
     request:
       op: schema
       searchdirs: [features]
-      modules: [{name: fb, features: [a, b]}]
+      modules: [{"name": "fb", "features": ["a", "b"]}]
     golden: golden/feature-first-iffeature-only.json
 
   - id: load/feature-iff-prefixed
@@ -7970,7 +7970,7 @@ fixtures:
     request:
       op: schema
       searchdirs: [features]
-      modules: [{name: fc, features: ["*"]}]
+      modules: [{"name": "fc", "features": ["*"]}]
     golden: golden/feature-iff-prefixed.json
 
   - id: iff/feature-cycle
@@ -7981,10 +7981,10 @@ fixtures:
     request:
       op: schema
       searchdirs: [iff]
-      modules: [{name: fc1}, {name: fc2}, {name: fc3}]
+      modules: [{"name": "fc1"}, {"name": "fc2"}, {"name": "fc3"}]
     golden: golden/iff-feature-cycle.json
 
-  - id: iff/unknown-feature
+  - id: iff/unknown-feature-lookup
     dir: load
     source: *own
     rfc: ["RFC7950#7.20.2"]
@@ -7992,7 +7992,7 @@ fixtures:
     request:
       op: schema
       searchdirs: [iff]
-      modules: [{name: fu1}, {name: fu2}, {name: fu3}, {name: fu4}, {name: fu5}]
+      modules: [{"name": "fu1"}, {"name": "fu2"}, {"name": "fu3"}, {"name": "fu4"}, {"name": "fu5"}]
     golden: golden/iff-unknown-feature.json
 
   - id: ident/cycle
@@ -8003,7 +8003,7 @@ fixtures:
     request:
       op: schema
       searchdirs: [ident]
-      modules: [{name: ic1}, {name: ic2}, {name: ic3}]
+      modules: [{"name": "ic1"}, {"name": "ic2"}, {"name": "ic3"}]
     golden: golden/ident-cycle.json
 
   - id: ident/unknown-base
@@ -8014,7 +8014,7 @@ fixtures:
     request:
       op: schema
       searchdirs: [ident]
-      modules: [{name: iu1}, {name: iu2}, {name: ib}]
+      modules: [{"name": "iu1"}, {"name": "iu2"}, {"name": "ib"}]
     golden: golden/ident-unknown-base.json
 
   - id: load/augment-implements-target
@@ -8025,7 +8025,7 @@ fixtures:
     request:
       op: schema
       searchdirs: [implement]
-      modules: [{name: ag}]
+      modules: [{"name": "ag"}]
     golden: golden/augment-implements-target.json
 
   - id: load/augment-nodeid-errors
@@ -8036,7 +8036,7 @@ fixtures:
     request:
       op: schema
       searchdirs: [implement]
-      modules: [{name: ab1}, {name: ab2}, {name: ab3}]
+      modules: [{"name": "ab1"}, {"name": "ab2"}, {"name": "ab3"}]
     golden: golden/augment-nodeid-errors.json
 
   - id: load/deviation-import-only
@@ -8047,5 +8047,5 @@ fixtures:
     request:
       op: schema
       searchdirs: [implement]
-      modules: [{name: dvu}]
+      modules: [{"name": "dvu"}]
     golden: golden/deviation-import-only.json
