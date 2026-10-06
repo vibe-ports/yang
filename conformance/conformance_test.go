@@ -263,9 +263,32 @@ func TestClassify(t *testing.T) {
 		{"waive: an unwaived module field differs", waiveTree, treeOff, Differ},
 		{"waive: other field differs", waiving, resp(t, `{"verdict":"valid","modules":[{"name":"m"}],"result":2}`), Differ},
 		{"waive: module name differs", waiving, resp(t, `{"verdict":"valid","modules":[{"name":"x"}],"result":1}`), Differ},
-		{"no waive: tree differs", deviating, resp(t, `{"verdict":"invalid","modules":[{"name":"m","schema_tree":[2],"compiled":"a"}],"result":1}`), Differ},
 	} {
 		if got, d := classify(tc.f, tree, tc.got); got != tc.want {
+			t.Errorf("%s: %s (%s), want %s", tc.name, got, d, tc.want)
+		}
+	}
+	// a verdict flip under a deviation: tree, typed, modules and steps follow from the verdict;
+	// with the same verdict they are compared
+	rejected := resp(t, `{"verdict":"invalid","modules":[{"name":"m","accepted":false}],"tree":null,"result":1}`)
+	accepted := resp(t, `{"verdict":"valid","modules":[{"name":"m","accepted":true}],"tree":{"json":"{}"},"typed":[],"steps":[{"rc":0}],"result":1}`)
+	acceptsDev := Fixture{Assert: &Assert{Verdict: "valid", Deviation: &dev}}
+	for _, tc := range []struct {
+		name   string
+		f      Fixture
+		golden Response
+		got    Response
+		want   Status
+	}{
+		{"flip under a deviation", acceptsDev, rejected, accepted, Deviation},
+		{"flip without a deviation", plain, rejected, accepted, Differ},
+		{"flip under a deviation, other field differs", acceptsDev, rejected,
+			resp(t, `{"verdict":"valid","modules":[{"name":"m","accepted":true}],"tree":{"json":"{}"},"result":2}`), Differ},
+		{"same verdict under a deviation: modules compared", deviating,
+			resp(t, `{"verdict":"invalid","modules":[{"name":"m","schema_tree":[1]}],"diagnostics":[1],"result":1}`),
+			resp(t, `{"verdict":"invalid","modules":[{"name":"m","schema_tree":[2]}],"diagnostics":[2],"result":1}`), Differ},
+	} {
+		if got, d := classify(tc.f, tc.golden, tc.got); got != tc.want {
 			t.Errorf("%s: %s (%s), want %s", tc.name, got, d, tc.want)
 		}
 	}

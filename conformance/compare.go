@@ -112,8 +112,13 @@ func classify(f Fixture, golden, got Response) (Status, string) {
 		return Deviation, *f.Assert.Deviation
 	case f.Assert != nil && f.Assert.Deviation != nil:
 		// The deviation only waives what the assert covers (verdict, rc, diagnostics); the rest
-		// of the golden (trees, xpath results, diffs) must still match.
-		if d := diffResponses(withoutAsserted(golden), withoutAsserted(got)); d != "" {
+		// of the golden (trees, xpath results, diffs) must still match, unless the verdict flips:
+		// then everything derived from the accepted result follows from it.
+		g, r := withoutAsserted(golden), withoutAsserted(got)
+		if !sameJSON(golden["verdict"], got["verdict"]) {
+			g, r = withoutDerived(g), withoutDerived(r)
+		}
+		if d := diffResponses(g, r); d != "" {
 			return Differ, d
 		}
 		return Deviation, *f.Assert.Deviation
@@ -205,6 +210,19 @@ func withoutAsserted(r Response) Response {
 		delete(s, "rc")
 		delete(s, "diagnostics")
 	})
+	return o
+}
+
+// derivedFields are what an accepted result yields: under a deviation whose verdict differs
+// from the golden's (one side accepts, the other rejects), they differ as a consequence.
+var derivedFields = []string{"tree", "typed", "modules", "steps"}
+
+// withoutDerived drops derivedFields at the top level.
+func withoutDerived(r Response) Response {
+	o := maps.Clone(map[string]any(r))
+	for _, k := range derivedFields {
+		delete(o, k)
+	}
 	return o
 }
 
