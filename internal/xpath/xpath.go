@@ -207,10 +207,12 @@ const (
 
 // EvalContext is the explicit evaluation context.
 type EvalContext struct {
-	Ctx        context.Context // cancellation; nil = Background
-	Node       Node            // context node; nil = document root
-	Current    Node            // current(); nil = Node
-	Tree       []Node          // top-level siblings in document order; every node reached is under them
+	Ctx     context.Context // cancellation; nil = Background
+	Node    Node            // context node; nil = document root
+	Current Node            // current(); nil = Node
+	Tree    []Node          // top-level siblings in document order; every node reached is under them
+	// TreeLookup finds top-level nodes like ChildLookup finds children (nil: scan Tree).
+	TreeLookup ChildLookup
 	Root       RootKind
 	IgnoreWhen bool // LYXP_IGNORE_WHEN: do not fail on unresolved when
 	Schema     SchemaInfo

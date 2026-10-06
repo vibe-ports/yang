@@ -479,7 +479,8 @@ func (ev *evaluator) atomsOK(val ast, sn SchemaNode) bool {
 
 // hashChild is moveto_node_hash_child: the instances of sn under each context
 // node (an opaque node of that name if there is none). When every context node
-// is a ChildLookup and the predicates libyang hashes (preds, see hashPredicates)
+// is a ChildLookup (the document root: EvalContext.TreeLookup) and the predicates
+// libyang hashes (preds, see hashPredicates)
 // have literal values, the instances come from LookupChild and those predicates
 // are consumed (used); otherwise the children are scanned and the predicates
 // are left to the caller.
@@ -488,8 +489,19 @@ func (ev *evaluator) hashChild(set value, sn SchemaNode, name string, preds []as
 		return nodesV(nil), 0, nil
 	}
 	vals, used, lookup := lookupValues(sn, preds)
+	lookupOf := func(it item) ChildLookup {
+		switch it.t {
+		case itRoot:
+			return ev.ec.TreeLookup
+		case itElem:
+			if l, ok := it.n.(ChildLookup); ok {
+				return l
+			}
+		}
+		return nil
+	}
 	for _, it := range set.nodes {
-		if _, ok := it.n.(ChildLookup); !ok || it.t != itElem {
+		if lookupOf(it) == nil {
 			lookup = false
 		}
 	}
@@ -504,7 +516,7 @@ func (ev *evaluator) hashChild(set value, sn SchemaNode, name string, preds []as
 				return value{}, 0, err
 			}
 			var ok bool
-			if hit, ok = it.n.(ChildLookup).LookupChild(sn, vals); !ok {
+			if hit, ok = lookupOf(it).LookupChild(sn, vals); !ok {
 				return value{}, 0, fmt.Errorf("xpath: LookupChild of %s refused a lookup it was asked for", sn.Name())
 			}
 		} else {

@@ -68,3 +68,43 @@ func TestChildLookup(t *testing.T) {
 		}
 	}
 }
+
+// rootLookup finds top-level nodes for EvalContext.TreeLookup.
+type rootLookup struct {
+	tree  []Node
+	calls int
+}
+
+func (r *rootLookup) LookupChild(sn SchemaNode, _ []string) ([]Node, bool) {
+	r.calls++
+	for _, n := range r.tree {
+		if n.Schema() == sn {
+			return []Node{n}, true
+		}
+	}
+	return nil, true
+}
+
+// TestTreeLookup: a child step from the document root (`../x` of a top-level node, a sibling
+// test in a must or when) uses EvalContext.TreeLookup when given, and scans Tree otherwise.
+func TestTreeLookup(t *testing.T) {
+	const n = 2000
+	var roots []*tnode
+	for i := range n {
+		roots = append(roots, leafl("a:ll", fmt.Sprint(i)))
+	}
+	roots = append(roots, leaf("a:x", "v"))
+	tree := top(roots...)
+	ctxNode := tree[0]
+	src := "../x = 'v'"
+	sch := tinfo{tree: tree}
+	plain, err := eval(src, EvalContext{Tree: tree, Node: ctxNode, Schema: sch})
+	if err != nil || !plain.Bool || plain.Steps < n {
+		t.Fatalf("scan: %v %v, %d steps", plain, err, plain.Steps)
+	}
+	rl := &rootLookup{tree: tree}
+	got, err := eval(src, EvalContext{Tree: tree, Node: ctxNode, Schema: sch, TreeLookup: rl})
+	if err != nil || !got.Bool || rl.calls != 1 || got.Steps > 20 {
+		t.Fatalf("lookup: %v %v, %d calls, %d steps", got, err, rl.calls, got.Steps)
+	}
+}
