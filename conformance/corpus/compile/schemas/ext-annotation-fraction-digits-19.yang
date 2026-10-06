@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module ext-annotation-fraction-digits-19 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:ext-annotation-fraction-digits-19";
+  prefix ext-annotation-fraction-digits-19;
+  import ietf-yang-metadata { prefix md; }
+  md:annotation a { type decimal64 { fraction-digits 19; } }
+}

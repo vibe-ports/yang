@@ -1,34 +1,95 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Ported from libyang v5.8.6 src/parser_yang.c and src/parser_common.c (BSD-3-Clause, © CESNET).
+// Ported from libyang v5.8.6 src/parser_yang.c, src/plugins_exts.c
+// (lyplg_ext_parse_extension_instance) and src/parser_common.c (lys_parser_ext_instance_stmt,
+// lysp_stmt_parse) (BSD-3-Clause, © CESNET).
 
 package parser
 
-// ExtOwners returns the statements owning a non-empty exts array, in libyang's ctx->ext_inst
-// order (owners as they close): the arrays lysp_resolve_ext_instance_records walks.
-func ExtOwners(root *Stmt) []*Stmt {
-	var out []*Stmt
-	var walk func(s *Stmt)
-	walk = func(s *Stmt) {
-		for _, c := range s.Subs {
-			if c.ExtPrefix != "" || s.ExtPrefix == "" {
-				walk(c)
-			}
-		}
-		if (s.ExtPrefix != "" || extOwner[s.Keyword]) && len(OwnedExts(s)) > 0 {
-			out = append(out, s)
-		}
-	}
-	walk(root)
-	return out
-}
+import "github.com/vibe-ports/yang/internal/ly"
 
 // OwnedExts returns the exts array of s: its extension instances and those of its
 // substatements that have no exts array of their own, in text order.
 func OwnedExts(s *Stmt) []*Stmt { return appendOwned(nil, s, s.ExtPrefix != "") }
 
-// BuildType builds a type statement found in an extension instance (lysp_stmt_parse of
-// LY_STMT_TYPE for an extension plugin); v11 is the module's YANG version.
-func BuildType(s *Stmt, v11 bool) *Type { return (&builder{v11: v11}).typ(s) }
+// ExtSubstmt is one substatement an extension plugin parses (lysp_ext_substmt): its keyword and
+// whether it may occur more than once (a sized array, e.g. if-feature).
+type ExtSubstmt struct {
+	Keyword string
+	Many    bool
+}
 
-// BuildIfFeature builds an if-feature statement found in an extension instance.
-func BuildIfFeature(s *Stmt, v11 bool) *IfFeature { return ifFeature(s, v11) }
+// ParseExtInstance is lyplg_ext_parse_extension_instance for the plugin substatements subs (in
+// the plugin's substmts order) of the extension instance ext: a YANG child that is not one of
+// subs is rejected, then for each of subs in order every child with that keyword is checked for
+// duplicates (lys_parser_ext_instance_stmt) and parsed with the checks of the YANG parser
+// (lysp_stmt_parse). Nested extension instances are not children. The result holds the parsed
+// substatements as a Node (Type, IfFeatures, Status, Units, ...). Errors carry no position:
+// libyang reports them at the instance path.
+func ParseExtInstance(ext *Stmt, subs []ExtSubstmt, v11 bool) (*Node, *Error) {
+	arg := ""
+	if ext.HasArg {
+		arg = " " + ext.Arg
+	}
+	name := ext.ExtPrefix + ":" + ext.Keyword
+	for _, s := range ext.Subs {
+		known := s.ExtPrefix != ""
+		for _, sub := range subs {
+			known = known || s.Keyword == sub.Keyword
+		}
+		if !known {
+			return nil, &Error{Code: ly.SyntaxYang,
+				Msg: "Invalid keyword \"" + s.Keyword + "\" as a child of \"" + name + arg + "\" extension instance."}
+		}
+	}
+	c := &checker{v11: v11, imports: map[string]string{}, extDefs: map[string]*Stmt{}}
+	l := &lexer{chk: c}
+	root := &frame{s: ext, live: true, seen: map[string]bool{}}
+	for _, sub := range subs {
+		seen := false
+		for _, s := range ext.Subs {
+			if s.ExtPrefix != "" || s.Keyword != sub.Keyword {
+				continue
+			}
+			if seen && !sub.Many {
+				return nil, &Error{Code: ly.SyntaxYang, Msg: "Duplicate keyword \"" + s.Keyword + "\"."}
+			}
+			seen = true
+			if err := l.replay(root, s); err != nil {
+				return nil, noPos(err)
+			}
+		}
+	}
+	n := &Node{}
+	(&builder{v11: v11}).node(n, ext)
+	return n, nil
+}
+
+// replay runs the checks lexer.stmt makes while reading s (a substatement of pf) over the
+// already read tree: argument, each child keyword, the child, then the closing checks.
+func (l *lexer) replay(pf *frame, s *Stmt) error {
+	f := &frame{s: s, live: true, seen: map[string]bool{}}
+	if err := l.chk.arg(l, pf, s); err != nil {
+		return err
+	}
+	for _, ch := range s.Subs {
+		if ch.ExtPrefix != "" {
+			continue // an extension instance: its content is generic
+		}
+		if err := l.chk.child(l, f, ch.Keyword, false); err != nil {
+			return err
+		}
+		if err := l.replay(f, ch); err != nil {
+			return err
+		}
+	}
+	return l.chk.close(l, pf, f)
+}
+
+func noPos(err error) *Error {
+	e, ok := err.(*Error) //nolint:errorlint // the checker returns *Error only
+	if !ok {
+		return &Error{Code: ly.Other, Msg: err.Error()}
+	}
+	e.Pos = Pos{}
+	return e
+}

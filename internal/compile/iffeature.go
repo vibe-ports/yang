@@ -31,7 +31,7 @@ func (w *nodeCtx) iffeatures(pm *pmod, iffs []*parser.IfFeature) (bool, error) {
 // reported after the lookup (D-0036).
 func (w *nodeCtx) iffValue(pm *pmod, iff *parser.IfFeature) (bool, error) {
 	var names []string
-	processing := iff.Err != nil && strings.HasSuffix(iff.Err.Msg, "processing error.")
+	processing := iff.Err != nil && iff.Processing
 	switch {
 	case processing:
 		names = iffTokens(iff.Expr)
@@ -123,20 +123,8 @@ func (c *Context) feature(pm *pmod, name string) (enabled, found bool) {
 	return enabled, found
 }
 
-// mainOf is the module pm belongs to (lysp_module.mod), nil if pm is not loaded.
-func (c *Context) mainOf(pm *pmod) *Module {
-	for _, m := range c.Modules {
-		if &m.pmod == pm {
-			return m
-		}
-		for _, inc := range m.Includes {
-			if inc.Sub != nil && &inc.Sub.pmod == pm {
-				return m
-			}
-		}
-	}
-	return nil
-}
+// mainOf is the module pm belongs to (lysp_module.mod), set by the loader.
+func (c *Context) mainOf(pm *pmod) *Module { return pm.main }
 
 // disable is the LYS_COMPILE_DISABLED part of lys_compile_node_: a node whose if-feature is false
 // (or an obsolete one) is compiled like any other, but goes to the disabled set and makes its

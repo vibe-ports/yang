@@ -17,7 +17,13 @@ type IfFeature struct {
 	Expr string
 	AST  *IffExpr
 	Err  *Error
+	// Processing marks an Err found by the second pass of lys_compile_iffeature ("processing
+	// error."), which libyang reports only after looking the features up (D-0036).
+	Processing bool
 }
+
+// iffProcessing is the reason of an expression the second pass cannot process.
+const iffProcessing = "processing error."
 
 // IffOp is an if-feature expression node kind.
 type IffOp uint8
@@ -41,7 +47,7 @@ type IffExpr struct {
 
 func ifFeature(s *Stmt, v11 bool) *IfFeature {
 	ast, why := parseIfFeature(s.Arg, v11)
-	f := &IfFeature{Expr: s.Arg, AST: ast}
+	f := &IfFeature{Expr: s.Arg, AST: ast, Processing: why == iffProcessing}
 	if why != "" {
 		f.Err = &Error{Code: ly.SyntaxYang, Msg: "Invalid value \"" + s.Arg + "\" of if-feature - " + why}
 	}
@@ -135,7 +141,7 @@ func parseIfFeature(c string, v11 bool) (*IffExpr, string) {
 		return nil, "YANG 1.1 expression in YANG 1.0 module."
 	}
 
-	const processing = "processing error."
+	const processing = iffProcessing
 	ops := make([]IffOp, exprSize)
 	names := make([]string, fSize)
 	e, f := exprSize-1, fSize-1

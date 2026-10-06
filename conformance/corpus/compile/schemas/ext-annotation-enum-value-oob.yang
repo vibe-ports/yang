@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module ext-annotation-enum-value-oob {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:ext-annotation-enum-value-oob";
+  prefix ext-annotation-enum-value-oob;
+  import ietf-yang-metadata { prefix md; }
+  md:annotation a { type enumeration { enum x { value 2147483648; } } }
+}

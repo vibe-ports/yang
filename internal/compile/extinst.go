@@ -155,9 +155,11 @@ func stmtStr(s *parser.Stmt) string {
 }
 
 // annotationSubs are the substatements metadata.c annotation_parse allows, in its substmts order.
-var annotationSubs = []string{"if-feature", "units", "status", "type", "description", "reference"}
+var annotationSubs = []parser.ExtSubstmt{{Keyword: "if-feature", Many: true}, {Keyword: "units"},
+	{Keyword: "status"}, {Keyword: "type"}, {Keyword: "description"}, {Keyword: "reference"}}
 
-// annotationParse is metadata.c annotation_parse with lyplg_ext_parse_extension_instance.
+// annotationParse is metadata.c annotation_parse with lyplg_ext_parse_extension_instance; the
+// parsed substatements are kept for the compile (lysp_ext_instance.parsed).
 func annotationParse(c *Context, x *extParse) error {
 	name := x.e.ExtPrefix + ":" + x.e.Keyword
 	if !x.root {
@@ -169,33 +171,17 @@ func annotationParse(c *Context, x *extParse) error {
 			return c.extLog(x, false, "Extension %s is instantiated multiple times.", name)
 		}
 	}
-	arg := ""
-	if x.e.HasArg {
-		arg = " " + x.e.Arg
+	n, perr := parser.ParseExtInstance(x.e, annotationSubs, x.v11)
+	if perr != nil {
+		return c.logPath(perr.Code, x.path, "%s", perr.Msg)
 	}
-	for _, s := range x.e.Subs { // nested instances are not children (parse_ext)
-		if s.ExtPrefix == "" && !slices.Contains(annotationSubs, s.Keyword) {
-			return c.logPath(ly.SyntaxYang, x.path, "Invalid keyword \"%s\" as a child of \"%s%s\" extension instance.",
-				s.Keyword, name, arg)
-		}
-	}
-	hasType := false
-	for _, kw := range annotationSubs {
-		seen := false
-		for _, s := range x.e.Subs {
-			if s.ExtPrefix != "" || s.Keyword != kw {
-				continue
-			}
-			if seen && kw != "if-feature" { // single item (lys_parser_ext_instance_stmt)
-				return c.logPath(ly.SyntaxYang, x.path, "Duplicate keyword \"%s\".", kw)
-			}
-			seen = true
-		}
-		hasType = hasType || kw == "type" && seen
-	}
-	if !hasType {
+	if n.Type == nil {
 		return c.extLog(x, false, "Missing mandatory keyword \"type\" as a child of \"%s %s\".", name, x.e.Arg)
 	}
+	if c.extParsed == nil {
+		c.extParsed = map[*parser.Stmt]*parser.Node{}
+	}
+	c.extParsed[x.e] = n
 	return nil
 }
 
@@ -203,32 +189,18 @@ func annotationParse(c *Context, x *extParse) error {
 // a false if-feature drops the instance, else the type is compiled (lys_compile_type with the
 // annotation's status and "annotation" as the referring name) and held.
 func annotationCompile(w *nodeCtx, e *parser.Stmt, inst *schema.ExtInstance) error {
-	v11 := w.v11()
-	var iffs []*parser.IfFeature
-	var tp *parser.Type
-	st := schema.Current
-	for _, s := range e.Subs {
-		switch {
-		case s.ExtPrefix != "":
-		case s.Keyword == "if-feature":
-			iffs = append(iffs, parser.BuildIfFeature(s, v11))
-		case s.Keyword == "status":
-			st = parsedStatus(s.Arg)
-		case s.Keyword == "type":
-			tp = parser.BuildType(s, v11)
-		}
+	n := w.c.extParsed[e]
+	if n == nil || n.Type == nil {
+		return fmt.Errorf("compile: annotation %q was not parsed", e.Arg) // annotationParse ran at load
 	}
-	if tp == nil {
-		return fmt.Errorf("compile: annotation %q without a type", e.Arg) // annotationParse rejects it
-	}
-	if on, err := w.iffeatures(w.pm, iffs); err != nil || !on {
+	if on, err := w.iffeatures(w.pm, n.IfFeatures); err != nil || !on {
 		if err == nil {
 			err = errNot
 		}
 		return err
 	}
 	w.tc.pmod = w.pm
-	t, _, _, err := w.tc.compileType(nil, st, "annotation", tp, w.pm, true, false)
+	t, _, _, err := w.tc.compileType(nil, parsedStatus(n.Status), "annotation", n.Type, w.pm, true, false)
 	if err != nil {
 		return w.vlog(err)
 	}
@@ -246,7 +218,7 @@ func nacmParse(c *Context, x *extParse) error {
 			name, stmtStr(ps))
 	}
 	switch ps.Keyword {
-	case "container", "leaf", "leaf-list", "list", "choice", "anydata", "case":
+	case "container", "leaf", "leaf-list", "list", "choice", "anydata", "anyxml", "case": // LYS_ANYDATA covers anyxml
 	case "rpc", "action", "notification":
 		if x.e.Keyword != "default-deny-write" {
 			break

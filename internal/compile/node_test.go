@@ -314,7 +314,7 @@ func TestNodeGoldens(t *testing.T) {
 			for _, gm := range g.Modules {
 				mod, loadDiags, diags, loadErr, err := h.loadFeatures(gm.Name, req.features[gm.Name])
 				if !gm.Accepted && gm.Phase == "parse" && len(gm.Diagnostics) > 0 &&
-					matchesAny(gm.Diagnostics[0].Msg, c4bParseMessages) {
+					(matchesAny(gm.Diagnostics[0].Msg, c4bParseMessages) || strings.Contains(gm.Diagnostics[0].SchemaPath, "{ext-inst=")) {
 					var got []goldenDiag
 					for _, d := range loadDiags {
 						got = append(got, d.golden())

@@ -344,6 +344,16 @@ func (c *checker) close(l *lexer, pf, f *frame) error {
 // lysp_resolve_ext_instance_records resolves them.
 func ExtInstances(root *Stmt) []*Stmt {
 	var out []*Stmt
+	for _, o := range ExtOwners(root) {
+		out = append(out, OwnedExts(o)...)
+	}
+	return out
+}
+
+// ExtOwners returns the statements owning a non-empty exts array, in ctx->ext_inst order:
+// the arrays lysp_resolve_ext_instance_records walks.
+func ExtOwners(root *Stmt) []*Stmt {
+	var out []*Stmt
 	var walk func(s *Stmt)
 	walk = func(s *Stmt) {
 		for _, c := range s.Subs {
@@ -351,8 +361,8 @@ func ExtInstances(root *Stmt) []*Stmt {
 				walk(c)
 			}
 		}
-		if (s.ExtPrefix != "" || extOwner[s.Keyword]) && len(s.Subs) > 0 {
-			out = appendOwned(out, s, s.ExtPrefix != "")
+		if (s.ExtPrefix != "" || extOwner[s.Keyword]) && len(OwnedExts(s)) > 0 {
+			out = append(out, s)
 		}
 	}
 	walk(root)

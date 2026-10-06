@@ -108,6 +108,7 @@ type pmod struct {
 	Includes []*Include
 	parsing  bool
 	mod      *schema.Module // the compiled module it belongs to (lysp_module.mod), bound by compile
+	main     *Module        // the main module (itself for a module)
 }
 
 // Module is a module in the context (struct lys_module).
@@ -159,6 +160,8 @@ type Context struct {
 	// extArrs are the exts arrays whose instances a plugin parse callback removed (LY_ENOT),
 	// by owner statement, in libyang's order after the removal.
 	extArrs map[*parser.Stmt][]*parser.Stmt
+	// extParsed are the substatements a plugin parse callback parsed (lysp_ext_instance.parsed).
+	extParsed map[*parser.Stmt]*parser.Node
 	// nodeWalk turns on the node walk (compileNodes) in compile; off until
 	// design 06 C4b and C6 make the internal modules compile
 	nodeWalk bool
@@ -522,6 +525,7 @@ func (c *Context) parseModule(src []byte, d loadData) (m *Module, err error) {
 	}
 	name = st.Arg
 	m = &Module{Name: st.Arg, Namespace: pm.Namespace, pmod: pmod{Parsed: pm}}
+	m.main = m
 	m.Revision = c.lastRevision(pm.Revisions, "module", m.Name)
 	m.Schema = &schema.Module{Name: m.Name, Revision: m.Revision, Namespace: m.Namespace, Prefix: pm.Prefix,
 		Version: schema.Version1}
@@ -824,7 +828,7 @@ func (c *Context) parseSubmodule(p *pctx, src []byte, d loadData, inDirs bool) (
 	if err != nil {
 		return nil, err
 	}
-	s = &Submodule{Name: st.Arg, Main: p.main, pmod: pmod{Parsed: pm, mod: p.main.Schema}}
+	s = &Submodule{Name: st.Arg, Main: p.main, pmod: pmod{Parsed: pm, mod: p.main.Schema, main: p.main}}
 	p.parsed = append(p.parsed, s) // parsed_mods is a stack: popped when this parser context is freed
 	defer func() { p.parsed = p.parsed[:len(p.parsed)-1] }()
 	s.Revision = c.lastRevision(pm.Revisions, "submodule", s.Name)

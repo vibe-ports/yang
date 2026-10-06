@@ -1,0 +1,44 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ext-nacm-anyxml {\n  namespace \"urn:vibe-ports:yang:conformance:ext-nacm-anyxml\";\n  prefix ext-nacm-anyxml;\n\n  anyxml x {\n    ietf-netconf-acm:default-deny-all;\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "ext-nacm-anyxml",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ext-nacm-anyxml",
+          "musts": null,
+          "nodetype": "anyxml",
+          "ordered_by": null,
+          "path": "/ext-nacm-anyxml:x",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}
