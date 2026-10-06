@@ -46,12 +46,18 @@ extension data (`LYD_EXT`), LYB, RESTCONF/NETCONF envelopes, full diff/merge opt
    DOCTYPE and non-predefined entities (XM:323, XM:509) and libyang's nesting limits are all part of
    the observable behaviour. Port `json.c` and `xml.c`.
 4. **Schema snapshot, not a live context** (lead default, maintainer may revisit). `(*yang.Context)
-   .Schema()` returns `*yang.Schema`, an immutable snapshot handle; `yang.Schema` is an alias of
-   `schema.Set` (design 05 re-exports the schema types through aliases), so `data` uses it directly
-   and every PR is testable with hand-built `schema.Node`s that follow design 06 §4. A `Tree` pins
-   the snapshot it was parsed with; a later `Load` does not affect it. libyang trees use the live
-   `LYD_CTX` instead — **U-0045**. `data` → `yang` is acyclic (`yang` never imports `data`; the
-   yang-library builder of M6 lives in `data`). Design 05's graph/API line is amended accordingly.
+   .Schema()` returns `*yang.Schema`, an immutable snapshot handle. It is **opaque** (design 05: never
+   an alias with writable fields): the struct `Schema{ s *schema.Set }` is defined in a new leaf
+   package `internal/snap` together with its read-only accessors (the C8 handles) and
+   `snap.Set(*Schema) *schema.Set`; `yang` re-exports it as `type Schema = snap.Schema` — an alias of
+   a struct with no exported fields, so callers outside the module can neither name the inner set nor
+   write it. Chosen over an `init`-registered bridge function because it is typed (no `any`), needs no
+   init ordering or mutable package variable, and `snap.Set` is unreachable from outside the module by
+   Go's `internal/` rule. All data PRs call internal `parse(ctx, r, f, *schema.Set, o)` /
+   `validate(...)` with hand-built sets that follow design 06 §4; only D12 adds the public wrappers.
+   A `Tree` pins the snapshot it was parsed with; a later `Load` does not affect it. libyang trees use
+   the live `LYD_CTX` instead — **U-0045**. `data` → `yang`/`internal/snap` is acyclic (`yang` never
+   imports `data`; the yang-library builder of M6 lives in `data`).
 
 ## 1. libyang flow
 
@@ -270,7 +276,7 @@ use (`unknown`, `parse_only`, the `data_type` presets = NoState/Operational, the
 MultiError, and NoDefaults/Present for §5's fixtures); `LYD_PARSE_ORDERED`, `WHEN_TRUE`,
 `STORE_ONLY`, `JSON_NULL`, `JSON_STRING_DATATYPES`, `LYD_VALIDATE_NOT_FINAL` exist internally where
 the port needs them and are exported later, when a fixture or user asks. The PRs and their tests call
-the same functions with hand-built `*schema.Set` values (= `*yang.Schema`, §0.4).
+the internal twins (`parse`/`validate` over `*schema.Set`, §0.4) with hand-built sets; D12 wraps them.
 
 **Diagnostics** (PLAN §2): reuse `yang.Diagnostic` as shipped (`Warning bool; Err, Code string`
 — LY_ERR and LY_VECODE names — plus the path/line/message fields; this stream adds `DataPath` and
@@ -318,9 +324,10 @@ leafref/instance-identifier require-instance, missing keys, both cases, unknown 
    missing key, then — only if nothing inside it failed, the missing key included (`!rc`, PJ:1427) —
    `lyd_validate_new` of its children (both-cases, duplicates) and its implicit defaults;
 2. **Parse path**: modules in traversal order (context order; `Present`: tree order). The first
-   module's top-level `lyd_validate_new`, then the shared queues drained once for all modules: `when`
-   errors (queue end first), type `ValidateTree` errors (global reverse parse order, PROBED), metadata;
-   then each later module's top-level `lyd_validate_new` (its queues are empty by then).
+   module's top-level `lyd_validate_new` and implicit nodes, then the shared queues drained once for
+   all modules: `when` errors (queue end first), type `ValidateTree` errors (global reverse parse
+   order, PROBED), metadata; then per later module: its top-level `lyd_validate_new`, its top-level
+   `lyd_new_implicit_r`, and `lyd_validate_unres` over only what those implicit nodes queued.
    **Validate path**: per module: top-level `lyd_validate_new`, its `lyd_validate_tree`, then its own
    `when` / type / metadata queues;
 3. per module: `lyd_validate_final_r` — unexpected nodes and musts per sibling in tree order, then
@@ -371,7 +378,7 @@ delete,union-member,choice-default-case,sequence-edits}, when/order-{a-after-b,b
 
 | area | fixtures |
 |---|---|
-| order (§3.3) | order/leafref-reverse (3 dangling leafrefs, PROBED), order/parse-cross-module (`aa:r, za:r, za:ll[d,d], aa:ll[e,e], za:w`: when, leafrefs, then dups — Parse path) + order/parse-cross-module-present + order/validate-cross-module (same input parse-only, then Validate: per-module order), order/parse-unres-final (store error + must + mandatory in one input), order/module-context-order (modules loaded za then aa: errors in context order) + order/module-present (same with `present`: tree order), order/sorted-list +, order/sorted-leaflist +, order/sorted-leaflist-meta (reversed values with distinct annotations, `@ll` before and after the values), order/user-ordered-kept +, order/toplevel-module-sort +, order/sorted-dup (VERIFY) |
+| order (§3.3) | order/leafref-reverse (3 dangling leafrefs, PROBED), order/parse-cross-module (`aa:r, za:r, za:ll[d,d], aa:ll[e,e], za:w`: when, leafrefs, then dups — Parse path) + order/parse-cross-module-present + order/validate-cross-module (same input parse-only, then Validate: per-module order), order/parse-unres-final (store error + must + mandatory in one input), order/module-context-order (modules loaded za then aa, only top-level duplicate errors in both: Parse path reports them in context order) + order/module-present (same with `present`: tree order), order/sorted-list +, order/sorted-leaflist +, order/sorted-leaflist-meta (reversed values with distinct annotations, `@ll` before and after the values), order/user-ordered-kept +, order/toplevel-module-sort +, order/sorted-dup (VERIFY) |
 | parse/validate interplay (§0) | interplay/inner-close-guard (invalid child + duplicate siblings + a default + a must reading it), interplay/repr-then-mandatory (container given as a JSON number, then a missing mandatory leaf), dflt/no-defaults-parse vs dflt/no-defaults-parse-only-validate (JSON + XML), lref/shared-type-mixed (one valid, one dangling reference of one type, both input orders) |
 | when (§1.6) | when/implicit-default-false + (silently removed), when/explicit-false (error), when/dummy-mandatory + (mandatory under false when), when/false-subtree-no-cascade (dangling leafref below a false-when node: one error), when/oper-warning |
 | defaults (§1.8) | dflt/np-container-flags +, dflt/leaflist-replaced-by-explicit +, dflt/case-default-removed (sequence), dflt/no-defaults-option + |
@@ -430,7 +437,7 @@ entries owned by this stream: **D-0001** (candidate: `when` reading a top-level 
 None of the code PRs needs the compiler: tests build `schema.Node`/`Type`/`Must`/`When` by hand
 (must/when via `xpath.Compile`, leafref `Path`/`Prefixes`/`Realtype` per design 06 §4 invariants),
 plus lexer/parser corpora. **Oracle agreement** (the `get` and all other data fixtures) needs compiled
-m1 schemas (C7) and the `yang.Schema` snapshot (C8): it is the gate of D12 and M1-7, not of D5/D6.
+m1 schemas (C7) and the opaque `yang.Schema` snapshot (C8, `internal/snap`): it is the gate of D12 and M1-7, not of D5/D6.
 
 | # | PR | ~LOC | Depends | Start | Worker |
 |---|---|---|---|---|---|
@@ -450,7 +457,7 @@ m1 schemas (C7) and the `yang.Schema` snapshot (C8): it is the gate of D12 and M
 | D9 | xpath/types adapters, `when` queue + auto-delete + `WhenFalse`, dummy when, `node_types` resolution (per-value leafref predicate), musts | 1.2k | D8, #16 | after D8 | Opus |
 | D10 | `lyd_validate` (Parse path shared queues vs Validate path per module, `Present` order), `lyd_validate_tree`, `final_r`, siblings-schema (mandatory/min/max/unique), operational severities, Validate/ValidateDiff, parse → validate wiring, `MaxXPathSteps` + ctx | 1.3k | D9, X1, D5 or D6 | after D9 | Opus |
 | D11 | edits: NewPath(Update) over `internal/lyxp`, Find, Remove, Merge (no options) | 1.1k | D1b, D8 (flags) | after D8 | Sonnet |
-| D12 | public API over `*yang.Schema` (+ `Context.Schema()` if C8 has not added it), doc.go, Examples, parse fuzz targets, round-trip property, race test; first oracle-agreement run | 0.6k | C8, D7b, D10, D11 | after C8 | Sonnet |
+| D12 | public wrappers over `*yang.Schema` via `snap.Set` (+ `internal/snap` and `Context.Schema()` if C8 has not added them), doc.go, Examples, parse fuzz targets, round-trip property, race test; first oracle-agreement run | 0.6k | C8, D7b, D10, D11 | after C8 | Sonnet |
 | F | fixtures of §5 (oracle goldens, asserts) | — | — | **now** | codex sol |
 
 Sum ≈ 14.7k incl. tests (≈ 9k libyang C lines in scope × 0.75 + tests). Waves: **now** {S1, X1, D0,
@@ -491,3 +498,7 @@ budget errors abort; `context.Context` first parameter, only M1 knobs exported; 
 D7b, schema helpers task S1, D1 split (D1b), D7 split (D7b); `WhenFalse` scope reworded (here and
 design 02); JSON limit boundary 4998/4999 pinned; `!rc` guard covers missing keys; D-0001/D-0047 cited.
 API decisions (4, 5, 7) and the budget type (6) are lead defaults; the maintainer may revisit them.
+
+Re-review (`bbe562d`): `yang.Schema` is an opaque struct in `internal/snap` re-exported by alias,
+not an alias of `schema.Set` (design 05 rule kept); §3.3 step 2 includes later modules' implicit
+nodes and their unres; order/module-context-order narrowed to top-level duplicate errors.

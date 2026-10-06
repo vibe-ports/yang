@@ -20,7 +20,7 @@ internal/xsdre    (stdlib)                    done
 internal/xpath    → xsdre                     parse + evaluate over xpath.Node / SchemaNode / Value (interfaces it owns; no schema import)
 internal/types    → schema, xsdre             value model (design 01): Store/Canonical/Compare/Resolve
 internal/compile  → parser, schema, types, xpath   parsed modules → compiled schema
-data              → yang, schema, types, xpath   tree (design 02), JSON/XML codecs, defaults, validation (design 07)
+data              → yang, snap, schema, types, xpath   tree (design 02), JSON/XML codecs, defaults, validation (design 07)
 yang (root)       → parser, compile, schema   Context: load modules (fs.FS), compile; aliases for schema types
 cmd/yanglint-go, conformance engine → yang, data
 ```
@@ -57,7 +57,8 @@ returned collections cannot mutate the schema.
   Deviations are M2.
 - **data** (amended by design 07 §0.4/§2): `Parse(ctx context.Context, r io.Reader, f Format,
   s *yang.Schema, opts ParseOptions) (*Tree, []yang.Diagnostic, error)` where `yang.Schema` is the
-  immutable snapshot `(*yang.Context).Schema()` returns (alias of `schema.Set`; a Tree pins it);
+  opaque immutable snapshot `(*yang.Context).Schema()` returns (`internal/snap.Schema`, no exported
+  fields; `data` reaches the set through `snap.Set`; a Tree pins it);
   `(*Tree).Validate(ctx, opts) ([]yang.Diagnostic, error)` (design 02 flags, defaults, when history);
   `Print(w, f, PrintOptions)`. M1: datastore data types, unknown reject/skip/opaque.
 - **conformance engine** (in the conformance module): adapter implementing `conformance.Engine`
