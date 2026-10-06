@@ -59,7 +59,7 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | parser_yang.c | `parse_type` (`path`: `ly_path_parse`) | `Type.Path` | partial | — | U-0005: syntax not checked until the XPath lexer (M1-3) |
 | parser_yang.c | `YANG_READ_SUBSTMT_NEXT_ITER` (exts arrays into `ext_inst`) | `checker.close`, `extOwner`, `appendOwned` | ported | internal/parser build_test, oracle_test | registration on close, libyang's resolution order |
 | tree_schema_common.c | `lys_check_date` | `checker.arg` | ported | internal/parser build_test, oracle_test | |
-| tree_schema_common.c | `lysp_check_enum_name` | `checker.arg` | ported | internal/parser build_test, oracle_test | warning not emitted (U-0006) |
+| tree_schema_common.c | `lysp_check_enum_name` | `checker.arg` | ported | internal/parser build_test, oracle_test, TestEnumControlCharWarning; ut-compile-types/type-enum-12…19 | the control-character warning through `Context.Warn` |
 | tree_schema_common.c | `lysp_check_prefix` | `checker.close` | ported | internal/parser build_test, oracle_test | |
 | tree_schema.c, tree_schema_common.c | `lysp_resolve_ext_instance_records`, `lysp_ext_find_definition` | `checker.resolveExts` | partial | internal/parser build_test, oracle_test | prefix check; definition lookup and missing argument for this module's extensions; imported definitions and their arguments are the compiler's |
 | schema_features.c | `lys_compile_iffeature` (expression syntax), `iff_stack_push`, `iff_stack_pop`, `iff_stack_clean`, `iff_setop` | `parseIfFeature`, `IfFeature.Err` | ported | internal/parser build_test, oracle_test | same two passes, iterative; the `IffExpr` tree and an operator stack replace the packed array; feature lookup is the compiler's; D-0020 |

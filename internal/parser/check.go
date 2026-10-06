@@ -274,6 +274,12 @@ func (c *checker) arg(l *lexer, pf *frame, s *Stmt) error {
 			if isCSpace(a[0]) || isCSpace(a[len(a)-1]) {
 				return l.errf(ly.SyntaxYang, "Enum name must not have any leading or trailing whitespaces (\"%s\").", a)
 			}
+			for u := 0; u < len(a); u++ {
+				if (a[u] < 0x20 || a[u] == 0x7f) && c.ctx != nil && c.ctx.Warn != nil { // iscntrl
+					c.ctx.Warn("Control characters in enum name should be avoided (\"" + a + "\", character number " + strconv.Itoa(u+1) + ").")
+					break
+				}
+			}
 		}
 		k := s.Keyword + " " + a
 		if pf.seen[k] { // CHECK_UNIQUENESS
