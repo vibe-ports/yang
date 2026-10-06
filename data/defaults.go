@@ -49,6 +49,8 @@ type valCtx struct {
 	diff func(n *Node, op diffOp) error
 	// getnext caches lyd_val_getnext_get per schema parent (and output).
 	getnext map[getnextKey]getnextVal
+	budget  xpathBudget               // MaxXPathSteps and cancellation (U-0042)
+	lrefs   map[lrefKey]*lrefTemplate // leafref target-path templates per type and node
 }
 
 type getnextKey struct {

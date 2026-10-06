@@ -1,0 +1,523 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Ported from libyang v5.8.6 src/validation.c (lyd_validate_node_when, lyd_validate_when_false,
+// lyd_validate_unres_when, lyd_validate_unres (when and type parts), lyd_validate_dummy_when,
+// lyd_validate_must), src/tree_data_common.c (lyd_value_validate_incomplete),
+// src/plugins_types.c (lyplg_type_resolve_leafref, _get_target_path) and src/path.c
+// (ly_path_eval_partial) (BSD-3-Clause, © CESNET).
+
+package data
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/vibe-ports/yang"
+	"github.com/vibe-ports/yang/internal/ly"
+	"github.com/vibe-ports/yang/internal/lyxp"
+	"github.com/vibe-ports/yang/internal/schema"
+	"github.com/vibe-ports/yang/internal/types"
+	"github.com/vibe-ports/yang/internal/xpath"
+)
+
+// DefaultMaxXPathSteps is the default cumulative XPath budget of one Parse or Validate (U-0042).
+const DefaultMaxXPathSteps int64 = 1 << 30
+
+// errIncomplete is LY_EINCOMPLETE of an evaluation that met a node whose when is unresolved.
+var errIncomplete = errors.New("data: when not resolved yet")
+
+// xpathBudget is the cumulative XPath step budget and cancellation of one operation.
+type xpathBudget struct {
+	ctx   context.Context
+	max   int64 // 0 = DefaultMaxXPathSteps
+	steps int64
+}
+
+// eval evaluates e for the context node ctx (nil: the document root) over tree t, charging the
+// steps; a budget overrun or a cancellation aborts (never a diagnostic).
+func (vc *valCtx) eval(e *xpath.Expr, ctx *Node, root xpath.RootKind, ignoreWhen bool) (xpath.Result, error) {
+	b := &vc.budget
+	if b.ctx != nil {
+		if err := b.ctx.Err(); err != nil {
+			return xpath.Result{}, err
+		}
+	}
+	limit := b.max
+	if limit <= 0 {
+		limit = DefaultMaxXPathSteps
+	}
+	left := limit - b.steps
+	per := int64(xpath.DefaultMaxSteps)
+	if left < per {
+		per = left
+	}
+	if per <= 0 {
+		return xpath.Result{}, fmt.Errorf("%w: more than %d XPath steps", yang.ErrBudget, limit)
+	}
+	top := make([]xpath.Node, 0, vc.t.top.len())
+	for n := range vc.t.top.all() {
+		top = append(top, xn{n, vc.t.set})
+	}
+	r, err := e.Eval(xpath.EvalContext{Ctx: b.ctx, Node: wrap(vc.t.set, ctx), Tree: top, Root: root, IgnoreWhen: ignoreWhen,
+		Schema: info{vc.t.set}, Deref: vc.deref, MaxSteps: int(per)})
+	b.steps += r.Steps
+	switch {
+	case errors.Is(err, xpath.ErrBudget) && per < int64(xpath.DefaultMaxSteps):
+		return r, fmt.Errorf("%w: more than %d XPath steps", yang.ErrBudget, limit)
+	case errors.Is(err, xpath.ErrIncomplete):
+		return r, errIncomplete
+	}
+	return r, err
+}
+
+// xpathErr logs an evaluation error as lyxp_eval does (LOGVAL without a data node).
+func (vc *valCtx) xpathErr(err error) error {
+	var xe *xpath.Error
+	if errors.As(err, &xe) {
+		if xe.VECode == "" {
+			return vc.log.logErr(xe.Err, "%s", xe.Msg)
+		}
+		_ = vc.log.item(nil, nil, false, xe.Err, codeOf(xe.VECode), "", xe.Msg)
+		return errLogged
+	}
+	return err // budget, cancellation, errIncomplete
+}
+
+// whenOf is lyd_validate_node_when: the whens of the schema node and of its choice/case
+// ancestors, each on its context node (the node itself or its parent); the first false one, or
+// errIncomplete when one depends on an unresolved when.
+func (vc *valCtx) whenOf(n *Node, sn *schema.Node, root *xpath.RootKind) (*schema.When, error) {
+	for s := sn; ; {
+		for _, w := range s.Whens {
+			ctx := n
+			if w.ContextNode != sn {
+				ctx = n.parent
+			}
+			e, ok := w.Compiled.(*xpath.Expr)
+			if !ok {
+				return nil, fmt.Errorf("data: when %q of %s is not compiled", w.Src, sn.LogPath())
+			}
+			rk := rootType(ctx)
+			if root != nil {
+				rk = *root
+			}
+			r, err := vc.eval(e, ctx, rk, false)
+			if err != nil {
+				return nil, vc.xpathErr(err)
+			}
+			if !truthy(r) {
+				return w, nil
+			}
+		}
+		s = s.Parent
+		if s == nil || s.Kind != schema.Case && s.Kind != schema.Choice {
+			return nil, nil
+		}
+	}
+}
+
+// truthy is lyxp_set_cast to boolean.
+func truthy(r xpath.Result) bool {
+	switch r.Type {
+	case xpath.Boolean:
+		return r.Bool
+	case xpath.Number:
+		return r.Num != 0 && r.Num == r.Num // NaN is false
+	case xpath.String:
+		return r.Str != ""
+	}
+	return len(r.Nodes) > 0
+}
+
+// whenFalse is lyd_validate_when_false: the node stays, flagged WhenFalse; its subtree leaves
+// node_types and its descendants leave node_when.
+func (vc *valCtx) whenFalse(n *Node) {
+	n.flags |= FlagWhenFalse
+	vc.dropTypes(n)
+	if vc.nodeWhen.len() > 1 {
+		for d := range n.All() {
+			if d != n {
+				if i := vc.nodeWhen.contains(d); i >= 0 {
+					vc.nodeWhen.rmIndexOrdered(i)
+				}
+			}
+		}
+	}
+}
+
+// unresWhen is lyd_validate_unres_when: one pass over node_when from the end. A resolved node
+// leaves the queue (order kept); a false when deletes a WhenTrue node silently, warns for
+// operational data, else is an error (the node kept as WhenFalse under multi-error).
+func (vc *valCtx) unresWhen() error {
+	var rc error
+	for i := vc.nodeWhen.len() - 1; i >= 0; i-- {
+		n := vc.nodeWhen.items[i]
+		w, err := vc.whenOf(n, n.schema, nil)
+		switch {
+		case errors.Is(err, errIncomplete):
+			continue // stays queued
+		case err != nil:
+			if rc = err; vc.stop(err) {
+				return rc
+			}
+			continue
+		case w == nil:
+			n.flags = n.flags&^FlagWhenFalse | FlagWhenTrue
+		case n.flags&FlagWhenTrue != 0:
+			// autodelete; nested queued nodes cannot exist (libyang asserts it)
+			if vc.diff != nil {
+				_ = vc.diff(n, diffDelete)
+			}
+			vc.dropTypes(n)
+			unlink(n)
+		case vc.opts.Operational:
+			vc.log.warn("When condition \"%s\" not satisfied.", w.Src)
+		default:
+			if vc.opts.MultiError {
+				vc.whenFalse(n)
+				i = vc.nodeWhen.contains(n)
+			}
+			err := vc.log.val(n, "", ly.Data, "When condition \"%s\" not satisfied.", w.Src)
+			if rc = err; vc.stop(err) {
+				return rc
+			}
+		}
+		vc.nodeWhen.rmIndexOrdered(i)
+	}
+	return rc
+}
+
+// unres is the when and type part of lyd_validate_unres: when passes while the queue shrinks,
+// then the incomplete values from the end of node_types.
+func (vc *valCtx) unres() error {
+	var rc error
+	if vc.nodeWhen != nil {
+		for {
+			prev := vc.nodeWhen.len()
+			if err := vc.unresWhen(); err != nil {
+				if rc = err; vc.stop(err) {
+					return rc
+				}
+			}
+			if vc.nodeWhen.len() >= prev {
+				break
+			}
+		}
+		vc.nodeWhen.items = nil // left only after an error (ly_set_erase)
+	}
+	if vc.nodeTypes != nil {
+		for i := vc.nodeTypes.len() - 1; i >= 0; i-- {
+			n := vc.nodeTypes.items[i]
+			if err := vc.validateIncomplete(n); err != nil {
+				if rc = err; vc.stop(err) {
+					return rc
+				}
+			}
+			vc.nodeTypes.rmIndex(i)
+		}
+	}
+	return rc
+}
+
+// validateIncomplete is lyd_value_validate_incomplete: the tree-time checks of the value of n,
+// errors logged at n.
+func (vc *valCtx) validateIncomplete(n *Node) error {
+	tt := &typeTree{vc: vc, n: n}
+	v, d := types.ValidateTree(n.schema.Type, n.value, tt)
+	if tt.err != nil {
+		return tt.err // budget or cancellation
+	}
+	if d != nil {
+		return vc.log.item(n, nil, false, "LY_EVALID", codeOf(d.Code), d.AppTag, d.Msg)
+	}
+	if v.Canonical() != n.value.Canonical() || !types.Equal(v, n.value) {
+		sib := n.siblingsOf()
+		if sib != nil {
+			sib.hashRemove(n)
+		}
+		n.value = v
+		if sib != nil && sib.ht != nil {
+			sib.hashPut(n)
+		}
+	} else {
+		n.value = v
+	}
+	return nil
+}
+
+// typeTree is types.Tree for the node n.
+type typeTree struct {
+	vc  *valCtx
+	n   *Node
+	err error // a budget or cancellation error met on the way
+}
+
+// LeafrefTarget is lyplg_type_resolve_leafref without the targets: the path with a value
+// predicate (or the plain path when the value has both quote kinds, then compared), evaluated
+// ignoring whens.
+func (tt *typeTree) LeafrefTarget(t *schema.Type, v types.Value) (bool, error) {
+	nodes, err := tt.vc.leafrefTargets(tt.n, t, v)
+	if err != nil {
+		var xe *xpath.Error
+		if errors.As(err, &xe) {
+			return false, errors.New(xe.Msg)
+		}
+		tt.err = err
+		return false, nil
+	}
+	return len(nodes) > 0, nil
+}
+
+// InstanceExists is ly_path_eval: the instance-identifier target, found segment by segment.
+func (tt *typeTree) InstanceExists(p types.Path) bool { return tt.vc.pathEval(p) != nil }
+
+// lrefTemplate is what lyplg_type_resolve_leafref_get_target_path derives from a path once:
+// whether the value goes into a key predicate of the list before the last step; disabled when
+// the path no longer compiles (its target was removed by if-feature: success).
+type lrefTemplate struct {
+	disabled bool
+	listKey  bool
+	head     string // the path without "/key" (listKey)
+	key      string
+}
+
+type lrefKey struct {
+	t *schema.Type
+	s *schema.Node
+}
+
+func (vc *valCtx) template(t *schema.Type, sn *schema.Node) (*lrefTemplate, error) {
+	k := lrefKey{t, sn}
+	if tp, ok := vc.lrefs[k]; ok {
+		return tp, nil
+	}
+	tp := &lrefTemplate{}
+	e, msg := lyxp.Lex(t.Path)
+	if msg != "" {
+		return nil, errors.New(msg)
+	}
+	p, _, perr := types.CompileLeafref(sn, e, t.Prefixes, sn.InOutput(), false)
+	if perr != nil {
+		tp.disabled = true
+	} else if last := p[len(p)-1].Node; last.IsKey() && len(p) >= 2 && p[len(p)-2].Node.Kind == schema.List {
+		u := len(e.Toks)
+		if u >= 3 && e.Toks[u-1] == lyxp.TokNameTest && e.Toks[u-2] == lyxp.TokOperPath && e.Toks[u-3] == lyxp.TokNameTest {
+			tp.listKey = true
+			tp.head = e.Src[:e.Pos[u-3]+e.Len[u-3]]
+			tp.key = e.Src[e.Pos[u-1]:]
+		}
+	}
+	if vc.lrefs == nil {
+		vc.lrefs = map[lrefKey]*lrefTemplate{}
+	}
+	vc.lrefs[k] = tp
+	return tp, nil
+}
+
+// leafrefTargets evaluates the leafref path of t for the node n with the value v: the target
+// instances equal to v (types of the same realtype, compared with types.Equal).
+func (vc *valCtx) leafrefTargets(n *Node, t *schema.Type, v types.Value) ([]*Node, error) {
+	tp, err := vc.template(t, n.schema)
+	if err != nil {
+		return nil, err
+	}
+	if tp.disabled {
+		return []*Node{n}, nil // the target was disabled and removed: success
+	}
+	val := v.Canonical()
+	src := t.Path
+	exact := !strings.Contains(val, `"`) || !strings.Contains(val, "'")
+	if exact {
+		q := "'"
+		if strings.Contains(val, "'") {
+			q = `"`
+		}
+		if tp.listKey {
+			src = tp.head + "[" + tp.key + "=" + q + val + q + "]/" + tp.key
+		} else {
+			src = t.Path + "[.=" + q + val + q + "]"
+		}
+	}
+	def := ""
+	if m := t.Prefixes[""]; m != nil {
+		def = m.Name
+	}
+	e, err := xpath.Compile(src, lrefNS{t.Prefixes, def})
+	if err != nil {
+		return nil, err
+	}
+	r, err := vc.eval(e, n, xpath.RootAll, true)
+	if err != nil {
+		return nil, err
+	}
+	var out []*Node
+	for _, x := range r.Nodes {
+		m, ok := x.(xn)
+		if !ok || !m.n.isTerm() {
+			continue
+		}
+		if exact {
+			out = append(out, m.n)
+			continue
+		}
+		if m.n.value.Type() == v.Type() && types.Equal(m.n.value, v) {
+			out = append(out, m.n)
+		}
+	}
+	return out, nil
+}
+
+// lrefNS binds a leafref path's prefixes (schema-resolved: "" is the instantiating module).
+type lrefNS struct {
+	p   schema.NSCtx
+	def string
+}
+
+func (l lrefNS) Resolve(prefix string) (string, bool) {
+	if m := l.p[prefix]; m != nil && prefix != "" {
+		return m.Name, true
+	}
+	return "", false
+}
+
+func (l lrefNS) Prefix(module string) string { return module }
+func (l lrefNS) Default() string             { return l.def }
+
+// pathEval is ly_path_eval_partial for a full match: the node at the end of p, or nil.
+func (vc *valCtx) pathEval(p types.Path) *Node {
+	sib := &vc.t.top
+	var node *Node
+	for _, seg := range p {
+		node = nil
+		if len(seg.Preds) == 0 {
+			node = vc.t.findSchema(sib, seg.Node)
+		} else {
+			switch pr := seg.Preds[0]; pr.Kind {
+			case types.PredPosition:
+				i := vc.t.schemaIndex(sib, seg.Node)
+				if i >= 0 && pr.Position > 0 && i+int(pr.Position)-1 < len(sib.list) { //nolint:gosec // bounded
+					if c := sib.list[i+int(pr.Position)-1]; c.schema == seg.Node { //nolint:gosec // bounded
+						node = c
+					}
+				}
+			case types.PredLeafList:
+				node = vc.t.findFirst(sib, newTerm(seg.Node, pr.Value))
+			case types.PredKey:
+				target := newInner(seg.Node)
+				for _, kp := range seg.Preds {
+					target.kids.list = append(target.kids.list, &Node{schema: kp.Key, value: kp.Value, parent: target})
+				}
+				node = vc.t.findFirst(sib, target)
+			}
+		}
+		if node == nil {
+			return nil
+		}
+		sib = &node.kids
+	}
+	return node
+}
+
+// deref resolves deref(): a leafref's targets, or an instance-identifier's target.
+func (vc *valCtx) deref(x xpath.Node) ([]xpath.Node, error) {
+	m, ok := x.(xn)
+	if !ok || !m.n.isTerm() {
+		return nil, nil
+	}
+	t := m.n.schema.Type
+	if t.Base == schema.Leafref {
+		nodes, err := vc.leafrefTargets(m.n, t, m.n.value)
+		if err != nil {
+			return nil, err
+		}
+		out := make([]xpath.Node, 0, len(nodes))
+		for _, n := range nodes {
+			if n != m.n {
+				out = append(out, xn{n, vc.t.set})
+			}
+		}
+		return out, nil
+	}
+	if t.Base == schema.InstanceID {
+		if n := vc.pathEval(m.n.value.Path()); n != nil {
+			return []xpath.Node{xn{n, vc.t.set}}, nil
+		}
+	}
+	return nil, nil
+}
+
+// validateMust is lyd_validate_must for datastore data: every must of the node, false ones
+// reported with error-message/error-app-tag (warnings for operational data).
+func (vc *valCtx) validateMust(n *Node) error {
+	var rc error
+	for _, m := range n.schema.Musts {
+		e, ok := m.Compiled.(*xpath.Expr)
+		if !ok {
+			return fmt.Errorf("data: must %q of %s is not compiled", m.Src, n.schema.LogPath())
+		}
+		r, err := vc.eval(e, n, rootType(n), false)
+		if errors.Is(err, errIncomplete) {
+			return vc.log.logErr("LY_EINCOMPLETE",
+				"Must \"%s\" depends on a node with a when condition, which has not been evaluated.", m.Src)
+		}
+		if err != nil {
+			return vc.xpathErr(err)
+		}
+		if truthy(r) {
+			continue
+		}
+		if vc.opts.Operational {
+			if m.Msg != "" {
+				vc.log.warn("%s", m.Msg)
+			} else {
+				vc.log.warn("Must condition \"%s\" not satisfied.", m.Src)
+			}
+			continue
+		}
+		tag := m.AppTag
+		if tag == "" {
+			tag = "must-violation"
+		}
+		if m.Msg != "" {
+			err = vc.log.val(n, tag, ly.Data, "%s", m.Msg)
+		} else {
+			err = vc.log.val(n, tag, ly.Data, "Must condition \"%s\" not satisfied.", m.Src)
+		}
+		if rc = err; vc.stop(err) {
+			return rc
+		}
+	}
+	return rc
+}
+
+// dummyWhen is lyd_validate_dummy_when: the whens of an absent node sn under parent (nil: the top
+// level), evaluated on an opaque stand-in linked at its place; the first false one.
+func (vc *valCtx) dummyWhen(parent *Node, sn *schema.Node) (*schema.When, error) {
+	dummy := newOpaque(opaque{Name: sn.Name, ModuleNS: sn.Module.Name, Format: types.FormatJSON})
+	vc.t.insert(parent, dummy, insertDefault)
+	defer unlink(dummy)
+	root := xpath.RootAll
+	if sn.Config && !inOperationNode(sn) {
+		root = xpath.RootConfig
+	}
+	w, err := vc.whenOf(dummy, sn, &root)
+	if errors.Is(err, errIncomplete) {
+		if vc.opts.MultiError {
+			return nil, nil // cannot evaluate properly, ignored
+		}
+		return nil, vc.log.logErr("LY_EINT", "Internal error (dummy when).")
+	}
+	return w, err
+}
+
+// inOperationNode reports whether sn is inside an rpc, action or notification.
+func inOperationNode(sn *schema.Node) bool {
+	for p := sn; p != nil; p = p.Parent {
+		switch p.Kind {
+		case schema.RPC, schema.Action, schema.Notification:
+			return true
+		}
+	}
+	return false
+}
