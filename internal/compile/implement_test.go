@@ -37,11 +37,13 @@ func TestRevertDropsTypedefs(t *testing.T) {
 		}
 		return boom
 	}
+	entries, types := len(c.typeCache.compiled), len(c.typeCache.refs) // the internal modules' types
 	if _, _, err := c.Load("td", "", nil); !errors.Is(err, boom) {
 		t.Fatalf("got %v", err)
 	}
-	if len(c.typeCache.compiled) != 0 || len(c.typeCache.refs) != 0 {
-		t.Errorf("cache after revert: %d entries, %d types", len(c.typeCache.compiled), len(c.typeCache.refs))
+	if len(c.typeCache.compiled) != entries || len(c.typeCache.refs) != types {
+		t.Errorf("cache after revert: %d entries, %d types, want %d, %d", len(c.typeCache.compiled),
+			len(c.typeCache.refs), entries, types)
 	}
 }
 
@@ -68,18 +70,15 @@ func TestAugmentImplementsTarget(t *testing.T) {
 	}
 }
 
-// TestNodeWalkGate: compile runs the node walk only when nodeWalk is on;
-// freeing on recompilation releases what the nodes held.
-func TestNodeWalkGate(t *testing.T) {
+// TestNodeWalk: compile runs the node walk; the internal modules compile with it (NewContext).
+func TestNodeWalk(t *testing.T) {
 	c := newCtx(t, Options{}, filepath.Join(corpus, "load", "implement"))
 	tg, _, err := c.Load("tg", "", nil)
-	if err != nil || len(tg.Schema.Top) != 0 {
-		t.Fatalf("walk off: %v, %d nodes", err, len(tg.Schema.Top))
+	if err != nil || len(tg.Schema.Top) != 1 {
+		t.Fatalf("%v, %+v", err, tg)
 	}
-	c = newCtx(t, Options{}, filepath.Join(corpus, "load", "implement"))
-	c.nodeWalk = true
-	if tg, _, err = c.Load("tg", "", nil); err != nil || len(tg.Schema.Top) != 1 {
-		t.Fatalf("walk on: %v, %+v", err, tg)
+	if yl := c.implemented("ietf-yang-library"); yl == nil || len(yl.Schema.Top) == 0 {
+		t.Fatalf("ietf-yang-library not compiled: %+v", yl)
 	}
 }
 

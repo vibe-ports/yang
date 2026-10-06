@@ -359,18 +359,14 @@ restart:
 	}
 }
 
-// compile is lys_compile: the features of the module, then the node walk
-// (P3, design 06 C4a); P2 own augments (C6), module extension instances,
-// P4 and P5 (C4b) follow with their PRs. A failed compile leaves no
-// compiled module.
+// compile is lys_compile: the features of the module, then compileNodes
+// (P2 own augments, P3 nodes and module extension instances, P4 unused
+// groupings, P5 unapplied augments). A failed compile leaves no compiled
+// module.
 func (c *Context) compile(m *Module) error {
 	for _, f := range m.features {
 		m.Schema.Features = append(m.Schema.Features, &schema.Feature{Name: f.p.Name, Module: m.Schema,
 			Enabled: f.enabled, Status: parsedStatus(f.p.Status)})
-	}
-	if !c.nodeWalk {
-		m.compiled = true
-		return nil
 	}
 	if err := c.compileNodes(m, m.Schema); err != nil {
 		c.free(m)

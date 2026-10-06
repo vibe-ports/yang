@@ -53,7 +53,6 @@ func (h *nodeHarness) load(name string) (mod *schema.Module, diags []Diagnostic,
 // parse-phase diagnostics.
 func (h *nodeHarness) loadFeatures(name string, features []string) (mod *schema.Module, loadDiags, diags []Diagnostic,
 	loadErr, err error) {
-	h.c.nodeWalk = true // libyang's internal modules were compiled without it by NewContext
 	m, all, err := h.c.Load(name, "", features)
 	parseErr := false
 	for _, d := range all {

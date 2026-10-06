@@ -94,28 +94,27 @@ func (d Diagnostic) golden() goldenDiag {
 // TestLoadGoldens loads the modules of the conformance/corpus/load fixtures in
 // order and compares them with libyang: verdict, every diagnostic (message
 // and line included) and the loaded revision. Fixtures marked full are
-// decided by the code ported so far in both phases (no node compile), so
-// their compile phase and enabled features are compared too; the others
-// only in the parse phase.
+// compared in both phases (with the node walk wired into Load, all of
+// them), with their enabled features; the others only in the parse phase.
 func TestLoadGoldens(t *testing.T) {
 	fixtures := []struct {
 		id, dir string
 		revs    map[string]string // requested revision per module name
 		full    bool
 	}{
-		{"import-cycle", "import-cycle", nil, false},
-		{"include-cycle", "include-cycle", nil, false},
-		{"wrong-revision-file", "wrong-rev", map[string]string{"wr": "2020-01-01"}, false},
-		{"imported-rev-binding", "imported-rev", nil, false}, // r@2020-01-01 is the second module, see below
-		{"filename-warning", "filename", nil, false},
-		{"import-not-found", "not-found", nil, false},
-		{"symlink-dir", "symlink", nil, false},
-		{"symlink-file", "symlink", nil, false},
-		{"dup-typedef-scopes", "dup", nil, false},
-		{"include-errors", "include", nil, false},
-		{"submodule-collisions", "subcol", nil, false},
-		{"ext-instance-resolution", "ext", nil, false},
-		{"two-failures", "two-failures", nil, false},
+		{"import-cycle", "import-cycle", nil, true},
+		{"include-cycle", "include-cycle", nil, true},
+		{"wrong-revision-file", "wrong-rev", map[string]string{"wr": "2020-01-01"}, true},
+		{"imported-rev-binding", "imported-rev", nil, true}, // r@2020-01-01 is the second module, see below
+		{"filename-warning", "filename", nil, true},
+		{"import-not-found", "not-found", nil, true},
+		{"symlink-dir", "symlink", nil, true},
+		{"symlink-file", "symlink", nil, true},
+		{"dup-typedef-scopes", "dup", nil, true},
+		{"include-errors", "include", nil, true},
+		{"submodule-collisions", "subcol", nil, true},
+		{"ext-instance-resolution", "ext", nil, true},
+		{"two-failures", "two-failures", nil, true},
 		{"feature-not-found", "features", nil, true},
 		{"feature-not-satisfied", "features", nil, true},
 		{"feature-rollback-3load", "features", nil, true},
@@ -134,10 +133,7 @@ func TestLoadGoldens(t *testing.T) {
 	for _, f := range fixtures {
 		t.Run(filepath.Base(f.id), func(t *testing.T) {
 			golden := filepath.Clean(filepath.Join("load", "golden", f.id+".json"))
-			mods, ok := feats[golden]
-			if f.full && !ok {
-				t.Fatalf("%s: no JSON modules line in the manifest", golden)
-			}
+			mods := feats[golden] // none: the request names modules only
 			b, err := os.ReadFile(filepath.Join(corpus, golden))
 			if err != nil {
 				t.Fatal(err)
