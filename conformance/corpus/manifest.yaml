@@ -30338,7 +30338,7 @@ fixtures:
       verdict: valid
       rfc: []
       deviation: "D-0028"
-      waive: [tree]   # only the printed leaf-list order differs (libyang leaves it in input order)
+      waive: [tree, typed]   # only the leaf-list order differs (libyang leaves it in input order)
 
   # --- tree edits (design 07 §1.11, D11; Go side: data TestEditGoldens) ---
   - id: seq/new-path-update

@@ -32,7 +32,7 @@ assert:
   rfc: ["RFC7950#9.2.4"]                                      # optional, the clause it rests on
   diagnostics: [{vecode_name: LYVE_DATA, data_path: /basic:sys/mtu}]   # subset match
   deviation: null                                             # or "D-0001"
-  waive: [schema_tree, compiled]                              # optional, only with a deviation; also tree
+  waive: [schema_tree, compiled]                              # optional, only with a deviation; also tree, typed
 ```
 
 Each listed diagnostic must equal some actual diagnostic (top-level or per-module) on every field it

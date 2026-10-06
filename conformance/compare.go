@@ -209,7 +209,7 @@ func withoutAsserted(r Response) Response {
 }
 
 // Waivable are the response fields assert.waive may name.
-var Waivable = []string{"schema_tree", "compiled", "tree"}
+var Waivable = []string{"schema_tree", "compiled", "tree", "typed"}
 
 // withoutFields drops the fields of an assert.waive at the top level and in every module.
 func withoutFields(r Response, fields []string) Response {

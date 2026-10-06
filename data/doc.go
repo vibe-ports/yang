@@ -9,7 +9,8 @@
 // Parse validates unless ParseOptions.ParseOnly is set, in libyang's order: every inner node when
 // it closes (its new-node checks and implicit defaults), then the when conditions, the values
 // that need the tree (leafref, instance-identifier) and the final checks (must, mandatory,
-// min/max-elements, unique). Tree.Validate runs the same checks over a whole tree.
+// min/max-elements, unique). Tree.Validate runs the same checks over a whole tree, and
+// Tree.ValidateDiff also returns the implicit diff (the nodes the validation added or removed).
 //
 // Diagnostics are yang.Diagnostic values in libyang's log order, with libyang's LY_ERR and
 // LY_VECODE names, data path, schema path and error-app-tag. A failed call returns a
