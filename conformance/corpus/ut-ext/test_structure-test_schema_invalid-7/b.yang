@@ -1,0 +1,1 @@
+module b {yang-version 1.1; namespace urn:tests:extensions:structure:b; prefix b;import ietf-yang-structure-ext {prefix sx;}import a {prefix a;}sx:augment-structure "/a:n1" {  leaf aug-leaf {type string;}}}

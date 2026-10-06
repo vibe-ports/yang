@@ -1,0 +1,19 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module a {\n  namespace \"urn:tests:extensions:structure:a\";\n  prefix a;\n\n  ietf-yang-structure-ext:structure \"struct\" {\n    must \"/n2/l\";\n    status deprecated;\n    description\n      \"desc\";\n    reference\n      \"no-ref\";\n    container n1 {\n      status deprecated;\n      leaf l {\n        type uint32;\n        status deprecated;\n      }\n    }\n    list n2 {\n      min-elements 0;\n      max-elements 4294967295;\n      ordered-by user;\n      status deprecated;\n      leaf l {\n        type leafref {\n          path \"/n1/l\";\n          require-instance true;\n          type uint32;\n        }\n        status deprecated;\n      }\n    }\n    leaf gl {\n      type string;\n      status deprecated;\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "a",
+      "revision": null,
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

@@ -1,0 +1,1 @@
+module c {yang-version 1.1; namespace urn:tests:extensions:yangdata:c; prefix self;import ietf-restconf {revision-date 2017-01-26; prefix rc;}grouping g { choice ch { container a {presence a; config false;} container b {presence b; config true;}}}rc:yang-data template { uses g;}}

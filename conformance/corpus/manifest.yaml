@@ -15243,3 +15243,488 @@ fixtures:
       rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
       deviation: null
 # END ut-string-schema
+
+  - id: ut-ext/test_metadata-test_yang-1
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_metadata.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_yang:41
+    rfc: ["RFC7952#3", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["test_metadata-test_yang-1"]
+      modules: [{"name": "a", "features": ["f"]}]
+    golden: golden/test_metadata-test_yang-1.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7952#3"]
+      deviation: null
+
+  - id: ut-ext/test_metadata-test_yang-2
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_metadata.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_yang:54
+    rfc: ["RFC7952#3", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["test_metadata-test_yang-2"]
+      modules: [{"name": "aa"}]
+    golden: golden/test_metadata-test_yang-2.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7952#3"]
+      diagnostics: [{"vecode_name": "LYVE_OTHER"}]
+      deviation: null
+
+  - id: ut-ext/test_metadata-test_yang-3
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_metadata.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_yang:62
+    rfc: ["RFC7952#3", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["test_metadata-test_yang-3"]
+      modules: [{"name": "aa"}]
+    golden: golden/test_metadata-test_yang-3.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7952#3"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-ext/test_metadata-test_yang-4
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_metadata.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_yang:70
+    rfc: ["RFC7952#3", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["test_metadata-test_yang-4"]
+      modules: [{"name": "aa"}]
+    golden: golden/test_metadata-test_yang-4.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7952#3"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-ext/test_metadata-test_yang-5
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_metadata.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_yang:77
+    rfc: ["RFC7952#3", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["test_metadata-test_yang-5"]
+      modules: [{"name": "aa"}]
+    golden: golden/test_metadata-test_yang-5.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7952#3"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-ext/test_metadata-test_yang-6
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_metadata.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_yang:84
+    rfc: ["RFC7952#3", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["test_metadata-test_yang-6"]
+      modules: [{"name": "aa"}]
+    golden: golden/test_metadata-test_yang-6.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7952#3"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-ext/test_metadata-test_yang-7
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_metadata.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_yang:91
+    rfc: ["RFC7952#3", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["test_metadata-test_yang-7"]
+      modules: [{"name": "aa"}]
+    golden: golden/test_metadata-test_yang-7.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7952#3"]
+      diagnostics: [{"vecode_name": "LYVE_OTHER"}]
+      deviation: null
+
+  - id: ut-ext/test_structure-test_schema-1
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_structure.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema:41
+    rfc: ["RFC8791#4", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["test_structure-test_schema-1"]
+      modules: [{"name": "a"}]
+    golden: golden/test_structure-test_schema-1.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC8791#4"]
+      deviation: null
+
+  - id: ut-ext/test_structure-test_schema-2
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_structure.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema:57
+    rfc: ["RFC8791#4", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["test_structure-test_schema-2"]
+      modules: [{"name": "a"}, {"name": "b"}]
+    golden: golden/test_structure-test_schema-2.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC8791#4"]
+      deviation: null
+
+  - id: ut-ext/test_structure-test_schema-3
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_structure.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema:138
+    rfc: ["RFC8791#4", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["test_structure-test_schema-3"]
+      modules: [{"name": "c"}]
+    golden: golden/test_structure-test_schema-3.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC8791#4"]
+      deviation: null
+
+  - id: ut-ext/test_structure-test_schema_invalid-1
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_structure.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_invalid:154
+    rfc: ["RFC8791#4", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["test_structure-test_schema_invalid-1"]
+      modules: [{"name": "a"}]
+    golden: golden/test_structure-test_schema_invalid-1.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC8791#4"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-ext/test_structure-test_schema_invalid-2
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_structure.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_invalid:161
+    rfc: ["RFC8791#4", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["test_structure-test_schema_invalid-2"]
+      modules: [{"name": "a"}]
+    golden: golden/test_structure-test_schema_invalid-2.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC8791#4"]
+      diagnostics: [{"vecode_name": "LYVE_OTHER"}]
+      deviation: null
+
+  - id: ut-ext/test_structure-test_schema_invalid-3
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_structure.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_invalid:169
+    rfc: ["RFC8791#4", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["test_structure-test_schema_invalid-3"]
+      modules: [{"name": "a"}]
+    golden: golden/test_structure-test_schema_invalid-3.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC8791#4"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  - id: ut-ext/test_structure-test_schema_invalid-4
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_structure.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_invalid:176
+    rfc: ["RFC8791#4", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["test_structure-test_schema_invalid-4"]
+      modules: [{"name": "a"}]
+    golden: golden/test_structure-test_schema_invalid-4.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC8791#4"]
+      diagnostics: [{"vecode_name": "LYVE_OTHER"}]
+      deviation: null
+
+  - id: ut-ext/test_structure-test_schema_invalid-5
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_structure.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_invalid:184
+    rfc: ["RFC8791#4", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["test_structure-test_schema_invalid-5"]
+      modules: [{"name": "a"}]
+    golden: golden/test_structure-test_schema_invalid-5.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC8791#4"]
+      diagnostics: [{"vecode_name": "LYVE_OTHER"}]
+      deviation: null
+
+  - id: ut-ext/test_structure-test_schema_invalid-6
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_structure.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_invalid:196
+    rfc: ["RFC8791#4", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["test_structure-test_schema_invalid-6"]
+      modules: [{"name": "a"}]
+    golden: golden/test_structure-test_schema_invalid-6.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC8791#4"]
+      deviation: null
+
+  - id: ut-ext/test_structure-test_schema_invalid-7
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_structure.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_invalid:204
+    rfc: ["RFC8791#4", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["test_structure-test_schema_invalid-7"]
+      modules: [{"name": "a"}, {"name": "b"}]
+    golden: golden/test_structure-test_schema_invalid-7.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC8791#4"]
+      diagnostics: [{"vecode_name": "LYVE_REFERENCE"}]
+      deviation: null
+
+  - id: ut-ext/test_yangdata-test_schema-1
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_yangdata.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema:65
+    rfc: ["RFC8040#8", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["common", "test_yangdata-test_schema-1"]
+      modules: [{"name": "ietf-restconf", "revision": "2017-01-26"}, {"name": "a"}]
+    golden: golden/test_yangdata-test_schema-1.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC8040#8"]
+      deviation: null
+
+  - id: ut-ext/test_yangdata-test_schema-2
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_yangdata.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema:99
+    rfc: ["RFC8040#8", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["common", "test_yangdata-test_schema-2"]
+      modules: [{"name": "ietf-restconf", "revision": "2017-01-26"}, {"name": "c"}]
+    golden: golden/test_yangdata-test_schema-2.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC8040#8"]
+      deviation: null
+
+  - id: ut-ext/test_yangdata-test_schema-3
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_yangdata.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema:118
+    rfc: ["RFC8040#8", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["common", "test_yangdata-test_schema-3"]
+      modules: [{"name": "ietf-restconf", "revision": "2017-01-26"}, {"name": "b"}]
+    golden: golden/test_yangdata-test_schema-3.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC8040#8"]
+      deviation: null
+
+  - id: ut-ext/test_yangdata-test_schema-4
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_yangdata.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema:154
+    rfc: ["RFC8040#8", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["common", "test_yangdata-test_schema-4"]
+      modules: [{"name": "ietf-restconf", "revision": "2017-01-26"}, {"name": "d"}]
+    golden: golden/test_yangdata-test_schema-4.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC8040#8"]
+      deviation: null
+
+  - id: ut-ext/test_yangdata-test_schema_invalid-1
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_yangdata.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_invalid:169
+    rfc: ["RFC8040#8", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["common", "test_yangdata-test_schema_invalid-1"]
+      modules: [{"name": "ietf-restconf", "revision": "2017-01-26"}, {"name": "a"}]
+    golden: golden/test_yangdata-test_schema_invalid-1.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC8040#8"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ut-ext/test_yangdata-test_schema_invalid-2
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_yangdata.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_invalid:176
+    rfc: ["RFC8040#8", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["common", "test_yangdata-test_schema_invalid-2"]
+      modules: [{"name": "ietf-restconf", "revision": "2017-01-26"}, {"name": "a"}]
+    golden: golden/test_yangdata-test_schema_invalid-2.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC8040#8"]
+      diagnostics: [{"vecode_name": "LYVE_OTHER"}]
+      deviation: null
+
+  - id: ut-ext/test_yangdata-test_schema_invalid-3
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_yangdata.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_invalid:184
+    rfc: ["RFC8040#8", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["common", "test_yangdata-test_schema_invalid-3"]
+      modules: [{"name": "ietf-restconf", "revision": "2017-01-26"}, {"name": "a"}]
+    golden: golden/test_yangdata-test_schema_invalid-3.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC8040#8"]
+      diagnostics: [{"vecode_name": "LYVE_OTHER"}]
+      deviation: null
+
+  - id: ut-ext/test_yangdata-test_schema_invalid-4
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_yangdata.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_invalid:192
+    rfc: ["RFC8040#8", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["common", "test_yangdata-test_schema_invalid-4"]
+      modules: [{"name": "ietf-restconf", "revision": "2017-01-26"}, {"name": "a"}]
+    golden: golden/test_yangdata-test_schema_invalid-4.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC8040#8"]
+      diagnostics: [{"vecode_name": "LYVE_OTHER"}]
+      deviation: null
+
+  - id: ut-ext/test_yangdata-test_schema_invalid-5
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_yangdata.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_invalid:200
+    rfc: ["RFC8040#8", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["common", "test_yangdata-test_schema_invalid-5"]
+      modules: [{"name": "ietf-restconf", "revision": "2017-01-26"}, {"name": "a"}]
+    golden: golden/test_yangdata-test_schema_invalid-5.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC8040#8"]
+      diagnostics: [{"vecode_name": "LYVE_OTHER"}]
+      deviation: null
+
+  - id: ut-ext/test_yangdata-test_schema_invalid-6
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_yangdata.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_invalid:208
+    rfc: ["RFC8040#8", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["common", "test_yangdata-test_schema_invalid-6"]
+      modules: [{"name": "ietf-restconf", "revision": "2017-01-26"}, {"name": "a"}]
+    golden: golden/test_yangdata-test_schema_invalid-6.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC8040#8"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  - id: ut-ext/test_yangdata-test_schema_invalid-7
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_yangdata.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_invalid:215
+    rfc: ["RFC8040#8", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["common", "test_yangdata-test_schema_invalid-7"]
+      modules: [{"name": "ietf-restconf", "revision": "2017-01-26"}, {"name": "a"}]
+    golden: golden/test_yangdata-test_schema_invalid-7.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC8040#8"]
+      diagnostics: [{"vecode_name": "LYVE_OTHER"}]
+      deviation: null
+
+  - id: ut-ext/test_yangdata-test_schema_invalid-8
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_yangdata.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_invalid:223
+    rfc: ["RFC8040#8", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["common", "test_yangdata-test_schema_invalid-8"]
+      modules: [{"name": "ietf-restconf", "revision": "2017-01-26"}, {"name": "a"}]
+    golden: golden/test_yangdata-test_schema_invalid-8.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC8040#8"]
+      diagnostics: [{"vecode_name": "LYVE_OTHER"}]
+      deviation: null
+
+  - id: ut-ext/test_schema-test_extension_argument-1
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_extension_argument:1453
+    rfc: ["RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["test_schema-test_extension_argument-1"]
+      modules: [{"name": "b"}]
+    golden: golden/test_schema-test_extension_argument-1.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.19"]
+      deviation: null
+
+  - id: ut-ext/test_schema-test_ext_recursive-1
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_ext_recursive:1838
+    rfc: ["RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["test_schema-test_ext_recursive-1"]
+      modules: [{"name": "a"}]
+    golden: golden/test_schema-test_ext_recursive-1.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.19"]
+      deviation: null

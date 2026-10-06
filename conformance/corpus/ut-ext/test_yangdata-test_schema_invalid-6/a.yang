@@ -1,0 +1,1 @@
+module a {yang-version 1.1; namespace urn:tests:extensions:yangdata:a; prefix self;import ietf-restconf {revision-date 2017-01-26; prefix rc;}rc:yang-data { container x { leaf x {type string;}}}}

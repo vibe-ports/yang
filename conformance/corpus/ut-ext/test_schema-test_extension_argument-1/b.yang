@@ -1,0 +1,10 @@
+module b {
+  namespace "urn:b";
+  prefix b;
+
+  import a {
+    prefix a;
+  }
+
+  a:e "xxx";
+}

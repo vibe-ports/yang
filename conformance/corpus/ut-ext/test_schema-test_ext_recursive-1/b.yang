@@ -1,0 +1,47 @@
+module b {
+  namespace "urn:b";
+  prefix b;
+
+  extension use-in {
+    argument name {
+      b:arg-type {
+        type string;
+      }
+    }
+    b:use-in "extension";
+    b:occurence "*";
+  }
+
+  extension substatement {
+    argument name {
+      b:arg-type {
+        type string;
+      }
+    }
+    b:use-in "extension";
+    b:occurence "*";
+    b:substatement "b:occurence";
+  }
+
+  extension arg-type {
+    b:use-in "argument";
+    b:substatement "type" {
+      b:occurence "1";
+    }
+    b:substatement "default";
+  }
+
+  extension occurence {
+    argument value {
+      b:arg-type {
+        type enumeration {
+          enum "?";
+          enum "*";
+          enum "+";
+          enum "1";
+        }
+      }
+    }
+    b:use-in "extension";
+  }
+}
