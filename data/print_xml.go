@@ -172,7 +172,7 @@ func (x *xmlPrinter) opaq(n *Node) error {
 	o := n.opaq
 	x.printf("%s<%s", x.indent(), o.Name)
 	if o.Prefix != "" || o.ModuleNS != "" {
-		if o.XML {
+		if o.Format == types.FormatXML {
 			if o.ModuleNS != "" {
 				x.printNS(o.ModuleNS, "", false, prefixDefault)
 			}

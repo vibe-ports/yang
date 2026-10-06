@@ -84,7 +84,7 @@ func (j *jsonPrinter) nodeModule(n *Node) string {
 	if n.schema != nil {
 		return n.schema.Module.Name
 	}
-	if n.opaq.XML {
+	if n.opaq.Format == types.FormatXML {
 		if n.opaq.ModuleNS != "" {
 			if m := j.set.ByNamespace(n.opaq.ModuleNS); m != nil {
 				return m.Name
@@ -371,8 +371,8 @@ func (j *jsonPrinter) metaLeafList() error {
 	return nil
 }
 
-// opaq is json_print_opaq for an opaque node without hints and attributes: an object when it has
-// children, else its text as a string.
+// opaq is json_print_opaq for an opaque node without attributes or node hints (list, leaf-list and
+// container hints are not kept): an object when it has children, else its value by the value hints.
 func (j *jsonPrinter) opaq(n *Node) error {
 	j.memberOpaq(j.parent, n, false)
 	if len(kids(n)) > 0 {
@@ -382,7 +382,19 @@ func (j *jsonPrinter) opaq(n *Node) error {
 		j.levelDone()
 		return nil
 	}
-	j.str(n.opaq.Value)
+	// value hints of the parser: numbers and booleans bare, [null] for empty (HintData says nothing)
+	h := n.opaq.Hints
+	if h == types.HintData {
+		h = 0
+	}
+	switch {
+	case h&types.HintEmpty != 0:
+		j.buf.WriteString("[null]")
+	case h&(types.HintBoolean|types.HintDecNum) != 0 && h&types.HintNum64 == 0:
+		j.buf.WriteString(n.opaq.Value)
+	default:
+		j.str(n.opaq.Value)
+	}
 	j.levelDone()
 	return nil
 }

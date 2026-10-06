@@ -360,11 +360,11 @@ func TestPrintOpaque(t *testing.T) {
 	tr.insert(nil, c, insertDefault)
 	tr.insert(c, f.term(t, "last", "own"), insertDefault)
 	pt := "urn:vibe-ports:pt"
-	tr.insert(c, newOpaque(opaque{Name: "unk", ModuleNS: pt, XML: true, Value: "hello"}), insertDefault)
-	u2 := newOpaque(opaque{Name: "unk2", ModuleNS: pt, XML: true})
-	tr.insert(u2, newOpaque(opaque{Name: "a", ModuleNS: pt, XML: true, Value: "b"}), insertDefault)
+	tr.insert(c, newOpaque(opaque{Name: "unk", ModuleNS: pt, Format: types.FormatXML, Value: "hello"}), insertDefault)
+	u2 := newOpaque(opaque{Name: "unk2", ModuleNS: pt, Format: types.FormatXML})
+	tr.insert(u2, newOpaque(opaque{Name: "a", ModuleNS: pt, Format: types.FormatXML, Value: "b"}), insertDefault)
 	tr.insert(c, u2, insertDefault)
-	tr.insert(c, newOpaque(opaque{Name: "x", ModuleNS: "urn:other", XML: true, Value: "v & w"}), insertDefault)
+	tr.insert(c, newOpaque(opaque{Name: "x", ModuleNS: "urn:other", Format: types.FormatXML, Value: "v & w"}), insertDefault)
 	wantJSON := "{\n  \"pt:c\": {\n    \"last\": \"own\",\n    \"unk\": \"hello\",\n    \"unk2\": {\n      \"a\": \"b\"\n    },\n" +
 		"    \"x\": \"v & w\"\n  }\n}\n"
 	wantXML := "<c xmlns=\"urn:vibe-ports:pt\">\n  <last>own</last>\n  <unk>hello</unk>\n  <unk2>\n    <a>b</a>\n  </unk2>\n" +
