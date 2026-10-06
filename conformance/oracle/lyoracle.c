@@ -1417,12 +1417,14 @@ check_step(const cJSON *step)
     }
     keys_only(step, !strcmp(what, "parse") ? "do format data_type data data_file unknown parse_only "
             "parse_options validate_options" : !strcmp(what, "validate") ? "do data_type validate_options" :
-            !strcmp(what, "edit") ? "do merge merge_file set delete format data_type unknown parse_options" :
+            !strcmp(what, "edit") ? "do merge merge_file set delete insert_term insert_inner format data_type unknown parse_options" :
             !strcmp(what, "dump") ? "do with_defaults" : "do", "unknown key \"%s\" in a sequence step");
     if (!strcmp(what, "edit")) {
         /* the parse options belong to merge only */
         keys_only(step, cJSON_GetObjectItemCaseSensitive(step, "set") ? "do set" :
                 cJSON_GetObjectItemCaseSensitive(step, "delete") ? "do delete" :
+                cJSON_GetObjectItemCaseSensitive(step, "insert_term") ? "do insert_term" :
+                cJSON_GetObjectItemCaseSensitive(step, "insert_inner") ? "do insert_inner" :
                 "do merge merge_file format data_type unknown parse_options",
                 "key \"%s\" not allowed in this edit step");
     }
@@ -1439,9 +1441,22 @@ check_step(const cJSON *step)
     } else if (!strcmp(what, "edit")) {
         const char *merge = input_of(step, "merge"), *del = str_of(step, "delete");
         const cJSON *set = cJSON_GetObjectItemCaseSensitive(step, "set");
+        const cJSON *ins = cJSON_GetObjectItemCaseSensitive(step, "insert_term");
+        const cJSON *inn = cJSON_GetObjectItemCaseSensitive(step, "insert_inner");
 
-        if (!!merge + !!del + !!set != 1) {
-            die("edit step needs exactly one of merge, merge_file, set, delete%s", NULL);
+        if (!!merge + !!del + !!set + !!ins + !!inn != 1) {
+            die("edit step needs exactly one of merge, merge_file, set, delete, insert_term, insert_inner%s", NULL);
+        }
+        if (ins || inn) {
+            const cJSON *o = ins ? ins : inn;
+
+            if (!cJSON_IsObject(o) || !str_of(o, "name") || (!!str_of(o, "module") + !!str_of(o, "parent") != 1)) {
+                die("insert_term/insert_inner need an object with name and exactly one of module, parent%s", NULL);
+            }
+            keys_only(o, ins ? "module parent name value" : "module parent name", "unknown key \"%s\" in insert_term/insert_inner");
+            if (ins && !str_of(o, "value")) {
+                die("insert_term needs a value%s", NULL);
+            }
         }
         if (merge) {
             dparams_of(step, &p);
@@ -1502,10 +1517,36 @@ step_edit(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *
 {
     const char *merge = input_of(step, "merge"), *del = str_of(step, "delete");
     const cJSON *set = cJSON_GetObjectItemCaseSensitive(step, "set");
+    const cJSON *ins = cJSON_GetObjectItemCaseSensitive(step, "insert_term");
+    const cJSON *inn = cJSON_GetObjectItemCaseSensitive(step, "insert_inner");
     struct lyd_node *node = NULL;
     LY_ERR rc = LY_SUCCESS;
 
-    if (merge) {
+    if (ins || inn) {
+        /* lyd_new_term / lyd_new_inner + lyd_insert_sibling (top level) or a child of "parent" */
+        const cJSON *o = ins ? ins : inn;
+        const char *mname = str_of(o, "module"), *ppath = str_of(o, "parent");
+        const struct lys_module *mod = mname ? ly_ctx_get_module_implemented(ctx, mname) : NULL;
+        struct lyd_node *parent = NULL;
+
+        if (mname && !mod) {
+            die("module %s is not implemented", mname);
+        }
+        if (ppath && (!*tree || lyd_find_path(*tree, ppath, 0, &parent))) {
+            die("insert parent %s not found", ppath);
+        }
+        if (ins) {
+            rc = lyd_new_term(parent, mod, str_of(o, "name"), str_of(o, "value"), 0, &node);
+        } else {
+            rc = lyd_new_inner(parent, mod, str_of(o, "name"), 0, &node);
+        }
+        if (!rc && !parent) {
+            rc = lyd_insert_sibling(*tree, node, tree);
+        }
+        if (*tree) {
+            *tree = lyd_first_sibling(*tree);
+        }
+    } else if (merge) {
         /* parsed like data_type "edit" would be: parse-only, then merged */
         struct dparams p;
         struct ly_in *in = NULL;

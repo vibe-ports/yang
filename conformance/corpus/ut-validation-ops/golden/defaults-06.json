@@ -515,7 +515,7 @@
         {
           "any": null,
           "flags": {
-            "default": false,
+            "default": true,
             "new": false,
             "when_true": false
           },
@@ -534,422 +534,8 @@
         {
           "any": null,
           "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaflist",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:ll2[.='dflt1']",
-          "schema": "/f:ll2",
-          "value": {
-            "canonical": "dflt1",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaflist",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:ll2[.='dflt2']",
-          "schema": "/f:ll2",
-          "value": {
-            "canonical": "dflt2",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "container",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:cont",
-          "schema": "/f:cont",
-          "value": null
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaflist",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:cont/ll1[.='def1']",
-          "schema": "/f:cont/choic/c/ll1",
-          "value": {
-            "canonical": "def1",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaflist",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:cont/ll1[.='def2']",
-          "schema": "/f:cont/choic/c/ll1",
-          "value": {
-            "canonical": "def2",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaflist",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:cont/ll1[.='def3']",
-          "schema": "/f:cont/choic/c/ll1",
-          "value": {
-            "canonical": "def3",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaf",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:cont/d",
-          "schema": "/f:cont/d",
-          "value": {
-            "canonical": "15",
-            "type": "uint32",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaflist",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:cont/ll2[.='dflt1']",
-          "schema": "/f:cont/ll2",
-          "value": {
-            "canonical": "dflt1",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaflist",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:cont/ll2[.='dflt2']",
-          "schema": "/f:cont/ll2",
-          "value": {
-            "canonical": "dflt2",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        }
-      ]
-    },
-    {
-      "diagnostics": [],
-      "do": "validate",
-      "implicit_diff": null,
-      "rc": {
-        "err": 0,
-        "name": "LY_SUCCESS"
-      },
-      "typed": [
-        {
-          "any": null,
-          "flags": {
             "default": false,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaf",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:l",
-          "schema": "/f:choic/b/l",
-          "value": {
-            "canonical": "value",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": false,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaf",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:d",
-          "schema": "/f:d",
-          "value": {
-            "canonical": "15",
-            "type": "uint32",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaflist",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:ll2[.='dflt1']",
-          "schema": "/f:ll2",
-          "value": {
-            "canonical": "dflt1",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaflist",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:ll2[.='dflt2']",
-          "schema": "/f:ll2",
-          "value": {
-            "canonical": "dflt2",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "container",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:cont",
-          "schema": "/f:cont",
-          "value": null
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaflist",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:cont/ll1[.='def1']",
-          "schema": "/f:cont/choic/c/ll1",
-          "value": {
-            "canonical": "def1",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaflist",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:cont/ll1[.='def2']",
-          "schema": "/f:cont/choic/c/ll1",
-          "value": {
-            "canonical": "def2",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaflist",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:cont/ll1[.='def3']",
-          "schema": "/f:cont/choic/c/ll1",
-          "value": {
-            "canonical": "def3",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaf",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:cont/d",
-          "schema": "/f:cont/d",
-          "value": {
-            "canonical": "15",
-            "type": "uint32",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaflist",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:cont/ll2[.='dflt1']",
-          "schema": "/f:cont/ll2",
-          "value": {
-            "canonical": "dflt1",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaflist",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:cont/ll2[.='dflt2']",
-          "schema": "/f:cont/ll2",
-          "value": {
-            "canonical": "dflt2",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        }
-      ]
-    },
-    {
-      "diagnostics": [],
-      "do": "dump",
-      "rc": {
-        "err": 0,
-        "name": "LY_SUCCESS"
-      },
-      "tree": {
-        "json": "{\n  \"f:l\": \"value\",\n  \"f:d\": 15,\n  \"f:ll2\": [\n    \"dflt1\",\n    \"dflt2\"\n  ],\n  \"@f:ll2\": [\n    {\n      \"ietf-netconf-with-defaults:default\": true\n    },\n    {\n      \"ietf-netconf-with-defaults:default\": true\n    }\n  ],\n  \"f:cont\": {\n    \"ll1\": [\n      \"def1\",\n      \"def2\",\n      \"def3\"\n    ],\n    \"@ll1\": [\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      },\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      },\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      }\n    ],\n    \"d\": 15,\n    \"@d\": {\n      \"ietf-netconf-with-defaults:default\": true\n    },\n    \"ll2\": [\n      \"dflt1\",\n      \"dflt2\"\n    ],\n    \"@ll2\": [\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      },\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      }\n    ]\n  }\n}\n",
-        "xml": "<l xmlns=\"urn:tests:f\">value</l>\n<d xmlns=\"urn:tests:f\">15</d>\n<ll2 xmlns=\"urn:tests:f\" xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dflt1</ll2>\n<ll2 xmlns=\"urn:tests:f\" xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dflt2</ll2>\n<cont xmlns=\"urn:tests:f\">\n  <ll1 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">def1</ll1>\n  <ll1 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">def2</ll1>\n  <ll1 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">def3</ll1>\n  <d xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">15</d>\n  <ll2 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dflt1</ll2>\n  <ll2 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dflt2</ll2>\n</cont>\n"
-      },
-      "typed": [
-        {
-          "any": null,
-          "flags": {
-            "default": false,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaf",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:l",
-          "schema": "/f:choic/b/l",
-          "value": {
-            "canonical": "value",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": false,
-            "new": false,
+            "new": true,
             "when_true": false
           },
           "kind": "leaf",
@@ -1162,8 +748,27 @@
         {
           "any": null,
           "flags": {
-            "default": false,
+            "default": true,
             "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:d",
+          "schema": "/f:d",
+          "value": {
+            "canonical": "15",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
             "when_true": false
           },
           "kind": "leaf",
@@ -1202,6 +807,25 @@
           "flags": {
             "default": true,
             "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:ll2[.='dflt2']",
+          "schema": "/f:ll2",
+          "value": {
+            "canonical": "dflt2",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
             "when_true": false
           },
           "kind": "leaflist",
@@ -1349,7 +973,7 @@
     {
       "diagnostics": [],
       "do": "validate",
-      "implicit_diff": null,
+      "implicit_diff": "{\n  \"f:d\": 15,\n  \"@f:d\": {\n    \"yang:operation\": \"delete\"\n  },\n  \"f:ll2\": [\n    \"dflt1\",\n    \"dflt2\"\n  ],\n  \"@f:ll2\": [\n    {\n      \"yang:operation\": \"delete\"\n    },\n    {\n      \"yang:operation\": \"delete\"\n    }\n  ]\n}\n",
       "rc": {
         "err": 0,
         "name": "LY_SUCCESS"
@@ -1396,26 +1020,7 @@
         {
           "any": null,
           "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaflist",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:ll2[.='dflt1']",
-          "schema": "/f:ll2",
-          "value": {
-            "canonical": "dflt1",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
+            "default": false,
             "new": false,
             "when_true": false
           },
@@ -1569,8 +1174,8 @@
         "name": "LY_SUCCESS"
       },
       "tree": {
-        "json": "{\n  \"f:l\": \"value\",\n  \"f:d\": 15,\n  \"f:ll2\": [\n    \"dflt1\",\n    \"dflt2\"\n  ],\n  \"@f:ll2\": [\n    {\n      \"ietf-netconf-with-defaults:default\": true\n    },\n    {\n      \"ietf-netconf-with-defaults:default\": true\n    }\n  ],\n  \"f:cont\": {\n    \"ll1\": [\n      \"def1\",\n      \"def2\",\n      \"def3\"\n    ],\n    \"@ll1\": [\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      },\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      },\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      }\n    ],\n    \"d\": 15,\n    \"@d\": {\n      \"ietf-netconf-with-defaults:default\": true\n    },\n    \"ll2\": [\n      \"dflt1\",\n      \"dflt2\"\n    ],\n    \"@ll2\": [\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      },\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      }\n    ]\n  }\n}\n",
-        "xml": "<l xmlns=\"urn:tests:f\">value</l>\n<d xmlns=\"urn:tests:f\">15</d>\n<ll2 xmlns=\"urn:tests:f\" xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dflt1</ll2>\n<ll2 xmlns=\"urn:tests:f\" xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dflt2</ll2>\n<cont xmlns=\"urn:tests:f\">\n  <ll1 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">def1</ll1>\n  <ll1 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">def2</ll1>\n  <ll1 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">def3</ll1>\n  <d xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">15</d>\n  <ll2 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dflt1</ll2>\n  <ll2 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dflt2</ll2>\n</cont>\n"
+        "json": "{\n  \"f:l\": \"value\",\n  \"f:d\": 15,\n  \"f:ll2\": [\n    \"dflt2\"\n  ],\n  \"f:cont\": {\n    \"ll1\": [\n      \"def1\",\n      \"def2\",\n      \"def3\"\n    ],\n    \"@ll1\": [\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      },\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      },\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      }\n    ],\n    \"d\": 15,\n    \"@d\": {\n      \"ietf-netconf-with-defaults:default\": true\n    },\n    \"ll2\": [\n      \"dflt1\",\n      \"dflt2\"\n    ],\n    \"@ll2\": [\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      },\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      }\n    ]\n  }\n}\n",
+        "xml": "<l xmlns=\"urn:tests:f\">value</l>\n<d xmlns=\"urn:tests:f\">15</d>\n<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>\n<cont xmlns=\"urn:tests:f\">\n  <ll1 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">def1</ll1>\n  <ll1 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">def2</ll1>\n  <ll1 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">def3</ll1>\n  <d xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">15</d>\n  <ll2 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dflt1</ll2>\n  <ll2 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dflt2</ll2>\n</cont>\n"
       },
       "typed": [
         {
@@ -1614,26 +1219,7 @@
         {
           "any": null,
           "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaflist",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:ll2[.='dflt1']",
-          "schema": "/f:ll2",
-          "value": {
-            "canonical": "dflt1",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
+            "default": false,
             "new": false,
             "when_true": false
           },
@@ -1828,26 +1414,7 @@
         {
           "any": null,
           "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaflist",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:ll2[.='dflt1']",
-          "schema": "/f:ll2",
-          "value": {
-            "canonical": "dflt1",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
+            "default": false,
             "new": false,
             "when_true": false
           },
@@ -1990,6 +1557,20 @@
             "typedef": null,
             "union_member": null
           }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont",
+          "schema": "/f:cont",
+          "value": null
         }
       ]
     },
@@ -2043,26 +1624,7 @@
         {
           "any": null,
           "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaflist",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:ll2[.='dflt1']",
-          "schema": "/f:ll2",
-          "value": {
-            "canonical": "dflt1",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
+            "default": false,
             "new": false,
             "when_true": false
           },
@@ -2216,8 +1778,8 @@
         "name": "LY_SUCCESS"
       },
       "tree": {
-        "json": "{\n  \"f:l\": \"value\",\n  \"f:d\": 15,\n  \"f:ll2\": [\n    \"dflt1\",\n    \"dflt2\"\n  ],\n  \"@f:ll2\": [\n    {\n      \"ietf-netconf-with-defaults:default\": true\n    },\n    {\n      \"ietf-netconf-with-defaults:default\": true\n    }\n  ],\n  \"f:cont\": {\n    \"ll1\": [\n      \"def1\",\n      \"def2\",\n      \"def3\"\n    ],\n    \"@ll1\": [\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      },\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      },\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      }\n    ],\n    \"d\": 15,\n    \"@d\": {\n      \"ietf-netconf-with-defaults:default\": true\n    },\n    \"ll2\": [\n      \"dflt1\",\n      \"dflt2\"\n    ],\n    \"@ll2\": [\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      },\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      }\n    ]\n  }\n}\n",
-        "xml": "<l xmlns=\"urn:tests:f\">value</l>\n<d xmlns=\"urn:tests:f\">15</d>\n<ll2 xmlns=\"urn:tests:f\" xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dflt1</ll2>\n<ll2 xmlns=\"urn:tests:f\" xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dflt2</ll2>\n<cont xmlns=\"urn:tests:f\">\n  <ll1 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">def1</ll1>\n  <ll1 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">def2</ll1>\n  <ll1 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">def3</ll1>\n  <d xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">15</d>\n  <ll2 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dflt1</ll2>\n  <ll2 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dflt2</ll2>\n</cont>\n"
+        "json": "{\n  \"f:l\": \"value\",\n  \"f:d\": 15,\n  \"f:ll2\": [\n    \"dflt2\"\n  ],\n  \"f:cont\": {\n    \"ll1\": [\n      \"def1\",\n      \"def2\",\n      \"def3\"\n    ],\n    \"@ll1\": [\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      },\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      },\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      }\n    ],\n    \"d\": 15,\n    \"@d\": {\n      \"ietf-netconf-with-defaults:default\": true\n    },\n    \"ll2\": [\n      \"dflt1\",\n      \"dflt2\"\n    ],\n    \"@ll2\": [\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      },\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      }\n    ]\n  }\n}\n",
+        "xml": "<l xmlns=\"urn:tests:f\">value</l>\n<d xmlns=\"urn:tests:f\">15</d>\n<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>\n<cont xmlns=\"urn:tests:f\">\n  <ll1 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">def1</ll1>\n  <ll1 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">def2</ll1>\n  <ll1 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">def3</ll1>\n  <d xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">15</d>\n  <ll2 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dflt1</ll2>\n  <ll2 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dflt2</ll2>\n</cont>\n"
       },
       "typed": [
         {
@@ -2261,26 +1823,7 @@
         {
           "any": null,
           "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaflist",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:ll2[.='dflt1']",
-          "schema": "/f:ll2",
-          "value": {
-            "canonical": "dflt1",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
+            "default": false,
             "new": false,
             "when_true": false
           },
@@ -2475,6 +2018,39 @@
         {
           "any": null,
           "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:ll2[.='dflt2']",
+          "schema": "/f:ll2",
+          "value": {
+            "canonical": "dflt2",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont",
+          "schema": "/f:cont",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
             "default": true,
             "new": false,
             "when_true": false
@@ -2482,8 +2058,84 @@
           "kind": "leaflist",
           "meta": [],
           "opaque": null,
-          "path": "/f:ll2[.='dflt1']",
-          "schema": "/f:ll2",
+          "path": "/f:cont/ll1[.='def1']",
+          "schema": "/f:cont/choic/c/ll1",
+          "value": {
+            "canonical": "def1",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/ll1[.='def2']",
+          "schema": "/f:cont/choic/c/ll1",
+          "value": {
+            "canonical": "def2",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/ll1[.='def3']",
+          "schema": "/f:cont/choic/c/ll1",
+          "value": {
+            "canonical": "def3",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/d",
+          "schema": "/f:cont/d",
+          "value": {
+            "canonical": "15",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/ll2[.='dflt1']",
+          "schema": "/f:cont/ll2",
           "value": {
             "canonical": "dflt1",
             "type": "string",
@@ -2495,6 +2147,482 @@
           "any": null,
           "flags": {
             "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/ll2[.='dflt2']",
+          "schema": "/f:cont/ll2",
+          "value": {
+            "canonical": "dflt2",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont",
+          "schema": "/f:cont",
+          "value": null
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "validate",
+      "implicit_diff": null,
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:l",
+          "schema": "/f:choic/b/l",
+          "value": {
+            "canonical": "value",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:d",
+          "schema": "/f:d",
+          "value": {
+            "canonical": "15",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:ll2[.='dflt2']",
+          "schema": "/f:ll2",
+          "value": {
+            "canonical": "dflt2",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont",
+          "schema": "/f:cont",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/ll1[.='def1']",
+          "schema": "/f:cont/choic/c/ll1",
+          "value": {
+            "canonical": "def1",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/ll1[.='def2']",
+          "schema": "/f:cont/choic/c/ll1",
+          "value": {
+            "canonical": "def2",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/ll1[.='def3']",
+          "schema": "/f:cont/choic/c/ll1",
+          "value": {
+            "canonical": "def3",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/d",
+          "schema": "/f:cont/d",
+          "value": {
+            "canonical": "15",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/ll2[.='dflt1']",
+          "schema": "/f:cont/ll2",
+          "value": {
+            "canonical": "dflt1",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/ll2[.='dflt2']",
+          "schema": "/f:cont/ll2",
+          "value": {
+            "canonical": "dflt2",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "dump",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "tree": {
+        "json": "{\n  \"f:l\": \"value\",\n  \"f:d\": 15,\n  \"f:ll2\": [\n    \"dflt2\"\n  ],\n  \"f:cont\": {\n    \"ll1\": [\n      \"def1\",\n      \"def2\",\n      \"def3\"\n    ],\n    \"@ll1\": [\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      },\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      },\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      }\n    ],\n    \"d\": 15,\n    \"@d\": {\n      \"ietf-netconf-with-defaults:default\": true\n    },\n    \"ll2\": [\n      \"dflt1\",\n      \"dflt2\"\n    ],\n    \"@ll2\": [\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      },\n      {\n        \"ietf-netconf-with-defaults:default\": true\n      }\n    ]\n  }\n}\n",
+        "xml": "<l xmlns=\"urn:tests:f\">value</l>\n<d xmlns=\"urn:tests:f\">15</d>\n<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>\n<cont xmlns=\"urn:tests:f\">\n  <ll1 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">def1</ll1>\n  <ll1 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">def2</ll1>\n  <ll1 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">def3</ll1>\n  <d xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">15</d>\n  <ll2 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dflt1</ll2>\n  <ll2 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dflt2</ll2>\n</cont>\n"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:l",
+          "schema": "/f:choic/b/l",
+          "value": {
+            "canonical": "value",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:d",
+          "schema": "/f:d",
+          "value": {
+            "canonical": "15",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:ll2[.='dflt2']",
+          "schema": "/f:ll2",
+          "value": {
+            "canonical": "dflt2",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont",
+          "schema": "/f:cont",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/ll1[.='def1']",
+          "schema": "/f:cont/choic/c/ll1",
+          "value": {
+            "canonical": "def1",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/ll1[.='def2']",
+          "schema": "/f:cont/choic/c/ll1",
+          "value": {
+            "canonical": "def2",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/ll1[.='def3']",
+          "schema": "/f:cont/choic/c/ll1",
+          "value": {
+            "canonical": "def3",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/d",
+          "schema": "/f:cont/d",
+          "value": {
+            "canonical": "15",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/ll2[.='dflt1']",
+          "schema": "/f:cont/ll2",
+          "value": {
+            "canonical": "dflt1",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/ll2[.='dflt2']",
+          "schema": "/f:cont/ll2",
+          "value": {
+            "canonical": "dflt2",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "edit",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:l",
+          "schema": "/f:choic/b/l",
+          "value": {
+            "canonical": "value",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:d",
+          "schema": "/f:d",
+          "value": {
+            "canonical": "15",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
             "new": false,
             "when_true": false
           },
@@ -2588,13 +2716,32 @@
             "new": true,
             "when_true": false
           },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/ll1[.='def3']",
+          "schema": "/f:cont/choic/c/ll1",
+          "value": {
+            "canonical": "def3",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
           "kind": "leaf",
           "meta": [],
           "opaque": null,
           "path": "/f:cont/d",
           "schema": "/f:cont/d",
           "value": {
-            "canonical": "5",
+            "canonical": "15",
             "type": "uint32",
             "typedef": null,
             "union_member": null
@@ -2642,8 +2789,7 @@
     },
     {
       "diagnostics": [],
-      "do": "validate",
-      "implicit_diff": null,
+      "do": "edit",
       "rc": {
         "err": 0,
         "name": "LY_SUCCESS"
@@ -2690,26 +2836,7 @@
         {
           "any": null,
           "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaflist",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:ll2[.='dflt1']",
-          "schema": "/f:ll2",
-          "value": {
-            "canonical": "dflt1",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
+            "default": false,
             "new": false,
             "when_true": false
           },
@@ -2800,7 +2927,45 @@
           "any": null,
           "flags": {
             "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/ll1[.='def3']",
+          "schema": "/f:cont/choic/c/ll1",
+          "value": {
+            "canonical": "def3",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
             "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/d",
+          "schema": "/f:cont/d",
+          "value": {
+            "canonical": "15",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
             "when_true": false
           },
           "kind": "leaf",
@@ -2848,6 +3013,397 @@
           "schema": "/f:cont/ll2",
           "value": {
             "canonical": "dflt2",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "edit",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:l",
+          "schema": "/f:choic/b/l",
+          "value": {
+            "canonical": "value",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:d",
+          "schema": "/f:d",
+          "value": {
+            "canonical": "15",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:ll2[.='dflt2']",
+          "schema": "/f:ll2",
+          "value": {
+            "canonical": "dflt2",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont",
+          "schema": "/f:cont",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/ll1[.='def1']",
+          "schema": "/f:cont/choic/c/ll1",
+          "value": {
+            "canonical": "def1",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/ll1[.='def2']",
+          "schema": "/f:cont/choic/c/ll1",
+          "value": {
+            "canonical": "def2",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/ll1[.='def3']",
+          "schema": "/f:cont/choic/c/ll1",
+          "value": {
+            "canonical": "def3",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/ll1[.='def3']",
+          "schema": "/f:cont/choic/c/ll1",
+          "value": {
+            "canonical": "def3",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/d",
+          "schema": "/f:cont/d",
+          "value": {
+            "canonical": "15",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/d",
+          "schema": "/f:cont/d",
+          "value": {
+            "canonical": "5",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/ll2[.='dflt1']",
+          "schema": "/f:cont/ll2",
+          "value": {
+            "canonical": "dflt1",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/ll2[.='dflt2']",
+          "schema": "/f:cont/ll2",
+          "value": {
+            "canonical": "dflt2",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/ll2[.='non-dflt']",
+          "schema": "/f:cont/ll2",
+          "value": {
+            "canonical": "non-dflt",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "validate",
+      "implicit_diff": "{\n  \"f:cont\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"ll1\": [\n      \"def1\",\n      \"def2\",\n      \"def3\"\n    ],\n    \"@ll1\": [\n      {\n        \"yang:operation\": \"delete\"\n      },\n      {\n        \"yang:operation\": \"delete\"\n      },\n      {\n        \"yang:operation\": \"delete\"\n      }\n    ],\n    \"d\": 15,\n    \"@d\": {\n      \"yang:operation\": \"delete\"\n    },\n    \"ll2\": [\n      \"dflt1\",\n      \"dflt2\"\n    ],\n    \"@ll2\": [\n      {\n        \"yang:operation\": \"delete\"\n      },\n      {\n        \"yang:operation\": \"delete\"\n      }\n    ]\n  }\n}\n",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:l",
+          "schema": "/f:choic/b/l",
+          "value": {
+            "canonical": "value",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:d",
+          "schema": "/f:d",
+          "value": {
+            "canonical": "15",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:ll2[.='dflt2']",
+          "schema": "/f:ll2",
+          "value": {
+            "canonical": "dflt2",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont",
+          "schema": "/f:cont",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/ll1[.='def3']",
+          "schema": "/f:cont/choic/c/ll1",
+          "value": {
+            "canonical": "def3",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/d",
+          "schema": "/f:cont/d",
+          "value": {
+            "canonical": "5",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:cont/ll2[.='non-dflt']",
+          "schema": "/f:cont/ll2",
+          "value": {
+            "canonical": "non-dflt",
             "type": "string",
             "typedef": null,
             "union_member": null
@@ -2863,8 +3419,8 @@
         "name": "LY_SUCCESS"
       },
       "tree": {
-        "json": "{\n  \"f:l\": \"value\",\n  \"f:d\": 15,\n  \"f:cont\": {\n    \"d\": 5\n  }\n}\n",
-        "xml": "<l xmlns=\"urn:tests:f\">value</l>\n<d xmlns=\"urn:tests:f\">15</d>\n<cont xmlns=\"urn:tests:f\">\n  <d>5</d>\n</cont>\n"
+        "json": "{\n  \"f:l\": \"value\",\n  \"f:d\": 15,\n  \"f:ll2\": [\n    \"dflt2\"\n  ],\n  \"f:cont\": {\n    \"ll1\": [\n      \"def3\"\n    ],\n    \"d\": 5,\n    \"ll2\": [\n      \"non-dflt\"\n    ]\n  }\n}\n",
+        "xml": "<l xmlns=\"urn:tests:f\">value</l>\n<d xmlns=\"urn:tests:f\">15</d>\n<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>\n<cont xmlns=\"urn:tests:f\">\n  <ll1>def3</ll1>\n  <d>5</d>\n  <ll2>non-dflt</ll2>\n</cont>\n"
       },
       "typed": [
         {
@@ -2908,26 +3464,7 @@
         {
           "any": null,
           "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaflist",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:ll2[.='dflt1']",
-          "schema": "/f:ll2",
-          "value": {
-            "canonical": "dflt1",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
+            "default": false,
             "new": false,
             "when_true": false
           },
@@ -2960,45 +3497,7 @@
         {
           "any": null,
           "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaflist",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:cont/ll1[.='def1']",
-          "schema": "/f:cont/choic/c/ll1",
-          "value": {
-            "canonical": "def1",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaflist",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:cont/ll1[.='def2']",
-          "schema": "/f:cont/choic/c/ll1",
-          "value": {
-            "canonical": "def2",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
+            "default": false,
             "new": false,
             "when_true": false
           },
@@ -3036,36 +3535,17 @@
         {
           "any": null,
           "flags": {
-            "default": true,
+            "default": false,
             "new": false,
             "when_true": false
           },
           "kind": "leaflist",
           "meta": [],
           "opaque": null,
-          "path": "/f:cont/ll2[.='dflt1']",
+          "path": "/f:cont/ll2[.='non-dflt']",
           "schema": "/f:cont/ll2",
           "value": {
-            "canonical": "dflt1",
-            "type": "string",
-            "typedef": null,
-            "union_member": null
-          }
-        },
-        {
-          "any": null,
-          "flags": {
-            "default": true,
-            "new": false,
-            "when_true": false
-          },
-          "kind": "leaflist",
-          "meta": [],
-          "opaque": null,
-          "path": "/f:cont/ll2[.='dflt2']",
-          "schema": "/f:cont/ll2",
-          "value": {
-            "canonical": "dflt2",
+            "canonical": "non-dflt",
             "type": "string",
             "typedef": null,
             "union_member": null

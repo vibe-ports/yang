@@ -285,9 +285,13 @@ becomes observable. Context fields as in `schema`; step fields are per step (not
 | `parse` | `format`, `data_type` (datastore types only), `data`/`data_file`, `unknown`, `parse_only`, `parse_options`, `validate_options` | as op `data`; on success replaces the tree |
 | `validate` | `data_type`, `validate_options` (validate flags of the preset) | `lyd_validate_all(&tree, ctx, opts, &diff)` |
 | `edit` | exactly one of `merge` / `merge_file` (+ `format`, `data_type`, `unknown`, `parse_options`, merge only) | `lyd_parse_data(… LYD_PARSE_ONLY …)` + `lyd_merge_siblings(LYD_MERGE_DESTRUCT)` |
-| | `set: {"path", "value"}` only (value in JSON format, omit for containers/lists) | `lyd_new_path(tree, ctx, path, value, LYD_NEW_PATH_UPDATE)` |
+| | `set: {"path", "value"}` only (value in JSON format, omit for containers/lists) | `lyd_new_path(tree, ctx, path, value, LYD_NEW_PATH_UPDATE)` (an existing default leaf-list instance is left untouched: use `insert_term` to make it explicit) |
 | | `delete: "<path>"` only | `lyd_find_path` + `lyd_free_tree` (`LY_EINCOMPLETE` if only a parent exists; a list key is refused, see below) |
+| | `insert_term: {"module" \| "parent", "name", "value"}` only | `lyd_new_term` (`module`: top level, then `lyd_insert_sibling`; `parent`: path of an existing node, new child) |
+| | `insert_inner: {"module" \| "parent", "name"}` only | `lyd_new_inner` (container/list without keys), inserted like `insert_term` |
 | `dump` | `with_defaults` | `tree` = `{"json", "xml"}` as op `data` |
+
+`insert_term` / `insert_inner` with a `parent` path that does not exist in the tree is a request-error raised when the step runs (not in the pre-check).
 
 All steps are checked before the first runs (unknown `do`, keys not listed in the table for that
 step or edit kind or in `set` — matched as whole names, an empty key never matches — missing/extra
