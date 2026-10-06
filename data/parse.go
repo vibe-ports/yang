@@ -64,6 +64,8 @@ type ParseOptions struct {
 type Budget struct {
 	MaxBytes int // input size, default DefaultMaxBytes
 	MaxNodes int // data nodes created, implicit ones included, default DefaultMaxNodes
+	// MaxXPathSteps caps the XPath work of the validation (U-0042), default DefaultMaxXPathSteps
+	MaxXPathSteps int64
 }
 
 // Defaults of Budget.
@@ -87,7 +89,8 @@ type lydCtx struct {
 	tree  *Tree
 	log   *logger
 	opts  parseOpts
-	nodes int // nodes created (Budget.MaxNodes)
+	nodes int     // nodes created (Budget.MaxNodes)
+	vc    *valCtx // the validation context of the parse (valCtx)
 	// limitHit: a libyang nesting limit of the lexers stopped the parse (the error wraps
 	// yang.ErrBudget too)
 	limitHit bool
@@ -126,6 +129,8 @@ func parseWith(ctx context.Context, r io.Reader, s *schema.Set, o parseOpts, fp 
 		return nil, nil, fmt.Errorf("%w: data input larger than %d bytes", yang.ErrBudget, maxBytes)
 	}
 	lc := &lydCtx{ctx: ctx, tree: newTree(s), log: &logger{set: s}, opts: o}
+	lc.validateNewImplicit = (*lydCtx).newImplicitClose
+	lc.validate = (*lydCtx).validateParsed
 	if setup != nil {
 		setup(lc)
 	}

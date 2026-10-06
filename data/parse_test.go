@@ -54,8 +54,10 @@ func TestParseDriver(t *testing.T) {
 		t.Fatalf("%v %v validated %d", err, diags, validated)
 	}
 	c := tr.top.list[0]
-	if c.flags != FlagNew || c.kids.list[0].flags != FlagNew {
-		t.Fatalf("flags %x %x: an explicit child clears the NP container's default", c.flags, c.kids.list[0].flags)
+	// an explicit child clears the NP container's default; c's close validated its children
+	// (lyd_validate_new clears their FlagNew), the top level is left to the (replaced) validation
+	if c.flags != FlagNew || c.kids.list[0].flags != 0 {
+		t.Fatalf("flags %x %x", c.flags, c.kids.list[0].flags)
 	}
 	_, _, _ = parseWith(context.Background(), strings.NewReader(""), f.set, parseOpts{ParseOptions: ParseOptions{ParseOnly: true}}, ok, setup)
 	if validated != 1 {
