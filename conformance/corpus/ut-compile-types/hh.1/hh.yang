@@ -1,0 +1,1 @@
+module hh {namespace urn:hh;prefix hh;leaf l {type binary {length "| 50";}}}

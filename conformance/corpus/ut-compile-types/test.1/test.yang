@@ -1,0 +1,1 @@
+module test {namespace "urn:test"; prefix t;  leaf target { type int8; }  typedef union-leafref {    type union {      type leafref { path "/target"; }      type int8;    }  }  leaf test-leaf {    type union-leafref;    default "999";  }}

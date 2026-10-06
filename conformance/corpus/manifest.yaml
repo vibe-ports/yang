@@ -21702,3 +21702,1446 @@ fixtures:
       rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
       deviation: null
 # END ut-xpath
+
+# BEGIN ut-compile-types (generated from libyang tests/utests/schema/test_tree_schema_compile.c by conformance/tools/extract-utests, reviewed)
+
+  - id: ut-compile-types/type-range-01
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_range:704
+    rfc: ["RFC7950#9.2.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [b.1]
+      modules: [{name: "b"}]
+    golden: golden/type-range-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-range-02
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_range:716
+    rfc: ["RFC7950#9.2.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [b.1, c.1]
+      modules: [{name: "b"}, {name: "c"}]
+    golden: golden/type-range-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-range-03
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_range:728
+    rfc: ["RFC7950#9.2.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [b.1, c.1, d.1]
+      modules: [{name: "b"}, {name: "c"}, {name: "d"}]
+    golden: golden/type-range-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-range-04
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_range:740
+    rfc: ["RFC7950#9.2.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [b.1, c.1, d.1, e.1]
+      modules: [{name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}]
+    golden: golden/type-range-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-range-05
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_range:752
+    rfc: ["RFC7950#9.2.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [b.1, c.1, d.1, e.1, f.1]
+      modules: [{name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}]
+    golden: golden/type-range-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-range-06
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_range:764
+    rfc: ["RFC7950#9.2.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [b.1, c.1, d.1, e.1, f.1, g.1]
+      modules: [{name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}]
+    golden: golden/type-range-06.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-range-07
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_range:776
+    rfc: ["RFC7950#9.2.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [b.1, c.1, d.1, e.1, f.1, g.1, h.1]
+      modules: [{name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}]
+    golden: golden/type-range-07.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-range-08
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_range:788
+    rfc: ["RFC7950#9.2.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [b.1, c.1, d.1, e.1, f.1, g.1, h.1, i.1]
+      modules: [{name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}]
+    golden: golden/type-range-08.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-range-09
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_range:798
+    rfc: ["RFC7950#9.2.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [b.1, c.1, d.1, e.1, f.1, g.1, h.1, i.1, j.1]
+      modules: [{name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}]
+    golden: golden/type-range-09.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-01
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:820
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+    golden: golden/type-length-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-02
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:831
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2]
+      modules: [{name: "a"}, {name: "b"}]
+    golden: golden/type-length-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-03
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:840
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}]
+    golden: golden/type-length-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-04
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:849
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2, d.2]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}]
+    golden: golden/type-length-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-05
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:858
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2, d.2, e.2]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}]
+    golden: golden/type-length-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-06
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:867
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}]
+    golden: golden/type-length-06.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-07
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:878
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}]
+    golden: golden/type-length-07.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-08
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:889
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}]
+    golden: golden/type-length-08.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-09
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:899
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}]
+    golden: golden/type-length-09.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-10
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:909
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}]
+    golden: golden/type-length-10.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-11
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:921
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}]
+    golden: golden/type-length-11.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-12
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:941
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, aa.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "aa"}]
+    golden: golden/type-length-12.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-13
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:943
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, bb.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "bb"}]
+    golden: golden/type-length-13.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-14
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:945
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, cc.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "cc"}]
+    golden: golden/type-length-14.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-15
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:951
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, ff.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "ff"}]
+    golden: golden/type-length-15.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-16
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:953
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, gg.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "gg"}]
+    golden: golden/type-length-16.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-17
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:955
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, hh.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "hh"}]
+    golden: golden/type-length-17.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-18
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:957
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, ii.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "ii"}]
+    golden: golden/type-length-18.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-19
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:959
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, jj.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "jj"}]
+    golden: golden/type-length-19.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-20
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:961
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, kk.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "kk"}]
+    golden: golden/type-length-20.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-21
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:966
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, ll.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "ll"}]
+    golden: golden/type-length-21.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-22
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:969
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, mm.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "mm"}]
+    golden: golden/type-length-22.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-23
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:972
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, nn.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "nn"}]
+    golden: golden/type-length-23.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-24
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:976
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, oo.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "oo"}]
+    golden: golden/type-length-24.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-25
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:980
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, pp.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "pp"}]
+    golden: golden/type-length-25.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-26
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:983
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, qq.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "qq"}]
+    golden: golden/type-length-26.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-27
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:986
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, rr.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "rr"}]
+    golden: golden/type-length-27.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-length-28
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_length:990
+    rfc: ["RFC7950#9.4.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.1, b.2, c.2, d.2, e.2, f.2, g.2, h.2, i.2, j.2, k.1, ss.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "d"}, {name: "e"}, {name: "f"}, {name: "g"}, {name: "h"}, {name: "i"}, {name: "j"}, {name: "k"}, {name: "ss"}]
+    golden: golden/type-length-28.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-pattern-01
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_pattern:1000
+    rfc: ["RFC7950#9.4.5"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+    golden: golden/type-pattern-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: null
+
+  - id: ut-compile-types/type-enum-01
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_enum:1025
+    rfc: ["RFC7950#9.6.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.3]
+      modules: [{name: "a"}]
+    golden: golden/type-enum-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-enum-02
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_enum:1044
+    rfc: ["RFC7950#9.6.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.3, b.3]
+      modules: [{name: "a"}, {name: "b"}]
+    golden: golden/type-enum-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-enum-03
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_enum:1061
+    rfc: ["RFC7950#9.6.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.3, b.3, moc_c.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "moc_c"}]
+    golden: golden/type-enum-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-enum-04
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_enum:1079
+    rfc: ["RFC7950#9.6.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.3, b.3, moc_c.1, moc_d.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "moc_c"}, {name: "moc_d"}]
+    golden: golden/type-enum-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-enum-05
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_enum:1092
+    rfc: ["RFC7950#9.6.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.3, b.3, moc_c.1, moc_d.1, aa.2]
+      modules: [{name: "a"}, {name: "b"}, {name: "moc_c"}, {name: "moc_d"}, {name: "aa"}]
+    golden: golden/type-enum-05.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-enum-06
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_enum:1097
+    rfc: ["RFC7950#9.6.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.3, b.3, moc_c.1, moc_d.1, aa.3]
+      modules: [{name: "a"}, {name: "b"}, {name: "moc_c"}, {name: "moc_d"}, {name: "aa"}]
+    golden: golden/type-enum-06.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-enum-07
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_enum:1101
+    rfc: ["RFC7950#9.6.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.3, b.3, moc_c.1, moc_d.1, aa.4]
+      modules: [{name: "a"}, {name: "b"}, {name: "moc_c"}, {name: "moc_d"}, {name: "aa"}]
+    golden: golden/type-enum-07.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-enum-08
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_enum:1105
+    rfc: ["RFC7950#9.6.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.3, b.3, moc_c.1, moc_d.1, aa.5]
+      modules: [{name: "a"}, {name: "b"}, {name: "moc_c"}, {name: "moc_d"}, {name: "aa"}]
+    golden: golden/type-enum-08.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-enum-09
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_enum:1109
+    rfc: ["RFC7950#9.6.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.3, b.3, moc_c.1, moc_d.1, aa.6]
+      modules: [{name: "a"}, {name: "b"}, {name: "moc_c"}, {name: "moc_d"}, {name: "aa"}]
+    golden: golden/type-enum-09.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-enum-10
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_enum:1113
+    rfc: ["RFC7950#9.6.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.3, b.3, moc_c.1, moc_d.1, aa.7]
+      modules: [{name: "a"}, {name: "b"}, {name: "moc_c"}, {name: "moc_d"}, {name: "aa"}]
+    golden: golden/type-enum-10.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-enum-11
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_enum:1117
+    rfc: ["RFC7950#9.6.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.3, b.3, moc_c.1, moc_d.1, aa.8]
+      modules: [{name: "a"}, {name: "b"}, {name: "moc_c"}, {name: "moc_d"}, {name: "aa"}]
+    golden: golden/type-enum-11.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-enum-12
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_enum:1121
+    rfc: ["RFC7950#9.6.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.3, b.3, moc_c.1, moc_d.1, aa.9]
+      modules: [{name: "a"}, {name: "b"}, {name: "moc_c"}, {name: "moc_d"}, {name: "aa"}]
+    golden: golden/type-enum-12.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-enum-13
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_enum:1125
+    rfc: ["RFC7950#9.6.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.3, b.3, moc_c.1, moc_d.1, aa.9, bb.2]
+      modules: [{name: "a"}, {name: "b"}, {name: "moc_c"}, {name: "moc_d"}, {name: "aa"}, {name: "bb"}]
+    golden: golden/type-enum-13.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-enum-14
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_enum:1128
+    rfc: ["RFC7950#9.6.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.3, b.3, moc_c.1, moc_d.1, aa.9, cc.2]
+      modules: [{name: "a"}, {name: "b"}, {name: "moc_c"}, {name: "moc_d"}, {name: "aa"}, {name: "cc"}]
+    golden: golden/type-enum-14.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-enum-15
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_enum:1132
+    rfc: ["RFC7950#9.6.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.3, b.3, moc_c.1, moc_d.1, aa.9, dd.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "moc_c"}, {name: "moc_d"}, {name: "aa"}, {name: "dd"}]
+    golden: golden/type-enum-15.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-enum-16
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_enum:1135
+    rfc: ["RFC7950#9.6.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.3, b.3, moc_c.1, moc_d.1, aa.9, ee.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "moc_c"}, {name: "moc_d"}, {name: "aa"}, {name: "ee"}]
+    golden: golden/type-enum-16.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-enum-17
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_enum:1140
+    rfc: ["RFC7950#9.6.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.3, b.3, moc_c.1, moc_d.1, aa.9, ff.2]
+      modules: [{name: "a"}, {name: "b"}, {name: "moc_c"}, {name: "moc_d"}, {name: "aa"}, {name: "ff"}]
+    golden: golden/type-enum-17.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-enum-18
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_enum:1144
+    rfc: ["RFC7950#9.6.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.3, b.3, moc_c.1, moc_d.1, aa.9, gg.2]
+      modules: [{name: "a"}, {name: "b"}, {name: "moc_c"}, {name: "moc_d"}, {name: "aa"}, {name: "gg"}]
+    golden: golden/type-enum-18.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-enum-19
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_enum:1148
+    rfc: ["RFC7950#9.6.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.3, b.3, moc_c.1, moc_d.1, aa.9, hh.2]
+      modules: [{name: "a"}, {name: "b"}, {name: "moc_c"}, {name: "moc_d"}, {name: "aa"}, {name: "hh"}]
+    golden: golden/type-enum-19.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-dec64-01
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_dec64:1159
+    rfc: ["RFC7950#9.3.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.4]
+      modules: [{name: "a"}]
+    golden: golden/type-dec64-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.3.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-dec64-02
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_dec64:1171
+    rfc: ["RFC7950#9.3.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.4, b.4]
+      modules: [{name: "a"}, {name: "b"}]
+    golden: golden/type-dec64-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.3.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-dec64-03
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_dec64:1187
+    rfc: ["RFC7950#9.3.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.4, b.4, c.3]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}]
+    golden: golden/type-dec64-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.3.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-dec64-04
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_dec64:1199
+    rfc: ["RFC7950#9.3.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.4, b.4, c.3, aa.10]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "aa"}]
+    golden: golden/type-dec64-04.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.3.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-dec64-05
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_dec64:1202
+    rfc: ["RFC7950#9.3.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.4, b.4, c.3, aa.11]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "aa"}]
+    golden: golden/type-dec64-05.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.3.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-dec64-06
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_dec64:1205
+    rfc: ["RFC7950#9.3.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.4, b.4, c.3, aa.12]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "aa"}]
+    golden: golden/type-dec64-06.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.3.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-dec64-07
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_dec64:1209
+    rfc: ["RFC7950#9.3.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.4, b.4, c.3, aa.13]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "aa"}]
+    golden: golden/type-dec64-07.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.3.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-dec64-08
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_dec64:1212
+    rfc: ["RFC7950#9.3.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.4, b.4, c.3, ab.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "ab"}]
+    golden: golden/type-dec64-08.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.3.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-dec64-09
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_dec64:1215
+    rfc: ["RFC7950#9.3.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.4, b.4, c.3, bb.3]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "bb"}]
+    golden: golden/type-dec64-09.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.3.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-dec64-10
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_dec64:1223
+    rfc: ["RFC7950#9.3.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.4, b.4, c.3, dd.2]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "dd"}]
+    golden: golden/type-dec64-10.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.3.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-dec64-11
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_dec64:1227
+    rfc: ["RFC7950#9.3.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.4, b.4, c.3, de.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "de"}]
+    golden: golden/type-dec64-11.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.3.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-dec64-12
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_dec64:1232
+    rfc: ["RFC7950#9.3.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.4, b.4, c.3, ee.2]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "ee"}]
+    golden: golden/type-dec64-12.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.3.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-dec64-13
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_dec64:1235
+    rfc: ["RFC7950#9.3.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.4, b.4, c.3, ee.3]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "ee"}]
+    golden: golden/type-dec64-13.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.3.4"]
+      deviation: null
+
+  - id: ut-compile-types/type-instanceid-01
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_instanceid:1247
+    rfc: ["RFC7950#9.13.2"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.5]
+      modules: [{name: "a"}]
+    golden: golden/type-instanceid-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.13.2"]
+      deviation: null
+
+  - id: ut-compile-types/type-identityref-01
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_identityref:1641
+    rfc: ["RFC7950#9.10.2"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.6]
+      modules: [{name: "a"}]
+    golden: golden/type-identityref-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-compile-types/type-identityref-02
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_identityref:1659
+    rfc: ["RFC7950#9.10.2"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.6, b.5]
+      modules: [{name: "a"}, {name: "b"}]
+    golden: golden/type-identityref-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-compile-types/type-identityref-03
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_identityref:1670
+    rfc: ["RFC7950#9.10.2"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.6, b.5, aa.14]
+      modules: [{name: "a"}, {name: "b"}, {name: "aa"}]
+    golden: golden/type-identityref-03.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-compile-types/type-identityref-04
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_identityref:1673
+    rfc: ["RFC7950#9.10.2"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.6, b.5, bb.4]
+      modules: [{name: "a"}, {name: "b"}, {name: "bb"}]
+    golden: golden/type-identityref-04.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-compile-types/type-identityref-05
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_identityref:1677
+    rfc: ["RFC7950#9.10.2"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.6, b.5, cc.3]
+      modules: [{name: "a"}, {name: "b"}, {name: "cc"}]
+    golden: golden/type-identityref-05.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-compile-types/type-identityref-06
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_identityref:1682
+    rfc: ["RFC7950#9.10.2"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.6, b.5, dd.3]
+      modules: [{name: "a"}, {name: "b"}, {name: "dd"}]
+    golden: golden/type-identityref-06.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-compile-types/type-identityref-07
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_identityref:1687
+    rfc: ["RFC7950#9.10.2"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.6, b.5, ee.4]
+      modules: [{name: "a"}, {name: "b"}, {name: "ee"}]
+    golden: golden/type-identityref-07.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-compile-types/type-identityref-08
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_identityref:1691
+    rfc: ["RFC7950#9.10.2"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.6, b.5, ff.3]
+      modules: [{name: "a"}, {name: "b"}, {name: "ff"}]
+    golden: golden/type-identityref-08.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-compile-types/type-identityref-09
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_identityref:1694
+    rfc: ["RFC7950#9.10.2"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.6, b.5, gg.3]
+      modules: [{name: "a"}, {name: "b"}, {name: "gg"}]
+    golden: golden/type-identityref-09.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ut-compile-types/type-empty-01
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_empty:2123
+    rfc: ["RFC7950#9.11"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [aa.15]
+      modules: [{name: "aa"}]
+    golden: golden/type-empty-01.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.11"]
+      deviation: null
+
+  - id: ut-compile-types/type-empty-02
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_empty:2127
+    rfc: ["RFC7950#9.11"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [bb.5]
+      modules: [{name: "bb"}]
+    golden: golden/type-empty-02.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.11"]
+      deviation: null
+
+  - id: ut-compile-types/type-union-01
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_union:2138
+    rfc: ["RFC7950#9.12"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.7]
+      modules: [{name: "a"}]
+    golden: golden/type-union-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: ut-compile-types/type-union-02
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_union:2150
+    rfc: ["RFC7950#9.12"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.7, b.6]
+      modules: [{name: "a"}, {name: "b"}]
+    golden: golden/type-union-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: ut-compile-types/type-union-03
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_union:2163
+    rfc: ["RFC7950#9.12"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.7, b.6, c.4]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}]
+    golden: golden/type-union-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: ut-compile-types/type-union-04
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_union:2181
+    rfc: ["RFC7950#9.12"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.7, b.6, c.4, aa.16]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "aa"}]
+    golden: golden/type-union-04.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: ut-compile-types/type-union-05
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_union:2185
+    rfc: ["RFC7950#9.12"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.7, b.6, c.4, bb.6]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "bb"}]
+    golden: golden/type-union-05.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: ut-compile-types/type-union-06
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_union:2188
+    rfc: ["RFC7950#9.12"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.7, b.6, c.4, cc.4]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "cc"}]
+    golden: golden/type-union-06.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: ut-compile-types/type-union-07
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_union:2192
+    rfc: ["RFC7950#9.12"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.7, b.6, c.4, dd.4]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "dd"}]
+    golden: golden/type-union-07.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: ut-compile-types/type-union-08
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_union:2197
+    rfc: ["RFC7950#9.12"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.7, b.6, c.4, ee.5]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "ee"}]
+    golden: golden/type-union-08.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: ut-compile-types/type-union-09
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_union:2201
+    rfc: ["RFC7950#9.12"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.7, b.6, c.4, ef.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "ef"}]
+    golden: golden/type-union-09.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: ut-compile-types/type-union-10
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_union:2205
+    rfc: ["RFC7950#9.12"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.7, b.6, c.4, test.1]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "test"}]
+    golden: golden/type-union-10.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: ut-compile-types/type-exts-01
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_exts:2410
+    rfc: ["RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [my-extensions.1]
+      modules: [{name: "my-extensions"}]
+    golden: golden/type-exts-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.19"]
+      deviation: null
+
+  - id: ut-compile-types/type-exts-02
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_exts:2411
+    rfc: ["RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [my-extensions.1, module-inet.1]
+      modules: [{name: "my-extensions"}, {name: "module-inet"}]
+    golden: golden/type-exts-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.19"]
+      deviation: null
+
+  - id: ut-compile-types/type-exts-03
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_exts:2412
+    rfc: ["RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [my-extensions.1, module-inet.1, module-a.1]
+      modules: [{name: "my-extensions"}, {name: "module-inet"}, {name: "module-a"}]
+    golden: golden/type-exts-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.19"]
+      deviation: null
+
+  - id: ut-compile-types/type-exts-04
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_exts:2413
+    rfc: ["RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [my-extensions.1, module-inet.1, module-a.1, main-module.1]
+      modules: [{name: "my-extensions"}, {name: "module-inet"}, {name: "module-a"}, {name: "main-module"}]
+    golden: golden/type-exts-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.19"]
+      deviation: null
+# END ut-compile-types

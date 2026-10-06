@@ -1,0 +1,32 @@
+module module-inet {
+  yang-version 1.1;
+  namespace "urn:module-inet";
+  prefix mod-inet;
+
+  import ietf-inet-types {
+    prefix inet;
+  }
+
+  import my-extensions {
+    prefix my-ext;
+  }
+
+  typedef domain-name {
+    type inet:domain-name {
+      my-ext:shortdesc "<host-name>";
+    }
+  }
+
+  typedef ipv4-address {
+    type inet:ipv4-address-no-zone {
+      my-ext:shortdesc "<A.B.C.D>";
+    }
+  }
+  typedef my-enum {
+    type enumeration {
+      enum one;
+      enum two;
+      enum three;
+    }
+  }
+}

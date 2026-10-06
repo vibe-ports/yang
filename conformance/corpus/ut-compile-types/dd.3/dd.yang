@@ -1,0 +1,1 @@
+module dd {namespace urn:dd;prefix dd; identity i; typedef mytype {type identityref {base i;}}typedef mytype2 {type mytype {base i;}}leaf l {type mytype2;}}

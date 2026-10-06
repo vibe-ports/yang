@@ -1,0 +1,526 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module a {\n  namespace \"urn:a\";\n  prefix a;\n\n  leaf l {\n    type binary {\n      length \"0\" {\n        error-message\n          \"error\";\n        error-app-tag \"errortag\";\n      }\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "a",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "a",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/a:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "binary",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": "0",
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module b {\n  namespace \"urn:b\";\n  prefix b;\n\n  leaf l {\n    type binary {\n      length \"18446744073709551615\";\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "b",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "b",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/b:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "binary",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": "18446744073709551615",
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module c {\n  namespace \"urn:c\";\n  prefix c;\n\n  leaf l {\n    type binary {\n      length \"0..18446744073709551615\";\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "c",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "c",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/c:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "binary",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": "0..18446744073709551615",
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module d {\n  namespace \"urn:d\";\n  prefix d;\n\n  leaf l {\n    type binary {\n      length \"5\";\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "d",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "d",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/d:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "binary",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": "5",
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module e {\n  namespace \"urn:e\";\n  prefix e;\n\n  leaf l {\n    type binary {\n      length \"1..10\";\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "e",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "e",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/e:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "binary",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": "1..10",
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module f {\n  namespace \"urn:f\";\n  prefix f;\n\n  leaf l {\n    type binary {\n      length \"1..10 | 20..30\";\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "f",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "f",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/f:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "binary",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": "1..10 | 20..30",
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module g {\n  namespace \"urn:g\";\n  prefix g;\n\n  leaf l {\n    type binary {\n      length \"16 | 32\";\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "g",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "g",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/g:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "binary",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": "16 | 32",
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module h {\n  namespace \"urn:h\";\n  prefix h;\n\n  leaf l {\n    type binary {\n      length \"10\";\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "h",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "h",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/h:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "binary",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": "10",
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "mytype"
+            ],
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module i {\n  namespace \"urn:i\";\n  prefix i;\n\n  leaf l {\n    type binary {\n      length \"50\";\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "i",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "i",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/i:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "binary",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": "50",
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "mytype"
+            ],
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module j {\n  namespace \"urn:j\";\n  prefix j;\n\n  leaf l {\n    type binary {\n      length \"10..30 | 60..100\";\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "j",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "j",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/j:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "binary",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": "10..30 | 60..100",
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "mytype"
+            ],
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module k {\n  namespace \"urn:k\";\n  prefix k;\n\n  leaf l {\n    type binary {\n      length \"10..80\";\n    }\n    config true;\n    status current;\n  }\n  leaf ll {\n    type binary {\n      length \"10..100\";\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "k",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "k",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/k:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "binary",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": "10..80",
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "mytype"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "k",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/k:ll",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "binary",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": "10..100",
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "mytype"
+            ],
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Invalid length restriction - the derived restriction (15) is not equally or more limiting.",
+          "phase": "compile",
+          "schema_path": "/pp:l",
+          "vecode": 2,
+          "vecode_name": "LYVE_SYNTAX_YANG"
+        }
+      ],
+      "name": "pp",
+      "phase": "compile",
+      "rc": {
+        "err": 7,
+        "name": "LY_EVALID"
+      }
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

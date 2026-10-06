@@ -1,0 +1,1 @@
+module cc {yang-version 1.1;namespace urn:cc;prefix cc;typedef mytype {type enumeration {enum one;}}leaf l {type mytype {enum two;}}}

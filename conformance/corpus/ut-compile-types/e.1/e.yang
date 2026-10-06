@@ -1,0 +1,1 @@
+module e {namespace urn:e;prefix e;leaf l {type uint8 {range min..10|max;}}}

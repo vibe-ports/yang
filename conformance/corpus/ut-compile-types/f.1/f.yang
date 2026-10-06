@@ -1,0 +1,1 @@
+module f {namespace urn:f;prefix f;leaf l {type uint16 {range min..10|max;}}}

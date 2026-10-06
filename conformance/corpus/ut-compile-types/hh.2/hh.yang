@@ -1,0 +1,1 @@
+module hh {namespace urn:hh;prefix hh; typedef mytype {type enumeration {enum one;}}leaf l {type mytype {enum one;}}}

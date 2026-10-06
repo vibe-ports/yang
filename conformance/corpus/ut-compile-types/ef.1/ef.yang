@@ -1,0 +1,1 @@
+module ef {namespace urn:ef;prefix ef;typedef mytype {type mytype2;}typedef mytype2 {type mytype;} leaf l {type mytype;}}

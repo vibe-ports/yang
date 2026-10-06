@@ -1,0 +1,38 @@
+module main-module {
+  yang-version 1.1;
+  namespace "urn:main-module";
+  prefix main;
+
+  import module-a {
+    prefix mod-a;
+  }
+
+  import module-inet {
+    prefix mod-inet;
+  }
+
+  import my-extensions {
+    prefix my-ext;
+  }
+
+  container config {
+    leaf server {
+      type mod-a:server-address {
+        my-ext:shortdesc "<server-address>";
+      }
+    }
+
+    leaf hostname {
+      type union {
+        type mod-inet:domain-name;
+        type string;
+      }
+    }
+  }
+
+  leaf my-leaf {
+    type mod-inet:my-enum {
+      my-ext:shortdesc "my enum";
+    }
+  }
+}

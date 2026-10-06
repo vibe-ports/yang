@@ -1,0 +1,1 @@
+module bb {namespace urn:bb;prefix bb; typedef mytype {type identityref;}leaf l {type mytype;}}

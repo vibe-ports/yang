@@ -1,0 +1,1 @@
+module moc_d {yang-version 1.1; namespace urn:moc_d;prefix moc_d;feature f; typedef mytype {type enumeration {enum first; enum second;}} leaf l { type mytype;}}

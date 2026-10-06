@@ -1,0 +1,1 @@
+module f {namespace urn:f;prefix f;leaf l {type binary {length 1..10|20..30;}}}

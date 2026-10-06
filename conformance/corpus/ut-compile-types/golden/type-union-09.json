@@ -1,0 +1,341 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module a {\n  namespace \"urn:a\";\n  prefix a;\n\n  leaf l {\n    type union {\n      type int8;\n      type string;\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "a",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "a",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/a:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "mytype"
+            ],
+            "union": [
+              {
+                "base": "int8",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              },
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": [
+                  "mybasetype"
+                ],
+                "union": null
+              }
+            ]
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module b {\n  namespace \"urn:b\";\n  prefix b;\n\n  leaf l {\n    type union {\n      type decimal64 {\n        fraction-digits 2;\n      }\n      type int8;\n      type string;\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "b",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "b",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/b:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": [
+              {
+                "base": "decimal64",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": 2,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              },
+              {
+                "base": "int8",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              },
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": [
+                  "mybasetype"
+                ],
+                "union": null
+              }
+            ]
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module c {\n  namespace \"urn:c\";\n  prefix c;\n\n  leaf l {\n    type union {\n      type decimal64 {\n        fraction-digits 2;\n      }\n      type leafref {\n        path \"../target\";\n        require-instance true;\n        type int8;\n      }\n      type string;\n    }\n    config true;\n    status current;\n  }\n  leaf target {\n    type leafref {\n      path \"../realtarget\";\n      require-instance true;\n      type int8;\n    }\n    config true;\n    status current;\n  }\n  leaf realtarget {\n    type int8;\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "c",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "c",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/c:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": [
+              {
+                "base": "decimal64",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": 2,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              },
+              {
+                "base": "leafref",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": {
+                  "path": "../target",
+                  "require_instance": true,
+                  "target": "/c:target"
+                },
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              },
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": [
+                  "mybasetype"
+                ],
+                "union": null
+              }
+            ]
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "c",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/c:target",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "../realtarget",
+              "require_instance": true,
+              "target": "/c:realtarget"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "c",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/c:realtarget",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "int8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Invalid \"mytype\" type reference - circular chain of types detected.",
+          "phase": "compile",
+          "schema_path": "/ef:l",
+          "vecode": 4,
+          "vecode_name": "LYVE_REFERENCE"
+        }
+      ],
+      "name": "ef",
+      "phase": "compile",
+      "rc": {
+        "err": 7,
+        "name": "LY_EVALID"
+      }
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

@@ -1,0 +1,1 @@
+module oo {namespace urn:oo;prefix oo;typedef mytype {type binary {length 10..100;}}leaf l {type mytype {length 20..30|110..120;}}}

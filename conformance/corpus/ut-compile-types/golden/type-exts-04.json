@@ -1,0 +1,254 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module my-extensions {\n  namespace \"urn:my-extensions\";\n  prefix my-ext;\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "my-extensions",
+      "revision": null,
+      "schema_tree": []
+    },
+    {
+      "accepted": true,
+      "compiled": "module module-inet {\n  namespace \"urn:module-inet\";\n  prefix mod-inet;\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "module-inet",
+      "revision": null,
+      "schema_tree": []
+    },
+    {
+      "accepted": true,
+      "compiled": "module module-a {\n  namespace \"urn:module-a\";\n  prefix mod-a;\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "module-a",
+      "revision": null,
+      "schema_tree": []
+    },
+    {
+      "accepted": true,
+      "compiled": "module main-module {\n  namespace \"urn:main-module\";\n  prefix main;\n\n  container config {\n    config true;\n    status current;\n    leaf server {\n      type union {\n        my-extensions:shortdesc \"<server-address>\";\n        type string {\n          my-extensions:shortdesc \"<A.B.C.D>\";\n          my-extensions:shortdesc \"<ipv4-address>\";\n          pattern \"(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?\";\n          pattern \"[0-9\\\\.]*\";\n        }\n        type string {\n          my-extensions:shortdesc \"<host-name>\";\n          my-extensions:shortdesc \"<fqdn>\";\n          length \"1..253\";\n          pattern \"((([a-zA-Z0-9_]([a-zA-Z0-9\\\\-_]){0,61})?[a-zA-Z0-9]\\\\.)*([a-zA-Z0-9_]([a-zA-Z0-9\\\\-_]){0,61})?[a-zA-Z0-9]\\\\.?)|\\\\.\";\n        }\n      }\n      config true;\n      status current;\n    }\n    leaf hostname {\n      type union {\n        type string {\n          my-extensions:shortdesc \"<host-name>\";\n          length \"1..253\";\n          pattern \"((([a-zA-Z0-9_]([a-zA-Z0-9\\\\-_]){0,61})?[a-zA-Z0-9]\\\\.)*([a-zA-Z0-9_]([a-zA-Z0-9\\\\-_]){0,61})?[a-zA-Z0-9]\\\\.?)|\\\\.\";\n        }\n        type string;\n      }\n      config true;\n      status current;\n    }\n  }\n  leaf my-leaf {\n    type enumeration {\n      my-extensions:shortdesc \"my enum\";\n      enum \"one\" {\n        value 0;\n        status current;\n      }\n      enum \"two\" {\n        value 1;\n        status current;\n      }\n      enum \"three\" {\n        value 2;\n        status current;\n      }\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "main-module",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "main-module",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/main-module:config",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "main-module",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/main-module:config/server",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "server-address"
+            ],
+            "union": [
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": [
+                  {
+                    "expr": "(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?",
+                    "invert": false
+                  },
+                  {
+                    "expr": "[0-9\\.]*",
+                    "invert": false
+                  }
+                ],
+                "range": null,
+                "typedefs": [
+                  "ipv4-address"
+                ],
+                "union": null
+              },
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": "1..253",
+                "patterns": [
+                  {
+                    "expr": "((([a-zA-Z0-9_]([a-zA-Z0-9\\-_]){0,61})?[a-zA-Z0-9]\\.)*([a-zA-Z0-9_]([a-zA-Z0-9\\-_]){0,61})?[a-zA-Z0-9]\\.?)|\\.",
+                    "invert": false
+                  }
+                ],
+                "range": null,
+                "typedefs": [
+                  "domain-name"
+                ],
+                "union": null
+              }
+            ]
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "main-module",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/main-module:config/hostname",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": [
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": "1..253",
+                "patterns": [
+                  {
+                    "expr": "((([a-zA-Z0-9_]([a-zA-Z0-9\\-_]){0,61})?[a-zA-Z0-9]\\.)*([a-zA-Z0-9_]([a-zA-Z0-9\\-_]){0,61})?[a-zA-Z0-9]\\.?)|\\.",
+                    "invert": false
+                  }
+                ],
+                "range": null,
+                "typedefs": [
+                  "domain-name"
+                ],
+                "union": null
+              },
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              }
+            ]
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "main-module",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/main-module:my-leaf",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "one",
+                "value": 0
+              },
+              {
+                "name": "two",
+                "value": 1
+              },
+              {
+                "name": "three",
+                "value": 2
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "my-enum"
+            ],
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

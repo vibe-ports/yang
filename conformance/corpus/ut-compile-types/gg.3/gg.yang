@@ -1,0 +1,1 @@
+module gg {namespace urn:gg;prefix gg;leaf l {type identityref {base x:j;}}}

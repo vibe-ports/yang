@@ -1,0 +1,1 @@
+module aa {namespace urn:aa;prefix aa; feature f; leaf l {type enumeration {enum one {if-feature f;}}}}

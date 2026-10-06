@@ -1,0 +1,1 @@
+module dd {namespace urn:dd;prefix dd;typedef mytype {type union{type int8; type string;}}typedef mytype2 {type mytype {type string;}}leaf l {type mytype2;}}

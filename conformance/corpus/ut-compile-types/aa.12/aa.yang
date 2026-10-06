@@ -1,0 +1,1 @@
+module aa {namespace urn:aa;prefix aa; leaf l {type decimal64 {fraction-digits 19;}}}

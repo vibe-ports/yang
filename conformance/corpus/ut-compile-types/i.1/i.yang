@@ -1,0 +1,1 @@
+module i {namespace urn:i;prefix i;typedef mytype {type uint8 {range 10..100;}}typedef mytype2 {type mytype;} leaf l {type mytype2;}}

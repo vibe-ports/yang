@@ -1,0 +1,1 @@
+module j {namespace urn:j;prefix j;typedef mytype {type uint8 {range 1..100{description "one to hundred";reference A;}}}leaf l {type mytype {range 1..10 {description "one to ten";reference B;}}}}

@@ -1,0 +1,1 @@
+module kk {namespace urn:kk;prefix kk;leaf l {type binary {length "10 |";}}}

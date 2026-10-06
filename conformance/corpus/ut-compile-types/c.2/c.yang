@@ -1,0 +1,1 @@
+module c {namespace urn:c;prefix c;leaf l {type binary {length min..max;}}}

@@ -1,0 +1,1 @@
+module b {namespace urn:b;prefix b;typedef mytype {type decimal64 {fraction-digits 2;range '3.14 | 5.1 | 10';}}leaf l {type mytype;}}

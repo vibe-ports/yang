@@ -1,0 +1,317 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module a {\n  namespace \"urn:a\";\n  prefix a;\n\n  leaf l {\n    type enumeration {\n      enum \"automin\" {\n        value 0;\n        status current;\n      }\n      enum \"min\" {\n        value -2147483648;\n        status current;\n      }\n      enum \"two\" {\n        value 2;\n        status current;\n      }\n      enum \"seven\" {\n        value 7;\n        status current;\n      }\n      enum \"eight\" {\n        value 8;\n        status current;\n      }\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": false,
+          "name": "f"
+        }
+      ],
+      "identities": [],
+      "name": "a",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "a",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/a:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "automin",
+                "value": 0
+              },
+              {
+                "name": "min",
+                "value": -2147483648
+              },
+              {
+                "name": "two",
+                "value": 2
+              },
+              {
+                "name": "seven",
+                "value": 7
+              },
+              {
+                "name": "eight",
+                "value": 8
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module b {\n  namespace \"urn:b\";\n  prefix b;\n\n  leaf l {\n    type enumeration {\n      enum \"seven\" {\n        value 7;\n        status current;\n      }\n      enum \"eight\" {\n        value 8;\n        status current;\n      }\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": false,
+          "name": "f"
+        }
+      ],
+      "identities": [],
+      "name": "b",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "b",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/b:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "seven",
+                "value": 7
+              },
+              {
+                "name": "eight",
+                "value": 8
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "mytype"
+            ],
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module moc_c {\n  namespace \"urn:moc_c\";\n  prefix moc_c;\n\n  leaf l {\n    type enumeration {\n      enum \"first\" {\n        value -270;\n        status current;\n      }\n      enum \"second\" {\n        value -269;\n        status current;\n      }\n      enum \"third\" {\n        value -400;\n        status current;\n      }\n      enum \"fourth\" {\n        value -268;\n        status current;\n      }\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": false,
+          "name": "f"
+        }
+      ],
+      "identities": [],
+      "name": "moc_c",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "moc_c",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/moc_c:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "first",
+                "value": -270
+              },
+              {
+                "name": "second",
+                "value": -269
+              },
+              {
+                "name": "third",
+                "value": -400
+              },
+              {
+                "name": "fourth",
+                "value": -268
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "mytype"
+            ],
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module moc_d {\n  namespace \"urn:moc_d\";\n  prefix moc_d;\n\n  leaf l {\n    type enumeration {\n      enum \"first\" {\n        value 0;\n        status current;\n      }\n      enum \"second\" {\n        value 1;\n        status current;\n      }\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": false,
+          "name": "f"
+        }
+      ],
+      "identities": [],
+      "name": "moc_d",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "moc_d",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/moc_d:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "first",
+                "value": 0
+              },
+              {
+                "name": "second",
+                "value": 1
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "mytype"
+            ],
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module aa {\n  namespace \"urn:aa\";\n  prefix aa;\n\n  leaf l {\n    type enumeration {\n      enum \"inva\\nlid\" {\n        value 0;\n        status current;\n      }\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Control characters in enum name should be avoided (\"inva\nlid\", character number 5).",
+          "phase": "parse",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "features": [],
+      "identities": [],
+      "name": "aa",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "aa",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/aa:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "inva\nlid",
+                "value": 0
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

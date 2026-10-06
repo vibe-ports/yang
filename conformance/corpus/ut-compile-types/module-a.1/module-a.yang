@@ -1,0 +1,24 @@
+module module-a {
+  yang-version 1.1;
+  namespace "urn:module-a";
+  prefix mod-a;
+
+  import module-inet {
+    prefix mod-inet;
+  }
+
+  import my-extensions {
+    prefix my-ext;
+  }
+
+  typedef server-address {
+    type union {
+      type mod-inet:ipv4-address {
+        my-ext:shortdesc "<ipv4-address>";
+      }
+      type mod-inet:domain-name {
+        my-ext:shortdesc "<fqdn>";
+      }
+    }
+  }
+}

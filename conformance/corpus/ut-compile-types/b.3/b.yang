@@ -1,0 +1,1 @@
+module b {yang-version 1.1; namespace urn:b;prefix b;feature f; typedef mytype {type enumeration {enum 11; enum min {value -2147483648;}enum x$&;enum two; enum seven {value 7;}enum eight;}} leaf l { type mytype {enum seven;enum eight;}}}

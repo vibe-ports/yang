@@ -1,0 +1,1 @@
+module c {yang-version 1.1;namespace urn:c;prefix c; typedef mybasetype {type string;}typedef mytype {type union {type leafref {path ../target;} type mybasetype;}}leaf l {type union {type decimal64 {fraction-digits 2;} type mytype;}}leaf target {type leafref {path ../realtarget;}} leaf realtarget {type int8;}}

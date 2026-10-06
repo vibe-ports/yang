@@ -1,0 +1,29 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module my-extensions {\n  namespace \"urn:my-extensions\";\n  prefix my-ext;\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "my-extensions",
+      "revision": null,
+      "schema_tree": []
+    },
+    {
+      "accepted": true,
+      "compiled": "module module-inet {\n  namespace \"urn:module-inet\";\n  prefix mod-inet;\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "module-inet",
+      "revision": null,
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

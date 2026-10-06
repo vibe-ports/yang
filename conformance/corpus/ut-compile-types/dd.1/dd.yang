@@ -1,0 +1,1 @@
+module dd {yang-version 1.1;namespace urn:dd;prefix dd;typedef mytype {type enumeration {enum one;}}leaf l {type mytype {enum one {value 1;}}}}

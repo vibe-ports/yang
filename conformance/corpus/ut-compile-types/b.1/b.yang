@@ -1,0 +1,1 @@
+module b {namespace urn:b;prefix b;leaf l {type int16 {range min..10|max;}}}

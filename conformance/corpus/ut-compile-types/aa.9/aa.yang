@@ -1,0 +1,2 @@
+module aa {namespace urn:aa;prefix aa; leaf l {type enumeration {enum 'inva
+lid';}}}

@@ -1,0 +1,1 @@
+module cc {namespace urn:cc;prefix cc;leaf l {type binary {length "max .. 10";}}}

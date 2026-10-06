@@ -1,0 +1,1 @@
+module moc_c {yang-version 1.1; namespace urn:moc_c;prefix moc_c;feature f; typedef mytype {type enumeration {enum first{value -270;} enum second; enum third {value -400;} enum fourth;}} leaf l { type mytype;}}

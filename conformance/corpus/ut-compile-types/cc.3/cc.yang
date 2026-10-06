@@ -1,0 +1,1 @@
+module cc {namespace urn:cc;prefix cc; identity i; typedef mytype {type identityref {base i;}}leaf l {type mytype {base i;}}}

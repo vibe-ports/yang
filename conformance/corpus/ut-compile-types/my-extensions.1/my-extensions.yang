@@ -1,0 +1,8 @@
+module my-extensions {
+  namespace "urn:my-extensions";
+  prefix my-ext;
+
+  extension shortdesc {
+    argument shortdsc;
+  }
+}

@@ -1,0 +1,1 @@
+module ss {namespace urn:ss;prefix ss;leaf l {type binary {pattern '[0-9]*';}}}

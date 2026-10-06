@@ -1,0 +1,1 @@
+module d {namespace urn:d;prefix d;leaf l {type int64 {range min..10|max;}}}
