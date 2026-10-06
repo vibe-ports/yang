@@ -8,6 +8,7 @@
 package types
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -24,7 +25,8 @@ type PrintCtx struct {
 	Local *schema.Module
 	// Used collects, for FormatXML, the modules whose prefix was printed in first-use order: the
 	// caller declares `xmlns:<Prefix>="<Namespace>"` for each (libyang's printer does it after the
-	// value is printed). Local is never listed.
+	// value is printed). Local is never listed, except that an XML instance-identifier prefixes every
+	// node, Local's own included, so Local is then listed (and kept as Local afterwards).
 	Used []*schema.Module
 }
 
@@ -60,16 +62,26 @@ func (pc *PrintCtx) prefix(m *schema.Module, f Format) string {
 	return ""
 }
 
+// ErrUnsupported is wrapped by errors for input this port does not handle (the root package
+// re-exports it).
+var ErrUnsupported = errors.New("not supported")
+
 // Print ports the print callbacks (lyplg_type_print_clb) for every type: the value in format f.
 // Most types print their canonical form in every format; identityref and instance-identifier
 // qualify module names with the prefixes of f (see PrintCtx), a leafref prints as its target type,
-// a union as its selected member. FormatSchemaResolved is not supported (it needs an ordered prefix
-// list; NSCtx is a map). pc may be nil (no local module, prefixes are not collected).
-func Print(v Value, f Format, pc *PrintCtx) string {
+// a union as its selected member. FormatSchemaResolved (and any unknown format) is rejected with an
+// error wrapping ErrUnsupported: it needs an ordered prefix list, NSCtx is a map. pc may be nil (no
+// local module, prefixes are not collected).
+func Print(v Value, f Format, pc *PrintCtx) (string, error) {
+	switch f {
+	case FormatCanon, FormatJSON, FormatXML, FormatSchema:
+	default:
+		return "", fmt.Errorf("types: print in format %d: %w", f, ErrUnsupported)
+	}
 	if pc == nil {
 		pc = &PrintCtx{}
 	}
-	return printValue(v, f, pc)
+	return printValue(v, f, pc), nil
 }
 
 func printValue(v Value, f Format, pc *PrintCtx) string {

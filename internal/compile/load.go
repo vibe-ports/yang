@@ -18,13 +18,14 @@ import (
 	"github.com/vibe-ports/yang/internal/models"
 	"github.com/vibe-ports/yang/internal/parser"
 	"github.com/vibe-ports/yang/internal/schema"
+	"github.com/vibe-ports/yang/internal/types"
 )
 
 var (
 	// ErrBudget is wrapped by errors caused by an exceeded resource limit.
 	ErrBudget = errors.New("resource budget exceeded")
 	// ErrUnsupported is wrapped by errors for input this port does not handle (yet).
-	ErrUnsupported = errors.New("not supported")
+	ErrUnsupported = types.ErrUnsupported
 )
 
 // Options are the libyang context flags the loader reads.

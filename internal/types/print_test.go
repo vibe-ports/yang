@@ -3,6 +3,7 @@
 package types
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -107,7 +108,7 @@ func TestOraclePrint(t *testing.T) {
 				}
 				// XML: <name xmlns:p="ns">text</name>; a leaf-list entry or key is an element too
 				ctx := &PrintCtx{Local: f.ty4}
-				text := Print(v, FormatXML, ctx)
+				text := mustPrint(t, v, FormatXML, ctx)
 				decl := ""
 				for _, m := range ctx.Used {
 					decl += fmt.Sprintf(" xmlns:%s=%q", m.Prefix, m.Namespace)
@@ -116,12 +117,21 @@ func TestOraclePrint(t *testing.T) {
 					t.Errorf("XML %s: %s not in\n%s", it.leaf, want, g.Tree.XML)
 				}
 				// JSON: the string of the member, or the array entry
-				if want := fmt.Sprintf("%q", Print(v, FormatJSON, &PrintCtx{Local: f.ty4})); !strings.Contains(g.Tree.JSON, want) {
+				if want := fmt.Sprintf("%q", mustPrint(t, v, FormatJSON, &PrintCtx{Local: f.ty4})); !strings.Contains(g.Tree.JSON, want) {
 					t.Errorf("JSON %s: %s not in\n%s", it.leaf, want, g.Tree.JSON)
 				}
 			}
 		})
 	}
+}
+
+func mustPrint(t *testing.T, v Value, f Format, pc *PrintCtx) string {
+	t.Helper()
+	s, err := Print(v, f, pc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return s
 }
 
 // TestPrintFormats: the prefix forms of identityref and instance-identifier values that the
@@ -164,13 +174,18 @@ func TestPrintFormats(t *testing.T) {
 		{"instance-id schema", ii, FormatSchema, &PrintCtx{Local: f.ty4}, "/t4:c/t4:l[t4:k='t2:der']/t4:v"},
 		{"instance-id unprefixable", ii, FormatSchema, &PrintCtx{Local: f.ty2}, "/(null):c/(null):l[(null):k='t2:der']/(null):v"},
 	} {
-		if got := Print(tc.v, tc.f, tc.pc); got != tc.want {
+		if got := mustPrint(t, tc.v, tc.f, tc.pc); got != tc.want {
 			t.Errorf("%s: got %q, want %q", tc.name, got, tc.want)
 		}
 	}
-	// the XML printer keeps Local out of Used, even for an instance-identifier (all prefixed)
+	for _, fm := range []Format{FormatSchemaResolved, Format(99)} {
+		if _, err := Print(der, fm, nil); !errors.Is(err, ErrUnsupported) {
+			t.Errorf("format %d: %v", fm, err)
+		}
+	}
+	// an XML instance-identifier prefixes every node, Local's module too: it is listed in Used
 	pc := &PrintCtx{Local: f.ty4}
-	Print(ii, FormatXML, pc)
+	mustPrint(t, ii, FormatXML, pc)
 	if len(pc.Used) != 2 || pc.Used[0] != f.ty4 || pc.Used[1] != f.ty2 || pc.Local != f.ty4 {
 		t.Errorf("used %v local %v", pc.Used, pc.Local)
 	}
@@ -189,7 +204,7 @@ func TestPrintFormats(t *testing.T) {
 			t.Fatal(d.Msg)
 		}
 		for _, fm := range []Format{FormatCanon, FormatJSON, FormatXML, FormatSchema} {
-			if got := Print(v, fm, nil); got != tc.out {
+			if got := mustPrint(t, v, fm, nil); got != tc.out {
 				t.Errorf("%s format %d: %q", tc.t.Base, fm, got)
 			}
 		}
@@ -199,11 +214,11 @@ func TestPrintFormats(t *testing.T) {
 	if d != nil {
 		t.Fatal(d.Msg)
 	}
-	if got := Print(v, FormatJSON, &PrintCtx{Local: f.ty4}); got != "own" { // the member prints, qualified for f
+	if got := mustPrint(t, v, FormatJSON, &PrintCtx{Local: f.ty4}); got != "own" { // the member prints, qualified for f
 		t.Errorf("union member: %q", got)
 	}
 	v, _ = Store(un.Type, "7", FormatXML, HintData, xmlNS, un)
-	if got := Print(v, FormatXML, nil); got != "7" {
+	if got := mustPrint(t, v, FormatXML, nil); got != "7" {
 		t.Errorf("union int member: %q", got)
 	}
 }
