@@ -1,0 +1,41 @@
+module lref {
+  yang-version 1.1;
+  namespace "urn:tests:lref";
+  prefix pref;
+container test {
+    list a {
+        key "name";
+        leaf name {
+            type enumeration {
+                enum zero;
+                enum one;
+                enum two;
+            }
+        }
+    }
+
+    list b {
+        key "name";
+        leaf name {
+            type uint32;
+        }
+    }
+
+    list community {
+        key "name";
+        leaf name {
+            type string;
+        }
+        leaf view {
+            type union {
+                type leafref {
+                    path "../../a/name";
+                }
+                type leafref {
+                    path "../../b/name";
+                }
+            }
+        }
+    }
+}
+}

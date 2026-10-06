@@ -1,0 +1,72 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "defs",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"defs:un1\": \"ident2\",\n  \"defs:int8\": 10\n}\n",
+    "xml": "<un1 xmlns=\"urn:tests:defs\">ident2</un1>\n<int8 xmlns=\"urn:tests:defs\">10</int8>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:un1",
+      "schema": "/defs:un1",
+      "value": {
+        "canonical": "defs:ident2",
+        "type": "union",
+        "typedef": null,
+        "union_member": {
+          "index": 2,
+          "realtype": {
+            "type": "identityref",
+            "typedef": null
+          },
+          "type": "identityref",
+          "typedef": null
+        }
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:int8",
+      "schema": "/defs:int8",
+      "value": {
+        "canonical": "10",
+        "type": "int8",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

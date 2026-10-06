@@ -1,0 +1,91 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "defs",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"defs:un1\": \"/x:llist[3]\",\n  \"defs:llist\": [\n    \"x\",\n    \"y\"\n  ]\n}\n",
+    "xml": "<un1 xmlns=\"urn:tests:defs\">/x:llist[3]</un1>\n<llist xmlns=\"urn:tests:defs\">x</llist>\n<llist xmlns=\"urn:tests:defs\">y</llist>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:un1",
+      "schema": "/defs:un1",
+      "value": {
+        "canonical": "/x:llist[3]",
+        "type": "union",
+        "typedef": null,
+        "union_member": {
+          "index": 4,
+          "realtype": {
+            "type": "string",
+            "typedef": null
+          },
+          "type": "string",
+          "typedef": null
+        }
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:llist[.='x']",
+      "schema": "/defs:llist",
+      "value": {
+        "canonical": "x",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:llist[.='y']",
+      "schema": "/defs:llist",
+      "value": {
+        "canonical": "y",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

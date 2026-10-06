@@ -1,0 +1,139 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "val",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "lref",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"lref:test\": {\n    \"b\": [\n      {\n        \"name\": 2\n      }\n    ],\n    \"community\": [\n      {\n        \"name\": \"test\",\n        \"view\": 2\n      }\n    ]\n  }\n}\n",
+    "xml": "<test xmlns=\"urn:tests:lref\">\n  <b>\n    <name>2</name>\n  </b>\n  <community>\n    <name>test</name>\n    <view>2</view>\n  </community>\n</test>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/lref:test",
+      "schema": "/lref:test",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/lref:test/b[name='2']",
+      "schema": "/lref:test/b",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/lref:test/b[name='2']/name",
+      "schema": "/lref:test/b/name",
+      "value": {
+        "canonical": "2",
+        "type": "uint32",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/lref:test/community[name='test']",
+      "schema": "/lref:test/community",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/lref:test/community[name='test']/name",
+      "schema": "/lref:test/community/name",
+      "value": {
+        "canonical": "test",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/lref:test/community[name='test']/view",
+      "schema": "/lref:test/community/view",
+      "value": {
+        "canonical": "2",
+        "type": "union",
+        "typedef": null,
+        "union_member": {
+          "index": 1,
+          "realtype": {
+            "type": "uint32",
+            "typedef": null
+          },
+          "type": "leafref",
+          "typedef": null
+        }
+      }
+    }
+  ],
+  "verdict": "valid"
+}

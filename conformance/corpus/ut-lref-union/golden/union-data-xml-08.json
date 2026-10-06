@@ -1,0 +1,37 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [
+    {
+      "apptag": "instance-required",
+      "code": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "data_path": null,
+      "level": "error",
+      "line": 1,
+      "msg": "Invalid union value \"123456789012345678901\" - no matching subtype found:\n    ly2 leafref: Invalid leafref value \"123456789012345678901\" - no target instance \"/int8\" with the same value.\n    ly2 leafref: Invalid leafref value \"123456789012345678901\" - no target instance \"/int64\" with the same value.\n    ly2 identityref: Invalid identityref \"123456789012345678901\" value - identity not found in module \"defs\".\n    ly2 instance-identifier: Invalid instance-identifier \"123456789012345678901\" value - syntax error.\n    ly2 string: Unsatisfied length - string \"123456789012345678901\" length is not allowed.\n",
+      "phase": "data",
+      "schema_path": "/defs:un1",
+      "vecode": 9,
+      "vecode_name": "LYVE_DATA"
+    }
+  ],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "defs",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 7,
+    "name": "LY_EVALID"
+  },
+  "tree": null,
+  "verdict": "invalid"
+}

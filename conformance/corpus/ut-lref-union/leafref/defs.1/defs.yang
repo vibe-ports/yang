@@ -1,0 +1,5 @@
+module defs {
+  yang-version 1.1;
+  namespace "urn:tests:defs";
+  prefix pref;
+leaf lref {type leafref {path /leaflisttarget; require-instance true;}}leaf lref2 {type leafref {path "../list[id = current()/../str-norestr]/targets"; require-instance true;}}leaf str-norestr {type string;}list list {key id; leaf id {type string;} leaf value {type string;} leaf-list targets {type string;}}container cont {leaf leaftarget {type empty;}    list listtarget {key id; max-elements 5;leaf id {type uint8;} leaf value {type string;}}    leaf-list leaflisttarget {type uint8; max-elements 5;}}leaf-list leaflisttarget {type string;}}

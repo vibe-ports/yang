@@ -1,0 +1,5 @@
+module defs {
+  yang-version 1.1;
+  namespace "urn:tests:defs";
+  prefix pref;
+leaf un21 {type union {type uint8; type string;}}leaf un22 {type union {type uint16; type string;}}leaf un2 {type union {type leafref {path /un21; require-instance false;} type leafref {path /un22; require-instance false;}}}}

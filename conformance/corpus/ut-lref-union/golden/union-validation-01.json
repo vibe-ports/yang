@@ -1,0 +1,173 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module val {\n  namespace \"urn:tests:val\";\n  prefix pref;\n\n  leaf l1 {\n    type union {\n      type uint32 {\n        range \"0..1048575\";\n      }\n      type enumeration {\n        enum \"auto\" {\n          value 0;\n          status current;\n        }\n      }\n    }\n    config true;\n    status current;\n  }\n  leaf int8 {\n    type int8 {\n      range \"10..20\";\n    }\n    config true;\n    status current;\n  }\n  leaf l2 {\n    type union {\n      type leafref {\n        path \"/int8\";\n        require-instance true;\n        type int8 {\n          range \"10..20\";\n        }\n      }\n      type string;\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "val",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "val",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/val:l1",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": [
+              {
+                "base": "uint32",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": "0..1048575",
+                "typedefs": null,
+                "union": null
+              },
+              {
+                "base": "enumeration",
+                "bases": null,
+                "bits": null,
+                "enums": [
+                  {
+                    "name": "auto",
+                    "value": 0
+                  }
+                ],
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              }
+            ]
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "val",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/val:int8",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "int8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "10..20",
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "val",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/val:l2",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": [
+              {
+                "base": "leafref",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": {
+                  "path": "/int8",
+                  "require_instance": true,
+                  "target": "/val:int8"
+                },
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              },
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              }
+            ]
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

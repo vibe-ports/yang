@@ -1,0 +1,53 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "base",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"base:l1\": \"6\"\n}\n",
+    "xml": "<l1 xmlns=\"urn:tests:base\">6</l1>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/base:l1",
+      "schema": "/base:l1",
+      "value": {
+        "canonical": "6",
+        "type": "union",
+        "typedef": null,
+        "union_member": {
+          "index": 0,
+          "realtype": {
+            "type": "string",
+            "typedef": null
+          },
+          "type": "string",
+          "typedef": null
+        }
+      }
+    }
+  ],
+  "verdict": "valid"
+}

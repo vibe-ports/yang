@@ -1,0 +1,306 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "defs",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "leafrefs",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"defs:list\": [\n    {\n      \"id\": \"x\",\n      \"targets\": [\n        \"a\",\n        \"b\"\n      ]\n    },\n    {\n      \"id\": \"y\",\n      \"targets\": [\n        \"c\",\n        \"d\"\n      ]\n    }\n  ],\n  \"leafrefs:c\": {\n    \"x\": {\n      \"x\": \"y\"\n    },\n    \"l\": [\n      {\n        \"id\": \"x\",\n        \"value\": \"x\",\n        \"lr3\": \"c\"\n      }\n    ]\n  }\n}\n",
+    "xml": "<list xmlns=\"urn:tests:defs\">\n  <id>x</id>\n  <targets>a</targets>\n  <targets>b</targets>\n</list>\n<list xmlns=\"urn:tests:defs\">\n  <id>y</id>\n  <targets>c</targets>\n  <targets>d</targets>\n</list>\n<c xmlns=\"urn:tests:leafrefs\">\n  <x>\n    <x>y</x>\n  </x>\n  <l>\n    <id>x</id>\n    <value>x</value>\n    <lr3>c</lr3>\n  </l>\n</c>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:list[id='x']",
+      "schema": "/defs:list",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:list[id='x']/id",
+      "schema": "/defs:list/id",
+      "value": {
+        "canonical": "x",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:list[id='x']/targets[.='a']",
+      "schema": "/defs:list/targets",
+      "value": {
+        "canonical": "a",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:list[id='x']/targets[.='b']",
+      "schema": "/defs:list/targets",
+      "value": {
+        "canonical": "b",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:list[id='y']",
+      "schema": "/defs:list",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:list[id='y']/id",
+      "schema": "/defs:list/id",
+      "value": {
+        "canonical": "y",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:list[id='y']/targets[.='c']",
+      "schema": "/defs:list/targets",
+      "value": {
+        "canonical": "c",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:list[id='y']/targets[.='d']",
+      "schema": "/defs:list/targets",
+      "value": {
+        "canonical": "d",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:cont",
+      "schema": "/defs:cont",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/leafrefs:c",
+      "schema": "/leafrefs:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/leafrefs:c/x",
+      "schema": "/leafrefs:c/x",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/leafrefs:c/x/x",
+      "schema": "/leafrefs:c/x/x",
+      "value": {
+        "canonical": "y",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/leafrefs:c/l[id='x'][value='x']",
+      "schema": "/leafrefs:c/l",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/leafrefs:c/l[id='x'][value='x']/id",
+      "schema": "/leafrefs:c/l/id",
+      "value": {
+        "canonical": "x",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/leafrefs:c/l[id='x'][value='x']/value",
+      "schema": "/leafrefs:c/l/value",
+      "value": {
+        "canonical": "x",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/leafrefs:c/l[id='x'][value='x']/lr3",
+      "schema": "/leafrefs:c/l/lr3",
+      "value": {
+        "canonical": "c",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

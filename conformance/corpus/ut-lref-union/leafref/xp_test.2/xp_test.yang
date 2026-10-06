@@ -1,0 +1,5 @@
+module xp_test {
+  yang-version 1.1;
+  namespace "urn:tests:xp_test";
+  prefix pref;
+list l1 {key k; leaf k {type string;} leaf v {type string;}}list l2 {key k; leaf k {type uint8;} leaf v {type string;}}leaf ref1 {type union {type leafref {path "../l1/k";} type leafref {path "../l2/k";}}}leaf ref2 {type leafref {path "deref(../ref1)/../v";}}leaf ref3 {type union {type leafref {path "../l1/k";} type leafref {path "../l2/k";}}}leaf ref4 {type leafref {path "deref(../ref3)/../v";}}leaf ref5 {type union {type leafref {path "../l1/k";} type string;}}leaf ref6 {type leafref {path "deref(../ref5)/../v";}}}

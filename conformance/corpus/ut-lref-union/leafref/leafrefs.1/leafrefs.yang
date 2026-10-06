@@ -1,0 +1,5 @@
+module leafrefs {
+  yang-version 1.1;
+  namespace "urn:tests:leafrefs";
+  prefix pref;
+import defs {prefix t;}container c { container x {leaf x {type string;}} list l {  key "id value"; leaf id {type string;} leaf value {type string;}  leaf lr1 {type leafref {path "../../../t:str-norestr"; require-instance true;}}  leaf lr2 {type leafref {path "../../l[id=current()/../../../t:str-norestr]" +    "[value=current()/../../../t:str-norestr]/value"; require-instance true;}}  leaf lr3 {type leafref {path "/t:list[t:id=current ( )/../../x/x]/t:targets";}}}}}

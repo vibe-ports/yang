@@ -1,0 +1,5 @@
+module xp_test {
+  yang-version 1.1;
+  namespace "urn:tests:xp_test";
+  prefix pref;
+list l1 {key t1;leaf t1 {type uint8;}list l2 {key t2;leaf t2 {type uint8;}leaf-list l3 {type uint8;}}}leaf r1 {type uint8;}leaf r2 {type leafref {path "deref(../r1)/../l2/t2";}}}

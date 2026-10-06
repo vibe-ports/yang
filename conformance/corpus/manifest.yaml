@@ -19817,3 +19817,905 @@ fixtures:
       rfc: []
       deviation: null
 # END ut-ident-instid
+
+# BEGIN ut-lref-union (generated from libyang tests/utests/types/{leafref,union}.c, reviewed)
+
+  - id: ut-lref-union/leafref-data-xml-01
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:79
+    rfc: ["RFC7950#9.9"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [leafref/defs.1]
+      modules: [{name: "defs"}]
+    golden: golden/leafref-data-xml-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: ut-lref-union/leafref-data-xml-02
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:89
+    rfc: ["RFC7950#9.9"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [leafref/defs.1, leafref/leafrefs.1]
+      modules: [{name: "defs"}, {name: "leafrefs"}]
+    golden: golden/leafref-data-xml-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: ut-lref-union/leafref-data-xml-03
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:91
+    rfc: ["RFC7950#9.9"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [leafref/defs.1, leafref/leafrefs.1]
+      modules: [{name: "defs"}, {name: "leafrefs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<leaflisttarget xmlns=\"urn:tests:defs\">x</leaflisttarget><leaflisttarget xmlns=\"urn:tests:defs\">y</leaflisttarget><a:lref xmlns=\"urn:tests:defs\" xmlns:a=\"urn:tests:defs\">y</a:lref>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/leafref-data-xml-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: ut-lref-union/leafref-data-xml-04
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:95
+    rfc: ["RFC7950#9.9"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [leafref/defs.1, leafref/leafrefs.1]
+      modules: [{name: "defs"}, {name: "leafrefs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<list xmlns=\"urn:tests:defs\"><id>x</id><targets>a</targets><targets>b</targets></list><list xmlns=\"urn:tests:defs\"><id>y</id><targets>x</targets><targets>y</targets></list><str-norestr xmlns=\"urn:tests:defs\">y</str-norestr><a:lref2 xmlns=\"urn:tests:defs\" xmlns:a=\"urn:tests:defs\">y</a:lref2>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/leafref-data-xml-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: ut-lref-union/leafref-data-xml-05
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:102
+    rfc: ["RFC7950#9.9"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [leafref/defs.1, leafref/leafrefs.1]
+      modules: [{name: "defs"}, {name: "leafrefs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<str-norestr xmlns=\"urn:tests:defs\">y</str-norestr><c xmlns=\"urn:tests:leafrefs\"><l><id>x</id><value>x</value><lr1>y</lr1></l></c>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/leafref-data-xml-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: ut-lref-union/leafref-data-xml-06
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:111
+    rfc: ["RFC7950#9.9"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [leafref/defs.1, leafref/leafrefs.1]
+      modules: [{name: "defs"}, {name: "leafrefs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<list xmlns=\"urn:tests:defs\"><id>x</id><targets>a</targets><targets>b</targets></list><list xmlns=\"urn:tests:defs\"><id>y</id><targets>c</targets><targets>d</targets></list><c xmlns=\"urn:tests:leafrefs\"><x><x>y</x></x><l><id>x</id><value>x</value><lr3>c</lr3></l></c>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/leafref-data-xml-06.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: ut-lref-union/leafref-data-xml-07
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:118
+    rfc: ["RFC7950#9.9"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [leafref/defs.1, leafref/leafrefs.1, leafref/simple.1]
+      modules: [{name: "defs"}, {name: "leafrefs"}, {name: "simple"}]
+    golden: golden/leafref-data-xml-07.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: ut-lref-union/leafref-data-xml-08
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:122
+    rfc: ["RFC7950#9.9"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [leafref/defs.1, leafref/leafrefs.1, leafref/simple.1]
+      modules: [{name: "defs"}, {name: "leafrefs"}, {name: "simple"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:simple\">&quot;*&quot;&#39;</l1><target xmlns=\"urn:tests:simple\">&quot;*&quot;&#39;</target>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/leafref-data-xml-08.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: ut-lref-union/leafref-data-xml-09
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:127
+    rfc: ["RFC7950#9.9"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [leafref/defs.1, leafref/leafrefs.1, leafref/simple.1]
+      modules: [{name: "defs"}, {name: "leafrefs"}, {name: "simple"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:simple\">&quot;*&#39;&quot;</l1><target xmlns=\"urn:tests:simple\">&quot;*&#39;&quot;</target>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/leafref-data-xml-09.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: ut-lref-union/leafref-data-xml-10
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:131
+    rfc: ["RFC7950#9.9"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [leafref/defs.1, leafref/leafrefs.1, leafref/simple.1]
+      modules: [{name: "defs"}, {name: "leafrefs"}, {name: "simple"}]
+      format: "xml"
+      data_type: "data"
+      data: "<leaflisttarget xmlns=\"urn:tests:defs\">x</leaflisttarget><lref xmlns=\"urn:tests:defs\" >y</lref>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/leafref-data-xml-10.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: ut-lref-union/leafref-data-xml-11
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:136
+    rfc: ["RFC7950#9.9"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [leafref/defs.1, leafref/leafrefs.1, leafref/simple.1]
+      modules: [{name: "defs"}, {name: "leafrefs"}, {name: "simple"}]
+      format: "xml"
+      data_type: "data"
+      data: "<list xmlns=\"urn:tests:defs\"><id>x</id><targets>a</targets><targets>b</targets></list><list xmlns=\"urn:tests:defs\"><id>y</id><targets>x</targets><targets>y</targets></list><str-norestr xmlns=\"urn:tests:defs\">y</str-norestr><lref2 xmlns=\"urn:tests:defs\" >b</lref2>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/leafref-data-xml-11.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: ut-lref-union/leafref-data-xml-12
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:144
+    rfc: ["RFC7950#9.9"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [leafref/defs.1, leafref/leafrefs.1, leafref/simple.1]
+      modules: [{name: "defs"}, {name: "leafrefs"}, {name: "simple"}]
+      format: "xml"
+      data_type: "data"
+      data: "<list xmlns=\"urn:tests:defs\"><id>x</id><targets>a</targets><targets>b</targets></list><list xmlns=\"urn:tests:defs\"><id>y</id><targets>x</targets><targets>y</targets></list><lref2 xmlns=\"urn:tests:defs\" >b</lref2>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/leafref-data-xml-12.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: ut-lref-union/leafref-data-xml-13
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:151
+    rfc: ["RFC7950#9.9"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [leafref/defs.1, leafref/leafrefs.1, leafref/simple.1]
+      modules: [{name: "defs"}, {name: "leafrefs"}, {name: "simple"}]
+      format: "xml"
+      data_type: "data"
+      data: "<str-norestr xmlns=\"urn:tests:defs\">y</str-norestr><lref2 xmlns=\"urn:tests:defs\" >b</lref2>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/leafref-data-xml-13.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: ut-lref-union/leafref-data-xml-14
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:157
+    rfc: ["RFC7950#9.9"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [leafref/defs.1, leafref/leafrefs.1, leafref/simple.1]
+      modules: [{name: "defs"}, {name: "leafrefs"}, {name: "simple"}]
+      format: "xml"
+      data_type: "data"
+      data: "<str-norestr xmlns=\"urn:tests:defs\">y</str-norestr><c xmlns=\"urn:tests:leafrefs\" ><l><id>x</id><value>x</value><lr1>a</lr1></l></c>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/leafref-data-xml-14.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: ut-lref-union/leafref-data-xml-15
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:162
+    rfc: ["RFC7950#9.9"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [leafref/defs.1, leafref/leafrefs.1, leafref/simple.1]
+      modules: [{name: "defs"}, {name: "leafrefs"}, {name: "simple"}]
+      format: "xml"
+      data_type: "data"
+      data: "<str-norestr xmlns=\"urn:tests:defs\">z</str-norestr><c xmlns=\"urn:tests:leafrefs\" ><l><id>y</id><value>y</value></l><l><id>x</id><value>x</value><lr2>z</lr2></l></c>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/leafref-data-xml-15.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: ut-lref-union/leafref-data-xml-16
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:168
+    rfc: ["RFC7950#9.9"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [leafref/defs.1, leafref/leafrefs.1, leafref/simple.1]
+      modules: [{name: "defs"}, {name: "leafrefs"}, {name: "simple"}]
+      format: "xml"
+      data_type: "data"
+      data: "<lref xmlns=\"urn:tests:defs\" >%n</lref>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/leafref-data-xml-16.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: ut-lref-union/leafref-data-json-01
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:183
+    rfc: ["RFC7950#9.9"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [leafref/simple.1]
+      modules: [{name: "simple"}]
+    golden: golden/leafref-data-json-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: ut-lref-union/leafref-data-json-02
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:189
+    rfc: ["RFC7950#9.9", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [leafref/simple.1]
+      modules: [{name: "simple"}]
+      format: "json"
+      data_type: "data"
+      data: "{  \"simple:l1\":\"\\\"*\\\"'\",  \"simple:target\":\"\\\"*\\\"'\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/leafref-data-json-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.9", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-lref-union/leafref-data-json-03
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:196
+    rfc: ["RFC7950#9.9", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [leafref/simple.1]
+      modules: [{name: "simple"}]
+      format: "json"
+      data_type: "data"
+      data: "{  \"simple:l1\":\"\\\"*'\\\"\",  \"simple:target\":\"\\\"*'\\\"\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/leafref-data-json-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.9", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-lref-union/leafref-data-xpath-json-01
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xpath_json:269 (hand-written: context options set by C code)
+    rfc: ["RFC7950#9.9", "RFC7950#10.3.1"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [leafref/xp_test.1]
+      modules: [{name: "xp_test"}]
+      context_options: ["leafref_extended"]
+    golden: golden/leafref-data-xpath-json-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.9", "RFC7950#10.3.1"]
+      deviation: null
+
+  - id: ut-lref-union/leafref-data-xpath-json-02
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xpath_json:277 (hand-written: context options set by C code)
+    rfc: ["RFC7950#9.9", "RFC7950#10.3.1", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [leafref/xp_test.1]
+      modules: [{name: "xp_test"}]
+      context_options: ["leafref_extended"]
+      format: "json"
+      data_type: "data"
+      data: "{\"xp_test:l1\":[{\"t1\": 1,\"l2\":[{\"t2\": 2,\"l3\":[3]}]}],\"xp_test:r1\": 1,\"xp_test:r2\": 2,\"xp_test:r3\": 3}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/leafref-data-xpath-json-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.9", "RFC7950#10.3.1", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-lref-union/leafref-data-xpath-deref-union-01
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xpath_deref_union:300 (hand-written: context options set by C code)
+    rfc: ["RFC7950#9.9", "RFC7950#10.3.1"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [leafref/xp_test.2]
+      modules: [{name: "xp_test"}]
+      context_options: ["leafref_extended"]
+    golden: golden/leafref-data-xpath-deref-union-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.9", "RFC7950#10.3.1"]
+      deviation: null
+
+  - id: ut-lref-union/leafref-data-xpath-deref-union-02
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xpath_deref_union:312 (hand-written: context options set by C code)
+    rfc: ["RFC7950#9.9", "RFC7950#10.3.1", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [leafref/xp_test.2]
+      modules: [{name: "xp_test"}]
+      context_options: ["leafref_extended"]
+      format: "json"
+      data_type: "data"
+      data: "{\"xp_test:l1\": [{\"k\": \"key1\", \"v\": \"value1\"}, {\"k\": \"key2\", \"v\": \"value2\"}],\"xp_test:l2\": [{\"k\": 1, \"v\": \"value3\" }, {\"k\": 2, \"v\": \"value4\"}],\"xp_test:ref1\": \"key2\",\"xp_test:ref2\": \"value2\",\"xp_test:ref3\": 2,\"xp_test:ref4\": \"value4\",\"xp_test:ref5\": \"key2\",\"xp_test:ref6\": \"value2\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/leafref-data-xpath-deref-union-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.9", "RFC7950#10.3.1", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-lref-union/leafref-xpath-invalid-schema-01
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_xpath_invalid_schema:331 (hand-written: context options set by C code)
+    rfc: ["RFC7950#9.9", "RFC7950#10.3.1"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [leafref/xp_test.3]
+      modules: [{name: "xp_test"}]
+      context_options: ["leafref_extended"]
+    golden: golden/leafref-xpath-invalid-schema-01.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.9", "RFC7950#10.3.1"]
+      deviation: null
+
+  - id: ut-lref-union/leafref-xpath-invalid-schema-02
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_xpath_invalid_schema:344 (hand-written: context options set by C code)
+    rfc: ["RFC7950#9.9", "RFC7950#10.3.1"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [leafref/xp_test.4]
+      modules: [{name: "xp_test"}]
+      context_options: ["leafref_extended"]
+    golden: golden/leafref-xpath-invalid-schema-02.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.9", "RFC7950#10.3.1"]
+      deviation: null
+
+  - id: ut-lref-union/leafref-xpath-invalid-schema-03
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_xpath_invalid_schema:350 (hand-written: context options set by C code)
+    rfc: ["RFC7950#9.9", "RFC7950#10.3.1"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [leafref/xp_test.5]
+      modules: [{name: "xp_test"}]
+      context_options: ["leafref_extended"]
+    golden: golden/leafref-xpath-invalid-schema-03.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.9", "RFC7950#10.3.1"]
+      deviation: null
+
+  - id: ut-lref-union/union-data-xml-01
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/union.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:80
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [union/defs.1]
+      modules: [{name: "defs"}]
+    golden: golden/union-data-xml-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: ut-lref-union/union-data-xml-02
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/union.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:82
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [union/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<int8 xmlns=\"urn:tests:defs\">12</int8><un1 xmlns=\"urn:tests:defs\" >12</un1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "reject"
+    golden: golden/union-data-xml-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: ut-lref-union/union-data-xml-03
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/union.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:85
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [union/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<int8 xmlns=\"urn:tests:defs\">12</int8><un1 xmlns=\"urn:tests:defs\" >2</un1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "reject"
+    golden: golden/union-data-xml-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: ut-lref-union/union-data-xml-04
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/union.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:88
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [union/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<int8 xmlns=\"urn:tests:defs\">10</int8><un1 xmlns=\"urn:tests:defs\" xmlns:x=\"urn:tests:defs\">x:ident2</un1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "reject"
+    golden: golden/union-data-xml-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: ut-lref-union/union-data-xml-05
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/union.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:91
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [union/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<int8 xmlns=\"urn:tests:defs\">10</int8><un1 xmlns=\"urn:tests:defs\" xmlns:x=\"urn:tests:defs\">x:ident55</un1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "reject"
+    golden: golden/union-data-xml-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: ut-lref-union/union-data-xml-06
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/union.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:94
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [union/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<llist xmlns=\"urn:tests:defs\">x</llist><llist xmlns=\"urn:tests:defs\">y</llist><un1 xmlns=\"urn:tests:defs\" xmlns:x=\"urn:tests:defs\">/x:llist[.='y']</un1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "reject"
+    golden: golden/union-data-xml-06.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: ut-lref-union/union-data-xml-07
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/union.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:99
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [union/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<llist xmlns=\"urn:tests:defs\">x</llist><llist xmlns=\"urn:tests:defs\">y</llist><un1 xmlns=\"urn:tests:defs\" xmlns:x=\"urn:tests:defs\">/x:llist[3]</un1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "reject"
+    golden: golden/union-data-xml-07.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: ut-lref-union/union-data-xml-08
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/union.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:105
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [union/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<un1 xmlns=\"urn:tests:defs\" >123456789012345678901</un1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "reject"
+    golden: golden/union-data-xml-08.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: ut-lref-union/union-data-json-01
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/union.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:126
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [union/defs.2]
+      modules: [{name: "defs"}]
+    golden: golden/union-data-json-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: ut-lref-union/union-data-json-02
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/union.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:129
+    rfc: ["RFC7950#9.12", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [union/defs.2]
+      modules: [{name: "defs"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"defs:un2\":\"str\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "reject"
+    golden: golden/union-data-json-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.12", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-lref-union/union-validation-01
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/union.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_validation:214
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [union/val.1]
+      modules: [{name: "val"}]
+    golden: golden/union-validation-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: ut-lref-union/union-validation-02
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/union.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_validation:218
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [union/val.1]
+      modules: [{name: "val"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:val\">auto</l1><int8 xmlns=\"urn:tests:val\">15</int8><l2 xmlns=\"urn:tests:val\">15</l2>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "reject"
+    golden: golden/union-validation-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: ut-lref-union/union-validation-03
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/union.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_validation:271
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [union/val.1, union/lref.1]
+      modules: [{name: "val"}, {name: "lref"}]
+    golden: golden/union-validation-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: ut-lref-union/union-validation-04
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/union.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_validation:275
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [union/val.1, union/lref.1]
+      modules: [{name: "val"}, {name: "lref"}]
+      format: "xml"
+      data_type: "data"
+      data: "<test xmlns=\"urn:tests:lref\"><b><name>2</name></b><community><name>test</name><view>2</view></community></test>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "reject"
+    golden: golden/union-validation-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: ut-lref-union/union-validation-05
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/union.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_validation:284
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [union/val.1, union/lref.1]
+      modules: [{name: "val"}, {name: "lref"}]
+      format: "xml"
+      data_type: "data"
+      data: "<test xmlns=\"urn:tests:lref\"><a><name>one</name></a><community><name>test</name><view>one</view></community></test>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "reject"
+    golden: golden/union-validation-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: ut-lref-union/union-validation-store-only-01
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/union.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_validation_store_only:324
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [union/base.1]
+      modules: [{name: "base"}]
+    golden: golden/union-validation-store-only-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: ut-lref-union/union-validation-store-only-02
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/union.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_validation_store_only:332 (hand-written: the store() call replayed as a data parse)
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [union/base.2]
+      modules: [{name: "base"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:base\">1</l1>"
+      parse_only: true
+      parse_options: ["store_only"]
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/union-validation-store-only-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: ut-lref-union/union-validation-store-only-03
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/union.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_validation_store_only:341 (hand-written: the store() call replayed as a data parse)
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [union/base.2]
+      modules: [{name: "base"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:base\">6</l1>"
+      parse_only: true
+      parse_options: ["store_only"]
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/union-validation-store-only-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: ut-lref-union/union-validation-store-only-04
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/union.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_validation_store_only:350 (hand-written: the store() call replayed as a data parse)
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [union/base.2]
+      modules: [{name: "base"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:base\">10</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/union-validation-store-only-04.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+# END ut-lref-union

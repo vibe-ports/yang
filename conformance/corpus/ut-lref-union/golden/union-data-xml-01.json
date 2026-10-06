@@ -1,0 +1,231 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module defs {\n  namespace \"urn:tests:defs\";\n  prefix pref;\n\n  identity ident1 {\n    derived ident2;\n  }\n\n  identity ident2 {\n  }\n\n  leaf un1 {\n    type union {\n      type leafref {\n        path \"/int8\";\n        require-instance true;\n        type int8 {\n          range \"10..20\";\n        }\n      }\n      type leafref {\n        path \"/int64\";\n        require-instance true;\n        type int64;\n      }\n      type identityref {\n        base ident1;\n      }\n      type instance-identifier {\n        require-instance true;\n      }\n      type string {\n        length \"1..20\";\n      }\n    }\n    config true;\n    status current;\n  }\n  leaf int8 {\n    type int8 {\n      range \"10..20\";\n    }\n    config true;\n    status current;\n  }\n  leaf int64 {\n    type int64;\n    config true;\n    status current;\n  }\n  leaf-list llist {\n    type string;\n    config true;\n    min-elements 0;\n    max-elements 4294967295;\n    ordered-by system;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [
+        {
+          "bases": [],
+          "derived": [
+            "defs:ident2"
+          ],
+          "name": "defs:ident1"
+        },
+        {
+          "bases": [
+            "defs:ident1"
+          ],
+          "derived": [],
+          "name": "defs:ident2"
+        }
+      ],
+      "name": "defs",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "defs",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/defs:un1",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": [
+              {
+                "base": "leafref",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": {
+                  "path": "/int8",
+                  "require_instance": true,
+                  "target": "/defs:int8"
+                },
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              },
+              {
+                "base": "leafref",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": {
+                  "path": "/int64",
+                  "require_instance": true,
+                  "target": "/defs:int64"
+                },
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              },
+              {
+                "base": "identityref",
+                "bases": [
+                  "defs:ident1"
+                ],
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              },
+              {
+                "base": "instance-identifier",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              },
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": "1..20",
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              }
+            ]
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "defs",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/defs:int8",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "int8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "10..20",
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "defs",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/defs:int64",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "int64",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "defs",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "system",
+          "path": "/defs:llist",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

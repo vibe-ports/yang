@@ -1,0 +1,99 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "val",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"val:l1\": \"auto\",\n  \"val:int8\": 15,\n  \"val:l2\": 15\n}\n",
+    "xml": "<l1 xmlns=\"urn:tests:val\">auto</l1>\n<int8 xmlns=\"urn:tests:val\">15</int8>\n<l2 xmlns=\"urn:tests:val\">15</l2>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/val:l1",
+      "schema": "/val:l1",
+      "value": {
+        "canonical": "auto",
+        "type": "union",
+        "typedef": null,
+        "union_member": {
+          "index": 1,
+          "realtype": {
+            "type": "enumeration",
+            "typedef": null
+          },
+          "type": "enumeration",
+          "typedef": null
+        }
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/val:int8",
+      "schema": "/val:int8",
+      "value": {
+        "canonical": "15",
+        "type": "int8",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/val:l2",
+      "schema": "/val:l2",
+      "value": {
+        "canonical": "15",
+        "type": "union",
+        "typedef": null,
+        "union_member": {
+          "index": 0,
+          "realtype": {
+            "type": "int8",
+            "typedef": null
+          },
+          "type": "leafref",
+          "typedef": null
+        }
+      }
+    }
+  ],
+  "verdict": "valid"
+}

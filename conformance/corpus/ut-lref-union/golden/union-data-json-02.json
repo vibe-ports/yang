@@ -1,0 +1,53 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "defs",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"defs:un2\": \"str\"\n}\n",
+    "xml": "<un2 xmlns=\"urn:tests:defs\">str</un2>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/defs:un2",
+      "schema": "/defs:un2",
+      "value": {
+        "canonical": "str",
+        "type": "union",
+        "typedef": null,
+        "union_member": {
+          "index": 0,
+          "realtype": {
+            "type": "union",
+            "typedef": null
+          },
+          "type": "leafref",
+          "typedef": null
+        }
+      }
+    }
+  ],
+  "verdict": "valid"
+}
