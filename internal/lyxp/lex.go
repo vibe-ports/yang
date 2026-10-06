@@ -81,6 +81,12 @@ func isNameChar(c rune) bool {
 		c >= 0x300 && c <= 0x36f || c >= 0x203f && c <= 0x2040
 }
 
+// IsQNameStart is libyang's is_xmlqnamestartchar.
+func IsQNameStart(c rune) bool { return isNameStart(c) }
+
+// IsQNameChar is libyang's is_xmlqnamechar.
+func IsQNameChar(c rune) bool { return isNameChar(c) }
+
 // getUTF8 ports ly_getutf8: the code point and its size, size 0 when invalid.
 func getUTF8(s string) (rune, int) {
 	if s == "" {

@@ -92,8 +92,12 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | src/plugins_types/ipv6_address_no_zone.c | lyplg_type_store_ipv6_address_no_zone, ipv6addressnozone_str2ip | types.storeIPNoZone | ported | types/inet-mapped | |
 | src/plugins_types/ipv6_address_prefix.c | lyplg_type_store_ipv6_address_prefix, ipv6prefix_str2ip, ipv6prefix_zero_host | types.storeIPPrefix | ported | types/inet-canonical | |
 | src/plugins_types/date_and_time.c | lyplg_type_store_date_and_time (old/new revision), lyplg_type_print_date_and_time, lyplg_type_compare_date_and_time, lyplg_type_sort_date_and_time | types.storeDateAndTime, types.equalDateAndTime, types.compareDateAndTime | ported | types/dt-* | known offsets print in UTC (D-0025); `-00:MM` sign quirk mirrored (D-0026) |
-| src/tree_data_common.c | ly_time_str2time, ly_time_time2str, ly_time_tz_offset_at | types.timeStr2Time, types.storeDateAndTime | ported | types/dt-* | |
+| src/tree_data_common.c | ly_time_str2time, ly_time_time2str, ly_time_tz_offset_at | types.timeStr2Time, types.time2str | ported | types/dt-*, ut-ietf-types/yang_types-test_data_xml-13…16, -27 | |
 | src/plugins_types/hex_string.c | lyplg_type_store_hex_string | types.storeHexString | ported | types/hex-lowercase | phys-address, mac-address, hex-string, uuid |
+| src/plugins_types/date.c | lyplg_type_store_date, lyplg_type_print_date, lyplg_type_compare_date, lyplg_type_sort_date | types.storeDate, types.equalDate, types.compareDate, types.cStrptime | ported | ut-ietf-types/yang_types-test_data_xml-13, -14, -27, -28 | date and date-no-zone; the form is picked by the type's name as libyang does (a typedef derived from date stores as date-no-zone); known offsets print in UTC (D-0025); strptime "%Y-%m-%d" ported for the no-zone form |
+| src/plugins_types/time.c | lyplg_type_store_time, lyplg_type_print_time, lyplg_type_compare_time, lyplg_type_sort_time, lyplg_type_fractions_is_zero, lyplg_type_sort_by_fractions | types.storeTime, types.equalTime, types.compareTime, types.compareFractions | ported | ut-ietf-types/yang_types-test_data_xml-15…18 | time and time-no-zone; seconds kept in libyang's uint32_t (a time before the epoch day wraps, as libyang prints it); known offsets print in UTC (D-0025) |
+| src/plugins_types/xpath1.0.c | lyplg_type_store_xpath10, lyplg_type_print_xpath10_value, xpath10_print_subexpr_r, lyplg_type_xpath10_print_token | types.storeXPath10, types.xpath10Subexpr, types.xpath10Token | partial | ut-ietf-types/yang_types-test_data_xml-21…26 | the store and the canonical (JSON) form; printing in XML/schema formats keeps the canonical text (lyplg_type_print_xpath10 not ported); the ietf-yang-schema-mount parent-reference special case (LY_VALUE_STR_NS) not ported |
+| src/ly_common.c | ly_value_prefix_next | types.valuePrefixNext | ported | Go test TestXPath10 | the chunk iterator itself (compile.valuePrefixes keeps only the prefixes) |
 | src/plugins_types/date.c, time.c, time_period.c, xpath1.0.c, node_instanceid.c, instanceid_keys.c | (all) | — | skipped | — | U-0010 |
 | src/xpath.c | lyxp_expr_parse, eval_number | xpath.Compile, lex, parseNumberToken | ported | protocol-v2/xpath-* | number tokens as x87 long double (`ld`, D-0010); tokenizing is lyxp.LexMax (MaxTokens cap U-0003 applied there); lex truncates at NUL like the C string |
 | src/xpath.c | parse_ncname, ly_getutf8 (ly_common.c), is_xmlqname*char (xml.h) | parseNCName, getUTF8, isQNameStart, isQNameChar | ported | protocol-v2/xpath-* |  |
@@ -315,7 +319,6 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | src/plugins_types/date_and_time.c | lyplg_type_sort_by_fractions | types.compareDateAndTime | ported | — | zero fractions first, then strcmp |
 | src/plugins_types/date_and_time.c | lyplg_type_store_date_and_time_new | types.storeDateAndTime (oldRev=false) | ported | — | registered for ietf-yang-types@2025-12-22 (yangtypes.go init) |
 | src/plugins_types/date_and_time.c | lyplg_type_store_date_and_time_old | types.storeDateAndTime (oldRev=true) | ported | — | registered for ietf-yang-types@2013-07-15 |
-| src/plugins_types/date.c | lyplg_type_compare_date, lyplg_type_print_date, lyplg_type_sort_date, lyplg_type_store_date | — | skipped | — | U-0010; #68 |
 | src/plugins_types/decimal64.c | lyplg_type_print_decimal64 | types.Print (canonical) | replaced | — | canonical (dec64String) set at store; LYB branch out of v1 |
 | src/plugins_types/enumeration.c | lyplg_type_lyb_size_enum | — | skipped | — | LYB value size; LYB out of v1 (PLAN §1) |
 | src/plugins_types/enumeration.c | lyplg_type_print_enum | types.Print (canonical) | replaced | — | canonical set at store; LYB branch out of v1 |
@@ -345,10 +348,9 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | src/plugins_types/lyds_tree.c | lyplg_type_store_lyds | data.siblings.rbTree, data.Tree.insertPos | replaced | — | the RB tree it creates (lyds_create_node) is the sorted slice + the run's rbTree flag |
 | src/plugins_types/node_instanceid.c | lyplg_type_print_node_instanceid, lyplg_type_store_node_instanceid, node_instanceid_path2str | — | skipped | — | U-0010; #71 |
 | src/plugins_types/time_period.c | lyplg_type_sort_time_period | — | skipped | — | U-0010 (libnetconf2-netconf-server time-period); no issue |
-| src/plugins_types/time.c | lyplg_type_compare_time, lyplg_type_print_time, lyplg_type_sort_time, lyplg_type_store_time | — | skipped | — | U-0010; #69 |
 | src/plugins_types/union.c | lyb_fill_subvalue, lyb_parse_union, lyb_union_print, lyb_union_validate | — | skipped | — | LYB union encoding; LYB out of v1 (PLAN §1) |
 | src/plugins_types/union.c | union_subvalue_assignment | types.storeUnion (UnionValue.orig) | replaced | — | the original lexical form is kept as a Go string; no ownership transfer |
-| src/plugins_types/xpath1.0.c | lyplg_type_print_xpath10, lyplg_type_print_xpath10_value, lyplg_type_store_xpath10, lyplg_type_validate_tree_xpath10, lyplg_type_xpath10_print_token, xpath10_add_ns, xpath10_print_subexpr_r | — | skipped | — | U-0010; #70 |
+| src/plugins_types/xpath1.0.c | lyplg_type_print_xpath10, lyplg_type_validate_tree_xpath10, xpath10_add_ns | — | skipped | — | U-0010; #70 |
 | src/printer_data.c | lyd_print_ | data.Tree.PrintJSON, data.Tree.PrintXML | partial | — | the format dispatch is two methods; one Print(w, Format, opts) comes with D12 (#108 note); LYB out of v1 |
 | src/printer_data.c | lyd_print_all | data.Tree.PrintJSON, data.Tree.PrintXML | ported | — | always all top-level siblings (LYD_PRINT_WITHSIBLINGS) |
 | src/printer_data.c | lyd_print_mem | data.Tree.PrintJSON, data.Tree.PrintXML (io.Writer) | replaced | — | print into a bytes.Buffer / strings.Builder; no memory ly_out |
