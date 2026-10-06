@@ -8,10 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strings"
 
 	"github.com/vibe-ports/yang/internal/ly"
-	"github.com/vibe-ports/yang/internal/lyxp"
 	"github.com/vibe-ports/yang/internal/parser"
 	"github.com/vibe-ports/yang/internal/schema"
 )
@@ -94,11 +92,11 @@ func hasCompiledImport(m *Module) error {
 // deviations is not supported yet (U-0020).
 func (c *Context) precompileAugmentsDeviations(m *Module) error {
 	var set []*Module
-	if err := c.precompileModAugments(m, &m.pmod, m.Name, &set); err != nil {
+	if err := c.precompileModAugments(m, &m.pmod, &set); err != nil {
 		return err
 	}
 	for _, inc := range m.Includes {
-		if err := c.precompileModAugments(m, &inc.Sub.pmod, inc.Sub.Name, &set); err != nil {
+		if err := c.precompileModAugments(m, &inc.Sub.pmod, &set); err != nil {
 			return err
 		}
 	}
@@ -121,15 +119,17 @@ func (c *Context) precompileAugmentsDeviations(m *Module) error {
 }
 
 // precompileModAugments is lys_precompile_mod_augments_deviations for the
-// (sub)module pm (named name) of m.
-func (c *Context) precompileModAugments(m *Module, pm *pmod, name string, set *[]*Module) error {
+// (sub)module pm of m.
+func (c *Context) precompileModAugments(m *Module, pm *pmod, set *[]*Module) error {
 	for _, aug := range pm.Parsed.Augments {
-		var mods []*Module
 		path := "/" + m.Name + ":{augment='" + aug.Name + "'}"
-		t, err := c.nodeidModCheck(m, pm, name, aug.Name, path, &mods)
+		_, mods, err := nodeidModCheck(pm, aug.Name, true, func(code ly.Code, f string, a ...any) error {
+			return c.logPath(code, path, f, a...)
+		})
 		if err != nil {
 			return err
 		}
+		t := mods[0] // the module of the first node test
 		added := !slices.Contains(t.augmentedBy, m)
 		if added {
 			t.augmentedBy = append(t.augmentedBy, m)
@@ -147,45 +147,6 @@ func (c *Context) precompileModAugments(m *Module, pm *pmod, name string, set *[
 	}
 	// augments in extension instances (augment-structure) never get here: U-0023
 	return nil
-}
-
-// nodeidModCheck is lys_nodeid_mod_check for an absolute schema node-id
-// written in pm (named name): its syntax, and the modules of its node tests,
-// added to mods without duplicates. It returns the first one.
-func (c *Context) nodeidModCheck(main *Module, pm *pmod, name, nodeid, path string, mods *[]*Module) (*Module, error) {
-	const typ = "absolute-schema-nodeid"
-	e, msg := lyxp.Lex(nodeid)
-	if msg != "" {
-		_ = c.logPath(ly.XPath, path, "%s", msg)
-		return nil, c.logPath(ly.SyntaxYang, path, "Invalid %s value \"%s\" - invalid syntax.", typ, nodeid)
-	}
-	for i := 0; i < len(e.Toks); i += 2 {
-		switch {
-		case e.Toks[i] != lyxp.TokOperPath:
-			return nil, c.logPath(ly.Reference, path, "Invalid %s value \"%s\" - \"/\" expected instead of \"%s\".", typ, nodeid, e.Text(i))
-		case i+1 == len(e.Toks):
-			return nil, c.logPath(ly.Reference, path, "Invalid %s value \"%s\" - unexpected end of expression.", typ, e.Src)
-		case e.Toks[i+1] != lyxp.TokNameTest:
-			return nil, c.logPath(ly.Reference, path, "Invalid %s value \"%s\" - name test expected instead of \"%s\".", typ, nodeid, e.Text(i+1))
-		}
-	}
-	var first *Module
-	for i := 1; i < len(e.Toks); i += 2 {
-		mod := main
-		if prefix, _, ok := strings.Cut(e.Text(i), ":"); ok {
-			if mod = c.prefixModule(pm, mod, prefix); mod == nil { // lys_schema_node_get_module
-				return nil, c.logPath(ly.Reference, path, "Invalid schema-nodeid nametest - prefix \"%s\" not defined in module \"%s\".",
-					prefix, name)
-			}
-		}
-		if first == nil {
-			first = mod
-		}
-		if !slices.Contains(*mods, mod) {
-			*mods = append(*mods, mod)
-		}
-	}
-	return first, nil
 }
 
 // --- dependency sets (tree_schema.c) ---

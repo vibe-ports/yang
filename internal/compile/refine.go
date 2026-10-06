@@ -40,35 +40,61 @@ type usesRfn struct {
 	pms     []*pmod // the (sub)module each of rfns is written in (lysp_qname.mod of its values)
 }
 
-// nodeidModCheck is lys_nodeid_mod_check for a descendant schema node-id written in w.pm
-// (nodeid requested): its syntax and the modules of its node tests, logged at the current path.
-func (w *nodeCtx) nodeidModCheck(str string) (*nodeid, error) {
-	const typ = "descendant-schema-nodeid"
+// nodeidModCheck is lys_nodeid_mod_check: the syntax of an absolute (top-level augment) or
+// descendant (uses augment, refine) schema node-id written in pm, and the modules of its node
+// tests (lys_schema_node_get_module) in order without duplicates; errors go through logf at
+// the caller's log location.
+func nodeidModCheck(pm *pmod, str string, abs bool, logf func(code ly.Code, format string, a ...any) error) (
+	*nodeid, []*Module, error) {
+	typ, i := "absolute-schema-nodeid", 0
+	if !abs {
+		typ, i = "descendant-schema-nodeid", 1
+	}
 	e, msg := lyxp.Lex(str)
 	if msg != "" {
-		_ = w.errf(ly.XPath, "%s", msg)
-		return nil, w.errf(ly.SyntaxYang, "Invalid %s value \"%s\" - invalid syntax.", typ, str)
+		_ = logf(ly.XPath, "%s", msg)
+		return nil, nil, logf(ly.SyntaxYang, "Invalid %s value \"%s\" - invalid syntax.", typ, str)
 	}
-	if e.Toks[0] != lyxp.TokNameTest {
-		return nil, w.errf(ly.Reference, "Invalid %s value \"%s\" - name test expected instead of \"%s\".", typ, str, e.Text(0))
+	if !abs && e.Toks[0] != lyxp.TokNameTest {
+		return nil, nil, logf(ly.Reference, "Invalid %s value \"%s\" - name test expected instead of \"%s\".", typ, str, e.Text(0))
 	}
-	for i := 1; i < len(e.Toks); i += 2 {
+	for ; i < len(e.Toks); i += 2 {
 		switch {
 		case e.Toks[i] != lyxp.TokOperPath:
-			return nil, w.errf(ly.Reference, "Invalid %s value \"%s\" - \"/\" expected instead of \"%s\".", typ, str, e.Text(i))
+			return nil, nil, logf(ly.Reference, "Invalid %s value \"%s\" - \"/\" expected instead of \"%s\".", typ, str, e.Text(i))
 		case i+1 == len(e.Toks):
-			return nil, w.errf(ly.Reference, "Invalid %s value \"%s\" - unexpected end of expression.", typ, e.Src)
+			return nil, nil, logf(ly.Reference, "Invalid %s value \"%s\" - unexpected end of expression.", typ, e.Src)
 		case e.Toks[i+1] != lyxp.TokNameTest:
-			return nil, w.errf(ly.Reference, "Invalid %s value \"%s\" - name test expected instead of \"%s\".", typ, str, e.Text(i+1))
+			return nil, nil, logf(ly.Reference, "Invalid %s value \"%s\" - name test expected instead of \"%s\".", typ, str, e.Text(i+1))
 		}
 	}
 	nid := precompileNodeid(e)
+	var mods []*Module
 	for _, prefix := range nid.prefix {
-		if _, ok := w.nodeidMod(prefix, w.pm); !ok {
-			return nil, eValid
+		mod := nodeidModule(pm, prefix)
+		if mod == nil {
+			return nil, nil, logf(ly.Reference, "Invalid schema-nodeid nametest - prefix \"%s\" not defined in module \"%s\".",
+				prefix, pm.Parsed.Name)
+		}
+		if !slices.Contains(mods, mod) {
+			mods = append(mods, mod)
 		}
 	}
-	return nid, nil
+	return nid, mods, nil
+}
+
+// nodeidModule is lys_schema_node_get_module without its log: the module of a node test
+// written in pm, nil for an undefined prefix.
+func nodeidModule(pm *pmod, prefix string) *Module {
+	if prefix == "" || prefix == pm.Parsed.Prefix {
+		return pm.main
+	}
+	for u, im := range pm.Parsed.Imports {
+		if im.Prefix == prefix && u < len(pm.Imports) {
+			return pm.Imports[u]
+		}
+	}
+	return nil
 }
 
 // precompileNodeid is lys_precompile_nodeid of a checked node-id.
@@ -90,13 +116,8 @@ func precompileNodeid(e *lyxp.Expr) *nodeid {
 // nodeidMod is lys_schema_node_get_module: the module of a node test written in pm; an unknown
 // prefix is logged.
 func (w *nodeCtx) nodeidMod(prefix string, pm *pmod) (*schema.Module, bool) {
-	if prefix == "" || prefix == pm.Parsed.Prefix {
-		return pm.mod, true
-	}
-	for u, im := range pm.Parsed.Imports {
-		if im.Prefix == prefix && u < len(pm.Imports) && pm.Imports[u] != nil {
-			return pm.Imports[u].mod, true
-		}
+	if m := nodeidModule(pm, prefix); m != nil {
+		return m.mod, true
 	}
 	_ = w.errf(ly.Reference, "Invalid schema-nodeid nametest - prefix \"%s\" not defined in module \"%s\".", prefix, pm.Parsed.Name)
 	return nil, false
@@ -131,7 +152,7 @@ func (w *nodeCtx) precompileUses(uses *parser.Node, ctxNode *schema.Node) error 
 	for _, a := range uses.Augments {
 		w.path.update(nil, "{augment}")
 		w.path.update(nil, a.Name)
-		nid, err := w.nodeidModCheck(a.Name)
+		nid, _, err := nodeidModCheck(w.pm, a.Name, false, w.errf)
 		if err != nil {
 			return err
 		}
@@ -143,7 +164,7 @@ func (w *nodeCtx) precompileUses(uses *parser.Node, ctxNode *schema.Node) error 
 	for _, r := range uses.Refines {
 		w.path.update(nil, "{refine}")
 		w.path.update(nil, r.Name)
-		nid, err := w.nodeidModCheck(r.Name)
+		nid, _, err := nodeidModCheck(w.pm, r.Name, false, w.errf)
 		if err != nil {
 			return err
 		}
