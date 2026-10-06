@@ -521,3 +521,37 @@ func TestWhenTwiceQueued(t *testing.T) {
 		t.Fatalf("%v: %d deletes", err, deletes)
 	}
 }
+
+// TestDeadSubtree: a top-level node deleted earlier in the same when pass is gone with its
+// subtree: the descendant axis does not find its children (review repro: p with `when false()`
+// and child q, z with `when "count(/descendant::q) = 0"` processed after p).
+func TestDeadSubtree(t *testing.T) {
+	f := newUnresFixture(t)
+	str := &schema.Type{Base: schema.String}
+	p := &schema.Node{Kind: schema.Container, Name: "p", Module: f.m, Config: true}
+	q := &schema.Node{Kind: schema.Leaf, Name: "q", Module: f.m, Parent: p, Type: str, Config: true}
+	p.Children = []*schema.Node{q}
+	z := &schema.Node{Kind: schema.Leaf, Name: "z", Module: f.m, Type: str, Config: true}
+	ef, _ := xpath.Compile("false()", testNS("u"))
+	p.Whens = []*schema.When{{Src: "false()", ContextNode: p, Compiled: ef}}
+	ec, _ := xpath.Compile("count(/descendant::q) = 0", testNS("u"))
+	z.Whens = []*schema.When{{Src: "count(/descendant::q) = 0", ContextNode: z, Compiled: ec}}
+	f.m.Top = append(f.m.Top, p, z)
+	vc, _, _ := f.build(t, ValidateOptions{})
+	pn := newInner(p)
+	pn.flags = FlagWhenTrue
+	qv, _ := types.Store(str, "v", types.FormatJSON, types.JSONHints("string"), nil, q)
+	vc.t.insert(pn, newTerm(q, qv), insertDefault)
+	vc.t.insert(nil, pn, insertDefault)
+	zv, _ := types.Store(str, "v", types.FormatJSON, types.JSONHints("string"), nil, z)
+	zn := newTerm(z, zv)
+	vc.t.insert(nil, zn, insertDefault)
+	vc.nodeWhen.add(zn) // queued before p: the pass (from the end) handles p first
+	vc.nodeWhen.add(pn)
+	if err := vc.unres(); err != nil {
+		t.Fatal(err, diagCodes(vc.log.diags))
+	}
+	if pn.parent != nil || pn.tree != nil || zn.flags&FlagWhenTrue == 0 {
+		t.Fatalf("p linked %v, z flags %x", pn.tree != nil, zn.flags)
+	}
+}

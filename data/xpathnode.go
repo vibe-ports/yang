@@ -27,6 +27,9 @@ func wrap(set *schema.Set, n *Node) xpath.Node {
 func (x xn) Parent() xpath.Node { return wrap(x.set, x.n.parent) }
 
 func (x xn) Children() []xpath.Node {
+	if x.n.flags&flagDead != 0 {
+		return nil // deleted by the running when pass: its subtree is gone for XPath too
+	}
 	out := make([]xpath.Node, 0, x.n.kids.len())
 	for c := range x.n.kids.all() {
 		if c.flags&flagDead == 0 {
