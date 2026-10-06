@@ -10,6 +10,7 @@ import (
 	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/ly"
 	"github.com/vibe-ports/yang/internal/schema"
+	"github.com/vibe-ports/yang/internal/types"
 )
 
 // TestLydPath: lyd_path(LYD_PATH_STD) predicates and module prefixes (TD:2974, design 07 §1.10).
@@ -37,9 +38,9 @@ func TestLydPath(t *testing.T) {
 	tr.insert(k2, kv, insertDefault)
 	ax := f.term(t, aug, "a")
 	tr.insert(c, ax, insertDefault)
-	opJSON := newOpaque(opaque{Name: "o", ModuleNS: "a"})
+	opJSON := newOpaque(opaque{Name: "o", ModuleNS: "a", Format: types.FormatJSON})
 	tr.insert(nil, opJSON, insertDefault)
-	opUnknown := newOpaque(opaque{Name: "u", ModuleNS: "zz"})
+	opUnknown := newOpaque(opaque{Name: "u", ModuleNS: "zz", Format: types.FormatJSON})
 	tr.insert(c, opUnknown, insertDefault)
 	pending := newInner(f.l) // keys incomplete: not linked, its path starts at the list
 	pv := f.term(t, f.lv, "v")

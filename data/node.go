@@ -37,9 +37,14 @@ const (
 type opaque struct {
 	Name     string
 	Prefix   string // as written in the input
-	ModuleNS string // JSON module name or XML namespace
+	ModuleNS string // XML namespace, JSON module name (lyd_node_opaq.name.module_ns/module_name)
 	Value    string
-	XML      bool // ModuleNS is a namespace (LY_VALUE_XML), else a module name (LY_VALUE_JSON)
+	// Format is how ModuleNS and the value's prefixes are given: types.FormatXML or
+	// types.FormatJSON; Prefixes resolves the value's prefixes (val_prefix_data), Hints are the
+	// parser's value hints.
+	Format   types.Format
+	Prefixes types.PrefixCtx
+	Hints    types.Hints
 }
 
 // Node is a data node (lyd_node and its subtypes). A term (leaf, leaf-list instance) holds a

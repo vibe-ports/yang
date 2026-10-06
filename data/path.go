@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/vibe-ports/yang/internal/schema"
+	"github.com/vibe-ports/yang/internal/types"
 )
 
 // nodeModule is lyd_node_module: the module of n, for an opaque node the implemented module of
@@ -19,7 +20,7 @@ func nodeModule(set *schema.Set, n *Node) *schema.Module {
 		case n.schema != nil:
 			return n.schema.Module
 		case n.opaq.ModuleNS == "":
-		case n.opaq.XML:
+		case n.opaq.Format == types.FormatXML:
 			return set.ByNamespace(n.opaq.ModuleNS)
 		default:
 			return set.Implemented(n.opaq.ModuleNS)

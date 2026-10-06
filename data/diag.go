@@ -18,7 +18,11 @@ import (
 // holds every diagnostic in log order, warnings included.
 type ValidationError struct {
 	Diags []yang.Diagnostic
+	err   error // yang.ErrBudget when a libyang nesting limit stopped the parse
 }
+
+// Unwrap returns yang.ErrBudget when a nesting limit of the input stopped the parse.
+func (e *ValidationError) Unwrap() error { return e.err }
 
 func (e *ValidationError) Error() string {
 	for _, d := range e.Diags {
@@ -118,6 +122,16 @@ func (l *logger) warn(format string, a ...any) {
 func (l *logger) logErr(errno, format string, a ...any) error {
 	l.diags = append(l.diags, yang.Diagnostic{Err: errno, Code: ly.Success.String(), Msg: fmt.Sprintf(format, a...)})
 	return errLogged
+}
+
+// lexVal is LOGVAL from a lexer: the parser's location, the lexer's line.
+func (l *logger) lexVal(code ly.Code, msg string, line int) {
+	d := yang.Diagnostic{Err: "LY_EVALID", Code: code.String(), Msg: msg}
+	d.DataPath, d.SchemaPath, d.Line = l.location(nil, nil)
+	if line != 0 {
+		d.Line = line
+	}
+	l.diags = append(l.diags, d)
 }
 
 // errLogged is returned by the logging helpers: the details are in the logger's diagnostics.
