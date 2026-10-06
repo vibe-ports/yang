@@ -370,7 +370,7 @@ func (c *Context) unres() error {
 func (c *Context) compile(m *Module) error {
 	for _, f := range m.features {
 		m.Schema.Features = append(m.Schema.Features, &schema.Feature{Name: f.p.Name, Module: m.Schema,
-			Enabled: f.enabled, Status: identStatus(f.p.Status)})
+			Enabled: f.enabled, Status: parsedStatus(f.p.Status)})
 	}
 	if !c.nodeWalk {
 		m.compiled = true

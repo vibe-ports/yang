@@ -13,17 +13,6 @@ import (
 	"github.com/vibe-ports/yang/internal/schema"
 )
 
-// identStatus is the status of a parsed identity (its LYS_STATUS_* flags).
-func identStatus(s string) schema.Status {
-	switch s {
-	case "deprecated":
-		return schema.Deprecated
-	case "obsolete":
-		return schema.Obsolete
-	}
-	return schema.Current
-}
-
 // compileIdentities is lys_compile_identities (P0): the identities of m and
 // its submodules (lys_identity_precompile), then the derived back-links of
 // their bases, module first, then per submodule. Extension instances of
@@ -36,7 +25,7 @@ func (c *Context) compileIdentities(m *Module) error {
 	for _, pm := range pms {
 		for _, p := range pm.Parsed.Identities {
 			m.Schema.Identities = append(m.Schema.Identities,
-				&schema.Identity{Name: p.Name, Module: m.Schema, Status: identStatus(p.Status)})
+				&schema.Identity{Name: p.Name, Module: m.Schema, Status: parsedStatus(p.Status)})
 		}
 	}
 	if err := c.identitiesDerived(m, &m.pmod, "/"+m.Name+":"); err != nil {
