@@ -188,3 +188,16 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | src/schema_compile_node.c | lys_compile_node_action, lys_compile_node_action_inout | compile.nodeCtx.action, compile.nodeCtx.inout | ported | compile/rpc-* | |
 | src/schema_compile_node.c | lys_compile_node_notif | compile.nodeCtx.notif | ported | compile/notif-* | |
 | src/schema_compile_node.c | lys_compile_mandatory_parents | compile.mandatoryParents | partial | compile/mand-* | set only; unset (SCA:2036): C6 |
+| src/json.c | lyjson_token2str | lyjson.Token.String | ported | — | |
+| src/json.c | lyjson_ctx_status, lyjson_ctx_depth | lyjson.Lexer.Status, lyjson.Lexer.Depth | ported | — | |
+| src/json.c | lyjson_ctx_new | lyjson.New | ported | json/* | input is []byte, first NUL ends it (libyang lexes NUL-terminated memory); `subtree` argument of the header does not exist in 5.8.6 |
+| src/json.c | lyjson_ctx_next | lyjson.Lexer.Next | ported | json/* | LY_EINT state (LYJSON_ERROR) is unreachable and returns a diagnostic |
+| src/json.c | lyjson_ctx_backup, lyjson_ctx_restore | lyjson.Lexer.Backup, lyjson.Lexer.Restore | ported | — | restores top status entry, stack height, value and position, not the line (as libyang) |
+| src/json.c | lyjson_ctx_free, lyjson_ctx_set_value | — | replaced | — | no manual memory; the value is a Go string |
+| src/json.c | lyjson_skip_ws | lyjson.Lexer.skipWS | ported | — | counts LF for the diagnostic line |
+| src/json.c | lyjson_string | lyjson.Lexer.str | ported | json/string-escapes | all messages and lines, incl. the two-diagnostic unterminated string and libyang's non-hex \u digits (uint32 wrap) |
+| src/json.c | lyjson_count_in_row, lyjson_number_is_zero | lyjson.countInRow, lyjson.numberIsZero | ported | — | |
+| src/json.c | lyjson_get_buffer_for_number | lyjson.Lexer.expNumber (alloc) | ported | json/exp-number | LY_NUMBER_MAXLEN 22 |
+| src/json.c | lyjson_exp_number_copy_num_part, lyjson_exp_number | lyjson.expNumberCopyNumPart, lyjson.Lexer.expNumber | ported | json/exp-number | libyang's wrong rewrite of 0.5e1 (".") and 0.123e3 ("12.") is reproduced on purpose |
+| src/json.c | lyjson_number | lyjson.Lexer.number | ported | json/exp-number | |
+| src/json.c | lyjson_next_object_name, lyjson_next_value, lyjson_next_object_item, lyjson_next_array_item | lyjson.Lexer.nextObjectName, nextValue, nextObjectItem, nextArrayItem | ported | json/*, depth/json-5000 | status stack limit 5000 checked after every value push incl. closing tokens (error wraps lyjson.ErrNesting) |
