@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+// Schema-mode XPath: arguments of the string functions that are not strings (the "Argument #n of
+// xpath_*" warnings; libyang names the C function, not the XPath one).
+module when-string-func-arg {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:when-string-func-arg";
+  prefix wsfa;
+  container top {
+    leaf s { type string; }
+    leaf n { type uint8; }
+    leaf-list ll { type string; }
+    container c { leaf x { type string; } }
+    leaf w1 { type string; when "contains(../n, 'x')"; }
+    leaf w2 { type string; when "contains(../s, ../c)"; }
+    leaf w3 { type string; when "concat(../s, ../n, ../c, ../ll)"; }
+    leaf w4 { type string; when "lang(../c) or lang(../n)"; }
+    leaf w5 { type string; when "normalize-space(../n) = '' or normalize-space(../c) = '' or normalize-space() = ''"; }
+    leaf w6 { type string; when "re-match(../n, ../c)"; }
+    leaf w7 { type string; when "starts-with(../c, ../n)"; }
+    leaf w8 { type string; when "string-length(../n) > 1 and string-length(../c) > 1 and string-length(../s) > 1"; }
+    leaf w9 { type string; when "../n[string-length() > 1] and ../c[string-length() > 1] and ../s[string-length() > 1]"; }
+    leaf w10 { type string; when "substring-before(../n, ../c) = substring-after(../c, ../n)"; }
+    leaf w11 { type string; when "translate(../n, ../c, ../ll) = translate(../s, ../s, ../s)"; }
+  }
+}

@@ -8894,3 +8894,25 @@ fixtures:
       searchdirs: [schemas]
       modules: [{"name": "must-value-nofit-sides"}]
     golden: golden/must-value-not-fit-sides-warning.json
+
+  - id: when/string-func-arg-warning
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.21.5", "RFC7950#10.3"]
+    areas: ["schema", "xpath"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "when-string-func-arg"}]
+    golden: golden/when-string-func-arg-warning.json
+
+  - id: when/substring-numeric-arg-warning
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.21.5", "RFC7950#10.3"]
+    areas: ["schema", "xpath"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "when-substring-numeric-arg"}]
+    golden: golden/when-substring-numeric-arg-warning.json

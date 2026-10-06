@@ -324,7 +324,8 @@ func (a *atomizer) chain(x chainExpr, s *scset) error {
 var nodeFuncs = map[string]bool{"boolean": true, "count": true, "false": true, "last": true,
 	"local-name": true, "name": true, "not": true, "position": true, "true": true}
 
-// call is eval_function_call; per-function argument warnings are C2b.
+// call is eval_function_call; the argument warnings of the string functions are warnFuncArgs, the
+// others are C2b.
 func (a *atomizer) call(x callExpr, s *scset) error {
 	args := make([]*scset, len(x.args))
 	for i, arg := range x.args {
@@ -333,6 +334,7 @@ func (a *atomizer) call(x callExpr, s *scset) error {
 			return err
 		}
 	}
+	a.warnFuncArgs(x.name, args, s)
 	switch {
 	case x.name == "current": // xpath_current
 		s.clearCtx(AtomNode)

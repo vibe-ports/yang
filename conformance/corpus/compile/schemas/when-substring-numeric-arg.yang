@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+// Schema-mode XPath: substring() arguments 2 and 3 want numbers, the third only when it is given.
+module when-substring-numeric-arg {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:when-substring-numeric-arg";
+  prefix wsna;
+  container top {
+    leaf s { type string; }
+    leaf n { type uint8; }
+    leaf-list ll { type string; }
+    container c { leaf x { type string; } }
+    leaf w1 { type string; when "substring(../s, ../s) = ''"; }
+    leaf w2 { type string; when "substring(../s, ../n) = '' and substring(../s, 1, ../n) = ''"; }
+    leaf w3 { type string; when "substring(../s, 1, ../c) = '' or substring(../s, ../n, ../s) = ''"; }
+    leaf w4 { type string; when "substring(../n, 1) = '' or substring(../c, ../ll) = ''"; }
+  }
+}

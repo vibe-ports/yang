@@ -1,0 +1,903 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module when-string-func-arg {\n  namespace \"urn:vibe-ports:yang:conformance:when-string-func-arg\";\n  prefix wsfa;\n\n  container top {\n    config true;\n    status current;\n    leaf s {\n      type string;\n      config true;\n      status current;\n    }\n    leaf n {\n      type uint8;\n      config true;\n      status current;\n    }\n    leaf-list ll {\n      type string;\n      config true;\n      min-elements 0;\n      max-elements 4294967295;\n      ordered-by system;\n      status current;\n    }\n    container c {\n      config true;\n      status current;\n      leaf x {\n        type string;\n        config true;\n        status current;\n      }\n    }\n    leaf w1 {\n      when \"contains(../n, 'x')\";\n      type string;\n      config true;\n      status current;\n    }\n    leaf w2 {\n      when \"contains(../s, ../c)\";\n      type string;\n      config true;\n      status current;\n    }\n    leaf w3 {\n      when \"concat(../s, ../n, ../c, ../ll)\";\n      type string;\n      config true;\n      status current;\n    }\n    leaf w4 {\n      when \"lang(../c) or lang(../n)\";\n      type string;\n      config true;\n      status current;\n    }\n    leaf w5 {\n      when \"normalize-space(../n) = '' or normalize-space(../c) = '' or normalize-space() = ''\";\n      type string;\n      config true;\n      status current;\n    }\n    leaf w6 {\n      when \"re-match(../n, ../c)\";\n      type string;\n      config true;\n      status current;\n    }\n    leaf w7 {\n      when \"starts-with(../c, ../n)\";\n      type string;\n      config true;\n      status current;\n    }\n    leaf w8 {\n      when \"string-length(../n) > 1 and string-length(../c) > 1 and string-length(../s) > 1\";\n      type string;\n      config true;\n      status current;\n    }\n    leaf w9 {\n      when \"../n[string-length() > 1] and ../c[string-length() > 1] and ../s[string-length() > 1]\";\n      type string;\n      config true;\n      status current;\n    }\n    leaf w10 {\n      when \"substring-before(../n, ../c) = substring-after(../c, ../n)\";\n      type string;\n      config true;\n      status current;\n    }\n    leaf w11 {\n      when \"translate(../n, ../c, ../ll) = translate(../s, ../s, ../s)\";\n      type string;\n      config true;\n      status current;\n    }\n  }\n}\n",
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_translate is node \"n\", not of string-type.",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #2 of xpath_translate is a container node \"c\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_substring_before is node \"n\", not of string-type.",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #2 of xpath_substring_before is a container node \"c\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_substring_after is a container node \"c\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #2 of xpath_substring_after is node \"n\", not of string-type.",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #0 of xpath_string_length is node \"n\", not of string-type.",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #0 of xpath_string_length is a container node \"c\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_string_length is node \"n\", not of string-type.",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_string_length is a container node \"c\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_starts_with is a container node \"c\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #2 of xpath_starts_with is node \"n\", not of string-type.",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_re_match is node \"n\", not of string-type.",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #2 of xpath_re_match is a container node \"c\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_normalize_space is node \"n\", not of string-type.",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_normalize_space is a container node \"c\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_lang is a container node \"c\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_lang is node \"n\", not of string-type.",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #2 of xpath_concat is node \"n\", not of string-type.",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #3 of xpath_concat is a container node \"c\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #2 of xpath_contains is a container node \"c\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_contains is node \"n\", not of string-type.",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "features": [],
+      "identities": [],
+      "name": "when-string-func-arg",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-string-func-arg",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/when-string-func-arg:top",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-string-func-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-string-func-arg:top/s",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-string-func-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-string-func-arg:top/n",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "when-string-func-arg",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "system",
+          "path": "/when-string-func-arg:top/ll",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-string-func-arg",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/when-string-func-arg:top/c",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-string-func-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-string-func-arg:top/c/x",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-string-func-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-string-func-arg:top/w1",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-string-func-arg:top/w1",
+              "expr": "contains(../n, 'x')",
+              "module": "when-string-func-arg"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-string-func-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-string-func-arg:top/w2",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-string-func-arg:top/w2",
+              "expr": "contains(../s, ../c)",
+              "module": "when-string-func-arg"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-string-func-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-string-func-arg:top/w3",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-string-func-arg:top/w3",
+              "expr": "concat(../s, ../n, ../c, ../ll)",
+              "module": "when-string-func-arg"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-string-func-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-string-func-arg:top/w4",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-string-func-arg:top/w4",
+              "expr": "lang(../c) or lang(../n)",
+              "module": "when-string-func-arg"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-string-func-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-string-func-arg:top/w5",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-string-func-arg:top/w5",
+              "expr": "normalize-space(../n) = '' or normalize-space(../c) = '' or normalize-space() = ''",
+              "module": "when-string-func-arg"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-string-func-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-string-func-arg:top/w6",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-string-func-arg:top/w6",
+              "expr": "re-match(../n, ../c)",
+              "module": "when-string-func-arg"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-string-func-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-string-func-arg:top/w7",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-string-func-arg:top/w7",
+              "expr": "starts-with(../c, ../n)",
+              "module": "when-string-func-arg"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-string-func-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-string-func-arg:top/w8",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-string-func-arg:top/w8",
+              "expr": "string-length(../n) > 1 and string-length(../c) > 1 and string-length(../s) > 1",
+              "module": "when-string-func-arg"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-string-func-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-string-func-arg:top/w9",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-string-func-arg:top/w9",
+              "expr": "../n[string-length() > 1] and ../c[string-length() > 1] and ../s[string-length() > 1]",
+              "module": "when-string-func-arg"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-string-func-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-string-func-arg:top/w10",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-string-func-arg:top/w10",
+              "expr": "substring-before(../n, ../c) = substring-after(../c, ../n)",
+              "module": "when-string-func-arg"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-string-func-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-string-func-arg:top/w11",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-string-func-arg:top/w11",
+              "expr": "translate(../n, ../c, ../ll) = translate(../s, ../s, ../s)",
+              "module": "when-string-func-arg"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

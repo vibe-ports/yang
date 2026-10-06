@@ -221,3 +221,75 @@ func (a *atomizer) warnEqualityValue(s *scset, val, eq, last token) {
 	}
 	trailer()
 }
+
+// argCheck is one argument position of a function whose arguments are expected to be strings (or
+// numbers): the C function name libyang prints (__func__), the 1-based argument numbers checked
+// and which of them want a number.
+type argCheck struct {
+	cname   string
+	strArgs []int // 1-based
+	numArgs []int
+}
+
+// stringFuncs are the schema-mode argument checks of the XPath functions in xpath.c (xpath_concat
+// and the other xpath_* functions with LOGWRN sites under LYXP_SCNODE_ALL). concat checks every
+// argument, so it has no fixed list.
+var stringFuncs = map[string]argCheck{
+	"concat":           {cname: "xpath_concat"},
+	"contains":         {"xpath_contains", []int{1, 2}, nil},
+	"lang":             {"xpath_lang", []int{1}, nil},
+	"normalize-space":  {"xpath_normalize_space", []int{1}, nil}, // only with an argument
+	"re-match":         {"xpath_re_match", []int{1, 2}, nil},
+	"starts-with":      {"xpath_starts_with", []int{1, 2}, nil},
+	"string-length":    {"xpath_string_length", []int{1}, nil},     // without an argument: #0 over the context set
+	"substring":        {"xpath_substring", []int{1}, []int{2, 3}}, // #3 only when given
+	"substring-after":  {"xpath_substring_after", []int{1, 2}, nil},
+	"substring-before": {"xpath_substring_before", []int{1, 2}, nil},
+	"translate":        {"xpath_translate", []int{1, 2, 3}, nil},
+}
+
+// warnFuncArgs ports the LYXP_SCNODE_ALL branches of those functions: for each checked argument,
+// the last node in the argument's context must be a leaf or leaf-list of a string type (a numeric
+// type for substring's 2nd and 3rd argument). set is the context set the function is called on.
+func (a *atomizer) warnFuncArgs(name string, args []*scset, set *scset) {
+	c, ok := stringFuncs[name]
+	if !ok || a.warn == nil {
+		return
+	}
+	switch {
+	case name == "concat":
+		for i, arg := range args {
+			a.warnArg(c.cname, i+1, arg, false)
+		}
+		return
+	case name == "string-length" && len(args) == 0:
+		a.warnArg(c.cname, 0, set, false) // libyang: the context set, "Argument #0"
+		return
+	}
+	for _, n := range c.strArgs {
+		if n <= len(args) {
+			a.warnArg(c.cname, n, args[n-1], false)
+		}
+	}
+	for _, n := range c.numArgs {
+		if n <= len(args) {
+			a.warnArg(c.cname, n, args[n-1], true)
+		}
+	}
+}
+
+// warnArg is one "Argument #n of ..." check.
+func (a *atomizer) warnArg(cname string, n int, s *scset, numeric bool) {
+	sn := lastCtx(s)
+	if sn == nil {
+		return
+	}
+	switch k := sn.Kind(); {
+	case k != KindLeaf && k != KindLeafList:
+		a.warn(fmt.Sprintf("Argument #%d of %s is a %s node \"%s\".", n, cname, kindStr(k), sn.Name()))
+	case numeric && !isNumericType(sn.Type()):
+		a.warn(fmt.Sprintf("Argument #%d of %s is node \"%s\", not of numeric type.", n, cname, sn.Name()))
+	case !numeric && !isStringType(sn.Type()):
+		a.warn(fmt.Sprintf("Argument #%d of %s is node \"%s\", not of string-type.", n, cname, sn.Name()))
+	}
+}
