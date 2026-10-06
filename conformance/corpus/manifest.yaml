@@ -24932,6 +24932,22 @@ fixtures:
       rfc: ["RFC7950#7.21.5"]
       deviation: null
 
+  - id: ut-validation/type-incomplete-when-03
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_incomplete_when:196
+    rfc: ["RFC7950#7.21.5"]
+    areas: [validation]
+    request:
+      op: "sequence"
+      searchdirs: [a.3]
+      modules: [{name: "a"}]
+      steps: [{"do": "parse", "format": "xml", "data_type": "data", "data": "<cont xmlns=\"urn:tests:a\"><a>val_c</a><b>val</b></cont><c xmlns=\"urn:tests:a\">val_c</c>", "unknown": "skip", "validate_options": ["present"]}, {"do": "edit", "set": {"path": "/a:c", "value": "wrong-val"}}, {"do": "validate", "data_type": "data", "validate_options": ["present"]}, {"do": "dump", "with_defaults": "explicit"}]
+    golden: golden/type-incomplete-when-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.21.5"]
+      deviation: null
+
   - id: ut-validation/unprefixed-ident-01
     dir: ut-validation
     source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_unprefixed_ident:222
@@ -25652,16 +25668,10 @@ fixtures:
     rfc: ["RFC7950#7.21.1"]
     areas: [validation]
     request:
-      op: "data"
+      op: "sequence"
       searchdirs: [h.1]
       modules: [{name: "h"}]
-      format: "xml"
-      data_type: "data"
-      data: "<cont xmlns=\"urn:tests:h\">\n  <cont2>\n    <l>val</l>\n  </cont2>\n</cont>\n"
-      parse_only: false
-      parse_options: []
-      validate_options: ["present", "no_state"]
-      unknown: "skip"
+      steps: [{"do": "parse", "format": "xml", "data_type": "data", "data": "<cont xmlns=\"urn:tests:h\">\n  <cont2>\n    <l>val</l>\n  </cont2>\n</cont>\n", "unknown": "skip", "parse_only": true}, {"do": "validate", "data_type": "data", "validate_options": ["present", "no_state"]}]
     golden: golden/state-04.json
     assert:
       verdict: invalid
@@ -25840,20 +25850,14 @@ fixtures:
     rfc: ["RFC7950#7.5.3", "RFC7950#7.8.5"]
     areas: [validation]
     request:
-      op: "data"
+      op: "sequence"
       searchdirs: [ii.1]
       modules: [{name: "ii"}]
-      format: "json"
-      data_type: "data"
-      data: "{\n  \"ii:cont\": {\n    \"l\": \"wrong\",\n    \"l\": \"wrong2\",\n    \"l2\": \"val\",\n    \"l3\": \"val\",\n    \"ll\": [25]\n  }\n}\n"
-      parse_only: false
-      parse_options: []
-      validate_options: ["present", "multi_error"]
-      unknown: "skip"
+      steps: [{"do": "parse", "format": "json", "data_type": "data", "data": "{\n  \"ii:cont\": {\n    \"l\": \"wrong\",\n    \"l\": \"wrong2\",\n    \"l2\": \"val\",\n    \"l3\": \"val\",\n    \"ll\": [25]\n  }\n}\n", "unknown": "skip", "parse_only": true}, {"do": "validate", "data_type": "data", "validate_options": ["present", "multi_error"]}]
     golden: golden/multi-error-05.json
     assert:
       verdict: invalid
-      diagnostics: [{apptag: "too-few-elements"}]
+      diagnostics: [{apptag: "too-few-elements"}, {apptag: "not-left"}, {apptag: "must-violation"}]
       rfc: ["RFC7950#7.5.3", "RFC7950#7.8.5"]
       deviation: null
 
@@ -25955,20 +25959,14 @@ fixtures:
 
   - id: ut-validation/store-only-03
     dir: ut-validation
-    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_store_only:1631
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_store_only:1629
     rfc: ["RFC7950#9.4.5"]
     areas: [validation]
     request:
-      op: "data"
+      op: "sequence"
       searchdirs: [k.2]
       modules: [{name: "k"}]
-      format: "xml"
-      data_type: "data"
-      data: "<l xmlns=\"urn:tests:k\">no-lowercAse-A</l>"
-      parse_only: false
-      parse_options: []
-      validate_options: ["present"]
-      unknown: "reject"
+      steps: [{"do": "parse", "format": "xml", "data_type": "data", "data": "<l xmlns=\"urn:tests:k\">no-lowercAse-A</l>", "unknown": "reject", "parse_options": ["store_only"]}, {"do": "validate", "data_type": "data", "validate_options": ["present"]}]
     golden: golden/store-only-03.json
     assert:
       verdict: invalid

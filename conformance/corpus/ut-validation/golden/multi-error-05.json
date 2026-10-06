@@ -1,82 +1,6 @@
 {
   "context_diagnostics": [],
-  "diagnostics": [
-    {
-      "apptag": null,
-      "code": {
-        "err": 7,
-        "name": "LY_EVALID"
-      },
-      "data_path": "/ii:cont/l",
-      "level": "error",
-      "line": 9,
-      "msg": "Duplicate instance of \"l\".",
-      "phase": "data",
-      "schema_path": null,
-      "vecode": 9,
-      "vecode_name": "LYVE_DATA"
-    },
-    {
-      "apptag": null,
-      "code": {
-        "err": 7,
-        "name": "LY_EVALID"
-      },
-      "data_path": "/ii:cont/l",
-      "level": "error",
-      "line": 9,
-      "msg": "Duplicate instance of \"l\".",
-      "phase": "data",
-      "schema_path": null,
-      "vecode": 9,
-      "vecode_name": "LYVE_DATA"
-    },
-    {
-      "apptag": "must-violation",
-      "code": {
-        "err": 7,
-        "name": "LY_EVALID"
-      },
-      "data_path": "/ii:cont/l2",
-      "level": "error",
-      "line": 0,
-      "msg": "Must condition \"../l = 'right'\" not satisfied.",
-      "phase": "data",
-      "schema_path": null,
-      "vecode": 9,
-      "vecode_name": "LYVE_DATA"
-    },
-    {
-      "apptag": "not-left",
-      "code": {
-        "err": 7,
-        "name": "LY_EVALID"
-      },
-      "data_path": "/ii:cont/l3",
-      "level": "error",
-      "line": 0,
-      "msg": "l leaf is not left",
-      "phase": "data",
-      "schema_path": null,
-      "vecode": 9,
-      "vecode_name": "LYVE_DATA"
-    },
-    {
-      "apptag": "too-few-elements",
-      "code": {
-        "err": 7,
-        "name": "LY_EVALID"
-      },
-      "data_path": "/ii:cont/ll[.='25']",
-      "level": "error",
-      "line": 0,
-      "msg": "Too few \"ll\" instances.",
-      "phase": "data",
-      "schema_path": null,
-      "vecode": 9,
-      "vecode_name": "LYVE_DATA"
-    }
-  ],
+  "failed_step": 1,
   "libyang": "5.8.6",
   "modules": [
     {
@@ -86,12 +10,328 @@
       "revision": null
     }
   ],
-  "op": "data",
+  "op": "sequence",
   "protocol": 2,
   "rc": {
     "err": 7,
     "name": "LY_EVALID"
   },
-  "tree": null,
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/ii:cont",
+          "schema": "/ii:cont",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/ii:cont/l",
+          "schema": "/ii:cont/l",
+          "value": {
+            "canonical": "wrong",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/ii:cont/l",
+          "schema": "/ii:cont/l",
+          "value": {
+            "canonical": "wrong2",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/ii:cont/l2",
+          "schema": "/ii:cont/l2",
+          "value": {
+            "canonical": "val",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/ii:cont/l3",
+          "schema": "/ii:cont/l3",
+          "value": {
+            "canonical": "val",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ii:cont/ll[.='25']",
+          "schema": "/ii:cont/ll",
+          "value": {
+            "canonical": "25",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": "/ii:cont/l",
+          "level": "error",
+          "line": 0,
+          "msg": "Duplicate instance of \"l\".",
+          "phase": "validate",
+          "schema_path": null,
+          "vecode": 9,
+          "vecode_name": "LYVE_DATA"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": "/ii:cont/l",
+          "level": "error",
+          "line": 0,
+          "msg": "Duplicate instance of \"l\".",
+          "phase": "validate",
+          "schema_path": null,
+          "vecode": 9,
+          "vecode_name": "LYVE_DATA"
+        },
+        {
+          "apptag": "must-violation",
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": "/ii:cont/l2",
+          "level": "error",
+          "line": 0,
+          "msg": "Must condition \"../l = 'right'\" not satisfied.",
+          "phase": "validate",
+          "schema_path": null,
+          "vecode": 9,
+          "vecode_name": "LYVE_DATA"
+        },
+        {
+          "apptag": "not-left",
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": "/ii:cont/l3",
+          "level": "error",
+          "line": 0,
+          "msg": "l leaf is not left",
+          "phase": "validate",
+          "schema_path": null,
+          "vecode": 9,
+          "vecode_name": "LYVE_DATA"
+        },
+        {
+          "apptag": "too-few-elements",
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": "/ii:cont/ll[.='25']",
+          "level": "error",
+          "line": 0,
+          "msg": "Too few \"ll\" instances.",
+          "phase": "validate",
+          "schema_path": null,
+          "vecode": 9,
+          "vecode_name": "LYVE_DATA"
+        }
+      ],
+      "do": "validate",
+      "implicit_diff": null,
+      "rc": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/ii:cont",
+          "schema": "/ii:cont",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/ii:cont/l",
+          "schema": "/ii:cont/l",
+          "value": {
+            "canonical": "wrong",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/ii:cont/l",
+          "schema": "/ii:cont/l",
+          "value": {
+            "canonical": "wrong2",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/ii:cont/l2",
+          "schema": "/ii:cont/l2",
+          "value": {
+            "canonical": "val",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/ii:cont/l3",
+          "schema": "/ii:cont/l3",
+          "value": {
+            "canonical": "val",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ii:cont/ll[.='25']",
+          "schema": "/ii:cont/ll",
+          "value": {
+            "canonical": "25",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
   "verdict": "invalid"
 }

@@ -1,22 +1,6 @@
 {
   "context_diagnostics": [],
-  "diagnostics": [
-    {
-      "apptag": null,
-      "code": {
-        "err": 7,
-        "name": "LY_EVALID"
-      },
-      "data_path": null,
-      "level": "error",
-      "line": 1,
-      "msg": "Unsatisfied pattern - \"no-lowercAse-A\" does not match \".*a.*\".",
-      "phase": "data",
-      "schema_path": "/k:l",
-      "vecode": 9,
-      "vecode_name": "LYVE_DATA"
-    }
-  ],
+  "failed_step": 1,
   "libyang": "5.8.6",
   "modules": [
     {
@@ -26,12 +10,88 @@
       "revision": null
     }
   ],
-  "op": "data",
+  "op": "sequence",
   "protocol": 2,
   "rc": {
     "err": 7,
     "name": "LY_EVALID"
   },
-  "tree": null,
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/k:l",
+          "schema": "/k:l",
+          "value": {
+            "canonical": "no-lowercAse-A",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": "/k:l",
+          "level": "error",
+          "line": 0,
+          "msg": "Unsatisfied pattern - \"no-lowercAse-A\" does not match \".*a.*\".",
+          "phase": "validate",
+          "schema_path": null,
+          "vecode": 9,
+          "vecode_name": "LYVE_DATA"
+        }
+      ],
+      "do": "validate",
+      "implicit_diff": null,
+      "rc": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/k:l",
+          "schema": "/k:l",
+          "value": {
+            "canonical": "no-lowercAse-A",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
   "verdict": "invalid"
 }
