@@ -93,17 +93,17 @@ type diffRec struct {
 	path string
 }
 
-func (f *dfltFixture) ctx(t *testing.T, tr *Tree, multi bool) (*valCtx, *[]diffRec, *[]*Node, *[]*Node) {
+func (f *dfltFixture) ctx(t *testing.T, tr *Tree, multi bool) (*valCtx, *[]diffRec, *nodeSet, *nodeSet) {
 	t.Helper()
 	var diffs []diffRec
-	var when, typ []*Node
+	when, typ := &nodeSet{}, &nodeSet{}
 	vc := &valCtx{t: tr, log: &logger{set: f.set}, opts: ValidateOptions{MultiError: multi},
-		nodeWhen: &when, nodeTypes: &typ}
+		nodeWhen: when, nodeTypes: typ}
 	vc.diff = func(n *Node, op diffOp) error {
 		diffs = append(diffs, diffRec{op, lydPath(f.set, n, false)})
 		return nil
 	}
-	return vc, &diffs, &when, &typ
+	return vc, &diffs, when, typ
 }
 
 func dump(n *Node) []string {
@@ -144,8 +144,8 @@ func TestNewImplicit(t *testing.T) {
 	if got := dump(top); !reflect.DeepEqual(got, want) {
 		t.Fatalf("got  %v\nwant %v", got, want)
 	}
-	if len(*when) != 1 || (*when)[0].Name() != "w" {
-		t.Fatalf("when queue %v", *when)
+	if when.len() != 1 || when.items[0].Name() != "w" {
+		t.Fatalf("when queue %v", when.items)
 	}
 	// choices first (lyd_new_implicit), then the other children, then the default containers
 	wantDiff := []diffRec{{diffCreate, "/d:top"}, {diffCreate, "/d:top/x"}, {diffCreate, "/d:top/a"},
@@ -312,7 +312,7 @@ func TestValStop(t *testing.T) {
 	if vc.stop(errLogged) {
 		t.Fatal("LY_EVALID then a warning must go on")
 	}
-	_ = vc.log.logErr(&opError{Err: "LY_EINVAL", Msg: "x"})
+	_ = vc.log.logErr("LY_EINVAL", "x")
 	vc.log.warn("w")
 	if !vc.stop(errLogged) {
 		t.Fatal("LY_EINVAL must stop")
@@ -320,5 +320,46 @@ func TestValStop(t *testing.T) {
 	vc.opts.MultiError = false
 	if vc.stop(nil) || !vc.stop(errLogged) {
 		t.Fatal("single error")
+	}
+}
+
+// TestHasWhen: lysc_has_when climbs only through choice and case; the data parent's when is not
+// the node's.
+func TestHasWhen(t *testing.T) {
+	f := newDfltFixture()
+	f.top.Whens = []*schema.When{{Src: "true()"}}
+	f.ch.Whens = []*schema.When{{Src: "true()"}}
+	if hasWhen(f.a) || !hasWhen(f.top) || !hasWhen(f.x) || !hasWhen(f.w) {
+		t.Fatal("hasWhen")
+	}
+}
+
+// TestAutodelWork: replacing n default instances and dropping their node_types entries costs
+// linear work (counted, not timed); the implicit nodes are charged to the node budget.
+func TestAutodelWork(t *testing.T) {
+	f := newDfltFixture()
+	tr := newTree(f.set)
+	vc, _, _, typ := f.ctx(t, tr, false)
+	top := newInner(f.top)
+	tr.insert(nil, top, insertDefault)
+	f.ll.Type = &schema.Type{Base: schema.Uint32}
+	const n = 20000
+	for i := range n {
+		d := f.term(t, f.ll, fmt.Sprint(i), FlagDefault)
+		tr.insert(top, d, insertDefault)
+		typ.add(d)
+	}
+	tr.insert(top, f.term(t, f.ll, fmt.Sprint(n), FlagNew), insertDefault)
+	tr.work = 0
+	if err := vc.validateNew(top, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if top.kids.len() != 1 || typ.len() != 0 || tr.work > 4*n {
+		t.Fatalf("%d left, %d queued, %d steps", top.kids.len(), typ.len(), tr.work)
+	}
+	charged := 0
+	vc.charge = func() error { charged++; return nil }
+	if err := vc.newImplicitR(top, nil, nil, 0); err != nil || charged == 0 {
+		t.Fatalf("charge: %v %d", err, charged)
 	}
 }

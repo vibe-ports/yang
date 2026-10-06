@@ -93,8 +93,8 @@ type lydCtx struct {
 	limitHit bool
 	// The work queues of the Parse path (design 07 §1.5): filled in parse order and handed to the
 	// validation, where the first module traversed drains them for every module.
-	nodeWhen  []*Node // node_when: nodes with a when, after their children (post-order)
-	nodeTypes []*Node // node_types: values that still need the data tree (LY_EINCOMPLETE)
+	nodeWhen  nodeSet // node_when: nodes with a when, after their children (post-order)
+	nodeTypes nodeSet // node_types: values that still need the data tree (LY_EINCOMPLETE)
 	// validateNewImplicit is lyd_parser_validate_new_implicit, run when an inner node closes
 	// without an error inside it: lyd_validate_new of its children and their implicit nodes
 	// (design 07 D8; nil until then).
@@ -266,7 +266,7 @@ func (lc *lydCtx) createTerm(sn *schema.Node, lnode *Node, lex string, f types.F
 	n := newTerm(sn, v)
 	n.flags = lc.newFlags()
 	if v.NeedsTree() && !lc.opts.ParseOnly {
-		lc.nodeTypes = append(lc.nodeTypes, n)
+		lc.nodeTypes.add(n)
 	}
 	return n, nil
 }
@@ -367,11 +367,11 @@ func (lc *lydCtx) checkKeys(list *Node) error {
 // hasWhen is lysc_has_when: a when on the node or on a choice/case ancestor below its data parent.
 func hasWhen(sn *schema.Node) bool {
 	for p := sn; p != nil; p = p.Parent {
+		if p != sn && p.Kind != schema.Choice && p.Kind != schema.Case {
+			return false // the data parent's when is not the node's
+		}
 		if len(p.Whens) > 0 {
 			return true
-		}
-		if p != sn && p.Kind != schema.Choice && p.Kind != schema.Case {
-			return false
 		}
 	}
 	return false
@@ -389,7 +389,7 @@ func (lc *lydCtx) setDataFlags(n *Node, dflt bool) {
 			n.flags |= FlagWhenTrue
 		}
 		if !lc.opts.ParseOnly {
-			lc.nodeWhen = append(lc.nodeWhen, n)
+			lc.nodeWhen.add(n)
 		}
 	}
 	if dflt {

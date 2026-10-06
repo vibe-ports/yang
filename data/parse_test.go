@@ -186,8 +186,8 @@ func TestParserHelpers(t *testing.T) {
 	lc.nodeInsert(c, nil, x)
 	lc.setDataFlags(x, true)
 	lc.setDataFlags(c, false)
-	if !reflect.DeepEqual(lc.nodeWhen, []*Node{z, x, c}) || z.flags&FlagWhenTrue == 0 || x.flags&FlagDefault == 0 {
-		t.Fatalf("when queue / flags: %d %x %x", len(lc.nodeWhen), z.flags, x.flags)
+	if !reflect.DeepEqual(lc.nodeWhen.items, []*Node{z, x, c}) || z.flags&FlagWhenTrue == 0 || x.flags&FlagDefault == 0 {
+		t.Fatalf("when queue / flags: %d %x %x", lc.nodeWhen.len(), z.flags, x.flags)
 	}
 	if c.flags&FlagDefault != 0 {
 		t.Fatal("an explicit sibling keeps the container explicit")
@@ -232,11 +232,11 @@ func TestParserHelpers(t *testing.T) {
 
 	// node_types: a require-instance value waits for the tree
 	iid := &schema.Node{Kind: schema.Leaf, Name: "iid", Module: f.b, Type: &schema.Type{Base: schema.InstanceID, RequireInstance: true}, Config: true}
-	if _, err := lc.json(iid, nil, "/b:top"); err != nil || len(lc.nodeTypes) != 1 {
-		t.Fatalf("node_types: %v %d %v", err, len(lc.nodeTypes), codes(lc.log.diags))
+	if _, err := lc.json(iid, nil, "/b:top"); err != nil || lc.nodeTypes.len() != 1 {
+		t.Fatalf("node_types: %v %d %v", err, lc.nodeTypes.len(), codes(lc.log.diags))
 	}
 	lc.opts.ParseOnly = true
-	if _, _ = lc.json(iid, nil, "/b:top"); len(lc.nodeTypes) != 1 {
+	if _, _ = lc.json(iid, nil, "/b:top"); lc.nodeTypes.len() != 1 {
 		t.Fatal("ParseOnly queued a value")
 	}
 }

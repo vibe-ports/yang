@@ -6,7 +6,8 @@
 package data
 
 import (
-	"github.com/vibe-ports/yang/internal/ly"
+	"errors"
+
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
 )
@@ -35,22 +36,19 @@ type valCtx struct {
 	t         *Tree
 	log       *logger
 	opts      ValidateOptions
-	nodeWhen  *[]*Node // node_when
-	nodeTypes *[]*Node // node_types
+	nodeWhen  *nodeSet // node_when
+	nodeTypes *nodeSet // node_types
+	// output is LYD_INTOPT_REPLY: the output of an operation is validated (operations are M4;
+	// datastore data passes false)
+	output bool
+	// charge counts an implicit node against the parser's Budget.MaxNodes (U-0041); nil when
+	// the caller does not count
+	charge func() error
 	// diff is lyd_val_diff_add: called with every node libyang adds to the implicit diff, in
 	// libyang's order (the diff tree itself is design 07 D8b); nil when no diff is wanted.
 	diff func(n *Node, op diffOp) error
 	// getnext caches lyd_val_getnext_get per schema parent (and output).
 	getnext map[getnextKey]getnextVal
-}
-
-// ValidateOptions are libyang's LYD_VALIDATE_* options the M1 fixtures use.
-type ValidateOptions struct {
-	NoState     bool // LYD_VALIDATE_NO_STATE
-	Present     bool // LYD_VALIDATE_PRESENT
-	MultiError  bool // LYD_VALIDATE_MULTI_ERROR
-	Operational bool // LYD_VALIDATE_OPERATIONAL
-	NoDefaults  bool // LYD_VALIDATE_NO_DEFAULTS
 }
 
 type getnextKey struct {
@@ -101,8 +99,8 @@ func (vc *valCtx) stop(err error) bool {
 	if err == nil {
 		return false
 	}
-	if !vc.opts.MultiError {
-		return true
+	if !errors.Is(err, errLogged) || !vc.opts.MultiError {
+		return true // not a logged LY_EVALID (budget, cancellation, internal)
 	}
 	for i := len(vc.log.diags) - 1; i >= 0; i-- {
 		if d := vc.log.diags[i]; !d.Warning {
@@ -146,19 +144,6 @@ func configR(sn *schema.Node) bool {
 		}
 	}
 	return !sn.Config
-}
-
-// hasWhen is lysc_has_when: a when on the node or on a choice/case ancestor below its data parent.
-func hasWhen(sn *schema.Node) bool {
-	for p := sn; p != nil; p = p.Parent {
-		if len(p.Whens) > 0 {
-			return true
-		}
-		if p != sn && p.Kind != schema.Choice && p.Kind != schema.Case {
-			return false
-		}
-	}
-	return false
 }
 
 // newImplicit is lyd_new_implicit: the implicit children of parent (sparent: a case to fill, else
@@ -212,7 +197,7 @@ func (vc *valCtx) newImplicit(parent *Node, sparent *schema.Node, mod *schema.Mo
 				}
 				n := newTerm(sn, v)
 				if v.NeedsTree() && vc.nodeTypes != nil {
-					*vc.nodeTypes = append(*vc.nodeTypes, n)
+					vc.nodeTypes.add(n)
 				}
 				if err := vc.addImplicit(parent, n); err != nil {
 					return err
@@ -226,13 +211,18 @@ func (vc *valCtx) newImplicit(parent *Node, sparent *schema.Node, mod *schema.Mo
 // addImplicit links an implicit node: Default (WhenTrue when it has a when, so a false when
 // deletes it silently), the when queue and the diff.
 func (vc *valCtx) addImplicit(parent, n *Node) error {
+	if vc.charge != nil {
+		if err := vc.charge(); err != nil {
+			return err
+		}
+	}
 	n.flags = FlagDefault
 	if hasWhen(n.schema) {
 		n.flags |= FlagWhenTrue
 	}
 	vc.t.insert(parent, n, insertDefault)
 	if hasWhen(n.schema) && vc.nodeWhen != nil {
-		*vc.nodeWhen = append(*vc.nodeWhen, n)
+		vc.nodeWhen.add(n)
 	}
 	if vc.diff != nil {
 		return vc.diff(n, diffCreate)
@@ -254,14 +244,4 @@ func (vc *valCtx) newImplicitR(parent *Node, sparent *schema.Node, mod *schema.M
 		}
 	}
 	return nil
-}
-
-// codeOf maps a LY_VECODE name to its code.
-func codeOf(name string) ly.Code {
-	for c := ly.Success; c <= ly.Other; c++ {
-		if c.String() == name {
-			return c
-		}
-	}
-	return ly.Other
 }
