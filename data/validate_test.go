@@ -4,11 +4,14 @@ package data
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/vibe-ports/yang"
+	"github.com/vibe-ports/yang/internal/ly"
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
 	"github.com/vibe-ports/yang/internal/xpath"
@@ -264,5 +267,57 @@ func TestUniqueWork(t *testing.T) {
 	diags, _ := tr.validateAll(context.Background(), ValidateOptions{MultiError: true}, Budget{}, nil)
 	if len(diags) != 1 || tr.work > 8*n {
 		t.Fatalf("%d diagnostics, %d steps", len(diags), tr.work)
+	}
+}
+
+// TestUniqueMissingDefault: list instances all lacking a unique leaf with a default share one
+// table key but never compare equal (libyang's canon2 quirk), so each meets every earlier one;
+// the default's canonical is computed once and every comparison is charged to MaxXPathSteps.
+// On the parse path the budget error outranks a logged parse error (U-0042).
+func TestUniqueMissingDefault(t *testing.T) {
+	b := &schemaBuilder{t: t, set: &schema.Set{}}
+	m := b.module("q")
+	str := &schema.Type{Base: schema.String}
+	l := b.add(m, nil, schema.List, "l", nil)
+	k := b.add(m, l, schema.Leaf, "k", str)
+	u := b.add(m, l, schema.Leaf, "u", str)
+	u.Default = []schema.DefaultValue{{Lex: "dv"}}
+	l.Keys, l.Uniques = []*schema.Node{k}, [][]*schema.Node{{u}}
+	fill := func(tr *Tree, n int) {
+		for i := range n {
+			li := newInner(l)
+			tr.insert(li, b.term(k, fmt.Sprint(i)), insertDefault)
+			tr.insert(nil, li, insertDefault)
+		}
+	}
+	work := func(n int) (int, []yang.Diagnostic, error) {
+		tr := newTree(b.set)
+		fill(tr, n)
+		tr.work = 0
+		diags, err := tr.validateAll(context.Background(), ValidateOptions{NoDefaults: true}, Budget{}, nil)
+		return tr.work, diags, err
+	}
+	l.Uniques = nil
+	base, _, _ := work(50) // the work of the other checks
+	l.Uniques = [][]*schema.Node{{u}}
+	w, diags, err := work(50)
+	if err != nil || len(diags) != 0 || w-base != 1+50*49/2 { // one default, every pair compared
+		t.Fatalf("%v %q, %d steps over %d", err, diagCodes(diags), w, base)
+	}
+	tr := newTree(b.set)
+	fill(tr, 3000)
+	tr.work = 0
+	_, err = tr.validateAll(context.Background(), ValidateOptions{NoDefaults: true}, Budget{MaxXPathSteps: 1000}, nil)
+	if !errors.Is(err, yang.ErrBudget) || tr.work > 1001+3000*2 {
+		t.Fatalf("%v, %d steps", err, tr.work)
+	}
+	fp := func(lc *lydCtx, _ []byte) error {
+		fill(lc.tree, 3000)
+		return lc.log.val(nil, "", ly.Data, "parse error")
+	}
+	o := parseOpts{ParseOptions: ParseOptions{Validate: ValidateOptions{MultiError: true}}}
+	o.Budget.MaxXPathSteps = 1000
+	if _, _, err := parseWith(context.Background(), strings.NewReader(""), b.set, o, fp, nil); !errors.Is(err, yang.ErrBudget) {
+		t.Fatalf("parse error hides the budget: %v", err)
 	}
 }

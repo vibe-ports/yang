@@ -137,7 +137,8 @@ func parseWith(ctx context.Context, r io.Reader, s *schema.Set, o parseOpts, fp 
 	err = fp(lc, in)
 	if err == nil || !lc.fatal(err) {
 		if !o.ParseOnly && lc.validate != nil {
-			if verr := lc.validate(lc); verr != nil && err == nil {
+			// a budget or cancellation error of the validation outranks logged parse errors
+			if verr := lc.validate(lc); verr != nil && (err == nil || !errors.Is(verr, errLogged)) {
 				err = verr
 			}
 		}

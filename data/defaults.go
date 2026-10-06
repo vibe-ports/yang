@@ -56,6 +56,7 @@ type valCtx struct {
 	// work counters for the tests: top-level view builds, when-pass position maps
 	topBuilds, posBuilds int
 	lrefs                map[lrefKey]*lrefTemplate // leafref target-path templates per type and node
+	uniqDefs             map[*schema.Node]uniqDef  // unique leaves' default canonicals, per unique()
 }
 
 type getnextKey struct {

@@ -205,7 +205,8 @@ func (vc *valCtx) validateTree(root *Node) error {
 			if hasValidateTree(n.schema.Type) && vc.nodeTypes != nil {
 				vc.nodeTypes.add(n)
 			}
-		case n.schema.Kind == schema.Container || n.schema.Kind == schema.List:
+		case n.schema.Kind == schema.Container || n.schema.Kind == schema.List || n.schema.Kind == schema.RPC ||
+			n.schema.Kind == schema.Action || n.schema.Kind == schema.Notification:
 			err = vc.validateNew(n, nil, nil)
 			if err == nil || !vc.stop(err) {
 				w, ty := vc.nodeWhen, vc.nodeTypes
@@ -492,11 +493,42 @@ func (vc *valCtx) uniqValue(leaf *schema.Node, list *Node, useDefault bool) (str
 	if !useDefault || len(leaf.Default) == 0 {
 		return "", false
 	}
-	v, d := types.StoreDefault(leaf, leaf.Default[0])
-	if d != nil {
-		return "", false
+	d, ok := vc.uniqDefs[leaf]
+	if !ok {
+		vc.t.work++
+		v, diag := types.StoreDefault(leaf, leaf.Default[0])
+		if d.ok = diag == nil; d.ok {
+			d.canon = v.Canonical()
+		}
+		vc.uniqDefs[leaf] = d
 	}
-	return v.Canonical(), true
+	return d.canon, d.ok
+}
+
+// uniqDef is the cached default canonical of a unique leaf (ok false: none valid).
+type uniqDef struct {
+	canon string
+	ok    bool
+}
+
+// uniqStep charges one collision comparison of unique() to the XPath step budget (U-0042) and
+// checks for cancellation: instances colliding without being equal (all lacking a defaulted
+// leaf) cost a comparison per earlier instance, as in libyang's hash table.
+func (vc *valCtx) uniqStep() error {
+	b := &vc.budget
+	if b.ctx != nil {
+		if err := b.ctx.Err(); err != nil {
+			return err
+		}
+	}
+	limit := b.max
+	if limit <= 0 {
+		limit = DefaultMaxXPathSteps
+	}
+	if b.steps++; b.steps > limit {
+		return fmt.Errorf("%w: more than %d XPath steps (unique checks)", yang.ErrBudget, limit)
+	}
+	return nil
 }
 
 // uniqEqual is lyd_val_uniq_list_equal for the unique u (all of them when u < 0): it reports an
@@ -566,6 +598,10 @@ func relPath(leaf, list *schema.Node) string {
 // them skipped), where an insertion meeting an equal earlier instance fails with the new instance
 // as "first" and the earlier as "second" (lyht_insert calls the callback that way).
 func (vc *valCtx) unique(sib *siblings, sn *schema.Node) error {
+	if vc.uniqDefs == nil {
+		vc.uniqDefs = map[*schema.Node]uniqDef{}
+	}
+	clear(vc.uniqDefs)
 	var inst []*Node
 	for _, n := range slicesOf(sib) {
 		if n.schema == sn {
@@ -601,6 +637,9 @@ func (vc *valCtx) unique(sib *siblings, sn *schema.Node) error {
 				k := key.String()
 				for _, prev := range tables[u][k] {
 					vc.t.work++
+					if err := vc.uniqStep(); err != nil {
+						return err
+					}
 					if vc.uniqEqual(n, prev, u) {
 						return errLogged
 					}
