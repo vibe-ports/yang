@@ -314,11 +314,18 @@ func (c *Context) unresDflts(n *schema.Node) error {
 		// LY_EINCOMPLETE (a value that needs the data tree) is success
 		var implErr error
 		var diag *types.Diag
+		leak := ""
 		if c.opts.RefImplemented { // LYPLG_TYPE_STORE_IMPLEMENT
 			_, diag = types.StoreImplement(n.Type, d.Lex, types.FormatSchema, types.HintSchema, d.NS, n,
 				func(m *schema.Module, importFeatures bool) error {
-					implErr = c.implementRef(m, importFeatures)
-					return implErr
+					c.locLeak = ""
+					err := c.implementRef(m, importFeatures)
+					if !importFeatures { // identityref: lyplg_type_make_implemented's rc is the store's
+						implErr = err
+					} else if err != nil { // instance-identifier: lyplg_type_lypath_new makes it LY_EVALID
+						leak = c.locLeak
+					}
+					return err
 				})
 		} else {
 			_, diag = types.Store(n.Type, d.Lex, types.FormatSchema, types.HintSchema, d.NS, n)
@@ -328,9 +335,9 @@ func (c *Context) unresDflts(n *schema.Node) error {
 		}
 		if diag != nil {
 			if diag.Msg == "" {
-				return c.logPath(ly.Semantics, n.LogPath(), "Invalid default - value does not fit the type.")
+				return c.logPath(ly.Semantics, n.LogPath()+leak, "Invalid default - value does not fit the type.")
 			}
-			return c.logPath(ly.Semantics, n.LogPath(), "Invalid default - value does not fit the type (%s).", diag.Msg)
+			return c.logPath(ly.Semantics, n.LogPath()+leak, "Invalid default - value does not fit the type (%s).", diag.Msg)
 		}
 	}
 	if n.Kind == schema.LeafList && n.Config {

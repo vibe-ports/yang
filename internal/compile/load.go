@@ -175,6 +175,9 @@ type Context struct {
 	usedGrp map[*parser.Node]bool
 	// work counts index entries and pending items looked at by the C6 lookups (tests bound it)
 	work int
+	// locLeak is the log location libyang's lysc_update_path leaves behind when augments were
+	// precompiled: "/" appended to the schema path of a later message (see unresDflts)
+	locLeak string
 }
 
 // internal_modules[] of context.c.

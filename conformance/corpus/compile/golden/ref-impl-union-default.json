@@ -1,0 +1,81 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ref-impl-union {\n  namespace \"urn:vibe-ports:yang:conformance:ref-impl-union\";\n  prefix ru;\n\n  leaf u {\n    type union {\n      type identityref {\n        base base;\n      }\n      type string;\n    }\n    default \"t:one\";\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "ref-impl-union",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": [
+            "t:one"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ref-impl-union",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ref-impl-union:u",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": [
+              {
+                "base": "identityref",
+                "bases": [
+                  "ref-impl-target:base"
+                ],
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              },
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              }
+            ]
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

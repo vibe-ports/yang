@@ -150,9 +150,10 @@ type Implementer func(m *schema.Module, importFeatures bool) error
 
 // StoreImplement is Store with LYPLG_TYPE_STORE_IMPLEMENT: an identityref naming an identity of a
 // module that is not implemented, and the modules an instance-identifier names, are implemented
-// through impl instead of failing. A failure of impl is a Diag without a message.
-// ponytail: union members are stored without impl (libyang passes the option on); add it to
-// UnionValue when a fixture needs a union default that implements a module.
+// through impl instead of failing. A failure of impl is a Diag without a message for an
+// identityref (the caller sees impl's error too), and the instance-identifier's own message for an
+// instance-identifier, which swallows the error, LY_ERECOMPILE included (lyplg_type_lypath_new).
+// Union members are stored without impl: union_store_type never passes the option on.
 func StoreImplement(t *schema.Type, lex string, f Format, h Hints, pc PrefixCtx, ctx *schema.Node, impl Implementer) (Value, *Diag) {
 	return storeArgsDispatch(&storeArgs{t: t, lex: lex, f: f, h: h, pc: pc, ctx: ctx, impl: impl})
 }

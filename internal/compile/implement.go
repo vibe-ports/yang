@@ -121,6 +121,10 @@ func (c *Context) precompileAugmentsDeviations(m *Module) error {
 // precompileModAugments is lys_precompile_mod_augments_deviations for the
 // (sub)module pm of m.
 func (c *Context) precompileModAugments(m *Module, pm *pmod, set *[]*Module) error {
+	if len(pm.Parsed.Augments) > 0 {
+		// lysc_update_path leaves its context path "/" as the log location (unres reads it)
+		c.locLeak = "/"
+	}
 	for _, aug := range pm.Parsed.Augments {
 		path := "/" + m.Name + ":{augment='" + aug.Name + "'}"
 		_, mods, err := nodeidModCheck(pm, aug.Name, true, func(code ly.Code, f string, a ...any) error {
