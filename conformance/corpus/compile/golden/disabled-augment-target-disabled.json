@@ -1,0 +1,24 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module disabled-augment-target-disabled {\n  namespace \"urn:vibe-ports:yang:conformance:disabled-augment-target-disabled\";\n  prefix disabled-augment-target-disabled;\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": false,
+          "name": "f"
+        }
+      ],
+      "identities": [],
+      "name": "disabled-augment-target-disabled",
+      "revision": null,
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

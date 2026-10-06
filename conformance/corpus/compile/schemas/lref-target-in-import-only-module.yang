@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_type_leafref.
+module lref-target-in-import-only-module {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:lref-target-in-import-only-module";
+  prefix lref-target-in-import-only-module;
+  import lref-target-in-import-only-module-h1 { prefix h; }
+  leaf i { type leafref { path /h:h; } }
+}

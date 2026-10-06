@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_type_leafref.
+module lref-absolute-paths {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:lref-absolute-paths";
+  prefix lref-absolute-paths;
+  leaf ref1 { type leafref { path /lref-absolute-paths:target1; } }
+  leaf ref2 { type leafref { path /a/target2; require-instance false; } }
+  leaf target1 { type string; }
+  container a { leaf target2 { type uint8; } }
+}

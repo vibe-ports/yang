@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_when.
+module when-augment-not-a-cycle-h1 {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:when-augment-not-a-cycle-h1";
+  prefix when-augment-not-a-cycle-h1;
+  container ifm { container interfaces { list interface { key "name"; leaf name { type string; }
+    container ethernet { container main-interface { container l2-attribute {
+      when "not(/ifm/interfaces/interface/trunk/members/member[name=current()/../../../name])"; presence ""; } } }
+    container trunk { container members { list member { key "name"; leaf name { type string; } } } } } } }
+}

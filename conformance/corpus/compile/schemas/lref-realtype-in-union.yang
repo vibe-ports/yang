@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_type_union.
+module lref-realtype-in-union {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:lref-realtype-in-union";
+  prefix lref-realtype-in-union;
+  typedef mytype { type union { type leafref { path ../target; } type string; } }
+  leaf l { type union { type decimal64 { fraction-digits 2; } type mytype; } }
+  leaf target { type leafref { path ../realtarget; } }
+  leaf realtarget { type int8; }
+}

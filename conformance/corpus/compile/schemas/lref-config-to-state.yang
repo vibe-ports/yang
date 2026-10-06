@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_type_leafref.
+module lref-config-to-state {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:lref-config-to-state";
+  prefix lref-config-to-state;
+  leaf ref { type leafref { path /target; } }
+  leaf target { type string; config false; }
+}

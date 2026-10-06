@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_unique_disabled.
+module disabled-unique-leaf-removed {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:disabled-unique-leaf-removed";
+  prefix disabled-unique-leaf-removed;
+  feature f;
+  list l { key "k"; unique "v"; leaf k { type string; } leaf v { if-feature f; type string; } }
+  list l2 { key "k"; unique "v1 v2"; leaf k { type string; } leaf v1 { if-feature f; type string; } leaf v2 { type string; } }
+}

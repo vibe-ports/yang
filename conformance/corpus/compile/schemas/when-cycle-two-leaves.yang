@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module when-cycle-two-leaves {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:when-cycle-two-leaves";
+  prefix when-cycle-two-leaves;
+  leaf a { type string; when "../b"; }
+  leaf b { type string; when "../a"; }
+}

@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module dflt-leaflist-duplicate-same-canonical-state {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:dflt-leaflist-duplicate-same-canonical-state";
+  prefix dflt-leaflist-duplicate-same-canonical-state;
+  leaf-list ll { config false; type uint8; default 1; default 01; }
+}

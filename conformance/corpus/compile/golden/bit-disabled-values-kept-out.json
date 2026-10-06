@@ -1,0 +1,68 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module bit-disabled-values-kept-out {\n  namespace \"urn:vibe-ports:yang:conformance:bit-disabled-values-kept-out\";\n  prefix bit-disabled-values-kept-out;\n\n  leaf l {\n    type bits {\n      bit \"a\" {\n        position 0;\n        status current;\n      }\n      bit \"c\" {\n        position 5;\n        status current;\n      }\n      bit \"d\" {\n        position 6;\n        status current;\n      }\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": false,
+          "name": "f"
+        }
+      ],
+      "identities": [],
+      "name": "bit-disabled-values-kept-out",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "bit-disabled-values-kept-out",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/bit-disabled-values-kept-out:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "bits",
+            "bases": null,
+            "bits": [
+              {
+                "name": "a",
+                "position": 0
+              },
+              {
+                "name": "c",
+                "position": 5
+              },
+              {
+                "name": "d",
+                "position": 6
+              }
+            ],
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

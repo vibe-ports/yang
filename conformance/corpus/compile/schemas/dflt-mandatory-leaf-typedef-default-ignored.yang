@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_type_dflt.
+module dflt-mandatory-leaf-typedef-default-ignored {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:dflt-mandatory-leaf-typedef-default-ignored";
+  prefix dflt-mandatory-leaf-typedef-default-ignored;
+  typedef mytype { type string; default hello; units xxx; }
+  leaf l { type mytype; mandatory true; }
+}

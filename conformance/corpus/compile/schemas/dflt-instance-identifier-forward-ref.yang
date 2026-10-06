@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_node_leaflist.
+module dflt-instance-identifier-forward-ref {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:dflt-instance-identifier-forward-ref";
+  prefix dflt-instance-identifier-forward-ref;
+  leaf ref { type instance-identifier { require-instance true; } default "/dflt-instance-identifier-forward-ref:g[.='val']"; }
+  leaf-list g { type string; }
+}

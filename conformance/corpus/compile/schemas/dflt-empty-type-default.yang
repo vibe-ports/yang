@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_type_empty.
+module dflt-empty-type-default {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:dflt-empty-type-default";
+  prefix dflt-empty-type-default;
+  leaf l { type empty; default x; }
+}

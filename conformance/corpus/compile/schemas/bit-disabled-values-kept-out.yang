@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module bit-disabled-values-kept-out {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:bit-disabled-values-kept-out";
+  prefix bit-disabled-values-kept-out;
+  feature f;
+  leaf l { type bits { bit a; bit b { if-feature f; } bit c { position 5; } bit d; } }
+}

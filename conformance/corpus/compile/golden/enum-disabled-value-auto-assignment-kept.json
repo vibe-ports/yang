@@ -1,0 +1,64 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module enum-disabled-value-auto-assignment-kept {\n  namespace \"urn:vibe-ports:yang:conformance:enum-disabled-value-auto-assignment-kept\";\n  prefix enum-disabled-value-auto-assignment-kept;\n\n  leaf l {\n    type enumeration {\n      enum \"b\" {\n        value 1;\n        status current;\n      }\n      enum \"c\" {\n        value 2;\n        status current;\n      }\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": false,
+          "name": "f"
+        }
+      ],
+      "identities": [],
+      "name": "enum-disabled-value-auto-assignment-kept",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "enum-disabled-value-auto-assignment-kept",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/enum-disabled-value-auto-assignment-kept:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "b",
+                "value": 1
+              },
+              {
+                "name": "c",
+                "value": 2
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

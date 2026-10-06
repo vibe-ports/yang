@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_node_list.
+module disabled-key-removed-by-if-feature {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:disabled-key-removed-by-if-feature";
+  prefix disabled-key-removed-by-if-feature;
+  feature f;
+  list l { key x; leaf x { type string; if-feature f; } }
+}

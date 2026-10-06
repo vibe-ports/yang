@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module enum-disabled-union-member-all {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:enum-disabled-union-member-all";
+  prefix enum-disabled-union-member-all;
+  feature f;
+  leaf l { type union { type enumeration { enum a { if-feature f; } } type int8; } }
+}

@@ -1,0 +1,35 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Invalid default - value does not fit the type (Invalid union value \"999\" - no matching subtype found:\n    ly2 leafref: Invalid leafref value \"999\" - no target instance \"/target\" with the same value.\n    ly2 integers: Value \"999\" is out of type int8 min/max bounds.\n).",
+          "phase": "compile",
+          "schema_path": "/dflt-union-no-matching-member:l",
+          "vecode": 6,
+          "vecode_name": "LYVE_SEMANTICS"
+        }
+      ],
+      "name": "dflt-union-no-matching-member",
+      "phase": "compile",
+      "rc": {
+        "err": 7,
+        "name": "LY_EVALID"
+      }
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

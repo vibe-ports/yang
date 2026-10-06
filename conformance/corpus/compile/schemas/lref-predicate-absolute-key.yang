@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_type_leafref.
+module lref-predicate-absolute-key {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:lref-predicate-absolute-key";
+  prefix lref-predicate-absolute-key;
+  leaf source { type leafref { path "/endpoint-parent[id=current()/../field]/endpoint/name"; } }
+  leaf field { type int32; }
+  list endpoint-parent { key id; leaf id { type int32; } list endpoint { key name; leaf name { type string; } } }
+}

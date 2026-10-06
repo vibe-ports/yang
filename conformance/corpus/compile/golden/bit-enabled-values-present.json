@@ -1,0 +1,72 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module bit-enabled-values-present {\n  namespace \"urn:vibe-ports:yang:conformance:bit-enabled-values-present\";\n  prefix bit-enabled-values-present;\n\n  leaf l {\n    type bits {\n      bit \"a\" {\n        position 0;\n        status current;\n      }\n      bit \"b\" {\n        position 1;\n        status current;\n      }\n      bit \"c\" {\n        position 5;\n        status current;\n      }\n      bit \"d\" {\n        position 6;\n        status current;\n      }\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": true,
+          "name": "f"
+        }
+      ],
+      "identities": [],
+      "name": "bit-enabled-values-present",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "bit-enabled-values-present",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/bit-enabled-values-present:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "bits",
+            "bases": null,
+            "bits": [
+              {
+                "name": "a",
+                "position": 0
+              },
+              {
+                "name": "b",
+                "position": 1
+              },
+              {
+                "name": "c",
+                "position": 5
+              },
+              {
+                "name": "d",
+                "position": 6
+              }
+            ],
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

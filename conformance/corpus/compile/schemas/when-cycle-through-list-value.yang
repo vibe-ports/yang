@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_when.
+module when-cycle-through-list-value {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:when-cycle-through-list-value";
+  prefix when-cycle-through-list-value;
+  container cont {
+    leaf l { when "/cont/lst[val='25']"; type empty; }
+    list lst { key "k"; leaf k { type uint8; } leaf val { when /cont2; type int32; } } }
+  container cont2 { presence "a"; when ../cont/lst/val; }
+}

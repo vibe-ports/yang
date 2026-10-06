@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_schema.c:test_disabled_enum.
+module enum-all-disabled {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:enum-all-disabled";
+  prefix enum-all-disabled;
+  feature f;
+  leaf l { type enumeration { enum e1 { if-feature f; } enum e2 { if-feature f; } } }
+}

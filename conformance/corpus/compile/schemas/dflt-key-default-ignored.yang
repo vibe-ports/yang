@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module dflt-key-default-ignored {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:dflt-key-default-ignored";
+  prefix dflt-key-default-ignored;
+  list l { key a; leaf a { type uint8; default "abc"; } }
+}

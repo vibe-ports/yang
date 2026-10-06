@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_type_leafref.
+module lref-realtype-via-typedefs {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:lref-realtype-via-typedefs";
+  prefix lref-realtype-via-typedefs;
+  typedef mytype { type leafref { path /lref-realtype-via-typedefs:target; } }
+  typedef mytype2 { type mytype; }
+  typedef mytype3 { type leafref { path /target; } }
+  leaf ref { type mytype2; }
+  leaf target { type leafref { path ../realtarget; } }
+  leaf realtarget { type string; }
+}

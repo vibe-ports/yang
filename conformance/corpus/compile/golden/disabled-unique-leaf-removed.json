@@ -1,0 +1,155 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module disabled-unique-leaf-removed {\n  namespace \"urn:vibe-ports:yang:conformance:disabled-unique-leaf-removed\";\n  prefix disabled-unique-leaf-removed;\n\n  list l {\n    key \"k\";\n    config true;\n    min-elements 0;\n    max-elements 4294967295;\n    ordered-by system;\n    status current;\n    leaf k {\n      type string;\n      config true;\n      status current;\n    }\n  }\n  list l2 {\n    key \"k\";\n    unique \"v2;\n    config true;\n    min-elements 0;\n    max-elements 4294967295;\n    ordered-by system;\n    status current;\n    leaf k {\n      type string;\n      config true;\n      status current;\n    }\n    leaf v2 {\n      type string;\n      config true;\n      status current;\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": false,
+          "name": "f"
+        }
+      ],
+      "identities": [],
+      "name": "disabled-unique-leaf-removed",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "k"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "disabled-unique-leaf-removed",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "system",
+          "path": "/disabled-unique-leaf-removed:l",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "disabled-unique-leaf-removed",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/disabled-unique-leaf-removed:l/k",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "k"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "disabled-unique-leaf-removed",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "system",
+          "path": "/disabled-unique-leaf-removed:l2",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "disabled-unique-leaf-removed",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/disabled-unique-leaf-removed:l2/k",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "disabled-unique-leaf-removed",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/disabled-unique-leaf-removed:l2/v2",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

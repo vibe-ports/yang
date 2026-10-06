@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_must.
+module must-disabled-leafref-in-other-module-h1 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:must-disabled-leafref-in-other-module-h1";
+  prefix must-disabled-leafref-in-other-module-h1;
+  feature feat;
+  grouping band-capabilities {
+    leaf band-number { type uint16; }
+    container sub-band-info { when "../band-number = '46'"; if-feature "feat"; leaf number-of-laa-scarriers { type uint8; } } }
+  container module-capability {
+    list band-capabilities { key band-number; config false; uses band-capabilities; }
+    container rw-sub-band-info { if-feature "feat";
+      leaf rw-number-of-laa-scarriers { type leafref { path "/module-capability/band-capabilities/sub-band-info/number-of-laa-scarriers"; require-instance false; } } } }
+}

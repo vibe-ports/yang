@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module enum-disabled-via-typedef-restriction {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:enum-disabled-via-typedef-restriction";
+  prefix enum-disabled-via-typedef-restriction;
+  feature f;
+  typedef t { type enumeration { enum a { if-feature f; } enum b; enum c; } }
+  leaf l { type t { enum b; enum c; } }
+}

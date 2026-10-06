@@ -1,0 +1,43 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module disabled-mandatory-leaf-still-propagates {\n  namespace \"urn:vibe-ports:yang:conformance:disabled-mandatory-leaf-still-propagates\";\n  prefix disabled-mandatory-leaf-still-propagates;\n\n  container c {\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": false,
+          "name": "f"
+        }
+      ],
+      "identities": [],
+      "name": "disabled-mandatory-leaf-still-propagates",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "disabled-mandatory-leaf-still-propagates",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/disabled-mandatory-leaf-still-propagates:c",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

@@ -1,0 +1,82 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module dflt-instance-identifier-forward-ref {\n  namespace \"urn:vibe-ports:yang:conformance:dflt-instance-identifier-forward-ref\";\n  prefix dflt-instance-identifier-forward-ref;\n\n  leaf ref {\n    type instance-identifier {\n      require-instance true;\n    }\n    default \"/dflt-instance-identifier-forward-ref:g[.='val']\";\n    config true;\n    status current;\n  }\n  leaf-list g {\n    type string;\n    config true;\n    min-elements 0;\n    max-elements 4294967295;\n    ordered-by system;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "dflt-instance-identifier-forward-ref",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": [
+            "/dflt-instance-identifier-forward-ref:g[.='val']"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "dflt-instance-identifier-forward-ref",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/dflt-instance-identifier-forward-ref:ref",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "instance-identifier",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "dflt-instance-identifier-forward-ref",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "system",
+          "path": "/dflt-instance-identifier-forward-ref:g",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

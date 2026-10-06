@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_type_leafref.
+module lref-circular {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:lref-circular";
+  prefix lref-circular;
+  leaf ref1 { type leafref { path /ref2; } }
+  leaf ref2 { type leafref { path /ref3; } }
+  leaf ref3 { type leafref { path /ref4; } }
+  leaf ref4 { type leafref { path /ref1; } }
+}

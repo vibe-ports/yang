@@ -9036,3 +9036,1590 @@ fixtures:
       searchdirs: [schemas]
       modules: [{"name": "when-substring-numeric-arg"}]
     golden: golden/when-substring-numeric-arg-warning.json
+  - id: lref/absolute-paths
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-absolute-paths"}]
+    golden: golden/lref-absolute-paths.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  # realtype of a, b, c is the first non-leafref type of the chain
+  - id: lref/realtype-chain
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#9.9"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-realtype-chain"}]
+    golden: golden/lref-realtype-chain.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: lref/realtype-via-typedefs
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-realtype-via-typedefs"}]
+    golden: golden/lref-realtype-via-typedefs.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: lref/realtype-in-union
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-realtype-in-union"}]
+    golden: golden/lref-realtype-in-union.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  - id: lref/predicate-current
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-predicate-current"}]
+    golden: golden/lref-predicate-current.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.9.2"]
+      deviation: null
+
+  - id: lref/predicate-absolute-key
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-predicate-absolute-key"}]
+    golden: golden/lref-predicate-absolute-key.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.9.2"]
+      deviation: null
+
+  - id: lref/default-value-valid
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-default-value-valid"}]
+    golden: golden/lref-default-value-valid.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  # the leafref implements the imported module (SC:1146)
+  - id: lref/target-in-import-only-module
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-target-in-import-only-module"}]
+    golden: golden/lref-target-in-import-only-module.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.9"]
+      deviation: null
+
+  # disabled leafref, enabled target
+  - id: lref/disabled-ref-and-target-both
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9", "RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-disabled-ref-and-target-both"}]
+    golden: golden/lref-disabled-ref-and-target-both.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.9", "RFC7950#7.20.2"]
+      deviation: null
+
+  # step b: a disabled leafref still needs an existing target node
+  - id: lref/disabled-ref-target-missing
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9", "RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-disabled-ref-target-missing"}]
+    golden: golden/lref-disabled-ref-target-missing.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9", "RFC7950#7.20.2"]
+      diagnostics: [{"vecode_name": "LYVE_XPATH"}]
+      deviation: null
+
+  # the first error is Not found node target; the intent-bearing 'cannot be referenced because it is disabled' is the 2nd diagnostic
+  - id: lref/disabled-target
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9", "RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-disabled-target"}]
+    golden: golden/lref-disabled-target.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9", "RFC7950#7.20.2"]
+      diagnostics: [{"vecode_name": "LYVE_XPATH"}]
+      deviation: null
+
+  - id: lref/target-not-found
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-target-not-found"}]
+    golden: golden/lref-target-not-found.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9"]
+      diagnostics: [{"vecode_name": "LYVE_XPATH"}]
+      deviation: null
+
+  - id: lref/too-many-parent-refs
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-too-many-parent-refs"}]
+    golden: golden/lref-too-many-parent-refs.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9"]
+      diagnostics: [{"vecode_name": "LYVE_XPATH"}]
+      deviation: null
+
+  - id: lref/prefix-unknown
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-prefix-unknown"}]
+    golden: golden/lref-prefix-unknown.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9"]
+      diagnostics: [{"vecode_name": "LYVE_XPATH"}]
+      deviation: null
+
+  - id: lref/predicate-on-container
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-predicate-on-container"}]
+    golden: golden/lref-predicate-on-container.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9.2"]
+      diagnostics: [{"vecode_name": "LYVE_XPATH"}]
+      deviation: null
+
+  - id: lref/non-leaf-target
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-non-leaf-target"}]
+    golden: golden/lref-non-leaf-target.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9.2"]
+      diagnostics: [{"vecode_name": "LYVE_REFERENCE"}]
+      deviation: null
+
+  - id: lref/status-deprecated-target
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-status-deprecated-target"}]
+    golden: golden/lref-status-deprecated-target.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.21.2"]
+      diagnostics: [{"vecode_name": "LYVE_REFERENCE"}]
+      deviation: null
+
+  - id: lref/missing-path
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-missing-path"}]
+    golden: golden/lref-missing-path.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9.2"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: lref/typedef-missing-path
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-typedef-missing-path"}]
+    golden: golden/lref-typedef-missing-path.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9.2"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: lref/config-to-state
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9.3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-config-to-state"}]
+    golden: golden/lref-config-to-state.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9.3"]
+      diagnostics: [{"vecode_name": "LYVE_REFERENCE"}]
+      deviation: null
+
+  - id: lref/state-to-config-ok
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#9.9.3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-state-to-config-ok"}]
+    golden: golden/lref-state-to-config-ok.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.9.3"]
+      deviation: null
+
+  - id: lref/state-to-state-ok
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#9.9.3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-state-to-state-ok"}]
+    golden: golden/lref-state-to-state-ok.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.9.3"]
+      deviation: null
+
+  - id: lref/require-instance-in-10
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9.3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-require-instance-in-10"}]
+    golden: golden/lref-require-instance-in-10.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9.3"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  - id: lref/typedef-require-instance-in-10
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9.3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-typedef-require-instance-in-10"}]
+    golden: golden/lref-typedef-require-instance-in-10.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9.3"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  - id: lref/circular
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-circular"}]
+    golden: golden/lref-circular.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9"]
+      diagnostics: [{"vecode_name": "LYVE_REFERENCE"}]
+      deviation: null
+
+  - id: lref/circular-self
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#9.9"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-circular-self"}]
+    golden: golden/lref-circular-self.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9"]
+      diagnostics: [{"vecode_name": "LYVE_REFERENCE"}]
+      deviation: null
+
+  # path syntax is checked by the YANG parser (parse phase, U-0005)
+  - id: lref/path-syntax-parse-phase
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-path-syntax-parse-phase"}]
+    golden: golden/lref-path-syntax-parse-phase.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9.2"]
+      diagnostics: [{"vecode_name": "LYVE_XPATH"}]
+      deviation: null
+
+  - id: lref/predicate-bad-operator
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-predicate-bad-operator"}]
+    golden: golden/lref-predicate-bad-operator.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9.2"]
+      diagnostics: [{"vecode_name": "LYVE_XPATH"}]
+      deviation: null
+
+  - id: lref/predicate-unclosed
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-predicate-unclosed"}]
+    golden: golden/lref-predicate-unclosed.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9.2"]
+      diagnostics: [{"vecode_name": "LYVE_XPATH"}]
+      deviation: null
+
+  - id: lref/predicate-prefix-unknown
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-predicate-prefix-unknown"}]
+    golden: golden/lref-predicate-prefix-unknown.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9.2"]
+      diagnostics: [{"vecode_name": "LYVE_XPATH"}]
+      deviation: null
+
+  - id: lref/predicate-key-not-found
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-predicate-key-not-found"}]
+    golden: golden/lref-predicate-key-not-found.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9.2"]
+      diagnostics: [{"vecode_name": "LYVE_XPATH"}]
+      deviation: null
+
+  - id: lref/predicate-duplicate-key
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-predicate-duplicate-key"}]
+    golden: golden/lref-predicate-duplicate-key.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9.2"]
+      diagnostics: [{"vecode_name": "LYVE_XPATH"}]
+      deviation: null
+
+  - id: lref/predicate-rhs-not-found
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-predicate-rhs-not-found"}]
+    golden: golden/lref-predicate-rhs-not-found.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9.2"]
+      diagnostics: [{"vecode_name": "LYVE_XPATH"}]
+      deviation: null
+
+  - id: lref/predicate-rhs-container
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-predicate-rhs-container"}]
+    golden: golden/lref-predicate-rhs-container.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9.2"]
+      diagnostics: [{"vecode_name": "LYVE_XPATH"}]
+      deviation: null
+
+  - id: lref/predicate-lhs-not-key
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-predicate-lhs-not-key"}]
+    golden: golden/lref-predicate-lhs-not-key.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9.2"]
+      diagnostics: [{"vecode_name": "LYVE_XPATH"}]
+      deviation: null
+
+  - id: lref/predicate-missing-current
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-predicate-missing-current"}]
+    golden: golden/lref-predicate-missing-current.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9.2"]
+      diagnostics: [{"vecode_name": "LYVE_XPATH"}]
+      deviation: null
+
+  # path-arg (RFC 7950 9.9.2 ABNF) has no deref(); rejected in the parse phase
+  - id: lref/deref-path
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#9.9.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-deref-path"}]
+    golden: golden/lref-deref-path.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9.2"]
+      diagnostics: [{"vecode_name": "LYVE_XPATH"}]
+      deviation: null
+
+  - id: lref/default-target-missing
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-default-target-missing"}]
+    golden: golden/lref-default-target-missing.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9"]
+      diagnostics: [{"vecode_name": "LYVE_XPATH"}]
+      deviation: null
+
+  - id: dflt/leafref-value-not-fit-target-type
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.6.1", "RFC7950#9.9"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-leafref-value-not-fit-target-type"}]
+    golden: golden/dflt-leafref-value-not-fit-target-type.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.6.1", "RFC7950#9.9"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  - id: when/cycle-through-list-path
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "when-cycle-through-list-path"}]
+    golden: golden/when-cycle-through-list-path.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.21.5"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  - id: when/cycle-through-list-value
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "when-cycle-through-list-value"}]
+    golden: golden/when-cycle-through-list-value.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.21.5"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  # cycle-by-name check; compare when/cycle
+  - id: when/cycle-two-leaves
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.21.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "when-cycle-two-leaves"}]
+    golden: golden/when-cycle-two-leaves.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.21.5"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  # observed only: x.when reads a, whose choice parent when reads x; RFC 7950 7.21.5 makes this a cycle, libyang reports none (candidate deviation, no assert)
+  - id: when/cycle-choice-parent
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.21.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "when-cycle-choice-parent"}]
+    golden: golden/when-cycle-choice-parent.json
+
+  - id: when/no-cycle-self-sibling-reads
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.21.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "when-no-cycle-self-sibling-reads"}]
+    golden: golden/when-no-cycle-self-sibling-reads.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.21.5"]
+      deviation: null
+
+  - id: when/own-value
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "when-own-value"}]
+    golden: golden/when-own-value.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.21.5"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  - id: when/own-value-via-uses
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "when-own-value-via-uses"}]
+    golden: golden/when-own-value-via-uses.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.21.5"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  - id: when/own-value-via-augment
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "when-own-value-via-augment"}]
+    golden: golden/when-own-value-via-augment.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.21.5"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  - id: when/own-children-via-augment
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "when-own-children-via-augment"}]
+    golden: golden/when-own-children-via-augment.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.21.5"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  - id: when/current-in-list-valid
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "when-current-in-list-valid"}]
+    golden: golden/when-current-in-list-valid.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.21.5"]
+      deviation: null
+
+  - id: when/uses-in-augment-foreign-prefix
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "when-uses-in-augment-foreign-prefix-h1"}, {"name": "when-uses-in-augment-foreign-prefix"}]
+    golden: golden/when-uses-in-augment-foreign-prefix.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.21.5"]
+      deviation: null
+
+  - id: when/augment-not-a-cycle
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "when-augment-not-a-cycle-h1"}, {"name": "when-augment-not-a-cycle"}]
+    golden: golden/when-augment-not-a-cycle.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.21.5"]
+      deviation: null
+
+  # warning only (compare status/when-warning); libyang words it as deprecated even for an obsolete node
+  - id: when/status-obsolete-ref-warns
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "when-status-obsolete-ref-warns"}]
+    golden: golden/when-status-obsolete-ref-warns.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.21.2"]
+      deviation: null
+
+  # no warnings expected
+  - id: must/wildcard-not-restricted-to-module
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "must-wildcard-not-restricted-to-module-h1"}, {"name": "must-wildcard-not-restricted-to-module"}]
+    golden: golden/must-wildcard-not-restricted-to-module.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.5.3"]
+      deviation: null
+
+  - id: must/disabled-leafref-in-other-module
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "must-disabled-leafref-in-other-module"}]
+      context_options: ["ref_implemented"]
+    golden: golden/must-disabled-leafref-in-other-module.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.5.3"]
+      deviation: null
+
+  # warning only: Must condition may be referencing deprecated node
+  - id: must/deprecated-node-warning
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.21.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "must-deprecated-node-warning"}]
+    golden: golden/must-deprecated-node-warning.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.21.2"]
+      deviation: null
+
+  - id: must/syntax-error
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.5.3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "must-syntax-error"}]
+    golden: golden/must-syntax-error.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.5.3"]
+      diagnostics: [{"vecode_name": "LYVE_XPATH"}]
+      deviation: null
+
+  # musts of disabled nodes are never queued: no warning
+  - id: must/in-disabled-node-bad-xpath-not-atomized
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.5.3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "must-in-disabled-node-bad-xpath-not-atomized"}]
+    golden: golden/must-in-disabled-node-bad-xpath-not-atomized.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.5.3"]
+      deviation: null
+
+  - id: must/action-output-musts
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "must-action-output-musts"}]
+    golden: golden/must-action-output-musts.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.5.3"]
+      deviation: null
+
+  - id: enum/disabled-values-kept-out
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.6.4"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "enum-disabled-values-kept-out"}]
+    golden: golden/enum-disabled-values-kept-out.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null
+
+  - id: enum/enabled-values-present
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.6.4"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "enum-enabled-values-present", "features": ["f"]}]
+    golden: golden/enum-enabled-values-present.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null
+
+  - id: enum/all-disabled
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.6.4"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "enum-all-disabled"}]
+    golden: golden/enum-all-disabled.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.6.4"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  - id: enum/disabled-default
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.6.4", "RFC7950#7.6.4"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "enum-disabled-default"}]
+    golden: golden/enum-disabled-default.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.6.4", "RFC7950#7.6.4"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  - id: enum/disabled-via-typedef-restriction
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#9.6.4"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "enum-disabled-via-typedef-restriction"}]
+    golden: golden/enum-disabled-via-typedef-restriction.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null
+
+  - id: enum/disabled-in-union-member
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#9.6.4"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "enum-disabled-in-union-member"}]
+    golden: golden/enum-disabled-in-union-member.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null
+
+  # observed only: libyang rejects an all-disabled enumeration on a leaf (enum/all-disabled) but accepts it as a union member; RFC 7950 9.6 needs one enum (candidate deviation, no assert)
+  - id: enum/disabled-union-member-all
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#9.6.4"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "enum-disabled-union-member-all"}]
+    golden: golden/enum-disabled-union-member-all.json
+
+  # values are assigned before disabled items are dropped: b=1, c=2
+  - id: enum/disabled-value-auto-assignment-kept
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#9.6.4.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "enum-disabled-value-auto-assignment-kept"}]
+    golden: golden/enum-disabled-value-auto-assignment-kept.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.6.4.2"]
+      deviation: null
+
+  - id: bit/disabled-values-kept-out
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#9.7.4"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "bit-disabled-values-kept-out"}]
+    golden: golden/bit-disabled-values-kept-out.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.7.4"]
+      deviation: null
+
+  - id: bit/enabled-values-present
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#9.7.4"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "bit-enabled-values-present", "features": ["f"]}]
+    golden: golden/bit-enabled-values-present.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.7.4"]
+      deviation: null
+
+  - id: bit/all-disabled
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#9.7.4"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "bit-all-disabled"}]
+    golden: golden/bit-all-disabled.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.7.4"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  - id: bit/disabled-default
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#9.7.4", "RFC7950#7.6.4"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "bit-disabled-default"}]
+    golden: golden/bit-disabled-default.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.7.4", "RFC7950#7.6.4"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  - id: bit/disabled-default-other-bit-ok
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#9.7.4"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "bit-disabled-default-other-bit-ok"}]
+    golden: golden/bit-disabled-default-other-bit-ok.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.7.4"]
+      deviation: null
+
+  - id: dflt/invalid-for-type
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.6.1"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-invalid-for-type"}]
+    golden: golden/dflt-invalid-for-type.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.6.1"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  - id: dflt/out-of-range
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.6.1"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-out-of-range"}]
+    golden: golden/dflt-out-of-range.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.6.1"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  - id: dflt/typedef-invalid-when-used
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.3.4"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-typedef-invalid-when-used"}]
+    golden: golden/dflt-typedef-invalid-when-used.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.3.4"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  # the leaf default replaces the typedef default (SCN:2807)
+  - id: dflt/typedef-invalid-unused-ok
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.3.4"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-typedef-invalid-unused-ok"}]
+    golden: golden/dflt-typedef-invalid-unused-ok.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.3.4"]
+      deviation: null
+
+  - id: dflt/empty-type-default
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.11"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-empty-type-default"}]
+    golden: golden/dflt-empty-type-default.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.11"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  - id: dflt/typedef-empty-default
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.11"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-typedef-empty-default"}]
+    golden: golden/dflt-typedef-empty-default.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.11"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  # NeedsTree results count as success at compile time (SC:971)
+  - id: dflt/union-with-leafref-kept-raw
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#9.12"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-union-with-leafref-kept-raw"}]
+    golden: golden/dflt-union-with-leafref-kept-raw.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.12"]
+      deviation: null
+
+  - id: dflt/union-no-matching-member
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.12"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-union-no-matching-member"}]
+    golden: golden/dflt-union-no-matching-member.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.12"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  # VERIFY (design 06 2.12): config leaf-list duplicate defaults compare the lexical form, so 1 and 01 differ
+  - id: dflt/leaflist-duplicate-non-canonical
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.7.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-leaflist-duplicate-non-canonical"}]
+    golden: golden/dflt-leaflist-duplicate-non-canonical.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.7.2"]
+      deviation: null
+
+  - id: dflt/leaflist-duplicate-same-canonical-state
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.7.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-leaflist-duplicate-same-canonical-state"}]
+    golden: golden/dflt-leaflist-duplicate-same-canonical-state.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.7.2"]
+      deviation: null
+
+  - id: dflt/typedef-default-not-inherited-by-union
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.3.4"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-typedef-default-not-inherited-by-union"}]
+    golden: golden/dflt-typedef-default-not-inherited-by-union.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.3.4"]
+      deviation: null
+
+  - id: dflt/typedef-default-inherited-by-leaf
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.3.4"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-typedef-default-inherited-by-leaf"}]
+    golden: golden/dflt-typedef-default-inherited-by-leaf.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.3.4"]
+      deviation: null
+
+  - id: dflt/leaf-default-overrides-typedef
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.3.4"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-leaf-default-overrides-typedef"}]
+    golden: golden/dflt-leaf-default-overrides-typedef.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.3.4"]
+      deviation: null
+
+  - id: dflt/derived-typedef-chain
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.3.4"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-derived-typedef-chain"}]
+    golden: golden/dflt-derived-typedef-chain.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.3.4"]
+      deviation: null
+
+  # observed only: keys ignore defaults (SC:1026); RFC 7950 7.8.2 says a key has no default semantics
+  - id: dflt/key-default-ignored
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.6.4"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-key-default-ignored"}]
+    golden: golden/dflt-key-default-ignored.json
+
+  # default naming an identity disabled by if-feature
+  - id: dflt/identityref-disabled-identity
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#9.10", "RFC7950#7.18.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-identityref-disabled-identity"}]
+    golden: golden/dflt-identityref-disabled-identity.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.10", "RFC7950#7.18.2"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  - id: dflt/identityref-enabled-identity
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#9.10"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-identityref-enabled-identity", "features": ["f2"]}]
+    golden: golden/dflt-identityref-enabled-identity.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.10"]
+      deviation: null
+
+  - id: dflt/instance-identifier-forward-ref
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.13"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-instance-identifier-forward-ref"}]
+    golden: golden/dflt-instance-identifier-forward-ref.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.13"]
+      deviation: null
+
+  - id: dflt/bits-default-canonicalised
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#9.7"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-bits-default-canonicalised"}]
+    golden: golden/dflt-bits-default-canonicalised.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.7"]
+      deviation: null
+
+  - id: dflt/mandatory-leaf-typedef-default-ignored
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.6.4"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-mandatory-leaf-typedef-default-ignored"}]
+    golden: golden/dflt-mandatory-leaf-typedef-default-ignored.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.6.4"]
+      deviation: null
+
+  - id: dflt/choice-default-case-leaf-default
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.9.3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-choice-default-case-leaf-default"}]
+    golden: golden/dflt-choice-default-case-leaf-default.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.9.3"]
+      deviation: null
+
+  # unique statements lose disabled leaves in step j (SC:1245)
+  - id: disabled/unique-leaf-removed
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.8.3", "RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "disabled-unique-leaf-removed"}]
+    golden: golden/disabled-unique-leaf-removed.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.8.3", "RFC7950#7.20.2"]
+      deviation: null
+
+  - id: disabled/unique-leaf-kept-when-enabled
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.8.3", "RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "disabled-unique-leaf-kept-when-enabled", "features": ["f"]}]
+    golden: golden/disabled-unique-leaf-kept-when-enabled.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.8.3", "RFC7950#7.20.2"]
+      deviation: null
+
+  - id: disabled/key-removed-by-if-feature
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.8.2", "RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "disabled-key-removed-by-if-feature"}]
+    golden: golden/disabled-key-removed-by-if-feature.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.8.2", "RFC7950#7.20.2"]
+      diagnostics: [{"vecode_name": "LYVE_REFERENCE"}]
+      deviation: null
+
+  - id: disabled/choice-case-removed
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.9", "RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "disabled-choice-case-removed"}]
+    golden: golden/disabled-choice-case-removed.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.9", "RFC7950#7.20.2"]
+      deviation: null
+
+  # observed only: the default case is disabled (does not exist under RFC 7950 7.20.2) yet libyang accepts it (candidate deviation, no assert)
+  - id: disabled/choice-default-case-disabled
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.9.3", "RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "disabled-choice-default-case-disabled"}]
+    golden: golden/disabled-choice-default-case-disabled.json
+
+  # step k: target inside a disabled subtree; first error is Not found node c, the 2nd diagnostic says the target is disabled
+  - id: disabled/leaf-in-disabled-container-leafref-target
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#9.9", "RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "disabled-leaf-in-disabled-container-leafref-target"}]
+    golden: golden/disabled-leaf-in-disabled-container-leafref-target.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9", "RFC7950#7.20.2"]
+      diagnostics: [{"vecode_name": "LYVE_XPATH"}]
+      deviation: null
+
+  - id: disabled/all-children-disabled-container-kept
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "disabled-all-children-disabled-container-kept"}]
+    golden: golden/disabled-all-children-disabled-container-kept.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.20.2"]
+      deviation: null
+
+  - id: disabled/list-state-sibling-removed-keeps-order
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "disabled-list-state-sibling-removed-keeps-order"}]
+    golden: golden/disabled-list-state-sibling-removed-keeps-order.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.20.2"]
+      deviation: null
+
+  # a disabled mandatory leaf: the container is still kept (compare mand/disabled-child-propagates)
+  - id: disabled/mandatory-leaf-still-propagates
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "disabled-mandatory-leaf-still-propagates"}]
+    golden: golden/disabled-mandatory-leaf-still-propagates.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.20.2"]
+      deviation: null
+
+  - id: disabled/augment-target-disabled
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.17", "RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "disabled-augment-target-disabled"}]
+    golden: golden/disabled-augment-target-disabled.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.17", "RFC7950#7.20.2"]
+      deviation: null

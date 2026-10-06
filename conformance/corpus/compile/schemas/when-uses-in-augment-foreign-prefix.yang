@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_when.
+module when-uses-in-augment-foreign-prefix {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:when-uses-in-augment-foreign-prefix";
+  prefix when-uses-in-augment-foreign-prefix;
+  import when-uses-in-augment-foreign-prefix-h1 { prefix c1; } import when-uses-in-augment-foreign-prefix-h2 { prefix c2; }
+  augment "/c1:my-container" { uses c2:my-group { when "./c1:my-type = '42'"; } }
+}

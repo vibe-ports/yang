@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_type_leafref.
+module lref-predicate-rhs-container {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:lref-predicate-rhs-container";
+  prefix lref-predicate-rhs-container;
+  list interface { key name; leaf name { type string; } leaf ip { type string; } }
+  container c;
+  leaf address { type leafref { path "/interface[name=current()/../c]/ip"; } }
+}

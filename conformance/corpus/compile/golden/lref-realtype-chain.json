@@ -1,0 +1,152 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module lref-realtype-chain {\n  namespace \"urn:vibe-ports:yang:conformance:lref-realtype-chain\";\n  prefix lref-realtype-chain;\n\n  leaf a {\n    type leafref {\n      path \"../b\";\n      require-instance true;\n      type uint16;\n    }\n    config true;\n    status current;\n  }\n  leaf b {\n    type leafref {\n      path \"../c\";\n      require-instance true;\n      type uint16;\n    }\n    config true;\n    status current;\n  }\n  leaf c {\n    type leafref {\n      path \"../d\";\n      require-instance true;\n      type uint16;\n    }\n    config true;\n    status current;\n  }\n  leaf d {\n    type uint16;\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "lref-realtype-chain",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "lref-realtype-chain",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/lref-realtype-chain:a",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "../b",
+              "require_instance": true,
+              "target": "/lref-realtype-chain:b"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "lref-realtype-chain",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/lref-realtype-chain:b",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "../c",
+              "require_instance": true,
+              "target": "/lref-realtype-chain:c"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "lref-realtype-chain",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/lref-realtype-chain:c",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "../d",
+              "require_instance": true,
+              "target": "/lref-realtype-chain:d"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "lref-realtype-chain",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/lref-realtype-chain:d",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint16",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

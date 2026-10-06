@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module dflt-identityref-enabled-identity {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:dflt-identityref-enabled-identity";
+  prefix dflt-identityref-enabled-identity;
+  feature f2;
+  identity baseid;
+  identity id2 { if-feature f2; base baseid; }
+  leaf lf { type identityref { base baseid; } default id2; }
+}

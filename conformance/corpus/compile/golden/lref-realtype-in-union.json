@@ -1,0 +1,158 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module lref-realtype-in-union {\n  namespace \"urn:vibe-ports:yang:conformance:lref-realtype-in-union\";\n  prefix lref-realtype-in-union;\n\n  leaf l {\n    type union {\n      type decimal64 {\n        fraction-digits 2;\n      }\n      type leafref {\n        path \"../target\";\n        require-instance true;\n        type int8;\n      }\n      type string;\n    }\n    config true;\n    status current;\n  }\n  leaf target {\n    type leafref {\n      path \"../realtarget\";\n      require-instance true;\n      type int8;\n    }\n    config true;\n    status current;\n  }\n  leaf realtarget {\n    type int8;\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "lref-realtype-in-union",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "lref-realtype-in-union",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/lref-realtype-in-union:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": [
+              {
+                "base": "decimal64",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": 2,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              },
+              {
+                "base": "leafref",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": {
+                  "path": "../target",
+                  "require_instance": true,
+                  "target": "/lref-realtype-in-union:target"
+                },
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              },
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              }
+            ]
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "lref-realtype-in-union",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/lref-realtype-in-union:target",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "../realtarget",
+              "require_instance": true,
+              "target": "/lref-realtype-in-union:realtarget"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "lref-realtype-in-union",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/lref-realtype-in-union:realtarget",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "int8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

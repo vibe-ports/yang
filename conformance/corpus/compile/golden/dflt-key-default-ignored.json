@@ -1,0 +1,70 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module dflt-key-default-ignored {\n  namespace \"urn:vibe-ports:yang:conformance:dflt-key-default-ignored\";\n  prefix dflt-key-default-ignored;\n\n  list l {\n    key \"a\";\n    config true;\n    min-elements 0;\n    max-elements 4294967295;\n    ordered-by system;\n    status current;\n    leaf a {\n      type uint8;\n      config true;\n      status current;\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "dflt-key-default-ignored",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "a"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "dflt-key-default-ignored",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "system",
+          "path": "/dflt-key-default-ignored:l",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "dflt-key-default-ignored",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/dflt-key-default-ignored:l/a",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

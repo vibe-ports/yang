@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_when.
+module when-own-value {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:when-own-value";
+  prefix when-own-value;
+  leaf val { type int64; when "../val='25'"; }
+}

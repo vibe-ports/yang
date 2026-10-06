@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module disabled-augment-target-disabled {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:disabled-augment-target-disabled";
+  prefix disabled-augment-target-disabled;
+  feature f;
+  container c { if-feature f; container d; }
+  augment /c/d { leaf x { type string; } }
+}

@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module lref-state-to-config-ok {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:lref-state-to-config-ok";
+  prefix lref-state-to-config-ok;
+  leaf ref { config false; type leafref { path /target; } }
+  leaf target { type string; }
+}

@@ -1,0 +1,54 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module dflt-typedef-default-inherited-by-leaf {\n  namespace \"urn:vibe-ports:yang:conformance:dflt-typedef-default-inherited-by-leaf\";\n  prefix dflt-typedef-default-inherited-by-leaf;\n\n  leaf l {\n    type string;\n    units \"xxx\";\n    default \"hello\";\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "dflt-typedef-default-inherited-by-leaf",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": [
+            "hello"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "dflt-typedef-default-inherited-by-leaf",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/dflt-typedef-default-inherited-by-leaf:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "mybasetype"
+            ],
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

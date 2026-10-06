@@ -1,0 +1,138 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module dflt-choice-default-case-leaf-default {\n  namespace \"urn:vibe-ports:yang:conformance:dflt-choice-default-case-leaf-default\";\n  prefix dflt-choice-default-case-leaf-default;\n\n  choice ch {\n    default \"a\";\n    config true;\n    status current;\n    case a {\n      config true;\n      status current;\n      leaf x {\n        type uint8;\n        default \"5\";\n        config true;\n        status current;\n      }\n    }\n    case b {\n      config true;\n      status current;\n      leaf y {\n        type string;\n        config true;\n        status current;\n      }\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "dflt-choice-default-case-leaf-default",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": [
+            "a"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "dflt-choice-default-case-leaf-default",
+          "musts": null,
+          "nodetype": "choice",
+          "ordered_by": null,
+          "path": "/dflt-choice-default-case-leaf-default:ch",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "dflt-choice-default-case-leaf-default",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/dflt-choice-default-case-leaf-default:ch/a",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "5"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "dflt-choice-default-case-leaf-default",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/dflt-choice-default-case-leaf-default:ch/a/x",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "dflt-choice-default-case-leaf-default",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/dflt-choice-default-case-leaf-default:ch/b",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "dflt-choice-default-case-leaf-default",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/dflt-choice-default-case-leaf-default:ch/b/y",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

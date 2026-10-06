@@ -1,0 +1,114 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module when-uses-in-augment-foreign-prefix-h1 {\n  namespace \"urn:vibe-ports:yang:conformance:when-uses-in-augment-foreign-prefix-h1\";\n  prefix when-uses-in-augment-foreign-prefix-h1;\n\n  container my-container {\n    config true;\n    status current;\n    leaf my-type {\n      type string;\n      config true;\n      status current;\n    }\n    leaf my-leaf {\n      when \"./c1:my-type = '42'\";\n      type string;\n      config true;\n      status current;\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "when-uses-in-augment-foreign-prefix-h1",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-uses-in-augment-foreign-prefix-h1",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/when-uses-in-augment-foreign-prefix-h1:my-container",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-uses-in-augment-foreign-prefix-h1",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-uses-in-augment-foreign-prefix-h1:my-container/my-type",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-uses-in-augment-foreign-prefix",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-uses-in-augment-foreign-prefix-h1:my-container/when-uses-in-augment-foreign-prefix:my-leaf",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-uses-in-augment-foreign-prefix-h1:my-container",
+              "expr": "./c1:my-type = '42'",
+              "module": "when-uses-in-augment-foreign-prefix"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module when-uses-in-augment-foreign-prefix {\n  namespace \"urn:vibe-ports:yang:conformance:when-uses-in-augment-foreign-prefix\";\n  prefix when-uses-in-augment-foreign-prefix;\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "when-uses-in-augment-foreign-prefix",
+      "revision": null,
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

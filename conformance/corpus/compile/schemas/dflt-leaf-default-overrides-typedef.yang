@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_type_dflt.
+module dflt-leaf-default-overrides-typedef {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:dflt-leaf-default-overrides-typedef";
+  prefix dflt-leaf-default-overrides-typedef;
+  typedef mybasetype { type string; default hello; units xxx; }
+  leaf l { type mybasetype; default goodbye; units yyy; }
+}

@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_must.
+module must-disabled-leafref-in-other-module {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:must-disabled-leafref-in-other-module";
+  prefix must-disabled-leafref-in-other-module;
+  import must-disabled-leafref-in-other-module-h1 { prefix bi; }
+  container laa-config { must "number-of-laa-scarriers <= /bi:module-capability/bi:rw-sub-band-info/bi:rw-number-of-laa-scarriers"; }
+}

@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module lref-circular-self {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:lref-circular-self";
+  prefix lref-circular-self;
+  leaf a { type leafref { path ../a; } }
+}

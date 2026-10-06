@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_type_leafref.
+module lref-path-syntax-parse-phase {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:lref-path-syntax-parse-phase";
+  prefix lref-path-syntax-parse-phase;
+  container a { leaf target2 { type uint8; } }
+  leaf ref1 { type leafref { path /a!invalid; } }
+}

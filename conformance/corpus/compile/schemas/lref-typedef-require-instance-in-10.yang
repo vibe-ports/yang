@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_type_leafref.
+module lref-typedef-require-instance-in-10 {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:lref-typedef-require-instance-in-10";
+  prefix lref-typedef-require-instance-in-10;
+  typedef mytype { type leafref { path /target; require-instance false; } }
+  leaf ref { type mytype; }
+  leaf target { type string; }
+}

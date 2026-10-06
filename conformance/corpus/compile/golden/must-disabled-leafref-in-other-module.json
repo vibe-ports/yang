@@ -1,0 +1,60 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module must-disabled-leafref-in-other-module {\n  namespace \"urn:vibe-ports:yang:conformance:must-disabled-leafref-in-other-module\";\n  prefix must-disabled-leafref-in-other-module;\n\n  container laa-config {\n    must \"number-of-laa-scarriers <= /bi:module-capability/bi:rw-sub-band-info/bi:rw-number-of-laa-scarriers\";\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Schema node \"number-of-laa-scarriers\" not found; in expr \"number-of-laa-scarriers\" with context node \"/must-disabled-leafref-in-other-module:laa-config\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "features": [],
+      "identities": [],
+      "name": "must-disabled-leafref-in-other-module",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "must-disabled-leafref-in-other-module",
+          "musts": [
+            {
+              "apptag": null,
+              "expr": "number-of-laa-scarriers <= /bi:module-capability/bi:rw-sub-band-info/bi:rw-number-of-laa-scarriers",
+              "message": null
+            }
+          ],
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/must-disabled-leafref-in-other-module:laa-config",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

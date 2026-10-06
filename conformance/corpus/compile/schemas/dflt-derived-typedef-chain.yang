@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_type_dflt.
+module dflt-derived-typedef-chain {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:dflt-derived-typedef-chain";
+  prefix dflt-derived-typedef-chain;
+  typedef mybasetype { type string; default hello; units xxx; }
+  typedef mytype { type mybasetype; }
+  leaf l1 { type mytype; default goodbye; units yyy; }
+  leaf l2 { type mytype; }
+}

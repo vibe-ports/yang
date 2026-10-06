@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_when.
+module when-own-children-via-augment {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:when-own-children-via-augment";
+  prefix when-own-children-via-augment;
+  augment /cont { when "aug-cont/aug-l"; container aug-cont { leaf aug-l { type int64; } } }
+  container cont;
+}

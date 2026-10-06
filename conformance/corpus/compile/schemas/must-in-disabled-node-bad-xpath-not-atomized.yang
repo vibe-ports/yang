@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module must-in-disabled-node-bad-xpath-not-atomized {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:must-in-disabled-node-bad-xpath-not-atomized";
+  prefix must-in-disabled-node-bad-xpath-not-atomized;
+  feature f;
+  leaf a { if-feature f; type string; must "../nosuchnode = 1"; }
+}

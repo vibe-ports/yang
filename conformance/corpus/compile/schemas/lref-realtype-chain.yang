@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module lref-realtype-chain {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:lref-realtype-chain";
+  prefix lref-realtype-chain;
+  leaf a { type leafref { path ../b; } }
+  leaf b { type leafref { path ../c; } }
+  leaf c { type leafref { path ../d; } }
+  leaf d { type uint16; }
+}

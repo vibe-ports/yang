@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module dflt-union-with-leafref-kept-raw {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:dflt-union-with-leafref-kept-raw";
+  prefix dflt-union-with-leafref-kept-raw;
+  leaf target { type string; }
+  leaf l { type union { type leafref { path "/target"; } type string; } default "anything"; }
+}

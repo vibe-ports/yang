@@ -1,0 +1,24 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module must-in-disabled-node-bad-xpath-not-atomized {\n  namespace \"urn:vibe-ports:yang:conformance:must-in-disabled-node-bad-xpath-not-atomized\";\n  prefix must-in-disabled-node-bad-xpath-not-atomized;\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": false,
+          "name": "f"
+        }
+      ],
+      "identities": [],
+      "name": "must-in-disabled-node-bad-xpath-not-atomized",
+      "revision": null,
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

@@ -1,0 +1,54 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module lref-target-in-import-only-module {\n  namespace \"urn:vibe-ports:yang:conformance:lref-target-in-import-only-module\";\n  prefix lref-target-in-import-only-module;\n\n  leaf i {\n    type leafref {\n      path \"/h:h\";\n      require-instance true;\n      type uint16;\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "lref-target-in-import-only-module",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "lref-target-in-import-only-module",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/lref-target-in-import-only-module:i",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "/h:h",
+              "require_instance": true,
+              "target": "/lref-target-in-import-only-module-h1:h"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

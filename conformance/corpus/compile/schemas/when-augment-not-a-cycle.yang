@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_when.
+module when-augment-not-a-cycle {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:when-augment-not-a-cycle";
+  prefix when-augment-not-a-cycle;
+  import when-augment-not-a-cycle-h1 { prefix d1; }
+  augment "/d1:ifm/d1:interfaces/d1:interface/d1:ethernet/d1:main-interface" {
+    when "not(d1:l2-attribute)"; container extra-attribute { presence ""; } }
+}

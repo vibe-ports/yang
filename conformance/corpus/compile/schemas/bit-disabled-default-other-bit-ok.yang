@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module bit-disabled-default-other-bit-ok {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:bit-disabled-default-other-bit-ok";
+  prefix bit-disabled-default-other-bit-ok;
+  feature f;
+  leaf l { type bits { bit a { if-feature f; } bit b; } default "b"; }
+}

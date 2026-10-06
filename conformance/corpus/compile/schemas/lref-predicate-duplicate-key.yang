@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_type_leafref.
+module lref-predicate-duplicate-key {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:lref-predicate-duplicate-key";
+  prefix lref-predicate-duplicate-key;
+  list interface { key name; leaf name { type string; } leaf ip { type string; } }
+  leaf ifname { type leafref { path "../interface/name"; } }
+  leaf test { type string; }
+  leaf address { type leafref { path "/interface[name=current() /  .. / ifname][name=current()/../test]/ip"; } }
+}

@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_when.
+module when-own-value-via-uses {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:when-own-value-via-uses";
+  prefix when-own-value-via-uses;
+  grouping grp { leaf val { type int64; } }
+  uses grp { when "val='25'"; }
+}

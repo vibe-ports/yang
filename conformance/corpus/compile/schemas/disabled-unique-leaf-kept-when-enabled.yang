@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module disabled-unique-leaf-kept-when-enabled {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:disabled-unique-leaf-kept-when-enabled";
+  prefix disabled-unique-leaf-kept-when-enabled;
+  feature f;
+  list l { key "k"; unique "v"; leaf k { type string; } leaf v { if-feature f; type string; } }
+  list l2 { key "k"; unique "v1 v2"; leaf k { type string; } leaf v1 { if-feature f; type string; } leaf v2 { type string; } }
+}

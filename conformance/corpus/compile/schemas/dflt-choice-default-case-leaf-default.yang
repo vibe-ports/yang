@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module dflt-choice-default-case-leaf-default {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:dflt-choice-default-case-leaf-default";
+  prefix dflt-choice-default-case-leaf-default;
+  choice ch { default a; case a { leaf x { type uint8; default 5; } } case b { leaf y { type string; } } }
+}

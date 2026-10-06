@@ -1,0 +1,62 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module bit-disabled-default-other-bit-ok {\n  namespace \"urn:vibe-ports:yang:conformance:bit-disabled-default-other-bit-ok\";\n  prefix bit-disabled-default-other-bit-ok;\n\n  leaf l {\n    type bits {\n      bit \"b\" {\n        position 1;\n        status current;\n      }\n    }\n    default \"b\";\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": false,
+          "name": "f"
+        }
+      ],
+      "identities": [],
+      "name": "bit-disabled-default-other-bit-ok",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": [
+            "b"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "bit-disabled-default-other-bit-ok",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/bit-disabled-default-other-bit-ok:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "bits",
+            "bases": null,
+            "bits": [
+              {
+                "name": "b",
+                "position": 1
+              }
+            ],
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

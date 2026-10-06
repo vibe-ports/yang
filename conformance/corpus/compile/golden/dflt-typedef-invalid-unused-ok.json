@@ -1,0 +1,54 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module dflt-typedef-invalid-unused-ok {\n  namespace \"urn:vibe-ports:yang:conformance:dflt-typedef-invalid-unused-ok\";\n  prefix dflt-typedef-invalid-unused-ok;\n\n  leaf l {\n    type uint8 {\n      range \"1..10\";\n    }\n    default \"5\";\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "dflt-typedef-invalid-unused-ok",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": [
+            "5"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "dflt-typedef-invalid-unused-ok",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/dflt-typedef-invalid-unused-ok:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "1..10",
+            "typedefs": [
+              "t"
+            ],
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

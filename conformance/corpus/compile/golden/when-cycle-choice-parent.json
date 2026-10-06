@@ -1,0 +1,146 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module when-cycle-choice-parent {\n  namespace \"urn:vibe-ports:yang:conformance:when-cycle-choice-parent\";\n  prefix when-cycle-choice-parent;\n\n  container c {\n    config true;\n    status current;\n    choice ch {\n      when \"x\";\n      config true;\n      status current;\n      case a {\n        config true;\n        status current;\n        leaf a {\n          type string;\n          config true;\n          status current;\n        }\n      }\n    }\n    leaf x {\n      when \"../a\";\n      type string;\n      config true;\n      status current;\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "when-cycle-choice-parent",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-cycle-choice-parent",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/when-cycle-choice-parent:c",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-cycle-choice-parent",
+          "musts": null,
+          "nodetype": "choice",
+          "ordered_by": null,
+          "path": "/when-cycle-choice-parent:c/ch",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": [
+            {
+              "context": "/when-cycle-choice-parent:c",
+              "expr": "x",
+              "module": "when-cycle-choice-parent"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-cycle-choice-parent",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/when-cycle-choice-parent:c/ch/a",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-cycle-choice-parent",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-cycle-choice-parent:c/ch/a/a",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-cycle-choice-parent",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-cycle-choice-parent:c/x",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-cycle-choice-parent:c/x",
+              "expr": "../a",
+              "module": "when-cycle-choice-parent"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

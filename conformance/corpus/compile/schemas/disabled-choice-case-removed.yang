@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module disabled-choice-case-removed {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:disabled-choice-case-removed";
+  prefix disabled-choice-case-removed;
+  feature f;
+  choice ch { case a { if-feature f; leaf x { type string; } } case b { leaf y { type string; } } }
+}

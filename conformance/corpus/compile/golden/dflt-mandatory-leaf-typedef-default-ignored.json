@@ -1,0 +1,52 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module dflt-mandatory-leaf-typedef-default-ignored {\n  namespace \"urn:vibe-ports:yang:conformance:dflt-mandatory-leaf-typedef-default-ignored\";\n  prefix dflt-mandatory-leaf-typedef-default-ignored;\n\n  leaf l {\n    type string;\n    units \"xxx\";\n    config true;\n    mandatory true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "dflt-mandatory-leaf-typedef-default-ignored",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "dflt-mandatory-leaf-typedef-default-ignored",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/dflt-mandatory-leaf-typedef-default-ignored:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "mytype"
+            ],
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

@@ -1,0 +1,55 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module lref-disabled-ref-and-target-both {\n  namespace \"urn:vibe-ports:yang:conformance:lref-disabled-ref-and-target-both\";\n  prefix lref-disabled-ref-and-target-both;\n\n  leaf target {\n    type boolean;\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": false,
+          "name": "f1"
+        }
+      ],
+      "identities": [],
+      "name": "lref-disabled-ref-and-target-both",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "lref-disabled-ref-and-target-both",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/lref-disabled-ref-and-target-both:target",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "boolean",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

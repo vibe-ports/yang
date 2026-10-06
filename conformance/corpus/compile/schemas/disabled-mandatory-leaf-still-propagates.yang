@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module disabled-mandatory-leaf-still-propagates {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:disabled-mandatory-leaf-still-propagates";
+  prefix disabled-mandatory-leaf-still-propagates;
+  feature f;
+  container c { leaf m { if-feature f; mandatory true; type string; } }
+}

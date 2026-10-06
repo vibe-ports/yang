@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module when-cycle-choice-parent {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:when-cycle-choice-parent";
+  prefix when-cycle-choice-parent;
+  container c { choice ch { when "x"; leaf a { type string; } }
+    leaf x { type string; when "../a"; } }
+}

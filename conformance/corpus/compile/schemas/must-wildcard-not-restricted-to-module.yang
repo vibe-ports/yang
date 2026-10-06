@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_must.
+module must-wildcard-not-restricted-to-module {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:must-wildcard-not-restricted-to-module";
+  prefix must-wildcard-not-restricted-to-module;
+  import must-wildcard-not-restricted-to-module-h1 { prefix a; }
+  augment /a:cont { container cont2 { must "/a:cont/*/a:k"; leaf aug { type empty; } } }
+}

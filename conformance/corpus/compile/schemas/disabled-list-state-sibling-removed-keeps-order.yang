@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module disabled-list-state-sibling-removed-keeps-order {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:disabled-list-state-sibling-removed-keeps-order";
+  prefix disabled-list-state-sibling-removed-keeps-order;
+  feature f;
+  container c { leaf a { type string; } leaf b { if-feature f; type string; } leaf d { type string; } }
+}

@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_when.
+module when-current-in-list-valid {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:when-current-in-list-valid";
+  prefix when-current-in-list-valid;
+  container c {
+    list l { key name; leaf name { type string; }
+      container cond-data { when "/c/l2[name = current()/../name]/val = 'value'"; leaf cond-leaf { type string; default "default_val"; } } }
+    list l2 { key name; leaf name { type string; } container c2 { leaf val { type string; } } } }
+}

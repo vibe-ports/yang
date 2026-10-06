@@ -1,0 +1,86 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module lref-default-value-valid {\n  namespace \"urn:vibe-ports:yang:conformance:lref-default-value-valid\";\n  prefix lref-default-value-valid;\n\n  leaf source {\n    type leafref {\n      path \"../target\";\n      require-instance true;\n      type boolean;\n    }\n    default \"true\";\n    config true;\n    status current;\n  }\n  leaf target {\n    type boolean;\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "lref-default-value-valid",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": [
+            "true"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "lref-default-value-valid",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/lref-default-value-valid:source",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "../target",
+              "require_instance": true,
+              "target": "/lref-default-value-valid:target"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "lref-default-value-valid",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/lref-default-value-valid:target",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "boolean",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

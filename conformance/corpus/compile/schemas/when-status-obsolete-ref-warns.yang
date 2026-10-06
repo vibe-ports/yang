@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Adapted from libyang v5.8.6 tests/utests/schema/test_tree_schema_compile.c:test_status.
+module when-status-obsolete-ref-warns {
+  yang-version 1;
+  namespace "urn:vibe-ports:yang:conformance:when-status-obsolete-ref-warns";
+  prefix when-status-obsolete-ref-warns;
+  container c { leaf l { status obsolete; type string; } }
+  container d { leaf m { when "../../c/l"; type string; } }
+}
