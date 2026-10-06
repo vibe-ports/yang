@@ -70,13 +70,14 @@ verdict=$(gh api --paginate --slurp "repos/$repo/issues/$pr/comments" | jq -r --
     end) | .out[];
   # An edited comment can still revoke (changes), never approve. Order by when the line was last
   # written: a "changes" edited into an old comment must outrank approvals posted before the edit
-  # (approvals are never edited, so for them updated_at == created_at).
+  # (approvals are never edited, so for them updated_at == created_at). Fail closed on a tie: at
+  # the same second a "changes" sorts after every approve, whatever the comment ids.
   [ .[][] | select(.user.id == $uid) | . as $c
     | (.body // "" | unfenced
        | capture("^VERDICT: (?<v>approve|changes) (?<s>[0-9a-f]{40}) \\((codex-[A-Za-z0-9_.-]+|port-reviewer-[A-Za-z0-9_.-]+)\\)$"))
     | select(.v == "changes" or $c.updated_at == $c.created_at)
     | {t: $c.updated_at, id: $c.id, v, s} ]
-  | sort_by([.t, .id]) | (map(select(.s == $sha)) | last | .v // "none") as $h | (last // {v: "none", s: "-"})
+  | sort_by([.t, .v == "changes", .id]) | (map(select(.s == $sha)) | last | .v // "none") as $h | (last // {v: "none", s: "-"})
   | "\($h) \(.v) \(.s)"')
 read -r verdict last_v last_s <<<"$verdict"
 # No attestation for the head itself: the PR's newest attestation (any SHA) may approve an older

@@ -167,7 +167,7 @@ comments() { # comments <uid> <created> <body> [<uid> <created> <body>]...
     a=$(jq --argjson u "$1" --arg c "$2" --arg b "$3" '. + [{id: (length + 1), user: {id: $u}, created_at: $c, updated_at: $c, body: $b}]' <<<"$a"); shift 3; done
   jq -n --argjson a "$a" '[$a]' >"$FX/comments.json"
 }
-edited() { jq --argjson i "${1:--1}" '.[0][$i].updated_at = "2026-02-01T00:00:00Z"' "$FX/comments.json" >"$FX/c.tmp" && mv "$FX/c.tmp" "$FX/comments.json"; }
+edited() { jq --argjson i "${1:--1}" --arg u "${2:-2026-02-01T00:00:00Z}" '.[0][$i].updated_at = $u' "$FX/comments.json" >"$FX/c.tmp" && mv "$FX/c.tmp" "$FX/comments.json"; }
 runs() { # runs <conclusion>...   (one ci run per conclusion; RUNPATH overrides the workflow path)
   jq -n --arg h "$head" --arg p "${RUNPATH:-.github/workflows/ci.yml}" '{workflow_runs: [$ARGS.positional[] |
     {path:$p,head_sha:$h,repository:{full_name:"vibe-ports/yang"},created_at:"2026-01-01T00:00:00Z",run_attempt:1,status:"completed",conclusion:.}]}' \
@@ -209,6 +209,8 @@ expect 1 "merge-pr: later 'changes' revokes approval" "$NOAPP .* is 'changes'" m
 runs failure
 comments 1056050 $D1 "VERDICT: changes $head (codex-x)" 1056050 $D2 "$A"; edited 0
 expect 1 "merge-pr: 'changes' edited into an older comment revokes a newer approval" "$NOAPP .* is 'changes'" mp
+comments 1056050 $D1 "VERDICT: changes $head (codex-x)" 1056050 $D2 "$A"; edited 0 $D2
+expect 1 "merge-pr: 'changes' edited in the same second as a newer approval wins the tie" "$NOAPP .* is 'changes'" mp
 comments 1056050 $D1 "VERDICT: approve $head (port-reviewer-opus)"
 expect 1 "merge-pr: port-reviewer-* attestation accepted (stops at CI)" "are 'completed/failure'" mp
 comments 1056050 $D1 "VERDICT: changes $head (codex-x)" 1056050 $D2 "$(printf 'text\r\n%s\r\n' "$A")"
@@ -320,6 +322,8 @@ comments 1056050 $D1 "$AA" 1056050 $D2 "VERDICT: changes $Aold (codex-x)"; edite
 expect 1 "merge-pr carry-over: 'changes' in an edited comment still wins" "newest attestation of the PR: changes $Aold" mp
 comments 1056050 $D1 "VERDICT: changes $Aold (codex-x)" 1056050 $D2 "$AA"; edited 0
 expect 1 "merge-pr carry-over: 'changes' edited into an older comment revokes a newer approval" "$NOAPP .* is 'none'.*newest attestation of the PR: changes $Aold" mp
+comments 1056050 $D1 "VERDICT: changes $Aold (codex-x)" 1056050 $D2 "$AA"; edited 0 $D2
+expect 1 "merge-pr carry-over: 'changes' edited in the same second as a newer approval wins the tie" "$NOAPP .* is 'none'.*newest attestation of the PR: changes $Aold" mp
 comments 1056050 $D1 "$AA" 1056050 $D2 "VERDICT: changes $(git -C "$m" rev-parse "$Aold~1") (codex-x)"
 expect 1 "merge-pr carry-over: a later 'changes' for another head wins" "$NOAPP .* is 'none'" mp
 comments 1056050 $D1 "VERDICT: changes $head (codex-x)" 1056050 $D2 "$AA"
