@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Ported from libyang v5.8.6 src/schema_compile.c (lysc_update_path) and src/tree_schema.c
-// (lysc_path_until) (BSD-3-Clause, © CESNET).
+// Ported from libyang v5.8.6 src/schema_compile.c (lysc_update_path) (BSD-3-Clause, © CESNET).
 
 package compile
 
@@ -81,21 +80,4 @@ func (p *cpath) update(parentMod *schema.Module, name string) {
 		p.n += len(s)
 	}
 	p.b[p.n] = 0
-}
-
-// lyscPath is lysc_path(node, LYSC_PATH_LOG): every node, module name on a module change.
-func lyscPath(n *schema.Node) string {
-	var segs []string
-	for it := n; it != nil; it = it.Parent {
-		if it.Parent == nil || it.Parent.Module != it.Module {
-			segs = append(segs, "/"+it.Module.Name+":"+it.Name)
-		} else {
-			segs = append(segs, "/"+it.Name)
-		}
-	}
-	var b strings.Builder
-	for i := len(segs) - 1; i >= 0; i-- {
-		b.WriteString(segs[i])
-	}
-	return b.String()
 }

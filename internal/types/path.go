@@ -59,18 +59,6 @@ func isOp(n *schema.Node) bool {
 	return n.Kind == schema.RPC || n.Kind == schema.Action || n.Kind == schema.Notification
 }
 
-// dataParent is lysc_data_parent: the nearest data-node ancestor.
-func dataParent(n *schema.Node) *schema.Node {
-	for p := n.Parent; p != nil; p = p.Parent {
-		switch p.Kind {
-		case schema.Container, schema.Leaf, schema.LeafList, schema.List, schema.AnyXML, schema.AnyData,
-			schema.RPC, schema.Action, schema.Notification:
-			return p
-		}
-	}
-	return nil
-}
-
 func sub(e *lyxp.Expr, from, to int) *lyxp.Expr {
 	return &lyxp.Expr{Src: e.Src, Toks: e.Toks[from:to], Pos: e.Pos[from:to], Len: e.Len[from:to]}
 }
@@ -98,7 +86,7 @@ func (c *leafrefCompiler) compile(ctxNode *schema.Node, e *lyxp.Expr) (Path, *Pa
 			if ctxNode == nil {
 				return nil, xpErr(cur, "Too many parent references in path.")
 			}
-			ctxNode = dataParent(ctxNode)
+			ctxNode = ctxNode.DataParent()
 			i += 2 // '..', '/'
 		}
 	}
@@ -146,13 +134,10 @@ func (c *leafrefCompiler) snode(ctxNode *schema.Node, qname string, output bool)
 	case !mod.Implemented:
 		return nil, fmt.Sprintf("Not implemented module \"%s\" in path.", mod.Name)
 	}
-	var nodes []*schema.Node
-	if ctxNode == nil || ctxNode.Kind == schema.AnyData || ctxNode.Kind == schema.AnyXML {
-		nodes = mod.Top // lys_getnext with no schema parent: libyang lets an any node fall back to the top level
-	} else {
-		nodes = ctxNode.Children
+	if ctxNode != nil && (ctxNode.Kind == schema.AnyData || ctxNode.Kind == schema.AnyXML) {
+		ctxNode = nil // lys_getnext with no schema parent: libyang lets an any node fall back to the top level
 	}
-	if n := getNext(nodes, mod, name, output); n != nil {
+	if n := schema.FindChild(ctxNode, mod.Top, mod, name, getNextOpts(output)); n != nil {
 		return n, ""
 	}
 	return nil, fmt.Sprintf("Not found node \"%s\" in path.", name)
@@ -186,7 +171,7 @@ func (c *leafrefCompiler) predicate(ctxNode, cur *schema.Node, e *lyxp.Expr, i i
 			if node == nil {
 				return i, xpErr(cur, "Too many parent references in path.")
 			}
-			node = dataParent(node)
+			node = node.DataParent()
 			i++
 			if !e.Is(i+1, lyxp.TokDDot) {
 				break

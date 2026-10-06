@@ -145,10 +145,10 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | src/schema_compile_node.c | lysc_range_dup | compile.typeCtx.newType (string length) | ported | types/unchanged-typedef-reuse | string length only, as libyang (binary and numeric types do not inherit when compiling a new type without their own restriction: D-0041 candidate) |
 | src/schema_compile.c | lys_compile (data nodes, rpcs, notifications per module and submodule) | compile.Context.compileNodes | partial | compile/* | P3 only; features, P2, P4, P5, module exts: C1b, C4b, C6 |
 | src/schema_compile.c | lysc_update_path | compile.cpath.update, compile.cpath.pop | ported | compile/*, errpath/* | LYSC_CTX_BUFSIZE truncation kept |
-| src/tree_schema.c | lysc_path_until (LYSC_PATH_LOG) | compile.lyscPath | partial | compile/node-dup-* | log paths only |
-| src/tree_schema.c | lys_getnext, lys_getnext_into_case | compile.nodeCtx.getnext | partial | compile/node-dup-*, choice-duplicate-* | options WITHCHOICE, NOCHOICE, WITHCASE, OUTPUT; no extension instances |
-| src/tree_schema.c | lys_find_child, lys_find_child_node | compile.nodeCtx.findChild | partial | compile/list-key-*, choice-default-* | no extension-instance nodes |
-| src/tree_schema_common.c | lysc_data_node | compile.dataNode | ported | compile/choice-default-shorthand-when | |
+| src/tree_schema.c | lysc_path_until (LYSC_PATH_LOG) | schema.Node.LogPath | partial | compile/node-dup-* | log paths only |
+| src/tree_schema.c | lys_getnext, lys_getnext_into_case | schema.GetNext | partial | compile/node-dup-*, choice-duplicate-* | options WITHCHOICE, NOCHOICE, WITHCASE, OUTPUT; no extension instances |
+| src/tree_schema.c | lys_find_child, lys_find_child_node | schema.FindChild, compile.nodeCtx.findChild | partial | compile/list-key-*, choice-default-* | no extension-instance nodes |
+| src/tree_schema_common.c | lysc_data_node, lysc_data_parent | schema.DataNode, schema.Node.DataParent | ported | compile/choice-default-shorthand-when | |
 | src/tree_schema_common.c | lys_nodetype2str | compile.lysNodetype2str | ported | compile/list-unique-leaf-list | |
 | src/tree_schema.c | ly_schema_resolve_prefix | compile.resolvePrefix | ported | compile/list-unique-prefix-undefined, choice-default-case-wrong-module | |
 | src/ly_common.c | lys_parse_id, ly_parse_nodeid | compile.parseID (in resolveNodeid) | ported | compile/list-unique-bad-separator | |

@@ -221,43 +221,18 @@ func compileSNode(a *storeArgs, parent *schema.Node, qname string, output bool) 
 	case !mod.Implemented:
 		return nil, fmt.Sprintf("Not implemented module \"%s\" in path.", mod.Name)
 	}
-	var nodes []*schema.Node
-	if parent == nil {
-		nodes = mod.Top
-	} else if parent.Kind != schema.AnyData && parent.Kind != schema.AnyXML {
-		nodes = parent.Children
-	}
-	if n := getNext(nodes, mod, name, output); n != nil {
+	if n := schema.FindChild(parent, mod.Top, mod, name, getNextOpts(output)); n != nil {
 		return n, ""
 	}
 	return nil, fmt.Sprintf("Not found node \"%s\" in path.", name)
 }
 
-// getNext finds a data child like lys_getnext: through choice, case and the input or output of an
-// operation.
-func getNext(nodes []*schema.Node, mod *schema.Module, name string, output bool) *schema.Node {
-	for _, n := range nodes {
-		switch n.Kind {
-		case schema.Choice, schema.Case:
-		case schema.Input:
-			if output {
-				continue
-			}
-		case schema.Output:
-			if !output {
-				continue
-			}
-		default:
-			if n.Module == mod && n.Name == name {
-				return n
-			}
-			continue
-		}
-		if r := getNext(n.Children, mod, name, output); r != nil {
-			return r
-		}
+// getNextOpts are the lys_getnext options of a path step in an operation's input or output.
+func getNextOpts(output bool) schema.GetNextOpt {
+	if output {
+		return schema.GetNextOutput
 	}
-	return nil
+	return 0
 }
 
 func literal(e *lyxp.Expr, i int) string {

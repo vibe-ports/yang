@@ -105,7 +105,7 @@ func dumpTree(m *schema.Module) []gNode {
 	var out []gNode
 	var dfs func(n *schema.Node)
 	dfs = func(n *schema.Node) {
-		g := gNode{Path: lyscPath(n), Nodetype: oracleKinds[n.Kind], Module: n.Module.Name,
+		g := gNode{Path: n.LogPath(), Nodetype: oracleKinds[n.Kind], Module: n.Module.Name,
 			Status: [...]string{"current", "deprecated", "obsolete"}[n.Status]}
 		noConfig := false
 		for p := n; p != nil; p = p.Parent {

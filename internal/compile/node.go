@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Ported from libyang v5.8.6 src/schema_compile_node.c, src/schema_compile.c (lys_compile, P3)
-// and src/tree_schema.c (lys_getnext, lys_find_child) (BSD-3-Clause, © CESNET).
+// Ported from libyang v5.8.6 src/schema_compile_node.c and src/schema_compile.c (lys_compile, P3)
+// (BSD-3-Clause, © CESNET).
 
 package compile
 
@@ -226,7 +226,7 @@ func (w *nodeCtx) nodeGeneric(pn *parser.Node, parent *schema.Node, spec specFun
 		return err
 	}
 	if pn.When != nil {
-		wh, err := w.when(pn.When, n, dataNode(n))
+		wh, err := w.when(pn.When, n, schema.DataNode(n))
 		if err != nil {
 			return err
 		}
@@ -350,14 +350,6 @@ func mandatoryParents(p *schema.Node) {
 	}
 }
 
-// dataNode is lysc_data_node: n or its nearest ancestor that is not a choice, case, input or output.
-func dataNode(n *schema.Node) *schema.Node {
-	for n != nil && (n.Kind == schema.Choice || n.Kind == schema.Case || n.Kind == schema.Input || n.Kind == schema.Output) {
-		n = n.Parent
-	}
-	return n
-}
-
 // --- lys_compile_node_connect, lys_compile_node_uniqness ---
 
 // connect is lys_compile_node_connect.
@@ -424,80 +416,24 @@ func (w *nodeCtx) connect(parent, n *schema.Node) error {
 	return w.uniqueness(parent, n.Name, n)
 }
 
-// getnext options (LYS_GETNEXT_*).
-const (
-	gnWithChoice = 1 << iota
-	gnNoChoice
-	gnWithCase
-	gnOutput
-)
+// top is the compiled top level of the module being compiled in lys_getnext order.
+func (w *nodeCtx) top() []*schema.Node { return slices.Concat(w.data, w.rpcs, w.notifs) }
 
-// getnext lists what repeated lys_getnext calls return for parent: its data children with
-// choice/case/input/output handled per opts, then its actions, then its notifications. parent
-// nil is the top level of the module being compiled.
-// ponytail: callers scan siblings linearly, so connecting n siblings is O(n²) like libyang;
-// MaxNodes bounds n.
-func (w *nodeCtx) getnext(parent *schema.Node, opts int) []*schema.Node {
-	var out []*schema.Node
-	var walk func([]*schema.Node)
-	walk = func(list []*schema.Node) {
-		for _, n := range list {
-			switch n.Kind {
-			case schema.Case:
-				if opts&gnWithCase != 0 {
-					out = append(out, n)
-				} else {
-					walk(n.Children)
-				}
-			case schema.Choice:
-				switch {
-				case opts&gnWithChoice != 0:
-					out = append(out, n)
-				case opts&gnNoChoice != 0:
-				default:
-					walk(n.Children)
-				}
-			case schema.Input:
-				if opts&gnOutput == 0 {
-					walk(n.Children)
-				}
-			case schema.Output:
-				if opts&gnOutput != 0 {
-					walk(n.Children)
-				}
-			default:
-				out = append(out, n)
-			}
-		}
-	}
-	if parent == nil {
-		walk(w.data)
-		return slices.Concat(out, w.rpcs, w.notifs)
-	}
-	walk(parent.Children)
-	return slices.Concat(out, parent.Actions, parent.Notifs)
-}
-
-// findChild is lys_find_child: the first node getnext returns with the module and name.
-func (w *nodeCtx) findChild(parent *schema.Node, mod *schema.Module, name string, opts int) *schema.Node {
-	if mod == nil || !mod.Implemented && mod != w.cur {
+// findChild is lys_find_child; the top level of the module being compiled is still w's lists.
+func (w *nodeCtx) findChild(parent *schema.Node, mod *schema.Module, name string, opts schema.GetNextOpt) *schema.Node {
+	if mod == nil {
 		return nil
 	}
-	var list []*schema.Node
-	if parent == nil && mod != w.cur {
-		list = mod.Top
-	} else {
-		list = w.getnext(parent, opts)
+	top := mod.Top
+	if mod == w.cur {
+		top = w.top()
 	}
-	for _, n := range list {
-		if n.Module == mod && n.Name == name {
-			return n
-		}
-	}
-	return nil
+	return schema.FindChild(parent, top, mod, name, opts)
 }
 
 // uniqueness is lys_compile_node_uniqness.
+// ponytail: each check scans the siblings, so connecting n siblings is O(n²) like libyang;
+// Budget.MaxNodes bounds n. A per-parent name index if that ever shows up.
 func (w *nodeCtx) uniqueness(parent *schema.Node, name string, excl *schema.Node) error {
 	same := func(it *schema.Node) bool { return it != excl && it.Module == excl.Module && it.Name == name }
 	what := "data definition/RPC/action/notification"
@@ -515,7 +451,7 @@ func (w *nodeCtx) uniqueness(parent *schema.Node, name string, excl *schema.Node
 		var choices []*schema.Node
 		if parent != nil && parent.Kind == schema.Case {
 			// move to the first data definition parent, remembering the choices on the way
-			stop := dataNode(parent.Parent)
+			stop := schema.DataNode(parent.Parent)
 			for {
 				parent = parent.Parent
 				if parent != nil && parent.Kind == schema.Choice {
@@ -526,22 +462,22 @@ func (w *nodeCtx) uniqueness(parent *schema.Node, name string, excl *schema.Node
 				}
 			}
 		}
-		opts := gnWithChoice
+		opts := schema.GetNextWithChoice
 		if parent != nil && (parent.Kind == schema.RPC || parent.Kind == schema.Action) {
 			// move to the input/output
 			if w.fl[excl]&flIsOutput != 0 {
-				opts |= gnOutput
+				opts |= schema.GetNextOutput
 				parent = parent.Children[1]
 			} else {
 				parent = parent.Children[0]
 			}
 		}
-		for _, it := range w.getnext(parent, opts) {
+		for it := range schema.GetNext(parent, w.top(), opts) {
 			if !slices.Contains(choices, it) && same(it) {
 				return it
 			}
 			if it.Kind == schema.Choice {
-				for _, it2 := range w.getnext(it, 0) {
+				for it2 := range schema.GetNext(it, nil, 0) {
 					if same(it2) {
 						return it2
 					}
@@ -560,7 +496,7 @@ func (w *nodeCtx) uniqueness(parent *schema.Node, name string, excl *schema.Node
 		return nil
 	}
 	if dup = find(); dup != nil {
-		_ = w.errf(ly.SyntaxYang, "Duplicate identifier \"%s\" of %s statement.", lyscPath(dup), what)
+		_ = w.errf(ly.SyntaxYang, "Duplicate identifier \"%s\" of %s statement.", dup.LogPath(), what)
 		return eExist
 	}
 	return nil
@@ -829,7 +765,7 @@ func (w *nodeCtx) list(pn *parser.Node, n *schema.Node) error {
 	} else {
 		var keys []*schema.Node
 		err := keyTokens(*pn.Key, func(tok, _ string) error {
-			key := w.findChild(n, n.Module, tok, gnNoChoice)
+			key := w.findChild(n, n.Module, tok, schema.GetNextNoChoice)
 			if key != nil && key.Kind != schema.Leaf {
 				key = nil
 			}
@@ -999,7 +935,7 @@ func (w *nodeCtx) resolveNodeid(s string, n int, ctxNode *schema.Node, pm *pmod,
 		id++
 	}
 	ok := false
-	flags, extra := 0, 0
+	flags, extra := 0, schema.GetNextOpt(0)
 	var kind schema.Kind
 	for id < len(s) {
 		start := id
@@ -1033,12 +969,12 @@ func (w *nodeCtx) resolveNodeid(s string, n int, ctxNode *schema.Node, pm *pmod,
 				ctxNode = ctxNode.Children[0]
 			case name == "output":
 				ctxNode = ctxNode.Children[1]
-				extra = gnOutput
+				extra = schema.GetNextOutput
 			default:
 				ctxNode = nil // only input or output is valid
 			}
 		} else {
-			ctxNode = w.findChild(ctxNode, mod, name, extra|gnWithChoice|gnWithCase)
+			ctxNode = w.findChild(ctxNode, mod, name, extra|schema.GetNextWithChoice|schema.GetNextWithCase)
 			extra = 0
 		}
 		if ctxNode == nil {
@@ -1118,7 +1054,7 @@ func (w *nodeCtx) choiceDflt(dflt string, pm *pmod, ch *schema.Node) error {
 		}
 		mod, name = m, dflt[i+1:]
 	}
-	cs := w.findChild(ch, mod, name, gnWithCase)
+	cs := w.findChild(ch, mod, name, schema.GetNextWithCase)
 	if cs != nil && cs.Kind != schema.Case {
 		cs = nil
 	}
