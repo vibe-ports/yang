@@ -38,6 +38,9 @@ func listPos(n *Node) int {
 	for i >= 0 && sib.list[i] != n {
 		i--
 	}
+	if i < 0 {
+		return 1 // not linked: the node alone
+	}
 	pos := 0
 	for ; i >= 0 && sib.list[i].schema == n.schema; i-- {
 		pos++

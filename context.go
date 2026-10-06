@@ -52,7 +52,7 @@ type ParseBudget struct {
 
 // Diagnostic is an error or warning libyang would log against the context.
 type Diagnostic struct {
-	Phase      string // "parse" or "compile" (oracle phases, design 06 §1.6)
+	Phase      string // "parse" or "compile" (oracle phases, design 06 §1.6); empty for data trees
 	Warning    bool
 	Err        string // libyang LY_ERR name, e.g. "LY_EVALID"
 	Code       string // libyang LY_VECODE name, e.g. "LYVE_REFERENCE"

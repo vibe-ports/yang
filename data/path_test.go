@@ -86,7 +86,11 @@ func TestLocation(t *testing.T) {
 	l.locSet(f.lk)
 	l.pushPath("/extra")
 	_ = l.val(nil, "", ly.Reference, "stack")
+	_ = l.val(c, "", ly.Data, "data path and location path")
 	l.popPath()
+	l.locBack(1)
+	aug := &schema.Node{Kind: schema.Leaf, Name: "ax", Module: f.a, Parent: f.c, Type: f.str}
+	_ = l.item(c, aug, false, "LY_EVALID", ly.Data, "", "cross-module schema node")
 	l.popInput()
 	l.warn("w %d", 1)
 	want := []yang.Diagnostic{
@@ -94,13 +98,15 @@ func TestLocation(t *testing.T) {
 		{Err: "LY_EVALID", Code: "LYVE_DATA", DataPath: "/b:c", AppTag: "tag", Line: 7, Msg: "other module, not a child"},
 		{Err: "LY_EVALID", Code: "LYVE_DATA", SchemaPath: "/b:c/l/v", Line: 7, Msg: "schema only"},
 		{Err: "LY_EVALID", Code: "LYVE_REFERENCE", SchemaPath: "/b:c/l/k/extra", Line: 7, Msg: "stack"},
+		{Err: "LY_EVALID", Code: "LYVE_DATA", DataPath: "/b:c/extra", Line: 7, Msg: "data path and location path"},
+		{Err: "LY_EVALID", Code: "LYVE_DATA", DataPath: "/b:c/a:ax", Line: 7, Msg: "cross-module schema node"},
 		{Warning: true, Err: "LY_SUCCESS", Code: "LYVE_SUCCESS", Msg: "w 1"},
 	}
 	if !reflect.DeepEqual(l.diags, want) {
 		t.Fatalf("got  %+v\nwant %+v", l.diags, want)
 	}
 	var ve *ValidationError
-	if err := l.result(); !errors.As(err, &ve) || len(ve.Diags) != 5 || ve.Error() != "bad z" {
+	if err := l.result(); !errors.As(err, &ve) || len(ve.Diags) != 7 || ve.Error() != "bad z" {
 		t.Fatalf("result: %v", err)
 	}
 	w := &logger{set: f.set}
@@ -111,7 +117,11 @@ func TestLocation(t *testing.T) {
 	// a key refusal of the tree operations is a LOGERR without location
 	key := f.list(t, tr, c, "k", "").kids.list[0]
 	e := &logger{set: f.set}
-	_ = e.logErr(freeTree(key))
+	var oe *opError
+	if !errors.As(freeTree(key), &oe) {
+		t.Fatal("key freed")
+	}
+	_ = e.logErr(oe.Err, "%s", oe.Msg)
 	if d := e.diags[0]; d.Err != "LY_EINVAL" || d.Code != "LYVE_SUCCESS" || d.DataPath != "" ||
 		d.Msg != `Cannot free a list key "k", free the list instance instead.` {
 		t.Fatalf("%+v", d)

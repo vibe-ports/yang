@@ -112,15 +112,11 @@ func (l *logger) warn(format string, a ...any) {
 		Msg: fmt.Sprintf(format, a...)})
 }
 
-// logErr is LOGERR: an error without location or validation code; an *opError of the tree
-// operations is logged with its own LY_ERR.
-func (l *logger) logErr(err error) error {
-	var oe *opError
-	d := yang.Diagnostic{Err: "LY_EOTHER", Code: ly.Success.String(), Msg: err.Error()}
-	if errors.As(err, &oe) {
-		d.Err = oe.Err
-	}
-	l.diags = append(l.diags, d)
+// logErr is LOGERR(ctx, errno, ...): an error without location or validation code; errno is the
+// LY_ERR name (LY_EINVAL for the depth limits and the key refusal of the tree operations, whose
+// *opError carries it).
+func (l *logger) logErr(errno, format string, a ...any) error {
+	l.diags = append(l.diags, yang.Diagnostic{Err: errno, Code: ly.Success.String(), Msg: fmt.Sprintf(format, a...)})
 	return errLogged
 }
 
