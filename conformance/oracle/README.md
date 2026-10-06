@@ -297,6 +297,8 @@ becomes observable. Context fields as in `schema`; step fields are per step (not
 | | `insert_term: {"module" \| "parent", "name", "value"}` only | `lyd_new_term` (`module`: top level, then `lyd_insert_sibling`; `parent`: path of an existing node, new child) |
 | | `insert_inner: {"module" \| "parent", "name"}` only | `lyd_new_inner` (container/list without keys), inserted like `insert_term` |
 | `dump` | `with_defaults` | `tree` = `{"json", "xml"}` as op `data` |
+| `link` | — | `lyd_leafref_link_node_tree(tree)` (`LY_EDENIED` without the `leafref_linking` context option) |
+| `links` | — | `leafref_links`: the record of every term node that has one (`lyd_leafref_get_links`), in DFS order: `{"node", "leafref_nodes", "target_nodes"}` as `lyd_path(LYD_PATH_STD)` lists in record order |
 
 `insert_term` / `insert_inner` with a `parent` path that does not exist in the tree is a request-error raised when the step runs (not in the pre-check).
 

@@ -65,7 +65,8 @@ type Node struct {
 	meta   []*meta // metadata (lyd_meta), in order
 	hkey   idxKey  // bucket of the node in its parent's children index (lyd_node.hash)
 	hashed bool
-	inRB   bool // in its run's RB tree (lyds) of a system-ordered list or leaf-list
+	inRB   bool          // in its run's RB tree (lyds) of a system-ordered list or leaf-list
+	links  *leafrefLinks // leafref links record (LY_CTX_LEAFREF_LINKING), nil: none
 }
 
 // Tree is a data tree: its top-level siblings and the schema snapshot it is built over.

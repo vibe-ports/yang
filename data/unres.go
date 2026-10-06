@@ -262,6 +262,9 @@ func (p *whenPass) finish() {
 		n.flags &^= flagDead
 	}
 	_ = p.vc.t.unlinkAll(p.dead) // autodelete never reaches a key
+	for _, n := range p.dead {
+		freeSubtreeLinks(p.vc.t.set, n) // lyd_free_tree
+	}
 }
 
 // unres is the when and type part of lyd_validate_unres: when passes while the queue shrinks,
@@ -333,7 +336,7 @@ type typeTree struct {
 // predicate (or the plain path when the value has both quote kinds, then compared), evaluated
 // ignoring whens.
 func (tt *typeTree) LeafrefTarget(t *schema.Type, v types.Value) (bool, error) {
-	found, _, err := tt.vc.leafrefTargets(tt.n, t, v)
+	found, targets, err := tt.vc.leafrefTargets(tt.n, t, v)
 	if err != nil {
 		var xe *xpath.Error
 		if errors.As(err, &xe) {
@@ -342,6 +345,13 @@ func (tt *typeTree) LeafrefTarget(t *schema.Type, v types.Value) (bool, error) {
 		}
 		tt.err = err
 		return false, nil
+	}
+	if found && tt.vc.t.set.LeafrefLinking {
+		// lyplg_type_validate_tree_leafref: a resolved require-instance leafref is linked with
+		// its targets (lyd_link_leafref_node)
+		for _, target := range targets {
+			linkLeafrefNode(target, tt.n)
+		}
 	}
 	return found, nil
 }

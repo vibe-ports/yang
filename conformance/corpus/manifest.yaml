@@ -2153,6 +2153,96 @@ fixtures:
       data_type: config
       data_file: data/xperr-when.json
     golden: golden/xperr-when.json
+  # ---- protocol-v2: leafref links (LY_CTX_LEAFREF_LINKING, sequence steps link / links); Go side: data TestLeafrefLinks ----
+
+  - id: protocol-v2/links
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#9.9"]
+    areas: [types, validation]
+    # lyd_leafref_link_node_tree links every resolved leafref value; union members with the selected value; no auto-linking by validation
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-links}]
+      context_options: [leafref_linking]
+      steps:
+        - {do: parse, format: json, data_type: config, data_file: data/links.json}
+        - {do: links}
+        - {do: link}
+        - {do: links}
+        - {do: link}
+        - {do: links}
+    golden: golden/links.json
+
+  - id: protocol-v2/links-denied
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#9.9"]
+    areas: [types, validation]
+    # without LY_CTX_LEAFREF_LINKING lyd_leafref_link_node_tree returns LY_EDENIED
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-links}]
+      steps:
+        - {do: parse, format: json, data_type: config, data_file: data/links.json}
+        - {do: link}
+    golden: golden/links-denied.json
+
+  - id: protocol-v2/links-free-target
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#9.9"]
+    areas: [types, validation]
+    # freeing a target subtree frees its records and removes it from its leafrefs' records
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-links}]
+      context_options: [leafref_linking]
+      steps:
+        - {do: parse, format: json, data_type: config, data_file: data/links.json}
+        - {do: link}
+        - {do: edit, delete: "/pv2-links:c/l[k='a']"}
+        - {do: links}
+    golden: golden/links-free-target.json
+
+  - id: protocol-v2/links-free-leafref
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#9.9"]
+    areas: [types, validation]
+    # freeing a leafref that is also a target (r, the target of v) clears both directions
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-links}]
+      context_options: [leafref_linking]
+      steps:
+        - {do: parse, format: json, data_type: config, data_file: data/links.json}
+        - {do: link}
+        - {do: edit, delete: /pv2-links:c/r}
+        - {do: links}
+    golden: golden/links-free-leafref.json
+
+  - id: protocol-v2/links-change-value
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#9.9"]
+    areas: [types, validation]
+    # a changed term value drops its links (lyd_change_term)
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-links}]
+      context_options: [leafref_linking]
+      steps:
+        - {do: parse, format: json, data_type: config, data_file: data/links.json}
+        - {do: link}
+        - {do: edit, set: {path: /pv2-links:c/u, value: "a"}}
+        - {do: links}
+    golden: golden/links-change-value.json
 
   # ---- protocol-v2: XPath (op xpath) over data/xpath.json, parse-only (no implicit defaults) ----
 

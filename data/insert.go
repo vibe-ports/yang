@@ -290,12 +290,14 @@ func unlinkTree(n *Node) error {
 	return nil
 }
 
-// unlink is lyd_unlink (without the key check).
+// unlink is lyd_unlink (without the key check); n's own leafref links go
+// (lyd_unlink_ignore_lyds).
 func unlink(n *Node) {
 	sib := n.siblingsOf()
 	if sib == nil {
 		return
 	}
+	freeLinks(n)
 	if n.schema == nil {
 		if i := slices.Index(sib.opq, n); i >= 0 {
 			sib.opq = slices.Delete(sib.opq, i, i+1)
@@ -328,12 +330,16 @@ func detach(n *Node) *Node {
 	return parent
 }
 
-// freeTree is lyd_free_tree: a list key is refused, nothing is freed.
+// freeTree is lyd_free_tree: a list key is refused, nothing is freed but the leafref links of
+// the subtree (lyd_free_subtree).
 func freeTree(n *Node) error {
 	if n.isKey() {
 		return &opError{"LY_EINVAL", fmt.Sprintf("Cannot free a list key \"%s\", free the list instance instead.", n.Name())}
 	}
 	unlink(n)
+	for d := range n.All() {
+		freeLinks(d)
+	}
 	return nil
 }
 
@@ -355,6 +361,7 @@ func (t *Tree) unlinkAll(ns []*Node) error {
 			continue
 		}
 		gone[n] = true
+		freeLinks(n) // lyd_unlink_ignore_lyds
 		if sibs[sib] == nil {
 			sibs[sib] = map[idxKey]bool{}
 			order = append(order, sib)

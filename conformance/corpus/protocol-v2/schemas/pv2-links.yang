@@ -1,0 +1,62 @@
+module pv2-links {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-links";
+  prefix lk;
+
+  description "Leafrefs for LY_CTX_LEAFREF_LINKING (lyd_leafref_link_node_tree).";
+
+  container c {
+    list l {
+      key k;
+      leaf k {
+        type string;
+      }
+    }
+    leaf-list t {
+      type string;
+    }
+    leaf r {
+      type leafref {
+        path "../l/k";
+      }
+    }
+    leaf-list rl {
+      type leafref {
+        path "../t";
+      }
+    }
+    leaf nr {
+      type leafref {
+        path "../l/k";
+        require-instance false;
+      }
+    }
+    leaf nx {
+      type leafref {
+        path "../l/k";
+        require-instance false;
+      }
+    }
+    leaf u {
+      type union {
+        type uint8;
+        type leafref {
+          path "../l/k";
+        }
+      }
+    }
+    leaf un {
+      type union {
+        type uint8;
+        type leafref {
+          path "../l/k";
+        }
+      }
+    }
+    leaf v {
+      type leafref {
+        path "../r";
+      }
+    }
+  }
+}

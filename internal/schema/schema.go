@@ -12,6 +12,9 @@ import "iter"
 // Set is every module of one context, in load order (libyang ly_ctx module list).
 type Set struct {
 	Modules []*Module
+	// LeafrefLinking is the context flag LY_CTX_LEAFREF_LINKING: data trees over the set keep
+	// leafref links (lyd_leafref_link_node_tree).
+	LeafrefLinking bool
 }
 
 // Module returns the module with the name and revision; revision "" means the implemented

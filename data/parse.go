@@ -454,4 +454,5 @@ func (lc *lydCtx) nodeFree(n *Node) {
 		return
 	}
 	unlink(n)
+	freeSubtreeLinks(lc.tree.set, n)
 }

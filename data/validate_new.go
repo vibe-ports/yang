@@ -136,6 +136,9 @@ func (vc *valCtx) validateCases(sib *siblings, ch *schema.Node) error {
 		if err := vc.t.unlinkAll(del); err != nil {
 			return err
 		}
+		for _, n := range del {
+			freeSubtreeLinks(vc.t.set, n) // lyd_free_tree
+		}
 	}
 	return nil
 }
@@ -245,9 +248,12 @@ func (vc *valCtx) autodel(del []*Node, npContDiff bool) {
 	}
 	if len(del) == 1 {
 		unlink(del[0]) // the usual single default: no batch bookkeeping
-		return
+	} else {
+		_ = vc.t.unlinkAll(del)
 	}
-	_ = vc.t.unlinkAll(del)
+	for _, n := range del {
+		freeSubtreeLinks(vc.t.set, n) // lyd_free_tree
+	}
 }
 
 // dropTypes removes the terms of n's subtree from node_types the way libyang does

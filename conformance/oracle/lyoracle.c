@@ -490,6 +490,49 @@ typed_add(cJSON *arr, const struct lyd_node *n)
     }
 }
 
+/* lyd_path(LYD_PATH_STD) of each node of a leafref links record array */
+static cJSON *
+link_paths(const struct lyd_node_term **nodes)
+{
+    cJSON *arr = cJSON_CreateArray();
+    LY_ARRAY_COUNT_TYPE u;
+
+    LY_ARRAY_FOR(nodes, u) {
+        char *path = lyd_path(&nodes[u]->node, LYD_PATH_STD, NULL, 0);
+
+        cJSON_AddItemToArray(arr, cJSON_CreateString(path));
+        free(path);
+    }
+    return arr;
+}
+
+/* The leafref links records (lyd_leafref_get_links) of the term nodes of the tree, in DFS order. */
+static cJSON *
+links_json(const struct lyd_node *tree)
+{
+    cJSON *arr = cJSON_CreateArray();
+    const struct lyd_node *top, *n;
+    const struct lyd_leafref_links_rec *rec;
+
+    LY_LIST_FOR(tree, top) {
+        LYD_TREE_DFS_BEGIN(top, n) {
+            if (n->schema && (n->schema->nodetype & LYD_NODE_TERM) &&
+                    !lyd_leafref_get_links((const struct lyd_node_term *)n, &rec)) {
+                cJSON *o = cJSON_CreateObject();
+                char *path = lyd_path(n, LYD_PATH_STD, NULL, 0);
+
+                cJSON_AddStringToObject(o, "node", path);
+                free(path);
+                cJSON_AddItemToObject(o, "leafref_nodes", link_paths(rec->leafref_nodes));
+                cJSON_AddItemToObject(o, "target_nodes", link_paths(rec->target_nodes));
+                cJSON_AddItemToArray(arr, o);
+            }
+            LYD_TREE_DFS_END(top, n);
+        }
+    }
+    return arr;
+}
+
 static cJSON *
 typed_json(const struct lyd_node *tree)
 {
@@ -1499,7 +1542,7 @@ check_step(const cJSON *step)
         }
     } else if (!strcmp(what, "dump")) {
         wd_of(step);
-    } else {
+    } else if (strcmp(what, "link") && strcmp(what, "links")) {
         die("unknown step %s", what);
     }
     return what;
@@ -1653,6 +1696,11 @@ op_sequence(const cJSON *req)
             rc = step_validate(ctx, step, &tree, diag, s);
         } else if (!strcmp(what, "edit")) {
             rc = step_edit(ctx, step, &tree, diag);
+        } else if (!strcmp(what, "link")) {
+            rc = lyd_leafref_link_node_tree(tree);
+            collect(ctx, diag, "link");
+        } else if (!strcmp(what, "links")) {
+            cJSON_AddItemToObject(s, "leafref_links", links_json(tree));
         } else {
             cJSON_AddItemToObject(s, "tree", print_tree(tree, wd_of(step), 1));
         }
