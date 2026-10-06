@@ -18466,3 +18466,413 @@ fixtures:
       rfc: ["RFC7950#9.8", "RFC4648#4"]
       deviation: null
 # END ut-scalar
+
+# BEGIN ut-restriction (generated from libyang tests/utests/types/test_pattern.c and test_range.c by conformance/tools/extract-utests, reviewed)
+
+  - id: ut-restriction/pattern-schema-yang-01
+    dir: ut-restriction
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/restriction/test_pattern.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:95
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [test_pattern/T0.1]
+      modules: [{name: "T0"}]
+    golden: golden/pattern-schema-yang-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: null
+
+  - id: ut-restriction/pattern-schema-yang-02
+    dir: ut-restriction
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/restriction/test_pattern.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:116
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [test_pattern/T0.1, test_pattern/T1.1]
+      modules: [{name: "T0"}, {name: "T1"}]
+    golden: golden/pattern-schema-yang-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: null
+
+  - id: ut-restriction/pattern-schema-yang-03
+    dir: ut-restriction
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/restriction/test_pattern.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:135
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [test_pattern/T0.1, test_pattern/T1.1, test_pattern/T2.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}]
+    golden: golden/pattern-schema-yang-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: null
+
+  - id: ut-restriction/pattern-schema-yang-04
+    dir: ut-restriction
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/restriction/test_pattern.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:161
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [test_pattern/T0.1, test_pattern/T1.1, test_pattern/T2.1, test_pattern/T3.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}]
+    golden: golden/pattern-schema-yang-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: null
+
+  - id: ut-restriction/pattern-data-xml-01
+    dir: ut-restriction
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/restriction/test_pattern.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:372
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [test_pattern/TPATTERN_0.1]
+      modules: [{name: "TPATTERN_0"}]
+    golden: golden/pattern-data-xml-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: null
+
+  - id: ut-restriction/pattern-data-xml-02
+    dir: ut-restriction
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/restriction/test_pattern.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:375
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [test_pattern/TPATTERN_0.1]
+      modules: [{name: "TPATTERN_0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:TPATTERN_0\">AHOJ</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/pattern-data-xml-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: null
+
+  - id: ut-restriction/pattern-data-xml-03
+    dir: ut-restriction
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/restriction/test_pattern.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:377
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [test_pattern/TPATTERN_0.1]
+      modules: [{name: "TPATTERN_0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:TPATTERN_0\">T128</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/pattern-data-xml-03.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: null
+
+  - id: ut-restriction/pattern-data-xml-04
+    dir: ut-restriction
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/restriction/test_pattern.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:379
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [test_pattern/TPATTERN_0.1]
+      modules: [{name: "TPATTERN_0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:TPATTERN_0\">ahoj</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/pattern-data-xml-04.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: null
+
+  - id: ut-restriction/range-schema-yang-01
+    dir: ut-restriction
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/restriction/test_range.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:95
+    rfc: ["RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [test_range/T0.1]
+      modules: [{name: "T0"}]
+    golden: golden/range-schema-yang-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-restriction/range-schema-yang-02
+    dir: ut-restriction
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/restriction/test_range.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:114
+    rfc: ["RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [test_range/T0.1, test_range/T1.1]
+      modules: [{name: "T0"}, {name: "T1"}]
+    golden: golden/range-schema-yang-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-restriction/range-schema-yang-03
+    dir: ut-restriction
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/restriction/test_range.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:132
+    rfc: ["RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [test_range/T0.1, test_range/T1.1, test_range/T2.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}]
+    golden: golden/range-schema-yang-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-restriction/range-schema-yang-04
+    dir: ut-restriction
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/restriction/test_range.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:155
+    rfc: ["RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [test_range/T0.1, test_range/T1.1, test_range/T2.1, test_range/T3.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}]
+    golden: golden/range-schema-yang-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-restriction/range-data-xml-01
+    dir: ut-restriction
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/restriction/test_range.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:382
+    rfc: ["RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [test_range/TRANGE_0.1]
+      modules: [{name: "TRANGE_0"}]
+    golden: golden/range-data-xml-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-restriction/range-data-xml-02
+    dir: ut-restriction
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/restriction/test_range.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:385
+    rfc: ["RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [test_range/TRANGE_0.1]
+      modules: [{name: "TRANGE_0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:TRANGE_0\">126</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/range-data-xml-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-restriction/range-data-xml-03
+    dir: ut-restriction
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/restriction/test_range.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:387
+    rfc: ["RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [test_range/TRANGE_0.1]
+      modules: [{name: "TRANGE_0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:TRANGE_0\">-1</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/range-data-xml-03.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-restriction/range-data-xml-04
+    dir: ut-restriction
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/restriction/test_range.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:389
+    rfc: ["RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [test_range/TRANGE_0.1]
+      modules: [{name: "TRANGE_0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:TRANGE_0\">51</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/range-data-xml-04.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-restriction/range-data-xml-05
+    dir: ut-restriction
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/restriction/test_range.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:391
+    rfc: ["RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [test_range/TRANGE_0.1]
+      modules: [{name: "TRANGE_0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:TRANGE_0\">127</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/range-data-xml-05.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-restriction/range-data-xml-06
+    dir: ut-restriction
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/restriction/test_range.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:400
+    rfc: ["RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [test_range/TRANGE_0.1, test_range/TRANGE_1.1]
+      modules: [{name: "TRANGE_0"}, {name: "TRANGE_1"}]
+    golden: golden/range-data-xml-06.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-restriction/range-data-xml-07
+    dir: ut-restriction
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/restriction/test_range.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:403
+    rfc: ["RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [test_range/TRANGE_0.1, test_range/TRANGE_1.1]
+      modules: [{name: "TRANGE_0"}, {name: "TRANGE_1"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:TRANGE_1\">126</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/range-data-xml-07.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-restriction/range-data-xml-08
+    dir: ut-restriction
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/restriction/test_range.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:405
+    rfc: ["RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [test_range/TRANGE_0.1, test_range/TRANGE_1.1]
+      modules: [{name: "TRANGE_0"}, {name: "TRANGE_1"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:TRANGE_1\">0</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/range-data-xml-08.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-restriction/range-data-xml-09
+    dir: ut-restriction
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/restriction/test_range.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:407
+    rfc: ["RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [test_range/TRANGE_0.1, test_range/TRANGE_1.1]
+      modules: [{name: "TRANGE_0"}, {name: "TRANGE_1"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:TRANGE_1\">51</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/range-data-xml-09.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-restriction/range-data-xml-10
+    dir: ut-restriction
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/restriction/test_range.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:409
+    rfc: ["RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [test_range/TRANGE_0.1, test_range/TRANGE_1.1]
+      modules: [{name: "TRANGE_0"}, {name: "TRANGE_1"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:TRANGE_1\">127</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/range-data-xml-10.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2.4"]
+      deviation: null
+# END ut-restriction

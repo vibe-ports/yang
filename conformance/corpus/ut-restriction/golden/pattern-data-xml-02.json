@@ -1,0 +1,45 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "TPATTERN_0",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"TPATTERN_0:port\": \"AHOJ\"\n}\n",
+    "xml": "<port xmlns=\"urn:tests:TPATTERN_0\">AHOJ</port>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/TPATTERN_0:port",
+      "schema": "/TPATTERN_0:port",
+      "value": {
+        "canonical": "AHOJ",
+        "type": "string",
+        "typedef": "my_type",
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

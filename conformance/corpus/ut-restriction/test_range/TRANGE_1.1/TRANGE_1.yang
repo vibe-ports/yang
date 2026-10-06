@@ -1,0 +1,5 @@
+module TRANGE_1 {
+  yang-version 1.1;
+  namespace "urn:tests:TRANGE_1";
+  prefix pref;
+leaf port {type uint8 {range "30 .. 50 | 126"{description   "description test";error-app-tag "err-apt-tag";error-message "error message";}}}}

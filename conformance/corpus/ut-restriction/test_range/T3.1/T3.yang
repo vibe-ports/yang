@@ -1,0 +1,5 @@
+module T3 {
+  yang-version 1.1;
+  namespace "urn:tests:T3";
+  prefix pref;
+typedef my_type {type uint16 {range "0 .. 100"{description   "percentage";error-app-tag "err-apt-tag";error-message "error message";}}}leaf port {type my_type{   range "0 .. 50"{   description   "description 0-50";   error-app-tag "err-apt-tag 0-50";   error-message "error message 0-50";}}}}

@@ -1,0 +1,179 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module T0 {\n  namespace \"urn:tests:T0\";\n  prefix pref;\n\n  leaf port {\n    type int8 {\n      range \"0..50 | 127\" {\n        error-message\n          \"error message\";\n        error-app-tag \"err-apt-tag\";\n        description\n          \"description test\";\n      }\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "T0",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "T0",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/T0:port",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "int8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "0..50 | 127",
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module T1 {\n  namespace \"urn:tests:T1\";\n  prefix pref;\n\n  leaf port {\n    type uint16 {\n      range \"0..100\" {\n        error-message\n          \"error message\";\n        error-app-tag \"err-apt-tag\";\n        description\n          \"percentage\";\n      }\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "T1",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "T1",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/T1:port",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint16",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "0..100",
+            "typedefs": [
+              "my_type"
+            ],
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module T2 {\n  namespace \"urn:tests:T2\";\n  prefix pref;\n\n  leaf port {\n    type uint16 {\n      range \"0..20\";\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "T2",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "T2",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/T2:port",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint16",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "0..20",
+            "typedefs": [
+              "my_type"
+            ],
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module T3 {\n  namespace \"urn:tests:T3\";\n  prefix pref;\n\n  leaf port {\n    type uint16 {\n      range \"0..50\" {\n        error-message\n          \"error message 0-50\";\n        error-app-tag \"err-apt-tag 0-50\";\n        description\n          \"description 0-50\";\n      }\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "T3",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "T3",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/T3:port",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint16",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "0..50",
+            "typedefs": [
+              "my_type"
+            ],
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

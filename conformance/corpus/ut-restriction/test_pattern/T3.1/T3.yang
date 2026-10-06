@@ -1,0 +1,5 @@
+module T3 {
+  yang-version 1.1;
+  namespace "urn:tests:T3";
+  prefix pref;
+typedef my_type {type string {pattern "[A-Za-z]*"{   description   "pattern 0 description";   error-app-tag "pattern 0 err-apt-tag";   error-message "pattern 0 error message";}}}leaf port {type my_type{pattern "[A-Z]*"{   description   "pattern 1 description";   error-app-tag "pattern 1 err-apt-tag";   error-message "pattern 1 error message";}}}}
