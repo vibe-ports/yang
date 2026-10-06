@@ -268,10 +268,16 @@ func TestClassify(t *testing.T) {
 			t.Errorf("%s: %s (%s), want %s", tc.name, got, d, tc.want)
 		}
 	}
-	// a verdict flip under a deviation: tree, typed, modules and steps follow from the verdict;
-	// with the same verdict they are compared
-	rejected := resp(t, `{"verdict":"invalid","modules":[{"name":"m","accepted":false}],"tree":null,"result":1}`)
-	accepted := resp(t, `{"verdict":"valid","modules":[{"name":"m","accepted":true}],"tree":{"json":"{}"},"typed":[],"steps":[{"rc":0}],"result":1}`)
+	// a verdict flip under a deviation: tree and typed follow from the verdict, and so do the
+	// flipped module items and the steps from the first failing one; with the same verdict, the
+	// unflipped module items and the earlier steps are compared
+	rejected := resp(t, `{"verdict":"invalid","modules":[{"name":"m","accepted":false,"phase":"compile","diagnostics":[1]},`+
+		`{"name":"n","accepted":true,"schema_tree":[1]}],"tree":null,"result":1}`)
+	accepted := resp(t, `{"verdict":"valid","modules":[{"name":"m","accepted":true,"diagnostics":[],"schema_tree":[2],"compiled":"c"},`+
+		`{"name":"n","accepted":true,"schema_tree":[1]}],"tree":{"json":"{}"},"typed":[],"result":1}`)
+	seqGolden := resp(t, `{"verdict":"invalid","failed_step":1,"steps":[{"do":"parse","typed":[1]},{"do":"validate","typed":null}]}`)
+	seqLater := resp(t, `{"verdict":"valid","failed_step":null,"steps":[{"do":"parse","typed":[1]},{"do":"validate","typed":[2]}]}`)
+	seqEarlier := resp(t, `{"verdict":"valid","failed_step":null,"steps":[{"do":"parse","typed":[9]},{"do":"validate","typed":[2]}]}`)
 	acceptsDev := Fixture{Assert: &Assert{Verdict: "valid", Deviation: &dev}}
 	for _, tc := range []struct {
 		name   string
@@ -282,6 +288,10 @@ func TestClassify(t *testing.T) {
 	}{
 		{"flip under a deviation", acceptsDev, rejected, accepted, Deviation},
 		{"flip without a deviation", plain, rejected, accepted, Differ},
+		{"flip, an unflipped module differs", acceptsDev, rejected,
+			resp(t, `{"verdict":"valid","modules":[{"name":"m","accepted":true},{"name":"n","accepted":true,"schema_tree":[3]}],"tree":{"json":"{}"},"result":1}`), Differ},
+		{"flip, steps differ only from the failing one", acceptsDev, seqGolden, seqLater, Deviation},
+		{"flip, a step before the failing one differs", acceptsDev, seqGolden, seqEarlier, Differ},
 		{"flip under a deviation, other field differs", acceptsDev, rejected,
 			resp(t, `{"verdict":"valid","modules":[{"name":"m","accepted":true}],"tree":{"json":"{}"},"result":2}`), Differ},
 		{"same verdict under a deviation: modules compared", deviating,

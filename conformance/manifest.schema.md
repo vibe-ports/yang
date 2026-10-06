@@ -41,8 +41,12 @@ contradicts its golden must name a deviation id present in `conformance/deviatio
 `go test` fails (and a deviation whose assert already matches the golden is stale, also a failure).
 `deviations.md` records OUR intentional differences from libyang. A deviation waives what the
 assert covers (verdict, rc, failed_step, diagnostics); when the engine's verdict differs from the
-golden's (one accepts, the other rejects), also what an accepted result yields: `tree`, `typed`,
-`modules` and `steps` (with the same verdict they are compared). With `waive` it waives instead only the
+golden's (one accepts, the other rejects), also what follows from that verdict: `tree` and `typed`;
+in a `modules` item whose `accepted` flipped, the flip (`accepted`, `phase`, `rc`, its
+`diagnostics`) and what only an accepted module has (`revision`, `schema_tree`, `compiled`,
+`features`, `identities`), other module items compared in full; and the `steps` from the
+earlier `failed_step` of the two on, earlier steps compared. With the same verdict all of these
+are compared. With `waive` it waives instead only the
 named response fields, dropped at the top level and in every `modules` item before the golden
 comparison: `schema_tree` and/or `compiled` when libyang's compiled tree is what the deviation is
 about, `tree` (the printed data) when the deviation is in the data output; the verdict and

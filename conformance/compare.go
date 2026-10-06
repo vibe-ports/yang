@@ -10,6 +10,7 @@ import (
 	"maps"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -116,7 +117,7 @@ func classify(f Fixture, golden, got Response) (Status, string) {
 		// then everything derived from the accepted result follows from it.
 		g, r := withoutAsserted(golden), withoutAsserted(got)
 		if !sameJSON(golden["verdict"], got["verdict"]) {
-			g, r = withoutDerived(g), withoutDerived(r)
+			g, r = withoutDerived(g, r, firstFailed(golden, got))
 		}
 		if d := diffResponses(g, r); d != "" {
 			return Differ, d
@@ -213,17 +214,63 @@ func withoutAsserted(r Response) Response {
 	return o
 }
 
-// derivedFields are what an accepted result yields: under a deviation whose verdict differs
-// from the golden's (one side accepts, the other rejects), they differ as a consequence.
-var derivedFields = []string{"tree", "typed", "modules", "steps"}
+// flippedModuleFields are the fields of a module item whose acceptance flipped that follow from
+// it: the flip itself (accepted, phase, rc, the module's diagnostics) and what only an accepted
+// module has (revision, schema_tree, compiled, features, identities).
+var flippedModuleFields = []string{"accepted", "phase", "rc", "diagnostics", "revision", "schema_tree", "compiled",
+	"features", "identities"}
 
-// withoutDerived drops derivedFields at the top level.
-func withoutDerived(r Response) Response {
-	o := maps.Clone(map[string]any(r))
-	for _, k := range derivedFields {
-		delete(o, k)
+// withoutDerived drops, from a golden g and a result r whose verdicts differ under a deviation,
+// what follows from the verdict: tree and typed; the fields of module items (paired by
+// position) whose acceptance flipped, other module items stay compared; and the sequence steps
+// from the first failing one (first, -1 for none) on, earlier steps stay compared.
+func withoutDerived(g, r Response, first int) (Response, Response) {
+	g, r = maps.Clone(map[string]any(g)), maps.Clone(map[string]any(r))
+	for _, o := range []map[string]any{g, r} {
+		delete(o, "tree")
+		delete(o, "typed")
 	}
-	return o
+	gm, _ := g["modules"].([]any)
+	rm, _ := r["modules"].([]any)
+	gm, rm = slices.Clone(gm), slices.Clone(rm)
+	for i := range min(len(gm), len(rm)) {
+		a, aok := gm[i].(map[string]any)
+		b, bok := rm[i].(map[string]any)
+		if !aok || !bok || sameJSON(a["accepted"], b["accepted"]) {
+			continue
+		}
+		a, b = maps.Clone(a), maps.Clone(b)
+		for _, k := range flippedModuleFields {
+			delete(a, k)
+			delete(b, k)
+		}
+		gm[i], rm[i] = a, b
+	}
+	if gm != nil {
+		g["modules"] = gm
+	}
+	if rm != nil {
+		r["modules"] = rm
+	}
+	if first >= 0 {
+		for _, o := range []map[string]any{g, r} {
+			if st, ok := o["steps"].([]any); ok && len(st) > first {
+				o["steps"] = st[:first]
+			}
+		}
+	}
+	return g, r
+}
+
+// firstFailed is the earlier failed_step of golden and got, -1 when neither has one.
+func firstFailed(golden, got Response) int {
+	first := -1
+	for _, o := range []Response{golden, got} {
+		if f, err := strconv.Atoi(fmt.Sprint(o["failed_step"])); err == nil && (first < 0 || f < first) {
+			first = f
+		}
+	}
+	return first
 }
 
 // Waivable are the response fields assert.waive may name.
