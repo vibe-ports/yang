@@ -299,6 +299,7 @@ becomes observable. Context fields as in `schema`; step fields are per step (not
 | `dump` | `with_defaults` | `tree` = `{"json", "xml"}` as op `data` |
 | `link` | — | `lyd_leafref_link_node_tree(tree)` (`LY_EDENIED` without the `leafref_linking` context option) |
 | `links` | — | `leafref_links`: the record of every term node that has one (`lyd_leafref_get_links`), in DFS order: `{"node", "leafref_nodes", "target_nodes"}` as `lyd_path(LYD_PATH_STD)` lists in record order |
+| `dup` | `node` (path), `parent` (path, optional), `options` (`recursive no_meta with_parents with_flags no_lyds`), `siblings` (bool) | `lyd_dup_siblings` (`siblings: true`) or `lyd_dup_single` of `node` into `parent`; without `parent` the duplicate, from its top duplicated parent, replaces the tree (diagnostics phase `edit`) |
 
 `insert_term` / `insert_inner` with a `parent` path that does not exist in the tree is a request-error raised when the step runs (not in the pre-check).
 

@@ -202,18 +202,28 @@ func (t *Tree) findFirst(s *siblings, target *Node) *Node {
 	if s.len() == 0 {
 		return nil
 	}
-	if len(s.list) > 0 && target.schema != nil && s.list[0].schema.DataParent() != target.schema.DataParent() {
+	if len(s.list) > 0 && target.schema != nil &&
+		!compareSchemaEqual(s.list[0].schema.DataParent(), target.schema.DataParent(), true) {
 		return nil // schema mismatch
 	}
 	dup := isDupInstList(target.schema)
 	if target.schema != nil && s.ht != nil {
+		// the target's schema node in the siblings' context (libyang hashes module and node
+		// names, so a target of another context finds its instances)
+		sn := target.schema
+		if first := s.list[0]; !sameSet(setOf(first), setOf(target)) {
+			var err error
+			if sn, err = findSchemaCtx(target.schema, setOf(first), first.parent); err != nil {
+				return nil
+			}
+		}
 		if dup {
-			i := t.schemaIndex(s, target.schema)
+			i := t.schemaIndex(s, sn)
 			if i < 0 {
 				return nil
 			}
 			for _, n := range s.list[i:] {
-				if n.schema != target.schema {
+				if n.schema != sn {
 					break
 				}
 				if compareSingle(t, n, target, true) {
@@ -226,6 +236,7 @@ func (t *Tree) findFirst(s *siblings, target *Node) *Node {
 		if !ok {
 			return nil
 		}
+		k.s = sn
 		for _, n := range s.ht[k] {
 			if htValEqual(t, n, target) {
 				return n
@@ -242,28 +253,35 @@ func (t *Tree) findFirst(s *siblings, target *Node) *Node {
 }
 
 // htValEqual is lyd_hash_table_val_equal: lists and leaf-lists by their instance, other nodes
-// by schema node only.
+// by schema node only (equal schema nodes and parents across contexts).
 func htValEqual(t *Tree, a, b *Node) bool {
 	if a.schema.Kind == schema.List || a.schema.Kind == schema.LeafList {
 		return compareSingle(t, a, b, false)
 	}
-	return a.schema == b.schema
+	return compareSchemaEqual(a.schema, b.schema, true)
 }
 
 // hashEqual is the hash comparison of lyd_compare_single_data: lyd_hash covers the schema node
-// and the LYB form of a leaf-list value or of the list keys, which types.Equal stands for.
+// and the LYB form of a leaf-list value or of the list keys, which types.Equal stands for; values
+// of two contexts (types of different sets) by their canonical text, which lyd_hash hashes.
 func hashEqual(a, b *Node) bool {
+	eq := func(x, y types.Value) bool {
+		if x.Type() != y.Type() {
+			return x.Canonical() == y.Canonical()
+		}
+		return types.Equal(x, y)
+	}
 	switch {
 	case a.schema == nil:
 		return true // opaque nodes are not hashed
 	case a.schema.Kind == schema.LeafList:
-		return types.Equal(a.value, b.value)
+		return eq(a.value, b.value)
 	case a.schema.Kind == schema.List && !a.schema.Keyless():
 		for i := range a.schema.Keys {
 			if i >= len(a.kids.list) || i >= len(b.kids.list) {
 				return len(a.kids.list) == len(b.kids.list)
 			}
-			if !types.Equal(a.kids.list[i].value, b.kids.list[i].value) {
+			if !eq(a.kids.list[i].value, b.kids.list[i].value) {
 				return false
 			}
 		}
@@ -271,13 +289,18 @@ func hashEqual(a, b *Node) bool {
 	return true
 }
 
-// compareSingle is lyd_compare_single for nodes of one context; full is
-// LYD_COMPARE_FULL_RECURSION. Values compare by canonical text (lyd_compare_single_value: a
-// plain leaf's union "1" as int and as string are equal, VERIFY(cmp/union-leaf-text)); opaque
-// nodes by value only, not by name (VERIFY(cmp/opaque-value-only); the XML prefix rewrite of
-// opaque values comes with the XML parser).
+// compareSingle is lyd_compare_single; full is LYD_COMPARE_FULL_RECURSION. Values compare by
+// canonical text (lyd_compare_single_value: a plain leaf's union "1" as int and as string are
+// equal, VERIFY(cmp/union-leaf-text)); opaque nodes by value only, not by name
+// (VERIFY(cmp/opaque-value-only); the XML prefix rewrite of opaque values comes with the XML
+// parser). Nodes of two contexts compare by their schema nodes' names (compareSingleSchema).
 func compareSingle(t *Tree, a, b *Node, full bool) bool {
-	if a.schema != b.schema || !hashEqual(a, b) {
+	return compareSingleChecked(t, a, b, full, false)
+}
+
+// compareSingleChecked is compareSingle with lyd_compare_single_schema's parental_schemas_checked.
+func compareSingleChecked(t *Tree, a, b *Node, full, parentsChecked bool) bool {
+	if !compareSingleSchema(a, b, parentsChecked) || !hashEqual(a, b) {
 		return false
 	}
 	if a.schema == nil {
@@ -300,7 +323,7 @@ func compareSingle(t *Tree, a, b *Node, full bool) bool {
 			if i >= len(a.kids.list) || i >= len(b.kids.list) {
 				return len(a.kids.list) == len(b.kids.list)
 			}
-			if !compareSingle(t, a.kids.list[i], b.kids.list[i], false) {
+			if !compareSingleChecked(t, a.kids.list[i], b.kids.list[i], false, true) {
 				return false
 			}
 		}
@@ -317,7 +340,7 @@ func compareSiblings(t *Tree, a, b *siblings) bool {
 	i := 0
 	for ; i < len(al) && i < len(bl); i++ {
 		n, m := al[i], bl[i]
-		if n.schema != m.schema {
+		if !compareSingleSchema(n, m, true) {
 			return false
 		}
 		if sortedSupported(n) && !isDupInstList(n.schema) {
@@ -325,7 +348,7 @@ func compareSiblings(t *Tree, a, b *siblings) bool {
 				return false
 			}
 		}
-		if !compareSingle(t, n, m, true) {
+		if !compareSingleChecked(t, n, m, true, true) {
 			return false
 		}
 	}

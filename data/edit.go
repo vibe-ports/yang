@@ -573,18 +573,10 @@ func opaqNext(s *siblings, name string) *Node {
 // dup is lyd_dup_single with LYD_DUP_RECURSIVE | LYD_DUP_WITH_FLAGS: an unlinked copy of n and
 // its subtree with the flags and metadata; children keep their order (LYD_INSERT_NODE_LAST).
 func (t *Tree) dup(n *Node) *Node {
-	d := &Node{schema: n.schema, value: n.value, flags: n.flags}
-	for _, m := range n.meta {
-		c := *m
-		d.meta = append(d.meta, &c)
+	d, err := t.dupR(n, nil, false, insertDefault, dupRecursive|dupWithFlags)
+	if err != nil {
+		// internal invariant: dupR fails only when it looks nodes up in another context
+		panic("data: duplicate in the same context: " + err.Error())
 	}
-	if n.opaq != nil {
-		o := *n.opaq
-		d.opaq = &o
-	}
-	for _, c := range n.kids.nodes() {
-		t.insert(d, t.dup(c), insertLast)
-	}
-	npContDfltSet(d)
 	return d
 }

@@ -91,6 +91,16 @@ static const struct flag print_flags[] = {
     {NULL, 0}
 };
 
+/* sequence step dup: LYD_DUP_* (NO_EXT and WITH_PRIV have nothing to act on) */
+static const struct flag dup_flags[] = {
+    {"recursive", LYD_DUP_RECURSIVE},
+    {"no_meta", LYD_DUP_NO_META},
+    {"with_parents", LYD_DUP_WITH_PARENTS},
+    {"with_flags", LYD_DUP_WITH_FLAGS},
+    {"no_lyds", LYD_DUP_NO_LYDS},
+    {NULL, 0}
+};
+
 static const struct flag diff_flags[] = {
     {"defaults", LYD_DIFF_DEFAULTS},
     {"meta", LYD_DIFF_META},
@@ -1490,7 +1500,8 @@ check_step(const cJSON *step)
     keys_only(step, !strcmp(what, "parse") ? "do format data_type data data_file unknown parse_only "
             "parse_options validate_options" : !strcmp(what, "validate") ? "do data_type validate_options" :
             !strcmp(what, "edit") ? "do merge merge_file set delete insert_term insert_inner format data_type unknown parse_options" :
-            !strcmp(what, "dump") ? "do with_defaults" : "do", "unknown key \"%s\" in a sequence step");
+            !strcmp(what, "dump") ? "do with_defaults" : !strcmp(what, "dup") ? "do node parent options siblings" : "do",
+            "unknown key \"%s\" in a sequence step");
     if (!strcmp(what, "edit")) {
         /* the parse options belong to merge only */
         keys_only(step, cJSON_GetObjectItemCaseSensitive(step, "set") ? "do set" :
@@ -1542,10 +1553,53 @@ check_step(const cJSON *step)
         }
     } else if (!strcmp(what, "dump")) {
         wd_of(step);
+    } else if (!strcmp(what, "dup")) {
+        const cJSON *sib = cJSON_GetObjectItemCaseSensitive(step, "siblings");
+
+        if (!str_of(step, "node")) {
+            die("dup step needs a node path%s", NULL);
+        }
+        str_of(step, "parent");
+        flags_of(step, "options", dup_flags);
+        if (sib && !cJSON_IsBool(sib)) {
+            die("dup siblings must be a boolean%s", NULL);
+        }
     } else if (strcmp(what, "link") && strcmp(what, "links")) {
         die("unknown step %s", what);
     }
     return what;
+}
+
+/* lyd_dup_single / lyd_dup_siblings of the node at "node" into the node at "parent", or, without
+ * a parent, the duplicate (with its duplicated parents) replacing the tree */
+static LY_ERR
+step_dup(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *diag)
+{
+    const char *npath = str_of(step, "node"), *ppath = str_of(step, "parent");
+    struct lyd_node *node = NULL, *parent = NULL, *dup = NULL;
+    uint32_t opts = flags_of(step, "options", dup_flags);
+    LY_ERR rc;
+
+    if (!*tree || lyd_find_path(*tree, npath, 0, &node)) {
+        die("dup node %s not found", npath);
+    }
+    if (ppath && lyd_find_path(*tree, ppath, 0, &parent)) {
+        die("dup parent %s not found", ppath);
+    }
+    if (cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(step, "siblings"))) {
+        rc = lyd_dup_siblings(node, parent, opts, &dup);
+    } else {
+        rc = lyd_dup_single(node, parent, opts, &dup);
+    }
+    collect(ctx, diag, "edit");
+    if (!rc && !parent) {
+        while (dup->parent) {
+            dup = dup->parent;
+        }
+        lyd_free_all(*tree);
+        *tree = lyd_first_sibling(dup);
+    }
+    return rc;
 }
 
 static LY_ERR
@@ -1701,6 +1755,8 @@ op_sequence(const cJSON *req)
             collect(ctx, diag, "link");
         } else if (!strcmp(what, "links")) {
             cJSON_AddItemToObject(s, "leafref_links", links_json(tree));
+        } else if (!strcmp(what, "dup")) {
+            rc = step_dup(ctx, step, &tree, diag);
         } else {
             cJSON_AddItemToObject(s, "tree", print_tree(tree, wd_of(step), 1));
         }

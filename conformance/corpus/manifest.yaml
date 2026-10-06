@@ -30773,3 +30773,164 @@ fixtures:
       rfc: ["RFC7950#9.4.5"]
       deviation: null
 # END xsdre-blocks
+  # #151: lyd_dup_single / lyd_dup_siblings (sequence step dup) on the pv2-edit tree c/a,
+  # c/l[k='a']/v, c/l[k='b'], c/ll b and a, c/np/d
+  # a node and its following siblings to the top level, recursive
+  - id: seq/dup-siblings
+    dir: protocol-v2
+    source: *own
+    rfc: []   # libyang API (lyd_dup_single, lyd_dup_siblings): no RFC behaviour
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: edit, set: {path: "/pv2-edit:c/a", value: "x"}}
+        - {do: edit, set: {path: "/pv2-edit:c/l[k='a']/v", value: "1"}}
+        - {do: edit, set: {path: "/pv2-edit:c/l[k='b']"}}
+        - {do: edit, set: {path: "/pv2-edit:c/ll", value: "b"}}
+        - {do: edit, set: {path: "/pv2-edit:c/ll", value: "a"}}
+        - {do: edit, set: {path: "/pv2-edit:c/np/d", value: "7"}}
+        - {do: dup, node: "/pv2-edit:c/a", options: [recursive], siblings: true}
+    golden: golden/seq-dup-siblings.json
+
+  # a list instance without LYD_DUP_RECURSIVE keeps its keys
+  - id: seq/dup-single-keys
+    dir: protocol-v2
+    source: *own
+    rfc: []   # libyang API (lyd_dup_single, lyd_dup_siblings): no RFC behaviour
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: edit, set: {path: "/pv2-edit:c/a", value: "x"}}
+        - {do: edit, set: {path: "/pv2-edit:c/l[k='a']/v", value: "1"}}
+        - {do: edit, set: {path: "/pv2-edit:c/l[k='b']"}}
+        - {do: edit, set: {path: "/pv2-edit:c/ll", value: "b"}}
+        - {do: edit, set: {path: "/pv2-edit:c/ll", value: "a"}}
+        - {do: edit, set: {path: "/pv2-edit:c/np/d", value: "7"}}
+        - {do: dup, node: "/pv2-edit:c/l[k='a']"}
+    golden: golden/seq-dup-single-keys.json
+
+  # LYD_DUP_WITH_PARENTS: the list (with its key) and the container are duplicated
+  - id: seq/dup-with-parents
+    dir: protocol-v2
+    source: *own
+    rfc: []   # libyang API (lyd_dup_single, lyd_dup_siblings): no RFC behaviour
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: edit, set: {path: "/pv2-edit:c/a", value: "x"}}
+        - {do: edit, set: {path: "/pv2-edit:c/l[k='a']/v", value: "1"}}
+        - {do: edit, set: {path: "/pv2-edit:c/l[k='b']"}}
+        - {do: edit, set: {path: "/pv2-edit:c/ll", value: "b"}}
+        - {do: edit, set: {path: "/pv2-edit:c/ll", value: "a"}}
+        - {do: edit, set: {path: "/pv2-edit:c/np/d", value: "7"}}
+        - {do: dup, node: "/pv2-edit:c/l[k='a']/v", options: [with_parents]}
+    golden: golden/seq-dup-with-parents.json
+
+  # LYD_DUP_WITH_PARENTS of a key: the key is the duplicated list's own
+  - id: seq/dup-with-parents-key
+    dir: protocol-v2
+    source: *own
+    rfc: []   # libyang API (lyd_dup_single, lyd_dup_siblings): no RFC behaviour
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: edit, set: {path: "/pv2-edit:c/a", value: "x"}}
+        - {do: edit, set: {path: "/pv2-edit:c/l[k='a']/v", value: "1"}}
+        - {do: edit, set: {path: "/pv2-edit:c/l[k='b']"}}
+        - {do: edit, set: {path: "/pv2-edit:c/ll", value: "b"}}
+        - {do: edit, set: {path: "/pv2-edit:c/ll", value: "a"}}
+        - {do: edit, set: {path: "/pv2-edit:c/np/d", value: "7"}}
+        - {do: dup, node: "/pv2-edit:c/l[k='b']/k", options: [with_parents]}
+    golden: golden/seq-dup-with-parents-key.json
+
+  # LYD_DUP_WITH_PARENTS into an existing parent: a second l[k='a'] under c
+  - id: seq/dup-with-parents-into
+    dir: protocol-v2
+    source: *own
+    rfc: []   # libyang API (lyd_dup_single, lyd_dup_siblings): no RFC behaviour
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: edit, set: {path: "/pv2-edit:c/a", value: "x"}}
+        - {do: edit, set: {path: "/pv2-edit:c/l[k='a']/v", value: "1"}}
+        - {do: edit, set: {path: "/pv2-edit:c/l[k='b']"}}
+        - {do: edit, set: {path: "/pv2-edit:c/ll", value: "b"}}
+        - {do: edit, set: {path: "/pv2-edit:c/ll", value: "a"}}
+        - {do: edit, set: {path: "/pv2-edit:c/np/d", value: "7"}}
+        - {do: dup, node: "/pv2-edit:c/l[k='a']/v", parent: "/pv2-edit:c", options: [with_parents]}
+    golden: golden/seq-dup-with-parents-into.json
+
+  # LYD_DUP_WITH_PARENTS into a parent none of the schema parents match
+  - id: seq/dup-parent-mismatch
+    dir: protocol-v2
+    source: *own
+    rfc: []   # libyang API (lyd_dup_single, lyd_dup_siblings): no RFC behaviour
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: edit, set: {path: "/pv2-edit:c/a", value: "x"}}
+        - {do: edit, set: {path: "/pv2-edit:c/l[k='a']/v", value: "1"}}
+        - {do: edit, set: {path: "/pv2-edit:c/l[k='b']"}}
+        - {do: edit, set: {path: "/pv2-edit:c/ll", value: "b"}}
+        - {do: edit, set: {path: "/pv2-edit:c/ll", value: "a"}}
+        - {do: edit, set: {path: "/pv2-edit:c/np/d", value: "7"}}
+        - {do: dup, node: "/pv2-edit:c/l[k='a']/v", parent: "/pv2-edit:c/np", options: [with_parents]}
+    golden: golden/seq-dup-parent-mismatch.json
+
+  # leaf-list instances copied to the top level (the copies of a (leaf-)list keep their order)
+  - id: seq/dup-leaflist
+    dir: protocol-v2
+    source: *own
+    rfc: []   # libyang API (lyd_dup_single, lyd_dup_siblings): no RFC behaviour
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: edit, set: {path: "/pv2-edit:c/a", value: "x"}}
+        - {do: edit, set: {path: "/pv2-edit:c/l[k='a']/v", value: "1"}}
+        - {do: edit, set: {path: "/pv2-edit:c/l[k='b']"}}
+        - {do: edit, set: {path: "/pv2-edit:c/ll", value: "b"}}
+        - {do: edit, set: {path: "/pv2-edit:c/ll", value: "a"}}
+        - {do: edit, set: {path: "/pv2-edit:c/np/d", value: "7"}}
+        - {do: dup, node: "/pv2-edit:c/ll[.='a']", options: [recursive], siblings: true}
+    golden: golden/seq-dup-leaflist.json
+
+  # LYD_DUP_NO_LYDS: the copies are inserted after their schema node's instances, unsorted
+  - id: seq/dup-no-lyds
+    dir: protocol-v2
+    source: *own
+    rfc: []   # libyang API (lyd_dup_single, lyd_dup_siblings): no RFC behaviour
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: edit, set: {path: "/pv2-edit:c/a", value: "x"}}
+        - {do: edit, set: {path: "/pv2-edit:c/l[k='a']/v", value: "1"}}
+        - {do: edit, set: {path: "/pv2-edit:c/l[k='b']"}}
+        - {do: edit, set: {path: "/pv2-edit:c/ll", value: "b"}}
+        - {do: edit, set: {path: "/pv2-edit:c/ll", value: "a"}}
+        - {do: edit, set: {path: "/pv2-edit:c/np/d", value: "7"}}
+        - {do: dup, node: "/pv2-edit:c/ll[.='a']", options: [recursive, no_lyds], siblings: true}
+    golden: golden/seq-dup-no-lyds.json
