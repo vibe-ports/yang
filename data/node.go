@@ -61,8 +61,8 @@ type Node struct {
 	value  types.Value
 	opaq   *opaque
 	flags  Flags
-	meta   []meta // metadata (lyd_meta), in order
-	hkey   idxKey // bucket of the node in its parent's children index (lyd_node.hash)
+	meta   []*meta // metadata (lyd_meta), in order
+	hkey   idxKey  // bucket of the node in its parent's children index (lyd_node.hash)
 	hashed bool
 	inRB   bool // in its run's RB tree (lyds) of a system-ordered list or leaf-list
 }

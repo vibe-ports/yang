@@ -123,7 +123,7 @@ func (f *printFixture) note(t *testing.T, n *Node, name, typ, lex string) {
 	if d != nil {
 		t.Fatal(d.Msg)
 	}
-	n.meta = append(n.meta, meta{f.ptb, name, v})
+	n.meta = append(n.meta, &meta{f.ptb, name, v})
 }
 
 // build is the tree of the oracle input (the empty NP container and the state list are

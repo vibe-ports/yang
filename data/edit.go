@@ -572,7 +572,11 @@ func opaqNext(s *siblings, name string) *Node {
 // dup is lyd_dup_single with LYD_DUP_RECURSIVE | LYD_DUP_WITH_FLAGS: an unlinked copy of n and
 // its subtree with the flags and metadata; children keep their order (LYD_INSERT_NODE_LAST).
 func (t *Tree) dup(n *Node) *Node {
-	d := &Node{schema: n.schema, value: n.value, flags: n.flags, meta: append([]meta(nil), n.meta...)}
+	d := &Node{schema: n.schema, value: n.value, flags: n.flags}
+	for _, m := range n.meta {
+		c := *m
+		d.meta = append(d.meta, &c)
+	}
 	if n.opaq != nil {
 		o := *n.opaq
 		d.opaq = &o
