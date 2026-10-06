@@ -68,7 +68,7 @@ name in the XSD 1.0 §F.1.1 table resolves (`TestXSD10BlockNames`).
 | Nested repeat product > 1000 (`(a{100}){100}`), parse-tree height, program size → `ErrUnsupported` | Go's `ErrInvalidRepeatSize` / `ErrNestingDepth` / `ErrLarge`, mapped with the Go code in the reason |
 | Group / class nesting > 1000 → `ErrUnsupported` | bounds our recursive parser (budget, review item 25) |
 | `\i` `\c` use XML 1.0 5th ed. | XSD 1.0 2nd ed. formally points at XML 1.0 2nd ed. `Letter`/`NameChar` (Appendix B tables, Unicode 2.0). 5th-ed. productions are the ones XSD 1.1 uses, are range-simple, and a superset for modern text. libyang rejects `\i`/`\c` outright, so no compatibility is lost |
-| Block ranges follow Unicode 15.0, not Unicode 3.1 | e.g. `IsCJKUnifiedIdeographsExtensionA` ends at 4DBF (libyang: 4DB5); `IsSpecials` is FFF0–FFFF (XSD 1.0 also listed FEFF) |
+| Block ranges follow Unicode 15.0, not Unicode 3.1 | e.g. `IsCJKUnifiedIdeographsExtensionA` ends at 4DBF (libyang: 4DB5); except `IsSpecials` (FEFF, `|`, FFF0–FFFD, as libyang's table writes it) and `IsArabicPresentationForms-B` (FE70–FEFE), which follow libyang exactly (ut-string-data/xml-59) |
 | Surrogate code points never match | not representable in valid UTF-8; classes like `\p{Cs}`/`\p{IsHighSurrogates}` compile to an empty set |
 | Compile cost | classes are materialised per escape (`\w` ≈ 700 ranges); 500×`\w` compiles in ~75 ms. A pattern-length budget belongs in the M1 resource budgets |
 

@@ -111,6 +111,16 @@ func unassigned() charSet {
 
 // block resolves an XSD block escape name (after "Is").
 func block(name string) (charSet, bool) {
+	// libyang's table (ly_common.c ublock2urange) gives these two blocks exact ranges that differ
+	// from Unicode 15: Specials is the XSD 1.0 FEFF plus FFF0-FFFD, written there as the Perl class
+	// [\x{FEFF}|\x{FFF0}-\x{FFFD}] whose '|' is a literal member (reproduced on purpose), and
+	// ArabicPresentationForms-B stops before FEFF.
+	switch name {
+	case "Specials":
+		return normalize([]rng{{0xFEFF, 0xFEFF}, {'|', '|'}, {0xFFF0, 0xFFFD}}), true
+	case "ArabicPresentationForms-B":
+		return span(0xFE70, 0xFEFE), true
+	}
 	if r, ok := blocks[name]; ok {
 		return span(r[0], r[1]), true
 	}

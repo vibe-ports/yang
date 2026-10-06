@@ -277,6 +277,7 @@ func TestString(t *testing.T) {
 		{src: "string.c:819", t: anchor, lex: "cab", h: xmlH, err: `Unsatisfied pattern - "cab" does not match "a.*b".`},
 		{src: "string.c:876", t: typ(schema.String, pat(`[\p{IsSpecials}]+`, false)), lex: "￟�", h: xmlH,
 			err: "Unsatisfied pattern - \"￟�\" does not match \"[\\p{IsSpecials}]+\"."},
+		{src: "string.c:881", t: typ(schema.String, pat(`[\p{IsSpecials}]+`, false)), lex: "\uFEFF\uFFFD", h: xmlH, canon: "\uFEFF\uFFFD"},
 		{src: "string.c:1062", t: typ(schema.String, length(6, 50, 120, 120)), lex: "121", h: xmlH, err: `Unsatisfied length - string "121" length is not allowed.`},
 		{src: "test_pattern.c:AHOJ", t: tp0, lex: "AHOJ", h: xmlH, canon: "AHOJ"},
 		{src: "test_pattern.c:T128", t: tp0, lex: "T128", h: xmlH, err: "pattern 0 error message", apptag: "pattern 0 err-apt-tag"},

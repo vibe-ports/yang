@@ -250,6 +250,21 @@ func TestXSD10BlockNames(t *testing.T) {
 	}
 }
 
+// TestLibyangSpecials: libyang's Specials is FEFF, '|' and FFF0-FFFD, and its
+// ArabicPresentationForms-B ends at FEFE (ut-string-data/xml-59 matches "\uFEFF\uFFFD").
+func TestLibyangSpecials(t *testing.T) {
+	sp, _ := block("Specials")
+	for r, want := range map[rune]bool{0xFEFF: true, '|': true, 0xFFF0: true, 0xFFFD: true, 0xFFFE: false, 0xFFFF: false, 0xFEFE: false, 'a': false} {
+		if sp.contains(r) != want {
+			t.Errorf("Specials contains %U = %v, want %v", r, !want, want)
+		}
+	}
+	ab, _ := block("ArabicPresentationForms-B")
+	if !ab.contains(0xFEFE) || ab.contains(0xFEFF) || ab.contains(0xFE6F) {
+		t.Errorf("ArabicPresentationForms-B bounds wrong: %v", ab)
+	}
+}
+
 func TestCharSetAlgebra(t *testing.T) {
 	a := normalize([]rng{{'a', 'z'}, {'0', '9'}, {'5', 'c'}})
 	if len(a) != 1 || a[0] != (rng{'0', 'z'}) {
