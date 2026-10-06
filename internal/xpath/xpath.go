@@ -81,6 +81,8 @@ type Node interface {
 // SchemaNode is what the evaluator needs from a data node's schema node and
 // Atomize from the compiled schema (lysc_node). Implementations must be
 // comparable: all instances of one schema node return the same (==) SchemaNode.
+// "No node" is always the untyped nil interface (never a typed nil pointer):
+// the walk compares results with nil.
 type SchemaNode interface {
 	Kind() Kind
 	Name() string
@@ -104,9 +106,10 @@ type SchemaNode interface {
 	Actions() []SchemaNode       // lysc_node_actions
 	Notifications() []SchemaNode // lysc_node_notifs
 	Path() string                // lysc_path(LYSC_PATH_LOG), for warnings
-	// LeafrefTarget is the target of a leaf/leaf-list whose type is a leafref
-	// (path compiled for the node's input/output); nil otherwise or when the
-	// target is disabled.
+	// LeafrefTarget is the target of a leaf/leaf-list whose type itself is a
+	// leafref (base type LY_TYPE_LEAFREF; a union with a leafref member does
+	// not count), its path compiled for the node's input/output; nil
+	// otherwise or when the target is disabled.
 	LeafrefTarget() SchemaNode
 }
 

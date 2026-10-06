@@ -148,3 +148,36 @@ func TestAtomizeErrors(t *testing.T) {
 		t.Errorf("budget: %v", err)
 	}
 }
+
+// TestAtomizeBudget: on a 20 000-leaf schema the walk and the set work
+// (index lookups, clones, merges) are charged per node: linear expressions
+// fit a linear step budget, quadratic ones (a predicate re-copying the whole
+// set per node) end in ErrBudget.
+func TestAtomizeBudget(t *testing.T) {
+	const n = 20_000
+	top := &tschema{kind: KindContainer, mod: "m", name: "top", config: true}
+	for i := range n {
+		top.add(&tschema{kind: KindLeaf, mod: "m", name: fmt.Sprintf("l%d", i), config: true})
+	}
+	info := tinfo{schema: []SchemaNode{top}}
+	run := func(x string, steps int) error {
+		e, err := Compile(x, schemaNS{"": "m"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = e.Atomize(AtomizeContext{Node: top, Schema: info, MaxSteps: steps})
+		return err
+	}
+	union := "//*" + strings.Repeat(" | //*", 5)
+	for _, x := range []string{"//*", union, "count(" + union + ") = 1"} {
+		if err := run(x, 100*n); err != nil {
+			t.Errorf("%s: %v within %d steps", x, err, 100*n)
+		}
+		if err := run(x, n/2); !errors.Is(err, ErrBudget) {
+			t.Errorf("%s: %v within %d steps, want ErrBudget", x, err, n/2)
+		}
+	}
+	if err := run("//*[. = 1]", 0); !errors.Is(err, ErrBudget) {
+		t.Errorf("quadratic predicate: %v, want ErrBudget", err)
+	}
+}

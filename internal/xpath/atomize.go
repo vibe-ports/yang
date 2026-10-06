@@ -5,22 +5,26 @@ package xpath
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 )
 
 // AtomUse is lyxp_set_scnode.in_ctx (xpath.h): how an atom was used.
-// Values from AtomPredCtx up are one level per nested predicate.
 type AtomUse int32
 
 // Atom uses (LYXP_SET_SCNODE_*).
 const (
-	AtomStart     AtomUse = -2 // context node, not traversed, still in context
 	AtomStartUsed AtomUse = -1 // context node, not traversed except for the start
 	AtomNode      AtomUse = 0  // traversed
 	AtomVal       AtomUse = 1  // traversed and its value used
 	AtomCtx       AtomUse = 2  // in context
-	AtomNewCtx    AtomUse = 3  // in context, just added (internal to one move)
-	AtomPredCtx   AtomUse = 4  // in context of an enclosing predicate
+)
+
+// In-walk marks that never reach a result.
+const (
+	atomStart   AtomUse = -2 // context node, not traversed, still in context
+	atomNewCtx  AtomUse = 3  // in context, just added (internal to one move)
+	atomPredCtx AtomUse = 4  // and up: in context of an enclosing predicate, one level per nesting
 )
 
 // Atom is a schema node an expression can reach (lyxp_set_scnode).
@@ -31,7 +35,7 @@ type Atom struct {
 
 // AtomizeContext is the context of lyxp_atomize.
 type AtomizeContext struct {
-	Node        SchemaNode // context node and current(); nil = the root
+	Node        SchemaNode // context node and current(); untyped nil = the root
 	SchemaRules bool       // LYXP_SCNODE_SCHEMA: when/must access rules (config root for a config node)
 	Output      bool       // LYXP_SCNODE_OUTPUT: RPC/action output instead of input
 	Schema      SchemaInfo
@@ -54,7 +58,11 @@ func (e *Expr) Atomize(ac AtomizeContext) ([]Atom, error) {
 	return out, nil
 }
 
-// rootType is the schema branch of lyxp_get_root_type.
+// rootType is the schema branch of lyxp_get_root_type. libyang tests
+// LYS_CONFIG_W, so a node with neither config flag (extension-instance data)
+// gets the plain root there; Config() cannot tell such a node apart and it
+// gets the config root here. No such node reaches Atomize while extension
+// plugins are unsupported (design 06 §2.17).
 func rootType(ctx SchemaNode, rules bool) ntype {
 	op := ctx
 	for op != nil && !isOp(op) {
@@ -81,7 +89,17 @@ type scnode struct {
 	axis string
 }
 
-type scset struct{ n []scnode } // LYXP_SET_SCNODE_SET
+type skey struct {
+	n SchemaNode
+	t ntype
+}
+
+// scset is LYXP_SET_SCNODE_SET; its work is charged to a's step budget.
+type scset struct {
+	n   []scnode
+	idx map[skey]int // index of each (node, type) in n
+	a   *atomizer
+}
 
 type atomizer struct {
 	ns     NamespaceCtx
@@ -116,12 +134,12 @@ func newAtomizer(ns NamespaceCtx, info SchemaInfo, cur, ctx SchemaNode, root nty
 
 func (a *atomizer) run(src string, root ast) (*scset, error) {
 	a.src = src
-	set := &scset{}
+	set := &scset{a: a}
 	t := nElem
 	if a.ctx == nil {
 		t = a.root
 	}
-	set.n = []scnode{{a.ctx, t, AtomStart, "self"}}
+	set.add(scnode{a.ctx, t, atomStart, "self"})
 	if err := a.eval(root, set); err != nil {
 		return nil, err
 	}
@@ -139,26 +157,42 @@ func (a *atomizer) tick() error {
 
 // ---- set operations ----
 
+// charge takes n steps at once (set work proportional to its size).
+func (a *atomizer) charge(n int) {
+	if a.err == nil {
+		if a.steps -= n; a.steps < 0 {
+			a.err = ErrBudget
+		}
+	}
+}
+
 // clearCtx is set_scnode_clear_ctx.
 func (s *scset) clearCtx(use AtomUse) {
+	s.a.charge(len(s.n))
 	for i := range s.n {
 		switch s.n[i].use {
 		case AtomCtx:
 			s.n[i].use = use
-		case AtomStart:
+		case atomStart:
 			s.n[i].use = AtomStartUsed
 		}
 	}
 }
 
-// contains is lyxp_set_scnode_contains.
+// contains is lyxp_set_scnode_contains. (node, type) is unique in a set:
+// insert never adds a second one and merge never adds a known node.
 func (s *scset) contains(n SchemaNode, t ntype, skip int) (int, bool) {
-	for i, x := range s.n {
-		if i != skip && x.n == n && x.t == t {
-			return i, true
-		}
+	i, ok := s.idx[skey{n, t}]
+	return i, ok && i != skip
+}
+
+func (s *scset) add(x scnode) int {
+	if s.idx == nil {
+		s.idx = map[skey]int{}
 	}
-	return 0, false
+	s.idx[skey{x.n, x.t}] = len(s.n)
+	s.n = append(s.n, x)
+	return len(s.n) - 1
 }
 
 // insert is lyxp_set_scnode_insert_node.
@@ -167,25 +201,20 @@ func (s *scset) insert(n SchemaNode, t ntype, axis string) int {
 		s.n[i].use = AtomCtx // libyang: a different axis is thrown away
 		return i
 	}
-	s.n = append(s.n, scnode{n, t, AtomCtx, axis})
-	return len(s.n) - 1
+	return s.add(scnode{n, t, AtomCtx, axis})
 }
 
-// merge is lyxp_set_scnode_merge (duplicates by schema node only).
+// merge is lyxp_set_scnode_merge. libyang finds duplicates by schema node
+// only; a node always has the same type here (the root type is fixed per
+// walk), so the (node, type) index answers the same.
 func (s *scset) merge(s2 *scset) {
-	if len(s2.n) == 0 {
-		return
-	}
-	if len(s.n) == 0 {
-		s.n = slices.Clone(s2.n)
-		return
-	}
+	s.a.charge(len(s2.n))
 	orig := len(s.n)
 	for _, y := range s2.n {
-		j := slices.IndexFunc(s.n[:orig], func(x scnode) bool { return x.n == y.n })
+		j, ok := s.contains(y.n, y.t, -1)
 		switch {
-		case j < 0:
-			s.n = append(s.n, y)
+		case !ok || j >= orig:
+			s.add(y)
 		case s.n[j].use == AtomStartUsed, s.n[j].use == AtomNode && y.use == AtomVal:
 			s.n[j].use = y.use
 		}
@@ -193,13 +222,17 @@ func (s *scset) merge(s2 *scset) {
 }
 
 // clone is set_fill_set.
-func (s *scset) clone() *scset { return &scset{slices.Clone(s.n)} }
+func (s *scset) clone() *scset {
+	s.a.charge(len(s.n))
+	return &scset{n: slices.Clone(s.n), idx: maps.Clone(s.idx), a: s.a}
+}
 
 // copyCtx is set_copy: only the nodes in context or at the start.
 func (s *scset) copyCtx() *scset {
-	c := &scset{}
+	s.a.charge(len(s.n))
+	c := &scset{a: s.a}
 	for _, x := range s.n {
-		if x.use == AtomCtx || x.use == AtomStart {
+		if x.use == AtomCtx || x.use == atomStart {
 			c.n[c.insert(x.n, x.t, x.axis)].use = x.use
 		}
 	}
@@ -208,7 +241,8 @@ func (s *scset) copyCtx() *scset {
 
 // newInCtx is set_scnode_new_in_ctx.
 func (s *scset) newInCtx() AtomUse {
-	u := AtomPredCtx
+	s.a.charge(len(s.n))
+	u := atomPredCtx
 	for _, x := range s.n {
 		u = max(u, x.use+1)
 	}
@@ -221,6 +255,7 @@ func (s *scset) newInCtx() AtomUse {
 }
 
 func (s *scset) hasCtx() bool {
+	s.a.charge(len(s.n))
 	return slices.ContainsFunc(s.n, func(x scnode) bool { return x.use == AtomCtx })
 }
 
@@ -319,6 +354,7 @@ func (a *atomizer) call(x callExpr, s *scset) error {
 
 // lastCtx is warn_get_scnode_in_ctx: the last-added node in context.
 func lastCtx(s *scset) SchemaNode {
+	s.a.charge(len(s.n))
 	for i := len(s.n) - 1; i >= 0; i-- {
 		if s.n[i].use == AtomCtx {
 			return s.n[i].n
@@ -383,25 +419,15 @@ func (a *atomizer) step(st step, s *scset) (bool, error) {
 		s.clearCtx(AtomNode)
 		return true, a.predicates(s, st.preds)
 	}
-	var parent *scnode // the only node in context, for the warning
+	s.a.charge(len(s.n))
+	parent := -1 // the only node in context, for the warning
 	for i := range s.n {
 		if s.n[i].use == AtomCtx {
-			if parent != nil {
-				parent = nil
+			if parent >= 0 {
+				parent = -1
 				break
 			}
-			parent = &s.n[i]
-		}
-	}
-	var pp string
-	if parent != nil {
-		switch parent.t {
-		case nElem:
-			pp = parent.n.Path()
-		case nRoot:
-			pp = "<root>"
-		case nRootConfig:
-			pp = "<config-root>"
+			parent = i
 		}
 	}
 	if st.allDesc && st.axis == "child" {
@@ -417,8 +443,13 @@ func (a *atomizer) step(st step, s *scset) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	s.a.charge(len(s.n))
 	if !slices.ContainsFunc(s.n, func(x scnode) bool { return x.use > AtomNode }) {
-		a.notFound(st, nt, pp)
+		var p *scnode
+		if parent >= 0 {
+			p = &s.n[parent]
+		}
+		a.notFound(st, nt, p)
 		return false, nil // predicates and the rest of the path are skipped
 	}
 	return true, a.predicates(s, st.preds)
@@ -436,12 +467,23 @@ func (a *atomizer) resolve(qname string) (nameTest, error) {
 }
 
 // notFound is eval_name_test_scnode_no_match_msg.
-func (a *atomizer) notFound(st step, nt nameTest, parentPath string) {
+func (a *atomizer) notFound(st step, nt nameTest, parent *scnode) {
 	if a.warn == nil {
 		return
 	}
-	// libyang: for '*' the name is NULL and the expression length garbage,
-	// which prints the whole expression (D-0014)
+	var parentPath string
+	if parent != nil {
+		switch parent.t {
+		case nElem:
+			parentPath = parent.n.Path()
+		case nRoot:
+			parentPath = "<root>"
+		case nRootConfig:
+			parentPath = "<config-root>"
+		}
+	}
+	// libyang: for '*' the name is NULL and the precision computed from it is
+	// negative or larger than the string, so the whole expression is printed (D-0014)
 	expr := a.src
 	if nt.name != "" {
 		expr = a.src[:st.end]
@@ -474,6 +516,7 @@ func (a *atomizer) predicates(s *scset, preds []ast) error {
 			}
 			s.n[i].use = pc
 		}
+		s.a.charge(len(s.n))
 		for i := range s.n {
 			switch s.n[i].use {
 			case AtomCtx:
@@ -509,9 +552,9 @@ func (a *atomizer) check(n SchemaNode, nt nameTest) int {
 // inCtx is moveto_axis_scnode_next_in_ctx.
 func inCtx(use *AtomUse, axis string) bool {
 	switch {
-	case axis == "self" && (*use == AtomStart || *use == AtomCtx):
+	case axis == "self" && (*use == atomStart || *use == AtomCtx):
 		*use = AtomCtx
-	case axis != "self" && *use == AtomStart:
+	case axis != "self" && *use == atomStart:
 		*use = AtomStartUsed
 	case axis != "self" && *use == AtomCtx:
 		*use = AtomNode
@@ -526,6 +569,7 @@ func inCtx(use *AtomUse, axis string) bool {
 // plugins are unsupported (design 06 §2.17).
 func (a *atomizer) moveto(s *scset, axis string, nt nameTest) error {
 	orig := len(s.n)
+	a.charge(orig)
 	temp := false
 	for i := 0; i < orig; i++ {
 		if !inCtx(&s.n[i].use, axis) {
@@ -540,14 +584,14 @@ func (a *atomizer) moveto(s *scset, axis string, nt nameTest) error {
 				continue
 			}
 			if idx := s.insert(it.n, it.t, axis); idx < orig && idx > i {
-				s.n[idx].use = AtomNewCtx
+				s.n[idx].use = atomNewCtx
 				temp = true
 			}
 		}
 	}
 	if temp {
 		for i := range orig {
-			if s.n[i].use == AtomNewCtx {
+			if s.n[i].use == atomNewCtx {
 				s.n[i].use = AtomCtx
 			}
 		}
@@ -558,11 +602,12 @@ func (a *atomizer) moveto(s *scset, axis string, nt nameTest) error {
 // alldescChild is moveto_scnode_alldesc_child.
 func (a *atomizer) alldescChild(s *scset, nt nameTest) error {
 	orig := len(s.n)
+	a.charge(orig)
 	for i := 0; i < orig; i++ {
 		switch s.n[i].use {
 		case AtomCtx:
 			s.n[i].use = AtomNode
-		case AtomStart:
+		case atomStart:
 			s.n[i].use = AtomStartUsed
 		default:
 			continue
@@ -586,6 +631,9 @@ func (a *atomizer) alldescChild(s *scset, nt nameTest) error {
 
 // dfs is moveto_scnode_dfs: start's descendants over the raw tree.
 func (a *atomizer) dfs(s *scset, start SchemaNode, startIdx int, nt nameTest) error {
+	if nt.name != "" && nt.mod == "" {
+		nt.mod = start.Module() // JSON: moveto_scnode_check inherits ctx_scnode = start's module
+	}
 	for elem, next := start, start; elem != nil; elem = next {
 		if err := a.tick(); err != nil {
 			return err
