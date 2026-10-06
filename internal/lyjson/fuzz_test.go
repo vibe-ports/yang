@@ -2,7 +2,10 @@
 
 package lyjson
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // FuzzJSONLex: any input terminates without panicking, every step consumes input, the status
 // stack respects the nesting budget, and every failure carries a diagnostic.
@@ -23,7 +26,7 @@ func FuzzJSONLex(f *testing.F) {
 			return
 		}
 		for {
-			before := l.Offset()
+			before, line := l.Offset(), l.Line()
 			st, err := l.Next()
 			if err != nil {
 				if len(diags(err)) == 0 {
@@ -33,6 +36,9 @@ func FuzzJSONLex(f *testing.F) {
 			}
 			if l.Depth() > MaxDepth+1 {
 				t.Fatalf("depth %d", l.Depth())
+			}
+			if l.Line() < line || strings.IndexByte(l.Value(), 0) >= 0 {
+				t.Fatalf("line went back or NUL in value at %d", before)
 			}
 			if st == TokenEnd {
 				return

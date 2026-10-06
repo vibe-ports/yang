@@ -422,7 +422,7 @@ entries owned by this stream: **D-0001** (candidate: `when` reading a top-level 
 | D-0051 (candidate) | error path of a list with missing/invalid keys omits its ancestors (`/ietf-ip:address/ip`) | RFC 6241 §4.3 error-path |
 | D-0052 (candidate) | a key value containing both quote kinds yields an unparsable path predicate | RFC 7950 §9.13.2 |
 | D-0053 (candidate) | Parse path: when/require-instance/metadata errors of **all** modules in one global reverse parse order, before later modules' top-level duplicate/case errors (§3.3) | — (order unspecified) |
-| D-0054 (candidate) | JSON numbers with exponent accepted for integer/decimal types after `lyjson_exp_number` rewriting | RFC 7951 §6.1 |
+| D-0054 (candidate) | JSON numbers with exponent accepted for integer/decimal types after `lyjson_exp_number` rewriting; libyang's rewrite is wrong when a leading-zero mantissa shifts the point inside its digits (`0.5e1` → `.`, `0.123e3` → `12.`), reproduced as is (D3), so such values fail type parsing | RFC 7951 §6.1 |
 | D-0055 (candidate) | dummy-when: an unresolvable `when` on an absent mandatory node skips the check under multi-error but is `LY_EINT` otherwise | RFC 7950 §7.21.5 |
 | D-0056 (candidate) | a must reaching a node left unresolved after a when error fails with `LY_EINCOMPLETE` (LOGERR, no vecode) | — |
 | D-0057 (candidate) | a tree of only top-level opaque nodes reports the opaque error once per implemented module | — |

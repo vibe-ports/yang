@@ -207,7 +207,7 @@ func TestLines(t *testing.T) {
 }
 
 // Boundary pinned by design 07 (depth/json-5000 and its 4998 control): libyang fails when the
-// status stack exceeds 5000 after a push, which includes the push of a closing token.
+// status stack exceeds 5000 after a push, which includes the push of the `]` closing an empty array.
 func TestNestingLimit(t *testing.T) {
 	arrays := func(n int) string { return strings.Repeat("[", n) + strings.Repeat("]", n) }
 	wrapped := func(n int) string { return `{"m:zz":` + arrays(n) + `}` } // how the data parser meets it
@@ -228,7 +228,7 @@ func TestNestingLimit(t *testing.T) {
 		case !c.fail && errors.Is(err, ErrNesting):
 			t.Errorf("%.20s…: unexpected %v", c.in, err)
 		case c.fail:
-			if d := diags(err); len(d) != 1 || d[0] != "0@1:Maximum number 5000 of nestings has been exceeded." {
+			if d := diags(err); len(d) != 1 || d[0] != "0@0:Maximum number 5000 of nestings has been exceeded." {
 				t.Errorf("%v", d)
 			}
 		}
@@ -291,7 +291,7 @@ func TestTokenString(t *testing.T) {
 	for tok := TokenError; tok <= TokenEnd; tok++ {
 		got = append(got, tok.String())
 	}
-	if strings.Join(got, "|") != want || Token(99).String() != "end of input" {
+	if strings.Join(got, "|") != want || Token(99).String() != "" {
 		t.Fatal(got)
 	}
 }

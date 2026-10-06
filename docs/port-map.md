@@ -195,9 +195,9 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | src/json.c | lyjson_ctx_backup, lyjson_ctx_restore | lyjson.Lexer.Backup, lyjson.Lexer.Restore | ported | — | restores top status entry, stack height, value and position, not the line (as libyang) |
 | src/json.c | lyjson_ctx_free, lyjson_ctx_set_value | — | replaced | — | no manual memory; the value is a Go string |
 | src/json.c | lyjson_skip_ws | lyjson.Lexer.skipWS | ported | — | counts LF for the diagnostic line |
-| src/json.c | lyjson_string | lyjson.Lexer.str | ported | json/string-escapes | all messages and lines, incl. the two-diagnostic unterminated string and libyang's non-hex \u digits (uint32 wrap) |
+| src/json.c | lyjson_string | lyjson.Lexer.str | ported | (planned, D12) json/string-escapes | all messages and lines, incl. the two-diagnostic unterminated string and libyang's non-hex \u digits (uint32 wrap) |
 | src/json.c | lyjson_count_in_row, lyjson_number_is_zero | lyjson.countInRow, lyjson.numberIsZero | ported | — | |
-| src/json.c | lyjson_get_buffer_for_number | lyjson.Lexer.expNumber (alloc) | ported | json/exp-number | LY_NUMBER_MAXLEN 22 |
-| src/json.c | lyjson_exp_number_copy_num_part, lyjson_exp_number | lyjson.expNumberCopyNumPart, lyjson.Lexer.expNumber | ported | json/exp-number | libyang's wrong rewrite of 0.5e1 (".") and 0.123e3 ("12.") is reproduced on purpose |
-| src/json.c | lyjson_number | lyjson.Lexer.number | ported | json/exp-number | |
-| src/json.c | lyjson_next_object_name, lyjson_next_value, lyjson_next_object_item, lyjson_next_array_item | lyjson.Lexer.nextObjectName, nextValue, nextObjectItem, nextArrayItem | ported | json/*, depth/json-5000 | status stack limit 5000 checked after every value push incl. closing tokens (error wraps lyjson.ErrNesting) |
+| src/json.c | lyjson_get_buffer_for_number | lyjson.Lexer.expNumber (alloc) | ported | (planned, D12) json/exp-number | LY_NUMBER_MAXLEN 22 |
+| src/json.c | lyjson_exp_number_copy_num_part, lyjson_exp_number | lyjson.expNumberCopyNumPart, lyjson.Lexer.expNumber | ported | (planned, D12) json/exp-number | libyang's wrong rewrite of 0.5e1 (".") and 0.123e3 ("12.") is reproduced on purpose |
+| src/json.c | lyjson_number | lyjson.Lexer.number | ported | (planned, D12) json/exp-number | |
+| src/json.c | lyjson_next_object_name, lyjson_next_value, lyjson_next_object_item, lyjson_next_array_item | lyjson.Lexer.nextObjectName, nextValue, nextObjectItem, nextArrayItem | ported | (planned, D12) json/*, depth/json-5000 | status stack limit 5000 checked only after lyjson_next_value pushes (values, `{`, `[`, `]` of an empty array), so depth may reach 5001 (error wraps lyjson.ErrNesting); D5 obligation: wrap it in compile.ErrBudget (home of yang.ErrBudget) |

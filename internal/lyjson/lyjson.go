@@ -60,7 +60,8 @@ const (
 	VESemantics               // LYVE_SEMANTICS
 )
 
-// Diag is one logged libyang error: code, message and input line (1-based).
+// Diag is one logged libyang error: code, message and input line (1-based; 0 for errors libyang
+// logs without an input location, i.e. VENone).
 type Diag struct {
 	Code VECode
 	Msg  string
@@ -80,8 +81,12 @@ func (e *Error) Unwrap() error { return e.Err }
 
 // String is lyjson_token2str.
 func (t Token) String() string {
-	return [...]string{"error", "object", "object next", "object closed", "array", "array next",
-		"array closed", "object name", "number", "string", "true", "false", "null", "end of input"}[min(t, TokenEnd)]
+	names := [...]string{"error", "object", "object next", "object closed", "array", "array next",
+		"array closed", "object name", "number", "string", "true", "false", "null", "end of input"}
+	if int(t) >= len(names) {
+		return ""
+	}
+	return names[t]
 }
 
 // Lexer is struct lyjson_ctx.
@@ -219,7 +224,7 @@ func (l *Lexer) Next() (Token, error) {
 	case TokenEnd:
 		err = l.nextValue(false)
 	default:
-		return TokenError, l.fail(VENone, "Internal error (json.c:1043).")
+		return TokenError, &Error{Diags: []Diag{{VENone, "Internal error (json.c:1043).", 0}}}
 	}
 	if err != nil {
 		return TokenError, err
@@ -301,7 +306,7 @@ func (l *Lexer) nextValue(arrayEnd bool) error { // lyjson_next_value
 	}
 	if len(l.status) > MaxDepth {
 		msg := "Maximum number " + strconv.Itoa(MaxDepth) + " of nestings has been exceeded."
-		return &Error{Diags: []Diag{{VENone, msg, l.line}}, Err: ErrNesting}
+		return &Error{Diags: []Diag{{VENone, msg, 0}}, Err: ErrNesting}
 	}
 	return nil
 }
