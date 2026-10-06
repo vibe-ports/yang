@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+// The grouping's extension instance moves to c; its prefix belongs to ext-grp-b.
+module ext-grp-a {
+  namespace "urn:vibe-ports:yang:conformance:ext-grp-a";
+  prefix ga;
+  import ext-grp-b { prefix gb; }
+  container c { uses gb:g; }
+}

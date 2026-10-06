@@ -17,7 +17,6 @@ import (
 	"testing/fstest"
 
 	"github.com/vibe-ports/yang/internal/lyxp"
-	"github.com/vibe-ports/yang/internal/parser"
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
 )
@@ -77,39 +76,6 @@ func (m *Module) pmods() []*pmod {
 		}
 	}
 	return pms
-}
-
-// amendIfFeature reports whether a module outside libyang's internal ones has an if-feature on
-// a uses, augment or refine: C6's ifFeature hook counts them as enabled until it is wired to
-// design 06 C4b's evaluator.
-func (h *nodeHarness) amendIfFeature() bool {
-	var walk func(list []*parser.Node) bool
-	walk = func(list []*parser.Node) bool {
-		for _, n := range list {
-			if n == nil {
-				continue
-			}
-			switch n.Kind {
-			case "uses", "augment", "refine":
-				if len(n.IfFeatures) > 0 {
-					return true
-				}
-			}
-			if walk(n.Children) || walk(n.Groupings) || walk(n.Actions) || walk(n.Notifications) ||
-				walk(n.Augments) || walk(n.Refines) || walk([]*parser.Node{n.Input, n.Output}) {
-				return true
-			}
-		}
-		return false
-	}
-	for _, m := range h.c.Modules[len(internalModules):] {
-		for _, pm := range m.pmods() {
-			if walk([]*parser.Node{&pm.Parsed.Node}) {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 // augmented reports whether a module outside libyang's internal ones has a top-level augment.
@@ -449,8 +415,6 @@ func TestNodeGoldens(t *testing.T) {
 					t.Skip(err)
 				case h.augmented():
 					t.Skip("top-level augments: design 06 C6 part 2")
-				case h.amendIfFeature():
-					t.Skip("if-feature of a uses, augment or refine (C6 hook not wired yet)")
 				}
 				var want, got []goldenDiag
 				var first *goldenDiag

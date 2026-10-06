@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module ext-rfn-b {
+  namespace "urn:vibe-ports:yang:conformance:ext-rfn-b";
+  prefix rb;
+  grouping g { leaf l { type string; } }
+}

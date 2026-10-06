@@ -5,8 +5,6 @@
 package compile
 
 import (
-	"fmt"
-
 	"github.com/vibe-ports/yang/internal/ly"
 	"github.com/vibe-ports/yang/internal/parser"
 	"github.com/vibe-ports/yang/internal/schema"
@@ -61,7 +59,7 @@ func (w *nodeCtx) compileAugment(aug *parser.Node, target *schema.Node) error {
 		return w.errf(ly.Reference, "Invalid augment of %s node which is not allowed to contain notification node \"%s\".",
 			lysNodetype2str(target.Kind), aug.Notifications[0].Name)
 	}
-	enabled, err := w.ifFeature(w.pm, aug.IfFeatures)
+	enabled, err := w.ifFeature(aug.IfFeatures)
 	if err != nil {
 		return err
 	}
@@ -75,11 +73,10 @@ func (w *nodeCtx) compileAugment(aug *parser.Node, target *schema.Node) error {
 			return err
 		}
 	}
-	if len(aug.Exts) > 0 {
-		// augment extension instances go to the target
-		return fmt.Errorf("%w: extension instances (design 06 C4b)", ErrUnsupported)
-	}
-	return nil
+	// augment extension instances go to the target
+	var err2 error
+	target.Exts, err2 = w.compileExts(aug.Stmt, target, target.Exts)
+	return err2
 }
 
 // augmentChildren is lys_compile_augment_children.
@@ -118,7 +115,7 @@ func (w *nodeCtx) augmentChildren(aug *parser.Node, list []*parser.Node, target 
 			return err
 		}
 		// eval if-features again for the rest of this node processing
-		enabled, err := w.ifFeature(w.pm, pn.IfFeatures)
+		enabled, err := w.ifFeature(pn.IfFeatures)
 		if err != nil {
 			return err
 		}

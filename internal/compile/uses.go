@@ -14,13 +14,22 @@ import (
 	"github.com/vibe-ports/yang/internal/schema"
 )
 
-// ifFeature is lys_eval_iffeatures for if-features written in pm (design 06 C4b evaluates them;
-// until then every if-feature counts as enabled and nodes carrying one are ErrUnsupported in
-// nodeGeneric).
-func (w *nodeCtx) ifFeature(_ *pmod, _ []*parser.IfFeature) (bool, error) { return true, nil }
+// ifFeature is lys_eval_iffeatures: each if-feature is compiled in the (sub)module it is written
+// in (lysp_qname.mod: w.pm, or the refine's module for one a refine added), in order, stopping at
+// the first false one.
+func (w *nodeCtx) ifFeature(ifs []*parser.IfFeature) (bool, error) {
+	for _, iff := range ifs {
+		on, err := w.iffValue(w.origin(iff), iff)
+		if err != nil || !on {
+			return false, err
+		}
+	}
+	return true, nil
+}
 
-// addDisabled is ly_set_add(&ctx->unres->disabled, node) (design 06 C4b/C7).
-func (w *nodeCtx) addDisabled(*schema.Node) {}
+// addDisabled is ly_set_add(&ctx->unres->disabled, node) for a child of a disabled uses or
+// augment (unconditional, unlike disable).
+func (w *nodeCtx) addDisabled(n *schema.Node) { w.c.disabled = append(w.c.disabled, n) }
 
 // parentOf is lysp_node.parent: the parsed node pn is written in (nil at the top level).
 // pn must belong to w.pm or be a node created by the compile (refined copies, fake uses).
@@ -185,7 +194,7 @@ func (w *nodeCtx) uses(pn *parser.Node, parent *schema.Node, inherited int, chil
 		return err
 	}
 	usesSt := statusInt(st)
-	enabled, err := w.ifFeature(w.pm, pn.IfFeatures)
+	enabled, err := w.ifFeature(pn.IfFeatures)
 	if err != nil {
 		return err
 	}
@@ -205,7 +214,7 @@ func (w *nodeCtx) uses(pn *parser.Node, parent *schema.Node, inherited int, chil
 	}
 	// check that all augments and refines of this uses were applied
 	if w.pendingOf[pn] == 0 {
-		return w.usesExts(pn, grp)
+		return w.usesExts(pn, grp, grpPm, parent)
 	}
 	for _, a := range w.usesAugs.items {
 		if a.uses == pn {
@@ -225,13 +234,40 @@ func (w *nodeCtx) uses(pn *parser.Node, parent *schema.Node, inherited int, chil
 	if err != nil {
 		return err
 	}
-	return w.usesExts(pn, grp)
+	return w.usesExts(pn, grp, grpPm, parent)
 }
 
-// usesExts compiles the uses and grouping extension instances into the parent (design 06 C4b).
-func (w *nodeCtx) usesExts(pn, grp *parser.Node) error {
-	if len(pn.Exts) > 0 || len(grp.Exts) > 0 {
-		return fmt.Errorf("%w: extension instances (design 06 C4b)", ErrUnsupported)
+// stmtIn is a statement with the (sub)module it is written in.
+type stmtIn struct {
+	stmt *parser.Stmt
+	pm   *pmod
+}
+
+// compileExtsIn is compileExts for extension instances written in pm (their prefixes resolve
+// there, as libyang binds an instance to its definition at parse time).
+func (w *nodeCtx) compileExtsIn(pm *pmod, owner *parser.Stmt, parent *schema.Node, exts []*schema.ExtInstance) (
+	[]*schema.ExtInstance, error) {
+	prev := w.pm
+	w.pm = pm
+	defer func() { w.pm = prev }()
+	return w.compileExts(owner, parent, exts)
+}
+
+// usesExts compiles the uses (written in w.pm) and grouping (written in grpPm) extension
+// instances into the parent.
+func (w *nodeCtx) usesExts(pn, grp *parser.Node, grpPm *pmod, parent *schema.Node) error {
+	if parent == nil {
+		if len(pn.Exts) > 0 || len(grp.Exts) > 0 {
+			// libyang dereferences the missing parent (parent->exts) here
+			return fmt.Errorf("%w: extension instances of a top-level uses or its grouping", ErrUnsupported)
+		}
+		return nil
+	}
+	var err error
+	for _, s := range []stmtIn{{pn.Stmt, w.pm}, {grp.Stmt, grpPm}} {
+		if parent.Exts, err = w.compileExtsIn(s.pm, s.stmt, parent, parent.Exts); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -257,7 +293,7 @@ func (w *nodeCtx) usesChildren(uses *parser.Node, inherited int, list []*parser.
 			return err
 		}
 		// eval if-features again for the rest of this node processing
-		enabled, err := w.ifFeature(w.pm, pn.IfFeatures)
+		enabled, err := w.ifFeature(pn.IfFeatures)
 		if err != nil {
 			return err
 		}
@@ -290,9 +326,6 @@ func (w *nodeCtx) sharedWhen(pw *parser.Restr, inherited int, parent, ctxNode, n
 		if err != nil {
 			return err
 		}
-		if len(pw.Exts) > 0 {
-			return fmt.Errorf("%w: extension instances (design 06 C4b)", ErrUnsupported)
-		}
 		parentSt, parentName := 0, ""
 		if parent != nil {
 			parentSt, parentName = statusInt(parent.Status), parent.Name
@@ -304,6 +337,7 @@ func (w *nodeCtx) sharedWhen(pw *parser.Restr, inherited int, parent, ctxNode, n
 		*shared = &schema.When{Src: pw.Arg, Ctx: ns, ContextNode: ctxNode, Status: st, Compiled: e}
 	}
 	n.Whens = append(n.Whens, *shared)
+	w.addWhen(*shared, n) // lysc_unres_when_add for every node sharing it
 	return nil
 }
 

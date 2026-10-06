@@ -324,6 +324,9 @@ func (w *nodeCtx) compileExt(e, owner *parser.Stmt, parent *schema.Node) (*schem
 	defer func() { w.path.pop(); w.path.pop() }()
 	// lysc_ext_find_definition: the prefix and the definition were checked at parse time
 	def := w.c.prefixModule(w.pm, w.c.mainOf(w.pm), e.ExtPrefix)
+	if def == nil { // never reached when w.pm is the module the instance is written in
+		return nil, w.errf(ly.Reference, "Invalid prefix \"%s\" used for extension instance identifier.", e.ExtPrefix)
+	}
 	inst := &schema.ExtInstance{Def: def.mod, Name: e.Keyword, Argument: e.Arg}
 	exts, err := w.compileExts(e, nil, nil)
 	if err != nil {

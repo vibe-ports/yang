@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+// The refine's extension instance goes to l, compiled while l's text is ext-rfn-b's: its prefix
+// belongs to this module.
+module ext-rfn-a {
+  namespace "urn:vibe-ports:yang:conformance:ext-rfn-a";
+  prefix ra;
+  import ext-rfn-b { prefix rb; }
+  import ext-def { prefix rx; }
+  container c { uses rb:g { refine l { rx:x; } } }
+}

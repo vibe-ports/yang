@@ -12940,3 +12940,28 @@ fixtures:
       searchdirs: [schemas]
       modules: [{"name": "refine-merge-pa"}]
     golden: golden/refine-merge-prefix-other-module.json
+
+  # extension instances of a grouping move to the uses' parent; their prefixes resolve in the
+  # grouping's module (ext-grp-b imports ext-def as gx, ext-grp-a does not)
+  - id: ext/grouping-instance-other-module
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.19", "RFC7950#7.13"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ext-grp-a"}]
+    golden: golden/ext-grouping-instance-other-module.json
+
+  # a refine's extension instance goes to its target, with the prefixes of the refine's module
+  - id: ext/refine-instance-other-module
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.19", "RFC7950#7.13.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ext-rfn-a"}]
+    golden: golden/ext-refine-instance-other-module.json

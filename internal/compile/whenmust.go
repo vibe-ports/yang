@@ -43,8 +43,12 @@ func (w *nodeCtx) addMusts(n *schema.Node) {
 		return
 	}
 	m := unresMust{node: n}
-	for range n.Musts {
-		m.local = append(m.local, w.pm)
+	for _, must := range n.Musts {
+		local := w.pm
+		if o := w.mustLocal[must]; o != nil { // lysp_restr.arg.mod of a refine's must (design 06 C6)
+			local = o
+		}
+		m.local = append(m.local, local)
 	}
 	w.c.ur.musts = append(w.c.ur.musts, m)
 }

@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module ext-def {
+  namespace "urn:vibe-ports:yang:conformance:ext-def";
+  prefix e;
+  extension x;
+}

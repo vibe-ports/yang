@@ -133,3 +133,14 @@ func TestUsesWorkWildcard(t *testing.T) {
 	}
 	t.Logf("work %d, %d diagnostics", h.c.work, len(diags))
 }
+
+// TestTopLevelUsesExtUnsupported: extension instances of a top-level uses (or its grouping) have
+// no parent to go to; libyang dereferences NULL there, we refuse (U-0038).
+func TestTopLevelUsesExtUnsupported(t *testing.T) {
+	src := `module b { namespace urn:b; prefix b; extension e;
+	  grouping g { leaf l { type string; } } uses g { b:e; } }`
+	h := newNodeHarness(t, Options{}, mapFS(map[string]string{"b.yang": src}))
+	if _, _, loadErr, err := h.load("b"); loadErr != nil || !errors.Is(err, ErrUnsupported) {
+		t.Fatalf("got %v %v, want ErrUnsupported", loadErr, err)
+	}
+}

@@ -65,8 +65,10 @@ type nodeCtx struct {
 	groupings map[*parser.Node]bool                    // ctx->groupings: the uses stack
 	grpIdx    map[*parser.Node]map[string]*parser.Node // groupings by name per parent (module: &Parsed.Node)
 	pparent   map[*parser.Node]*parser.Node
-	indexed   map[*pmod]bool // pparent holds the nodes of these (sub)modules
-	from      map[any]*pmod  // origin: where values added by a refine are written
+	indexed   map[*pmod]bool            // pparent holds the nodes of these (sub)modules
+	from      map[any]*pmod             // origin: where values added by a refine are written
+	rfnExts   map[*parser.Node][]stmtIn // refines whose extension instances a refined copy got
+	mustLocal map[*schema.Must]*pmod    // musts a refine added: the module they are written in
 }
 
 // compileNodes is the data-node part of lys_compile (SC:1776-1814), the entry point of the
@@ -94,6 +96,7 @@ func (c *Context) compileNodes(m *Module, out *schema.Module) error {
 	w := &nodeCtx{c: c, cur: out, pm: &m.pmod, fl: map[*schema.Node]int{},
 		tc:      &typeCtx{cur: out, pmod: &m.pmod, parsed: parsed, cache: c.typeCache, budget: c.opts.Budget, types: c.types},
 		pparent: map[*parser.Node]*parser.Node{}, indexed: map[*pmod]bool{}, from: map[any]*pmod{},
+		rfnExts: map[*parser.Node][]stmtIn{}, mustLocal: map[*schema.Must]*pmod{},
 		pendingOf: map[*parser.Node]int{}, groupings: map[*parser.Node]bool{}, grpIdx: map[*parser.Node]map[string]*parser.Node{}}
 	w.tc.iff = w.iffeatures
 	w.path.init(out)
@@ -247,7 +250,7 @@ func (w *nodeCtx) nodeGenericRest(pn *parser.Node, parent *schema.Node, inherite
 	if n.Kind == schema.Input || n.Kind == schema.Output {
 		n.Name = pn.Kind
 	}
-	enabled, err := w.iffeatures(w.pm, pn.IfFeatures)
+	enabled, err := w.ifFeature(pn.IfFeatures) // refine-added ones in the refine's module
 	if err != nil {
 		return err
 	}
@@ -279,6 +282,11 @@ func (w *nodeCtx) nodeGenericRest(pn *parser.Node, parent *schema.Node, inherite
 	}
 	if n.Exts, err = w.compileExts(pn.Stmt, n, n.Exts); err != nil {
 		return err
+	}
+	for _, rs := range w.rfnExts[pn] { // DUP_EXTS of lys_apply_refine: after the node's own
+		if n.Exts, err = w.compileExtsIn(rs.pm, rs.stmt, n, n.Exts); err != nil {
+			return err
+		}
 	}
 	if n.Mandatory {
 		mandatoryParents(parent)
@@ -656,7 +664,11 @@ func (w *nodeCtx) musts(pn *parser.Node, n *schema.Node) error {
 		if err != nil {
 			return err
 		}
-		n.Musts = append(n.Musts, &schema.Must{Src: pm.Arg, Msg: pm.ErrorMessage, AppTag: pm.ErrorAppTag, Ctx: ns, Compiled: e})
+		must := &schema.Must{Src: pm.Arg, Msg: pm.ErrorMessage, AppTag: pm.ErrorAppTag, Ctx: ns, Compiled: e}
+		if o := w.origin(pm); o != w.pm {
+			w.mustLocal[must] = o // a refine's must: local module of its unres check
+		}
+		n.Musts = append(n.Musts, must)
 	}
 	if n.Kind != schema.Input && n.Kind != schema.Output { // their musts are added by action
 		w.addMusts(n)

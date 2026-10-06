@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module ext-grp-b {
+  namespace "urn:vibe-ports:yang:conformance:ext-grp-b";
+  prefix gb;
+  import ext-def { prefix gx; }
+  grouping g { gx:x; leaf l { type string; } }
+}

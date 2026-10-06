@@ -365,8 +365,10 @@ func (w *nodeCtx) refineNode(rfn *parser.Node, pm *pmod, t *parser.Node) error {
 			w.from[f] = pm
 		}
 	}
-	// extension instances (design 06 C4b compiles them)
-	t.Exts = append(slices.Clip(t.Exts), rfn.Exts...)
+	// extension instances: compiled into the node after its own (nodeGenericRest)
+	if len(rfn.Exts) > 0 {
+		w.rfnExts[t] = append(w.rfnExts[t], stmtIn{rfn.Stmt, pm})
+	}
 	return nil
 }
 
