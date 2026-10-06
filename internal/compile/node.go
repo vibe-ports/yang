@@ -1169,7 +1169,7 @@ func (w *nodeCtx) choiceDflt(dflt string, pm *pmod, ch *schema.Node) error {
 	if ch.Mandatory {
 		return w.errf(ly.Semantics, "Invalid mandatory choice with a default case.")
 	}
-	ch.DefaultCase = cs
+	ch.DefaultCase, ch.DefaultCaseName = cs, cs.Name
 	return nil
 }
 

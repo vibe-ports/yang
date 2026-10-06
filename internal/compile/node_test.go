@@ -145,8 +145,8 @@ func dumpTree(m *schema.Module) []gNode { // lysc_module_dfs_full order (Module.
 				g.Keys = append(g.Keys, k.Name)
 			}
 		}
-		if n.DefaultCase != nil {
-			g.Defaults = []string{n.DefaultCase.Name}
+		if n.DefaultCaseName != "" {
+			g.Defaults = []string{n.DefaultCaseName}
 		}
 		for _, d := range n.Default { // lyoracle dflt_json: canonical, the text when it fails
 			v, diag := types.Store(n.Type, d.Lex, types.FormatSchemaResolved, types.HintSchema, d.NS, n)

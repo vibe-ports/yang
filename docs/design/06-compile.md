@@ -570,7 +570,7 @@ Revision, Namespace, Prefix, Implemented, FeatureEnabled(name), Features() iter.
 Identities(), Top()`. `SchemaNode`: `Kind, Name, Module, Parent, Children(), Actions(),
 Notifications(), Child(mod, name), Path()` (LYSC_PATH_LOG), `Config, Mandatory, Presence,
 UserOrdered, Keys(), MinElements, MaxElements, Defaults() iter.Seq[string]` (canonical, the text when
-it cannot be stored without data: lyd_value_validate_dflt), `DefaultCase, Type, Musts(), Whens(),
+it cannot be stored without data: lyd_value_validate_dflt), `DefaultCase, DefaultCaseName` (D-0070), `Type, Musts(), Whens(),
 Status, Units, Extensions(), HasExtensionList, LeafrefTargets()`. `Type`: `Base, Typedef, Members(),
 LeafrefPath, RequireInstance, FractionDigits, Enums(), Bits(), Bases(), Patterns(), Range(),
 Length()`. `Identity`: `Name, Module, Derived()`. `Must`: `Expr, ErrorAppTag, ErrorMessage`. `When`:

@@ -318,8 +318,13 @@ func (n *Node) Defaults() iter.Seq[string] {
 	}
 }
 
-// DefaultCase is the default case of a choice, nil if none.
+// DefaultCase is the default case of a choice, nil if none or if it was removed by an
+// if-feature.
 func (n *Node) DefaultCase() *Node { return wrapNode(n.n.DefaultCase) }
+
+// DefaultCaseName is the name the choice's default statement names, also when that case was
+// removed by an if-feature (DefaultCase is nil then; libyang still reports the name, D-0070).
+func (n *Node) DefaultCaseName() string { return n.n.DefaultCaseName }
 
 // Type is the type of a leaf or leaf-list, nil for other nodes.
 func (n *Node) Type() *Type {

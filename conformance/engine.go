@@ -267,8 +267,8 @@ func nodeJSON(n *yang.SchemaNode) map[string]any {
 	for d := range n.Defaults() {
 		dflts = append(dflts, d)
 	}
-	if c := n.DefaultCase(); c != nil {
-		dflts = []any{c.Name()}
+	if c := n.DefaultCaseName(); c != "" { // also a default case removed as disabled (D-0070)
+		dflts = []any{c}
 	}
 	if dflts != nil {
 		o["defaults"] = dflts

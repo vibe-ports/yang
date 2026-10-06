@@ -11,6 +11,27 @@ import (
 	"github.com/vibe-ports/yang"
 )
 
+// TestDisabledDefaultCase: a default case removed by its if-feature is not reachable; only its
+// name is kept (D-0070).
+func TestDisabledDefaultCase(t *testing.T) {
+	ctx, _, err := yang.NewContext(yang.Options{}, fstest.MapFS{"d.yang": {Data: []byte(`module d { yang-version 1.1;
+  namespace urn:d; prefix d; feature f;
+  choice ch { default a; case a { if-feature f; leaf x { type string; } } case b { leaf y { type string; } } } }`)}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ctx.Load("d", "", nil); err != nil {
+		t.Fatal(err)
+	}
+	for ch := range ctx.Schema().Implemented("d").Top() {
+		if ch.DefaultCase() != nil || ch.DefaultCaseName() != "a" {
+			t.Fatalf("default case %v, name %q", ch.DefaultCase(), ch.DefaultCaseName())
+		}
+		return
+	}
+	t.Fatal("no choice")
+}
+
 // TestHandlesOpaque: no handle type exposes a field, so a caller can reach nothing to write.
 func TestHandlesOpaque(t *testing.T) {
 	for _, typ := range []reflect.Type{reflect.TypeFor[yang.Schema](), reflect.TypeFor[yang.Module](),

@@ -231,13 +231,16 @@ type Node struct {
 	Uniques                     [][]*Node      // list: the leaves of each unique statement, in statement order
 	Min, Max                    uint32         // min-elements, max-elements; Max 0 = unbounded
 	Default                     []DefaultValue // leaf, leaf-list
-	DefaultCase                 *Node          // choice: the default case, nil if none
-	Type                        *Type          // leaf, leaf-list
-	Units                       string         // leaf, leaf-list: own units, else inherited from the typedef chain
-	Musts                       []*Must
-	Whens                       []*When
-	Status                      Status
-	Exts                        []*ExtInstance
+	DefaultCase                 *Node          // choice: the default case, nil if none or removed as disabled
+	// DefaultCaseName is the name of a choice's default case, kept when the case itself was
+	// removed as disabled: libyang still dumps that name (D-0070). Never a node to follow.
+	DefaultCaseName string
+	Type            *Type  // leaf, leaf-list
+	Units           string // leaf, leaf-list: own units, else inherited from the typedef chain
+	Musts           []*Must
+	Whens           []*When
+	Status          Status
+	Exts            []*ExtInstance
 }
 
 // Keyless reports whether n is a list without keys (libyang LYS_KEYLESS).

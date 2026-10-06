@@ -71,5 +71,8 @@ func unlink(n *schema.Node) {
 		drop(&p.Notifs)
 	default:
 		drop(&p.Children)
+		if p.DefaultCase == n {
+			p.DefaultCase = nil // its name stays in DefaultCaseName (D-0070)
+		}
 	}
 }
