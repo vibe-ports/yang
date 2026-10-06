@@ -304,6 +304,11 @@ func unlink(n *Node) {
 	sib.hashRemove(n)
 	if n.schema != nil && !sib.has(n.schema) {
 		sib.runGone(n.schema)
+	} else if n.inRB && !slices.ContainsFunc(sib.list, func(x *Node) bool { return x.schema == n.schema && x.inRB }) {
+		// the last RB-tree member left while instances appended outside the tree remain:
+		// rb_remove_node empties the tree, so the next sorted insertion builds it again from the
+		// whole run and re-sorts it (lyds_additionally_create_rb_tree)
+		sib.runGone(n.schema)
 	}
 	npContDfltSet(detach(n)) // the last non-default node may be gone
 }

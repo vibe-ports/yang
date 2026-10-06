@@ -555,6 +555,31 @@ func TestBulkWork(t *testing.T) {
 // TestRBTreeRun: instances appended to a run after its RB tree exists stay outside it; the next
 // sorted insertion goes right after its RB predecessor (lyds_link_data_node), the run is not
 // re-sorted: [3,4,5] sorted, 1 appended by schema, then 6 → 3,4,5,6,1.
+func TestRBTreeRunEmptied(t *testing.T) {
+	// issue #101: 5,3 sorted (RB tree 3,5), 9 and 1 appended by schema outside the tree, 5 and 3
+	// unlinked (the tree is empty), then 4 sorted → libyang 1,4,9 (the run is re-sorted).
+	f := newFixture()
+	tr := newTree(f.set)
+	c := newInner(f.c)
+	tr.insert(nil, c, insertDefault)
+	var inTree []*Node
+	for _, v := range []string{"5", "3"} {
+		n := f.term(t, f.ll, v)
+		tr.insert(c, n, insertDefault)
+		inTree = append(inTree, n)
+	}
+	for _, v := range []string{"9", "1"} {
+		tr.insert(c, f.term(t, f.ll, v), insertLastBySchema)
+	}
+	for _, n := range inTree {
+		unlink(n)
+	}
+	tr.insert(c, f.term(t, f.ll, "4"), insertDefault)
+	if got := names(c.Children()); !reflect.DeepEqual(got, []string{"ll=1", "ll=4", "ll=9"}) {
+		t.Fatalf("%v", got)
+	}
+}
+
 func TestRBTreeRun(t *testing.T) {
 	f := newFixture()
 	tr := newTree(f.set)
