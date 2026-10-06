@@ -25,10 +25,14 @@ type FieldSkipper interface {
 // Yang is the engine of this repository (package yang).
 type Yang struct{}
 
-// SkippedFields implements FieldSkipper: the YANG printer of compiled modules is not ported.
+// SkippedFields implements FieldSkipper: the YANG printer of compiled modules is not ported,
+// nor the typed dump of data trees (it needs value type details package data does not export).
 func (Yang) SkippedFields(op string) []string {
-	if op == "schema" {
+	switch op {
+	case "schema":
 		return []string{"compiled"}
+	case "data":
+		return []string{"typed"}
 	}
 	return nil
 }
@@ -41,16 +45,52 @@ var ctxOptions = map[string]func(*yang.Options){
 	"compile_obsolete":    func(o *yang.Options) { o.CompileObsolete = true },
 }
 
-// Run implements Engine for op "schema" (lyoracle.c op_schema/build_ctx/dump_schema).
+// Run implements Engine for ops "schema" (lyoracle.c op_schema/build_ctx/dump_schema) and
+// "data" (op_data, datastore data types).
 func (Yang) Run(r Request) (Response, error) {
-	if op, _ := r.Params["op"].(string); op != "schema" {
+	op, _ := r.Params["op"].(string)
+	if op != "schema" && op != "data" {
 		return nil, ErrUnsupported
 	}
+	ctx, resp, mods, verdict, err := buildContext(r)
+	if err != nil {
+		return nil, err
+	}
+	resp["op"] = op
+	resp["modules"] = mods
+	if op == "data" {
+		if verdict != "valid" {
+			return nil, fmt.Errorf("%w: data request with a rejected module", ErrUnsupported)
+		}
+		if err := runData(r, ctx.Schema(), resp); err != nil {
+			return nil, err
+		}
+	} else {
+		s := ctx.Schema()
+		for _, m := range mods {
+			if m["accepted"] == true {
+				if mod := s.Implemented(m["name"].(string)); mod != nil {
+					dumpSchema(m, s, mod)
+				}
+			}
+		}
+		resp["verdict"] = verdict
+	}
+	b, err := json.Marshal(resp)
+	if err != nil {
+		return nil, err
+	}
+	return ParseResponse(b) // json.Number like the goldens
+}
+
+// buildContext is lyoracle.c build_ctx: the context, the response with its module entries and
+// "valid" unless a module was rejected.
+func buildContext(r Request) (*yang.Context, map[string]any, []map[string]any, string, error) {
 	var opts yang.Options
 	for _, o := range list(r.Params["context_options"]) {
 		set, ok := ctxOptions[fmt.Sprint(o)]
 		if !ok {
-			return nil, fmt.Errorf("%w: context option %v", ErrUnsupported, o)
+			return nil, nil, nil, "", fmt.Errorf("%w: context option %v", ErrUnsupported, o)
 		}
 		set(&opts)
 	}
@@ -60,11 +100,11 @@ func (Yang) Run(r Request) (Response, error) {
 	}
 	ctx, cdiags, err := yang.NewContext(opts, dirs...)
 	if err != nil {
-		return nil, unsupported(err)
+		return nil, nil, nil, "", unsupported(err)
 	}
-	resp := map[string]any{"op": "schema", "protocol": 2, "context_diagnostics": diagsJSON(cdiags, "context")}
+	resp := map[string]any{"protocol": 2, "context_diagnostics": diagsJSON(cdiags, "context")}
 	verdict := "valid"
-	var mods []map[string]any
+	mods := []map[string]any{}
 	for _, x := range list(r.Params["modules"]) {
 		req, _ := x.(map[string]any)
 		name, _ := req["name"].(string)
@@ -81,7 +121,7 @@ func (Yang) Run(r Request) (Response, error) {
 		m["diagnostics"] = diagsJSON(diags, "")
 		switch {
 		case errors.Is(err, yang.ErrUnsupported) || errors.Is(err, yang.ErrBudget):
-			return nil, unsupported(err)
+			return nil, nil, nil, "", unsupported(err)
 		case err != nil:
 			verdict = "invalid"
 			m["accepted"] = false
@@ -99,21 +139,7 @@ func (Yang) Run(r Request) (Response, error) {
 		}
 		mods = append(mods, m)
 	}
-	s := ctx.Schema()
-	for _, m := range mods {
-		if m["accepted"] == true {
-			if mod := s.Implemented(m["name"].(string)); mod != nil {
-				dumpSchema(m, s, mod)
-			}
-		}
-	}
-	resp["modules"] = mods
-	resp["verdict"] = verdict
-	b, err := json.Marshal(resp)
-	if err != nil {
-		return nil, err
-	}
-	return ParseResponse(b) // json.Number like the goldens
+	return ctx, resp, mods, verdict, nil
 }
 
 func unsupported(err error) error { return fmt.Errorf("%w: %s", ErrUnsupported, err.Error()) }
@@ -151,13 +177,9 @@ func diagsJSON(ds []yang.Diagnostic, phase string) []any {
 		if d.Warning {
 			level = "warning"
 		}
-		var sp any
-		if d.SchemaPath != "" {
-			sp = d.SchemaPath
-		}
 		out = append(out, map[string]any{"phase": p, "level": level, "code": codeJSON(d.Err),
-			"vecode": slices.Index(vecodes, d.Code), "vecode_name": d.Code, "data_path": nil, "schema_path": sp,
-			"apptag": nil, "line": d.Line, "msg": d.Msg})
+			"vecode": slices.Index(vecodes, d.Code), "vecode_name": d.Code, "data_path": opt(d.DataPath),
+			"schema_path": opt(d.SchemaPath), "apptag": opt(d.AppTag), "line": d.Line, "msg": d.Msg})
 	}
 	return out
 }

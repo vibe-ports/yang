@@ -6,7 +6,7 @@ import "testing"
 
 // agreeFloor is the number of fixtures that agree (with or without skipped fields) on main; a
 // change that lowers it is a regression.
-const agreeFloor = 488
+const agreeFloor = 1011
 
 // TestYangEngineSchema runs every fixture through package yang and logs the tally.
 func TestYangEngineSchema(t *testing.T) {
@@ -21,6 +21,11 @@ func TestYangEngineSchema(t *testing.T) {
 	}
 	t.Logf("agree %d, agree (skipped fields) %d, differ %d, deviation %d, unsupported %d", counts[Agree],
 		counts[AgreeSkipped], counts[Differ], counts[Deviation], counts[Unsupported])
+	for _, r := range rep.Results {
+		if r.Status == Differ && testing.Verbose() {
+			t.Logf("differ %s: %s", r.ID, r.Detail)
+		}
+	}
 	if n := counts[Agree] + counts[AgreeSkipped]; n < agreeFloor {
 		t.Errorf("%d fixtures agree, fewer than %d", n, agreeFloor)
 	}

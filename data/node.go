@@ -2,8 +2,6 @@
 // Ported from libyang v5.8.6 src/tree_data.h, src/tree_data.c and src/tree_data_common.c
 // (BSD-3-Clause, © CESNET).
 
-// Package data is the YANG data tree (design 02, design 07): nodes, insertion order, parsing,
-// validation and printing over a compiled schema.
 package data
 
 import (

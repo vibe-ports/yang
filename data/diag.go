@@ -26,6 +26,19 @@ type ValidationError struct {
 // lexer's error that libyang does not log.
 func (e *ValidationError) Unwrap() error { return e.err }
 
+// RC is the name of libyang's LY_ERR return code of the failed call ("LY_EVALID", "LY_EINVAL"
+// for the nesting limits and the key refusal of Remove, "LY_EINCOMPLETE", ...): that of the last
+// error logged, which is what the call returns (LY_VAL_ERR_GOTO keeps the latest failure),
+// LY_EVALID when nothing was logged.
+func (e *ValidationError) RC() string {
+	for i := len(e.Diags) - 1; i >= 0; i-- {
+		if !e.Diags[i].Warning {
+			return e.Diags[i].Err
+		}
+	}
+	return "LY_EVALID"
+}
+
 func (e *ValidationError) Error() string {
 	for _, d := range e.Diags {
 		if !d.Warning {

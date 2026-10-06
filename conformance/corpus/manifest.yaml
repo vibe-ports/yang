@@ -198,6 +198,36 @@ fixtures:
         - {do: dump, with_defaults: explicit}
     golden: golden/when-auto-delete.json
 
+  - id: protocol-v2/when-meta-requeue
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC7950#7.21.5", "RFC7952#5.2"]
+    areas: [validation]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2-meta}]
+      format: json
+      data_type: config
+      data_file: data/when-meta-requeue.json
+      with_defaults: explicit
+    golden: golden/when-meta-requeue.json
+
+  - id: protocol-v2/yanglib-state-mandatory
+    dir: protocol-v2
+    source: *own
+    rfc: ["RFC8525#4", "RFC7950#7.6.5"]
+    areas: [validation]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2-meta}]
+      format: json
+      data_type: data
+      data: '{"pv2-meta:c": {"x": "y"}}'
+      with_defaults: explicit
+    golden: golden/yanglib-state-mandatory.json
+
   - id: protocol-v2/implicit-defaults
     dir: protocol-v2
     source: *own
