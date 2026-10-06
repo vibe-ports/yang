@@ -81,6 +81,10 @@ type parseOpts struct {
 	storeOnly bool // LYD_PARSE_STORE_ONLY: no restriction checks of values
 	whenTrue  bool // LYD_PARSE_WHEN_TRUE: nodes with a when start as FlagWhenTrue
 	noNew     bool // LYD_PARSE_NO_NEW: nodes are not FlagNew
+	// LYD_PARSE_JSON_NULL: a JSON null value creates nothing
+	jsonNull bool
+	// LYD_PARSE_JSON_STRING_DATATYPES: numbers and booleans may come as JSON strings
+	jsonStringDatatypes bool
 }
 
 // lydCtx is struct lyd_ctx: the state the format parsers share with the common helpers.

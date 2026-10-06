@@ -97,6 +97,7 @@ type Lexer struct {
 	line   uint64
 	status []Token
 	value  string
+	strEnd int // input offset of the last string's closing quote, -1 when it had escapes
 	backup struct {
 		status Token
 		count  int
@@ -126,6 +127,16 @@ func (l *Lexer) Line() uint64 { return l.line }
 
 // Offset is the number of input bytes consumed so far.
 func (l *Lexer) Offset() int { return l.pos }
+
+// AfterString is what a C "%.<n>s" of the end of the last string value reads: libyang's value
+// points into the input when the string had no escapes, so the input from its closing quote on,
+// else at the end of a NUL-terminated copy, "".
+func (l *Lexer) AfterString(n int) string {
+	if l.strEnd < 0 {
+		return ""
+	}
+	return string(l.in[l.strEnd:min(l.strEnd+n, len(l.in))])
+}
 
 // cur is *in->current: the NUL terminator reads as 0.
 func (l *Lexer) cur() byte { return l.at(l.pos) }
@@ -504,9 +515,9 @@ func (l *Lexer) str() error {
 		case '"':
 			l.pos = p + 1
 			if escaped {
-				l.value = string(append(buf, in[run:p]...))
+				l.value, l.strEnd = string(append(buf, in[run:p]...)), -1
 			} else {
-				l.value = string(in[run:p])
+				l.value, l.strEnd = string(in[run:p]), p
 			}
 			return nil
 		default:
