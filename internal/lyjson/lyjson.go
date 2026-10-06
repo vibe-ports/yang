@@ -9,7 +9,8 @@
 // Input is treated like libyang's NUL-terminated memory input: the first NUL byte ends the input.
 //
 // Budgets: the status stack is bounded by [MaxDepth] (libyang's own limit, exceeding it fails with
-// an error wrapping [ErrNesting]); numbers are bounded by libyang's 22-byte limit; strings and
+// an error wrapping [ErrNesting]); numbers are bounded by libyang's 22-byte limit, except a zero
+// exponent, which keeps the mantissa unbounded, and a zero mantissa, which gives "0" (as libyang); strings and
 // names are bounded by the input, whose size the caller limits (design 07 U-0040).
 package lyjson
 
