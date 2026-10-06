@@ -28496,6 +28496,25 @@ fixtures:
       rfc: ["RFC7950#7.14"]
       deviation: null
 
+  - id: ut-parser/json-rpc-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_rpc:788 (step 1, edit-data parse; ietf-netconf-nmda + ietf-origin from tests/modules/yang, see ietf/SOURCE.md)
+    rfc: ["RFC7950#7.14"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1, ../ietf]
+      modules: [{name: "a"}, {name: "ietf-netconf-nmda"}]
+      format: "json"
+      data_type: "rpc"
+      data: "{\"ietf-netconf-nmda:edit-data\":{\"datastore\":\"ietf-datastores:running\",\"config\":{\"a:cp\":{\"z\":[null],\"@z\":{\"ietf-netconf:operation\":\"replace\"}},\"a:l1\":[{\"@\":{\"ietf-netconf:operation\":\"replace\"},\"a\":\"val_a\",\"b\":\"val_b\",\"c\":\"val_c\"}]}}}"
+      unknown: "reject"
+    golden: golden/json-rpc-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.14"]
+      deviation: null
+
   - id: ut-parser/xml-leaf-01
     dir: ut-parser
     source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaf:81

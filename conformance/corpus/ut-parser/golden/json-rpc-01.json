@@ -1,0 +1,271 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ietf-netconf-nmda",
+      "revision": "2019-01-07"
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"ietf-netconf-nmda:edit-data\": {\n    \"datastore\": \"ietf-datastores:running\",\n    \"config\": {\n      \"a:cp\": {\n        \"z\": [null],\n        \"@z\": {\n          \"ietf-netconf:operation\": \"replace\"\n        }\n      },\n      \"a:l1\": [\n        {\n          \"@\": {\n            \"ietf-netconf:operation\": \"replace\"\n          },\n          \"a\": \"val_a\",\n          \"b\": \"val_b\",\n          \"c\": \"val_c\"\n        }\n      ]\n    }\n  }\n}\n",
+    "xml": "<edit-data xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-nmda\">\n  <datastore xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">ds:running</datastore>\n  <config>\n    <cp xmlns=\"urn:tests:a\">\n      <z xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:operation=\"replace\"/>\n    </cp>\n    <l1 xmlns=\"urn:tests:a\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:operation=\"replace\">\n      <a>val_a</a>\n      <b>val_b</b>\n      <c>val_c</c>\n    </l1>\n  </config>\n</edit-data>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "rpc",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf-nmda:edit-data",
+      "schema": "/ietf-netconf-nmda:edit-data",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf-nmda:edit-data/datastore",
+      "schema": "/ietf-netconf-nmda:edit-data/input/datastore",
+      "value": {
+        "canonical": "ietf-datastores:running",
+        "type": "identityref",
+        "typedef": "datastore-ref",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf-nmda:edit-data/default-operation",
+      "schema": "/ietf-netconf-nmda:edit-data/input/default-operation",
+      "value": {
+        "canonical": "merge",
+        "type": "enumeration",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": {
+        "text": "{\n  \"a:cp\": {\n    \"z\": [null],\n    \"@z\": {\n      \"ietf-netconf:operation\": \"replace\"\n    }\n  },\n  \"a:l1\": [\n    {\n      \"@\": {\n        \"ietf-netconf:operation\": \"replace\"\n      },\n      \"a\": \"val_a\",\n      \"b\": \"val_b\",\n      \"c\": \"val_c\"\n    }\n  ]\n}\n",
+        "value_type": "datatree"
+      },
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "anydata",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf-nmda:edit-data/config",
+      "schema": "/ietf-netconf-nmda:edit-data/input/edit-content/config/config",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf-nmda:edit-data/config/a:cp",
+      "schema": "/a:cp",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [
+        {
+          "module": "ietf-netconf",
+          "name": "operation",
+          "value": "replace"
+        }
+      ],
+      "opaque": {
+        "format": "json",
+        "module": "a",
+        "name": "z",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/ietf-netconf-nmda:edit-data/config/a:cp/z",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "empty"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [
+        {
+          "module": "ietf-netconf",
+          "name": "operation",
+          "value": "replace"
+        }
+      ],
+      "opaque": {
+        "format": "json",
+        "module": "a",
+        "name": "l1",
+        "namespace": null,
+        "prefix": "a"
+      },
+      "path": "/ietf-netconf-nmda:edit-data/config/a:l1",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "list",
+          "container"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "a",
+        "name": "a",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/ietf-netconf-nmda:edit-data/config/a:l1/a",
+      "schema": null,
+      "value": {
+        "canonical": "val_a",
+        "hints": [
+          "string",
+          "num64"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "a",
+        "name": "b",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/ietf-netconf-nmda:edit-data/config/a:l1/b",
+      "schema": null,
+      "value": {
+        "canonical": "val_b",
+        "hints": [
+          "string",
+          "num64"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "a",
+        "name": "c",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/ietf-netconf-nmda:edit-data/config/a:l1/c",
+      "schema": null,
+      "value": {
+        "canonical": "val_c",
+        "hints": [
+          "string",
+          "num64"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}
