@@ -579,10 +579,12 @@ func (c *Context) parseModule(src []byte, d loadData) (m *Module, err error) {
 	if err := c.checkDups(p); err != nil {
 		return nil, err
 	}
-	// P0: features, identities and submodules (extension definitions have
-	// nothing to compile without plugins)
+	// P0: features, extensions, identities and submodules
 	collectFeatures(m)
 	if err := c.compileFeatureIffeatures(m); err != nil {
+		return nil, err
+	}
+	if err := c.compileExtensions(m); err != nil {
 		return nil, err
 	}
 	if err := c.compileIdentities(m); err != nil {

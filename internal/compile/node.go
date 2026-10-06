@@ -72,16 +72,8 @@ type nodeCtx struct {
 	mustLocal map[*schema.Must]*pmod    // musts a refine added: the module they are written in
 }
 
-// compileNodes is the data-node part of lys_compile (SC:1776-1814), the entry point of the
-// dep-set loop's compile(m): data nodes, rpcs and notifications of the main module, then the
-// same per included submodule, into out (ctx->cur_mod->compiled). The first error stops.
-func (c *Context) compileNodes(m *Module, out *schema.Module) error {
-	m.mod = out
-	for _, inc := range m.Includes {
-		if inc.Sub != nil {
-			inc.Sub.mod = out
-		}
-	}
+// newNodeCtx is the start of lys_compile / LYSC_CTX_INIT_PMOD: the compile context of m into out.
+func (c *Context) newNodeCtx(m *Module, out *schema.Module) *nodeCtx {
 	if c.typeCache == nil {
 		c.typeCache = newTypeCache()
 	}
@@ -101,6 +93,20 @@ func (c *Context) compileNodes(m *Module, out *schema.Module) error {
 		pendingOf: map[*parser.Node]int{}, groupings: map[*parser.Node]bool{}, grpIdx: map[*parser.Node]map[string]*parser.Node{}}
 	w.tc.iff = w.iffeatures
 	w.path.init(out)
+	return w
+}
+
+// compileNodes is the data-node part of lys_compile (SC:1776-1814), the entry point of the
+// dep-set loop's compile(m): data nodes, rpcs and notifications of the main module, then the
+// same per included submodule, into out (ctx->cur_mod->compiled). The first error stops.
+func (c *Context) compileNodes(m *Module, out *schema.Module) error {
+	m.mod = out
+	for _, inc := range m.Includes {
+		if inc.Sub != nil {
+			inc.Sub.mod = out
+		}
+	}
+	w := c.newNodeCtx(m, out)
 	defer func() { out.Top, c.types = slices.Concat(w.data, w.rpcs, w.notifs), w.tc.types }()
 	out.Exts = nil
 	w.precompileOwnAugments(m)

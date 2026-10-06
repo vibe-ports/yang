@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+// A metadata annotation inside an extension definition.
+module ext-def-instance-annotation {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:ext-def-instance-annotation";
+  prefix edia;
+  import ietf-yang-metadata { prefix md; }
+  extension holder {
+    md:annotation foo { type string; }
+  }
+}

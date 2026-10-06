@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+// Extension instances written inside extension definitions are compiled with the definitions
+// (lys_compile_extensions), at the path /<mod>:{extension='<name>'}/{ext-inst='<prefix:name>'}.
+module ext-def-instance-generic {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:ext-def-instance-generic";
+  prefix edig;
+  extension marker { argument arg; }
+  extension holder {
+    description "an extension definition with instances of another extension";
+    edig:marker "one";
+    edig:marker "two" { edig:marker "nested"; }
+  }
+}

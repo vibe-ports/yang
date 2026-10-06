@@ -356,3 +356,46 @@ func (w *nodeCtx) vlog(err error) error {
 	}
 	return err
 }
+
+// compileExtensions is lys_compile_extensions (called from lys_parse_in for every parsed module,
+// import-only ones too): the extension definitions of the module and its submodules (lysc_ext),
+// then the extension instances written inside them, with the log path
+// /<mod>:{extension='<name>'}/{ext-inst='<prefix:name>'}.
+func (c *Context) compileExtensions(m *Module) error {
+	pms := []*pmod{&m.pmod}
+	for _, inc := range m.Includes {
+		if inc.Sub != nil {
+			pms = append(pms, &inc.Sub.pmod)
+		}
+	}
+	m.Schema.Extensions = nil
+	for _, pm := range pms {
+		for _, ep := range pm.Parsed.Extensions {
+			m.Schema.Extensions = append(m.Schema.Extensions, &schema.Extension{Name: ep.Name, ArgName: ep.Argument, Module: m.Schema})
+		}
+	}
+	if len(m.Schema.Extensions) == 0 {
+		return nil
+	}
+	w := c.newNodeCtx(m, m.Schema)
+	defer func() { c.types = w.tc.types }()
+	i := 0
+	for _, pm := range pms {
+		w.pm, w.tc.pmod = pm, pm
+		w.path.init(m.Schema)
+		for _, ep := range pm.Parsed.Extensions {
+			ec := m.Schema.Extensions[i]
+			i++
+			w.path.update(nil, "{extension}")
+			w.path.update(nil, ep.Name)
+			exts, err := w.compileExts(ep.Stmt, nil, nil)
+			ec.Exts = exts
+			w.path.pop()
+			w.path.pop()
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}

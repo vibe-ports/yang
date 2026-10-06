@@ -87,7 +87,8 @@ type Module struct {
 	Version                           uint8 // Version1 (also when yang-version is absent) or Version11
 	Implemented                       bool
 	Imports                           []Import
-	Submodules                        []Submodule // included submodules (lys_compile_submodules), in include order
+	Submodules                        []Submodule  // included submodules (lys_compile_submodules), in include order
+	Extensions                        []*Extension // extension definitions of the module and its submodules (lysc_ext)
 	Features                          []*Feature
 	Identities                        []*Identity
 	// Top holds the top-level data nodes, then the rpcs, then the notifications, each group in
@@ -95,6 +96,13 @@ type Module struct {
 	// add to other modules live in their targets, never here.
 	Top  []*Node
 	Exts []*ExtInstance // extension instances of the module statement
+}
+
+// Extension is a compiled extension definition (lysc_ext).
+type Extension struct {
+	Name, ArgName string
+	Module        *Module
+	Exts          []*ExtInstance // extension instances written inside the definition
 }
 
 // Module.Version values (libyang LYS_VERSION_1_0, LYS_VERSION_1_1).

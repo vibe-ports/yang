@@ -1,0 +1,76 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ietf-netconf-acm {\n  namespace \"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\";\n  prefix nacm;\n\n  revision 2018-02-14;\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "ietf-netconf-acm",
+      "revision": "2018-02-14",
+      "schema_tree": []
+    },
+    {
+      "accepted": true,
+      "compiled": "module ext-def-instance-import-only-user {\n  namespace \"urn:vibe-ports:yang:conformance:ext-def-instance-import-only-user\";\n  prefix ediu;\n\n  leaf l {\n    type string;\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Ext plugin \"ly2 NACM\": Extension nacm:default-deny-write is allowed only in a data nodes, but it is placed in \"extension\" statement.",
+          "phase": "parse",
+          "schema_path": "/ext-def-instance-nacm:{extension='holder'}/{ext-inst='nacm:default-deny-write'}",
+          "vecode": 10,
+          "vecode_name": "LYVE_OTHER"
+        }
+      ],
+      "features": [],
+      "identities": [],
+      "name": "ext-def-instance-import-only-user",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ext-def-instance-import-only-user",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ext-def-instance-import-only-user:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

@@ -1,0 +1,31 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 135,
+            "name": "LY_EPLUGIN|LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Ext plugin \"ly2 metadata\": Extension md:annotation is allowed only at the top level of a YANG module or submodule, but it is placed in \"extension\" statement.",
+          "phase": "parse",
+          "schema_path": "/ext-def-instance-annotation:{extension='holder'}/{ext-inst='md:annotation'}/foo",
+          "vecode": 10,
+          "vecode_name": "LYVE_OTHER"
+        }
+      ],
+      "name": "ext-def-instance-annotation",
+      "phase": "parse"
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

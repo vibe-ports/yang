@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+// Imports a module that stays import-only: the extension definitions of an import-only module
+// are compiled at parse time too, so the plugin diagnostics of their instances still appear.
+module ext-def-instance-import-only-user {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:ext-def-instance-import-only-user";
+  prefix ediu;
+  import ext-def-instance-nacm { prefix nacm-user; }
+  leaf l { type string; }
+}
