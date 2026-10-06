@@ -153,6 +153,9 @@ func (vc *valCtx) linkType(n *Node, v types.Value, t *schema.Type) error {
 			}
 			return err // budget, cancellation
 		}
+		// targets is nil when the target was compiled away by if-feature; libyang would read it
+		// unchecked here, but never gets there: Load rejects such a module ("Target of leafref
+		// ... is disabled")
 		for _, target := range targets {
 			linkLeafrefNode(target, n)
 		}

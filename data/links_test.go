@@ -200,6 +200,26 @@ func TestLeafrefLinks(t *testing.T) {
 		t.Fatalf("free leafref:\n%v", got)
 	}
 
+	// links-change-value: lyd_new_path(UPDATE) of u to "a" (lyd_change_term_val) drops u's links
+	tr, _ = linksTree(t, true)
+	_ = tr.linkLeafrefs(&logger{set: tr.set})
+	if _, err := tr.NewPath("/lk:c/u", "a", NewPathOptions{Update: true}); err != nil {
+		t.Fatal(err)
+	}
+	want = []string{
+		"/lk:c/l[k='a']/k L[/lk:c/r /lk:c/nr] T[]",
+		"/lk:c/t[.='x'] L[/lk:c/rl[.='x']] T[]",
+		"/lk:c/t[.='y'] L[/lk:c/rl[.='y']] T[]",
+		"/lk:c/r L[/lk:c/v] T[/lk:c/l[k='a']/k]",
+		"/lk:c/rl[.='x'] L[] T[/lk:c/t[.='x']]",
+		"/lk:c/rl[.='y'] L[] T[/lk:c/t[.='y']]",
+		"/lk:c/nr L[] T[/lk:c/l[k='a']/k]",
+		"/lk:c/v L[] T[/lk:c/r]",
+	}
+	if got := dumpLinks(t, tr); !reflect.DeepEqual(got, want) {
+		t.Fatalf("change value:\n%v", got)
+	}
+
 	// links-denied: no flag, no records, LY_EDENIED
 	tr, _ = linksTree(t, false)
 	if err := tr.linkLeafrefs(&logger{set: tr.set}); !errors.Is(err, errLinksDenied) || len(dumpLinks(t, tr)) != 0 {

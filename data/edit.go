@@ -385,6 +385,7 @@ func (t *Tree) changeTermVal(n *Node, v types.Value, dflt bool) (valChange, dflt
 	if !types.Equal(n.value, v) {
 		t.changeNodeValue(n, v)
 		valChange = true
+		freeLinks(n) // the changed value drops its leafref links (LY_CTX_LEAFREF_LINKING)
 		n.flags |= FlagNew
 	}
 	switch {
