@@ -1,19 +1,28 @@
 #!/usr/bin/env bash
 # Print where libyang v5.8.6 defines a function/macro/struct/typedef/enum, and its full body.
 # Usage: scripts/lyfn [-n] <C-symbol> [more...]     (-n: location only, no body)
-# Output: "== src/file.c:FIRST-LAST symbol ==" followed by the lines.
-#        scripts/lyfn --callers|--callees <fn> [more...]   ("file:line function" lines, via cscope)
+#        scripts/lyfn --callers <fn> [more...]       "file:line caller" lines (cscope; matched by NAME, so
+#                                                    same-named statics in different files are not told apart)
+#        scripts/lyfn --callees [--all] <fn> [more...]   per definition, "== file:first-last fn ==" then
+#                                                    "file:line callee" for call sites inside that range;
+#                                                    ALL_CAPS macros and assert are dropped unless --all
+# Output of the default mode: "== src/file.c:FIRST-LAST symbol ==" followed by the lines.
 # Needs universal-ctags, plus cscope for --callers/--callees (macOS: `brew install universal-ctags cscope`;
 # dev container: preinstalled).
 # Sources: .cache/libyang (`make libyang-src` runs automatically if absent); LYFN_SRC overrides the dir.
 set -euo pipefail
-usage() { echo "usage: scripts/lyfn [-n | --callers | --callees] <C-symbol> [more...]" >&2; exit 2; }
-loc_only=0 mode=
-case ${1:-} in
-  -n) loc_only=1; shift ;;
-  --callers) mode=3; shift ;;  # cscope query 3: functions calling X
-  --callees) mode=2; shift ;;  # cscope query 2: functions called by X
-esac
+usage() { echo "usage: scripts/lyfn [-n | --callers | --callees [--all]] <C-symbol> [more...]" >&2; exit 2; }
+loc_only=0 mode= all=0
+while [[ ${1:-} == -* ]]; do
+  case $1 in
+    -n) loc_only=1 ;;
+    --callers) mode=callers ;;
+    --callees) mode=callees ;;
+    --all) all=1 ;;
+    *) usage ;;
+  esac
+  shift
+done
 (( $# )) || usage
 
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -30,28 +39,31 @@ if [[ -n $mode ]]; then
     (cd "$src" && find src -name '*.[ch]' | sort >cscope.files && cscope -b -k -i cscope.files) \
       || { echo "lyfn: cscope build failed" >&2; exit 1; }
   fi
-  rc=0
+fi
+
+ctags=
+if [[ $mode != callers ]]; then
+  for c in universal-ctags ctags; do
+    if command -v "$c" >/dev/null 2>&1 && "$c" --version 2>/dev/null | grep -q '^Universal Ctags'; then ctags=$c; break; fi
+  done
+  [[ -n $ctags ]] || { echo "lyfn: universal-ctags not found (BSD/Exuberant ctags will not do); macOS: brew install universal-ctags" >&2; exit 1; }
+  tags=$src/tags
+  if [[ ! -f $tags || -n $(find "$src/src" -type f -newer "$tags" -print -quit) ]]; then
+    out=$(cd "$src" && "$ctags" --options=NONE -R --quiet --fields=+ne --languages=C --langmap=C:.c.h --kinds-C=-m -f tags src 2>&1) \
+      || { echo "$out" >&2; exit 1; }
+  fi
+fi
+
+rc=0
+if [[ $mode == callers ]]; then
   for sym in "$@"; do
-    out=$(cd "$src" && cscope -d -L -"$mode" "$sym" | awk '{ print $1 ":" $3 " " $2 }' | sort -t: -k1,1 -k2,2n -u)
+    out=$(cd "$src" && cscope -d -L -3 "$sym" | awk '{ print $1 ":" $3 " " $2 }' | sort -t: -k1,1 -k2,2n -u)
     [[ -n $out ]] || { echo "lyfn: $sym: none found" >&2; rc=1; continue; }
     echo "$out"
   done
   exit "$rc"
 fi
 
-ctags=
-for c in universal-ctags ctags; do
-  if command -v "$c" >/dev/null 2>&1 && "$c" --version 2>/dev/null | grep -q '^Universal Ctags'; then ctags=$c; break; fi
-done
-[[ -n $ctags ]] || { echo "lyfn: universal-ctags not found (BSD/Exuberant ctags will not do); macOS: brew install universal-ctags" >&2; exit 1; }
-
-tags=$src/tags
-if [[ ! -f $tags || -n $(find "$src/src" -type f -newer "$tags" -print -quit) ]]; then
-  out=$(cd "$src" && "$ctags" --options=NONE -R --quiet --fields=+ne --languages=C --langmap=C:.c.h --kinds-C=-m -f tags src 2>&1) \
-    || { echo "$out" >&2; exit 1; }
-fi
-
-rc=0
 for sym in "$@"; do
   # kind<TAB>file<TAB>first<TAB>last ("-" when ctags gave no end line)
   hits=$(awk -F'\t' -v s="$sym" '$1 == s && $0 !~ /^!/ {
@@ -59,7 +71,10 @@ for sym in "$@"; do
     for (i = 4; i <= NF; i++) { if ($i ~ /^line:/) l = substr($i, 6); if ($i ~ /^end:/) e = substr($i, 5) }
     if (l != "") print $4 "\t" $2 "\t" l "\t" e }' "$tags" | sort -u)
   [[ -n $hits ]] || { echo "lyfn: $sym: not found" >&2; rc=1; continue; }
+  found=0
   while IFS=$'\t' read -r kind f first last; do
+    [[ $mode == callees && $kind != f ]] && continue
+    found=1
     # libyang puts a function's return type on the line above its name
     if [[ $kind == f ]] && (( first > 1 )) && [[ $(sed -n "$((first - 1))p" "$src/$f") =~ ^[A-Za-z_][^\;\}\#/]*$ ]]; then first=$((first - 1)); fi
     if [[ $last == - ]]; then
@@ -75,7 +90,15 @@ for sym in "$@"; do
       last=${last:-$first}
     fi
     echo "== $f:$first-$last $sym =="
-    if (( ! loc_only )); then sed -n "${first},${last}p" "$src/$f"; fi
+    if [[ $mode == callees ]]; then
+      # cscope scopes by its own parse and can bleed into neighbours: keep only sites in this definition
+      (cd "$src" && cscope -d -L -2 "$sym") | awk -v f="$f" -v a="$first" -v b="$last" -v all="$all" '
+        $1 == f && $3 >= a && $3 <= b && (all || ($2 !~ /^[A-Z_][A-Z0-9_]*$/ && $2 != "assert")) { print $1 ":" $3 " " $2 }' \
+        | sort -t: -k2,2n -u
+    elif (( ! loc_only )); then
+      sed -n "${first},${last}p" "$src/$f"
+    fi
   done <<<"$hits"
+  (( found )) || { echo "lyfn: $sym: no function definition found" >&2; rc=1; }
 done
 exit "$rc"

@@ -42,7 +42,20 @@ void mid(void)
 void top(void)
 {
     mid();
+    LY_CHECK_GOTO(1, out);
+    assert(1);
     leaf();
+}
+DEFINE_HANDLER(other)
+{
+    bleed();
+}
+C
+cat >"$t/src/c.c" <<'C'
+static void
+mid(void)
+{
+    other();
 }
 C
 export LYFN_SRC=$t
@@ -81,9 +94,21 @@ eq "unknown symbol" "lyfn: nosuch: not found" "$src/lyfn" nosuch
 rc "unknown symbol exits 1" 1 "$src/lyfn" nosuch
 rc "no args: usage, exit 2" 2 "$src/lyfn"
 eq "--callers" "src/b.c:4 mid
-src/b.c:9 top" "$src/lyfn" --callers leaf
-eq "--callees" "src/b.c:8 mid
-src/b.c:9 leaf" "$src/lyfn" --callees top
+src/b.c:11 top" "$src/lyfn" --callers leaf
+# DEFINE_HANDLER(...) is not a function to cscope: its body (bleed) is attributed to top without range scoping
+eq "--callees: scoped to the definition, macros dropped" "== src/b.c:6-12 top ==
+src/b.c:8 mid
+src/b.c:11 leaf" "$src/lyfn" --callees top
+# cscope merges same-named statics; each definition must only get its own call sites
+eq "--callees: same-named statics per file" "== src/b.c:2-5 mid ==
+src/b.c:4 leaf
+== src/c.c:1-5 mid ==
+src/c.c:4 other" "$src/lyfn" --callees mid
+eq "--callees --all keeps macros and assert" "== src/b.c:6-12 top ==
+src/b.c:8 mid
+src/b.c:9 LY_CHECK_GOTO
+src/b.c:10 assert
+src/b.c:11 leaf" "$src/lyfn" --callees --all top
 eq "--callers none" "lyfn: top: none found" "$src/lyfn" --callers top
 # BSD ctags only: lyfn must refuse with a clear message
 mkdir "$t/bin"; printf '#!/bin/sh\necho "usage: ctags [-BFTaduwvx]"\n' >"$t/bin/ctags"; chmod +x "$t/bin/ctags"
