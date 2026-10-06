@@ -1,0 +1,43 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [
+    {
+      "apptag": "must-violation",
+      "code": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "data_path": "/pv2-mb:d",
+      "level": "error",
+      "line": 0,
+      "msg": "Must condition \"dl = 'q'\" not satisfied.",
+      "phase": "data",
+      "schema_path": null,
+      "vecode": 9,
+      "vecode_name": "LYVE_DATA"
+    }
+  ],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-ma",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-mb",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 7,
+    "name": "LY_EVALID"
+  },
+  "tree": null,
+  "verdict": "invalid"
+}

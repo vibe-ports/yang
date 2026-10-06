@@ -1,0 +1,7 @@
+// Top-level data of a module sorted before pv2-mb (implicit placement fixtures).
+module pv2-ma {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-ma";
+  prefix ma;
+  leaf x { type string; }
+}

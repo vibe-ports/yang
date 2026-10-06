@@ -1,0 +1,27 @@
+// The fz module of data/public_test.go: metadata of instance-identifier type (meta_types).
+module pv2-fz {
+  yang-version 1.1;
+  namespace "urn:fz";
+  prefix fz;
+  import ietf-yang-metadata { prefix md; }
+  md:annotation ann { type string; }
+  md:annotation ref { type instance-identifier; }
+  identity b;
+  identity i1 { base b; }
+  container c {
+    must "count(l) < 50";
+    leaf s { type string; }
+    leaf n { type int32 { range "0..100"; } default 5; }
+    leaf-list ll { type uint8; }
+    list l {
+      key k;
+      unique v;
+      leaf k { type string; }
+      leaf v { type string; }
+      leaf r { type leafref { path "../../s"; } }
+    }
+    leaf w { when "../s = 'x'"; type string; }
+    leaf id { type identityref { base b; } }
+    container st { config false; leaf z { type boolean; } }
+  }
+}

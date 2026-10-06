@@ -258,7 +258,9 @@ func (vc *valCtx) addImplicit(parent, n *Node) error {
 // preceding module, not the last sibling: the node lands right before the module's first node,
 // and first is not moved, so lyd_new_implicit_r does not recurse into it and lyd_validate_tree
 // does not walk it (libyang v5.8.6 behaviour, fixtures types/print-prefixes-json and -xml).
-// An anchor at first moves first to the node.
+// An anchor at first moves first to the node. Top-level opaque nodes after the data are an
+// anchor (lyd_insert_get_next_anchor stops at them), so with any of them the node is inserted
+// normally, before them (fixtures protocol-v2/implicit-top-anchor-last, -opaque).
 // ponytail: Go's insertion position stands in for libyang's anchor search from first (they
 // agree while the module's nodes are in schema order).
 func (vc *valCtx) modInsert(n *Node) {
@@ -269,7 +271,7 @@ func (vc *valCtx) modInsert(n *Node) {
 	case fi < 0:
 		t.link(nil, sib, n, at)
 		return
-	case at == len(sib.list):
+	case at == len(sib.list) && len(sib.opq) == 0:
 		at = fi // no anchor: after first->prev
 	case at <= fi:
 		vc.modFirst = n // inserted before first: lyd_insert_node_ordby_schema moves it

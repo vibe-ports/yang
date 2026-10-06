@@ -122,33 +122,77 @@ func TestParsePublic(t *testing.T) {
 }
 
 // TestMetaTypes: metadata values that need the tree (meta_types) are checked at the end of
-// lyd_validate_unres, on the Parse path (queued by the parser) and by Validate (queued by
-// lyd_validate_tree), errors logged at the node holding the metadata. No oracle golden: libyang
-// v5.8.6 crashes draining meta_types (deviations.md, libyang crash cases).
+// lyd_validate_unres, errors logged at the node holding the metadata. Validate (lyd_validate_all,
+// meta queued by lyd_validate_tree) against the oracle's protocol-v2/meta-instid-validate
+// sequence; the Parse path has no golden (libyang crashes there, D-0064).
 func TestMetaTypes(t *testing.T) {
-	s := fzContext(t).Schema()
-	in := func(target string) string {
-		return `{"fz:c": {"s": "x", "@s": {"fz:ref": "` + target + `"}}}`
-	}
-	o := data.ParseOptions{Validate: data.ValidateOptions{MultiError: true}}
-	if _, diags, err := parse(s, in("/fz:c/s"), data.FormatJSON, o); err != nil {
-		t.Fatal(err, diags)
-	}
-	check := func(diags []yang.Diagnostic, err error) {
-		t.Helper()
-		var ve *data.ValidationError
-		if !errors.As(err, &ve) || ve.RC() != "LY_ENOTFOUND" || len(diags) != 1 || diags[0].DataPath != "/fz:c/s" {
-			t.Fatalf("%v %v", err, diags)
-		}
-	}
-	_, diags, err := parse(s, in("/fz:c/w"), data.FormatJSON, o)
-	check(diags, err)
-	o.ParseOnly = true
-	tr, _, err := parse(s, in("/fz:c/w"), data.FormatJSON, o)
+	const dir = "../conformance/corpus/protocol-v2"
+	c, _, err := yang.NewContext(yang.Options{NoYangLibrary: true}, os.DirFS(filepath.Join(dir, "schemas")))
 	if err != nil {
 		t.Fatal(err)
 	}
-	check(tr.Validate(context.Background(), data.ValidateOptions{MultiError: true}))
+	if _, err := c.Load("pv2-fz", "", nil); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(filepath.Join(dir, "golden", "meta-instid-validate.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var golden struct {
+		Steps []struct {
+			RC          struct{ Name string } `json:"rc"`
+			Diagnostics []struct {
+				Code     struct{ Name string }
+				DataPath string `json:"data_path"`
+				Apptag   string
+				Msg      string
+			}
+		}
+	}
+	if err := json.Unmarshal(b, &golden); err != nil || len(golden.Steps) != 4 {
+		t.Fatal(err)
+	}
+	in := func(target string) string {
+		return `{"pv2-fz:c": {"s": "x", "@s": {"pv2-fz:ref": "` + target + `"}}}`
+	}
+	line := func(rc string, diags []yang.Diagnostic) []string {
+		out := []string{rc}
+		for _, d := range diags {
+			out = append(out, d.Err+" "+d.DataPath+" "+d.AppTag+" "+d.Msg)
+		}
+		return out
+	}
+	po := data.ParseOptions{ParseOnly: true, NoState: true}
+	vo := data.ValidateOptions{NoState: true, MultiError: true}
+	for i, target := range []string{"/pv2-fz:c/s", "/pv2-fz:c/w"} {
+		g := golden.Steps[2*i+1]
+		want := []string{g.RC.Name}
+		for _, d := range g.Diagnostics {
+			want = append(want, d.Code.Name+" "+d.DataPath+" "+d.Apptag+" "+d.Msg)
+		}
+		tr, _, err := parse(c.Schema(), in(target), data.FormatJSON, po)
+		if err != nil {
+			t.Fatal(err)
+		}
+		diags, err := tr.Validate(context.Background(), vo)
+		rc := "LY_SUCCESS"
+		var ve *data.ValidationError
+		if errors.As(err, &ve) {
+			rc = ve.RC()
+		}
+		if got := line(rc, diags); !reflect.DeepEqual(got, want) {
+			t.Fatalf("%s: got %q, want %q", target, got, want)
+		}
+		// the Parse path drains the parser's queue the same way
+		_, pdiags, perr := parse(c.Schema(), in(target), data.FormatJSON, data.ParseOptions{NoState: true, Validate: vo})
+		rc = "LY_SUCCESS"
+		if errors.As(perr, &ve) {
+			rc = ve.RC()
+		}
+		if got := line(rc, pdiags); !reflect.DeepEqual(got, want) {
+			t.Fatalf("parse %s: got %q, want %q", target, got, want)
+		}
+	}
 }
 
 // TestWhenMetaRequeue: the JSON parser queues a node with a when once more per metadata member

@@ -1,0 +1,274 @@
+{
+  "context_diagnostics": [],
+  "failed_step": 3,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-fz",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 5,
+    "name": "LY_ENOTFOUND"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-fz:c",
+          "schema": "/pv2-fz:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "pv2-fz",
+              "name": "ref",
+              "value": "/pv2-fz:c/s"
+            }
+          ],
+          "opaque": null,
+          "path": "/pv2-fz:c/s",
+          "schema": "/pv2-fz:c/s",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "validate",
+      "implicit_diff": "{\n  \"pv2-fz:c\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"n\": 5,\n    \"@n\": {\n      \"yang:operation\": \"create\"\n    }\n  }\n}\n",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-fz:c",
+          "schema": "/pv2-fz:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "pv2-fz",
+              "name": "ref",
+              "value": "/pv2-fz:c/s"
+            }
+          ],
+          "opaque": null,
+          "path": "/pv2-fz:c/s",
+          "schema": "/pv2-fz:c/s",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-fz:c/n",
+          "schema": "/pv2-fz:c/n",
+          "value": {
+            "canonical": "5",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-fz:c",
+          "schema": "/pv2-fz:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "pv2-fz",
+              "name": "ref",
+              "value": "/pv2-fz:c/w"
+            }
+          ],
+          "opaque": null,
+          "path": "/pv2-fz:c/s",
+          "schema": "/pv2-fz:c/s",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [
+        {
+          "apptag": "instance-required",
+          "code": {
+            "err": 5,
+            "name": "LY_ENOTFOUND"
+          },
+          "data_path": "/pv2-fz:c/s",
+          "level": "error",
+          "line": 0,
+          "msg": "Invalid instance-identifier \"/pv2-fz:c/w\" value - required instance not found.",
+          "phase": "validate",
+          "schema_path": null,
+          "vecode": 9,
+          "vecode_name": "LYVE_DATA"
+        }
+      ],
+      "do": "validate",
+      "implicit_diff": "{\n  \"pv2-fz:c\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"n\": 5,\n    \"@n\": {\n      \"yang:operation\": \"create\"\n    }\n  }\n}\n",
+      "rc": {
+        "err": 5,
+        "name": "LY_ENOTFOUND"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-fz:c",
+          "schema": "/pv2-fz:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "pv2-fz",
+              "name": "ref",
+              "value": "/pv2-fz:c/w"
+            }
+          ],
+          "opaque": null,
+          "path": "/pv2-fz:c/s",
+          "schema": "/pv2-fz:c/s",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-fz:c/n",
+          "schema": "/pv2-fz:c/n",
+          "value": {
+            "canonical": "5",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "invalid"
+}

@@ -1,0 +1,12 @@
+// An implicit top-level NP container (d) of a module whose data is not the tree's first: libyang
+// places it by lyd_insert_get_next_anchor from the module's first node (pv2-ma sorts first).
+module pv2-mb {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-mb";
+  prefix mb;
+  container c { leaf v { type string; } }
+  container d {
+    must "dl = 'q'";
+    leaf dl { type string; default "q"; }
+  }
+}
