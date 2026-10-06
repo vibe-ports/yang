@@ -7,7 +7,7 @@
 # Merges only if, for the PR's current FULL head SHA:
 #  - the PR is open, not a draft, targets main of this repository (origin);
 #  - review: the LATEST canonical attestation line naming that SHA — in a never-edited PR comment
-#    (a "changes" line counts even in an edited one)
+#    (a "changes" line counts even in an edited one, dated by the edit)
 #    authored by the maintainer (numeric id MAINTAINER_ID, default 1056050), outside code fences —
 #    is   VERDICT: approve <40-hex head sha> (<reviewer>)   with reviewer codex-* or port-reviewer-*
 #    (not claude-*: that is the ai-review bot's signature, and a pasted bot line must not count)
@@ -68,12 +68,14 @@ verdict=$(gh api --paginate --slurp "repos/$repo/issues/$pr/comments" | jq -r --
       | if $c != null and $c.m[0:1] == .f[0:1] and ($c.m | length) >= (.f | length) then .f = null
         else . end
     end) | .out[];
-  # An edited comment can still revoke (changes), never approve.
+  # An edited comment can still revoke (changes), never approve. Order by when the line was last
+  # written: a "changes" edited into an old comment must outrank approvals posted before the edit
+  # (approvals are never edited, so for them updated_at == created_at).
   [ .[][] | select(.user.id == $uid) | . as $c
     | (.body // "" | unfenced
        | capture("^VERDICT: (?<v>approve|changes) (?<s>[0-9a-f]{40}) \\((codex-[A-Za-z0-9_.-]+|port-reviewer-[A-Za-z0-9_.-]+)\\)$"))
     | select(.v == "changes" or $c.updated_at == $c.created_at)
-    | {t: $c.created_at, id: $c.id, v, s} ]
+    | {t: $c.updated_at, id: $c.id, v, s} ]
   | sort_by([.t, .id]) | (map(select(.s == $sha)) | last | .v // "none") as $h | (last // {v: "none", s: "-"})
   | "\($h) \(.v) \(.s)"')
 read -r verdict last_v last_s <<<"$verdict"
