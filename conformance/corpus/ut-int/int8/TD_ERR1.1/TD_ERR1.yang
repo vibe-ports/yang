@@ -1,0 +1,5 @@
+module TD_ERR1 {
+  yang-version 1.1;
+  namespace "urn:tests:TD_ERR1";
+  prefix pref;
+leaf port {    type int8 {range "0 .. 50 | 127";}    default "-1";}}

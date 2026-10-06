@@ -1,0 +1,5 @@
+module TD_ERR3 {
+  yang-version 1.1;
+  namespace "urn:tests:TD_ERR3";
+  prefix pref;
+typedef my_int_type { type int8 {range "60 .. 127";} default "127";}leaf my_leaf {type my_int_type {range "70 .. 80";}}}

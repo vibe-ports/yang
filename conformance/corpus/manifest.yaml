@@ -10667,3 +10667,2232 @@ fixtures:
       searchdirs: [schemas]
       modules: [{"name": "must-unknown-node-parent"}]
     golden: golden/must-unknown-node-parent-warning.json
+
+# BEGIN ut-int (generated from libyang tests/utests/types/{int,uint}*.c by conformance/tools/extract-utests, reviewed)
+
+  - id: ut-int/int8-schema-yang-01
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:111
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1]
+      modules: [{name: "defs"}]
+    golden: golden/int8-schema-yang-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-02
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:129
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1]
+      modules: [{name: "defs"}, {name: "T0"}]
+    golden: golden/int8-schema-yang-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-03
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:140
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}]
+    golden: golden/int8-schema-yang-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-04
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:158
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}]
+    golden: golden/int8-schema-yang-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-05
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:174
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}]
+    golden: golden/int8-schema-yang-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-06
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:194
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}]
+    golden: golden/int8-schema-yang-06.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-07
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:210
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}]
+    golden: golden/int8-schema-yang-07.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-08
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:226
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}]
+    golden: golden/int8-schema-yang-08.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-09
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:242
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/ERR0.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "ERR0"}]
+    golden: golden/int8-schema-yang-09.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-10
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:247
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/ERR1.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "ERR1"}]
+    golden: golden/int8-schema-yang-10.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-11
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:252
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/ERR2.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "ERR2"}]
+    golden: golden/int8-schema-yang-11.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-12
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:257
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/ERR3.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "ERR3"}]
+    golden: golden/int8-schema-yang-12.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-13
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:268
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}]
+    golden: golden/int8-schema-yang-13.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-14
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:291
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1, int8/TS1.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}, {name: "TS1"}]
+    golden: golden/int8-schema-yang-14.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-15
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:311
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1, int8/TS1.1, int8/TS2.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}, {name: "TS1"}, {name: "TS2"}]
+    golden: golden/int8-schema-yang-15.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-16
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:331
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1, int8/TS1.1, int8/TS2.1, int8/TS3.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}, {name: "TS1"}, {name: "TS2"}, {name: "TS3"}]
+    golden: golden/int8-schema-yang-16.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-17
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:353
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1, int8/TS1.1, int8/TS2.1, int8/TS3.1, int8/TS4.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}, {name: "TS1"}, {name: "TS2"}, {name: "TS3"}, {name: "TS4"}]
+    golden: golden/int8-schema-yang-17.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-18
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:375
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1, int8/TS1.1, int8/TS2.1, int8/TS3.1, int8/TS4.1, int8/TS_ERR0.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}, {name: "TS1"}, {name: "TS2"}, {name: "TS3"}, {name: "TS4"}, {name: "TS_ERR0"}]
+    golden: golden/int8-schema-yang-18.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-19
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:383
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1, int8/TS1.1, int8/TS2.1, int8/TS3.1, int8/TS4.1, int8/TS_ERR1.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}, {name: "TS1"}, {name: "TS2"}, {name: "TS3"}, {name: "TS4"}, {name: "TS_ERR1"}]
+    golden: golden/int8-schema-yang-19.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-20
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:391
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1, int8/TS1.1, int8/TS2.1, int8/TS3.1, int8/TS4.1, int8/TS_ERR2.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}, {name: "TS1"}, {name: "TS2"}, {name: "TS3"}, {name: "TS4"}, {name: "TS_ERR2"}]
+    golden: golden/int8-schema-yang-20.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-21
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:399
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1, int8/TS1.1, int8/TS2.1, int8/TS3.1, int8/TS4.1, int8/TS_ERR3.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}, {name: "TS1"}, {name: "TS2"}, {name: "TS3"}, {name: "TS4"}, {name: "TS_ERR3"}]
+    golden: golden/int8-schema-yang-21.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-22
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:407
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1, int8/TS1.1, int8/TS2.1, int8/TS3.1, int8/TS4.1, int8/TS_ERR4.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}, {name: "TS1"}, {name: "TS2"}, {name: "TS3"}, {name: "TS4"}, {name: "TS_ERR4"}]
+    golden: golden/int8-schema-yang-22.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-23
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:419
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1, int8/TS1.1, int8/TS2.1, int8/TS3.1, int8/TS4.1, int8/DF0.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}, {name: "TS1"}, {name: "TS2"}, {name: "TS3"}, {name: "TS4"}, {name: "DF0"}]
+    golden: golden/int8-schema-yang-23.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-24
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:439
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1, int8/TS1.1, int8/TS2.1, int8/TS3.1, int8/TS4.1, int8/DF0.1, int8/DF1.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}, {name: "TS1"}, {name: "TS2"}, {name: "TS3"}, {name: "TS4"}, {name: "DF0"}, {name: "DF1"}]
+    golden: golden/int8-schema-yang-24.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-25
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:462
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1, int8/TS1.1, int8/TS2.1, int8/TS3.1, int8/TS4.1, int8/DF0.1, int8/DF1.1, int8/TD_ERR0.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}, {name: "TS1"}, {name: "TS2"}, {name: "TS3"}, {name: "TS4"}, {name: "DF0"}, {name: "DF1"}, {name: "TD_ERR0"}]
+    golden: golden/int8-schema-yang-25.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-26
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:472
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1, int8/TS1.1, int8/TS2.1, int8/TS3.1, int8/TS4.1, int8/DF0.1, int8/DF1.1, int8/TD_ERR1.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}, {name: "TS1"}, {name: "TS2"}, {name: "TS3"}, {name: "TS4"}, {name: "DF0"}, {name: "DF1"}, {name: "TD_ERR1"}]
+    golden: golden/int8-schema-yang-26.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-27
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:482
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1, int8/TS1.1, int8/TS2.1, int8/TS3.1, int8/TS4.1, int8/DF0.1, int8/DF1.1, int8/TD_ERR2.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}, {name: "TS1"}, {name: "TS2"}, {name: "TS3"}, {name: "TS4"}, {name: "DF0"}, {name: "DF1"}, {name: "TD_ERR2"}]
+    golden: golden/int8-schema-yang-27.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-28
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:490
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1, int8/TS1.1, int8/TS2.1, int8/TS3.1, int8/TS4.1, int8/DF0.1, int8/DF1.1, int8/TD_ERR3.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}, {name: "TS1"}, {name: "TS2"}, {name: "TS3"}, {name: "TS4"}, {name: "DF0"}, {name: "DF1"}, {name: "TD_ERR3"}]
+    golden: golden/int8-schema-yang-28.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-29
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:500
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1, int8/TS1.1, int8/TS2.1, int8/TS3.1, int8/TS4.1, int8/DF0.1, int8/DF1.1, int8/DF_HEX0.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}, {name: "TS1"}, {name: "TS2"}, {name: "TS3"}, {name: "TS4"}, {name: "DF0"}, {name: "DF1"}, {name: "DF_HEX0"}]
+    golden: golden/int8-schema-yang-29.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-30
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:516
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1, int8/TS1.1, int8/TS2.1, int8/TS3.1, int8/TS4.1, int8/DF0.1, int8/DF1.1, int8/DF_HEX0.1, int8/DF_HEX1.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}, {name: "TS1"}, {name: "TS2"}, {name: "TS3"}, {name: "TS4"}, {name: "DF0"}, {name: "DF1"}, {name: "DF_HEX0"}, {name: "DF_HEX1"}]
+    golden: golden/int8-schema-yang-30.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-31
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:532
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1, int8/TS1.1, int8/TS2.1, int8/TS3.1, int8/TS4.1, int8/DF0.1, int8/DF1.1, int8/DF_HEX0.1, int8/DF_HEX1.1, int8/DF_HEXI0.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}, {name: "TS1"}, {name: "TS2"}, {name: "TS3"}, {name: "TS4"}, {name: "DF0"}, {name: "DF1"}, {name: "DF_HEX0"}, {name: "DF_HEX1"}, {name: "DF_HEXI0"}]
+    golden: golden/int8-schema-yang-31.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-32
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:555
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1, int8/TS1.1, int8/TS2.1, int8/TS3.1, int8/TS4.1, int8/DF0.1, int8/DF1.1, int8/DF_HEX0.1, int8/DF_HEX1.1, int8/DF_HEXI0.1, int8/DF_HEX2.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}, {name: "TS1"}, {name: "TS2"}, {name: "TS3"}, {name: "TS4"}, {name: "DF0"}, {name: "DF1"}, {name: "DF_HEX0"}, {name: "DF_HEX1"}, {name: "DF_HEXI0"}, {name: "DF_HEX2"}]
+    golden: golden/int8-schema-yang-32.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-33
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:565
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1, int8/TS1.1, int8/TS2.1, int8/TS3.1, int8/TS4.1, int8/DF0.1, int8/DF1.1, int8/DF_HEX0.1, int8/DF_HEX1.1, int8/DF_HEXI0.1, int8/DF_HEX3.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}, {name: "TS1"}, {name: "TS2"}, {name: "TS3"}, {name: "TS4"}, {name: "DF0"}, {name: "DF1"}, {name: "DF_HEX0"}, {name: "DF_HEX1"}, {name: "DF_HEXI0"}, {name: "DF_HEX3"}]
+    golden: golden/int8-schema-yang-33.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-34
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:575
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1, int8/TS1.1, int8/TS2.1, int8/TS3.1, int8/TS4.1, int8/DF0.1, int8/DF1.1, int8/DF_HEX0.1, int8/DF_HEX1.1, int8/DF_HEXI0.1, int8/DF_HEX4.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}, {name: "TS1"}, {name: "TS2"}, {name: "TS3"}, {name: "TS4"}, {name: "DF0"}, {name: "DF1"}, {name: "DF_HEX0"}, {name: "DF_HEX1"}, {name: "DF_HEXI0"}, {name: "DF_HEX4"}]
+    golden: golden/int8-schema-yang-34.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-35
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:585
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1, int8/TS1.1, int8/TS2.1, int8/TS3.1, int8/TS4.1, int8/DF0.1, int8/DF1.1, int8/DF_HEX0.1, int8/DF_HEX1.1, int8/DF_HEXI0.1, int8/DF_OCT0.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}, {name: "TS1"}, {name: "TS2"}, {name: "TS3"}, {name: "TS4"}, {name: "DF0"}, {name: "DF1"}, {name: "DF_HEX0"}, {name: "DF_HEX1"}, {name: "DF_HEXI0"}, {name: "DF_OCT0"}]
+    golden: golden/int8-schema-yang-35.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-36
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:601
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1, int8/TS1.1, int8/TS2.1, int8/TS3.1, int8/TS4.1, int8/DF0.1, int8/DF1.1, int8/DF_HEX0.1, int8/DF_HEX1.1, int8/DF_HEXI0.1, int8/DF_OCT0.1, int8/DF_OCT1.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}, {name: "TS1"}, {name: "TS2"}, {name: "TS3"}, {name: "TS4"}, {name: "DF0"}, {name: "DF1"}, {name: "DF_HEX0"}, {name: "DF_HEX1"}, {name: "DF_HEXI0"}, {name: "DF_OCT0"}, {name: "DF_OCT1"}]
+    golden: golden/int8-schema-yang-36.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-37
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:617
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1, int8/TS1.1, int8/TS2.1, int8/TS3.1, int8/TS4.1, int8/DF0.1, int8/DF1.1, int8/DF_HEX0.1, int8/DF_HEX1.1, int8/DF_HEXI0.1, int8/DF_OCT0.1, int8/DF_OCT1.1, int8/DF_OCTI0.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}, {name: "TS1"}, {name: "TS2"}, {name: "TS3"}, {name: "TS4"}, {name: "DF0"}, {name: "DF1"}, {name: "DF_HEX0"}, {name: "DF_HEX1"}, {name: "DF_HEXI0"}, {name: "DF_OCT0"}, {name: "DF_OCT1"}, {name: "DF_OCTI0"}]
+    golden: golden/int8-schema-yang-37.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-38
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:633
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1, int8/TS1.1, int8/TS2.1, int8/TS3.1, int8/TS4.1, int8/DF0.1, int8/DF1.1, int8/DF_HEX0.1, int8/DF_HEX1.1, int8/DF_HEXI0.1, int8/DF_OCT0.1, int8/DF_OCT1.1, int8/DF_OCTI0.1, int8/DF_OCT2.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}, {name: "TS1"}, {name: "TS2"}, {name: "TS3"}, {name: "TS4"}, {name: "DF0"}, {name: "DF1"}, {name: "DF_HEX0"}, {name: "DF_HEX1"}, {name: "DF_HEXI0"}, {name: "DF_OCT0"}, {name: "DF_OCT1"}, {name: "DF_OCTI0"}, {name: "DF_OCT2"}]
+    golden: golden/int8-schema-yang-38.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-39
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:643
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1, int8/TS1.1, int8/TS2.1, int8/TS3.1, int8/TS4.1, int8/DF0.1, int8/DF1.1, int8/DF_HEX0.1, int8/DF_HEX1.1, int8/DF_HEXI0.1, int8/DF_OCT0.1, int8/DF_OCT1.1, int8/DF_OCTI0.1, int8/DF_OCT3.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}, {name: "TS1"}, {name: "TS2"}, {name: "TS3"}, {name: "TS4"}, {name: "DF0"}, {name: "DF1"}, {name: "DF_HEX0"}, {name: "DF_HEX1"}, {name: "DF_HEXI0"}, {name: "DF_OCT0"}, {name: "DF_OCT1"}, {name: "DF_OCTI0"}, {name: "DF_OCT3"}]
+    golden: golden/int8-schema-yang-39.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-schema-yang-40
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:653
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1, int8/TS1.1, int8/TS2.1, int8/TS3.1, int8/TS4.1, int8/DF0.1, int8/DF1.1, int8/DF_HEX0.1, int8/DF_HEX1.1, int8/DF_HEXI0.1, int8/DF_OCT0.1, int8/DF_OCT1.1, int8/DF_OCTI0.1, int8/DF_OCT4.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}, {name: "TS1"}, {name: "TS2"}, {name: "TS3"}, {name: "TS4"}, {name: "DF0"}, {name: "DF1"}, {name: "DF_HEX0"}, {name: "DF_HEX1"}, {name: "DF_HEXI0"}, {name: "DF_OCT0"}, {name: "DF_OCT1"}, {name: "DF_OCTI0"}, {name: "DF_OCT4"}]
+    golden: golden/int8-schema-yang-40.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-01
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1112
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.2]
+      modules: [{name: "defs"}]
+    golden: golden/int8-data-xml-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-02
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1114
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:defs\">+50</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-xml-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-03
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1115
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:defs\">50</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-xml-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-04
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1116
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:defs\">105</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-xml-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-05
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1117
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:defs\">0</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-xml-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-06
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1118
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:defs\">-0</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-xml-06.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-07
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1119
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:defs\">-1</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-xml-07.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-08
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1121
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:defs\">51</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-xml-08.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-09
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1123
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:defs\">106</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-xml-09.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-10
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1125
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:defs\">104</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-xml-10.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-11
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1127
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:defs\">60</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-xml-11.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-12
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1131
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.2, int8/T0.2]
+      modules: [{name: "defs"}, {name: "T0"}]
+    golden: golden/int8-data-xml-12.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-13
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1132
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2]
+      modules: [{name: "defs"}, {name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">-128</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-xml-13.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-14
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1133
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2]
+      modules: [{name: "defs"}, {name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">-100</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-xml-14.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-15
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1134
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2]
+      modules: [{name: "defs"}, {name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">0</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-xml-15.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-16
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1135
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2]
+      modules: [{name: "defs"}, {name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">10</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-xml-16.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-17
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1136
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2]
+      modules: [{name: "defs"}, {name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">50</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-xml-17.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-18
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1137
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2]
+      modules: [{name: "defs"}, {name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">127</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-xml-18.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-19
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1139
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2]
+      modules: [{name: "defs"}, {name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">-015</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-xml-19.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-20
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1140
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2]
+      modules: [{name: "defs"}, {name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">015</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-xml-20.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-21
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1141
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2]
+      modules: [{name: "defs"}, {name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">-129</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-xml-21.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-22
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1143
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2]
+      modules: [{name: "defs"}, {name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">128</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-xml-22.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-23
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1145
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2]
+      modules: [{name: "defs"}, {name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">256</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-xml-23.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-24
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1147
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2]
+      modules: [{name: "defs"}, {name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T0\">1024</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-xml-24.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-25
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1158
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.2, int8/T0.2, int8/T1.2]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}]
+    golden: golden/int8-data-xml-25.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-26
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1160
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2, int8/T1.2]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}]
+      format: "xml"
+      data_type: "data"
+      data: "<cont xmlns=\"urn:tests:T1\"></cont>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-xml-26.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-27
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1169
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.2, int8/T0.2, int8/T1.2]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}]
+    golden: golden/int8-data-xml-27.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-28
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1171
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2, int8/T1.2]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}]
+      format: "xml"
+      data_type: "data"
+      data: "<cont xmlns=\"urn:tests:T1\"><port> 30 </port></cont>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-xml-28.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-29
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1186
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.2, int8/T0.2, int8/T1.2, int8/T2.2]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}]
+    golden: golden/int8-data-xml-29.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-data-xml-30
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1188
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2, int8/T1.2, int8/T2.2]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:T2\">120</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-xml-30.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-01
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1204
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.2]
+      modules: [{name: "defs"}]
+    golden: golden/int8-data-json-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-02
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1206
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2]
+      modules: [{name: "defs"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"defs:port\":50}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-json-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-03
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1207
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2]
+      modules: [{name: "defs"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"defs:port\":50}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-json-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-04
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1208
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2]
+      modules: [{name: "defs"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"defs:port\":105}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-json-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-05
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1209
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2]
+      modules: [{name: "defs"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"defs:port\":0}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-json-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-06
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1210
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2]
+      modules: [{name: "defs"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"defs:port\":-0}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-json-06.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-07
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1211
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2]
+      modules: [{name: "defs"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"defs:port\":-1}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-json-07.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-08
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1213
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2]
+      modules: [{name: "defs"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"defs:port\":51}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-json-08.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-09
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1215
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2]
+      modules: [{name: "defs"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"defs:port\":106}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-json-09.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-10
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1217
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2]
+      modules: [{name: "defs"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"defs:port\":104}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-json-10.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-11
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1219
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2]
+      modules: [{name: "defs"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"defs:port\":60}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-json-11.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-12
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1223
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.2, int8/T0.2]
+      modules: [{name: "defs"}, {name: "T0"}]
+    golden: golden/int8-data-json-12.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-13
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1224
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2]
+      modules: [{name: "defs"}, {name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":-128}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-json-13.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-14
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1225
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2]
+      modules: [{name: "defs"}, {name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":-100}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-json-14.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-15
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1226
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2]
+      modules: [{name: "defs"}, {name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":0}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-json-15.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-16
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1227
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2]
+      modules: [{name: "defs"}, {name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":10}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-json-16.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-17
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1228
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2]
+      modules: [{name: "defs"}, {name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":50}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-json-17.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-18
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1229
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2]
+      modules: [{name: "defs"}, {name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":127}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-json-18.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-19
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1231
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2]
+      modules: [{name: "defs"}, {name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":015}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-json-19.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-20
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1233
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2]
+      modules: [{name: "defs"}, {name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":-015}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-json-20.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-21
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1235
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2]
+      modules: [{name: "defs"}, {name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"defs:port\":+50}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-json-21.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-22
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1237
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2]
+      modules: [{name: "defs"}, {name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":-129}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-json-22.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-23
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1239
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2]
+      modules: [{name: "defs"}, {name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":128}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-json-23.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-24
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1241
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2]
+      modules: [{name: "defs"}, {name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":256}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-json-24.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-25
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1243
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2]
+      modules: [{name: "defs"}, {name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":1024}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-json-25.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-26
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1254
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.2, int8/T0.2, int8/T1.2]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}]
+    golden: golden/int8-data-json-26.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-27
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1256
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2, int8/T1.2]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T1:cont\":{}}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-json-27.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-28
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1265
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.2, int8/T0.2, int8/T1.2]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}]
+    golden: golden/int8-data-json-28.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int8-data-json-29
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1267
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2, int8/T1.2]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T1:cont\":{\":port\":30}}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-json-29.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+      deviation: null
+
+  - id: ut-int/int16-data-xml-01
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int16.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:60
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int16/defs.1]
+      modules: [{name: "defs"}]
+    golden: golden/int16-data-xml-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/int16-data-xml-02
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int16.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:62
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int16/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:defs\">100</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int16-data-xml-02.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int32-data-xml-01
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int32.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:60
+    rfc: ["RFC7950#9.2"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int32/defs.1]
+      modules: [{name: "defs"}]
+    golden: golden/int32-data-xml-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2"]
+      deviation: null
+
+  - id: ut-int/int32-data-xml-02
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int32.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:62
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int32/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:defs\">0x01</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int32-data-xml-02.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int64-data-xml-01
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int64.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:60
+    rfc: ["RFC7950#9.2"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int64/defs.1]
+      modules: [{name: "defs"}]
+    golden: golden/int64-data-xml-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2"]
+      deviation: null
+
+  - id: ut-int/int64-data-xml-02
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int64.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:62
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int64/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:defs\"></port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int64-data-xml-02.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int64-data-xml-03
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int64.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:65
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int64/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:defs\">   </port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int64-data-xml-03.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/int64-data-xml-04
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int64.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:68
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int64/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:defs\">-10  xxx</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int64-data-xml-04.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/uint8-data-xml-01
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/uint8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:68
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [uint8/defs.1]
+      modules: [{name: "defs"}]
+    golden: golden/uint8-data-xml-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/uint8-data-xml-02
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/uint8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:70
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [uint8/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:defs\">\n 150 \t\n  </port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/uint8-data-xml-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/uint8-data-xml-03
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/uint8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:72
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [uint8/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:defs\">\n 15 \t\n  </port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/uint8-data-xml-03.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/uint8-data-xml-04
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/uint8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:76
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [uint8/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:defs\">\n 15 \t\n  </port>"
+      parse_only: false
+      parse_options: ["store_only"]
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/uint8-data-xml-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/uint16-data-xml-01
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/uint16.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:60
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [uint16/defs.1]
+      modules: [{name: "defs"}]
+    golden: golden/uint16-data-xml-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null
+
+  - id: ut-int/uint16-data-xml-02
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/uint16.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:62
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [uint16/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:defs\">\n 1500 \t\n  </port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/uint16-data-xml-02.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/uint32-data-xml-01
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/uint32.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:60
+    rfc: ["RFC7950#9.2"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [uint32/defs.1]
+      modules: [{name: "defs"}]
+    golden: golden/uint32-data-xml-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2"]
+      deviation: null
+
+  - id: ut-int/uint32-data-xml-02
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/uint32.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:62
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [uint32/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:defs\">-10</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/uint32-data-xml-02.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/uint64-data-xml-01
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/uint64.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:60
+    rfc: ["RFC7950#9.2"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [uint64/defs.1]
+      modules: [{name: "defs"}]
+    golden: golden/uint64-data-xml-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2"]
+      deviation: null
+
+  - id: ut-int/uint64-data-xml-02
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/uint64.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:62
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [uint64/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:defs\"></port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/uint64-data-xml-02.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/uint64-data-xml-03
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/uint64.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:65
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [uint64/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:defs\">   </port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/uint64-data-xml-03.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.1"]
+      deviation: null
+
+  - id: ut-int/uint64-data-xml-04
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/uint64.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:68
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [uint64/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:defs\">10  xxx</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/uint64-data-xml-04.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.1"]
+      deviation: null
+# END ut-int

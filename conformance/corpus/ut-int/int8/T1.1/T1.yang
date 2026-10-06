@@ -1,0 +1,5 @@
+module T1 {
+  yang-version 1.1;
+  namespace "urn:tests:T1";
+  prefix pref;
+leaf port {type int8 {range "0 .. 50 |51 .. 60";}}}

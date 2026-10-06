@@ -1,0 +1,5 @@
+module ERR1 {
+  yang-version 1.1;
+  namespace "urn:tests:ERR1";
+  prefix pref;
+leaf port {type int8 {range "0 .. 128";}}}
