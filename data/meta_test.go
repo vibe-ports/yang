@@ -219,3 +219,133 @@ func dumpTree(t *Tree) []string {
 	}
 	return out
 }
+
+// TestMetaAPI: lyd_new_meta, lyd_change_meta, lyd_compare_meta, lyd_find_meta and lyd_new_attr
+// over a parsed tree, with libyang's messages (tree_data_new.c, tree_data.c; the value error is
+// the type plugin's, located at the parent's schema node as ly_err_print does without a data node).
+func TestMetaAPI(t *testing.T) {
+	set := pjSchema()
+	pj := set.Modules[1]
+	tr, diags, err := parseJSONString(set, `{"pj:c": {"s": "a"}, "zz:o": 1}`, Opaque, true)
+	if err != nil {
+		t.Fatalf("%v %v", err, diags)
+	}
+	var c, s, o *Node
+	for n := range tr.Top() {
+		if n.schema != nil {
+			c = n
+		} else {
+			o = n
+		}
+	}
+	for n := range c.Children() {
+		s = n
+	}
+	l := &logger{set: set}
+	last := func() string {
+		if len(l.diags) == 0 {
+			return ""
+		}
+		return diagLine(l.diags[len(l.diags)-1])
+	}
+	value := func(m *meta) string { return m.value.Canonical() }
+
+	// lyd_new_meta
+	ann, err := l.newMeta(s, nil, "pj:ann", "x", false)
+	if err != nil || len(s.meta) != 1 || s.meta[0] != ann || value(ann) != "x" {
+		t.Fatalf("new pj:ann: %v %v", err, l.diags)
+	}
+	if m, err := l.newMeta(s, pj, "num", "7", false); err != nil || len(s.meta) != 2 || value(m) != "7" {
+		t.Fatalf("new num of pj: %v %v", err, l.diags)
+	}
+	if m, err := l.newMeta(nil, pj, "ann", "", false); err != nil || value(m) != "" || len(s.meta) != 2 {
+		t.Fatalf("detached: %v", err)
+	}
+	c.flags |= FlagDefault
+	if _, err := l.newMeta(c, nil, "pj:ann", "d", true); err != nil || c.flags&FlagDefault != 0 {
+		t.Fatalf("clear default: %v %x", err, c.flags)
+	}
+	if _, err := l.newMeta(s, nil, "ann", "x", false); !errors.Is(err, errMetaArg) {
+		t.Fatalf("no module: %v", err)
+	}
+	for _, e := range []struct {
+		parent          *Node
+		name, val, want string
+	}{
+		{s, "pj:num", "300", `LY_EVALID LYVE_DATA |/pj:c/s|0: Value "300" is out of type uint8 min/max bounds.`},
+		{s, "nope:ann", "x", `LY_EINVAL LYVE_SUCCESS ||0: Module "nope" not found.`},
+		{s, "pj:zz", "x", `LY_EVALID LYVE_REFERENCE /pj:c/s||0: Annotation definition for attribute "pj:zz" not found.`},
+		{s, "pj:", "x", `LY_EINVAL LYVE_SUCCESS ||0: Metadata name "" is not valid.`},
+		{s, "pj:a b", "x", `LY_EINVAL LYVE_SUCCESS ||0: Metadata name "a b" is not valid.`},
+		{s, "1x:ann", "x", `LY_EINVAL LYVE_SUCCESS ||0: Metadata name "(null)" is not valid.`},
+		{o, "pj:ann", "x", `LY_EINVAL LYVE_SUCCESS ||0: Cannot add metadata "pj:ann" to an opaque node "o".`},
+	} {
+		if _, err := l.newMeta(e.parent, nil, e.name, e.val, false); !errors.Is(err, errLogged) || last() != e.want {
+			t.Errorf("new %s=%s: %v\n%s\nwant\n%s", e.name, e.val, err, last(), e.want)
+		}
+	}
+
+	// lyd_change_meta, lyd_compare_meta
+	if changed, err := l.changeMeta(s, ann, "x"); changed || err != nil {
+		t.Fatalf("change to the same value: %v %v", changed, err)
+	}
+	if changed, err := l.changeMeta(s, ann, "y"); !changed || err != nil || value(ann) != "y" {
+		t.Fatalf("change: %v %v %s", changed, err, value(ann))
+	}
+	num := s.meta[1]
+	if _, err := l.changeMeta(s, num, "-1"); !errors.Is(err, errLogged) || value(num) != "7" ||
+		last() != `LY_EVALID LYVE_DATA |/pj:c/s|0: Value "-1" is out of type uint8 min/max bounds.` {
+		t.Fatalf("bad change: %v %s %s", err, value(num), last())
+	}
+	other, _ := l.newMeta(nil, pj, "ann", "y", false)
+	if !compareMeta(nil, nil) || compareMeta(ann, nil) || !compareMeta(ann, other) || compareMeta(ann, num) {
+		t.Fatal("compare")
+	}
+	if _, err := l.changeMeta(nil, other, "z"); err != nil || compareMeta(ann, other) {
+		t.Fatal("compare after a change")
+	}
+
+	// lyd_find_meta
+	if m, err := l.findMeta(s.meta, nil, "pj:num"); m != num || err != nil {
+		t.Fatalf("find pj:num: %v %v", m, err)
+	}
+	if m, err := l.findMeta(s.meta, pj, "ann"); m != ann || err != nil {
+		t.Fatalf("find ann of pj: %v %v", m, err)
+	}
+	if m, err := l.findMeta(s.meta, set.Modules[2], "ann"); m != nil || err != nil {
+		t.Fatalf("find ann of pk: %v %v", m, err)
+	}
+	n := len(l.diags)
+	if m, err := l.findMeta(nil, nil, "nope:x"); m != nil || err != nil || len(l.diags) != n {
+		t.Fatalf("find in no metadata: %v %v", m, err)
+	}
+	if _, err := l.findMeta(s.meta, nil, "nope:ann"); !errors.Is(err, errLogged) ||
+		last() != `LY_EINVAL LYVE_SUCCESS ||0: Module "nope" not found.` {
+		t.Fatalf("find unknown module: %v %s", err, last())
+	}
+
+	// lyd_new_attr
+	for _, e := range []struct {
+		mod, name, val string
+		want           attr
+	}{
+		{"", "pj:a", "1", attr{Name: "a", Prefix: "pj", ModuleNS: "pj", Value: "1"}},
+		{"zz", "b", "", attr{Name: "b", ModuleNS: "zz"}},
+		{"", "xml:lang", "en", attr{Name: "xml:lang", Value: "en"}},
+	} {
+		if err := l.newAttr(o, e.mod, e.name, e.val); err != nil {
+			t.Fatal(err)
+		}
+		e.want.Format, e.want.Hints = types.FormatJSON, types.HintData
+		if got := o.opaq.Attrs[len(o.opaq.Attrs)-1]; !reflect.DeepEqual(got, e.want) {
+			t.Errorf("attr %s: %+v", e.name, got)
+		}
+	}
+	if err := l.newAttr(o, "", "a:", "1"); !errors.Is(err, errLogged) ||
+		last() != `LY_EINVAL LYVE_SUCCESS ||0: Attribute name "" is not valid.` {
+		t.Fatalf("bad attribute name: %v %s", err, last())
+	}
+	if err := l.newAttr(s, "", "a", "1"); !errors.Is(err, errMetaArg) {
+		t.Fatalf("attribute of a schema node: %v", err)
+	}
+}
