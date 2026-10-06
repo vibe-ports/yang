@@ -147,3 +147,18 @@ func (n *Node) siblingsOf() *siblings {
 	}
 	return nil
 }
+
+// metaAnnotation is lyd_get_meta_annotation: the compiled annotation named name of mod (an
+// instance of the metadata plugin's extension, ietf-yang-metadata@2016-08-05 annotation), or nil.
+func metaAnnotation(mod *schema.Module, name string) *schema.ExtInstance {
+	if mod == nil {
+		return nil
+	}
+	for _, e := range mod.Exts {
+		if e.Def != nil && e.Def.Name == "ietf-yang-metadata" && e.Def.Revision == "2016-08-05" &&
+			e.Name == "annotation" && e.Argument == name {
+			return e
+		}
+	}
+	return nil
+}

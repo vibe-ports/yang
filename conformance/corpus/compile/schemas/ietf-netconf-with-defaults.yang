@@ -1,0 +1,4 @@
+module ietf-netconf-with-defaults {
+  namespace "urn:vibe-ports:yang:conformance:internal-ietf-netconf-with-defaults";
+  prefix ncwd;
+}

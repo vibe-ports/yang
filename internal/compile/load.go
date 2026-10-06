@@ -567,6 +567,12 @@ func (c *Context) parseModule(src []byte, d loadData) (m *Module, err error) {
 	if latest != nil {
 		latest.latest &^= latestRev | latestSearchdirs
 	}
+	if addInternal(st, m.Schema.Version == schema.Version11) {
+		if pm, err = parser.Build(st); err != nil {
+			return nil, err
+		}
+		m.Parsed = pm
+	}
 	c.creating = append(c.creating, m)
 	c.Modules = append(c.Modules, m)
 	p := &pctx{main: m, parsed: []*Submodule{nil}}

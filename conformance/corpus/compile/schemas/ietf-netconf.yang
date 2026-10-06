@@ -1,0 +1,13 @@
+module ietf-netconf {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:internal-ietf-netconf";
+  prefix nc;
+
+  feature xpath;
+
+  container config {
+    leaf name {
+      type string;
+    }
+  }
+}

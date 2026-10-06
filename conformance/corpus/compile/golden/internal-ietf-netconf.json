@@ -1,0 +1,350 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ietf-netconf {\n  namespace \"urn:vibe-ports:yang:conformance:internal-ietf-netconf\";\n  prefix nc;\n\n  ietf-yang-metadata:annotation \"operation\" {\n    type enumeration {\n      enum \"merge\" {\n        value 0;\n        status current;\n      }\n      enum \"replace\" {\n        value 1;\n        status current;\n      }\n      enum \"create\" {\n        value 2;\n        status current;\n      }\n      enum \"delete\" {\n        value 3;\n        status current;\n      }\n      enum \"remove\" {\n        value 4;\n        status current;\n      }\n    }\n  }\n  ietf-yang-metadata:annotation \"type\" {\n    type enumeration {\n      enum \"subtree\" {\n        value 0;\n        status current;\n      }\n      enum \"xpath\" {\n        value 1;\n        status current;\n      }\n    }\n  }\n  ietf-yang-metadata:annotation \"select\" {\n    type string;\n  }\n\n  container config {\n    config true;\n    status current;\n    leaf name {\n      type string;\n      config true;\n      status current;\n    }\n  }\n  container rpc-error {\n    presence \"true\";\n    config true;\n    status current;\n    leaf error-type {\n      type enumeration {\n        enum \"transport\" {\n          value 0;\n          status current;\n        }\n        enum \"rpc\" {\n          value 1;\n          status current;\n        }\n        enum \"protocol\" {\n          value 2;\n          status current;\n        }\n        enum \"application\" {\n          value 3;\n          status current;\n        }\n      }\n      config true;\n      status current;\n    }\n    leaf error-tag {\n      type enumeration {\n        enum \"in-use\" {\n          value 0;\n          status current;\n        }\n        enum \"invalid-value\" {\n          value 1;\n          status current;\n        }\n        enum \"too-big\" {\n          value 2;\n          status current;\n        }\n        enum \"missing-attribute\" {\n          value 3;\n          status current;\n        }\n        enum \"bad-attribute\" {\n          value 4;\n          status current;\n        }\n        enum \"unknown-attribute\" {\n          value 5;\n          status current;\n        }\n        enum \"missing-element\" {\n          value 6;\n          status current;\n        }\n        enum \"bad-element\" {\n          value 7;\n          status current;\n        }\n        enum \"unknown-element\" {\n          value 8;\n          status current;\n        }\n        enum \"unknown-namespace\" {\n          value 9;\n          status current;\n        }\n        enum \"access-denied\" {\n          value 10;\n          status current;\n        }\n        enum \"lock-denied\" {\n          value 11;\n          status current;\n        }\n        enum \"resource-denied\" {\n          value 12;\n          status current;\n        }\n        enum \"rollback-failed\" {\n          value 13;\n          status current;\n        }\n        enum \"data-exists\" {\n          value 14;\n          status current;\n        }\n        enum \"data-missing\" {\n          value 15;\n          status current;\n        }\n        enum \"operation-not-supported\" {\n          value 16;\n          status current;\n        }\n        enum \"operation-failed\" {\n          value 17;\n          status current;\n        }\n        enum \"partial-operation\" {\n          value 18;\n          status current;\n        }\n        enum \"malformed-message\" {\n          value 19;\n          status current;\n        }\n      }\n      config true;\n      status current;\n    }\n    leaf error-severity {\n      type enumeration {\n        enum \"error\" {\n          value 0;\n          status current;\n        }\n        enum \"warning\" {\n          value 1;\n          status current;\n        }\n      }\n      config true;\n      status current;\n    }\n    leaf error-app-tag {\n      type string;\n      config true;\n      status current;\n    }\n    leaf error-path {\n      type string;\n      config true;\n      status current;\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": false,
+          "name": "xpath"
+        }
+      ],
+      "identities": [],
+      "name": "ietf-netconf",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-netconf:config",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf:config/name",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-netconf:rpc-error",
+          "presence": true,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf:rpc-error/error-type",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "transport",
+                "value": 0
+              },
+              {
+                "name": "rpc",
+                "value": 1
+              },
+              {
+                "name": "protocol",
+                "value": 2
+              },
+              {
+                "name": "application",
+                "value": 3
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf:rpc-error/error-tag",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "in-use",
+                "value": 0
+              },
+              {
+                "name": "invalid-value",
+                "value": 1
+              },
+              {
+                "name": "too-big",
+                "value": 2
+              },
+              {
+                "name": "missing-attribute",
+                "value": 3
+              },
+              {
+                "name": "bad-attribute",
+                "value": 4
+              },
+              {
+                "name": "unknown-attribute",
+                "value": 5
+              },
+              {
+                "name": "missing-element",
+                "value": 6
+              },
+              {
+                "name": "bad-element",
+                "value": 7
+              },
+              {
+                "name": "unknown-element",
+                "value": 8
+              },
+              {
+                "name": "unknown-namespace",
+                "value": 9
+              },
+              {
+                "name": "access-denied",
+                "value": 10
+              },
+              {
+                "name": "lock-denied",
+                "value": 11
+              },
+              {
+                "name": "resource-denied",
+                "value": 12
+              },
+              {
+                "name": "rollback-failed",
+                "value": 13
+              },
+              {
+                "name": "data-exists",
+                "value": 14
+              },
+              {
+                "name": "data-missing",
+                "value": 15
+              },
+              {
+                "name": "operation-not-supported",
+                "value": 16
+              },
+              {
+                "name": "operation-failed",
+                "value": 17
+              },
+              {
+                "name": "partial-operation",
+                "value": 18
+              },
+              {
+                "name": "malformed-message",
+                "value": 19
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf:rpc-error/error-severity",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "error",
+                "value": 0
+              },
+              {
+                "name": "warning",
+                "value": 1
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf:rpc-error/error-app-tag",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf:rpc-error/error-path",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "xpath1.0"
+            ],
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}
