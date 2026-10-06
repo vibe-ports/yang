@@ -1,0 +1,25 @@
+<c xmlns="urn:vibe-ports:wd">
+  <a>da</a>
+  <b>5</b>
+  <ll>x</ll>
+  <ll>z</ll>
+  <ll2>1</ll2>
+  <np>
+    <d>dd</d>
+  </np>
+  <np2>
+    <e>ee</e>
+    <f>ff</f>
+  </np2>
+  <pres>
+    <g>gg</g>
+  </pres>
+  <l>
+    <k>one</k>
+    <v>vv</v>
+  </l>
+  <l>
+    <k>two</k>
+    <v>vv</v>
+  </l>
+</c>

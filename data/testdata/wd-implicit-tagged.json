@@ -1,0 +1,48 @@
+{
+  "wd:c": {
+    "a": "da",
+    "b": 5,
+    "@b": {
+      "ietf-netconf-with-defaults:default": true
+    },
+    "ll": [
+      "x",
+      "z"
+    ],
+    "ll2": [
+      1
+    ],
+    "np": {
+      "d": "dd",
+      "@d": {
+        "ietf-netconf-with-defaults:default": true
+      }
+    },
+    "np2": {
+      "e": "ee",
+      "@e": {
+        "ietf-netconf-with-defaults:default": true
+      },
+      "f": "ff"
+    },
+    "pres": {
+      "g": "gg",
+      "@g": {
+        "ietf-netconf-with-defaults:default": true
+      }
+    },
+    "l": [
+      {
+        "k": "one",
+        "v": "vv",
+        "@v": {
+          "ietf-netconf-with-defaults:default": true
+        }
+      },
+      {
+        "k": "two",
+        "v": "vv"
+      }
+    ]
+  }
+}

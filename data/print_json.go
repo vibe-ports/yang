@@ -201,11 +201,16 @@ func (j *jsonPrinter) value(v types.Value, local *schema.Module) error {
 	return nil
 }
 
-// metadata is json_print_metadata (without the with-defaults tag).
-func (j *jsonPrinter) metadata(n *Node) error {
+// metadata is json_print_metadata; wd is the with-defaults module when the default attribute is
+// to be printed first.
+func (j *jsonPrinter) metadata(n *Node, wd *schema.Module) error {
 	sep := ""
 	if j.format() {
 		sep = " "
+	}
+	if wd != nil {
+		j.printf("%s\"%s:default\":%strue", j.indent(), wd.Name, sep)
+		j.levelDone()
 	}
 	for _, m := range n.meta {
 		j.comma()
@@ -221,7 +226,11 @@ func (j *jsonPrinter) metadata(n *Node) error {
 // attributes is json_print_attributes: the metadata of a schema node as a "@" object (inner nodes,
 // inside their object) or as an "@name" sibling member (terms).
 func (j *jsonPrinter) attributes(n *Node, inner bool) error {
-	if n.schema == nil || !hasPrintableMeta(n) {
+	var wd *schema.Module
+	if n.schema != nil && n.schema.Kind != schema.Container && j.opts.tagged(n) {
+		wd = j.set.Implemented(wdModule) // printed only if the context has the module
+	}
+	if n.schema == nil || (wd == nil && !hasPrintableMeta(n)) {
 		return nil
 	}
 	if inner {
@@ -231,7 +240,7 @@ func (j *jsonPrinter) attributes(n *Node, inner bool) error {
 	}
 	j.printf("{%s", j.nl())
 	j.level++
-	err := j.metadata(n)
+	err := j.metadata(n, wd)
 	j.level--
 	j.printf("%s%s}", j.nl(), j.indent())
 	j.levelDone()
@@ -250,7 +259,14 @@ func (j *jsonPrinter) leaf(n *Node) error {
 // inner is json_print_inner: the object of a container, list instance or opaque inner node.
 func (j *jsonPrinter) inner(n *Node) error {
 	children := kids(n)
-	hasContent := len(n.meta) > 0 || len(children) > 0
+	printable := false // json_print_inner: a child that will be printed
+	for _, c := range children {
+		if j.opts.shouldPrint(c) {
+			printable = true
+			break
+		}
+	}
+	hasContent := len(n.meta) > 0 || printable
 	isList := (n.schema != nil && n.schema.Kind == schema.List)
 	comma := ""
 	if j.isOpenArray(n) && j.levelPrinted >= j.level {
@@ -322,8 +338,14 @@ func (j *jsonPrinter) leafList(n *Node, sibs []*Node, i int) error {
 		if err := j.value(n.value, n.schema.Module); err != nil {
 			return err
 		}
-		if j.firstLL == nil && hasPrintableMeta(n) {
-			j.firstLL, j.firstLLSibs, j.firstLLIdx = n, sibs, i
+		if j.firstLL == nil {
+			var wd *schema.Module
+			if j.opts.tagged(n) {
+				wd = j.set.Implemented(wdModule)
+			}
+			if wd != nil || hasPrintableMeta(n) {
+				j.firstLL, j.firstLLSibs, j.firstLLIdx = n, sibs, i
+			}
 		}
 	}
 	if j.isLastInst(n, sibs, i) {
@@ -339,20 +361,28 @@ func (j *jsonPrinter) metaLeafList() error {
 	for k > 0 && matching(sibs[k-1], sibs[k]) {
 		k--
 	}
+	var wdMod *schema.Module
+	if j.opts.WithDefaults == WDAllTagged || j.opts.WithDefaults == WDImplicitTagged {
+		wdMod = j.set.Implemented(wdModule)
+	}
 	j.member(sibs[k], true)
 	j.printf("[%s", j.nl())
 	j.level++
 	for ; k < len(sibs); k++ {
 		it := sibs[k]
 		j.comma()
-		if it.schema != nil && hasPrintableMeta(it) {
+		var wd *schema.Module
+		if it.schema != nil && j.opts.tagged(it) {
+			wd = wdMod
+		}
+		if it.schema != nil && (hasPrintableMeta(it) || wd != nil) {
 			nl := "{"
 			if j.format() {
 				nl = "{\n"
 			}
 			j.printf("%s%s", j.indent(), nl)
 			j.level++
-			if err := j.metadata(it); err != nil {
+			if err := j.metadata(it, wd); err != nil {
 				return err
 			}
 			j.level--

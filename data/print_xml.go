@@ -88,9 +88,18 @@ func (x *xmlPrinter) printNS(ns, newPrefix string, hasNew bool, opts int) (strin
 	return newPrefix, hasNew
 }
 
-// meta is xml_print_meta (the with-defaults tag is D7b; the NETCONF filter attributes are not
-// part of M1).
+// meta is xml_print_meta (the NETCONF filter attributes are not part of M1).
 func (x *xmlPrinter) meta(n *Node) error {
+	if n.isTerm() && x.opts.tagged(n) {
+		// the module "default" is libyang's internal one with the wd:default annotation, used only
+		// when the context has ietf-netconf-with-defaults too
+		if x.set.Module(wdModule, "") != nil {
+			if df := x.set.Module("default", ""); df != nil {
+				prefix, _ := x.printNS(df.Namespace, df.Prefix, true, 0)
+				x.printf(" %s:default=\"true\"", prefix)
+			}
+		}
+	}
 	for _, m := range n.meta {
 		pc := &types.PrintCtx{}
 		value, err := types.Print(m.value, types.FormatXML, pc)
