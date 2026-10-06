@@ -169,7 +169,7 @@ func (p *xmlParser) metadata(sparent *schema.Node, lnode *Node) (metas []*meta, 
 		lc.log.locSet(sparent)
 		defer lc.log.locBack(1)
 		_ = log()
-		return errLoggedFatal
+		return fatalRC("LY_ENOTFOUND")
 	}
 	// NETCONF filter attributes need no prefix (an ancient module, or the extension marks them)
 	filterAttrs := sparent.Module.Name == "notifications"

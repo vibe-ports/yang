@@ -382,11 +382,7 @@ func (vc *valCtx) incomplete(n *Node, t *schema.Type, val types.Value) (types.Va
 		return val, tt.err // budget or cancellation
 	}
 	if d != nil {
-		rc := "LY_EVALID"
-		if d.Err != "" {
-			rc = d.Err
-		}
-		return val, vc.log.item(n, nil, false, rc, codeOf(d.Code), d.AppTag, d.Msg)
+		return val, vc.log.item(n, nil, false, d.RC(), codeOf(d.Code), d.AppTag, d.Msg)
 	}
 	return v, nil
 }

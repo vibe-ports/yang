@@ -27,7 +27,7 @@ func (l *logger) valueValidate3(sn *schema.Node, value string, f types.Format, p
 	}
 	if d != nil {
 		if log {
-			return nil, "", false, l.item(ctxNode, sn, false, "LY_EVALID", codeOf(d.Code), d.AppTag, d.Msg)
+			return nil, "", false, l.item(ctxNode, sn, false, d.RC(), codeOf(d.Code), d.AppTag, d.Msg)
 		}
 		return nil, "", false, d
 	}
@@ -52,7 +52,7 @@ func (l *logger) validateValue(sn *schema.Node, value string, ctxNode *Node, tre
 func (l *logger) valueCompare(n *Node, value string) (bool, error) {
 	v, d := types.Store(n.schema.Type, value, types.FormatJSON, types.HintData, types.ModuleNames{Set: l.set}, n.schema)
 	if d != nil {
-		return false, l.item(n, n.schema, false, "LY_EVALID", codeOf(d.Code), d.AppTag, d.Msg)
+		return false, l.item(n, n.schema, false, d.RC(), codeOf(d.Code), d.AppTag, d.Msg)
 	}
 	return types.Equal(n.value, v), nil
 }

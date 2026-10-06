@@ -151,7 +151,11 @@ func parseWith(ctx context.Context, r io.Reader, s *schema.Set, o parseOpts, fp 
 	if err == nil {
 		err = lc.log.result()
 	} else if errors.Is(err, errLogged) {
-		err = &ValidationError{Diags: lc.log.diags}
+		ve := &ValidationError{Diags: lc.log.diags}
+		if re := (*rcErr)(nil); errors.As(err, &re) {
+			ve.rc = re.rc
+		}
+		err = ve
 	}
 	var ve *ValidationError
 	if errors.As(err, &ve) && ve.Diags == nil {
@@ -243,6 +247,15 @@ func (lc *lydCtx) isEValid(err error) bool {
 // always stops the parse.
 var errLoggedFatal = fmt.Errorf("%w (fatal)", errLogged)
 
+// rcErr is errLoggedFatal with the LY_ERR libyang returns (ValidationError.RC).
+type rcErr struct{ rc string }
+
+func (e *rcErr) Error() string { return "data: " + e.rc }
+func (e *rcErr) Unwrap() error { return errLoggedFatal }
+
+// fatalRC is errLoggedFatal returning rc.
+func fatalRC(rc string) error { return &rcErr{rc} }
+
 // countNode charges one created node against Budget.MaxNodes and checks the context every 1k
 // nodes.
 func (lc *lydCtx) countNode() error {
@@ -289,7 +302,7 @@ func (lc *lydCtx) createTerm(sn *schema.Node, lnode *Node, lex string, f types.F
 	}
 	v, d := store(sn.Type, lex, f, h, pc, sn)
 	if d != nil {
-		return nil, lc.log.item(lnode, sn, false, "LY_EVALID", codeOf(d.Code), d.AppTag, d.Msg)
+		return nil, lc.log.item(lnode, sn, false, d.RC(), codeOf(d.Code), d.AppTag, d.Msg)
 	}
 	n := newTerm(sn, v)
 	n.flags = lc.newFlags()

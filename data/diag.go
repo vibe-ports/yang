@@ -19,7 +19,8 @@ import (
 // on without logging is a ValidationError wrapping the lexer's error, possibly without Diags.
 type ValidationError struct {
 	Diags []yang.Diagnostic
-	err   error // yang.ErrBudget after a libyang nesting limit, or the XML lexer's silent error
+	err   error  // yang.ErrBudget after a libyang nesting limit, or the XML lexer's silent error
+	rc    string // the call's LY_ERR when it is not that of the last error logged
 }
 
 // Unwrap returns yang.ErrBudget when a nesting limit of the input stopped the parse, or the XML
@@ -28,9 +29,13 @@ func (e *ValidationError) Unwrap() error { return e.err }
 
 // RC is the name of libyang's LY_ERR return code of the failed call ("LY_EVALID", "LY_EINVAL"
 // for the nesting limits and the key refusal of Remove, "LY_EINCOMPLETE", ...): that of the last
-// error logged, which is what the call returns (LY_VAL_ERR_GOTO keeps the latest failure),
-// LY_EVALID when nothing was logged.
+// error logged, which is what the call returns (LY_VAL_ERR_GOTO keeps the latest failure), unless
+// the parser returned another code after its message (an unknown annotation: LY_EINVAL after a
+// LYVE_REFERENCE message); LY_EVALID when nothing was logged.
 func (e *ValidationError) RC() string {
+	if e.rc != "" {
+		return e.rc
+	}
 	for i := len(e.Diags) - 1; i >= 0; i-- {
 		if !e.Diags[i].Warning {
 			return e.Diags[i].Err

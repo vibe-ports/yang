@@ -207,7 +207,7 @@ func (p *jsonParser) valueTypeHint(sn *schema.Node, status *lyjson.Token) (types
 			defer lc.log.locBack(1)
 		}
 		_ = lc.log.val(nil, "", ly.SyntaxJSON, format, a...)
-		return errLoggedFatal
+		return fatalRC("LY_EINVAL")
 	}
 	var h types.Hints
 	switch *status {

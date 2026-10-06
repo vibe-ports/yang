@@ -130,6 +130,18 @@ type Diag struct {
 
 func (d *Diag) Error() string { return d.Msg }
 
+// RC is the LY_ERR of the plugin's error item: Err when set, LY_EINVAL for an item without a
+// validation code (ly_err_new(err, LY_EINVAL, 0, ...)), else LY_EVALID.
+func (d *Diag) RC() string {
+	switch {
+	case d.Err != "":
+		return d.Err
+	case d.Code == CodeNone:
+		return "LY_EINVAL"
+	}
+	return "LY_EVALID"
+}
+
 func errf(format string, args ...any) *Diag {
 	return &Diag{Code: CodeData, Msg: fmt.Sprintf(format, args...)}
 }

@@ -218,7 +218,7 @@ func (vc *valCtx) validateTree(root *Node) error {
 		switch {
 		case n.isTerm():
 			if d := types.Validate(n.schema.Type, n.value); d != nil {
-				err = vc.log.item(n, nil, false, "LY_EVALID", codeOf(d.Code), d.AppTag, d.Msg)
+				err = vc.log.item(n, nil, false, d.RC(), codeOf(d.Code), d.AppTag, d.Msg)
 			}
 			if hasValidateTree(n.schema.Type) && vc.nodeTypes != nil {
 				vc.nodeTypes.add(n)

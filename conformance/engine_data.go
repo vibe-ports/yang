@@ -42,10 +42,21 @@ var unknownPolicies = map[string]data.UnknownPolicy{"reject": data.Reject, "skip
 var wdModes = map[string]data.WD{"explicit": data.WDExplicit, "trim": data.WDTrim, "all": data.WDAll,
 	"all-tagged": data.WDAllTagged, "implicit-tagged": data.WDImplicitTagged}
 
+// dataKeys are the op data request fields runData handles; any other (print options, subtree
+// printing, operations) makes the fixture unsupported rather than silently ignored.
+var dataKeys = map[string]bool{"op": true, "base_dir": true, "searchdirs": true, "modules": true,
+	"context_options": true, "format": true, "data_type": true, "data": true, "data_file": true, "unknown": true,
+	"parse_only": true, "parse_options": true, "validate_options": true, "with_defaults": true}
+
 // runData is lyoracle.c op_data for datastore data: lyd_parse_data with the preset's flags and
-// LYD_VALIDATE_MULTI_ERROR, then the printed tree.
+// LYD_VALIDATE_MULTI_ERROR, then the printed tree (none for an empty tree: libyang's is NULL).
 func runData(r Request, s *yang.Schema, resp map[string]any) error {
 	p := r.Params
+	for k := range p {
+		if !dataKeys[k] {
+			return fmt.Errorf("%w: data request field %s", ErrUnsupported, k)
+		}
+	}
 	str := func(k, def string) string {
 		if v, ok := p[k].(string); ok {
 			return v
@@ -117,7 +128,7 @@ func runData(r Request, s *yang.Schema, resp map[string]any) error {
 	}
 	resp["diagnostics"] = diagsJSON(diags, "data")
 	resp["tree"] = nil
-	if tree != nil {
+	if tree != nil && !empty(tree) {
 		po := data.PrintOptions{WithDefaults: wd}
 		var j, x strings.Builder
 		if err := tree.PrintJSON(&j, po); err != nil {
@@ -130,6 +141,13 @@ func runData(r Request, s *yang.Schema, resp map[string]any) error {
 		resp["typed"] = typedJSON(tree)
 	}
 	return nil
+}
+
+func empty(t *data.Tree) bool {
+	for range t.Top() {
+		return false
+	}
+	return true
 }
 
 // typedJSON is lyoracle.c typed_json without the skipped fields (Yang.SkippedFields).
