@@ -1,0 +1,5 @@
+module base {
+  yang-version 1.1;
+  namespace "urn:tests:base";
+  prefix pref;
+leaf port {type string;}}

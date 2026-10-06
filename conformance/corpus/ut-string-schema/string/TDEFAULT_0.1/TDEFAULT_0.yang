@@ -1,0 +1,5 @@
+module TDEFAULT_0 {
+  yang-version 1.1;
+  namespace "urn:tests:TDEFAULT_0";
+  prefix pref;
+typedef my_type {   type string{       pattern "[a-zA-Z_][a-zA-Z0-9\\-_.]*";       length  "2 .. 5 | 10";   }   default "a1i-j";}leaf port {type my_type;}}

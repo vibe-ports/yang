@@ -43,6 +43,7 @@ with the libyang file, tag/commit and license):
   (tests/utests extractions, tests/yanglint modules and data, tests/modules, tests/fuzz seeds).
   Each set is listed here when it lands:
   - conformance/corpus/ut-ietf-types/ (tests/utests/types/inet_types.c, yang_types.c).
+  - conformance/corpus/ut-string-schema/ (tests/utests/types/string.c, test_schema_yang).
   - conformance/corpus/ut-int/ (tests/utests/types/int8.c … uint64.c).
   - conformance/corpus/ut-schema-load/ (tests/utests/schema/test_tree_schema_compile.c, test_schema.c).
   - conformance/corpus/ut-bits-enum/ (tests/utests/types/bits.c, enumeration.c).

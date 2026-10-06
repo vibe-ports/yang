@@ -1,0 +1,444 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module base {\n  namespace \"urn:tests:base\";\n  prefix pref;\n\n  leaf port {\n    type string;\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "base",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "base",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/base:port",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module T0 {\n  namespace \"urn:tests:T0\";\n  prefix pref;\n\n  leaf port {\n    type string {\n      length \"10..18446744073709551615\";\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "T0",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "T0",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/T0:port",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": "10..18446744073709551615",
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module T1 {\n  namespace \"urn:tests:T1\";\n  prefix pref;\n\n  leaf port {\n    type string {\n      length \"0..20 | 50\";\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "T1",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "T1",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/T1:port",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": "0..20 | 50",
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module T2 {\n  namespace \"urn:tests:T2\";\n  prefix pref;\n\n  leaf port {\n    type string {\n      length \"10..20 | 50..100 | 255\";\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "T2",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "T2",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/T2:port",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": "10..20 | 50..100 | 255",
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module TS0 {\n  namespace \"urn:tests:TS0\";\n  prefix pref;\n\n  leaf port {\n    type string {\n      length \"10..15 | 255\";\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "TS0",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "TS0",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/TS0:port",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": "10..15 | 255",
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "my_type"
+            ],
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module TPATTERN_0 {\n  namespace \"urn:tests:TPATTERN_0\";\n  prefix pref;\n\n  leaf port {\n    type string {\n      pattern \"[a-zA-Z_][a-zA-Z0-9\\\\-_.]*\";\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "TPATTERN_0",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "TPATTERN_0",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/TPATTERN_0:port",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[a-zA-Z_][a-zA-Z0-9\\-_.]*",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module TPATTERN_1 {\n  namespace \"urn:tests:TPATTERN_1\";\n  prefix pref;\n\n  leaf port {\n    type string {\n      pattern \"[a-zA-Z_][a-zA-Z0-9\\\\-_.]*\";\n      pattern \"abc.*\" {\n        modifier invert-match;\n      }\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "TPATTERN_1",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "TPATTERN_1",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/TPATTERN_1:port",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[a-zA-Z_][a-zA-Z0-9\\-_.]*",
+                "invert": false
+              },
+              {
+                "expr": "abc.*",
+                "invert": true
+              }
+            ],
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module TPATTERN_2 {\n  namespace \"urn:tests:TPATTERN_2\";\n  prefix pref;\n\n  leaf port {\n    type string {\n      pattern \"[a-zA-Z_][a-zA-Z0-9\\\\-_.]*\";\n      pattern \"abc.*\" {\n        modifier invert-match;\n      }\n      pattern \"bcd.*\";\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "TPATTERN_2",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "TPATTERN_2",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/TPATTERN_2:port",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[a-zA-Z_][a-zA-Z0-9\\-_.]*",
+                "invert": false
+              },
+              {
+                "expr": "abc.*",
+                "invert": true
+              },
+              {
+                "expr": "bcd.*",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "my_type"
+            ],
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module TDEFAULT_0 {\n  namespace \"urn:tests:TDEFAULT_0\";\n  prefix pref;\n\n  leaf port {\n    type string {\n      length \"2..5 | 10\";\n      pattern \"[a-zA-Z_][a-zA-Z0-9\\\\-_.]*\";\n    }\n    default \"a1i-j\";\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "TDEFAULT_0",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": [
+            "a1i-j"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "TDEFAULT_0",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/TDEFAULT_0:port",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": "2..5 | 10",
+            "patterns": [
+              {
+                "expr": "[a-zA-Z_][a-zA-Z0-9\\-_.]*",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "my_type"
+            ],
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Regular expression \"\\[a]b\" is not valid (\"]b\": character group doesn't begin with '[').",
+          "phase": "compile",
+          "schema_path": "/TPATTERN_BC_ERR_1:port",
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "name": "TPATTERN_BC_ERR_1",
+      "phase": "compile",
+      "rc": {
+        "err": 7,
+        "name": "LY_EVALID"
+      }
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

@@ -1,0 +1,5 @@
+module TPATTERN_0 {
+  yang-version 1.1;
+  namespace "urn:tests:TPATTERN_0";
+  prefix pref;
+leaf port {type string{pattern '[a-zA-Z_][a-zA-Z0-9\-_.]*';}}}

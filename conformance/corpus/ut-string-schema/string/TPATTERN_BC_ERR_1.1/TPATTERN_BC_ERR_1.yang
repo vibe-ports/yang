@@ -1,0 +1,5 @@
+module TPATTERN_BC_ERR_1 {
+  yang-version 1.1;
+  namespace "urn:tests:TPATTERN_BC_ERR_1";
+  prefix pref;
+leaf port {type string {pattern '\[a]b';}}}
