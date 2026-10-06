@@ -1,0 +1,35 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+// Schema-mode XPath '=' and '!=' between leaves of different types (warn_operands,
+// warn_is_equal_type over the flattened union members).
+module must-operand-incompatible {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:must-operand-incompatible";
+  prefix moi;
+  typedef e { type enumeration { enum one; enum two; } }
+  container top {
+    leaf s { type string; }
+    leaf n { type uint8; }
+    leaf d { type decimal64 { fraction-digits 1; } }
+    leaf b { type boolean; }
+    leaf en { type e; }
+    leaf bt { type bits { bit x; bit y; } }
+    leaf u1 { type union { type e; type bits { bit x; } } }
+    leaf u2 { type union { type bits { bit x; } type string; } }
+    leaf u3 { type union { type e; type uint8; } }
+    leaf lr { type leafref { path "../en"; } }
+    leaf-list ll { type string; }
+    container c { leaf x { type string; } }
+    must "s = n";
+    must "n = d";
+    must "s = en";
+    must "b != s";
+    must "u1 = u2";
+    must "u1 = u3";
+    must "lr = en";
+    must "lr = bt";
+    must "ll = s";
+    must "c = s";
+    must "s = c/x and en = b";
+  }
+}

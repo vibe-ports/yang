@@ -8836,3 +8836,39 @@ fixtures:
       validate_options: [present]
       data: '<l2nz xmlns="urn:tests:a">1950-01-01</l2nz>'
     golden: golden/yang_types-test_data_xml-28.json
+
+  # libyang schema-mode XPath operator warnings (warn_operands + subexpression trailer), observed at compile
+  - id: must/operand-node-type-warning
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.5.3", "XPath1.0#3.4"]
+    areas: ["schema", "xpath"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "must-operand-node-type"}]
+    golden: golden/must-operand-node-type-warning.json
+
+  # libyang schema-mode XPath operator warnings (warn_operands + subexpression trailer), observed at compile
+  - id: must/operand-not-numeric-warning
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.5.3", "XPath1.0#3.5"]
+    areas: ["schema", "xpath"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "must-operand-not-numeric"}]
+    golden: golden/must-operand-not-numeric-warning.json
+
+  # libyang schema-mode XPath operator warnings (warn_operands + subexpression trailer), observed at compile
+  - id: must/operand-incompatible-warning
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.5.3", "XPath1.0#3.4"]
+    areas: ["schema", "xpath"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "must-operand-incompatible"}]
+    golden: golden/must-operand-incompatible-warning.json

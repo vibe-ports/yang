@@ -1,0 +1,29 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+// Schema-mode XPath: a non-numeric leaf where an arithmetic or relational operator expects a
+// number (warn_operands, warn_is_numeric_type through unions and leafrefs).
+module must-operand-not-numeric {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:must-operand-not-numeric";
+  prefix monn;
+  container top {
+    leaf s { type string; }
+    leaf n { type uint8; }
+    leaf d { type decimal64 { fraction-digits 2; } }
+    leaf b { type boolean; }
+    leaf un { type union { type string; type int16; } }
+    leaf us { type union { type string; type boolean; } }
+    leaf lr { type leafref { path "../s"; } }
+    leaf ln { type leafref { path "../n"; } }
+    leaf-list ll { type string; }
+    must "s + 1 = 2";
+    must "n < s";
+    must "-s = 1";
+    must "un * d > 1";
+    must "us - 1";
+    must "lr < ln";
+    must "ln div 2 > d";
+    must "b mod 2 = ll";
+    must "(n + 1) * (d + 2) > (n - 1) * (s + 1) and ln = 1";
+  }
+}

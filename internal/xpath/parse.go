@@ -56,8 +56,15 @@ type (
 	chainExpr struct {
 		ops  []string // or and = != < <= > >= + - * div mod |
 		args []ast
+		// pos[i] is the source offset of the token BEFORE ops[i]: libyang passes
+		// tok_pos[this_op - 1] to warn_operands (schema mode warnings)
+		pos []int
 	}
-	negExpr  struct{ x ast } // odd number of unary '-'
+	// negExpr is an odd number of unary '-'; pos is the offset of the first one.
+	negExpr struct {
+		x   ast
+		pos int
+	}
 	litExpr  string
 	numExpr  struct{ v ld } // Number token, as C long double
 	varExpr  string
@@ -155,12 +162,13 @@ func (p *parser) binary(depth int, next func(int) (ast, error), k tokKind, ops .
 		if !ok {
 			break
 		}
+		pos := p.toks[p.i-1].pos
 		p.i++
 		r, err := next(depth)
 		if err != nil {
 			return nil, err
 		}
-		c.ops, c.args = append(c.ops, op), append(c.args, r)
+		c.ops, c.args, c.pos = append(c.ops, op), append(c.args, r), append(c.pos, pos)
 	}
 	if len(c.ops) == 0 {
 		return first, nil
@@ -198,7 +206,10 @@ func (p *parser) multiplicativeExpr(depth int) (ast, error) {
 
 // unaryExpr is reparse_unary_expr: [17] UnaryExpr ::= UnionExpr | '-' UnaryExpr.
 func (p *parser) unaryExpr(depth int) (ast, error) {
-	neg := false
+	neg, pos := false, 0
+	if _, ok := p.peekOp(tOperMath, "-"); ok {
+		pos = p.toks[p.i].pos
+	}
 	for _, ok := p.peekOp(tOperMath, "-"); ok; _, ok = p.peekOp(tOperMath, "-") {
 		neg = !neg
 		p.i++
@@ -208,7 +219,7 @@ func (p *parser) unaryExpr(depth int) (ast, error) {
 		// libyang: an even number of '-' leaves the operand uncast
 		return x, err
 	}
-	return negExpr{x}, nil
+	return negExpr{x, pos}, nil
 }
 
 // pathExpr is reparse_path_expr: [10] PathExpr ::= LocationPath | PrimaryExpr Predicate* (('/' | '//') RelativeLocationPath)?

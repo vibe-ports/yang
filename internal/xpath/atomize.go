@@ -268,8 +268,11 @@ func (a *atomizer) eval(x ast, s *scset) error {
 	switch x := x.(type) {
 	case chainExpr:
 		return a.chain(x, s)
-	case negExpr: // eval_unary_expr; warn_operands is C2b
-		return a.eval(x.x, s)
+	case negExpr: // eval_unary_expr
+		if err := a.eval(x.x, s); err != nil {
+			return err
+		}
+		a.warnOperands(s, nil, true, x.pos)
 	case litExpr, numExpr:
 		s.clearCtx(AtomVal)
 	case varExpr:
@@ -303,7 +306,8 @@ func (a *atomizer) chain(x chainExpr, s *scset) error {
 			s.merge(s2)
 		case op == "|":
 			s.merge(s2)
-		default: // warn_operands / warn_equality_value are C2b
+		default: // warn_equality_value is C2b
+			a.warnOperands(s, s2, op != "=" && op != "!=", x.pos[i])
 			s.merge(s2)
 			s.clearCtx(AtomVal)
 		}

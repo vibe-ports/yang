@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+// Schema-mode XPath operator operands that are not leaves (warn_operands): the node-type
+// warning, the unary minus, and the subexpression trailer cut at the end of the expression.
+module must-operand-node-type {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:must-operand-node-type";
+  prefix mont;
+  container top {
+    leaf n { type uint8; }
+    container c1 { leaf in { type uint8; } }
+    list l { key k; leaf k { type string; } }
+    leaf-list ll { type uint8; }
+    must "c1 = 1";
+    must "n + c1";
+    must "-c1 > 0";
+    must "l = ll";
+    must "n * 2 = 4 and 1 < c1/in and c1 != 3";
+  }
+}

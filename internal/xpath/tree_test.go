@@ -32,6 +32,7 @@ type tschema struct {
 	order     []SchemaNode // Children()
 	ops       [2][]SchemaNode
 	lref      *tschema
+	typ       *ttype
 }
 
 type tval struct {
@@ -84,6 +85,15 @@ func (s *tschema) Parent() SchemaNode {
 func (s *tschema) Children() []SchemaNode      { return s.order }
 func (s *tschema) Actions() []SchemaNode       { return s.ops[0] }
 func (s *tschema) Notifications() []SchemaNode { return s.ops[1] }
+func (s *tschema) Type() SchemaType {
+	if s.typ == nil {
+		if s.kind == KindLeaf || s.kind == KindLeafList {
+			return &ttype{base: TypeString} // fixtures that do not care about types
+		}
+		return nil
+	}
+	return s.typ
+}
 func (s *tschema) LeafrefTarget() SchemaNode {
 	if s.lref == nil {
 		return nil

@@ -106,11 +106,50 @@ type SchemaNode interface {
 	Actions() []SchemaNode       // lysc_node_actions
 	Notifications() []SchemaNode // lysc_node_notifs
 	Path() string                // lysc_path(LYSC_PATH_LOG), for warnings
+	// Type is lysc_node_leaf.type of a leaf or leaf-list, nil for other nodes.
+	Type() SchemaType
 	// LeafrefTarget is the target of a leaf/leaf-list whose type itself is a
 	// leafref (base type LY_TYPE_LEAFREF; a union with a leafref member does
 	// not count), its path compiled for the node's input/output; nil
 	// otherwise or when the target is disabled.
 	LeafrefTarget() SchemaNode
+}
+
+// BaseType is lysc_type.basetype (LY_DATA_TYPE).
+type BaseType uint8
+
+// Base types.
+const (
+	TypeBinary BaseType = iota + 1
+	TypeUint8
+	TypeUint16
+	TypeUint32
+	TypeUint64
+	TypeString
+	TypeBits
+	TypeBool
+	TypeDec64
+	TypeEmpty
+	TypeEnum
+	TypeIdent
+	TypeInst
+	TypeLeafref
+	TypeUnion
+	TypeInt8
+	TypeInt16
+	TypeInt32
+	TypeInt64
+)
+
+// SchemaType is the lysc_type view the schema-mode warnings need. Implementations must be
+// comparable and give the same (==) value for the same compiled type: warn_is_equal_type
+// resumes a union walk by type identity.
+type SchemaType interface {
+	Base() BaseType
+	// Union is lysc_type_union.types of a union, in order; nil for other types.
+	Union() []SchemaType
+	// Realtype is lysc_type_leafref.realtype of a leafref; nil for other types.
+	Realtype() SchemaType
 }
 
 // SchemaInfo is the schema-wide hook: identities for derived-from[-or-self]()
