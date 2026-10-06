@@ -190,9 +190,12 @@ func (lc *lydCtx) lexErr(err error) error {
 			}
 		}
 	case errors.As(err, &xe):
-		if xe.Code == ly.Success {
+		switch {
+		case xe.Msg == "":
+			return err // libyang fails without logging: an error without diagnostics
+		case xe.Code == ly.Success:
 			_ = lc.log.logErr("LY_EINVAL", "%s", xe.Msg)
-		} else {
+		default:
 			lc.log.lexVal(xe.Code, xe.Msg, int(xe.Line)) //nolint:gosec // line numbers fit
 		}
 	default:
