@@ -1,0 +1,533 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module when-deref-arg {\n  namespace \"urn:vibe-ports:yang:conformance:when-deref-arg\";\n  prefix wda;\n\n  container top {\n    config true;\n    status current;\n    leaf s {\n      type string;\n      config true;\n      status current;\n    }\n    leaf n {\n      type uint8;\n      config true;\n      status current;\n    }\n    leaf lr {\n      type leafref {\n        path \"../s\";\n        require-instance true;\n        type string;\n      }\n      config true;\n      status current;\n    }\n    leaf ii {\n      type instance-identifier {\n        require-instance false;\n      }\n      config true;\n      status current;\n    }\n    leaf un {\n      type union {\n        type uint8;\n        type leafref {\n          path \"../s\";\n          require-instance true;\n          type string;\n        }\n      }\n      config true;\n      status current;\n    }\n    container c {\n      config true;\n      status current;\n      leaf x {\n        type string;\n        config true;\n        status current;\n      }\n    }\n    leaf w1 {\n      when \"deref(../c) = 'a'\";\n      type string;\n      config true;\n      status current;\n    }\n    leaf w2 {\n      when \"deref(../s) = 'a'\";\n      type string;\n      config true;\n      status current;\n    }\n    leaf w3 {\n      when \"deref(../n) = 'a'\";\n      type string;\n      config true;\n      status current;\n    }\n    leaf w4 {\n      when \"deref(../lr) = 'a'\";\n      type string;\n      config true;\n      status current;\n    }\n    leaf w5 {\n      when \"deref(../ii) = 'a'\";\n      type string;\n      config true;\n      status current;\n    }\n    leaf w6 {\n      when \"deref(../un) = 'a'\";\n      type string;\n      config true;\n      status current;\n    }\n  }\n}\n",
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_deref is node \"n\", not of type \"leafref\" nor \"instance-identifier\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_deref is node \"s\", not of type \"leafref\" nor \"instance-identifier\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_deref is a container node \"c\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "features": [],
+      "identities": [],
+      "name": "when-deref-arg",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-deref-arg",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/when-deref-arg:top",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-deref-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-deref-arg:top/s",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-deref-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-deref-arg:top/n",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-deref-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-deref-arg:top/lr",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "../s",
+              "require_instance": true,
+              "target": "/when-deref-arg:top/s"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-deref-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-deref-arg:top/ii",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "instance-identifier",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-deref-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-deref-arg:top/un",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": [
+              {
+                "base": "uint8",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              },
+              {
+                "base": "leafref",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": {
+                  "path": "../s",
+                  "require_instance": true,
+                  "target": "/when-deref-arg:top/s"
+                },
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              }
+            ]
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-deref-arg",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/when-deref-arg:top/c",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-deref-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-deref-arg:top/c/x",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-deref-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-deref-arg:top/w1",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-deref-arg:top/w1",
+              "expr": "deref(../c) = 'a'",
+              "module": "when-deref-arg"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-deref-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-deref-arg:top/w2",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-deref-arg:top/w2",
+              "expr": "deref(../s) = 'a'",
+              "module": "when-deref-arg"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-deref-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-deref-arg:top/w3",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-deref-arg:top/w3",
+              "expr": "deref(../n) = 'a'",
+              "module": "when-deref-arg"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-deref-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-deref-arg:top/w4",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-deref-arg:top/w4",
+              "expr": "deref(../lr) = 'a'",
+              "module": "when-deref-arg"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-deref-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-deref-arg:top/w5",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-deref-arg:top/w5",
+              "expr": "deref(../ii) = 'a'",
+              "module": "when-deref-arg"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-deref-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-deref-arg:top/w6",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-deref-arg:top/w6",
+              "expr": "deref(../un) = 'a'",
+              "module": "when-deref-arg"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

@@ -1,0 +1,22 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+// Schema-mode XPath: the argument of deref() must be a leafref or instance-identifier leaf.
+module when-deref-arg {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:when-deref-arg";
+  prefix wda;
+  container top {
+    leaf s { type string; }
+    leaf n { type uint8; }
+    leaf lr { type leafref { path "../s"; } }
+    leaf ii { type instance-identifier { require-instance false; } }
+    leaf un { type union { type uint8; type leafref { path "../s"; } } }
+    container c { leaf x { type string; } }
+    leaf w1 { type string; when "deref(../c) = 'a'"; }
+    leaf w2 { type string; when "deref(../s) = 'a'"; }
+    leaf w3 { type string; when "deref(../n) = 'a'"; }
+    leaf w4 { type string; when "deref(../lr) = 'a'"; }
+    leaf w5 { type string; when "deref(../ii) = 'a'"; }
+    leaf w6 { type string; when "deref(../un) = 'a'"; }
+  }
+}

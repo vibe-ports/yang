@@ -1,0 +1,523 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module when-derived-from-arg {\n  namespace \"urn:vibe-ports:yang:conformance:when-derived-from-arg\";\n  prefix wdfa;\n\n  identity base {\n    derived der;\n  }\n\n  identity der {\n  }\n\n  container top {\n    config true;\n    status current;\n    leaf id {\n      type identityref {\n        base base;\n      }\n      config true;\n      status current;\n    }\n    leaf s {\n      type string;\n      config true;\n      status current;\n    }\n    leaf n {\n      type uint8;\n      config true;\n      status current;\n    }\n    leaf ul {\n      type union {\n        type identityref {\n          base base;\n        }\n        type string;\n      }\n      config true;\n      status current;\n    }\n    container c {\n      config true;\n      status current;\n      leaf x {\n        type string;\n        config true;\n        status current;\n      }\n    }\n    leaf w1 {\n      when \"derived-from(../s, 'wdfa:der')\";\n      type string;\n      config true;\n      status current;\n    }\n    leaf w2 {\n      when \"derived-from(../c, ../n)\";\n      type string;\n      config true;\n      status current;\n    }\n    leaf w3 {\n      when \"derived-from-or-self(../n, ../c)\";\n      type string;\n      config true;\n      status current;\n    }\n    leaf w4 {\n      when \"derived-from(../id, ../s) and derived-from-or-self(../ul, 'wdfa:base')\";\n      type string;\n      config true;\n      status current;\n    }\n    leaf w5 {\n      when \"derived-from-or-self(../s, ../s)\";\n      type string;\n      config true;\n      status current;\n    }\n  }\n}\n",
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_derived_from_or_self is node \"s\", not of type \"identityref\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_derived_from_or_self is node \"n\", not of type \"identityref\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #2 of xpath_derived_from_or_self is a container node \"c\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_derived_from is a container node \"c\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #2 of xpath_derived_from is node \"n\", not of string-type.",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_derived_from is node \"s\", not of type \"identityref\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "features": [],
+      "identities": [
+        {
+          "bases": [],
+          "derived": [
+            "when-derived-from-arg:der"
+          ],
+          "name": "when-derived-from-arg:base"
+        },
+        {
+          "bases": [
+            "when-derived-from-arg:base"
+          ],
+          "derived": [],
+          "name": "when-derived-from-arg:der"
+        }
+      ],
+      "name": "when-derived-from-arg",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-derived-from-arg",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/when-derived-from-arg:top",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-derived-from-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-derived-from-arg:top/id",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "identityref",
+            "bases": [
+              "when-derived-from-arg:base"
+            ],
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-derived-from-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-derived-from-arg:top/s",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-derived-from-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-derived-from-arg:top/n",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-derived-from-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-derived-from-arg:top/ul",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": [
+              {
+                "base": "identityref",
+                "bases": [
+                  "when-derived-from-arg:base"
+                ],
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              },
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              }
+            ]
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-derived-from-arg",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/when-derived-from-arg:top/c",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-derived-from-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-derived-from-arg:top/c/x",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-derived-from-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-derived-from-arg:top/w1",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-derived-from-arg:top/w1",
+              "expr": "derived-from(../s, 'wdfa:der')",
+              "module": "when-derived-from-arg"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-derived-from-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-derived-from-arg:top/w2",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-derived-from-arg:top/w2",
+              "expr": "derived-from(../c, ../n)",
+              "module": "when-derived-from-arg"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-derived-from-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-derived-from-arg:top/w3",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-derived-from-arg:top/w3",
+              "expr": "derived-from-or-self(../n, ../c)",
+              "module": "when-derived-from-arg"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-derived-from-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-derived-from-arg:top/w4",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-derived-from-arg:top/w4",
+              "expr": "derived-from(../id, ../s) and derived-from-or-self(../ul, 'wdfa:base')",
+              "module": "when-derived-from-arg"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-derived-from-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-derived-from-arg:top/w5",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-derived-from-arg:top/w5",
+              "expr": "derived-from-or-self(../s, ../s)",
+              "module": "when-derived-from-arg"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

@@ -88,6 +88,9 @@ func (s *tschema) Actions() []SchemaNode       { return s.ops[0] }
 func (s *tschema) Notifications() []SchemaNode { return s.ops[1] }
 func (s *tschema) Type() SchemaType {
 	if s.typ == nil {
+		if s.lref != nil { // a leafref to the lref target
+			return &ttype{base: TypeLeafref, real: bt(TypeString)}
+		}
 		if s.kind == KindLeaf || s.kind == KindLeafList {
 			return &ttype{base: TypeString} // fixtures that do not care about types
 		}

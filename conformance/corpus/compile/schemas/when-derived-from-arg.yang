@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+// Schema-mode XPath: derived-from() and derived-from-or-self() want an identityref leaf and a
+// string (the warnings name the C function xpath_derived_from[_or_self]).
+module when-derived-from-arg {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:when-derived-from-arg";
+  prefix wdfa;
+  identity base;
+  identity der { base base; }
+  container top {
+    leaf id { type identityref { base base; } }
+    leaf s { type string; }
+    leaf n { type uint8; }
+    leaf ul { type union { type identityref { base base; } type string; } }
+    container c { leaf x { type string; } }
+    leaf w1 { type string; when "derived-from(../s, 'wdfa:der')"; }
+    leaf w2 { type string; when "derived-from(../c, ../n)"; }
+    leaf w3 { type string; when "derived-from-or-self(../n, ../c)"; }
+    leaf w4 { type string; when "derived-from(../id, ../s) and derived-from-or-self(../ul, 'wdfa:base')"; }
+    leaf w5 { type string; when "derived-from-or-self(../s, ../s)"; }
+  }
+}

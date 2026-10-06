@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+// Schema-mode XPath: arguments of bit-is-set, ceiling, floor, round, enum-value, count and sum
+// (sum looks at every node in context, the others at the last one); literal arguments give no
+// warning because a schema-mode set stays a node set.
+module when-nodeset-func-arg {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:when-nodeset-func-arg";
+  prefix wnfa;
+  container top {
+    leaf b { type bits { bit x; bit y; } }
+    leaf d { type decimal64 { fraction-digits 2; } }
+    leaf n { type uint8; }
+    leaf s { type string; }
+    leaf e { type enumeration { enum one; } }
+    leaf ub { type union { type bits { bit x; } type string; } }
+    container c { leaf x { type string; } }
+    leaf w1 { type string; when "bit-is-set(../n, ../c) or bit-is-set(../b, ../s) or bit-is-set(../ub, 'x')"; }
+    leaf w2 { type string; when "ceiling(../n) = 1 and ceiling(../d) = 1 and ceiling(../c) = 1"; }
+    leaf w3 { type string; when "floor(../s) = 1 or floor(../d) = 1"; }
+    leaf w4 { type string; when "round(../e) = 1 or round(../c) = 1"; }
+    leaf w5 { type string; when "enum-value(../n) = 1 or enum-value(../e) = 1 or enum-value(../c) = 1"; }
+    leaf w6 { type string; when "sum(../s | ../n | ../c | ../d) = 1"; }
+    leaf w7 { type string; when "sum(1) = 1 or count('x') = 1 or floor('x') = 1 or count(../c) = 1 or sum(../n) = 1"; }
+  }
+}

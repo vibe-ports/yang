@@ -1,0 +1,730 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module when-nodeset-func-arg {\n  namespace \"urn:vibe-ports:yang:conformance:when-nodeset-func-arg\";\n  prefix wnfa;\n\n  container top {\n    config true;\n    status current;\n    leaf b {\n      type bits {\n        bit \"x\" {\n          position 0;\n          status current;\n        }\n        bit \"y\" {\n          position 1;\n          status current;\n        }\n      }\n      config true;\n      status current;\n    }\n    leaf d {\n      type decimal64 {\n        fraction-digits 2;\n      }\n      config true;\n      status current;\n    }\n    leaf n {\n      type uint8;\n      config true;\n      status current;\n    }\n    leaf s {\n      type string;\n      config true;\n      status current;\n    }\n    leaf e {\n      type enumeration {\n        enum \"one\" {\n          value 0;\n          status current;\n        }\n      }\n      config true;\n      status current;\n    }\n    leaf ub {\n      type union {\n        type bits {\n          bit \"x\" {\n            position 0;\n            status current;\n          }\n        }\n        type string;\n      }\n      config true;\n      status current;\n    }\n    container c {\n      config true;\n      status current;\n      leaf x {\n        type string;\n        config true;\n        status current;\n      }\n    }\n    leaf w1 {\n      when \"bit-is-set(../n, ../c) or bit-is-set(../b, ../s) or bit-is-set(../ub, 'x')\";\n      type string;\n      config true;\n      status current;\n    }\n    leaf w2 {\n      when \"ceiling(../n) = 1 and ceiling(../d) = 1 and ceiling(../c) = 1\";\n      type string;\n      config true;\n      status current;\n    }\n    leaf w3 {\n      when \"floor(../s) = 1 or floor(../d) = 1\";\n      type string;\n      config true;\n      status current;\n    }\n    leaf w4 {\n      when \"round(../e) = 1 or round(../c) = 1\";\n      type string;\n      config true;\n      status current;\n    }\n    leaf w5 {\n      when \"enum-value(../n) = 1 or enum-value(../e) = 1 or enum-value(../c) = 1\";\n      type string;\n      config true;\n      status current;\n    }\n    leaf w6 {\n      when \"sum(../s | ../n | ../c | ../d) = 1\";\n      type string;\n      config true;\n      status current;\n    }\n    leaf w7 {\n      when \"sum(1) = 1 or count('x') = 1 or floor('x') = 1 or count(../c) = 1 or sum(../n) = 1\";\n      type string;\n      config true;\n      status current;\n    }\n  }\n}\n",
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_sum is node \"s\", not of numeric type.",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_sum is a container node \"c\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_enum_value is node \"n\", not of type \"enumeration\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_enum_value is a container node \"c\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_round is node \"e\", not of type \"decimal64\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_round is a container node \"c\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_floor is node \"s\", not of type \"decimal64\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_ceiling is node \"n\", not of type \"decimal64\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_ceiling is a container node \"c\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #1 of xpath_bit_is_set is node \"n\", not of type \"bits\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Argument #2 of xpath_bit_is_set is a container node \"c\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "features": [],
+      "identities": [],
+      "name": "when-nodeset-func-arg",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-nodeset-func-arg",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/when-nodeset-func-arg:top",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-nodeset-func-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-nodeset-func-arg:top/b",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "bits",
+            "bases": null,
+            "bits": [
+              {
+                "name": "x",
+                "position": 0
+              },
+              {
+                "name": "y",
+                "position": 1
+              }
+            ],
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-nodeset-func-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-nodeset-func-arg:top/d",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "decimal64",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": 2,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-nodeset-func-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-nodeset-func-arg:top/n",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-nodeset-func-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-nodeset-func-arg:top/s",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-nodeset-func-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-nodeset-func-arg:top/e",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "one",
+                "value": 0
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-nodeset-func-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-nodeset-func-arg:top/ub",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": [
+              {
+                "base": "bits",
+                "bases": null,
+                "bits": [
+                  {
+                    "name": "x",
+                    "position": 0
+                  }
+                ],
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              },
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              }
+            ]
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-nodeset-func-arg",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/when-nodeset-func-arg:top/c",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-nodeset-func-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-nodeset-func-arg:top/c/x",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-nodeset-func-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-nodeset-func-arg:top/w1",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-nodeset-func-arg:top/w1",
+              "expr": "bit-is-set(../n, ../c) or bit-is-set(../b, ../s) or bit-is-set(../ub, 'x')",
+              "module": "when-nodeset-func-arg"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-nodeset-func-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-nodeset-func-arg:top/w2",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-nodeset-func-arg:top/w2",
+              "expr": "ceiling(../n) = 1 and ceiling(../d) = 1 and ceiling(../c) = 1",
+              "module": "when-nodeset-func-arg"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-nodeset-func-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-nodeset-func-arg:top/w3",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-nodeset-func-arg:top/w3",
+              "expr": "floor(../s) = 1 or floor(../d) = 1",
+              "module": "when-nodeset-func-arg"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-nodeset-func-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-nodeset-func-arg:top/w4",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-nodeset-func-arg:top/w4",
+              "expr": "round(../e) = 1 or round(../c) = 1",
+              "module": "when-nodeset-func-arg"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-nodeset-func-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-nodeset-func-arg:top/w5",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-nodeset-func-arg:top/w5",
+              "expr": "enum-value(../n) = 1 or enum-value(../e) = 1 or enum-value(../c) = 1",
+              "module": "when-nodeset-func-arg"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-nodeset-func-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-nodeset-func-arg:top/w6",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-nodeset-func-arg:top/w6",
+              "expr": "sum(../s | ../n | ../c | ../d) = 1",
+              "module": "when-nodeset-func-arg"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "when-nodeset-func-arg",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/when-nodeset-func-arg:top/w7",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/when-nodeset-func-arg:top/w7",
+              "expr": "sum(1) = 1 or count('x') = 1 or floor('x') = 1 or count(../c) = 1 or sum(../n) = 1",
+              "module": "when-nodeset-func-arg"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

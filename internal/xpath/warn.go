@@ -252,8 +252,15 @@ var stringFuncs = map[string]argCheck{
 // the last node in the argument's context must be a leaf or leaf-list of a string type (a numeric
 // type for substring's 2nd and 3rd argument). set is the context set the function is called on.
 func (a *atomizer) warnFuncArgs(name string, args []*scset, set *scset) {
+	if a.warn == nil {
+		return
+	}
+	if nc, ok := nodeSetFuncs[name]; ok {
+		a.warnNodeSetFunc(nc, args)
+		return
+	}
 	c, ok := stringFuncs[name]
-	if !ok || a.warn == nil {
+	if !ok {
 		return
 	}
 	switch {
@@ -291,5 +298,64 @@ func (a *atomizer) warnArg(cname string, n int, s *scset, numeric bool) {
 		a.warn(fmt.Sprintf("Argument #%d of %s is node \"%s\", not of numeric type.", n, cname, sn.Name()))
 	case !numeric && !isStringType(sn.Type()):
 		a.warn(fmt.Sprintf("Argument #%d of %s is node \"%s\", not of string-type.", n, cname, sn.Name()))
+	}
+}
+
+// nodeSetCheck is the schema-mode check of a function that expects a node set: the C function
+// name, what the last node in context of argument 1 must be and, for bit-is-set and derived-from*,
+// that argument 2 is string-typed. libyang also warns "Argument #1 of %s not a node-set as
+// expected." when argument 1 is no schema node set; every set of a schema-mode walk is one
+// (literals and numbers only clear the context), so that message cannot appear here.
+type nodeSetCheck struct {
+	cname string
+	want  string                  // `type "bits"`: the tail of "is node "x", not of ..."
+	ok    func(t SchemaType) bool // nil: the argument is not checked (count)
+	str2  bool
+}
+
+var nodeSetFuncs = map[string]nodeSetCheck{
+	"bit-is-set": {"xpath_bit_is_set", `type "bits"`, func(t SchemaType) bool { return isSpecificType(t, TypeBits) }, true},
+	"ceiling":    {"xpath_ceiling", `type "decimal64"`, func(t SchemaType) bool { return isSpecificType(t, TypeDec64) }, false},
+	"count":      {cname: "xpath_count"},
+	"deref": {"xpath_deref", `type "leafref" nor "instance-identifier"`,
+		func(t SchemaType) bool { return isSpecificType(t, TypeLeafref) || isSpecificType(t, TypeInst) }, false},
+	"derived-from":         {"xpath_derived_from", `type "identityref"`, func(t SchemaType) bool { return isSpecificType(t, TypeIdent) }, true},
+	"derived-from-or-self": {"xpath_derived_from_or_self", `type "identityref"`, func(t SchemaType) bool { return isSpecificType(t, TypeIdent) }, true},
+	"enum-value":           {"xpath_enum_value", `type "enumeration"`, func(t SchemaType) bool { return isSpecificType(t, TypeEnum) }, false},
+	"floor":                {"xpath_floor", `type "decimal64"`, func(t SchemaType) bool { return isSpecificType(t, TypeDec64) }, false},
+	"round":                {"xpath_round", `type "decimal64"`, func(t SchemaType) bool { return isSpecificType(t, TypeDec64) }, false},
+	"sum":                  {"xpath_sum", "numeric type", isNumericType, false}, // every node in context, not the last one
+}
+
+// warnNodeSetFunc ports the LYXP_SCNODE_ALL branches of those functions.
+func (a *atomizer) warnNodeSetFunc(c nodeSetCheck, args []*scset) {
+	if c.ok == nil {
+		return
+	}
+	if c.cname == "xpath_sum" { // libyang: every ATOM_CTX node of the argument, in set order
+		a.charge(len(args[0].n))
+		for _, x := range args[0].n {
+			if x.use == AtomCtx {
+				a.warnNode(c, 1, x.n)
+			}
+		}
+		return
+	}
+	a.warnNode(c, 1, lastCtx(args[0]))
+	if c.str2 {
+		a.warnArg(c.cname, 2, args[1], false)
+	}
+}
+
+// warnNode is the "Argument #n of ..." check of one node against c.
+func (a *atomizer) warnNode(c nodeSetCheck, n int, sn SchemaNode) {
+	if sn == nil {
+		return
+	}
+	switch k := sn.Kind(); {
+	case k != KindLeaf && k != KindLeafList:
+		a.warn(fmt.Sprintf("Argument #%d of %s is a %s node \"%s\".", n, c.cname, kindStr(k), sn.Name()))
+	case !c.ok(sn.Type()):
+		a.warn(fmt.Sprintf("Argument #%d of %s is node \"%s\", not of %s.", n, c.cname, sn.Name(), c.want))
 	}
 }

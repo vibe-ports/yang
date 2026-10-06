@@ -10623,3 +10623,36 @@ fixtures:
       verdict: "valid"
       rfc: ["RFC7950#7.17", "RFC7950#7.20.2"]
       deviation: null
+
+  - id: when/deref-arg-warning
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.21.5", "RFC7950#10.3"]
+    areas: ["schema", "xpath"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "when-deref-arg"}]
+    golden: golden/when-deref-arg-warning.json
+
+  - id: when/derived-from-arg-warning
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.21.5", "RFC7950#10.3"]
+    areas: ["schema", "xpath"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "when-derived-from-arg"}]
+    golden: golden/when-derived-from-arg-warning.json
+
+  - id: when/nodeset-func-arg-warning
+    dir: compile
+    source: *own
+    rfc: ["RFC7950#7.21.5", "RFC7950#10.3"]
+    areas: ["schema", "xpath"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "when-nodeset-func-arg"}]
+    golden: golden/when-nodeset-func-arg-warning.json
