@@ -143,3 +143,36 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | src/tree_schema_free.c | lysc_type_free | compile.typeCache.release | replaced | — | reference counts mirrored for the typedef cache; Go frees the memory |
 | src/plugins.c | lyplg_type_plugin_find (by typedef) | types.TypedefPlugin, types.Plugin | replaced | — | per-name record identity (module, revision, typedef) for the reuse rule, as lyplg_type_record |
 | src/schema_compile_node.c | lysc_range_dup | compile.typeCtx.newType (string length) | ported | types/unchanged-typedef-reuse | string length only, as libyang (binary and numeric types do not inherit when compiling a new type without their own restriction: D-0041 candidate) |
+| src/schema_compile.c | lys_compile (data nodes, rpcs, notifications per module and submodule) | compile.Context.compileNodes | partial | compile/* | P3 only; features, P2, P4, P5, module exts: C1b, C4b, C6 |
+| src/schema_compile.c | lysc_update_path | compile.cpath.update, compile.cpath.pop | ported | compile/*, errpath/* | LYSC_CTX_BUFSIZE truncation kept |
+| src/tree_schema.c | lysc_path_until (LYSC_PATH_LOG) | compile.lyscPath | partial | compile/node-dup-* | log paths only |
+| src/tree_schema.c | lys_getnext, lys_getnext_into_case | compile.nodeCtx.getnext | partial | compile/node-dup-*, choice-duplicate-* | options WITHCHOICE, NOCHOICE, WITHCASE, OUTPUT; no extension instances |
+| src/tree_schema.c | lys_find_child, lys_find_child_node | compile.nodeCtx.findChild | partial | compile/list-key-*, choice-default-* | no extension-instance nodes |
+| src/tree_schema_common.c | lysc_data_node | compile.dataNode | ported | compile/choice-default-shorthand-when | |
+| src/tree_schema_common.c | lys_nodetype2str | compile.lysNodetype2str | ported | compile/list-unique-leaf-list | |
+| src/tree_schema.c | ly_schema_resolve_prefix | compile.resolvePrefix | ported | compile/list-unique-prefix-undefined, choice-default-case-wrong-module | |
+| src/ly_common.c | lys_parse_id, ly_parse_nodeid | compile.parseID (in resolveNodeid) | ported | compile/list-unique-bad-separator | |
+| src/schema_compile_node.c | lys_compile_node | compile.nodeCtx.node | partial | compile/* | uses: C6 (ErrUnsupported) |
+| src/schema_compile_node.c | lys_compile_node_ | compile.nodeCtx.node_ | partial | compile/* | if-feature, obsolete, ext instances: C4b; deviations/refines: C6/M2 (ErrUnsupported until then) |
+| src/schema_compile_node.c | lys_compile_node_flags | compile.nodeCtx.nodeFlags | ported | compile/node-config-*, status-* | |
+| src/schema_compile_node.c | lys_compile_status | compile.nodeCtx.status | ported | compile/status-child-*, node-container-config-status-inherit | |
+| src/schema_compile_node.c | lys_compile_config | compile.nodeCtx.config | ported | compile/config-under-state, node-config-* | |
+| src/schema_compile_node.c | lys_compile_node_connect | compile.nodeCtx.connect | ported | compile/*, order/two-augmenters (C6) | Go test TestConnectOrder |
+| src/schema_compile_node.c | lys_compile_node_uniqness | compile.nodeCtx.uniqueness | ported | compile/node-dup-*, notif-duplicate-*, rpc-duplicate-* | |
+| src/schema_compile_node.c | lys_compile_when, lys_compile_when_ | compile.nodeCtx.when | partial | compile/choice-default-shorthand-when | own when only; shared when (uses/augment): C6; unres: C7 |
+| src/schema_compile_node.c | lys_compile_must | compile.nodeCtx.musts | partial | compile/notif-in-container-must | unres: C7 |
+| src/schema_compile_node.c | lys_compile_node_container | compile.nodeCtx.container | ported | compile/mand-*, notif-in-container-* | |
+| src/schema_compile_node.c | lys_compile_node_type | compile.nodeCtx.nodeType, compile.Context.compileLeafType | partial | compile/node-leaflist-empty-10 | type compile: C5 seam (built-in types only until then); leafref/bitenum unres: C7 |
+| src/schema_compile_node.c | lys_compile_node_leaf | compile.nodeCtx.leaf | ported | compile/node-leaf-mandatory-default | |
+| src/schema_compile_node.c | lys_compile_node_leaflist | compile.nodeCtx.leafList | ported | compile/node-leaflist-* | |
+| src/schema_compile_node.c | lys_compile_node_list | compile.nodeCtx.list | partial | compile/list-*, node-list-* | key status check: C4b |
+| src/schema_compile_node.c | lys_compile_node_list_unique | compile.nodeCtx.unique | partial | compile/list-unique-*, node-list-unique-descendant-paths | status check: C4b |
+| src/schema_compile_node.c | lysc_resolve_schema_nodeid | compile.nodeCtx.resolveNodeid | ported | compile/list-unique-* | LY_VALUE_SCHEMA only |
+| src/schema_compile_node.c | lys_compile_node_choice | compile.nodeCtx.choice | ported | compile/choice-* | |
+| src/schema_compile_node.c | lys_compile_node_choice_child | compile.nodeCtx.choiceChild | ported | compile/choice-case-name-vs-shorthand | |
+| src/schema_compile_node.c | lys_compile_node_choice_dflt | compile.nodeCtx.choiceDflt | ported | compile/choice-default-* | |
+| src/schema_compile_node.c | lys_compile_node_case | compile.nodeCtx.caseNode | partial | compile/choice-* | implicit case of augment/grouping: C6 |
+| src/schema_compile_node.c | lys_compile_node_any | compile.nodeCtx.any | ported | compile/anyd-* | |
+| src/schema_compile_node.c | lys_compile_node_action, lys_compile_node_action_inout | compile.nodeCtx.action, compile.nodeCtx.inout | ported | compile/rpc-* | |
+| src/schema_compile_node.c | lys_compile_node_notif | compile.nodeCtx.notif | ported | compile/notif-* | |
+| src/schema_compile_node.c | lys_compile_mandatory_parents | compile.mandatoryParents | partial | compile/mand-* | set only; unset (SCA:2036): C6 |

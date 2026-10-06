@@ -74,6 +74,7 @@ const (
 	eInval    rc = "LY_EINVAL"
 	eNotFound rc = "LY_ENOTFOUND"
 	eDenied   rc = "LY_EDENIED"
+	eExist    rc = "LY_EEXIST"
 )
 
 func rcName(err error) string {
@@ -134,6 +135,8 @@ type Context struct {
 	diags   []Diagnostic
 	// per Load (lys_glob_unres)
 	creating, implementing []*Module
+	nodes                  int        // schema nodes compiled (Budget.MaxNodes)
+	typeCache              *typeCache // compiled typedefs (design 06 §2.3), created by the first compile
 }
 
 // internal_modules[] of context.c.
@@ -199,6 +202,7 @@ func (c *Context) Load(name, rev string, features []string) (*Module, []Diagnost
 		return nil, nil, fmt.Errorf("%w: setting features (design 06 C1b)", ErrUnsupported)
 	}
 	c.diags, c.creating, c.implementing = nil, nil, nil
+	c.nodes = 0
 	m, err := c.parseLoad(name, rev)
 	if err == nil && !m.Implemented { // _lys_set_implemented
 		err = c.implement(m)
