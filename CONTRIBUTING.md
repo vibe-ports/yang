@@ -56,8 +56,9 @@ mistakes, not from a malicious branch or a compromised workstation. Installing t
 checkout would close the first gap at the cost of a second copy to keep in sync. CI cannot replace
 them because it must not see the personal patterns.
 
-`scripts/test-gates` (part of `make ci`, with `scripts/test-claim` for the task queue) self-tests the scanner, the hooks, `merge-pr`, the
-ai-review publisher and `review-tier` against a stubbed `gh`/`curl` and throwaway repos.
+`scripts/test-gates` (part of `make ci`) self-tests the scanner, the hooks, `merge-pr`, the
+ai-review publisher and `review-tier` against a stubbed `gh`/`curl` and throwaway repos;
+`scripts/test-claim` does the same for the task queue (`scripts/claim`).
 
 ## Policy files
 
