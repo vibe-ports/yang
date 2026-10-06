@@ -102,4 +102,4 @@ port-coverage: libyang-src
 
 # libyang v5.8.6 sources for porting and reviews (host side, gitignored).
 libyang-src:
-	[ -d .cache/libyang ] || git clone -q --depth 1 --branch v5.8.6 https://github.com/CESNET/libyang .cache/libyang
+	@[ -d .cache/libyang ] || git -c advice.detachedHead=false clone -q --depth 1 --branch v5.8.6 https://github.com/CESNET/libyang .cache/libyang

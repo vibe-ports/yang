@@ -140,13 +140,79 @@ func fixEnds(sc *source, defs map[string][]def) {
 	}
 }
 
-var literal = regexp.MustCompile(`"([^"\\]|\\.)*"|'([^'\\]|\\.)*'|/\*.*?\*/|//.*$`)
+// strip blanks out the string and character literals and the comments of C text (block comments
+// over several lines included), keeping every newline, so line numbers stay valid and nothing in
+// a literal or comment is taken for a brace or a call.
+func strip(text string) string {
+	b := []byte(text)
+	const (
+		code = iota
+		str
+		chr
+		line
+		block
+	)
+	state := code
+	for i := 0; i < len(b); i++ {
+		c := b[i]
+		next := byte(0)
+		if i+1 < len(b) {
+			next = b[i+1]
+		}
+		switch state {
+		case code:
+			switch {
+			case c == '"':
+				state = str
+			case c == '\'':
+				state = chr
+			case c == '/' && next == '/':
+				state = line
+				b[i] = ' '
+			case c == '/' && next == '*':
+				state = block
+				b[i], b[i+1] = ' ', ' '
+				i++
+			}
+			continue
+		case str, chr:
+			switch {
+			case c == '\\' && next != '\n':
+				b[i], b[i+1] = ' ', ' '
+				i++
+				continue
+			case state == str && c == '"' || state == chr && c == '\'':
+				state = code
+				continue
+			case c == '\n': // unterminated: stop at the line end
+				state = code
+				continue
+			}
+		case line:
+			if c == '\n' {
+				state = code
+				continue
+			}
+		case block:
+			if c == '*' && next == '/' {
+				b[i], b[i+1] = ' ', ' '
+				i++
+				state = code
+				continue
+			}
+		}
+		if c != '\n' {
+			b[i] = ' '
+		}
+	}
+	return string(b)
+}
 
-// braceEnd is the line closing the body that starts at line first (1-based).
+// braceEnd is the line closing the body that starts at line first (1-based), in stripped lines.
 func braceEnd(lines []string, first int) int {
 	depth, seen := 0, false
-	for n := first; n <= len(lines); n++ {
-		for _, c := range literal.ReplaceAllString(lines[n-1], "") {
+	for n := first; n >= 1 && n <= len(lines); n++ {
+		for _, c := range lines[n-1] {
 			switch {
 			case c == '{':
 				depth++
@@ -166,7 +232,11 @@ func braceEnd(lines []string, first int) int {
 
 var ident = regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]*`)
 
-// readPortMap returns every identifier of the "C function" column of the port map.
+var parenthetical = regexp.MustCompile(`\([^()]*\)`)
+
+// readPortMap returns the functions of the "C function" column of the port map, whatever their
+// status: every identifier outside parenthetical notes ("lyd_insert (rb_* helpers inline)" lists
+// lyd_insert only; a folded sub-function is listed by name).
 func readPortMap(r io.Reader) (map[string]bool, error) {
 	ported := map[string]bool{}
 	sc := bufio.NewScanner(r)
@@ -176,14 +246,18 @@ func readPortMap(r io.Reader) (map[string]bool, error) {
 		if len(cells) < 4 || strings.HasPrefix(strings.TrimSpace(cells[1]), "---") {
 			continue
 		}
-		for _, id := range ident.FindAllString(cells[2], -1) {
+		col := cells[2]
+		for prev := ""; prev != col; {
+			prev, col = col, parenthetical.ReplaceAllString(col, " ")
+		}
+		for _, id := range ident.FindAllString(col, -1) {
 			ported[id] = true
 		}
 	}
 	return ported, sc.Err()
 }
 
-// source caches the lines of the libyang files.
+// source caches the lines of the libyang files, literals and comments stripped.
 type source struct {
 	dir   string
 	files map[string][]string
@@ -193,7 +267,7 @@ func (s *source) lines(file string) []string {
 	l, ok := s.files[file]
 	if !ok {
 		b, _ := os.ReadFile(path.Join(s.dir, file)) //nolint:gosec // dev tool over the libyang tree
-		l = strings.Split(string(b), "\n")
+		l = strings.Split(strip(string(b)), "\n")
 		s.files[file] = l
 	}
 	return l
@@ -202,22 +276,24 @@ func (s *source) lines(file string) []string {
 var callRE = regexp.MustCompile(`([A-Za-z_][A-Za-z0-9_]*)\s*\(`)
 
 // calls are the identifiers followed by '(' in the text of d (a function body, or a macro with
-// its continuation lines), strings and comments removed: the functions and macros it calls.
+// its continuation lines), strings and comments removed: the functions and macros it calls. The
+// definition's own name is not a call (a function-like macro, the function header; an
+// object-like macro "#define X bar(1)" keeps bar).
 // ponytail: a textual scan, not a C parser; cscope's scoping differs between builds (it
 // attributes call sites to neighbouring functions on some), so the report does not use it.
 func (s *source) calls(d def) []string {
 	lines := s.lines(d.file)
 	var body strings.Builder
 	for n := d.first; n <= len(lines) && n >= 1; n++ {
-		body.WriteString(literal.ReplaceAllString(lines[n-1], "") + "\n")
+		body.WriteString(lines[n-1] + "\n")
 		if d.macro && !strings.HasSuffix(strings.TrimRight(lines[n-1], " \t"), "\\") || !d.macro && n >= d.end {
 			break
 		}
 	}
 	var out []string
-	for i, m := range callRE.FindAllStringSubmatch(body.String(), -1) {
-		if i == 0 || m[1] == d.name {
-			continue // the definition's own name
+	for _, m := range callRE.FindAllStringSubmatch(body.String(), -1) {
+		if m[1] == d.name {
+			continue // the definition's own name (or a recursive call)
 		}
 		out = append(out, m[1])
 	}
@@ -235,6 +311,7 @@ type Report struct {
 	Reachable, Ported, Skipped int
 	Missing                    []Row
 	SkipReasons                map[string]int // reason → functions left out
+	UnmatchedRoots             []string       // root globs that match no definition
 }
 
 // walk is a breadth-first search over functions from the roots; skipped functions are neither
@@ -248,12 +325,19 @@ func walk(cfg *Config, defs map[string][]def, ported map[string]bool, calls func
 	var queue []item
 	seen := map[string]bool{}
 	var roots []string
+	matched := map[string]bool{}
 	for name := range defs {
 		for _, r := range cfg.Roots {
 			if ok, _ := path.Match(r, name); ok {
 				roots = append(roots, name)
+				matched[r] = true
 				break
 			}
+		}
+	}
+	for _, r := range cfg.Roots {
+		if !matched[r] {
+			rep.UnmatchedRoots = append(rep.UnmatchedRoots, r)
 		}
 	}
 	sort.Strings(roots)
@@ -318,7 +402,9 @@ func walk(cfg *Config, defs map[string][]def, ported map[string]bool, calls func
 func (r *Report) Markdown(w io.Writer) error {
 	var b strings.Builder
 	fmt.Fprintf(&b, "## Port coverage\n\nFunctions reachable from the pilot entry points: **%d**; listed in docs/port-map.md: **%d**; "+
-		"not listed: **%d**. Out of scope (not followed): %d.\n\n", r.Reachable, r.Ported, len(r.Missing), r.Skipped)
+		"not listed: **%d**. Out of scope (not followed): %d.\n\n"+
+		"\"Listed\" means the function's name appears in the port map's C function column (outside "+
+		"parenthetical notes), whatever the row's status.\n\n", r.Reachable, r.Ported, len(r.Missing), r.Skipped)
 	if len(r.SkipReasons) > 0 {
 		var reasons []string
 		for k := range r.SkipReasons {
@@ -373,6 +459,9 @@ func run(w io.Writer, src, portmap, config string) error {
 	rep, err := walk(cfg, defs, ported, sc.calls)
 	if err != nil {
 		return err
+	}
+	for _, r := range rep.UnmatchedRoots {
+		fmt.Fprintf(os.Stderr, "portcov: root %q matches no definition\n", r)
 	}
 	return rep.Markdown(w)
 }

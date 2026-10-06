@@ -59,7 +59,7 @@ jobs:
           imageName: ghcr.io/vibe-ports/yang-dev
           cacheFrom: ghcr.io/vibe-ports/yang-dev
           push: never
-          runCmd: make port-coverage > port-coverage.md 2>&1 || true
+          runCmd: make -s port-coverage > port-coverage.md 2>&1 || true
       - if: always()
         run: cat port-coverage.md >> "$GITHUB_STEP_SUMMARY" || true
   # Publishing the dev image is the only job with packages: write, and only for main.
