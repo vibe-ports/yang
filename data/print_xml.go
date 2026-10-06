@@ -29,12 +29,16 @@ type xmlPrinter struct {
 	ns []xmlNS
 }
 
-// printXML is xml_print_data over the top-level siblings.
-func printXML(p *printer, top []*Node) error {
+// printXML is xml_print_data from sibs[from]: the following siblings too with siblings, else
+// only that subtree.
+func printXML(p *printer, sibs []*Node, from int) error {
 	x := &xmlPrinter{printer: p}
-	for i := range top {
-		if err := x.node(top[i]); err != nil {
+	for i := from; i < len(sibs); i++ {
+		if err := x.node(sibs[i]); err != nil {
 			return err
+		}
+		if !p.siblings {
+			break
 		}
 	}
 	return nil
@@ -175,24 +179,77 @@ func (x *xmlPrinter) inner(n *Node) error {
 	return nil
 }
 
-// opaq is xml_print_opaq for an opaque node without attributes or prefix data: the name with its
-// namespace as the default one, then the text and the children.
+// nsOpaq is xml_print_ns_opaq: the prefix of an opaque name's namespace (an opaque node or an
+// attribute; moduleNS is the XML namespace or the JSON module name), declared if needed; ok false
+// when the name has no namespace the printer can use or it is the default one.
+func (x *xmlPrinter) nsOpaq(format types.Format, prefix, moduleNS string, opts int) (string, bool) {
+	// the prefix is libyang's new_prefix: NULL (the default namespace) unless given and not DEFAULT
+	prefixed := prefix != "" && opts&prefixDefault == 0
+	switch format {
+	case types.FormatXML:
+		if moduleNS != "" {
+			return x.printNS(moduleNS, prefix, prefixed, opts)
+		}
+	case types.FormatJSON:
+		if moduleNS != "" {
+			if m := x.set.Module(moduleNS, ""); m != nil {
+				// the YANG module prefix, not the JSON one (the module name)
+				return x.printNS(m.Namespace, m.Prefix, prefixed, opts)
+			}
+		}
+	}
+	return "", false
+}
+
+// prefixData is xml_print_ns_prefix_data: the declarations of a value's XML prefix data (the
+// default namespace is not for the element). Other formats have no prefix data in libyang.
+func (x *xmlPrinter) prefixData(pc types.PrefixCtx, opts int) {
+	ns, ok := pc.(types.XMLNamespaces)
+	if !ok {
+		return
+	}
+	for _, p := range ns.Order {
+		if p != "" {
+			x.printNS(ns.NS[p], p, opts&prefixDefault == 0, opts)
+		}
+	}
+}
+
+// attrs is xml_print_attr: the attributes of an opaque node with their namespaces and those of
+// their values' prefixes.
+func (x *xmlPrinter) attrs(as []attr) {
+	for _, a := range as {
+		pref, ok := "", false
+		if a.Prefix != "" {
+			pref, ok = x.nsOpaq(a.Format, a.Prefix, a.ModuleNS, 0)
+		}
+		if a.Prefixes != nil {
+			x.prefixData(a.Prefixes, prefixRequired)
+		}
+		if ok {
+			x.printf(" %s:%s=\"", pref, a.Name)
+		} else {
+			x.printf(" %s=\"", a.Name)
+		}
+		x.dump(a.Value, true)
+		x.buf.WriteString("\"")
+	}
+}
+
+// opaq is xml_print_opaq (with xml_print_opaq_open): the name with its namespace as the default
+// one, the attributes, the namespaces of the value's prefixes, then the text and the children.
 func (x *xmlPrinter) opaq(n *Node) error {
 	o := n.opaq
 	x.printf("%s<%s", x.indent(), o.Name)
 	if o.Prefix != "" || o.ModuleNS != "" {
-		if o.Format == types.FormatXML {
-			if o.ModuleNS != "" {
-				x.printNS(o.ModuleNS, "", false, prefixDefault)
-			}
-		} else if o.ModuleNS != "" {
-			if m := x.set.Module(o.ModuleNS, ""); m != nil {
-				x.printNS(m.Namespace, "", false, prefixDefault)
-			}
-		}
+		x.nsOpaq(o.Format, o.Prefix, o.ModuleNS, prefixDefault)
 	}
+	x.attrs(o.Attrs)
 	children := kids(n)
 	if o.Value != "" {
+		if o.Prefixes != nil {
+			x.prefixData(o.Prefixes, prefixRequired)
+		}
 		x.buf.WriteString(">")
 		x.dump(o.Value, false)
 	}

@@ -1,0 +1,15 @@
+module pk {
+  yang-version 1.1;
+  namespace "urn:pk";
+  prefix pk;
+
+  import pj { prefix pj; }
+
+  description "Printer fixtures: a second module augmenting pj (data/meta_test.go pjSchema).";
+
+  augment "/pj:c" {
+    leaf ext { type string; }
+  }
+
+  leaf top { type string; }
+}

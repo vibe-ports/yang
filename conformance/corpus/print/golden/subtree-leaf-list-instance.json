@@ -1,0 +1,319 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pj",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pk",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "subtree": {
+    "json": "{\n  \"pj:ll\": [\n    2\n  ]\n}\n",
+    "xml": "<ll xmlns=\"urn:pj\" xmlns:pj=\"urn:pj\" pj:ann=\"x\">2</ll>\n"
+  },
+  "tree": {
+    "json": "{\n  \"pj:c\": {\n    \"s\": \"a\",\n    \"ll\": [\n      1,\n      2,\n      3\n    ],\n    \"@ll\": [\n      null,\n      {\n        \"pj:ann\": \"x\"\n      },\n      null\n    ],\n    \"l\": [\n      {\n        \"k\": \"a\"\n      },\n      {\n        \"k\": \"b\",\n        \"v\": \"v\",\n        \"@v\": {\n          \"pj:ann\": \"w\"\n        }\n      }\n    ],\n    \"in\": {\n      \"@\": {\n        \"pj:num\": 5\n      },\n      \"x\": \"y\"\n    },\n    \"pk:ext\": \"e\"\n  },\n  \"pj:top\": \"t\",\n  \"pk:top\": \"u\"\n}\n",
+    "xml": "<c xmlns=\"urn:pj\">\n  <s>a</s>\n  <ll>1</ll>\n  <ll xmlns:pj=\"urn:pj\" pj:ann=\"x\">2</ll>\n  <ll>3</ll>\n  <l>\n    <k>a</k>\n  </l>\n  <l>\n    <k>b</k>\n    <v xmlns:pj=\"urn:pj\" pj:ann=\"w\">v</v>\n  </l>\n  <in xmlns:pj=\"urn:pj\" pj:num=\"5\">\n    <x>y</x>\n  </in>\n  <ext xmlns=\"urn:pk\">e</ext>\n</c>\n<top xmlns=\"urn:pj\">t</top>\n<top xmlns=\"urn:pk\">u</top>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/pj:c",
+      "schema": "/pj:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pj:c/s",
+      "schema": "/pj:c/s",
+      "value": {
+        "canonical": "a",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/pj:c/ll[.='1']",
+      "schema": "/pj:c/ll",
+      "value": {
+        "canonical": "1",
+        "type": "uint8",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [
+        {
+          "module": "pj",
+          "name": "ann",
+          "value": "x"
+        }
+      ],
+      "opaque": null,
+      "path": "/pj:c/ll[.='2']",
+      "schema": "/pj:c/ll",
+      "value": {
+        "canonical": "2",
+        "type": "uint8",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/pj:c/ll[.='3']",
+      "schema": "/pj:c/ll",
+      "value": {
+        "canonical": "3",
+        "type": "uint8",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/pj:c/l[k='a']",
+      "schema": "/pj:c/l",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pj:c/l[k='a']/k",
+      "schema": "/pj:c/l/k",
+      "value": {
+        "canonical": "a",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/pj:c/l[k='b']",
+      "schema": "/pj:c/l",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pj:c/l[k='b']/k",
+      "schema": "/pj:c/l/k",
+      "value": {
+        "canonical": "b",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [
+        {
+          "module": "pj",
+          "name": "ann",
+          "value": "w"
+        }
+      ],
+      "opaque": null,
+      "path": "/pj:c/l[k='b']/v",
+      "schema": "/pj:c/l/v",
+      "value": {
+        "canonical": "v",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [
+        {
+          "module": "pj",
+          "name": "num",
+          "value": "5"
+        }
+      ],
+      "opaque": null,
+      "path": "/pj:c/in",
+      "schema": "/pj:c/in",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pj:c/in/x",
+      "schema": "/pj:c/in/x",
+      "value": {
+        "canonical": "y",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pj:c/pk:ext",
+      "schema": "/pj:c/pk:ext",
+      "value": {
+        "canonical": "e",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pj:top",
+      "schema": "/pj:top",
+      "value": {
+        "canonical": "t",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pk:top",
+      "schema": "/pk:top",
+      "value": {
+        "canonical": "u",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

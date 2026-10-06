@@ -1,0 +1,8 @@
+<c xmlns="urn:pj" xmlns:pj="urn:pj" xmlns:x="urn:x" xmlns:y="urn:y">
+  <s>a</s>
+  <q x:a="x:v" b="1&amp;2" pj:ann="y:w z:u">x:val</q>
+  <q xmlns:w="urn:w" y:c="w:2 x:3">2</q>
+  <r x:a="1"><k xmlns="urn:k" pj:num="7">v</k></r>
+  <pk:q2 xmlns:pk="urn:pk" pj:ann="v"/>
+</c>
+<z xmlns="urn:z" xmlns:x="urn:x" x:t="x:1 y"/>

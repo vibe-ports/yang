@@ -1,0 +1,35 @@
+module pj {
+  yang-version 1.1;
+  namespace "urn:pj";
+  prefix pj;
+
+  import ietf-yang-metadata { prefix md; }
+
+  description "Printer fixtures: the probe schema of the data parser tests (data/meta_test.go pjSchema).";
+
+  md:annotation ann { type string; }
+  md:annotation num { type uint8; }
+
+  container c {
+    leaf s { type string; }
+    leaf n { type int32; }
+    leaf e { type empty; }
+    leaf-list ll { type uint8; }
+    list l {
+      key k;
+      leaf k { type string; }
+      leaf v { type string; }
+    }
+    list l2 {
+      key "a b";
+      leaf a { type string; }
+      leaf b { type string; }
+      leaf v { type string; }
+    }
+    container in {
+      leaf x { type string; }
+    }
+  }
+
+  leaf top { type string; }
+}

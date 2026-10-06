@@ -1,0 +1,487 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pj",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pk",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"pj:c\": {\n    \"s\": \"a\",\n    \"q\": \"x\",\n    \"@q\": {\n      \"ann\": \"v\",\n      \"pk:o\": 1,\n      \"zz:t\": true,\n      \"e\": [null],\n      \"n64\": \"18446744073709551615\"\n    },\n    \"ql\": [\n      1,\n      \"2\",\n      true\n    ],\n    \"qa\": [\n      {\n        \"k\": 1\n      },\n      {\n        \"@\": {\n          \"pk:o\": \"x\"\n        },\n        \"k\": 2\n      }\n    ],\n    \"qo\": {\n      \"@\": {\n        \"ann\": \"o\"\n      },\n      \"k\": \"v\"\n    },\n    \"pk:q2\": \"w\",\n    \"@pk:q2\": {\n      \"o\": \"y\"\n    }\n  },\n  \"zz:top\": {\n    \"@\": {\n      \"pj:ann\": \"t\"\n    },\n    \"a\": \"b\"\n  }\n}\n",
+    "xml": "<c xmlns=\"urn:pj\">\n  <s>a</s>\n  <q xmlns:pj=\"urn:pj\" pj:ann=\"v\" xmlns:pk=\"urn:pk\" pk:o=\"1\" t=\"true\" pj:e=\"\" pj:n64=\"18446744073709551615\">x</q>\n  <ql>1</ql>\n  <ql>2</ql>\n  <ql>true</ql>\n  <qa>\n    <k>1</k>\n  </qa>\n  <qa xmlns:pk=\"urn:pk\" pk:o=\"x\">\n    <k>2</k>\n  </qa>\n  <qo xmlns:pj=\"urn:pj\" pj:ann=\"o\">\n    <k>v</k>\n  </qo>\n  <q2 xmlns=\"urn:pk\" xmlns:pk=\"urn:pk\" pk:o=\"y\">w</q2>\n</c>\n<top xmlns:pj=\"urn:pj\" pj:ann=\"t\">\n  <a>b</a>\n</top>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/pj:c",
+      "schema": "/pj:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pj:c/s",
+      "schema": "/pj:c/s",
+      "value": {
+        "canonical": "a",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [
+        {
+          "module": "pj",
+          "name": "ann",
+          "value": "v"
+        },
+        {
+          "module": "pk",
+          "name": "o",
+          "value": "1"
+        },
+        {
+          "module": "zz",
+          "name": "t",
+          "value": "true"
+        },
+        {
+          "module": "pj",
+          "name": "e",
+          "value": ""
+        },
+        {
+          "module": "pj",
+          "name": "n64",
+          "value": "18446744073709551615"
+        }
+      ],
+      "opaque": {
+        "format": "json",
+        "module": "pj",
+        "name": "q",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/pj:c/q",
+      "schema": null,
+      "value": {
+        "canonical": "x",
+        "hints": [
+          "string",
+          "num64"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "pj",
+        "name": "ql",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/pj:c/ql",
+      "schema": null,
+      "value": {
+        "canonical": "1",
+        "hints": [
+          "decnum",
+          "leaflist"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "pj",
+        "name": "ql",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/pj:c/ql",
+      "schema": null,
+      "value": {
+        "canonical": "2",
+        "hints": [
+          "string",
+          "num64",
+          "leaflist"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "pj",
+        "name": "ql",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/pj:c/ql",
+      "schema": null,
+      "value": {
+        "canonical": "true",
+        "hints": [
+          "boolean",
+          "leaflist"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "pj",
+        "name": "qa",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/pj:c/qa",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "list"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "pj",
+        "name": "k",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/pj:c/qa/k",
+      "schema": null,
+      "value": {
+        "canonical": "1",
+        "hints": [
+          "decnum"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [
+        {
+          "module": "pk",
+          "name": "o",
+          "value": "x"
+        }
+      ],
+      "opaque": {
+        "format": "json",
+        "module": "pj",
+        "name": "qa",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/pj:c/qa",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "list"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "pj",
+        "name": "k",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/pj:c/qa/k",
+      "schema": null,
+      "value": {
+        "canonical": "2",
+        "hints": [
+          "decnum"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [
+        {
+          "module": "pj",
+          "name": "ann",
+          "value": "o"
+        }
+      ],
+      "opaque": {
+        "format": "json",
+        "module": "pj",
+        "name": "qo",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/pj:c/qo",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "container"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "pj",
+        "name": "k",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/pj:c/qo/k",
+      "schema": null,
+      "value": {
+        "canonical": "v",
+        "hints": [
+          "string",
+          "num64"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [
+        {
+          "module": "pk",
+          "name": "o",
+          "value": "y"
+        }
+      ],
+      "opaque": {
+        "format": "json",
+        "module": "pk",
+        "name": "q2",
+        "namespace": null,
+        "prefix": "pk"
+      },
+      "path": "/pj:c/pk:q2",
+      "schema": null,
+      "value": {
+        "canonical": "w",
+        "hints": [
+          "string",
+          "num64"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [
+        {
+          "module": "pj",
+          "name": "ann",
+          "value": "t"
+        }
+      ],
+      "opaque": {
+        "format": "json",
+        "module": "zz",
+        "name": "top",
+        "namespace": null,
+        "prefix": "zz"
+      },
+      "path": "/top",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "container"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "zz",
+        "name": "a",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/top/a",
+      "schema": null,
+      "value": {
+        "canonical": "b",
+        "hints": [
+          "string",
+          "num64"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

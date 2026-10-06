@@ -5,6 +5,7 @@ package data
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
@@ -17,23 +18,29 @@ type jsonPrinter struct {
 	levelPrinted int     // level where some data were already printed (LEVEL_PRINTED)
 	open         []*Node // open arrays, by their first printed node
 	parent       *Node   // parent of the node being printed
+	root         *Node   // the top node being printed (pctx->root)
 	firstLL      *Node   // first printed leaf-list instance with metadata to print after the array
 	firstLLSibs  []*Node
 	firstLLIdx   int
 }
 
-// printJSON is json_print_data over the top-level siblings.
-func printJSON(p *printer, top []*Node) error {
-	if len(top) == 0 {
+// printJSON is json_print_data from sibs[from]: with siblings (LYD_PRINT_SIBLINGS) the following
+// siblings too, else only that subtree (lyd_print_tree).
+func printJSON(p *printer, sibs []*Node, from int) error {
+	if from >= len(sibs) {
 		p.printf("{}%s", p.nl())
 		return nil
 	}
 	j := &jsonPrinter{printer: p}
 	p.level = 1
 	p.printf("{%s", p.nl())
-	for i := range top {
-		if err := j.node(top, i); err != nil {
+	for i := from; i < len(sibs); i++ {
+		j.root = sibs[i]
+		if err := j.node(sibs, i); err != nil {
 			return err
+		}
+		if !p.siblings {
+			break
 		}
 	}
 	p.printf("%s}%s", p.nl(), p.nl())
@@ -110,6 +117,12 @@ func (j *jsonPrinter) nsDiffers(snode *schema.Node, parent *Node) bool {
 
 // member is json_print_member: the member name of n (attr: the metadata '@').
 func (j *jsonPrinter) member(n *Node, attr bool) {
+	j.memberOf(n.schema, j.nodeModule(n), n.Name(), attr)
+}
+
+// memberOf is json_print_member of the schema node sn (nil: an opaque node of module mod) or of
+// a schema node without an instance.
+func (j *jsonPrinter) memberOf(sn *schema.Node, mod, name string, attr bool) {
 	j.comma()
 	at := ""
 	if attr {
@@ -119,15 +132,17 @@ func (j *jsonPrinter) member(n *Node, attr bool) {
 	if j.format() {
 		sep = " "
 	}
-	if j.nsDiffers(n.schema, j.parent) {
-		j.printf("%s\"%s%s:%s\":%s", j.indent(), at, j.nodeModule(n), n.Name(), sep)
+	if j.nsDiffers(sn, j.parent) {
+		j.printf("%s\"%s%s:%s\":%s", j.indent(), at, mod, name, sep)
 	} else {
-		j.printf("%s\"%s%s\":%s", j.indent(), at, n.Name(), sep)
+		j.printf("%s\"%s%s\":%s", j.indent(), at, name, sep)
 	}
 }
 
-// memberOpaq is json_print_member2 for an opaque node name (name nil: the empty "@" member).
-func (j *jsonPrinter) memberOpaq(parent, n *Node, attr bool) {
+// member2 is json_print_member2 of an opaque name (an opaque node or an attribute: moduleNS is
+// its XML namespace or JSON module name per format), the module name printed unless parent's is
+// the same; an empty name is the empty "@" member.
+func (j *jsonPrinter) member2(parent *Node, format types.Format, moduleNS, name string, attr bool) {
 	j.comma()
 	at := ""
 	if attr {
@@ -137,9 +152,14 @@ func (j *jsonPrinter) memberOpaq(parent, n *Node, attr bool) {
 	if j.format() {
 		sep = " "
 	}
-	mod, name := "", ""
-	if n != nil {
-		mod, name = j.opaqModule(n), n.opaq.Name
+	mod := moduleNS
+	if format == types.FormatXML {
+		mod = ""
+		if moduleNS != "" {
+			if m := j.set.ByNamespace(moduleNS); m != nil {
+				mod = m.Name
+			}
+		}
 	}
 	pmod := ""
 	if parent != nil {
@@ -152,8 +172,10 @@ func (j *jsonPrinter) memberOpaq(parent, n *Node, attr bool) {
 	}
 }
 
-// opaqModule is the module name of an opaque node's name (JSON: as given, XML: by namespace).
-func (j *jsonPrinter) opaqModule(n *Node) string { return j.nodeModule(n) }
+// memberOpaq is json_print_member2 of the opaque node n.
+func (j *jsonPrinter) memberOpaq(parent, n *Node, attr bool) {
+	j.member2(parent, n.opaq.Format, n.opaq.ModuleNS, n.opaq.Name, attr)
+}
 
 // str is json_print_string.
 func (j *jsonPrinter) str(s string) {
@@ -230,21 +252,56 @@ func (j *jsonPrinter) attributes(n *Node, inner bool) error {
 	if n.schema != nil && n.schema.Kind != schema.Container && j.opts.tagged(n) {
 		wd = j.set.Implemented(wdModule) // printed only if the context has the module
 	}
-	if n.schema == nil || (wd == nil && !hasPrintableMeta(n)) {
+	var err error
+	switch {
+	case n.schema != nil && (wd != nil || hasPrintableMeta(n)):
+		if inner {
+			j.member2(n.parent, types.FormatJSON, "", "", true)
+		} else {
+			j.member(n, true)
+		}
+		j.printf("{%s", j.nl())
+		j.level++
+		err = j.metadata(n, wd)
+	case n.schema == nil && len(n.opaq.Attrs) > 0:
+		if inner {
+			j.member2(n.parent, types.FormatJSON, "", "", true)
+		} else {
+			j.memberOpaq(n.parent, n, true)
+		}
+		j.printf("{%s", j.nl())
+		j.level++
+		j.attribute(n)
+	default:
 		return nil
 	}
-	if inner {
-		j.memberOpaq(n.parent, nil, true)
-	} else {
-		j.member(n, true)
-	}
-	j.printf("{%s", j.nl())
-	j.level++
-	err := j.metadata(n, wd)
 	j.level--
 	j.printf("%s%s}", j.nl(), j.indent())
 	j.levelDone()
 	return err
+}
+
+// attribute is json_print_attribute: the attributes of the opaque node n, as members whose
+// value is printed by its hints.
+func (j *jsonPrinter) attribute(n *Node) {
+	for _, a := range n.opaq.Attrs {
+		j.member2(n, a.Format, a.ModuleNS, a.Name, false)
+		switch h := a.Hints; {
+		case h&(types.HintString|types.HintOctNum|types.HintHexNum|types.HintNum64) != 0:
+			j.str(a.Value)
+		case h&(types.HintBoolean|types.HintDecNum) != 0:
+			if a.Value == "" {
+				j.buf.WriteString("null")
+			} else {
+				j.buf.WriteString(a.Value)
+			}
+		case h&types.HintEmpty != 0:
+			j.buf.WriteString("[null]")
+		default:
+			j.str(a.Value) // no hints: a string
+		}
+		j.levelDone()
+	}
 }
 
 func (j *jsonPrinter) leaf(n *Node) error {
@@ -266,8 +323,13 @@ func (j *jsonPrinter) inner(n *Node) error {
 			break
 		}
 	}
-	hasContent := len(n.meta) > 0 || printable
-	isList := (n.schema != nil && n.schema.Kind == schema.List)
+	var schemaKids []*schema.Node // lysc_node_child
+	if n.schema != nil {
+		schemaKids = n.schema.Children
+	}
+	hasContent := len(n.meta) > 0 || printable || (j.opts.EmptyLeafList && j.nextEmpty(schemaKids, children) != nil)
+	isList := (n.schema != nil && n.schema.Kind == schema.List) ||
+		(n.schema == nil && n.opaq.Hints != types.HintData && n.opaq.Hints&hintList != 0)
 	comma := ""
 	if j.isOpenArray(n) && j.levelPrinted >= j.level {
 		comma = ","
@@ -296,6 +358,12 @@ func (j *jsonPrinter) inner(n *Node) error {
 		}
 	}
 	j.parent = prev
+	if !printable && j.opts.EmptyLeafList {
+		for rest := j.nextEmpty(schemaKids, nil); rest != nil; rest = j.nextEmpty(rest[1:], nil) {
+			j.leafListEmpty(rest[0])
+			j.levelDone()
+		}
+	}
 	j.level--
 	if hasContent {
 		j.printf("%s%s}", j.nl(), j.indent())
@@ -316,7 +384,54 @@ func (j *jsonPrinter) isLastInst(n *Node, sibs []*Node, i int) bool {
 	if !j.isOpenArray(n) {
 		return false
 	}
+	if n == j.root && !j.siblings {
+		return true // the only printed instance
+	}
 	return i+1 >= len(sibs) || sibs[i+1].schema != n.schema
+}
+
+// leafListEmpty is json_print_leaf_list_empty: an empty array of the list or leaf-list sn.
+func (j *jsonPrinter) leafListEmpty(sn *schema.Node) {
+	j.memberOf(sn, sn.Module.Name, sn.Name, false)
+	j.buf.WriteString("[") // json_print_array_open with LY_PRINT_SHRINK: no empty line
+	j.open = append(j.open, nil)
+	j.level++
+	j.arrayClose()
+}
+
+// nextEmpty is json_print_next_empty_leaf_list: the rest of the schema siblings sl from the first
+// list or leaf-list, unless an instance in sibs that will be printed comes first; nil if none.
+func (j *jsonPrinter) nextEmpty(sl []*schema.Node, sibs []*Node) []*schema.Node {
+	for k, sn := range sl {
+		// lyd_find_sibling_schema: the first instance
+		if i := slices.IndexFunc(sibs, func(n *Node) bool { return n.schema == sn }); i >= 0 && j.opts.shouldPrint(sibs[i]) {
+			return nil
+		}
+		if sn.Kind == schema.LeafList || sn.Kind == schema.List {
+			return sl[k:]
+		}
+	}
+	return nil
+}
+
+// schemaAfter is the lysc_node.next chain of sn: its following schema siblings. The children of
+// all the cases of a choice are linked as one list in libyang.
+func schemaAfter(sn *schema.Node) []*schema.Node {
+	var l []*schema.Node
+	switch p := sn.Parent; {
+	case p == nil:
+		l = sn.Module.Top
+	case p.Kind == schema.Case && p.Parent != nil:
+		for _, c := range p.Parent.Children {
+			l = append(l, c.Children...)
+		}
+	default:
+		l = p.Children
+	}
+	if i := slices.Index(l, sn); i >= 0 {
+		return l[i+1:]
+	}
+	return nil
 }
 
 // leafList is json_print_leaf_list: one instance of a list or leaf-list.
@@ -365,7 +480,14 @@ func (j *jsonPrinter) metaLeafList() error {
 	if j.opts.WithDefaults == WDAllTagged || j.opts.WithDefaults == WDImplicitTagged {
 		wdMod = j.set.Implemented(wdModule)
 	}
-	j.member(sibs[k], true)
+	// libyang decides on the attributes of an opaque leaf-list by its first instance
+	var opaq *opaque
+	if first := sibs[k]; first.schema != nil {
+		j.member(first, true)
+	} else {
+		opaq = first.opaq
+		j.memberOpaq(first.parent, first, true)
+	}
 	j.printf("[%s", j.nl())
 	j.level++
 	for ; k < len(sibs); k++ {
@@ -375,15 +497,19 @@ func (j *jsonPrinter) metaLeafList() error {
 		if it.schema != nil && j.opts.tagged(it) {
 			wd = wdMod
 		}
-		if it.schema != nil && (hasPrintableMeta(it) || wd != nil) {
+		if (it.schema != nil && (hasPrintableMeta(it) || wd != nil)) || (opaq != nil && len(opaq.Attrs) > 0) {
 			nl := "{"
 			if j.format() {
 				nl = "{\n"
 			}
 			j.printf("%s%s", j.indent(), nl)
 			j.level++
-			if err := j.metadata(it, wd); err != nil {
-				return err
+			if it.schema != nil {
+				if err := j.metadata(it, wd); err != nil {
+					return err
+				}
+			} else {
+				j.attribute(it)
 			}
 			j.level--
 			j.printf("%s%s}", j.nl(), j.indent())
@@ -401,31 +527,59 @@ func (j *jsonPrinter) metaLeafList() error {
 	return nil
 }
 
-// opaq is json_print_opaq for an opaque node without attributes or node hints (list, leaf-list and
-// container hints are not kept): an object when it has children, else its value by the value hints.
-func (j *jsonPrinter) opaq(n *Node) error {
-	j.memberOpaq(j.parent, n, false)
-	if len(kids(n)) > 0 {
+// opaq is json_print_opaq: by the node hints, an instance of an array (list or leaf-list), an
+// object (children, a list or a container) or a value printed by its value hints, with its
+// attributes (those of leaf-list instances after the array).
+func (j *jsonPrinter) opaq(sibs []*Node, i int) error {
+	n := sibs[i]
+	o := n.opaq
+	h := o.Hints
+	if h == types.HintData {
+		h = 0 // useless and confusing hints
+	}
+	inArray := h&(hintList|hintLeafList) != 0
+	first := !inArray || i == 0 || !matching(sibs[i-1], n)
+	last := !inArray || i+1 >= len(sibs) || !matching(n, sibs[i+1])
+	switch {
+	case first:
+		j.memberOpaq(j.parent, n, false)
+		if inArray {
+			j.arrayOpen(n)
+		}
+		if h&hintLeafList != 0 {
+			j.printf("%s", j.indent())
+		}
+	case h&hintLeafList != 0:
+		j.printf(",%s%s", j.nl(), j.indent())
+	}
+	if len(kids(n)) > 0 || h&(hintList|hintContainer) != 0 {
 		if err := j.inner(n); err != nil {
 			return err
 		}
 		j.levelDone()
-		return nil
+	} else {
+		switch {
+		case h&types.HintEmpty != 0:
+			j.buf.WriteString("[null]")
+		case h&(types.HintBoolean|types.HintDecNum) != 0 && h&types.HintNum64 == 0:
+			j.buf.WriteString(o.Value)
+		default:
+			j.str(o.Value) // a string or a large number
+		}
+		j.levelDone()
+		switch {
+		case h&hintLeafList == 0:
+			if err := j.attributes(n, false); err != nil {
+				return err
+			}
+		case j.firstLL == nil && len(o.Attrs) > 0:
+			j.firstLL, j.firstLLSibs, j.firstLLIdx = n, sibs, i // printed after the array
+		}
 	}
-	// value hints of the parser: numbers and booleans bare, [null] for empty (HintData says nothing)
-	h := n.opaq.Hints
-	if h == types.HintData {
-		h = 0
+	if last && inArray {
+		j.arrayClose()
+		j.levelDone()
 	}
-	switch {
-	case h&types.HintEmpty != 0:
-		j.buf.WriteString("[null]")
-	case h&(types.HintBoolean|types.HintDecNum) != 0 && h&types.HintNum64 == 0:
-		j.buf.WriteString(n.opaq.Value)
-	default:
-		j.str(n.opaq.Value)
-	}
-	j.levelDone()
 	return nil
 }
 
@@ -441,7 +595,7 @@ func (j *jsonPrinter) node(sibs []*Node, i int) error {
 	var err error
 	switch {
 	case n.schema == nil:
-		err = j.opaq(n)
+		err = j.opaq(sibs, i)
 	case n.schema.Kind == schema.Container || n.schema.Kind == schema.RPC || n.schema.Kind == schema.Action ||
 		n.schema.Kind == schema.Notification:
 		err = j.container(n)
@@ -455,11 +609,17 @@ func (j *jsonPrinter) node(sibs []*Node, i int) error {
 	if err != nil {
 		return err
 	}
-	j.levelDone()
 	var next *Node
 	if i+1 < len(sibs) {
 		next = sibs[i+1]
 	}
+	if n.schema != nil && j.opts.EmptyLeafList && (next == nil || next.schema != n.schema) {
+		// after the last instance: the empty (leaf-)lists that follow it in the schema
+		for rest := j.nextEmpty(schemaAfter(n.schema), sibs); rest != nil; rest = j.nextEmpty(rest[1:], sibs) {
+			j.leafListEmpty(rest[0])
+		}
+	}
+	j.levelDone()
 	if j.firstLL != nil && !matching(next, j.firstLL) {
 		if err := j.metaLeafList(); err != nil {
 			return err

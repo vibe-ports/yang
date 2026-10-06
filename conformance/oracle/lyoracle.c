@@ -85,6 +85,12 @@ static const struct flag wd_modes[] = {
     {NULL, 0}
 };
 
+/* op data: printer flags added to the with-defaults mode for `tree` and `subtree` */
+static const struct flag print_flags[] = {
+    {"empty_leaf_list", LYD_PRINT_EMPTY_LEAF_LIST},
+    {NULL, 0}
+};
+
 static const struct flag diff_flags[] = {
     {"defaults", LYD_DIFF_DEFAULTS},
     {"meta", LYD_DIFF_META},
@@ -1235,10 +1241,11 @@ static void
 op_data(const cJSON *req)
 {
     struct dparams p;
-    struct lyd_node *tree;
+    struct lyd_node *tree, *sub;
     cJSON *diag;
     struct ly_ctx *ctx = data_prelude(req, &p, &diag);
-    const char *data;
+    const char *data, *subpath = str_of(req, "print_subtree");
+    uint32_t popts = wd_of(req) | flags_of(req, "print_options", print_flags);
     LY_ERR rc;
 
     if (!ctx) {
@@ -1250,8 +1257,16 @@ op_data(const cJSON *req)
     rc = parse_one(ctx, &p, data, input_of(req, "rpc"), &tree, diag, "data");
     set_verdict(rc);
     if (tree) {
-        cJSON_AddItemToObject(resp, "tree", print_tree(tree, wd_of(req), p.optype == LYD_TYPE_DATA_YANG));
+        cJSON_AddItemToObject(resp, "tree", print_tree(tree, popts, p.optype == LYD_TYPE_DATA_YANG));
         cJSON_AddItemToObject(resp, "typed", typed_json(tree));
+        if (subpath) {
+            /* lyd_print_tree: the node and its descendants, without its siblings */
+            sub = NULL;
+            if (lyd_find_path(tree, subpath, 0, &sub) || !sub) {
+                die("print_subtree \"%s\" not found", subpath);
+            }
+            cJSON_AddItemToObject(resp, "subtree", print_tree(sub, popts, 0));
+        }
     } else {
         cJSON_AddNullToObject(resp, "tree");
     }

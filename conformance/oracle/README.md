@@ -154,7 +154,11 @@ present for accepted modules.
  "diagnostics": [{"...": "..."}], "tree": null}
 ```
 On success `tree` is `{"json": "<lyd_print_mem JSON>", "xml": "<lyd_print_mem XML>"}`, printed with
-`with_defaults` (`explicit` | `trim` | `all` | `all-tagged` | `implicit-tagged`).
+`with_defaults` (`explicit` | `trim` | `all` | `all-tagged` | `implicit-tagged`) plus
+`print_options` (`empty_leaf_list` = `LYD_PRINT_EMPTY_LEAF_LIST`, JSON only in libyang).
+`print_subtree: "<path>"` adds `subtree` in the same shape: the node `lyd_find_path` finds, printed
+without `LYD_PRINT_SIBLINGS` (= `lyd_print_tree`), with the same options; a path that finds nothing
+is a request-error.
 
 `data_type` presets copy yanglint (`tools/lint/yl_opt.c`); all start from the `unknown` policy flag
 (below) + `LYD_VALIDATE_MULTI_ERROR`:

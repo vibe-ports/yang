@@ -96,8 +96,9 @@ func (p *xmlParser) getNS(prefix string) (string, bool) {
 func (p *xmlParser) prefixes(value string) types.PrefixCtx {
 	p.lc.tree.work++
 	ns := map[string]string{}
+	var order []string
 	if u, ok := p.getNS(""); ok {
-		ns[""] = u
+		ns[""], order = u, append(order, "")
 	}
 	for i := 0; i < len(value); {
 		// ly_value_prefix_next: an XML name followed by ':'
@@ -112,7 +113,7 @@ func (p *xmlParser) prefixes(value string) types.PrefixCtx {
 		if j < len(value) && value[j] == ':' {
 			if _, done := ns[value[i:j]]; !done {
 				if u, ok := p.getNS(value[i:j]); ok {
-					ns[value[i:j]] = u
+					ns[value[i:j]], order = u, append(order, value[i:j])
 				}
 			}
 			j++
@@ -120,7 +121,7 @@ func (p *xmlParser) prefixes(value string) types.PrefixCtx {
 		i = j
 	}
 	p.lc.tree.work += len(ns) // the namespace entries the snapshot copies
-	return types.XMLNamespaces{Set: p.lc.tree.set, NS: ns}
+	return types.XMLNamespaces{Set: p.lc.tree.set, NS: ns, Order: order}
 }
 
 // isNameStartByte and isNameByte approximate is_xmlqnamestartchar/is_xmlqnamechar per byte (any

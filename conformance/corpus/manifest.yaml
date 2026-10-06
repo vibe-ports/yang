@@ -30307,3 +30307,116 @@ fixtures:
         - {do: edit, set: {path: "/pv2-edit:c/a", value: "x"}}
         - {do: edit, set: {path: "/pv2-edit:c/nl", value: "300"}}
     golden: golden/seq-new-path-leaflist-invalid.json
+
+  # data printers (#146): opaque attributes with their prefix data, lyd_print_tree, empty (leaf-)lists
+  - id: print/opaque-attrs-xml
+    dir: print
+    source: *own
+    rfc: []   # libyang LYD_PARSE_OPAQ: opaque nodes keep their XML attributes and value prefixes; no RFC mode
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pj}, {name: pk}]
+      format: xml
+      data_type: config
+      parse_only: true
+      unknown: opaque
+      data_file: data/opaque-attrs.xml
+    golden: golden/opaque-attrs-xml.json
+
+  - id: print/opaque-attrs-json
+    dir: print
+    source: *own
+    rfc: []   # libyang LYD_PARSE_OPAQ: opaque nodes keep their JSON metadata as attributes; no RFC mode
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pj}, {name: pk}]
+      format: json
+      data_type: config
+      parse_only: true
+      unknown: opaque
+      data_file: data/opaque-attrs.json
+    golden: golden/opaque-attrs-json.json
+
+  - id: print/subtree-container
+    dir: print
+    source: *own
+    rfc: ["RFC7951#4", "RFC7952#5.2"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pj}, {name: pk}]
+      format: json
+      data_type: config
+      parse_only: true
+      data_file: data/subtree.json
+      print_subtree: /pj:c/in
+    golden: golden/subtree-container.json
+
+  - id: print/subtree-list-instance
+    dir: print
+    source: *own
+    rfc: ["RFC7951#5.4", "RFC7952#5.2"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pj}, {name: pk}]
+      format: json
+      data_type: config
+      parse_only: true
+      data_file: data/subtree.json
+      print_subtree: /pj:c/l[k='b']
+    golden: golden/subtree-list-instance.json
+
+  - id: print/subtree-leaf-list-instance
+    dir: print
+    source: *own
+    rfc: []   # libyang lyd_print_tree of one leaf-list instance: its metadata array is left out; no RFC form
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pj}, {name: pk}]
+      format: json
+      data_type: config
+      parse_only: true
+      data_file: data/subtree.json
+      print_subtree: /pj:c/ll[.='2']
+    golden: golden/subtree-leaf-list-instance.json
+
+  - id: print/subtree-augment
+    dir: print
+    source: *own
+    rfc: ["RFC7951#4"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pj}, {name: pk}]
+      format: json
+      data_type: config
+      parse_only: true
+      data_file: data/subtree.json
+      print_subtree: /pj:c/pk:ext
+    golden: golden/subtree-augment.json
+
+  - id: print/empty-leaf-list
+    dir: print
+    source: *own
+    rfc: []   # libyang LYD_PRINT_EMPTY_LEAF_LIST: lists and leaf-lists without instances as [] (JSON only)
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pj}, {name: pk}]
+      format: json
+      data_type: config
+      parse_only: true
+      data_file: data/empty-leaf-list.json
+      print_options: [empty_leaf_list]
+    golden: golden/empty-leaf-list.json

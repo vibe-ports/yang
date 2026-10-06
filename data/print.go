@@ -36,8 +36,9 @@ const wdModule = "ietf-netconf-with-defaults"
 
 // PrintOptions are the printer flags of the M1 fixtures.
 type PrintOptions struct {
-	Shrink       bool // LYD_PRINT_SHRINK: no newlines and no indentation
-	WithDefaults WD
+	Shrink        bool // LYD_PRINT_SHRINK: no newlines and no indentation
+	EmptyLeafList bool // LYD_PRINT_EMPTY_LEAF_LIST: JSON prints lists and leaf-lists without instances as []
+	WithDefaults  WD
 }
 
 // npCont is lysc_is_np_cont: a non-presence container.
@@ -115,18 +116,41 @@ func (o PrintOptions) shouldPrint(n *Node) bool {
 // PrintJSON writes the top-level siblings of the tree as RFC 7951 JSON, as lyd_print_all with
 // LYD_JSON and LYD_PRINT_WITHSIBLINGS: 2-space indentation unless o.Shrink.
 func (t *Tree) PrintJSON(w io.Writer, o PrintOptions) error {
-	return t.print(w, o, printJSON)
+	return printData(w, t.set, o, slices.Collect(t.top.all()), 0, true, printJSON)
 }
 
 // PrintXML writes the top-level siblings of the tree as XML, as lyd_print_all with LYD_XML and
 // LYD_PRINT_WITHSIBLINGS.
 func (t *Tree) PrintXML(w io.Writer, o PrintOptions) error {
-	return t.print(w, o, printXML)
+	return printData(w, t.set, o, slices.Collect(t.top.all()), 0, true, printXML)
 }
 
-func (t *Tree) print(w io.Writer, o PrintOptions, f func(*printer, []*Node) error) error {
-	p := &printer{set: t.set, opts: o}
-	if err := f(p, slices.Collect(t.top.all())); err != nil {
+// PrintJSON writes n and its descendants, not its siblings, as RFC 7951 JSON (lyd_print_tree with
+// LYD_JSON): a member of the top-level object, qualified with its module name.
+func (n *Node) PrintJSON(w io.Writer, o PrintOptions) error { return n.print(w, o, printJSON) }
+
+// PrintXML writes n and its descendants, not its siblings, as XML (lyd_print_tree with LYD_XML).
+func (n *Node) PrintXML(w io.Writer, o PrintOptions) error { return n.print(w, o, printXML) }
+
+// print is lyd_print_tree: n with its real siblings, so that leaf-list arrays and empty
+// (leaf-)lists see the instances around it as libyang does.
+func (n *Node) print(w io.Writer, o PrintOptions, f func(*printer, []*Node, int) error) error {
+	root := n
+	for root.parent != nil {
+		root = root.parent
+	}
+	if root.tree == nil {
+		return errors.New("data: printing a node that is not in a tree")
+	}
+	sibs := slices.Collect(n.siblingsOf().all())
+	return printData(w, root.tree.set, o, sibs, slices.Index(sibs, n), false, f)
+}
+
+// printData runs f over sibs from index from: all of them with siblings, else only sibs[from].
+func printData(w io.Writer, set *schema.Set, o PrintOptions, sibs []*Node, from int, siblings bool,
+	f func(*printer, []*Node, int) error) error {
+	p := &printer{set: set, opts: o, siblings: siblings}
+	if err := f(p, sibs, from); err != nil {
 		return err
 	}
 	_, err := w.Write(p.buf.Bytes())
@@ -135,10 +159,11 @@ func (t *Tree) print(w io.Writer, o PrintOptions, f func(*printer, []*Node) erro
 
 // printer is the state the JSON and XML printers share (jsonpr_ctx, xmlpr_ctx).
 type printer struct {
-	set   *schema.Set
-	opts  PrintOptions
-	buf   bytes.Buffer
-	level int // indentation level
+	set      *schema.Set
+	opts     PrintOptions
+	siblings bool // LYD_PRINT_SIBLINGS: lyd_print_all, else lyd_print_tree
+	buf      bytes.Buffer
+	level    int // indentation level
 }
 
 func (p *printer) format() bool { return !p.opts.Shrink }

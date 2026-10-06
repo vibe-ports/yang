@@ -63,6 +63,7 @@ The invocation policy lives only in `request` — never implied by the runner:
 | format | `format` (`json` \| `xml`) |
 | parse vs validate | `parse_only`, `parse_options`, `validate_options` |
 | with-defaults mode | `with_defaults` |
+| other printer flags / subtree print | `print_options`, `print_subtree` |
 | external operational tree / rpc request | `operational_file`, `rpc_file` |
 | xpath / diff inputs | `xpath`, `context_path`, `cur_module`, `vars` / `first_file`, `second_file`, `diff_options` |
 

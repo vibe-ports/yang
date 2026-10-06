@@ -77,10 +77,12 @@ func (m ModuleNames) Resolve(prefix string) *schema.Module {
 }
 
 // XMLNamespaces resolves XML prefixes through the in-scope namespace declarations (key "" is the
-// default namespace).
+// default namespace). Order lists the keys of NS in libyang's prefix-data order (the default
+// namespace, then the prefixes as the value uses them), for printers that declare them.
 type XMLNamespaces struct {
-	Set *schema.Set
-	NS  map[string]string
+	Set   *schema.Set
+	NS    map[string]string
+	Order []string
 }
 
 // Resolve implements PrefixCtx.
