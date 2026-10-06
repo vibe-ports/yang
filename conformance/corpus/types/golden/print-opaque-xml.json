@@ -1,0 +1,178 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ty2",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ty4",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"ty4:c\": {\n    \"loc\": \"own\",\n    \"unk\": \"hello\",\n    \"unk2\": {\n      \"a\": \"b\"\n    },\n    \"x\": \"v & w\"\n  }\n}\n",
+    "xml": "<c xmlns=\"urn:vibe-ports:ty4\">\n  <loc>own</loc>\n  <unk>hello</unk>\n  <unk2>\n    <a>b</a>\n  </unk2>\n  <x xmlns=\"urn:other\">v &amp; w</x>\n</c>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty4:c",
+      "schema": "/ty4:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty4:c/loc",
+      "schema": "/ty4:c/loc",
+      "value": {
+        "canonical": "ty4:own",
+        "type": "identityref",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "unk",
+        "namespace": "urn:vibe-ports:ty4",
+        "prefix": null
+      },
+      "path": "/ty4:c/unk",
+      "schema": null,
+      "value": {
+        "canonical": "hello",
+        "hints": [
+          "string"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "unk2",
+        "namespace": "urn:vibe-ports:ty4",
+        "prefix": null
+      },
+      "path": "/ty4:c/unk2",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "string",
+          "empty"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "a",
+        "namespace": "urn:vibe-ports:ty4",
+        "prefix": null
+      },
+      "path": "/ty4:c/unk2/a",
+      "schema": null,
+      "value": {
+        "canonical": "b",
+        "hints": [
+          "string"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "x",
+        "namespace": "urn:other",
+        "prefix": null
+      },
+      "path": "/ty4:c/x",
+      "schema": null,
+      "value": {
+        "canonical": "v & w",
+        "hints": [
+          "string"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}
