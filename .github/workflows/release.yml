@@ -1,14 +1,22 @@
 name: release
+# A v* tag push: `test` (read-only token) checks the tag and runs `make ci` in the dev container;
+# `publish` (needs test) only creates the GitHub release and is the one job with contents: write.
+# Both jobs check that the tag is semver and on main.
+# Repository settings this relies on (not expressible in this file):
+#  - environment `release`: required reviewer = the maintainer (self-approval allowed), deployment
+#    branches and tags limited to the tag pattern `v*`;
+#  - a `v*` tag ruleset, so a tag can't be moved between `test` and `publish`.
 on:
   push:
     tags: ["v*"]
-permissions:
-  contents: write
-  packages: read
+permissions: {}
 jobs:
-  release:
+  test:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -29,6 +37,22 @@ jobs:
           cacheFrom: ghcr.io/vibe-ports/yang-dev
           push: never
           runCmd: make ci
+  publish:
+    needs: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Tag must be semver and on main
+        run: |
+          [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || { echo "not semver: $GITHUB_REF_NAME"; exit 1; }
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "tag is not on main"; exit 1; }
       - name: GitHub release
         env:
           GH_TOKEN: ${{ github.token }}

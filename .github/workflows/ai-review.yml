@@ -13,7 +13,10 @@ name: ai-review
 #  3. the exact head SHA's diff is fetched with `gh api` and handed to Claude as prompt text.
 #     Claude runs with NO tools (--disallowedTools "*": no Bash, no file reads, no MCP;
 #     --strict-mcp-config, --setting-sources user), so it can't read the runner, the checkout or
-#     the environment; it only answers with JSON. Verified with the pinned CLI 2.1.285.
+#     the environment; it only answers with JSON. Verified with CLI 2.1.285; the pinned action
+#     (v1.0.240) bundles CLI 2.1.288 (claude-agent-sdk 0.3.288), re-verification pending. Until
+#     then 4. enforces it at runtime: a session whose init lists any tool or MCP server is not
+#     published (fails closed).
 #  4. scripts/ai-review-publish (from main) requires the session's init message to list no tools
 #     and no MCP servers, validates the JSON, refuses to post anything that contains the token or
 #     a credential-shaped string, neutralises links/images/HTML/mentions in model text, and posts
@@ -103,8 +106,9 @@ jobs:
           prompt: ${{ steps.input.outputs.prompt }}
           # The step summary would publish unvalidated model output.
           display_report: "false"
-          # "*" removes every tool, MCP included (verified with the pinned CLI 2.1.285: init lists
-          # no tools and, with --strict-mcp-config, no MCP servers). --json-schema can't be used:
+          # "*" removes every tool, MCP included (verified with CLI 2.1.285: init lists no tools
+          # and, with --strict-mcp-config, no MCP servers; the bundled 2.1.288 is pending
+          # re-verification, and scripts/ai-review-publish's init check fails closed meanwhile). --json-schema can't be used:
           # it needs the StructuredOutput tool, which "*" denies, so the JSON answer is read from
           # the execution file instead.
           claude_args: >-
