@@ -53,6 +53,10 @@ RUN mkdir -p /opt/libyang/src /opt/libyang/share/doc/libyang \
       > /opt/libyang/share/doc/libyang/NOTICE
 
 FROM ${GO_IMAGE} AS dev
+# Links the published ghcr.io/vibe-ports/yang-dev package to this repository.
+LABEL org.opencontainers.image.source="https://github.com/vibe-ports/yang" \
+      org.opencontainers.image.description="Dev, CI and libyang-oracle image for vibe-ports/yang" \
+      org.opencontainers.image.licenses="BSD-3-Clause"
 ARG PCRE2_VERSION=10.46-1~deb13u3
 ARG GOLANGCI_LINT_VERSION=v2.14.0
 ARG GOVULNCHECK_VERSION=v1.8.0
