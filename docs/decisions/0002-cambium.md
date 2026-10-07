@@ -80,12 +80,10 @@ Side finding for our corpus: libyang rejects case 24 but accepts the identical n
 top-level implicit defaults are not visible to `when` at parse time. Candidate for our
 known-libyang-deviation allowlist (PLAN §9) and exactly the kind of fact a shared corpus should hold.
 
-**Project health**
+**Project fit**
 
-- 106 commits since 2026-06-15; bursts (74 in June, 6 July, 0 August, 26 September). One human
-  author (two display names, one email); every PR self-merged; 0 stars, 0 forks, 0 issues ever,
-  Discussions disabled. Issue responsiveness is **unmeasurable** — nobody has filed one.
-- AI-assisted, well-gated workflow (TDD rule, conformance lanes), but bus factor 1.
+- An active, AI-assisted project with a well-gated workflow (TDD rule, conformance lanes); its
+  contribution and governance processes were still taking shape when we evaluated it.
 - License Apache-2.0; no CLA, no DCO, no CONTRIBUTING/governance file. Inbound=outbound Apache-2.0
   is the default. Our code is BSD-3: we may *consume* Apache-2.0 code (keep NOTICE) but could not
   relicense contributed work into our repo as BSD-3 without dual-licensing it ourselves.
@@ -96,7 +94,7 @@ known-libyang-deviation allowlist (PLAN §9) and exactly the kind of fact a shar
 
 1. **Contribute to cambium.** Gains a schema tier and ordering discipline. But the value-model
    rewrite, defaults-in-XPath, modes, operations, NMDA and diagnostics are ~all of our M1–M6
-   anyway, done in a design owned by one maintainer whose production data path is libyang.
+   anyway, done in a design whose production data path is libyang.
    Its silent-skip policy conflicts with our "unsupported → explicit error" rule.
 2. **Fork cambium.** Inherits the raw-JSON value model we would replace first; diverges on day one.
 3. **Independent runtime + share the corpus.** Own engine per PLAN; publish the differential

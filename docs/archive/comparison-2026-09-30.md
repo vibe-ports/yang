@@ -24,7 +24,7 @@ state**, not the plan — see PLAN.md for the plan.
 | XML + JSON (RFC 7951) | planned (M1, M5) | yes (datatree, anydata XML missing) | JSON only |
 | XSD `pattern` regex | **done**: own XSD→RE2 compiler, IETF type patterns 1655/1655 agree with libyang | Go regexp | RE2 approximation |
 | Compatibility evidence | pinned libyang oracle (`lyoracle`), goldens, deviation register | differential lane vs its libyang backend (190/222 cases) | — |
-| Maturity | M0: foundations only | 3.5 months, single maintainer, no users yet | mature, widely used, low activity (goyang) |
+| Maturity | M0: foundations only | young project (about 3.5 months) | mature, widely used, low activity (goyang) |
 
 Summary: today cambium and goyang/ygot are further along on schema handling; this project's
 differentiators are a cgo-free *data* engine as the primary path, NMDA/validation modes, and
