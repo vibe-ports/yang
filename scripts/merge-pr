@@ -90,9 +90,9 @@ carried=
 
 # A head SHA can have several ci.yml runs (push + pull_request, reopen); each run reports its
 # latest attempt. Every run must have succeeded; runs cancelled by a newer one don't count, but at
-# least one success is required.
-ci=$(gh api "repos/$repo/actions/workflows/ci.yml/runs?head_sha=$head&per_page=100" | jq -r --arg sha "$head" --arg repo "$repo" '
-  [ .workflow_runs[] | select(.path == ".github/workflows/ci.yml" and .head_sha == $sha and .repository.full_name == $repo)
+# least one success is required. Paginated: a failing run must not hide past the first 100.
+ci=$(gh api --paginate --slurp "repos/$repo/actions/workflows/ci.yml/runs?head_sha=$head&per_page=100" | jq -r --arg sha "$head" --arg repo "$repo" '
+  [ .[].workflow_runs[] | select(.path == ".github/workflows/ci.yml" and .head_sha == $sha and .repository.full_name == $repo)
     | select(.conclusion != "cancelled") | "\(.status)/\(.conclusion)" ]
   | unique | if length == 0 then "missing" else join(",") end')
 [[ $ci == completed/success ]] || fail "ci.yml runs on $short are '$ci', need completed/success"
