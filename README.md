@@ -184,12 +184,14 @@ engine does not map.
 | `internal/…` | parser, compiler, types, XPath, XSD regex — not importable |
 | [`conformance`](conformance) | separate module: oracle, corpus, goldens, report |
 
-Design notes: [docs/design](docs/design). Plan and milestones: [PLAN.md](PLAN.md).
+Documentation index: [docs/README.md](docs/README.md). Design notes: [docs/design](docs/design).
+Plan and milestones: [PLAN.md](PLAN.md).
 
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Bug reports with a minimal schema, data and the libyang
-v5.8.6 result are the most useful contribution: each becomes an oracle fixture.
+v5.8.6 result are the most useful contribution: each becomes an oracle fixture. Report security
+issues privately as described in [SECURITY.md](SECURITY.md).
 
 ## License
 
