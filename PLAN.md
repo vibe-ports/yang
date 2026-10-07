@@ -4,7 +4,13 @@ A native Go (no cgo) implementation of the YANG runtime that libyang provides: s
 compilation, a generic data tree, full RFC 7950 validation, RFC 7951 JSON / XML encoding, diff.
 Behaviour is ported from libyang (CESNET, BSD-3-Clause); API is idiomatic Go, not a transliteration.
 
-Status: v1 plan rev 1 (after astra review), 2026-09-30. Reference: libyang v5.8.6 (tag, 2026-06-22).
+Status: current v1 scope, architecture and roadmap (rev 1 of 2026-09-30, kept current). Reference:
+libyang v5.8.6 (tag, 2026-06-22). Current work: the M1 slice (design 05) on the compiler and data
+tree (designs 06, 07). History lives in [docs/archive/](docs/archive/): the 2026-09-30 survey of
+other Go YANG projects and the M0 gate decisions (former §0), and the plan review logs (former
+§10, §11). Work distribution between agents and models (former §2d):
+[docs/maintainers/agent-workflow.md](docs/maintainers/agent-workflow.md). Section numbers are kept
+because other documents cite them.
 
 ## Goals (in priority order)
 
@@ -18,34 +24,6 @@ Status: v1 plan rev 1 (after astra review), 2026-09-30. Reference: libyang v5.8.
    functions → Go functions; every divergence from libyang is in `conformance/deviations.md` with an
    RFC reason; the oracle container and corpus manifest let anyone re-run the comparison; CI
    publishes the compatibility report per area (schema, types, XPath, validation, codecs, diff).
-
-## 0. Why write it (survey summary, 2026-09-30)
-
-| Project | What | Gap vs "libyang in Go" |
-|---|---|---|
-| openconfig/goyang (Apache-2.0, 3 commits/yr) | schema parser+compiler | `refine` never applied, `uses`-augment ignored, if-feature not evaluated, must/when strings only, XSD patterns unsupported (RE2 only) |
-| openconfig/ygot (Apache-2.0, active) | codegen + validation of generated GoStructs | no generic data tree (`ytypes.Validate` rejects non-GoStruct), no XPath, no must/when, `mandatory`/`unique` unchecked, no XML, no NMDA |
-| signalbreak-labs/cambium (Apache-2.0, 2026-06, 1 author) | pure-Go schema IR + codegen, experimental pure-Go datatree, libyang backend via cgo | datatree experimental: no `deref()`, must/when don't see defaults, no RPC/action/notification data, value model to be rewritten; 190/222 differential cases |
-| sdcio/yang-parser + data-server (Apache-2.0) | fork of danos/yang + goyacc XPath VM | tied to SDC stack; no `when` validation; not RFC-complete |
-| freeconf/yang (Apache-2.0, stalled 2024) | own runtime | XPath stub, no leafref/must engine |
-| cgo bindings (mattiaswal/go-libyang, libyango, go-sysrepo, ydk-go) | thin/app-internal | abandoned or archived; none maintained |
-| NETCONF clients (scrapligo, nemith/netconf, Juniper/go-netconf) | transport | no YANG layer at all |
-
-ygot is a codegen runtime (validation only over generated GoStructs), so it cannot host a generic
-data tree. goyang is a separable parser + resolver: its parser/AST may be reusable even though its
-compiler semantics (refine, uses-augment, if-feature, XSD) are incomplete. By feature count
-goyang+ygot cover well under the 80 % bar (judgement from the table, not a measured number) and
-the missing part — generic tree, XPath, validation — is the core.
-
-**Decision: write new runtime.** M0 gates (2026-09-30):
-- **G1 → own parser** (`docs/decisions/0001-parser-reuse.md`): goyang's raw parser agrees with
-  yanglint on 20/45 parse-level cases (it is a tokenizer: any keyword/cardinality passes), its typed
-  AST wrongly rejects 14 valid IETF RFC modules, reuse would save ~600 of ~3,000 lines and add
-  Apache-2.0 provenance. Borrow the *design* (generic statement tree → typed builder).
-- **G2 → independent, share corpus** (`docs/decisions/0002-cambium.md`): cambium's pure-Go datatree
-  is secondary to its libyang backend; 16/26 adversarial cases genuinely agree with libyang
-  (deref skipped, must/when blind to defaults, no validation modes). Outreach draft in
-  `0002-cambium-outreach-draft.md` — sent only by the maintainer of this repo, by hand.
 
 ## 1. v1 scope
 
@@ -106,8 +84,10 @@ NETCONF/RESTCONF transport, YANG Patch, public plugin interfaces (§2).
   Code, DataPath, SchemaPath, Line, AppTag, Message}` and `error` is non-nil only for failure
   (`*ValidationError` wrapping the error diagnostics, or cancellation / resource-limit sentinels).
   Operational-mode warnings therefore come back with a nil error. No global log callback.
-- No global state: everything hangs off `*Context` (libyang `ly_ctx`). Context immutable after
-  `Compile()` → safe for concurrent readers; data trees are not goroutine-safe (documented).
+  As shipped: `(*data.Tree).Validate(ctx, ValidateOptions) ([]yang.Diagnostic, error)` (design 07).
+- No global state: everything hangs off `*Context` (libyang `ly_ctx`). `NewContext` and
+  `Context.Load` compile and publish an immutable `Schema` snapshot (design 06 §4), so readers are
+  safe concurrently with loads; data trees are not goroutine-safe (documented).
 - Inputs are `io.Reader` / `fs.FS` (module search path = `fs.FS`, so `embed.FS` works).
 - GC, no dictionary/refcount; strings interned only if profiling shows need.
 - libyang callback tables → interfaces, but **internal until a second consumer exists**. Public in v1:
@@ -157,25 +137,6 @@ NETCONF/RESTCONF transport, YANG Patch, public plugin interfaces (§2).
 - Budget: private repo on a Free org = limited Actions minutes; keep one job per workflow and the
   image cached.
 
-## 2d. Work distribution (machines and models)
-
-Machines: the lead workstation integrates, reviews and is the only one that merges to `main`.
-Additional build hosts may take long fuzz / differential oracle runs or port an independent package
-on their own branch → PR. All exchange goes through GitHub branches/PRs; every host runs the same
-dev container, clones only this repo and holds nothing else of the project. Host names, hardware and
-network details stay out of this repo. More hosts add CPU and parallel sessions, not model quota
-(model subscriptions are per account).
-
-Models (cheapest that can do the job; lead decides):
-| Work | Model |
-|---|---|
-| design, hard ports (compiler, XPath, validation), final review/merge | Claude Opus (lead) |
-| well-specified file ports with a port-map entry, test tables, fixtures, docs | Claude Sonnet subagents / codex `gpt-5.6-sol` (separate quota) |
-| search, grep, corpus manifests, license checks, summaries | Claude Haiku / codex `gpt-5.6-luna` |
-| plan/design reviews, adversarial code review | codex `gpt-6-astra` |
-| whole-file reads of huge C units (xpath.c 10 kLOC) for port maps | agy (Gemini, large context) |
-Every port, whichever model wrote it, passes the same gate: oracle agreement + lead review.
-
 ## 3. Package layout
 
 ```
@@ -186,7 +147,7 @@ github.com/vibe-ports/yang   (module root; package yang — Context, Module, pub
   internal/xsdre/      XSD regex → Go RE2 translator (XSD regexes are regular, no backrefs)
   internal/xpath/      XPath 1.0 + YANG functions, evaluated over the data tree with §2a.3 context
   data/                data tree, paths, defaults, validation, JSON/XML codecs, diff/merge
-  cmd/yanglint-go/     CLI
+  cmd/yanglint-go/     CLI (planned, not written yet)
   conformance/         separate Go module: oracle harness, corpus manifests, golden files
   conformance/oracle/  test-only C helper `lyoracle` linked to libyang (production stays cgo-free)
 ```
@@ -287,69 +248,3 @@ employer:
 | Hostile schemas/data (DoS) | budgets + cancellation from M1, fuzzing from M1 |
 | Performance on large operational trees | benchmarks from M3; add libyang-style hash/sorted children only if needed |
 | Scope creep (YIN, LYB, schema-mount) | explicit out-of-scope list above; v1.x issues |
-
-## 10. Review log — codex `gpt-6-astra`, 2026-09-30
-
-Full text: `docs/review-astra-2026-09-30.md` (25 findings on rev 0). Two factual claims were checked
-against libyang v5.8.6 source before acting: `yanglint -f info` = `LYS_OUT_YANG_COMPILED`
-(`tools/lint/yl_opt.c:109`) and `-t data` adds `LYD_VALIDATE_OPERATIONAL` (`yl_opt.c:198`). Both correct.
-
-| # | Finding | Verdict | What changed / why |
-|---|---|---|---|
-| 1 | XSD→RE2 understated | accept | parser + char-set algebra prototype in M0, declared limits |
-| 2 | `when` auto-delete underspecified | accept | fresh-invalid vs became-invalid rule, validation history in node model |
-| 3 | NMDA reduced to config/state | accept | per-datastore policy; operational → warnings; origin inheritance |
-| 4 | XPath context not defined | accept | §2a.3 design note before evaluator |
-| 5 | defaults as isolated M3 feature | accept | defaults part of validation, provenance, report-all-tagged |
-| 6 | no partial-data contract | accept | Parse / CheckLocal / Validate |
-| 7 | operation validation inputs | accept | request/reply kinds, parent context, external operational tree |
-| 8 | anydata/anyxml missing | accept | payload variants in node model |
-| 9 | ordering/instance identity | accept | ordered storage, stable handles, keyless lists |
-| 10 | value model | accept | §2a.1, exact numerics |
-| 11 | context/yang-library incomplete | accept | schema sets, import-only modules, build Context from yang-library |
-| 12 | edits vs diffs conflated | accept | separate ApplyEdit / ApplyDiff contracts; YANG Patch out of v1 |
-| 13 | Diagnostic too thin | accept | severity, code, schema+data path, line |
-| 14 | wrong oracle output for M2 | accept | helper dump; `-f info` for inspection |
-| 15 | yanglint can't be the whole oracle | accept | test-only C helper; production remains cgo-free |
-| 16 | oracle invocation policy | accept | per-fixture mode manifest, pinned build |
-| 17 | byte equality | accept | semantic equality + separate printer suite |
-| 18 | agreement % ≠ conformance | partial | RFC-section tags + coverage report + deviations file accepted; fully independent hand-written expected outcomes rejected as too costly for one developer — RFC tag + recorded disagreement resolution is the compromise |
-| 19 | milestone order | accept | M1 = vertical slice |
-| 20 | license rationale / "clean-room" wording | accept | BSD-3 is a choice, not an obligation; "source-informed port", provenance rules |
-| 21 | goyang conflated with ygot | partial | parser-reuse spike G1 in M0 accepted; "compiler fixes upstream" rejected: refine/uses-augment/deviation-order gaps are structural and goyang gets ~3 commits/yr, so upstreaming would gate us on a slow review queue. The coverage figure is relabelled as a judgement |
-| 22 | cambium evaluated too late | accept | gate G2 in M0 |
-| 23 | estimate has no basis | accept | calendar removed; re-estimate from M1 actuals |
-| 24 | premature public interfaces | accept | plugins internal; only ModuleLoader public |
-| 25 | hardening deferred | accept | budgets, cancellation, fuzz from M1 |
-
-## 11. Review log — codex `gpt-6-astra`, final M0 review, 2026-09-30
-
-25 findings on the M0 repo state. Two claims checked in libyang v5.8.6 source first: the oracle
-forces `LYD_PARSE_STRICT` (`lyoracle.c:369`, true); `when` cycles — first searched and missed by the
-lead, then found by a later astra review: libyang rejects them at compile time
-(`lys_compile_unres_when_cyclic`), design 03 rule 5 follows that.
-
-| # | Finding | Verdict | Change |
-|---|---|---|---|
-| 1, 2, 8–13 | Go comparator missing; xsdre diff only logs; no stateful sequences; small corpus; printer-text goldens; STRICT forced; normative vs observed mixed | accept → **M1-pre** row in §4 | harness work before slice code |
-| 3 | unprefixed names bind to instantiating context, not defining module | accept | design 03 rule 1 rewritten (two contexts) |
-| 4 | dummy-`when` view incomplete | accept | design 03 rule 3: open M1 question |
-| 5 | fixpoint can accept cycles | accept | design 03 rule 5: compile-time cycle rejection as libyang + fixture |
-| 6 | compare ≠ canonical string; revision-aware type handlers | accept | design 01 |
-| 7 | xsdre divergences not registered; limits mixed with deviations | accept | deviations D-0002…D-0008, U-0001; rerun on pinned pcre2 10.46 (same numbers) |
-| 14 | harness failures could become goldens | accept | the Go harness (`conformance/cmd/golden`) fails on rc≠0 / request-error, 60 s timeout |
-| 15 | all-tagged fixture had no tags | accept | loads `ietf-netconf-with-defaults` (IETF module added to corpus) |
-| 16 | `data` ↔ `xpath` import cycle | accept | design 03: xpath owns a narrow Node interface |
-| 17 | warnings inside a failure error | accept | §2: `Validate` returns `(Diagnostics, error)` |
-| 18 | review/CI not tied to merged SHA; no branch protection | accept | AGENTS.md merge gate |
-| 19 | shallow checkout defeats history secret scan | accept | `fetch-depth: 0` in all workflows |
-| 20 | UID remap vs caches owned by uid 1000 | accept | all Go caches under `/home/dev` |
-| 21 | fuzz minutes on Free plan | accept | weekly, 20 s/target on hosted CI, crashers uploaded; long runs on own hosts |
-| 22 | Go 1.26 promised, untested | accept | `make test-go-min` (go1.26.8) in `make ci` |
-| 23 | nocgo misses deps / tag-excluded files | accept | source grep + cgo-enabled dependency-closure check |
-| 24 | mutable base image, installer from HEAD | partial | Go image pinned by digest, installer pinned to tag; dated Debian snapshot for apt deferred (pcre2 is version-pinned already) |
-| 25 | any `v*` tag releases | partial | semver + on-main check added; `gorelease`/`apidiff` before first tag (v0.1.0) |
-
-Also added after the review, on the maintainer's request: `scripts/check-sensitive` + pre-commit hook
-+ `make sensitive` (private-details scan; personal patterns never stored in the repo) and
-`docs/comparison.md`.

@@ -1,0 +1,32 @@
+name: Feature request
+description: Ask for a libyang feature, an API or a use case that is not supported yet
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Check PLAN.md first: some features are out of v1 on purpose (YIN, LYB, schema mount, the
+        tree printer, NETCONF/RESTCONF transport, YANG Patch). Keep private models and data out of
+        the request.
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Use case
+      description: What you are trying to do and why the current API doesn't cover it.
+    validations: { required: true }
+  - type: textarea
+    id: libyang
+    attributes:
+      label: libyang equivalent
+      description: The libyang v5.8.6 function, option or yanglint command that does this, if there is one.
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed API or behaviour
+      description: Optional. A sketch of the Go API or the behaviour you would expect.
+      render: go
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Would you like to work on it?
+      options: ["No", "Yes, with guidance", "Yes"]

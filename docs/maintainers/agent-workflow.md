@@ -1,5 +1,8 @@
 # Agent workflow: Claude implements, codex/astra checks — continuously
 
+Audience: the maintainer and the agents working for the maintainer. Outside contributors don't
+need any of this; their route is [CONTRIBUTING.md](../../CONTRIBUTING.md).
+
 Goal: **no big final review**. Every change is small, independently tested and independently
 reviewed at the moment it lands, so the repository is always "already reviewed". The only
 end-of-milestone review is a bounded drift check over already-reviewed PRs.
@@ -38,7 +41,7 @@ family → less correlated blind spots). **codex gpt-5.6-sol/luna** writes indep
    **in the PR**. Re-run until no `high` and verdict `approve`; after 3 rounds without convergence
    the maintainer decides. The automatic Claude (`ai-review`) and Codex-app reviews are extra
    eyes; their verdicts are advisory.
-4. **Merge gate** (AGENTS.md, CONTRIBUTING.md "Merge gate"): `scripts/merge-pr <n>`, run as
+4. **Merge gate** (AGENTS.md, [maintaining.md](maintaining.md) "Merge gate"): `scripts/merge-pr <n>`, run as
    main's copy from a checkout of `origin/main`, checks that
    `ci.yml` succeeded on the PR's full head SHA and that the latest maintainer-authored attestation
    for that SHA is `approve` (or that it is a patch-identical rebase of an approved earlier head of
@@ -47,6 +50,27 @@ family → less correlated blind spots). **codex gpt-5.6-sol/luna** writes indep
    a script, not branch protection (Free private plan); rulesets get enabled when the repo is
    public.
 
+## Work distribution (machines and models)
+
+(Formerly PLAN.md §2d.)
+
+Machines: the lead workstation integrates, reviews and is the only one that merges to `main`.
+Additional build hosts may take long fuzz / differential oracle runs or port an independent package
+on their own branch → PR. All exchange goes through GitHub branches/PRs; every host runs the same
+dev container, clones only this repo and holds nothing else of the project. Host names, hardware and
+network details stay out of this repo. More hosts add CPU and parallel sessions, not model quota
+(model subscriptions are per account).
+
+Models (cheapest that can do the job; lead decides):
+| Work | Model |
+|---|---|
+| design, hard ports (compiler, XPath, validation), final review/merge | Claude Opus (lead) |
+| well-specified file ports with a port-map entry, test tables, fixtures, docs | Claude Sonnet subagents / codex `gpt-5.6-sol` (separate quota) |
+| search, grep, corpus manifests, license checks, summaries | Claude Haiku / codex `gpt-5.6-luna` |
+| plan/design reviews, adversarial code review | codex `gpt-6-astra` |
+| whole-file reads of huge C units (xpath.c 10 kLOC) for port maps | agy (Gemini, large context) |
+Every port, whichever model wrote it, passes the same gate: oracle agreement + lead review.
+
 ## Triage hints (Jev, advisory)
 
 `scripts/jev-triage` annotates the weekly `upstream-drift` issue (behaviour change?, touches a
@@ -54,12 +78,14 @@ ported file/function?, priority: now / next-milestone / later; sorted by priorit
 maintainer-authored issues, suggests `area:*`, `size:*` and suggested-worker `worker:*` labels
 (`opus`, `sonnet`, `codex-sol`, `codex-luna`) when confidence is at least 0.6, else
 `triage:needs-human`. Use them to pick the next task and the worker; they gate nothing. No
-`TYPESAFE_API_KEY` = no hints. Data sent and details: CONTRIBUTING.md "Jev triage".
+`TYPESAFE_API_KEY` = no hints. Data sent and details: [maintaining.md](maintaining.md) "Jev triage".
 
 ## Agent task queue
 
 GitHub issues are an "up for grabs" queue for agents: Claude subagents and codex on the maintainer's
-machines today, `claude-code-action` in Actions and human contributors later.
+machines today, `claude-code-action` in Actions later. Claims by outside contributors don't count
+(only trusted accounts' comments do, see the claim protocol below); outsiders follow
+[CONTRIBUTING.md](../../CONTRIBUTING.md) and say on the issue that they are working on it.
 
 **What becomes an issue.** Self-contained work with acceptance checkable by CI or the oracle:
 review follow-ups (low/nit findings left after a merge), libyang `tests/utests` → oracle fixtures,

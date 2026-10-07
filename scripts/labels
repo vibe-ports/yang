@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Create or update the agent-task-queue labels (docs/agent-workflow.md "Agent task queue").
+# Create or update the agent-task-queue labels (docs/maintainers/agent-workflow.md "Agent task queue").
 # Idempotent: `gh label create --force` updates colour and description of an existing label.
 #   scripts/labels            (needs gh with write access; GH_REPO selects another repository)
 set -euo pipefail

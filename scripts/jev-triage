@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Advisory triage with Jev (TypeSafe). Never a gate: with no TYPESAFE_API_KEY, an API error or a
-malformed answer it exits 0 and adds nothing. Never sends repository code; see CONTRIBUTING "Jev triage" for exactly what is sent.
+malformed answer it exits 0 and adds nothing. Never sends repository code; see docs/maintainers/maintaining.md "Jev triage (advisory)" for exactly what is sent.
 
   scripts/jev-triage drift <commits.json|->   upstream libyang commits -> annotated, sorted markdown list
       input: [{"sha","url","subject","files":["src/x.c",…],"functions":["fn",…]}, …]

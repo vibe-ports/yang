@@ -1,5 +1,5 @@
-name: Agent task
-description: A self-contained task for the agent task queue (docs/agent-workflow.md "Agent task queue")
+name: "Agent task (maintainer only)"
+description: 'Maintainer only: a self-contained task for the agent task queue (docs/maintainers/agent-workflow.md "Agent task queue")'
 body:
   - type: markdown
     attributes:

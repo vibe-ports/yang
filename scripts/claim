@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Agent task queue (docs/agent-workflow.md "Agent task queue"): claim, release, expire claims.
+# Agent task queue (docs/maintainers/agent-workflow.md "Agent task queue"): claim, release, expire claims.
 #   scripts/claim <issue> <agent>              claim an agent-ready + up-for-grabs issue; exit 1 if lost
 #   scripts/claim --progress <issue> <agent>   keep a claim alive (posts `PROGRESS <agent> <time>`)
 #   scripts/claim --release <issue> <agent>    give it back

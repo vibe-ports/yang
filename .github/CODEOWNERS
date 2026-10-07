@@ -1,0 +1,18 @@
+# Policy files (AGENTS.md "Git", CONTRIBUTING.md "Policy files"): they decide what runs, what is
+# checked and what reviewers are told, so every change needs the maintainer's review.
+# Patterns without a leading slash match in any directory.
+/.github/               @pandarun
+/.githooks/             @pandarun
+/scripts/               @pandarun
+AGENTS.md               @pandarun
+/CLAUDE.md              @pandarun
+/.claude/               @pandarun
+.codex/                 @pandarun
+.agents/                @pandarun
+/Makefile               @pandarun
+/dev                    @pandarun
+/Dockerfile             @pandarun
+/.devcontainer/         @pandarun
+/.gitattributes         @pandarun
+/CONTRIBUTING.md        @pandarun
+/SECURITY.md            @pandarun

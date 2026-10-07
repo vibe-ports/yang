@@ -107,8 +107,10 @@ golden = `deviation`; not matching the assert = `differ`.
   non-zero exit / `request-error` / missing `protocol` / oracle `arch` (`uname -m`, additive field, protocol stays 2) differing from the Go process's (writing goldens additionally requires `x86_64`) (flag `-require-protocol`; `make oracle-check`/`oracle-golden` pass it since oracle v2), writes or compares goldens byte-exactly.
 - `go test ./...` — manifest well-formed, every assert consistent with its golden (or deviation).
 - `Engine` interface (`Run(Request) (Response, error)`) + `Compare(e Engine) Report`; per-area report
-  (agree / differ / deviation / unsupported) as Markdown for the CI job summary. No engine exists yet;
-  a fake engine that replays goldens proves the plumbing.
+  (agree / differ / deviation / unsupported) as Markdown for the CI job summary. Two engines exist:
+  `Yang` (engine.go) runs this repository's packages `yang` and `data`, and `Replay` (compare.go)
+  returns the goldens to prove the plumbing; `go run ./cmd/report -engine yang|replay` picks one
+  (default `replay`).
 
 ## 7. Host libc and environment in goldens
 Goldens record libyang as built in the dev image (Debian trixie, **glibc**), and some outputs come

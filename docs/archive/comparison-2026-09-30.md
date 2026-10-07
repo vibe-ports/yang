@@ -1,5 +1,11 @@
 # How this project compares (state as of 2026-09-30)
 
+> **Historical, not maintained.** A dated evaluation from M0 (2026-09-30), archived from
+> `docs/comparison.md`. The "this repo" column is outdated: the parser, compiler, types, XPath
+> and data tree it lists as "not yet" have since been written. Current scope and status:
+> [PLAN.md](../../PLAN.md) and [README.md](../../README.md); measured compatibility:
+> `conformance/`.
+
 Facts about other projects come from their public repositories on that date (details and
 evidence: `docs/decisions/0001-parser-reuse.md`, `0002-cambium.md`). Our column is **today's
 state**, not the plan — see PLAN.md for the plan.

@@ -1,5 +1,5 @@
-name: Port task
-description: One agent-sized porting task (≈ one libyang file or function group, ≤ ~500 Go lines)
+name: "Port task (maintainer only)"
+description: "Maintainer only: one agent-sized porting task (≈ one libyang file or function group, ≤ ~500 Go lines)"
 title: "port: <libyang file / functions>"
 labels: [port]
 body:

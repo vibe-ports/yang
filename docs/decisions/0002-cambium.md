@@ -4,7 +4,7 @@ Status: proposed · Date: 2026-09-30 · Evaluated: signalbreak-labs/cambium @ `8
 
 ## Context
 
-PLAN §0/§4 gate G2: are our goals (no cgo in the production import graph; libyang v5.8.6
+PLAN §4 gate G2 (survey: [docs/archive/survey-2026-09-30.md](../archive/survey-2026-09-30.md)): are our goals (no cgo in the production import graph; libyang v5.8.6
 compatibility; auditability) better served by contributing to cambium, the only active pure-Go
 project with a generic data tree?
 
@@ -108,9 +108,9 @@ known-libyang-deviation allowlist (PLAN §9) and exactly the kind of fact a shar
 engine: the gaps our goals depend on (value model, defaults visible to must/when, datastore modes
 and NMDA, operations, structured diagnostics, no silent skips) are unbuilt and would be designed by
 someone else. Contribution does not save the work, only relocates it. The corpus is where the
-projects genuinely overlap, and sharing it costs us nothing. Send the outreach draft
-(`0002-cambium-outreach-draft.md`) after the owner reviews it; revisit G2 if the maintainer wants
-a pure-Go-primary data tier with our value model — then Option 1 becomes live.
+projects genuinely overlap, and sharing it costs us nothing. Offer the shared corpus to cambium's
+maintainer (a message the maintainer of this repository sends by hand); revisit G2 if that
+maintainer wants a pure-Go-primary data tier with our value model — then Option 1 becomes live.
 
 ## Consequences
 

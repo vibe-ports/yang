@@ -1,5 +1,9 @@
 # Review of PLAN.md v0 by codex gpt-6-astra (reasoning high), 2026-09-30. Line refs point to v0.
 
+> Archived from `docs/review-astra-2026-09-30.md`. Reviewed text: PLAN.md rev 0, never committed;
+> rev 1, which answers each finding, and this review landed together in
+> 693afbdf7c18bba5fddbca33e7fc31194579cdc1. The answers: [2026-09-30-plan-review-logs.md](2026-09-30-plan-review-logs.md) §10.
+
 
 1. **high — XSD→RE2 feasibility is understated (L74, L160).** Regularity makes translation possible in principle, not straightforward. Subtraction, XML name classes, Unicode blocks, anchoring and Go’s 1,000-repeat limit need explicit handling. Rejecting valid patterns contradicts full compliance. **Fix:** prototype an XSD parser plus character-set algebra; define supported limits before committing. [XSD](https://www.w3.org/TR/xmlschema-2/#regexs), [Go syntax](https://pkg.go.dev/regexp/syntax)
 

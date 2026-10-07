@@ -1,0 +1,66 @@
+name: Bug report
+description: Wrong verdict, diagnostics or output compared with libyang v5.8.6, a crash, or a hang
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Security problems (crashes or resource exhaustion on untrusted input that you think can be
+        exploited) go through private vulnerability reporting, not here: see SECURITY.md.
+        **Redact private data** before posting: replace your own module names, namespaces, host
+        names, addresses and credentials with neutral ones, and keep the reproducer minimal.
+  - type: textarea
+    id: schema
+    attributes:
+      label: Minimal YANG schema
+      description: The smallest module(s) that reproduce the problem. Public models can be named instead (module and revision).
+      render: yang
+    validations: { required: true }
+  - type: textarea
+    id: data
+    attributes:
+      label: Minimal data
+      description: JSON or XML instance data, if the problem involves data. Write "none" for schema-only problems.
+    validations: { required: true }
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: The Go code or commands you ran, with options (features, validation mode, data type).
+      render: go
+    validations: { required: true }
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+      description: Accepted or rejected, and the diagnostics (code, data path, app-tag) or output you expected.
+    validations: { required: true }
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+      description: What happened instead, with the full diagnostics, error or panic.
+    validations: { required: true }
+  - type: textarea
+    id: libyang
+    attributes:
+      label: libyang comparison
+      description: What libyang v5.8.6 (for example `yanglint`) does with the same input, if you know. Write "unknown" otherwise.
+    validations: { required: true }
+  - type: input
+    id: module_version
+    attributes:
+      label: Module version
+      description: The version or commit of github.com/vibe-ports/yang (`go list -m github.com/vibe-ports/yang`).
+      placeholder: v0.0.0-20261001000000-0123456789ab
+    validations: { required: true }
+  - type: input
+    id: go_version
+    attributes:
+      label: Go version
+      description: Output of `go version`.
+      placeholder: go version go1.27.1 linux/amd64
+    validations: { required: true }
+  - type: textarea
+    id: notes
+    attributes: { label: Anything else }
