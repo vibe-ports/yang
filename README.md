@@ -161,7 +161,7 @@ check finds no instance. Schema traversal is shown in the [`yang` package exampl
   may differ on purpose. Each case is listed with its RFC reference and fixture in
   [conformance/deviations.md](conformance/deviations.md); an unlisted difference is a bug.
 
-Report as of 2026-10-08 (commit f6f454b). Every CI run prints the current report in its job
+Report as of 2026-10-08 (commit 92fc7fc). Every CI run prints the current report in its job
 summary, and `make compat-report` reproduces it locally:
 
 | | agree | agree (skipped fields) | differ | deviation | unsupported |

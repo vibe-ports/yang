@@ -51,3 +51,9 @@ Historical, not maintained; kept for the audit trail.
   cambium and goyang/ygot at M0.
 - [archive/reviews/](archive/reviews/): the astra review of PLAN.md rev 0 and the plan review logs
   (former PLAN.md §10–§11), with the reviewed commits.
+
+## History
+
+Development started in a private repository; its history was imported here when the project
+went public. `PR-NNN` in older commit messages names a pull request of that private repository,
+not one of this repository. Issue and PR numbers inside older docs and comments refer to it too.

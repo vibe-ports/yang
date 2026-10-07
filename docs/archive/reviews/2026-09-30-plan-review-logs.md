@@ -7,8 +7,8 @@ Reviewed states:
 - §10 reviewed PLAN.md rev 0, which was never committed; rev 1, answering it, and the review text
   ([2026-09-30-astra-plan-rev0.md](2026-09-30-astra-plan-rev0.md)) landed in
   693afbdf7c18bba5fddbca33e7fc31194579cdc1.
-- §11 reviewed the M0 repository at ea39c211c74da9b70b7cf66518c117eb580d5cc2; the fixes landed in
-  d0ed97408b4e2fefa712f1af1f07c9ce31596132 and b9993ab213a604c0541332eee490a2e23e1829ef.
+- §11 reviewed the M0 repository at f8f7500bec0bcecc2a7212d33214739d80dc4b2b; the fixes landed in
+  f142cf2b3650935b5e746e1ad3255cdf9d67d69f and 0ed9efa63051e3ea8e510245c343aafdb56cc0f8.
 
 ## 10. Review log — codex `gpt-6-astra`, 2026-09-30
 
