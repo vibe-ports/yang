@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Ported from libyang v5.8.6 src/plugins_types/ipv4_address.c, ipv4_address_no_zone.c,
 // ipv4_address_prefix.c, ipv6_address.c, ipv6_address_no_zone.c and ipv6_address_prefix.c
-// (BSD-3-Clause, © CESNET). The IPv6 text form libyang gets from inet_ntop is implemented from
-// RFC 5952 and RFC 4291 (ntop6), not from any C library source.
+// (BSD-3-Clause, © CESNET); inet_ntop6 follows the glibc/BIND algorithm libyang relies on.
+
+// ntop6 is implemented from RFC 5952 §4–5 / RFC 4291 §2.5.5 using net/netip, not from glibc or
+// BIND source; its output matches the libyang/glibc text form (tests: textrep_test.go).
 
 package types
 
