@@ -161,19 +161,19 @@ check finds no instance. Schema traversal is shown in the [`yang` package exampl
   may differ on purpose. Each case is listed with its RFC reference and fixture in
   [conformance/deviations.md](conformance/deviations.md); an unlisted difference is a bug.
 
-Current report (`make compat-report`):
+Report as of 2026-10-08 (commit f6f454b). Every CI run prints the current report in its job
+summary, and `make compat-report` reproduces it locally:
 
 | | agree | agree (skipped fields) | differ | deviation | unsupported |
 |---|--:|--:|--:|--:|--:|
-| fixtures (1 866) | 592 | 891 | 0 | 16 | 367 |
+| fixtures (1 876) | 595 | 894 | 0 | 16 | 371 |
 
-Of the 367 unsupported fixtures, 193 are operations the report engine does not run yet: 146
+Of the 371 unsupported fixtures, 197 are operations the report engine does not run yet: 146
 `xpath` (the XPath evaluator is compared with the oracle by its own tests in `internal/xpath`),
-46 `sequence` (edit and revalidate a retained tree) and 1 `diff`. The other 174 are inputs the
-port refuses: 82 modules with `deviation` statements, 22 `yang-data`/`structure` extension
-instances, 16 bit positions above the 65 535 budget (U-0031), 26 anydata/anyxml instances, 8
-operation messages, 10 requests with an external operational tree and 10 with oracle options the
-engine does not map.
+46 `sequence` (edit and revalidate a retained tree) and 5 `diff`. The other 174 are inputs the
+port refuses (120 schema, 54 data), mainly modules with `deviation` statements (U-0020),
+`yang-data`/`structure` extension instances, anydata/anyxml instances and bit positions above
+the 65 535 budget (U-0031).
 
 ## Packages
 
