@@ -1,0 +1,38 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module pv2-deref-xperr {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-deref-xperr";
+  prefix dx;
+
+  description
+    "deref() of a leafref whose own path fails to evaluate: the path
+     deref(../b)/../name dereferences a dangling leafref b, so lyxp_eval
+     logs LY_EINVAL and deref() reports the XPath evaluation error.";
+
+  container c {
+    list t {
+      key "name";
+      leaf name {
+        type string;
+      }
+    }
+    leaf b {
+      type leafref {
+        path "../t/name";
+        require-instance false;
+      }
+    }
+    leaf a {
+      type leafref {
+        path "deref(../b)/../name";
+        require-instance false;
+      }
+      must "deref(.)";
+    }
+    leaf z {
+      type string;
+      must "false()";
+    }
+  }
+}

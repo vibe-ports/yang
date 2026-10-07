@@ -349,7 +349,8 @@ func listFixture(t *testing.T) (*unresFixture, *schema.Node, *schema.Node, *sche
 }
 
 // TestLeafrefForms: the list-key template (`../l[k='v']/k`), the both-quotes value (plain path,
-// then compared), a target removed by if-feature (success), and deref() of both kinds.
+// then compared), a target removed by if-feature (success), and deref() of both kinds and of the
+// removed target.
 func TestLeafrefForms(t *testing.T) {
 	f, l, k, _, lk, sr, dis := listFixture(t)
 	vc, c, nodes := f.build(t, ValidateOptions{MultiError: true}, f.a, `x'y"z`, f.t, "5", f.iid, "/u:c/t[.='5']")
@@ -393,6 +394,14 @@ func TestLeafrefForms(t *testing.T) {
 	got, err = vc.deref(xn{nodes["iid=/u:c/t[.='5']"], f.set})
 	if err != nil || len(got) != 1 || got[0].(xn).n != nodes["t=5"] {
 		t.Fatalf("deref instance-identifier: %v %v", got, err)
+	}
+	// deref() of a leafref whose target if-feature removed: libyang reads targets->count of a
+	// NULL set and crashes (D-0068); the port returns no nodes and no error
+	v, _ = types.Store(dis.Type, "anything", types.FormatJSON, types.JSONHints("string"), nil, dis)
+	dn := newTerm(dis, v)
+	vc.t.insert(c, dn, insertDefault)
+	if got, err = vc.deref(xn{dn, f.set}); err != nil || len(got) != 0 {
+		t.Fatalf("deref disabled target: %v %v", got, err)
 	}
 }
 
