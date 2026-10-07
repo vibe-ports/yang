@@ -90,11 +90,15 @@ carried=
 
 # A head SHA can have several ci.yml runs (push + pull_request, reopen); each run reports its
 # latest attempt. Every run must have succeeded; runs cancelled by a newer one don't count, but at
-# least one success is required. Paginated: a failing run must not hide past the first 100.
+# least one success is required. Paginated: a failing run must not hide past the first 100. The
+# API lists at most 1000 runs even paginated, so fail closed when it could have hidden one.
 ci=$(gh api --paginate --slurp "repos/$repo/actions/workflows/ci.yml/runs?head_sha=$head&per_page=100" | jq -r --arg sha "$head" --arg repo "$repo" '
+  (.[0].total_count // -1) as $n | ([.[].workflow_runs[]] | length) as $got
+  | if $n < 0 or $n >= 1000 or $got < $n then "truncated \($got) of \($n)" else
   [ .[].workflow_runs[] | select(.path == ".github/workflows/ci.yml" and .head_sha == $sha and .repository.full_name == $repo)
     | select(.conclusion != "cancelled") | "\(.status)/\(.conclusion)" ]
-  | unique | if length == 0 then "missing" else join(",") end')
+  | unique | if length == 0 then "missing" else join(",") end end')
+[[ $ci != truncated* ]] || fail "CI evidence truncated: ci.yml runs on $short: ${ci#truncated }"
 [[ $ci == completed/success ]] || fail "ci.yml runs on $short are '$ci', need completed/success"
 
 git fetch -q origin "refs/pull/$pr/head"
