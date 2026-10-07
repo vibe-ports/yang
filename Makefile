@@ -1,7 +1,7 @@
 # All targets are meant to run inside the dev container (./dev make <target>).
 FUZZTIME ?= 60s
 
-.PHONY: ci mod-verify test-oracle fmt-check vet lint nocgo test test-386 vuln secrets sensitive fuzz oracle test-go-min oracle-check oracle-golden test-gates registries port-coverage
+.PHONY: ci mod-verify test-oracle fmt-check vet lint nocgo test test-386 vuln secrets sensitive fuzz oracle test-go-min oracle-check oracle-golden test-gates registries port-coverage compat-report
 
 ci: mod-verify fmt-check vet lint nocgo test test-386 test-go-min test-oracle test-gates vuln secrets sensitive oracle-check registries
 
@@ -105,6 +105,12 @@ oracle-golden: oracle
 port-coverage: libyang-src
 	@scripts/lyfn -n ly_ctx_new >/dev/null
 	@cd conformance && go run ./cmd/portcov -src ../.cache/libyang -portmap ../docs/port-map.md -config port-coverage.conf
+
+# Compatibility report: every corpus fixture run through this port and compared with the committed
+# libyang goldens (agree / agree with skipped fields / differ / deviation / unsupported). Needs no
+# oracle. Informational (CI job summary), like port-coverage.
+compat-report:
+	@cd conformance && go run ./cmd/report -engine yang
 
 # libyang v5.8.6 sources for porting and reviews (host side, gitignored).
 libyang-src:

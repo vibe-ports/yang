@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
-// Package yang loads and compiles YANG modules with the behaviour of libyang
-// v5.8.6 (design docs/design/05, 06).
 package yang
 
 import (

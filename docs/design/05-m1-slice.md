@@ -64,7 +64,7 @@ returned collections cannot mutate the schema.
   `Print(w, f, PrintOptions)`. M1: datastore data types, unknown reject/skip/opaque.
 - **conformance engine** (in the conformance module): adapter implementing `conformance.Engine`
   for ops `schema` (schema_tree subset), `data` and `sequence` (retained tree, edits, validation
-  implicit diff, per-step `typed` flags — M1-6 provides the tree API, M1-7 the adapter), so `go run ./cmd/report -engine go` reports
+  implicit diff, per-step `typed` flags — M1-6 provides the tree API, M1-7 the adapter), so `go run ./cmd/report -engine yang` (`make compat-report`) reports
   agreement on the m1 fixtures.
 
 ## Task split (each ≤ ~1.5k Go lines, own branch + PR + reviews)
