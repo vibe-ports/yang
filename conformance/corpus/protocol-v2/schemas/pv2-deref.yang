@@ -1,0 +1,51 @@
+module pv2-deref {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-deref";
+  prefix d;
+
+  description
+    "Hand-written module: deref() of a leafref, an instance-identifier and a
+     union of both whose target does not exist (xpath_deref LY_EINVAL), each
+     followed by a false must that multi-error validation would also report.";
+
+  container c {
+    list t {
+      key "name";
+      leaf name {
+        type string;
+      }
+    }
+    leaf lr {
+      type leafref {
+        path "../t/name";
+        require-instance false;
+      }
+      must "deref(.)";
+    }
+    leaf ii {
+      type instance-identifier {
+        require-instance false;
+      }
+      must "deref(.)";
+    }
+    leaf u {
+      type union {
+        type instance-identifier {
+          require-instance false;
+        }
+        type leafref {
+          path "../t/name";
+          require-instance false;
+        }
+      }
+    }
+    leaf w {
+      when "deref(../u)";
+      type string;
+    }
+    leaf z {
+      type string;
+      must "false()";
+    }
+  }
+}

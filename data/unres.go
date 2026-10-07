@@ -587,46 +587,71 @@ func (vc *valCtx) pathEval(p types.Path) *Node {
 	return node
 }
 
-// deref resolves deref(): a leafref's targets (lyplg_type_resolve_leafref with targets), or an
-// instance-identifier's target.
+// deref resolves deref() (xpath_deref): a leafref's targets (lyplg_type_resolve_leafref with
+// targets), or an instance-identifier's target; an unresolved one is libyang's LOGERR LY_EINVAL,
+// returned as an *xpath.Error that aborts the evaluation.
 func (vc *valCtx) deref(x xpath.Node) ([]xpath.Node, error) {
 	m, ok := x.(xn)
 	if !ok || !m.n.isTerm() {
 		return nil, nil
 	}
-	out, _, err := vc.derefType(m.n, m.n.value, m.n.schema.Type)
-	return out, err
+	return vc.derefType(m.n, m.n.value, m.n.schema.Type, true)
 }
 
-// derefType is xpath_deref_type: the targets of the value v of n for its type t; ok reports a
-// resolved leafref or instance-identifier. A union tries its members in order with the selected
-// member's value (value.subvalue->value) and takes the first that resolves.
-func (vc *valCtx) derefType(n *Node, v types.Value, t *schema.Type) (out []xpath.Node, ok bool, err error) {
+// errDerefMember is an unresolved union member of deref(): not logged (log = 0), the next member
+// is tried.
+var errDerefMember = errors.New("data: deref member not resolved")
+
+// derefType is xpath_deref_type: the targets of the value v of n for its type t, or LY_EINVAL
+// (with the message when log, else errDerefMember) when a leafref, instance-identifier or union
+// does not resolve. Other types resolve to no nodes. A union tries its members in order with the
+// selected member's value (value.subvalue->value) and takes the first that resolves.
+func (vc *valCtx) derefType(n *Node, v types.Value, t *schema.Type, log bool) ([]xpath.Node, error) {
+	fail := func(format string, a ...any) error {
+		if !log {
+			return errDerefMember
+		}
+		return &xpath.Error{Err: "LY_EINVAL", Msg: fmt.Sprintf(format, a...)}
+	}
 	switch t.Base {
 	case schema.Leafref:
 		found, nodes, err := vc.leafrefTargets(n, t, v)
+		if xe := (*xpath.Error)(nil); errors.As(err, &xe) {
+			_ = vc.xpathErr(err, n) // lyxp_eval logs it, then the plugin message names it
+			return nil, fail("Invalid leafref value \"%s\" - XPath evaluation error (%s).", v.Canonical(), xe.Msg)
+		}
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
-		for _, target := range nodes {
-			out = append(out, xn{target, vc.t.set})
+		if !found {
+			return nil, fail("Invalid leafref value \"%s\" - no target instance \"%s\" with the same value.",
+				v.Canonical(), t.Path)
 		}
-		return out, found, nil
+		out := make([]xpath.Node, len(nodes))
+		for i, target := range nodes {
+			out[i] = xn{target, vc.t.set}
+		}
+		return out, nil
 	case schema.InstanceID:
-		if target := vc.pathEval(v.Path()); target != nil {
-			return []xpath.Node{xn{target, vc.t.set}}, true, nil
+		target := vc.pathEval(v.Path())
+		if target == nil {
+			return nil, fail("Invalid instance-identifier \"%s\" value - required instance not found.",
+				n.value.Canonical())
 		}
+		return []xpath.Node{xn{target, vc.t.set}}, nil
 	case schema.Union:
 		if u := v.Union(); u != nil {
 			mv, _ := u.Member()
 			for _, mt := range t.Union {
-				if out, ok, err := vc.derefType(n, mv, mt); err != nil || ok {
-					return out, ok, err
+				if out, err := vc.derefType(n, mv, mt, false); !errors.Is(err, errDerefMember) {
+					return out, err
 				}
 			}
 		}
+		return nil, fail("Invalid leafref or instance-identifier \"%s\" value - required instance not found.",
+			n.value.Canonical())
 	}
-	return nil, false, nil
+	return nil, nil
 }
 
 // validateMust is lyd_validate_must for datastore data: every must of the node, false ones
