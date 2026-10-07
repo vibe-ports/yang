@@ -2,10 +2,16 @@ name: release
 # A v* tag push: `test` (read-only token) checks the tag and runs `make ci` in the dev container;
 # `publish` (needs test) only creates the GitHub release and is the one job with contents: write.
 # Both jobs check that the tag is semver and on main.
-# Repository settings this relies on (not expressible in this file):
+# Repository settings this relies on (not expressible in this file), set on the public repository
+# before any tag push:
 #  - environment `release`: required reviewer = the maintainer (self-approval allowed), deployment
 #    branches and tags limited to the tag pattern `v*`;
 #  - a `v*` tag ruleset, so a tag can't be moved between `test` and `publish`.
+# `publish` fails closed until then: it refuses in a private repository (GitHub Free can't give a
+# private repository's environment a required reviewer, so `environment:` alone gates nothing),
+# and it checks through the API (actions: read) that `release` has a required reviewer and only
+# the `v*` tag policy. The environment gate runs before the job starts, so a passing check means
+# the approval was required.
 on:
   push:
     tags: ["v*"]
@@ -44,7 +50,22 @@ jobs:
     environment: release
     permissions:
       contents: write
+      actions: read # read the `release` environment's protection rules
     steps:
+      - name: Release environment must be protected
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          [[ "$PRIVATE" == false ]] || { echo "::error::repository is private: no required-reviewer environment, refusing to publish"; exit 1; }
+          env=$(gh api "repos/$GITHUB_REPOSITORY/environments/release") || { echo "::error::cannot read the release environment"; exit 1; }
+          jq -e '[.protection_rules[]? | select(.type == "required_reviewers" and (.reviewers | length) > 0)] | length > 0' <<<"$env" >/dev/null ||
+            { echo "::error::environment release has no required reviewer"; exit 1; }
+          jq -e '.deployment_branch_policy.custom_branch_policies == true' <<<"$env" >/dev/null ||
+            { echo "::error::environment release does not restrict deployment refs"; exit 1; }
+          pol=$(gh api "repos/$GITHUB_REPOSITORY/environments/release/deployment-branch-policies" --jq '[.branch_policies[] | "\(.type):\(.name)"] | join(",")') ||
+            { echo "::error::cannot read the release deployment policies"; exit 1; }
+          [[ "$pol" == "tag:v*" ]] || { echo "::error::environment release must allow only tag v*, has '$pol'"; exit 1; }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
