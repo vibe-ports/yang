@@ -47,33 +47,31 @@ func time2str(unix int64, frac string) string {
 	return formatTime(t, frac) + fmt.Sprintf("%+03d:%02d", h, m)
 }
 
-// cStrptime ports glibc strptime for the numeric formats "%Y-%m-%d" and "%H:%M:%S" (fields: the
-// digits and the [min, max] of each conversion, literal separators between them): the values and
-// the number of bytes consumed, ok false when the input does not fit.
+// cStrptime parses three numeric fields separated by sep, the subset of POSIX strptime libyang
+// uses ("%Y-%m-%d", "%H:%M:%S"): fields gives each conversion's width and [min, max]. It returns
+// the values and the number of bytes consumed, ok false when the input does not fit. Behaviour
+// libyang's results depend on, pinned by TestCStrptime: white space before a number is skipped, a
+// number has 1 to width digits and stops early before a digit that would take it over max, and a
+// value outside [min, max] fails.
 func cStrptime(s string, sep byte, fields [3][3]int) (vals [3]int, n int, ok bool) {
 	for f, fd := range fields {
+		width, lo, hi := fd[0], fd[1], fd[2]
 		if f > 0 {
 			if n >= len(s) || s[n] != sep {
 				return vals, n, false
 			}
 			n++
 		}
-		for n < len(s) && (s[n] == ' ' || s[n] >= '\t' && s[n] <= '\r') { // get_number skips spaces
+		for n < len(s) && (s[n] == ' ' || s[n] >= '\t' && s[n] <= '\r') {
 			n++
 		}
-		if n >= len(s) || !isDigit(s[n]) {
-			return vals, n, false
-		}
-		v, digits := 0, fd[0]
-		for {
+		v, d := 0, 0
+		for d < width && n < len(s) && isDigit(s[n]) && (d == 0 || v*10 <= hi) {
 			v = v*10 + int(s[n]-'0')
 			n++
-			digits--
-			if digits == 0 || v*10 > fd[2] || n >= len(s) || !isDigit(s[n]) {
-				break
-			}
+			d++
 		}
-		if v < fd[1] || v > fd[2] {
+		if d == 0 || v < lo || v > hi {
 			return vals, n, false
 		}
 		vals[f] = v

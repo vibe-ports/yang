@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Ported from libyang v5.8.6 src/plugins_types/ipv4_address.c, ipv4_address_no_zone.c,
 // ipv4_address_prefix.c, ipv6_address.c, ipv6_address_no_zone.c and ipv6_address_prefix.c
-// (BSD-3-Clause, © CESNET); inet_ntop6 follows the glibc/BIND algorithm libyang relies on.
+// (BSD-3-Clause, © CESNET). The IPv6 text form libyang gets from inet_ntop is implemented from
+// RFC 5952 and RFC 4291 (ntop6), not from any C library source.
 
 package types
 
@@ -85,55 +86,18 @@ func ptonIP(s string, v6 bool) ([]byte, bool) {
 	return b[:], true
 }
 
-// ntop6 ports inet_ntop(AF_INET6): lower-case hex, the first longest run (≥ 2) of zero groups
-// as "::", IPv4-compatible and -mapped addresses with a dotted quad.
+// ntop6 formats a 16-byte address in the text form inet_ntop(AF_INET6) produces, which libyang
+// prints canonical ipv6-address values with: the RFC 5952 §4 recommended form (lower-case hex
+// without leading zeros, the first longest run of two or more zero groups as "::"), with the low
+// 32 bits as a dotted quad for IPv4-mapped addresses (::ffff:a.b.c.d, RFC 4291 §2.5.5.2, RFC 5952
+// §5) and for IPv4-compatible ones (::a.b.c.d, RFC 4291 §2.5.5.1) whose bits 96-111 are not zero.
+// netip.Addr.String implements all of it except the IPv4-compatible case.
 func ntop6(a []byte) string {
-	var w [8]int
-	for i := range w {
-		w[i] = int(a[2*i])<<8 | int(a[2*i+1])
+	b := [16]byte(a)
+	if [12]byte(b[:12]) == [12]byte{} && (b[12] != 0 || b[13] != 0) {
+		return "::" + netip.AddrFrom4([4]byte(b[12:])).String()
 	}
-	bestBase, bestLen, curBase, curLen := -1, 0, -1, 0
-	for i := 0; i < 8; i++ {
-		if w[i] == 0 {
-			if curBase == -1 {
-				curBase, curLen = i, 1
-			} else {
-				curLen++
-			}
-			continue
-		}
-		if curBase != -1 && (bestBase == -1 || curLen > bestLen) {
-			bestBase, bestLen = curBase, curLen
-		}
-		curBase = -1
-	}
-	if curBase != -1 && (bestBase == -1 || curLen > bestLen) {
-		bestBase, bestLen = curBase, curLen
-	}
-	if bestBase != -1 && bestLen < 2 {
-		bestBase = -1
-	}
-	var b strings.Builder
-	for i := 0; i < 8; i++ {
-		if bestBase != -1 && i >= bestBase && i < bestBase+bestLen {
-			if i == bestBase {
-				b.WriteByte(':')
-			}
-			continue
-		}
-		if i != 0 {
-			b.WriteByte(':')
-		}
-		if i == 6 && bestBase == 0 && (bestLen == 6 || bestLen == 5 && w[5] == 0xffff) {
-			fmt.Fprintf(&b, "%d.%d.%d.%d", a[12], a[13], a[14], a[15])
-			return b.String()
-		}
-		b.WriteString(strconv.FormatInt(int64(w[i]), 16))
-	}
-	if bestBase != -1 && bestBase+bestLen == 8 {
-		b.WriteByte(':')
-	}
-	return b.String()
+	return netip.AddrFrom16(b).String()
 }
 
 func ntop(a []byte) string {

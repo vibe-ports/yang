@@ -1,5 +1,7 @@
 //go:build oracle
 
+// SPDX-License-Identifier: BSD-3-Clause
+
 // Differential test against libyang (yanglint, PCRE2 backend):
 //
 //	go test -tags oracle -run Oracle -v ./internal/xsdre/

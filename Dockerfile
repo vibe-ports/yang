@@ -1,4 +1,5 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
+# (docker/dockerfile:1 pinned by digest; refresh with: docker buildx imagetools inspect docker/dockerfile:1)
 # One image for local dev (dev container), CI and the libyang oracle.
 #   ./dev make ci              everything CI runs
 #   ./dev make oracle-check    lyoracle vs committed goldens
@@ -33,8 +34,23 @@ RUN cmake -S /src/libyang -B /src/build \
       grep -E '^(XXHASH|PCRE2)[A-Z_]*:' /src/build/CMakeCache.txt; } > /opt/libyang/BUILDINFO \
  && cat /opt/libyang/BUILDINFO
 # libyang's test modules and fuzz corpus: the parser oracle test compares on them (BSD-3-Clause, © CESNET).
-RUN mkdir -p /opt/libyang/src \
- && cp -r /src/libyang/tests /src/libyang/modules /opt/libyang/src/
+# The image ships libyang (library, yanglint, these sources), so it ships libyang's LICENSE and a
+# NOTICE for the third-party YANG modules among them. PCRE2's copyright comes with its Debian
+# package (/usr/share/doc/libpcre2-*/copyright).
+RUN mkdir -p /opt/libyang/src /opt/libyang/share/doc/libyang \
+ && cp -r /src/libyang/tests /src/libyang/modules /opt/libyang/src/ \
+ && cp /src/libyang/LICENSE /opt/libyang/share/doc/libyang/LICENSE \
+ && printf '%s\n' \
+      "libyang ${LIBYANG_REF} (${LIBYANG_COMMIT}), https://github.com/CESNET/libyang" \
+      "" \
+      "/opt/libyang (library, headers, yanglint, src/tests, src/modules) is libyang, distributed" \
+      "under the BSD 3-Clause License in LICENSE next to this file (Copyright (c) CESNET)." \
+      "" \
+      "The IETF and IANA YANG modules under /opt/libyang/share/yang and /opt/libyang/src (ietf-*.yang," \
+      "iana-*.yang) are IETF Trust material; each carries its copyright notice and is distributed" \
+      "under the Revised BSD License of the IETF Trust's Legal Provisions Relating to IETF Documents" \
+      "(https://trustee.ietf.org/license-info), as stated in the module text." \
+      > /opt/libyang/share/doc/libyang/NOTICE
 
 FROM ${GO_IMAGE} AS dev
 ARG PCRE2_VERSION=10.46-1~deb13u3

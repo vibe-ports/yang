@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BSD-3-Clause
+
 // Spike for gate G1 (docs/decisions/0001-parser-reuse.md): can goyang's
 // pkg/yang parser replace a port of libyang's parser_yang.c?
 //

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BSD-3-Clause
+
 // Package xsdre compiles XML Schema (XSD Part 2, Appendix F) regular
 // expressions, as used by the YANG "pattern" statement (RFC 7950 §9.4.5),
 // into Go RE2 regexps with identical match semantics.

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BSD-3-Clause
+
 // dtcheck: pure-Go datatree harness (no cgo). Usage: dtcheck data.{json,xml} mod1.yang [mod2.yang...]
 package main
 
