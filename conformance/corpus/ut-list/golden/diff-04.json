@@ -1,0 +1,100 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "diff": {
+    "json": "{\n  \"T0:user\": [\n    {\n      \"@\": {\n        \"yang:operation\": \"none\"\n      },\n      \"uid\": 0,\n      \"group\": \"Admin\",\n      \"@group\": {\n        \"yang:operation\": \"replace\",\n        \"yang:orig-default\": false,\n        \"yang:orig-value\": \"User\"\n      }\n    }\n  ]\n}\n",
+    "xml": "<user xmlns=\"urn:tests:T0\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <uid>0</uid>\n  <group yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"User\">Admin</group>\n</user>\n"
+  },
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "T0",
+      "revision": null
+    }
+  ],
+  "op": "diff",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [
+        {
+          "module": "yang",
+          "name": "operation",
+          "value": "none"
+        }
+      ],
+      "opaque": null,
+      "path": "/T0:user[uid='0']",
+      "schema": "/T0:user",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/T0:user[uid='0']/uid",
+      "schema": "/T0:user/uid",
+      "value": {
+        "canonical": "0",
+        "type": "uint32",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [
+        {
+          "module": "yang",
+          "name": "operation",
+          "value": "replace"
+        },
+        {
+          "module": "yang",
+          "name": "orig-default",
+          "value": "false"
+        },
+        {
+          "module": "yang",
+          "name": "orig-value",
+          "value": "User"
+        }
+      ],
+      "opaque": null,
+      "path": "/T0:user[uid='0']/group",
+      "schema": "/T0:user/group",
+      "value": {
+        "canonical": "Admin",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

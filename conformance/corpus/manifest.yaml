@@ -32002,6 +32002,150 @@ fixtures:
       verdict: valid
       rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5", "RFC7951#5.4"]
       deviation: null
+
+  - id: ut-list/diff-01
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_diff:1406
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.2]
+      modules: [{name: "T0"}]
+    golden: golden/diff-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+      deviation: null
+
+  - id: ut-list/diff-02
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_diff:1437 (delete item; hand-converted: lyd_diff_siblings, options 0)
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+    areas: [diff]
+    request:
+      op: "diff"
+      searchdirs: [list/T0.2]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      first: "<user xmlns=\"urn:tests:T0\">   <uid>0</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>User</group></user><user xmlns=\"urn:tests:T0\">   <uid>1</uid>   <name>Martin Nov\u00e1k</name>   <group>User</group></user>"
+      second: "<user xmlns=\"urn:tests:T0\">   <uid>0</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>User</group></user>"
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+      diff_options: []
+    golden: golden/diff-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+      deviation: null
+
+  - id: ut-list/diff-03
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_diff:1473 (add item; hand-converted: lyd_diff_siblings, options 0)
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+    areas: [diff]
+    request:
+      op: "diff"
+      searchdirs: [list/T0.2]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      first: "<user xmlns=\"urn:tests:T0\">   <uid>0</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>User</group></user>"
+      second: "<user xmlns=\"urn:tests:T0\">   <uid>0</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>User</group></user><user xmlns=\"urn:tests:T0\">   <uid>1</uid>   <name>Martin Nov\u00e1k</name>   <group>User</group></user>"
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+      diff_options: []
+    golden: golden/diff-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+      deviation: null
+
+  - id: ut-list/diff-04
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_diff:1515 (diff one; hand-converted: lyd_diff_siblings, options 0)
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+    areas: [diff]
+    request:
+      op: "diff"
+      searchdirs: [list/T0.2]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      first: "<user xmlns=\"urn:tests:T0\">   <uid>0</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>User</group></user><user xmlns=\"urn:tests:T0\">   <uid>1</uid>   <name>Martin Nov\u00e1k</name>   <group>User</group></user>"
+      second: "<user xmlns=\"urn:tests:T0\">   <uid>0</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>Admin</group></user><user xmlns=\"urn:tests:T0\">   <uid>1</uid>   <name>Martin Nov\u00e1k</name>   <group>User</group></user>"
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+      diff_options: []
+    golden: golden/diff-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+      deviation: null
+
+  - id: ut-list/diff-05
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_diff:1551 (diff same: no diff; hand-converted: lyd_diff_siblings, options 0)
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+    areas: [diff]
+    request:
+      op: "diff"
+      searchdirs: [list/T0.2]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      first: "<user xmlns=\"urn:tests:T0\">   <uid>0</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>User</group></user><user xmlns=\"urn:tests:T0\">   <uid>1</uid>   <name>Martin Nov\u00e1k</name>   <group>User</group></user>"
+      second: "<user xmlns=\"urn:tests:T0\">   <uid>0</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name>   <group>User</group></user><user xmlns=\"urn:tests:T0\">   <uid>1</uid>   <name>Martin Nov\u00e1k</name>   <group>User</group></user>"
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+      diff_options: []
+    golden: golden/diff-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+      deviation: null
+
+  - id: ut-list/print-01
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_print:1574
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.6.1", "RFC7951#5.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.3]
+      modules: [{name: "T0"}]
+    golden: golden/print-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.6.1", "RFC7951#5.4"]
+      deviation: null
+
+  - id: ut-list/print-02
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_print:1588 (hand-converted: the printed tree; LYD_PRINT_SHRINK whitespace not expressible)
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.6.1", "RFC7951#5.4"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [list/T0.3]
+      modules: [{name: "T0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<user xmlns=\"urn:tests:T0\">   <uid>0</uid>   <name>Tom\u00e1\u0161 Nov\u00e1k</name></user><user xmlns=\"urn:tests:T0\">   <uid>1</uid>   <name>Martin Nov\u00e1k</name>   <group>Admin</group></user>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/print-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.6.1", "RFC7951#5.4"]
+      deviation: null
 # END ut-list
 
 # BEGIN protocol-v2 deref-einval (hand-written, issue 200: xpath_deref LY_EINVAL stops validation)

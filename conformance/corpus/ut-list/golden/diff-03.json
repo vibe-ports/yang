@@ -1,0 +1,103 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "diff": {
+    "json": "{\n  \"T0:user\": [\n    {\n      \"@\": {\n        \"yang:operation\": \"create\"\n      },\n      \"uid\": 1,\n      \"name\": \"Martin Nov\u00e1k\",\n      \"group\": \"User\"\n    }\n  ]\n}\n",
+    "xml": "<user xmlns=\"urn:tests:T0\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">\n  <uid>1</uid>\n  <name>Martin Nov\u00e1k</name>\n  <group>User</group>\n</user>\n"
+  },
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "T0",
+      "revision": null
+    }
+  ],
+  "op": "diff",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [
+        {
+          "module": "yang",
+          "name": "operation",
+          "value": "create"
+        }
+      ],
+      "opaque": null,
+      "path": "/T0:user[uid='1']",
+      "schema": "/T0:user",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/T0:user[uid='1']/uid",
+      "schema": "/T0:user/uid",
+      "value": {
+        "canonical": "1",
+        "type": "uint32",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/T0:user[uid='1']/name",
+      "schema": "/T0:user/name",
+      "value": {
+        "canonical": "Martin Nov\u00e1k",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/T0:user[uid='1']/group",
+      "schema": "/T0:user/group",
+      "value": {
+        "canonical": "User",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

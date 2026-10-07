@@ -1,0 +1,21 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "diff": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "T0",
+      "revision": null
+    }
+  ],
+  "op": "diff",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "verdict": "valid"
+}
