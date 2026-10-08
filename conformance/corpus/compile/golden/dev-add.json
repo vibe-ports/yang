@@ -1,0 +1,27 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module dev-add {\n  namespace \"urn:dev-add\";\n  prefix d;\n\n  identity two {\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [
+        {
+          "bases": [
+            "dev-amend-base:base"
+          ],
+          "derived": [],
+          "name": "dev-add:two"
+        }
+      ],
+      "name": "dev-add",
+      "revision": null,
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

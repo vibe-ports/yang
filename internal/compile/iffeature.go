@@ -25,7 +25,7 @@ func (w *nodeCtx) iffeatures(pm *pmod, iffs []*parser.IfFeature) (bool, error) {
 // iffValue compiles one if-feature (lys_compile_iffeature, errors at the compile path) and
 // evaluates it (lysc_iffeature_value).
 func (w *nodeCtx) iffValue(pm *pmod, iff *parser.IfFeature) (bool, error) {
-	fs, err := w.c.compileIff(pm, pm.main, iff, w.path.String())
+	fs, err := w.c.compileIff(pm, pm.main, iff, w.path.location())
 	if err != nil {
 		return false, err
 	}

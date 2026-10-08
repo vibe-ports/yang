@@ -63,6 +63,7 @@ type nodeCtx struct {
 	augs      pending[*topAug]                         // ctx->augs
 	usesRfns  pending[*usesRfn]                        // ctx->uses_rfns
 	devs      pending[*devSet]                         // ctx->devs
+	dev       devState                                 // what the deviated copies carry
 	pendingOf map[*parser.Node]int                     // pending augments and refines per uses
 	groupings map[*parser.Node]bool                    // ctx->groupings: the uses stack
 	grpIdx    map[*parser.Node]map[string]*parser.Node // groupings by name per parent (module: &Parsed.Node)
@@ -156,7 +157,7 @@ func (w *nodeCtx) topLevel(p *parser.Module) error {
 // --- logging ---
 
 func (w *nodeCtx) errf(code ly.Code, format string, a ...any) error {
-	return w.c.logPath(code, w.path.String(), format, a...)
+	return w.c.logPath(code, w.path.location(), format, a...)
 }
 
 func (w *nodeCtx) v11() bool { return w.pm.Parsed.Version == "1.1" }
@@ -308,12 +309,18 @@ func (w *nodeCtx) nodeGenericRest(pn *parser.Node, parent *schema.Node, inherite
 	if err := spec(w, pn, n); err != nil {
 		return err
 	}
-	if n.Exts, err = w.compileExts(pn.Stmt, n, n.Exts); err != nil {
-		return err
-	}
-	for _, rs := range w.rfnExts[pn] { // DUP_EXTS of lys_apply_refine: after the node's own
-		if n.Exts, err = w.compileExtsIn(rs.pm, rs.stmt, n, n.Exts); err != nil {
+	if l, ok := w.dev.exts[pn]; ok { // the exts array a deviation changed
+		if n.Exts, err = w.compileExtList(l, n, n.Exts); err != nil {
 			return err
+		}
+	} else {
+		if n.Exts, err = w.compileExts(pn.Stmt, n, n.Exts); err != nil {
+			return err
+		}
+		for _, rs := range w.rfnExts[pn] { // DUP_EXTS of lys_apply_refine: after the node's own
+			if n.Exts, err = w.compileExtsIn(rs.pm, rs.stmt, n, n.Exts); err != nil {
+				return err
+			}
 		}
 	}
 	if n.Mandatory {
@@ -802,10 +809,9 @@ func (w *nodeCtx) leafList(pn *parser.Node, n *schema.Node) error {
 			return w.errf(ly.Semantics, "Leaf-list default values are allowed only in YANG 1.1 modules.")
 		}
 		if w.opts&(optDisabled|optGrouping) == 0 {
-			ns := nsCtx(w.origin(dfltKey{pn}))
 			n.Default = nil
-			for _, d := range pn.Defaults {
-				n.Default = append(n.Default, schema.DefaultValue{Lex: d, NS: ns})
+			for i, d := range pn.Defaults {
+				n.Default = append(n.Default, schema.DefaultValue{Lex: d, NS: nsCtx(w.dfltOrigin(pn, i))})
 			}
 		}
 		w.addDflt(n)
@@ -921,8 +927,8 @@ func (w *nodeCtx) list(pn *parser.Node, n *schema.Node) error {
 	if err := w.augments(n); err != nil {
 		return err
 	}
-	for _, u := range pn.Uniques {
-		if err := w.unique(u, n); err != nil {
+	for i, u := range pn.Uniques {
+		if err := w.unique(u, w.uniqueOrigin(pn, i), n); err != nil {
 			return err
 		}
 	}
@@ -952,12 +958,12 @@ func lysNodetype2str(k schema.Kind) string {
 	return "unknown"
 }
 
-// unique is one statement of lys_compile_node_list_unique.
-func (w *nodeCtx) unique(u string, list *schema.Node) error {
+// unique is one statement of lys_compile_node_list_unique, written in pm.
+func (w *nodeCtx) unique(u string, pm *pmod, list *schema.Node) error {
 	config := -1
 	var leaves []*schema.Node
 	err := keyTokens(u, func(tok, rest string) error {
-		key, flags, err := w.resolveNodeid(rest, len(tok), list, w.pm, schema.Leaf)
+		key, flags, err := w.resolveNodeid(rest, len(tok), list, pm, schema.Leaf)
 		switch {
 		case errors.Is(err, eDenied):
 			_ = w.errf(ly.Reference, "Unique's descendant-schema-nodeid \"%s\" refers to %s node instead of a leaf.",
@@ -985,7 +991,7 @@ func (w *nodeCtx) unique(u string, list *schema.Node) error {
 				return w.errf(ly.Semantics, "Unique statement \"%s\" refers to a leaf in nested list \"%s\".", u, p.Name)
 			}
 		}
-		if err := checkStatus(list.Status, w.pm.mod, list.Name, key.Status, key.Module, key.Name); err != nil {
+		if err := checkStatus(list.Status, pm.mod, list.Name, key.Status, key.Module, key.Name); err != nil {
 			return w.vlog(err)
 		}
 		leaves = append(leaves, key)

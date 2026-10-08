@@ -1,0 +1,49 @@
+module dev-amend-base {
+  yang-version 1.1;
+  namespace "urn:dev-amend-base";
+  prefix b;
+  extension tag { argument name; }
+  extension mark;
+  identity base;
+  identity one { base base; }
+  typedef local { type string { length "1..8"; } }
+  container c {
+    leaf-list ids {
+      type identityref { base base; }
+      default one;
+      b:tag own;
+    }
+    leaf l {
+      type local;
+      units "m";
+      must ". != 'x'" { error-message "not x"; }
+      must ". != 'y'";
+      b:tag first;
+      b:tag second;
+      b:mark;
+    }
+    list lst {
+      key "k";
+      unique "u";
+      unique "v";
+      leaf k { type string; }
+      leaf u { type string; }
+      leaf v { type string; }
+    }
+    choice ch {
+      default one;
+      leaf one { type string; }
+      leaf two { type string; }
+    }
+    leaf-list words {
+      type string;
+      default "a";
+      default "b";
+      default "c";
+    }
+  }
+  rpc r {
+    input { leaf a { type string; } }
+    output { leaf b { type string; } }
+  }
+}

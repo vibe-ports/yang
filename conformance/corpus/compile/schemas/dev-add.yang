@@ -1,0 +1,24 @@
+module dev-add {
+  yang-version 1.1;
+  namespace "urn:dev-add";
+  prefix d;
+  import dev-amend-base { prefix b; }
+  identity two { base b:base; }
+  extension note { argument text; }
+  deviation /b:c/b:ids {
+    deviate add {
+      default d:two;
+      d:note added;
+    }
+  }
+  deviation /b:c/b:lst {
+    deviate add {
+      unique "b:k b:v";
+      must "b:k != 'z'";
+      max-elements 4;
+    }
+  }
+  deviation /b:c/b:l {
+    deviate add { b:mark; }
+  }
+}

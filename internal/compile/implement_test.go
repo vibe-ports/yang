@@ -84,7 +84,7 @@ func TestNodeWalk(t *testing.T) {
 
 // TestDeviationNotSupported: implementing a module with a not-supported
 // deviation implements its target with the node removed and records the
-// deviating module (deviated_by); a deviate add/delete/replace still fails
+// deviating module (deviated_by); a deviate delete/replace still fails
 // with ErrUnsupported (U-0020) and the load is reverted.
 func TestDeviationNotSupported(t *testing.T) {
 	c := newCtx(t, Options{}, filepath.Join(corpus, "load", "implement"))
@@ -100,7 +100,7 @@ func TestDeviationNotSupported(t *testing.T) {
 	dir := t.TempDir()
 	write(t, dir, "tg.yang", `module tg { namespace urn:tg; prefix tg; leaf l { type string; } }`)
 	write(t, dir, "da.yang", `module da { namespace urn:da; prefix da; import tg { prefix t; }
-  deviation /t:l { deviate add { units km; } } }`)
+  deviation /t:l { deviate delete { units km; } } }`)
 	c = newCtx(t, Options{}, dir)
 	if _, _, err := c.Load("tg", "", nil); err != nil {
 		t.Fatal(err)

@@ -7,6 +7,7 @@
 package compile
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 
@@ -132,8 +133,9 @@ func (w *nodeCtx) nodeDeviations(pn *parser.Node, parent *schema.Node, dev *pars
 			dev = &cp
 			w.pparent[dev] = w.parentOf(pn)
 		}
+		t := &devTarget{n: dev, pm: w.pm}
 		for u, dv := range d.devs {
-			if err := w.applyDeviation(dv, d.pms[u], dev); err != nil {
+			if err := w.applyDeviation(dv, d.pms[u], t); err != nil {
 				return nil, false, err
 			}
 		}
@@ -141,24 +143,175 @@ func (w *nodeCtx) nodeDeviations(pn *parser.Node, parent *schema.Node, dev *pars
 	}
 }
 
+// devTarget is the parsed copy a deviation changes and the (sub)module its own text is written in.
+type devTarget struct {
+	n  *parser.Node
+	pm *pmod
+}
+
 // applyDeviation is lys_apply_deviation: the deviates of d, written in pm, change the parsed
-// copy, logged at the path of the deviation in pm's module.
-func (w *nodeCtx) applyDeviation(d *parser.Deviation, pm *pmod, _ *parser.Node) error {
+// copy t, logged at the path of the deviation in pm's module.
+func (w *nodeCtx) applyDeviation(d *parser.Deviation, pm *pmod, t *devTarget) error {
 	saved, prevPm := w.path, w.pm
-	defer func() { w.path, w.pm = saved, prevPm }()
 	w.path.init(pm.mod)
 	w.pm = pm
 	w.path.update(nil, "{deviation}")
 	w.path.update(nil, d.Nodeid)
+	defer func() {
+		// the path is restored (strcpy), the log location stays here
+		loc := w.path.String()
+		w.path, w.pm = saved, prevPm
+		w.path.loc = loc
+	}()
 	for _, dv := range d.Deviates {
+		var err error
 		switch dv.Mod {
-		case "add", "delete", "replace":
+		case "add":
+			err = w.deviateAdd(dv, t)
+		case "delete", "replace":
 			return fmt.Errorf("%w: deviate %s of \"%s\" (U-0020)", ErrUnsupported, dv.Mod, d.Nodeid)
 		default:
 			return w.errf(ly.Other, "Internal error (schema_compile_amend.c:1681).") // LOGINT
 		}
+		if err != nil {
+			return err
+		}
 	}
 	return nil
+}
+
+// wrongNodetype is AMEND_WRONG_NODETYPE of a deviation.
+func (w *nodeCtx) wrongNodetype(t *devTarget, op, prop string) error {
+	return w.errf(ly.Reference, "Invalid deviation of %s node - it is not possible to %s \"%s\" property.",
+		pkindStr(t.n.Kind), op, prop)
+}
+
+// cardinality is AMEND_CHECK_CARDINALITY of a deviation (at most one value).
+func (w *nodeCtx) cardinality(t *devTarget, n int, prop string) error {
+	if n > 1 {
+		return w.errf(ly.Semantics, "Invalid deviation of %s with too many (%d) %s properties.", pkindStr(t.n.Kind), n, prop)
+	}
+	return nil
+}
+
+// --- the values a deviation changes, with the (sub)module each is written in ---
+
+// devState is what the parsed copies of deviated nodes carry beyond parser.Node: per value, the
+// (sub)module a default or unique is written in (lysp_qname.mod), and the exts array once a
+// deviation changed it.
+type devState struct {
+	dflts map[*parser.Node][]*pmod
+	uniqs map[*parser.Node][]*pmod
+	exts  map[*parser.Node][]extIn
+}
+
+// dfltOrigin is the (sub)module default i of pn is written in.
+func (w *nodeCtx) dfltOrigin(pn *parser.Node, i int) *pmod {
+	if o := w.dev.dflts[pn]; o != nil {
+		return o[i]
+	}
+	return w.origin(dfltKey{pn})
+}
+
+// uniqueOrigin is the (sub)module unique i of pn is written in.
+func (w *nodeCtx) uniqueOrigin(pn *parser.Node, i int) *pmod {
+	if o := w.dev.uniqs[pn]; o != nil {
+		return o[i]
+	}
+	return w.pm
+}
+
+// dflts are the per-value origins of the defaults of t, made on first use.
+func (w *nodeCtx) dflts(t *devTarget) []*pmod {
+	if o, ok := w.dev.dflts[t.n]; ok {
+		return o
+	}
+	pm := t.pm
+	if o := w.from[dfltKey{t.n}]; o != nil {
+		pm = o
+	}
+	o := make([]*pmod, len(t.n.Defaults))
+	for i := range o {
+		o[i] = pm
+	}
+	if w.dev.dflts == nil {
+		w.dev.dflts = map[*parser.Node][]*pmod{}
+	}
+	w.dev.dflts[t.n] = o
+	return o
+}
+
+// uniqs are the per-value origins of the uniques of t, made on first use.
+func (w *nodeCtx) uniqs(t *devTarget) []*pmod {
+	if o, ok := w.dev.uniqs[t.n]; ok {
+		return o
+	}
+	o := make([]*pmod, len(t.n.Uniques))
+	for i := range o {
+		o[i] = t.pm
+	}
+	if w.dev.uniqs == nil {
+		w.dev.uniqs = map[*parser.Node][]*pmod{}
+	}
+	w.dev.uniqs[t.n] = o
+	return o
+}
+
+// extIn is one item of a parsed node's exts array: the instance, the statement owning it and
+// the (sub)module it is written in; node is parent_stmt & LY_STMT_NODE_MASK (an instance of the
+// node itself, not of one of its substatements).
+type extIn struct {
+	e, owner *parser.Stmt
+	pm       *pmod
+	node     bool
+}
+
+// exts is the exts array of t, made on first use: its own instances, then those its refines
+// added (lys_apply_refine DUP_EXTS).
+func (w *nodeCtx) exts(t *devTarget) []extIn {
+	if l, ok := w.dev.exts[t.n]; ok {
+		return l
+	}
+	var l []extIn
+	if own, _ := w.c.ownedExts(t.n.Stmt); len(own) > 0 {
+		for _, e := range own {
+			l = append(l, extIn{e, t.n.Stmt, t.pm, slices.Contains(t.n.Stmt.Subs, e)})
+		}
+	}
+	for _, rs := range w.rfnExts[t.n] {
+		arr, _ := w.c.ownedExts(rs.stmt)
+		for _, e := range arr {
+			l = append(l, extIn{e, rs.stmt, rs.pm, true})
+		}
+	}
+	if w.dev.exts == nil {
+		w.dev.exts = map[*parser.Node][]extIn{}
+	}
+	w.dev.exts[t.n] = l
+	return l
+}
+
+// compileExtList compiles the exts array of a deviated node into exts (COMPILE_EXTS_GOTO of
+// lys_compile_node_).
+func (w *nodeCtx) compileExtList(l []extIn, n *schema.Node, exts []*schema.ExtInstance) ([]*schema.ExtInstance, error) {
+	prev := w.pm
+	defer func() { w.pm = prev }()
+	for _, x := range l {
+		w.pm = x.pm
+		owner := x.owner
+		if x.node && !slices.Contains(owner.Subs, x.e) {
+			owner = &parser.Stmt{Subs: []*parser.Stmt{x.e}} // logged as an instance of the node
+		}
+		inst, err := w.compileExt(x.e, owner, n)
+		switch {
+		case errors.Is(err, errNot):
+		case err != nil:
+			return exts, err
+		default:
+			exts = append(exts, inst)
+		}
+	}
+	return exts, nil
 }
 
 // unresDeviations is the deviation part of lys_compile_unres_mod: every deviation left

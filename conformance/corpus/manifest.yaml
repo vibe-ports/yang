@@ -33336,3 +33336,21 @@ fixtures:
         - {do: dump, with_defaults: all}
     golden: golden/seq-new-tree-from-paths.json
 # END PoC data.NewTree
+
+# BEGIN dev #27 (hand-written, deviations: track A of M2)
+
+  - id: dev/add
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # deviate add: a leaf-list default with the deviating module"s prefix next to the target"s own, a unique and a must written in the deviating module, max-elements, extension instances after the node"s own
+    rfc: ["RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{name: dev-add}]
+    golden: golden/dev-add.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3.2"]
+      deviation: null
+# END dev #27
