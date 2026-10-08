@@ -26,7 +26,7 @@ payloads and diff/merge are not done yet.
 | Defaults and with-defaults printing (RFC 6243: explicit, trim, report-all, report-all-tagged) | supported | |
 | RFC 7952 metadata | partial | parsed, validated and printed; no public accessor yet |
 | XPath 1.0 + YANG functions | partial | used by must/when/leafref; no public XPath query API yet |
-| Tree edits: `NewPath`, `Merge`, `Remove`, `Find` | partial | absolute paths, merge without options |
+| Tree edits: `NewTree`, `NewPath`, `Merge`, `Remove`, `Find` | partial | absolute paths, merge without options |
 | Validation diff (`Tree.ValidateDiff`) | partial | the implicit diff of a validation only |
 | anydata / anyxml instances | **unsupported** | the schema nodes compile, data instances fail with `ErrUnsupported` (U-0043) |
 | RPC / action / notification data and replies, external operational tree | **unsupported** | planned |

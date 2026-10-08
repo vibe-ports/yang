@@ -144,12 +144,8 @@ func diagsOf(err error) []yang.Diagnostic {
 }
 
 // emptyTree is the NULL tree of the oracle's sequence, which lyd_new_path and lyd_validate_all
-// fill: a parse of no data.
-func emptyTree(s *yang.Schema) (*data.Tree, error) {
-	t, _, err := data.Parse(context.Background(), strings.NewReader(""), data.FormatXML, s,
-		data.ParseOptions{ParseOnly: true})
-	return t, err
-}
+// fill.
+func emptyTree(s *yang.Schema) (*data.Tree, error) { return data.NewTree(s), nil }
 
 // stepCompare is step_compare: Node.Equal of the node at first in the tree and the node at second
 // in a second tree parsed like a parse step (omitted: the first top-level node).
