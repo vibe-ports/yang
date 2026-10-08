@@ -62,7 +62,7 @@ budget is `MaxSteps` + `Ctx`; `Result.Steps` lets `data` keep a cumulative budge
    non-presence containers are **materialised first** (flag `Default`, plus `WhenTrue` when their
    schema node has a `when`), **then** their `when` conditions are resolved together with the rest
    through the queue (rule 5); a false one deletes them silently. No dummy node is involved, and no
-   absent default is pre-checked in isolation. Fixtures: `when/order-*`, protocol-v2 `seq-diff-*`.
+   absent default is pre-checked in isolation. Fixtures: `when/order-*`; protocol-v2 `seq-diff-*` goldens replayed in `data/diff_test.go`.
    **`when` on a node that does not exist** is evaluated only by the final checks — mandatory
    (absent mandatory node or choice) and min-elements — exactly like `lyd_validate_dummy_when`: an
    opaque node named like the schema node is linked at the would-be position (opaque, so it matches no
@@ -115,4 +115,4 @@ What the slice changed, and why:
   deviations.md, its crashes answered (D-0012, D-0063).
 - **Open:** the report engine does not run `sequence` (the `when/order-*` and
   `m1/sequence-when-auto-delete` goldens) or `xpath` requests yet; the queue is covered by `data` unit
-  tests and protocol-v2 `seq-diff-*` replays, the evaluator by `internal/xpath`'s oracle replay.
+  tests and the protocol-v2 `seq-diff-*` goldens replayed in `data/diff_test.go`, the evaluator by `internal/xpath`'s oracle replay.

@@ -63,7 +63,10 @@ type UnionValue struct {
 - `ietf-yang-types`/`ietf-inet-types` special types: libyang-style **plugins** with their own storage
   (`ext`), keyed by (module, revision, typedef); revision `""` matches every revision. A typedef
   inherits the plugin of the nearest typedef in its derivation chain, as `lys_compile_type` does.
-  Not ported yet: U-0010.
+  Ported: the `ietf-inet-types` address/prefix plugins, the `ietf-yang-types` `date-and-time`,
+  `date`/`date-no-zone`, `time`/`time-no-zone`, hex-string family and `xpath1.0` (store; its print is
+  canonical text in every format) plugins, and `yang:instance-identifier-keys`. U-0010 lists what is
+  left: `time-period` and `node-instance-identifier`.
 
 ## Revised after M1
 What the slice changed, and why:
@@ -86,3 +89,6 @@ What the slice changed, and why:
 - **Open:** the report engine does not emit `typed.value.type`/`typedef`/`union_member` yet, so the
   data fixtures compare them as skipped fields; union members are checked against goldens only in
   `internal/types` tests.
+  When it does, note the two answer different questions: `UnionValue.index` is the member that
+  actually stored the value, the oracle's `union_member` the first member whose realtype is the
+  stored one (design 04 §2); they differ when members share a realtype.
