@@ -395,8 +395,8 @@ func TestLeafrefForms(t *testing.T) {
 	if err != nil || len(got) != 1 || got[0].(xn).n != nodes["t=5"] {
 		t.Fatalf("deref instance-identifier: %v %v", got, err)
 	}
-	// deref() of a leafref whose target if-feature removed: libyang reads targets->count of a
-	// NULL set and crashes (D-0068); the port returns no nodes and no error
+	// deref() of a leafref whose target is gone (only after a failed recompile in libyang, which
+	// then reads targets->count of a NULL set and crashes, D-0068): no nodes and no error
 	v, _ = types.Store(dis.Type, "anything", types.FormatJSON, types.JSONHints("string"), nil, dis)
 	dn := newTerm(dis, v)
 	vc.t.insert(c, dn, insertDefault)
