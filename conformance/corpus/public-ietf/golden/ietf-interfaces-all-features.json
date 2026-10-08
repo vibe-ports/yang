@@ -1,0 +1,1902 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ietf-interfaces {\n  namespace \"urn:ietf:params:xml:ns:yang:ietf-interfaces\";\n  prefix if;\n\n  organization\n    \"IETF NETMOD (Network Modeling) Working Group\";\n  contact\n    \"WG Web:   <https://datatracker.ietf.org/wg/netmod/>\n     WG List:  <mailto:netmod@ietf.org>\n\n     Editor:   Martin Bjorklund\n               <mailto:mbj@tail-f.com>\";\n  description\n    \"This module contains a collection of YANG definitions for\n     managing network interfaces.\n\n     Copyright (c) 2018 IETF Trust and the persons identified as\n     authors of the code.  All rights reserved.\n\n     Redistribution and use in source and binary forms, with or\n     without modification, is permitted pursuant to, and subject\n     to the license terms contained in, the Simplified BSD License\n     set forth in Section 4.c of the IETF Trust's Legal Provisions\n     Relating to IETF Documents\n     (https://trustee.ietf.org/license-info).\n\n     This version of this YANG module is part of RFC 8343; see\n     the RFC itself for full legal notices.\";\n\n  revision 2018-02-20;\n\n  identity interface-type {\n    description\n      \"Base identity from which specific interface types are\n       derived.\";\n  }\n\n  container interfaces {\n    config true;\n    status current;\n    description\n      \"Interface parameters.\";\n    list interface {\n      key \"name\";\n      config true;\n      min-elements 0;\n      max-elements 4294967295;\n      ordered-by system;\n      status current;\n      description\n        \"The list of interfaces on the device.\n\n         The status of an interface is available in this list in the\n         operational state.  If the configuration of a\n         system-controlled interface cannot be used by the system\n         (e.g., the interface hardware present does not match the\n         interface type), then the configuration is not applied to\n         the system-controlled interface shown in the operational\n         state.  If the configuration of a user-controlled interface\n         cannot be used by the system, the configured interface is\n         not instantiated in the operational state.\n\n         System-controlled interfaces created by the system are\n         always present in this list in the operational state,\n         whether or not they are configured.\";\n      leaf name {\n        type string;\n        config true;\n        status current;\n        description\n          \"The name of the interface.\n\n           A device MAY restrict the allowed values for this leaf,\n           possibly depending on the type of the interface.\n           For system-controlled interfaces, this leaf is the\n           device-specific name of the interface.\n\n           If a client tries to create configuration for a\n           system-controlled interface that is not present in the\n           operational state, the server MAY reject the request if\n           the implementation does not support pre-provisioning of\n           interfaces or if the name refers to an interface that can\n           never exist in the system.  A Network Configuration\n           Protocol (NETCONF) server MUST reply with an rpc-error\n           with the error-tag 'invalid-value' in this case.\n\n           If the device supports pre-provisioning of interface\n           configuration, the 'pre-provisioning' feature is\n           advertised.\n\n           If the device allows arbitrarily named user-controlled\n           interfaces, the 'arbitrary-names' feature is advertised.\n\n           When a configured user-controlled interface is created by\n           the system, it is instantiated with the same name in the\n           operational state.\n\n           A server implementation MAY map this leaf to the ifName\n           MIB object.  Such an implementation needs to use some\n           mechanism to handle the differences in size and characters\n           allowed between this leaf and ifName.  The definition of\n           such a mechanism is outside the scope of this document.\";\n        reference\n          \"RFC 2863: The Interfaces Group MIB - ifName\";\n      }\n      leaf description {\n        type string;\n        config true;\n        status current;\n        description\n          \"A textual description of the interface.\n\n           A server implementation MAY map this leaf to the ifAlias\n           MIB object.  Such an implementation needs to use some\n           mechanism to handle the differences in size and characters\n           allowed between this leaf and ifAlias.  The definition of\n           such a mechanism is outside the scope of this document.\n\n           Since ifAlias is defined to be stored in non-volatile\n           storage, the MIB implementation MUST map ifAlias to the\n           value of 'description' in the persistently stored\n           configuration.\";\n        reference\n          \"RFC 2863: The Interfaces Group MIB - ifAlias\";\n      }\n      leaf type {\n        type identityref {\n          base interface-type;\n        }\n        config true;\n        mandatory true;\n        status current;\n        description\n          \"The type of the interface.\n\n           When an interface entry is created, a server MAY\n           initialize the type leaf with a valid value, e.g., if it\n           is possible to derive the type from the name of the\n           interface.\n\n           If a client tries to set the type of an interface to a\n           value that can never be used by the system, e.g., if the\n           type is not supported or if the type does not match the\n           name of the interface, the server MUST reject the request.\n           A NETCONF server MUST reply with an rpc-error with the\n           error-tag 'invalid-value' in this case.\";\n        reference\n          \"RFC 2863: The Interfaces Group MIB - ifType\";\n      }\n      leaf enabled {\n        type boolean;\n        default \"true\";\n        config true;\n        status current;\n        description\n          \"This leaf contains the configured, desired state of the\n           interface.\n\n           Systems that implement the IF-MIB use the value of this\n           leaf in the intended configuration to set\n           IF-MIB.ifAdminStatus to 'up' or 'down' after an ifEntry\n           has been initialized, as described in RFC 2863.\n\n           Changes in this leaf in the intended configuration are\n           reflected in ifAdminStatus.\";\n        reference\n          \"RFC 2863: The Interfaces Group MIB - ifAdminStatus\";\n      }\n      leaf link-up-down-trap-enable {\n        type enumeration {\n          enum \"enabled\" {\n            value 1;\n            status current;\n            description\n              \"The device will generate linkUp/linkDown SNMP\n               notifications for this interface.\";\n          }\n          enum \"disabled\" {\n            value 2;\n            status current;\n            description\n              \"The device will not generate linkUp/linkDown SNMP\n               notifications for this interface.\";\n          }\n        }\n        config true;\n        status current;\n        description\n          \"Controls whether linkUp/linkDown SNMP notifications\n           should be generated for this interface.\n\n           If this node is not configured, the value 'enabled' is\n           operationally used by the server for interfaces that do\n           not operate on top of any other interface (i.e., there are\n           no 'lower-layer-if' entries), and 'disabled' otherwise.\";\n        reference\n          \"RFC 2863: The Interfaces Group MIB -\n                     ifLinkUpDownTrapEnable\";\n      }\n      leaf admin-status {\n        type enumeration {\n          enum \"up\" {\n            value 1;\n            status current;\n            description\n              \"Ready to pass packets.\";\n          }\n          enum \"down\" {\n            value 2;\n            status current;\n            description\n              \"Not ready to pass packets and not in some test mode.\";\n          }\n          enum \"testing\" {\n            value 3;\n            status current;\n            description\n              \"In some test mode.\";\n          }\n        }\n        config false;\n        mandatory true;\n        status current;\n        description\n          \"The desired state of the interface.\n\n           This leaf has the same read semantics as ifAdminStatus.\";\n        reference\n          \"RFC 2863: The Interfaces Group MIB - ifAdminStatus\";\n      }\n      leaf oper-status {\n        type enumeration {\n          enum \"up\" {\n            value 1;\n            status current;\n            description\n              \"Ready to pass packets.\";\n          }\n          enum \"down\" {\n            value 2;\n            status current;\n            description\n              \"The interface does not pass any packets.\";\n          }\n          enum \"testing\" {\n            value 3;\n            status current;\n            description\n              \"In some test mode.  No operational packets can\n               be passed.\";\n          }\n          enum \"unknown\" {\n            value 4;\n            status current;\n            description\n              \"Status cannot be determined for some reason.\";\n          }\n          enum \"dormant\" {\n            value 5;\n            status current;\n            description\n              \"Waiting for some external event.\";\n          }\n          enum \"not-present\" {\n            value 6;\n            status current;\n            description\n              \"Some component (typically hardware) is missing.\";\n          }\n          enum \"lower-layer-down\" {\n            value 7;\n            status current;\n            description\n              \"Down due to state of lower-layer interface(s).\";\n          }\n        }\n        config false;\n        mandatory true;\n        status current;\n        description\n          \"The current operational state of the interface.\n\n           This leaf has the same semantics as ifOperStatus.\";\n        reference\n          \"RFC 2863: The Interfaces Group MIB - ifOperStatus\";\n      }\n      leaf last-change {\n        type string {\n          pattern \"[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\\\.[0-9]+)?(Z|[\\\\+\\\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?\";\n        }\n        config false;\n        status current;\n        description\n          \"The time the interface entered its current operational\n           state.  If the current state was entered prior to the\n           last re-initialization of the local network management\n           subsystem, then this node is not present.\";\n        reference\n          \"RFC 2863: The Interfaces Group MIB - ifLastChange\";\n      }\n      leaf if-index {\n        type int32 {\n          range \"1..2147483647\";\n        }\n        config false;\n        mandatory true;\n        status current;\n        description\n          \"The ifIndex value for the ifEntry represented by this\n           interface.\";\n        reference\n          \"RFC 2863: The Interfaces Group MIB - ifIndex\";\n      }\n      leaf phys-address {\n        type string {\n          pattern \"([0-9a-fA-F]{2}(:[0-9a-fA-F]{2})*)?\";\n        }\n        config false;\n        status current;\n        description\n          \"The interface's address at its protocol sub-layer.  For\n           example, for an 802.x interface, this object normally\n           contains a Media Access Control (MAC) address.  The\n           interface's media-specific modules must define the bit\n           and byte ordering and the format of the value of this\n           object.  For interfaces that do not have such an address\n           (e.g., a serial line), this node is not present.\";\n        reference\n          \"RFC 2863: The Interfaces Group MIB - ifPhysAddress\";\n      }\n      leaf-list higher-layer-if {\n        type leafref {\n          path \"/if:interfaces/if:interface/if:name\";\n          require-instance true;\n          type string;\n        }\n        config false;\n        min-elements 0;\n        max-elements 4294967295;\n        ordered-by user;\n        status current;\n        description\n          \"A list of references to interfaces layered on top of this\n           interface.\";\n        reference\n          \"RFC 2863: The Interfaces Group MIB - ifStackTable\";\n      }\n      leaf-list lower-layer-if {\n        type leafref {\n          path \"/if:interfaces/if:interface/if:name\";\n          require-instance true;\n          type string;\n        }\n        config false;\n        min-elements 0;\n        max-elements 4294967295;\n        ordered-by user;\n        status current;\n        description\n          \"A list of references to interfaces layered underneath this\n           interface.\";\n        reference\n          \"RFC 2863: The Interfaces Group MIB - ifStackTable\";\n      }\n      leaf speed {\n        type uint64;\n        units \"bits/second\";\n        config false;\n        status current;\n        description\n          \"An estimate of the interface's current bandwidth in bits\n           per second.  For interfaces that do not vary in\n           bandwidth or for those where no accurate estimation can\n           be made, this node should contain the nominal bandwidth.\n           For interfaces that have no concept of bandwidth, this\n           node is not present.\";\n        reference\n          \"RFC 2863: The Interfaces Group MIB -\n                     ifSpeed, ifHighSpeed\";\n      }\n      container statistics {\n        config false;\n        status current;\n        description\n          \"A collection of interface-related statistics objects.\";\n        leaf discontinuity-time {\n          type string {\n            pattern \"[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\\\.[0-9]+)?(Z|[\\\\+\\\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?\";\n          }\n          config false;\n          mandatory true;\n          status current;\n          description\n            \"The time on the most recent occasion at which any one or\n             more of this interface's counters suffered a\n             discontinuity.  If no such discontinuities have occurred\n             since the last re-initialization of the local management\n             subsystem, then this node contains the time the local\n             management subsystem re-initialized itself.\";\n        }\n        leaf in-octets {\n          type uint64;\n          config false;\n          status current;\n          description\n            \"The total number of octets received on the interface,\n             including framing characters.\n\n             Discontinuities in the value of this counter can occur\n             at re-initialization of the management system and at\n             other times as indicated by the value of\n             'discontinuity-time'.\";\n          reference\n            \"RFC 2863: The Interfaces Group MIB - ifHCInOctets\";\n        }\n        leaf in-unicast-pkts {\n          type uint64;\n          config false;\n          status current;\n          description\n            \"The number of packets, delivered by this sub-layer to a\n             higher (sub-)layer, that were not addressed to a\n             multicast or broadcast address at this sub-layer.\n\n             Discontinuities in the value of this counter can occur\n             at re-initialization of the management system and at\n             other times as indicated by the value of\n             'discontinuity-time'.\";\n          reference\n            \"RFC 2863: The Interfaces Group MIB - ifHCInUcastPkts\";\n        }\n        leaf in-broadcast-pkts {\n          type uint64;\n          config false;\n          status current;\n          description\n            \"The number of packets, delivered by this sub-layer to a\n             higher (sub-)layer, that were addressed to a broadcast\n             address at this sub-layer.\n\n             Discontinuities in the value of this counter can occur\n             at re-initialization of the management system and at\n             other times as indicated by the value of\n             'discontinuity-time'.\";\n          reference\n            \"RFC 2863: The Interfaces Group MIB -\n                       ifHCInBroadcastPkts\";\n        }\n        leaf in-multicast-pkts {\n          type uint64;\n          config false;\n          status current;\n          description\n            \"The number of packets, delivered by this sub-layer to a\n             higher (sub-)layer, that were addressed to a multicast\n             address at this sub-layer.  For a MAC-layer protocol,\n             this includes both Group and Functional addresses.\n\n             Discontinuities in the value of this counter can occur\n             at re-initialization of the management system and at\n             other times as indicated by the value of\n             'discontinuity-time'.\";\n          reference\n            \"RFC 2863: The Interfaces Group MIB -\n                       ifHCInMulticastPkts\";\n        }\n        leaf in-discards {\n          type uint32;\n          config false;\n          status current;\n          description\n            \"The number of inbound packets that were chosen to be\n             discarded even though no errors had been detected to\n             prevent their being deliverable to a higher-layer\n             protocol.  One possible reason for discarding such a\n             packet could be to free up buffer space.\n\n             Discontinuities in the value of this counter can occur\n             at re-initialization of the management system and at\n             other times as indicated by the value of\n             'discontinuity-time'.\";\n          reference\n            \"RFC 2863: The Interfaces Group MIB - ifInDiscards\";\n        }\n        leaf in-errors {\n          type uint32;\n          config false;\n          status current;\n          description\n            \"For packet-oriented interfaces, the number of inbound\n             packets that contained errors preventing them from being\n             deliverable to a higher-layer protocol.  For character-\n             oriented or fixed-length interfaces, the number of\n             inbound transmission units that contained errors\n             preventing them from being deliverable to a higher-layer\n             protocol.\n\n             Discontinuities in the value of this counter can occur\n             at re-initialization of the management system and at\n             other times as indicated by the value of\n             'discontinuity-time'.\";\n          reference\n            \"RFC 2863: The Interfaces Group MIB - ifInErrors\";\n        }\n        leaf in-unknown-protos {\n          type uint32;\n          config false;\n          status current;\n          description\n            \"For packet-oriented interfaces, the number of packets\n             received via the interface that were discarded because\n             of an unknown or unsupported protocol.  For\n             character-oriented or fixed-length interfaces that\n             support protocol multiplexing, the number of\n             transmission units received via the interface that were\n             discarded because of an unknown or unsupported protocol.\n             For any interface that does not support protocol\n             multiplexing, this counter is not present.\n\n             Discontinuities in the value of this counter can occur\n             at re-initialization of the management system and at\n             other times as indicated by the value of\n             'discontinuity-time'.\";\n          reference\n            \"RFC 2863: The Interfaces Group MIB - ifInUnknownProtos\";\n        }\n        leaf out-octets {\n          type uint64;\n          config false;\n          status current;\n          description\n            \"The total number of octets transmitted out of the\n             interface, including framing characters.\n\n             Discontinuities in the value of this counter can occur\n             at re-initialization of the management system and at\n             other times as indicated by the value of\n             'discontinuity-time'.\";\n          reference\n            \"RFC 2863: The Interfaces Group MIB - ifHCOutOctets\";\n        }\n        leaf out-unicast-pkts {\n          type uint64;\n          config false;\n          status current;\n          description\n            \"The total number of packets that higher-level protocols\n             requested be transmitted and that were not addressed\n             to a multicast or broadcast address at this sub-layer,\n             including those that were discarded or not sent.\n\n             Discontinuities in the value of this counter can occur\n             at re-initialization of the management system and at\n             other times as indicated by the value of\n             'discontinuity-time'.\";\n          reference\n            \"RFC 2863: The Interfaces Group MIB - ifHCOutUcastPkts\";\n        }\n        leaf out-broadcast-pkts {\n          type uint64;\n          config false;\n          status current;\n          description\n            \"The total number of packets that higher-level protocols\n             requested be transmitted and that were addressed to a\n             broadcast address at this sub-layer, including those\n             that were discarded or not sent.\n\n             Discontinuities in the value of this counter can occur\n             at re-initialization of the management system and at\n             other times as indicated by the value of\n             'discontinuity-time'.\";\n          reference\n            \"RFC 2863: The Interfaces Group MIB -\n                       ifHCOutBroadcastPkts\";\n        }\n        leaf out-multicast-pkts {\n          type uint64;\n          config false;\n          status current;\n          description\n            \"The total number of packets that higher-level protocols\n             requested be transmitted and that were addressed to a\n             multicast address at this sub-layer, including those\n             that were discarded or not sent.  For a MAC-layer\n             protocol, this includes both Group and Functional\n             addresses.\n\n             Discontinuities in the value of this counter can occur\n             at re-initialization of the management system and at\n             other times as indicated by the value of\n             'discontinuity-time'.\";\n          reference\n            \"RFC 2863: The Interfaces Group MIB -\n                       ifHCOutMulticastPkts\";\n        }\n        leaf out-discards {\n          type uint32;\n          config false;\n          status current;\n          description\n            \"The number of outbound packets that were chosen to be\n             discarded even though no errors had been detected to\n             prevent their being transmitted.  One possible reason\n             for discarding such a packet could be to free up buffer\n             space.\n\n             Discontinuities in the value of this counter can occur\n             at re-initialization of the management system and at\n             other times as indicated by the value of\n             'discontinuity-time'.\";\n          reference\n            \"RFC 2863: The Interfaces Group MIB - ifOutDiscards\";\n        }\n        leaf out-errors {\n          type uint32;\n          config false;\n          status current;\n          description\n            \"For packet-oriented interfaces, the number of outbound\n             packets that could not be transmitted because of errors.\n             For character-oriented or fixed-length interfaces, the\n             number of outbound transmission units that could not be\n             transmitted because of errors.\n\n             Discontinuities in the value of this counter can occur\n             at re-initialization of the management system and at\n             other times as indicated by the value of\n             'discontinuity-time'.\";\n          reference\n            \"RFC 2863: The Interfaces Group MIB - ifOutErrors\";\n        }\n      }\n    }\n  }\n  container interfaces-state {\n    config false;\n    status deprecated;\n    description\n      \"Data nodes for the operational state of interfaces.\";\n    list interface {\n      key \"name\";\n      config false;\n      min-elements 0;\n      max-elements 4294967295;\n      ordered-by user;\n      status deprecated;\n      description\n        \"The list of interfaces on the device.\n\n         System-controlled interfaces created by the system are\n         always present in this list, whether or not they are\n         configured.\";\n      leaf name {\n        type string;\n        config false;\n        status deprecated;\n        description\n          \"The name of the interface.\n\n           A server implementation MAY map this leaf to the ifName\n           MIB object.  Such an implementation needs to use some\n           mechanism to handle the differences in size and characters\n           allowed between this leaf and ifName.  The definition of\n           such a mechanism is outside the scope of this document.\";\n        reference\n          \"RFC 2863: The Interfaces Group MIB - ifName\";\n      }\n      leaf type {\n        type identityref {\n          base interface-type;\n        }\n        config false;\n        mandatory true;\n        status deprecated;\n        description\n          \"The type of the interface.\";\n        reference\n          \"RFC 2863: The Interfaces Group MIB - ifType\";\n      }\n      leaf admin-status {\n        type enumeration {\n          enum \"up\" {\n            value 1;\n            status current;\n            description\n              \"Ready to pass packets.\";\n          }\n          enum \"down\" {\n            value 2;\n            status current;\n            description\n              \"Not ready to pass packets and not in some test mode.\";\n          }\n          enum \"testing\" {\n            value 3;\n            status current;\n            description\n              \"In some test mode.\";\n          }\n        }\n        config false;\n        mandatory true;\n        status deprecated;\n        description\n          \"The desired state of the interface.\n\n           This leaf has the same read semantics as ifAdminStatus.\";\n        reference\n          \"RFC 2863: The Interfaces Group MIB - ifAdminStatus\";\n      }\n      leaf oper-status {\n        type enumeration {\n          enum \"up\" {\n            value 1;\n            status current;\n            description\n              \"Ready to pass packets.\";\n          }\n          enum \"down\" {\n            value 2;\n            status current;\n            description\n              \"The interface does not pass any packets.\";\n          }\n          enum \"testing\" {\n            value 3;\n            status current;\n            description\n              \"In some test mode.  No operational packets can\n               be passed.\";\n          }\n          enum \"unknown\" {\n            value 4;\n            status current;\n            description\n              \"Status cannot be determined for some reason.\";\n          }\n          enum \"dormant\" {\n            value 5;\n            status current;\n            description\n              \"Waiting for some external event.\";\n          }\n          enum \"not-present\" {\n            value 6;\n            status current;\n            description\n              \"Some component (typically hardware) is missing.\";\n          }\n          enum \"lower-layer-down\" {\n            value 7;\n            status current;\n            description\n              \"Down due to state of lower-layer interface(s).\";\n          }\n        }\n        config false;\n        mandatory true;\n        status deprecated;\n        description\n          \"The current operational state of the interface.\n\n           This leaf has the same semantics as ifOperStatus.\";\n        reference\n          \"RFC 2863: The Interfaces Group MIB - ifOperStatus\";\n      }\n      leaf last-change {\n        type string {\n          pattern \"[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\\\.[0-9]+)?(Z|[\\\\+\\\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?\";\n        }\n        config false;\n        status deprecated;\n        description\n          \"The time the interface entered its current operational\n           state.  If the current state was entered prior to the\n           last re-initialization of the local network management\n           subsystem, then this node is not present.\";\n        reference\n          \"RFC 2863: The Interfaces Group MIB - ifLastChange\";\n      }\n      leaf if-index {\n        type int32 {\n          range \"1..2147483647\";\n        }\n        config false;\n        mandatory true;\n        status deprecated;\n        description\n          \"The ifIndex value for the ifEntry represented by this\n           interface.\";\n        reference\n          \"RFC 2863: The Interfaces Group MIB - ifIndex\";\n      }\n      leaf phys-address {\n        type string {\n          pattern \"([0-9a-fA-F]{2}(:[0-9a-fA-F]{2})*)?\";\n        }\n        config false;\n        status deprecated;\n        description\n          \"The interface's address at its protocol sub-layer.  For\n           example, for an 802.x interface, this object normally\n           contains a Media Access Control (MAC) address.  The\n           interface's media-specific modules must define the bit\n           and byte ordering and the format of the value of this\n           object.  For interfaces that do not have such an address\n           (e.g., a serial line), this node is not present.\";\n        reference\n          \"RFC 2863: The Interfaces Group MIB - ifPhysAddress\";\n      }\n      leaf-list higher-layer-if {\n        type leafref {\n          path \"/if:interfaces-state/if:interface/if:name\";\n          require-instance true;\n          type string;\n        }\n        config false;\n        min-elements 0;\n        max-elements 4294967295;\n        ordered-by user;\n        status deprecated;\n        description\n          \"A list of references to interfaces layered on top of this\n           interface.\";\n        reference\n          \"RFC 2863: The Interfaces Group MIB - ifStackTable\";\n      }\n      leaf-list lower-layer-if {\n        type leafref {\n          path \"/if:interfaces-state/if:interface/if:name\";\n          require-instance true;\n          type string;\n        }\n        config false;\n        min-elements 0;\n        max-elements 4294967295;\n        ordered-by user;\n        status deprecated;\n        description\n          \"A list of references to interfaces layered underneath this\n           interface.\";\n        reference\n          \"RFC 2863: The Interfaces Group MIB - ifStackTable\";\n      }\n      leaf speed {\n        type uint64;\n        units \"bits/second\";\n        config false;\n        status deprecated;\n        description\n          \"An estimate of the interface's current bandwidth in bits\n           per second.  For interfaces that do not vary in\n           bandwidth or for those where no accurate estimation can\n\n           be made, this node should contain the nominal bandwidth.\n           For interfaces that have no concept of bandwidth, this\n           node is not present.\";\n        reference\n          \"RFC 2863: The Interfaces Group MIB -\n                     ifSpeed, ifHighSpeed\";\n      }\n      container statistics {\n        config false;\n        status deprecated;\n        description\n          \"A collection of interface-related statistics objects.\";\n        leaf discontinuity-time {\n          type string {\n            pattern \"[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\\\.[0-9]+)?(Z|[\\\\+\\\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?\";\n          }\n          config false;\n          mandatory true;\n          status deprecated;\n          description\n            \"The time on the most recent occasion at which any one or\n             more of this interface's counters suffered a\n             discontinuity.  If no such discontinuities have occurred\n             since the last re-initialization of the local management\n             subsystem, then this node contains the time the local\n             management subsystem re-initialized itself.\";\n        }\n        leaf in-octets {\n          type uint64;\n          config false;\n          status deprecated;\n          description\n            \"The total number of octets received on the interface,\n             including framing characters.\n\n             Discontinuities in the value of this counter can occur\n             at re-initialization of the management system and at\n             other times as indicated by the value of\n             'discontinuity-time'.\";\n          reference\n            \"RFC 2863: The Interfaces Group MIB - ifHCInOctets\";\n        }\n        leaf in-unicast-pkts {\n          type uint64;\n          config false;\n          status deprecated;\n          description\n            \"The number of packets, delivered by this sub-layer to a\n             higher (sub-)layer, that were not addressed to a\n             multicast or broadcast address at this sub-layer.\n             Discontinuities in the value of this counter can occur\n             at re-initialization of the management system and at\n             other times as indicated by the value of\n             'discontinuity-time'.\";\n          reference\n            \"RFC 2863: The Interfaces Group MIB - ifHCInUcastPkts\";\n        }\n        leaf in-broadcast-pkts {\n          type uint64;\n          config false;\n          status deprecated;\n          description\n            \"The number of packets, delivered by this sub-layer to a\n             higher (sub-)layer, that were addressed to a broadcast\n             address at this sub-layer.\n\n             Discontinuities in the value of this counter can occur\n             at re-initialization of the management system and at\n             other times as indicated by the value of\n             'discontinuity-time'.\";\n          reference\n            \"RFC 2863: The Interfaces Group MIB -\n                       ifHCInBroadcastPkts\";\n        }\n        leaf in-multicast-pkts {\n          type uint64;\n          config false;\n          status deprecated;\n          description\n            \"The number of packets, delivered by this sub-layer to a\n             higher (sub-)layer, that were addressed to a multicast\n             address at this sub-layer.  For a MAC-layer protocol,\n             this includes both Group and Functional addresses.\n\n             Discontinuities in the value of this counter can occur\n             at re-initialization of the management system and at\n             other times as indicated by the value of\n             'discontinuity-time'.\";\n          reference\n            \"RFC 2863: The Interfaces Group MIB -\n                       ifHCInMulticastPkts\";\n        }\n        leaf in-discards {\n          type uint32;\n          config false;\n          status deprecated;\n          description\n            \"The number of inbound packets that were chosen to be\n             discarded even though no errors had been detected to\n             prevent their being deliverable to a higher-layer\n             protocol.  One possible reason for discarding such a\n             packet could be to free up buffer space.\n\n             Discontinuities in the value of this counter can occur\n             at re-initialization of the management system and at\n             other times as indicated by the value of\n             'discontinuity-time'.\";\n          reference\n            \"RFC 2863: The Interfaces Group MIB - ifInDiscards\";\n        }\n        leaf in-errors {\n          type uint32;\n          config false;\n          status deprecated;\n          description\n            \"For packet-oriented interfaces, the number of inbound\n             packets that contained errors preventing them from being\n             deliverable to a higher-layer protocol.  For character-\n             oriented or fixed-length interfaces, the number of\n             inbound transmission units that contained errors\n             preventing them from being deliverable to a higher-layer\n             protocol.\n\n             Discontinuities in the value of this counter can occur\n             at re-initialization of the management system and at\n             other times as indicated by the value of\n             'discontinuity-time'.\";\n          reference\n            \"RFC 2863: The Interfaces Group MIB - ifInErrors\";\n        }\n        leaf in-unknown-protos {\n          type uint32;\n          config false;\n          status deprecated;\n          description\n            \"For packet-oriented interfaces, the number of packets\n             received via the interface that were discarded because\n             of an unknown or unsupported protocol.  For\n             character-oriented or fixed-length interfaces that\n             support protocol multiplexing, the number of\n             transmission units received via the interface that were\n             discarded because of an unknown or unsupported protocol.\n             For any interface that does not support protocol\n             multiplexing, this counter is not present.\n             Discontinuities in the value of this counter can occur\n             at re-initialization of the management system and at\n             other times as indicated by the value of\n             'discontinuity-time'.\";\n          reference\n            \"RFC 2863: The Interfaces Group MIB - ifInUnknownProtos\";\n        }\n        leaf out-octets {\n          type uint64;\n          config false;\n          status deprecated;\n          description\n            \"The total number of octets transmitted out of the\n             interface, including framing characters.\n\n             Discontinuities in the value of this counter can occur\n             at re-initialization of the management system and at\n             other times as indicated by the value of\n             'discontinuity-time'.\";\n          reference\n            \"RFC 2863: The Interfaces Group MIB - ifHCOutOctets\";\n        }\n        leaf out-unicast-pkts {\n          type uint64;\n          config false;\n          status deprecated;\n          description\n            \"The total number of packets that higher-level protocols\n             requested be transmitted and that were not addressed\n             to a multicast or broadcast address at this sub-layer,\n             including those that were discarded or not sent.\n\n             Discontinuities in the value of this counter can occur\n             at re-initialization of the management system and at\n             other times as indicated by the value of\n             'discontinuity-time'.\";\n          reference\n            \"RFC 2863: The Interfaces Group MIB - ifHCOutUcastPkts\";\n        }\n        leaf out-broadcast-pkts {\n          type uint64;\n          config false;\n          status deprecated;\n          description\n            \"The total number of packets that higher-level protocols\n             requested be transmitted and that were addressed to a\n             broadcast address at this sub-layer, including those\n             that were discarded or not sent.\n\n             Discontinuities in the value of this counter can occur\n             at re-initialization of the management system and at\n             other times as indicated by the value of\n             'discontinuity-time'.\";\n          reference\n            \"RFC 2863: The Interfaces Group MIB -\n                       ifHCOutBroadcastPkts\";\n        }\n        leaf out-multicast-pkts {\n          type uint64;\n          config false;\n          status deprecated;\n          description\n            \"The total number of packets that higher-level protocols\n             requested be transmitted and that were addressed to a\n             multicast address at this sub-layer, including those\n             that were discarded or not sent.  For a MAC-layer\n             protocol, this includes both Group and Functional\n             addresses.\n\n             Discontinuities in the value of this counter can occur\n             at re-initialization of the management system and at\n             other times as indicated by the value of\n             'discontinuity-time'.\";\n          reference\n            \"RFC 2863: The Interfaces Group MIB -\n                       ifHCOutMulticastPkts\";\n        }\n        leaf out-discards {\n          type uint32;\n          config false;\n          status deprecated;\n          description\n            \"The number of outbound packets that were chosen to be\n             discarded even though no errors had been detected to\n             prevent their being transmitted.  One possible reason\n             for discarding such a packet could be to free up buffer\n             space.\n\n             Discontinuities in the value of this counter can occur\n             at re-initialization of the management system and at\n             other times as indicated by the value of\n             'discontinuity-time'.\";\n          reference\n            \"RFC 2863: The Interfaces Group MIB - ifOutDiscards\";\n        }\n        leaf out-errors {\n          type uint32;\n          config false;\n          status deprecated;\n          description\n            \"For packet-oriented interfaces, the number of outbound\n             packets that could not be transmitted because of errors.\n             For character-oriented or fixed-length interfaces, the\n             number of outbound transmission units that could not be\n             transmitted because of errors.\n\n             Discontinuities in the value of this counter can occur\n             at re-initialization of the management system and at\n             other times as indicated by the value of\n             'discontinuity-time'.\";\n          reference\n            \"RFC 2863: The Interfaces Group MIB - ifOutErrors\";\n        }\n      }\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": true,
+          "name": "arbitrary-names"
+        },
+        {
+          "enabled": true,
+          "name": "pre-provisioning"
+        },
+        {
+          "enabled": true,
+          "name": "if-mib"
+        }
+      ],
+      "identities": [
+        {
+          "bases": [],
+          "derived": [],
+          "name": "ietf-interfaces:interface-type"
+        }
+      ],
+      "name": "ietf-interfaces",
+      "revision": "2018-02-20",
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "name"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "system",
+          "path": "/ietf-interfaces:interfaces/interface",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces/interface/name",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces/interface/description",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces/interface/type",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "identityref",
+            "bases": [
+              "ietf-interfaces:interface-type"
+            ],
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "true"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces/interface/enabled",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "boolean",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces/interface/link-up-down-trap-enable",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "enabled",
+                "value": 1
+              },
+              {
+                "name": "disabled",
+                "value": 2
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces/interface/admin-status",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "up",
+                "value": 1
+              },
+              {
+                "name": "down",
+                "value": 2
+              },
+              {
+                "name": "testing",
+                "value": 3
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces/interface/oper-status",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "up",
+                "value": 1
+              },
+              {
+                "name": "down",
+                "value": 2
+              },
+              {
+                "name": "testing",
+                "value": 3
+              },
+              {
+                "name": "unknown",
+                "value": 4
+              },
+              {
+                "name": "dormant",
+                "value": 5
+              },
+              {
+                "name": "not-present",
+                "value": 6
+              },
+              {
+                "name": "lower-layer-down",
+                "value": 7
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces/interface/last-change",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]+)?(Z|[\\+\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "date-and-time"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces/interface/if-index",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "int32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "1..2147483647",
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces/interface/phys-address",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "([0-9a-fA-F]{2}(:[0-9a-fA-F]{2})*)?",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "phys-address"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "user",
+          "path": "/ietf-interfaces:interfaces/interface/higher-layer-if",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "/if:interfaces/if:interface/if:name",
+              "require_instance": true,
+              "target": "/ietf-interfaces:interfaces/interface/name"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "interface-ref"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "user",
+          "path": "/ietf-interfaces:interfaces/interface/lower-layer-if",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "/if:interfaces/if:interface/if:name",
+              "require_instance": true,
+              "target": "/ietf-interfaces:interfaces/interface/name"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "interface-ref"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces/interface/speed",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint64",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "gauge64"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces/interface/statistics",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces/interface/statistics/discontinuity-time",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]+)?(Z|[\\+\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "date-and-time"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces/interface/statistics/in-octets",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint64",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter64"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces/interface/statistics/in-unicast-pkts",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint64",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter64"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces/interface/statistics/in-broadcast-pkts",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint64",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter64"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces/interface/statistics/in-multicast-pkts",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint64",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter64"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces/interface/statistics/in-discards",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter32"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces/interface/statistics/in-errors",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter32"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces/interface/statistics/in-unknown-protos",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter32"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces/interface/statistics/out-octets",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint64",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter64"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces/interface/statistics/out-unicast-pkts",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint64",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter64"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces/interface/statistics/out-broadcast-pkts",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint64",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter64"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces/interface/statistics/out-multicast-pkts",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint64",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter64"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces/interface/statistics/out-discards",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter32"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces/interface/statistics/out-errors",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter32"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces-state",
+          "presence": false,
+          "status": "deprecated",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "name"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "user",
+          "path": "/ietf-interfaces:interfaces-state/interface",
+          "presence": null,
+          "status": "deprecated",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces-state/interface/name",
+          "presence": null,
+          "status": "deprecated",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces-state/interface/type",
+          "presence": null,
+          "status": "deprecated",
+          "type": {
+            "base": "identityref",
+            "bases": [
+              "ietf-interfaces:interface-type"
+            ],
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces-state/interface/admin-status",
+          "presence": null,
+          "status": "deprecated",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "up",
+                "value": 1
+              },
+              {
+                "name": "down",
+                "value": 2
+              },
+              {
+                "name": "testing",
+                "value": 3
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces-state/interface/oper-status",
+          "presence": null,
+          "status": "deprecated",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "up",
+                "value": 1
+              },
+              {
+                "name": "down",
+                "value": 2
+              },
+              {
+                "name": "testing",
+                "value": 3
+              },
+              {
+                "name": "unknown",
+                "value": 4
+              },
+              {
+                "name": "dormant",
+                "value": 5
+              },
+              {
+                "name": "not-present",
+                "value": 6
+              },
+              {
+                "name": "lower-layer-down",
+                "value": 7
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces-state/interface/last-change",
+          "presence": null,
+          "status": "deprecated",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]+)?(Z|[\\+\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "date-and-time"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces-state/interface/if-index",
+          "presence": null,
+          "status": "deprecated",
+          "type": {
+            "base": "int32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "1..2147483647",
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces-state/interface/phys-address",
+          "presence": null,
+          "status": "deprecated",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "([0-9a-fA-F]{2}(:[0-9a-fA-F]{2})*)?",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "phys-address"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "user",
+          "path": "/ietf-interfaces:interfaces-state/interface/higher-layer-if",
+          "presence": null,
+          "status": "deprecated",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "/if:interfaces-state/if:interface/if:name",
+              "require_instance": true,
+              "target": "/ietf-interfaces:interfaces-state/interface/name"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "interface-state-ref"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "user",
+          "path": "/ietf-interfaces:interfaces-state/interface/lower-layer-if",
+          "presence": null,
+          "status": "deprecated",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "/if:interfaces-state/if:interface/if:name",
+              "require_instance": true,
+              "target": "/ietf-interfaces:interfaces-state/interface/name"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "interface-state-ref"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces-state/interface/speed",
+          "presence": null,
+          "status": "deprecated",
+          "type": {
+            "base": "uint64",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "gauge64"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces-state/interface/statistics",
+          "presence": false,
+          "status": "deprecated",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces-state/interface/statistics/discontinuity-time",
+          "presence": null,
+          "status": "deprecated",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]+)?(Z|[\\+\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "date-and-time"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces-state/interface/statistics/in-octets",
+          "presence": null,
+          "status": "deprecated",
+          "type": {
+            "base": "uint64",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter64"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces-state/interface/statistics/in-unicast-pkts",
+          "presence": null,
+          "status": "deprecated",
+          "type": {
+            "base": "uint64",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter64"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces-state/interface/statistics/in-broadcast-pkts",
+          "presence": null,
+          "status": "deprecated",
+          "type": {
+            "base": "uint64",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter64"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces-state/interface/statistics/in-multicast-pkts",
+          "presence": null,
+          "status": "deprecated",
+          "type": {
+            "base": "uint64",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter64"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces-state/interface/statistics/in-discards",
+          "presence": null,
+          "status": "deprecated",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter32"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces-state/interface/statistics/in-errors",
+          "presence": null,
+          "status": "deprecated",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter32"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces-state/interface/statistics/in-unknown-protos",
+          "presence": null,
+          "status": "deprecated",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter32"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces-state/interface/statistics/out-octets",
+          "presence": null,
+          "status": "deprecated",
+          "type": {
+            "base": "uint64",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter64"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces-state/interface/statistics/out-unicast-pkts",
+          "presence": null,
+          "status": "deprecated",
+          "type": {
+            "base": "uint64",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter64"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces-state/interface/statistics/out-broadcast-pkts",
+          "presence": null,
+          "status": "deprecated",
+          "type": {
+            "base": "uint64",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter64"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces-state/interface/statistics/out-multicast-pkts",
+          "presence": null,
+          "status": "deprecated",
+          "type": {
+            "base": "uint64",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter64"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces-state/interface/statistics/out-discards",
+          "presence": null,
+          "status": "deprecated",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter32"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-interfaces",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-interfaces:interfaces-state/interface/statistics/out-errors",
+          "presence": null,
+          "status": "deprecated",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter32"
+            ],
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

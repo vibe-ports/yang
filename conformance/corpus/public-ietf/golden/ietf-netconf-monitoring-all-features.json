@@ -1,0 +1,1704 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ietf-netconf-monitoring {\n  namespace \"urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring\";\n  prefix ncm;\n\n  organization\n    \"IETF NETCONF (Network Configuration) Working Group\";\n  contact\n    \"WG Web:   <http://tools.ietf.org/wg/netconf/>\n     WG List:  <mailto:netconf@ietf.org>\n\n     WG Chair: Mehmet Ersue\n               <mailto:mehmet.ersue@nsn.com>\n\n     WG Chair: Bert Wijnen\n               <mailto:bertietf@bwijnen.net>\n\n     Editor:   Mark Scott\n               <mailto:mark.scott@ericsson.com>\n\n     Editor:   Martin Bjorklund\n               <mailto:mbj@tail-f.com>\";\n  description\n    \"NETCONF Monitoring Module.\n     All elements in this module are read-only.\n\n     Copyright (c) 2010 IETF Trust and the persons identified as\n     authors of the code. All rights reserved.\n\n     Redistribution and use in source and binary forms, with or\n     without modification, is permitted pursuant to, and subject\n     to the license terms contained in, the Simplified BSD\n     License set forth in Section 4.c of the IETF Trust's\n     Legal Provisions Relating to IETF Documents\n     (http://trustee.ietf.org/license-info).\n\n     This version of this YANG module is part of RFC 6022; see\n     the RFC itself for full legal notices.\";\n\n  revision 2010-10-04;\n\n  identity transport {\n    derived netconf-ssh;\n    derived netconf-soap-over-beep;\n    derived netconf-soap-over-https;\n    derived netconf-beep;\n    derived netconf-tls;\n    description\n      \"Base identity for NETCONF transport types.\";\n  }\n\n  identity netconf-ssh {\n    description\n      \"NETCONF over Secure Shell (SSH).\";\n    reference\n      \"RFC 4742: Using the NETCONF Configuration Protocol\n                 over Secure SHell (SSH)\";\n  }\n\n  identity netconf-soap-over-beep {\n    description\n      \"NETCONF over Simple Object Access Protocol (SOAP) over\n       Blocks Extensible Exchange Protocol (BEEP).\";\n    reference\n      \"RFC 4743: Using NETCONF over the Simple Object\n                 Access Protocol (SOAP)\";\n  }\n\n  identity netconf-soap-over-https {\n    description\n      \"NETCONF over Simple Object Access Protocol (SOAP)\n       over Hypertext Transfer Protocol Secure (HTTPS).\";\n    reference\n      \"RFC 4743: Using NETCONF over the Simple Object\n                 Access Protocol (SOAP)\";\n  }\n\n  identity netconf-beep {\n    description\n      \"NETCONF over Blocks Extensible Exchange Protocol (BEEP).\";\n    reference\n      \"RFC 4744: Using the NETCONF Protocol over the\n                 Blocks Extensible Exchange Protocol (BEEP)\";\n  }\n\n  identity netconf-tls {\n    description\n      \"NETCONF over Transport Layer Security (TLS).\";\n    reference\n      \"RFC 5539: NETCONF over Transport Layer Security (TLS)\";\n  }\n\n  identity schema-format {\n    derived xsd;\n    derived yang;\n    derived yin;\n    derived rng;\n    derived rnc;\n    description\n      \"Base identity for data model schema languages.\";\n  }\n\n  identity xsd {\n    description\n      \"W3C XML Schema Definition.\";\n    reference\n      \"W3C REC REC-xmlschema-1-20041028:\n         XML Schema Part 1: Structures\";\n  }\n\n  identity yang {\n    description\n      \"The YANG data modeling language for NETCONF.\";\n    reference\n      \"RFC 6020:  YANG - A Data Modeling Language for the\n                  Network Configuration Protocol (NETCONF)\";\n  }\n\n  identity yin {\n    description\n      \"The YIN syntax for YANG.\";\n    reference\n      \"RFC 6020:  YANG - A Data Modeling Language for the\n                  Network Configuration Protocol (NETCONF)\";\n  }\n\n  identity rng {\n    description\n      \"Regular Language for XML Next Generation (RELAX NG).\";\n    reference\n      \"ISO/IEC 19757-2:2008: RELAX NG\";\n  }\n\n  identity rnc {\n    description\n      \"Relax NG Compact Syntax\";\n    reference\n      \"ISO/IEC 19757-2:2008: RELAX NG\";\n  }\n\n  container netconf-state {\n    config false;\n    status current;\n    description\n      \"The netconf-state container is the root of the monitoring\n       data model.\";\n    container capabilities {\n      config false;\n      status current;\n      description\n        \"Contains the list of NETCONF capabilities supported by the\n         server.\";\n      leaf-list capability {\n        type string {\n          pattern \"[a-z][a-z0-9+.-]*:.*\";\n        }\n        config false;\n        min-elements 0;\n        max-elements 4294967295;\n        ordered-by user;\n        status current;\n        description\n          \"List of NETCONF capabilities supported by the server.\";\n      }\n    }\n    container datastores {\n      config false;\n      status current;\n      description\n        \"Contains the list of NETCONF configuration datastores.\";\n      list datastore {\n        key \"name\";\n        config false;\n        min-elements 0;\n        max-elements 4294967295;\n        ordered-by user;\n        status current;\n        description\n          \"List of NETCONF configuration datastores supported by\n           the NETCONF server and related information.\";\n        leaf name {\n          type enumeration {\n            enum \"running\" {\n              value 0;\n              status current;\n            }\n            enum \"candidate\" {\n              value 1;\n              status current;\n            }\n            enum \"startup\" {\n              value 2;\n              status current;\n            }\n          }\n          config false;\n          status current;\n          description\n            \"Name of the datastore associated with this list entry.\";\n        }\n        container locks {\n          presence \"true\";\n          config false;\n          status current;\n          description\n            \"The NETCONF <lock> and <partial-lock> operations allow\n             a client to lock specific resources in a datastore.  The\n             NETCONF server will prevent changes to the locked\n             resources by all sessions except the one that acquired\n             the lock(s).\n\n             Monitoring information is provided for each datastore\n             entry including details such as the session that acquired\n             the lock, the type of lock (global or partial) and the\n             list of locked resources.  Multiple locks per datastore\n             are supported.\";\n          choice lock-type {\n            config false;\n            status current;\n            description\n              \"Indicates if a global lock or a set of partial locks\n               are set.\";\n            case global-lock {\n              config false;\n              status current;\n              container global-lock {\n                config false;\n                status current;\n                description\n                  \"Present if the global lock is set.\";\n                leaf locked-by-session {\n                  type uint32;\n                  config false;\n                  mandatory true;\n                  status current;\n                  description\n                    \"The session ID of the session that has locked\n                     this resource.  Both a global lock and a partial\n                     lock MUST contain the NETCONF session-id.\n\n                     If the lock is held by a session that is not managed\n                     by the NETCONF server (e.g., a CLI session), a session\n                     id of 0 (zero) is reported.\";\n                  reference\n                    \"RFC 4741: NETCONF Configuration Protocol\";\n                }\n                leaf locked-time {\n                  type string {\n                    pattern \"[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\\\.[0-9]+)?(Z|[\\\\+\\\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?\";\n                  }\n                  config false;\n                  mandatory true;\n                  status current;\n                  description\n                    \"The date and time of when the resource was\n                     locked.\";\n                }\n              }\n            }\n            case partial-lock {\n              config false;\n              status current;\n              list partial-lock {\n                key \"lock-id\";\n                config false;\n                min-elements 0;\n                max-elements 4294967295;\n                ordered-by user;\n                status current;\n                description\n                  \"List of partial locks.\";\n                reference\n                  \"RFC 5717: Partial Lock Remote Procedure Call (RPC) for\n                             NETCONF\";\n                leaf lock-id {\n                  type uint32;\n                  config false;\n                  status current;\n                  description\n                    \"This is the lock id returned in the <partial-lock>\n                     response.\";\n                }\n                leaf locked-by-session {\n                  type uint32;\n                  config false;\n                  mandatory true;\n                  status current;\n                  description\n                    \"The session ID of the session that has locked\n                     this resource.  Both a global lock and a partial\n                     lock MUST contain the NETCONF session-id.\n\n                     If the lock is held by a session that is not managed\n                     by the NETCONF server (e.g., a CLI session), a session\n                     id of 0 (zero) is reported.\";\n                  reference\n                    \"RFC 4741: NETCONF Configuration Protocol\";\n                }\n                leaf locked-time {\n                  type string {\n                    pattern \"[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\\\.[0-9]+)?(Z|[\\\\+\\\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?\";\n                  }\n                  config false;\n                  mandatory true;\n                  status current;\n                  description\n                    \"The date and time of when the resource was\n                     locked.\";\n                }\n                leaf-list select {\n                  type string;\n                  config false;\n                  min-elements 1;\n                  max-elements 4294967295;\n                  ordered-by user;\n                  status current;\n                  description\n                    \"The xpath expression that was used to request\n                     the lock.  The select expression indicates the\n                     original intended scope of the lock.\";\n                }\n                leaf-list locked-node {\n                  type instance-identifier {\n                    require-instance true;\n                  }\n                  config false;\n                  min-elements 0;\n                  max-elements 4294967295;\n                  ordered-by user;\n                  status current;\n                  description\n                    \"The list of instance-identifiers (i.e., the\n                     locked nodes).\n\n                     The scope of the partial lock is defined by the list\n                     of locked nodes.\";\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n    container schemas {\n      config false;\n      status current;\n      description\n        \"Contains the list of data model schemas supported by the\n         server.\";\n      list schema {\n        key \"identifierversionformat\";\n        config false;\n        min-elements 0;\n        max-elements 4294967295;\n        ordered-by user;\n        status current;\n        description\n          \"List of data model schemas supported by the server.\";\n        leaf identifier {\n          type string;\n          config false;\n          status current;\n          description\n            \"Identifier to uniquely reference the schema.  The\n             identifier is used in the <get-schema> operation and may\n             be used for other purposes such as file retrieval.\n\n             For modeling languages that support or require a data\n             model name (e.g., YANG module name) the identifier MUST\n             match that name.  For YANG data models, the identifier is\n             the name of the module or submodule.  In other cases, an\n             identifier such as a filename MAY be used instead.\";\n        }\n        leaf version {\n          type string;\n          config false;\n          status current;\n          description\n            \"Version of the schema supported.  Multiple versions MAY be\n             supported simultaneously by a NETCONF server.  Each\n             version MUST be reported individually in the schema list,\n             i.e., with same identifier, possibly different location,\n             but different version.\n\n             For YANG data models, version is the value of the most\n             recent YANG 'revision' statement in the module or\n             submodule, or the empty string if no 'revision' statement\n             is present.\";\n        }\n        leaf format {\n          type identityref {\n            base schema-format;\n          }\n          config false;\n          status current;\n          description\n            \"The data modeling language the schema is written\n             in (currently xsd, yang, yin, rng, or rnc).\n\n             For YANG data models, 'yang' format MUST be supported and\n             'yin' format MAY also be provided.\";\n        }\n        leaf namespace {\n          type string {\n            pattern \"[a-z][a-z0-9+.-]*:.*\";\n          }\n          config false;\n          mandatory true;\n          status current;\n          description\n            \"The XML namespace defined by the data model.\n\n             For YANG data models, this is the module's namespace.\n             If the list entry describes a submodule, this field\n             contains the namespace of the module to which the\n             submodule belongs.\";\n        }\n        leaf-list location {\n          type union {\n            type enumeration {\n              enum \"NETCONF\" {\n                value 0;\n                status current;\n              }\n            }\n            type string {\n              pattern \"[a-z][a-z0-9+.-]*:.*\";\n            }\n          }\n          config false;\n          min-elements 0;\n          max-elements 4294967295;\n          ordered-by user;\n          status current;\n          description\n            \"One or more locations from which the schema can be\n             retrieved.  This list SHOULD contain at least one\n             entry per schema.\n\n             A schema entry may be located on a remote file system\n             (e.g., reference to file system for ftp retrieval) or\n             retrieved directly from a server supporting the\n             <get-schema> operation (denoted by the value 'NETCONF').\";\n        }\n      }\n    }\n    container sessions {\n      config false;\n      status current;\n      description\n        \"The sessions container includes session-specific data for\n         NETCONF management sessions.  The session list MUST include\n         all currently active NETCONF sessions.\";\n      list session {\n        key \"session-id\";\n        config false;\n        min-elements 0;\n        max-elements 4294967295;\n        ordered-by user;\n        status current;\n        description\n          \"All NETCONF sessions managed by the NETCONF server\n           MUST be reported in this list.\";\n        leaf session-id {\n          type uint32 {\n            range \"1..4294967295\";\n          }\n          config false;\n          status current;\n          description\n            \"Unique identifier for the session.  This value is the\n             NETCONF session identifier, as defined in RFC 4741.\";\n          reference\n            \"RFC 4741: NETCONF Configuration Protocol\";\n        }\n        leaf transport {\n          type identityref {\n            base transport;\n          }\n          config false;\n          mandatory true;\n          status current;\n          description\n            \"Identifies the transport for each session, e.g.,\n             'netconf-ssh', 'netconf-soap', etc.\";\n        }\n        leaf username {\n          type string;\n          config false;\n          mandatory true;\n          status current;\n          description\n            \"The username is the client identity that was authenticated\n             by the NETCONF transport protocol.  The algorithm used to\n             derive the username is NETCONF transport protocol specific\n             and in addition specific to the authentication mechanism\n             used by the NETCONF transport protocol.\";\n        }\n        leaf source-host {\n          type union {\n            type string {\n              pattern \"(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?\";\n            }\n            type string {\n              pattern \"((:|[0-9a-fA-F]{0,4}):)([0-9a-fA-F]{0,4}:){0,5}((([0-9a-fA-F]{0,4}:)?(:|[0-9a-fA-F]{0,4}))|(((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\\\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])))(%[A-Za-z0-9][A-Za-z0-9\\\\-\\\\._~/]*)?\";\n              pattern \"(([^:]+:){6}(([^:]+:[^:]+)|(.*\\\\..*)))|((([^:]+:)*[^:]+)?::(([^:]+:)*[^:]+)?)(%.+)?\";\n            }\n            type string {\n              length \"2..253\";\n              pattern \"((([a-zA-Z0-9_]([a-zA-Z0-9\\\\-_]){0,61})?[a-zA-Z0-9]\\\\.)*([a-zA-Z0-9_]([a-zA-Z0-9\\\\-_]){0,61})?[a-zA-Z0-9]\\\\.?)|\\\\.\";\n              pattern \"[a-zA-Z0-9\\\\-\\\\.]+\";\n            }\n          }\n          config false;\n          status current;\n          description\n            \"Host identifier of the NETCONF client.  The value\n             returned is implementation specific (e.g., hostname,\n             IPv4 address, IPv6 address)\";\n        }\n        leaf login-time {\n          type string {\n            pattern \"[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\\\.[0-9]+)?(Z|[\\\\+\\\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?\";\n          }\n          config false;\n          mandatory true;\n          status current;\n          description\n            \"Time at the server at which the session was established.\";\n        }\n        leaf in-rpcs {\n          type uint32;\n          default \"0\";\n          config false;\n          status current;\n          description\n            \"Number of correct <rpc> messages received.\";\n        }\n        leaf in-bad-rpcs {\n          type uint32;\n          default \"0\";\n          config false;\n          status current;\n          description\n            \"Number of messages received when an <rpc> message was expected,\n             that were not correct <rpc> messages.  This includes XML parse\n             errors and errors on the rpc layer.\";\n        }\n        leaf out-rpc-errors {\n          type uint32;\n          default \"0\";\n          config false;\n          status current;\n          description\n            \"Number of <rpc-reply> messages sent that contained an\n             <rpc-error> element.\";\n        }\n        leaf out-notifications {\n          type uint32;\n          default \"0\";\n          config false;\n          status current;\n          description\n            \"Number of <notification> messages sent.\";\n        }\n      }\n    }\n    container statistics {\n      config false;\n      status current;\n      description\n        \"Statistical data pertaining to the NETCONF server.\";\n      leaf netconf-start-time {\n        type string {\n          pattern \"[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\\\.[0-9]+)?(Z|[\\\\+\\\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?\";\n        }\n        config false;\n        status current;\n        description\n          \"Date and time at which the management subsystem was\n           started.\";\n      }\n      leaf in-bad-hellos {\n        type uint32;\n        default \"0\";\n        config false;\n        status current;\n        description\n          \"Number of sessions silently dropped because an\n           invalid <hello> message was received.  This includes <hello>\n           messages with a 'session-id' attribute, bad namespace, and\n           bad capability declarations.\";\n      }\n      leaf in-sessions {\n        type uint32;\n        default \"0\";\n        config false;\n        status current;\n        description\n          \"Number of sessions started.  This counter is incremented\n           when a <hello> message with a <session-id> is sent.\n\n           'in-sessions' - 'in-bad-hellos' =\n              'number of correctly started netconf sessions'\";\n      }\n      leaf dropped-sessions {\n        type uint32;\n        default \"0\";\n        config false;\n        status current;\n        description\n          \"Number of sessions that were abnormally terminated, e.g.,\n           due to idle timeout or transport close.  This counter is not\n           incremented when a session is properly closed by a\n           <close-session> operation, or killed by a <kill-session>\n           operation.\";\n      }\n      leaf in-rpcs {\n        type uint32;\n        default \"0\";\n        config false;\n        status current;\n        description\n          \"Number of correct <rpc> messages received.\";\n      }\n      leaf in-bad-rpcs {\n        type uint32;\n        default \"0\";\n        config false;\n        status current;\n        description\n          \"Number of messages received when an <rpc> message was expected,\n           that were not correct <rpc> messages.  This includes XML parse\n           errors and errors on the rpc layer.\";\n      }\n      leaf out-rpc-errors {\n        type uint32;\n        default \"0\";\n        config false;\n        status current;\n        description\n          \"Number of <rpc-reply> messages sent that contained an\n           <rpc-error> element.\";\n      }\n      leaf out-notifications {\n        type uint32;\n        default \"0\";\n        config false;\n        status current;\n        description\n          \"Number of <notification> messages sent.\";\n      }\n    }\n  }\n\n  rpc get-schema {\n    status current;\n    description\n      \"This operation is used to retrieve a schema from the\n       NETCONF server.\n\n       Positive Response:\n         The NETCONF server returns the requested schema.\n\n       Negative Response:\n         If requested schema does not exist, the <error-tag> is\n         'invalid-value'.\n\n         If more than one schema matches the requested parameters, the\n         <error-tag> is 'operation-failed', and <error-app-tag> is\n         'data-not-unique'.\";\n\n    input {\n      leaf identifier {\n        type string;\n        mandatory true;\n        status current;\n        description\n          \"Identifier for the schema list entry.\";\n      }\n      leaf version {\n        type string;\n        status current;\n        description\n          \"Version of the schema requested.  If this parameter is not\n           present, and more than one version of the schema exists on\n           the server, a 'data-not-unique' error is returned, as\n           described above.\";\n      }\n      leaf format {\n        type identityref {\n          base schema-format;\n        }\n        status current;\n        description\n          \"The data modeling language of the schema.  If this\n           parameter is not present, and more than one formats of\n           the schema exists on the server, a 'data-not-unique' error\n           is returned, as described above.\";\n      }\n    }\n\n    output {\n      anyxml data {\n        status current;\n        description\n          \"Contains the schema content.\";\n      }\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [
+        {
+          "bases": [],
+          "derived": [
+            "ietf-netconf-monitoring:netconf-ssh",
+            "ietf-netconf-monitoring:netconf-soap-over-beep",
+            "ietf-netconf-monitoring:netconf-soap-over-https",
+            "ietf-netconf-monitoring:netconf-beep",
+            "ietf-netconf-monitoring:netconf-tls"
+          ],
+          "name": "ietf-netconf-monitoring:transport"
+        },
+        {
+          "bases": [
+            "ietf-netconf-monitoring:transport"
+          ],
+          "derived": [],
+          "name": "ietf-netconf-monitoring:netconf-ssh"
+        },
+        {
+          "bases": [
+            "ietf-netconf-monitoring:transport"
+          ],
+          "derived": [],
+          "name": "ietf-netconf-monitoring:netconf-soap-over-beep"
+        },
+        {
+          "bases": [
+            "ietf-netconf-monitoring:transport"
+          ],
+          "derived": [],
+          "name": "ietf-netconf-monitoring:netconf-soap-over-https"
+        },
+        {
+          "bases": [
+            "ietf-netconf-monitoring:transport"
+          ],
+          "derived": [],
+          "name": "ietf-netconf-monitoring:netconf-beep"
+        },
+        {
+          "bases": [
+            "ietf-netconf-monitoring:transport"
+          ],
+          "derived": [],
+          "name": "ietf-netconf-monitoring:netconf-tls"
+        },
+        {
+          "bases": [],
+          "derived": [
+            "ietf-netconf-monitoring:xsd",
+            "ietf-netconf-monitoring:yang",
+            "ietf-netconf-monitoring:yin",
+            "ietf-netconf-monitoring:rng",
+            "ietf-netconf-monitoring:rnc"
+          ],
+          "name": "ietf-netconf-monitoring:schema-format"
+        },
+        {
+          "bases": [
+            "ietf-netconf-monitoring:schema-format"
+          ],
+          "derived": [],
+          "name": "ietf-netconf-monitoring:xsd"
+        },
+        {
+          "bases": [
+            "ietf-netconf-monitoring:schema-format"
+          ],
+          "derived": [],
+          "name": "ietf-netconf-monitoring:yang"
+        },
+        {
+          "bases": [
+            "ietf-netconf-monitoring:schema-format"
+          ],
+          "derived": [],
+          "name": "ietf-netconf-monitoring:yin"
+        },
+        {
+          "bases": [
+            "ietf-netconf-monitoring:schema-format"
+          ],
+          "derived": [],
+          "name": "ietf-netconf-monitoring:rng"
+        },
+        {
+          "bases": [
+            "ietf-netconf-monitoring:schema-format"
+          ],
+          "derived": [],
+          "name": "ietf-netconf-monitoring:rnc"
+        }
+      ],
+      "name": "ietf-netconf-monitoring",
+      "revision": "2010-10-04",
+      "schema_tree": [
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/capabilities",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "user",
+          "path": "/ietf-netconf-monitoring:netconf-state/capabilities/capability",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[a-z][a-z0-9+.-]*:.*",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "uri"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/datastores",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "name"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "user",
+          "path": "/ietf-netconf-monitoring:netconf-state/datastores/datastore",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/datastores/datastore/name",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "running",
+                "value": 0
+              },
+              {
+                "name": "candidate",
+                "value": 1
+              },
+              {
+                "name": "startup",
+                "value": 2
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "netconf-datastore-type"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/datastores/datastore/locks",
+          "presence": true,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "choice",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/datastores/datastore/locks/lock-type",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/datastores/datastore/locks/lock-type/global-lock",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/datastores/datastore/locks/lock-type/global-lock/global-lock",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/datastores/datastore/locks/lock-type/global-lock/global-lock/locked-by-session",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/datastores/datastore/locks/lock-type/global-lock/global-lock/locked-time",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]+)?(Z|[\\+\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "date-and-time"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/datastores/datastore/locks/lock-type/partial-lock",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "lock-id"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "user",
+          "path": "/ietf-netconf-monitoring:netconf-state/datastores/datastore/locks/lock-type/partial-lock/partial-lock",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/datastores/datastore/locks/lock-type/partial-lock/partial-lock/lock-id",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/datastores/datastore/locks/lock-type/partial-lock/partial-lock/locked-by-session",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/datastores/datastore/locks/lock-type/partial-lock/partial-lock/locked-time",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]+)?(Z|[\\+\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "date-and-time"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": 1,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "user",
+          "path": "/ietf-netconf-monitoring:netconf-state/datastores/datastore/locks/lock-type/partial-lock/partial-lock/select",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "xpath1.0"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "user",
+          "path": "/ietf-netconf-monitoring:netconf-state/datastores/datastore/locks/lock-type/partial-lock/partial-lock/locked-node",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "instance-identifier",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/schemas",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "identifier",
+            "version",
+            "format"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "user",
+          "path": "/ietf-netconf-monitoring:netconf-state/schemas/schema",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/schemas/schema/identifier",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/schemas/schema/version",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/schemas/schema/format",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "identityref",
+            "bases": [
+              "ietf-netconf-monitoring:schema-format"
+            ],
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/schemas/schema/namespace",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[a-z][a-z0-9+.-]*:.*",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "uri"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "user",
+          "path": "/ietf-netconf-monitoring:netconf-state/schemas/schema/location",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": [
+              {
+                "base": "enumeration",
+                "bases": null,
+                "bits": null,
+                "enums": [
+                  {
+                    "name": "NETCONF",
+                    "value": 0
+                  }
+                ],
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              },
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": [
+                  {
+                    "expr": "[a-z][a-z0-9+.-]*:.*",
+                    "invert": false
+                  }
+                ],
+                "range": null,
+                "typedefs": [
+                  "uri"
+                ],
+                "union": null
+              }
+            ]
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/sessions",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "session-id"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "user",
+          "path": "/ietf-netconf-monitoring:netconf-state/sessions/session",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/sessions/session/session-id",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "1..4294967295",
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/sessions/session/transport",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "identityref",
+            "bases": [
+              "ietf-netconf-monitoring:transport"
+            ],
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/sessions/session/username",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/sessions/session/source-host",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "host"
+            ],
+            "union": [
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": [
+                  {
+                    "expr": "(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?",
+                    "invert": false
+                  }
+                ],
+                "range": null,
+                "typedefs": [
+                  "ipv4-address"
+                ],
+                "union": null
+              },
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": [
+                  {
+                    "expr": "((:|[0-9a-fA-F]{0,4}):)([0-9a-fA-F]{0,4}:){0,5}((([0-9a-fA-F]{0,4}:)?(:|[0-9a-fA-F]{0,4}))|(((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])))(%[A-Za-z0-9][A-Za-z0-9\\-\\._~/]*)?",
+                    "invert": false
+                  },
+                  {
+                    "expr": "(([^:]+:){6}(([^:]+:[^:]+)|(.*\\..*)))|((([^:]+:)*[^:]+)?::(([^:]+:)*[^:]+)?)(%.+)?",
+                    "invert": false
+                  }
+                ],
+                "range": null,
+                "typedefs": [
+                  "ipv6-address"
+                ],
+                "union": null
+              },
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": "2..253",
+                "patterns": [
+                  {
+                    "expr": "((([a-zA-Z0-9_]([a-zA-Z0-9\\-_]){0,61})?[a-zA-Z0-9]\\.)*([a-zA-Z0-9_]([a-zA-Z0-9\\-_]){0,61})?[a-zA-Z0-9]\\.?)|\\.",
+                    "invert": false
+                  },
+                  {
+                    "expr": "[a-zA-Z0-9\\-\\.]+",
+                    "invert": false
+                  }
+                ],
+                "range": null,
+                "typedefs": [
+                  "host-name"
+                ],
+                "union": null
+              }
+            ]
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/sessions/session/login-time",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]+)?(Z|[\\+\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "date-and-time"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": [
+            "0"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/sessions/session/in-rpcs",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter32"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": [
+            "0"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/sessions/session/in-bad-rpcs",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter32"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": [
+            "0"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/sessions/session/out-rpc-errors",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter32"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": [
+            "0"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/sessions/session/out-notifications",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter32"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/statistics",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/statistics/netconf-start-time",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]+)?(Z|[\\+\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "date-and-time"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": [
+            "0"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/statistics/in-bad-hellos",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter32"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": [
+            "0"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/statistics/in-sessions",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter32"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": [
+            "0"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/statistics/dropped-sessions",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter32"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": [
+            "0"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/statistics/in-rpcs",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter32"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": [
+            "0"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/statistics/in-bad-rpcs",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter32"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": [
+            "0"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/statistics/out-rpc-errors",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter32"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": [
+            "0"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:netconf-state/statistics/out-notifications",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter32"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "rpc",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:get-schema",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "input",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:get-schema/input",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:get-schema/input/identifier",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:get-schema/input/version",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:get-schema/input/format",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "identityref",
+            "bases": [
+              "ietf-netconf-monitoring:schema-format"
+            ],
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "output",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:get-schema/output",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-monitoring",
+          "musts": null,
+          "nodetype": "anyxml",
+          "ordered_by": null,
+          "path": "/ietf-netconf-monitoring:get-schema/output/data",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

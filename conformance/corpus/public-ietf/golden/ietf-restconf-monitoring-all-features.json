@@ -1,0 +1,353 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ietf-restconf-monitoring {\n  namespace \"urn:ietf:params:xml:ns:yang:ietf-restconf-monitoring\";\n  prefix rcmon;\n\n  organization\n    \"IETF NETCONF (Network Configuration) Working Group\";\n  contact\n    \"WG Web:   <https://datatracker.ietf.org/wg/netconf/>\n     WG List:  <mailto:netconf@ietf.org>\n\n     Author:   Andy Bierman\n               <mailto:andy@yumaworks.com>\n\n     Author:   Martin Bjorklund\n               <mailto:mbj@tail-f.com>\n\n     Author:   Kent Watsen\n               <mailto:kwatsen@juniper.net>\";\n  description\n    \"This module contains monitoring information for the\n     RESTCONF protocol.\n\n     Copyright (c) 2017 IETF Trust and the persons identified as\n     authors of the code.  All rights reserved.\n\n     Redistribution and use in source and binary forms, with or\n     without modification, is permitted pursuant to, and subject\n     to the license terms contained in, the Simplified BSD License\n     set forth in Section 4.c of the IETF Trust's Legal Provisions\n     Relating to IETF Documents\n     (http://trustee.ietf.org/license-info).\n\n     This version of this YANG module is part of RFC 8040; see\n     the RFC itself for full legal notices.\";\n\n  revision 2017-01-26;\n\n  container restconf-state {\n    config false;\n    status current;\n    description\n      \"Contains RESTCONF protocol monitoring information.\";\n    container capabilities {\n      config false;\n      status current;\n      description\n        \"Contains a list of protocol capability URIs.\";\n      leaf-list capability {\n        type string {\n          pattern \"[a-z][a-z0-9+.-]*:.*\";\n        }\n        config false;\n        min-elements 0;\n        max-elements 4294967295;\n        ordered-by user;\n        status current;\n        description\n          \"A RESTCONF protocol capability URI.\";\n      }\n    }\n    container streams {\n      config false;\n      status current;\n      description\n        \"Container representing the notification event streams\n         supported by the server.\";\n      reference\n        \"RFC 5277, Section 3.4, <streams> element.\";\n      list stream {\n        key \"name\";\n        config false;\n        min-elements 0;\n        max-elements 4294967295;\n        ordered-by user;\n        status current;\n        description\n          \"Each entry describes an event stream supported by\n           the server.\";\n        leaf name {\n          type string;\n          config false;\n          status current;\n          description\n            \"The stream name.\";\n          reference\n            \"RFC 5277, Section 3.4, <name> element.\";\n        }\n        leaf description {\n          type string;\n          config false;\n          status current;\n          description\n            \"Description of stream content.\";\n          reference\n            \"RFC 5277, Section 3.4, <description> element.\";\n        }\n        leaf replay-support {\n          type boolean;\n          default \"false\";\n          config false;\n          status current;\n          description\n            \"Indicates if replay buffer is supported for this stream.\n             If 'true', then the server MUST support the 'start-time'\n             and 'stop-time' query parameters for this stream.\";\n          reference\n            \"RFC 5277, Section 3.4, <replaySupport> element.\";\n        }\n        leaf replay-log-creation-time {\n          when \"../replay-support\" {\n            description\n              \"Only present if notification replay is supported.\";\n          }\n          type string {\n            pattern \"[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\\\.[0-9]+)?(Z|[\\\\+\\\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?\";\n          }\n          config false;\n          status current;\n          description\n            \"Indicates the time the replay log for this stream\n             was created.\";\n          reference\n            \"RFC 5277, Section 3.4, <replayLogCreationTime>\n             element.\";\n        }\n        list access {\n          key \"encoding\";\n          config false;\n          min-elements 1;\n          max-elements 4294967295;\n          ordered-by user;\n          status current;\n          description\n            \"The server will create an entry in this list for each\n             encoding format that is supported for this stream.\n             The media type 'text/event-stream' is expected\n             for all event streams.  This list identifies the\n             subtypes supported for this stream.\";\n          leaf encoding {\n            type string;\n            config false;\n            status current;\n            description\n              \"This is the secondary encoding format within the\n               'text/event-stream' encoding used by all streams.\n               The type 'xml' is supported for XML encoding.\n               The type 'json' is supported for JSON encoding.\";\n          }\n          leaf location {\n            type string {\n              pattern \"[a-z][a-z0-9+.-]*:.*\";\n            }\n            config false;\n            mandatory true;\n            status current;\n            description\n              \"Contains a URL that represents the entry point\n               for establishing notification delivery via\n               server-sent events.\";\n          }\n        }\n      }\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "ietf-restconf-monitoring",
+      "revision": "2017-01-26",
+      "schema_tree": [
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-restconf-monitoring",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-restconf-monitoring:restconf-state",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-restconf-monitoring",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-restconf-monitoring:restconf-state/capabilities",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-restconf-monitoring",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "user",
+          "path": "/ietf-restconf-monitoring:restconf-state/capabilities/capability",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[a-z][a-z0-9+.-]*:.*",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "uri"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-restconf-monitoring",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-restconf-monitoring:restconf-state/streams",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "name"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-restconf-monitoring",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "user",
+          "path": "/ietf-restconf-monitoring:restconf-state/streams/stream",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-restconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-restconf-monitoring:restconf-state/streams/stream/name",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-restconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-restconf-monitoring:restconf-state/streams/stream/description",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": [
+            "false"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-restconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-restconf-monitoring:restconf-state/streams/stream/replay-support",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "boolean",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-restconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-restconf-monitoring:restconf-state/streams/stream/replay-log-creation-time",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]+)?(Z|[\\+\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "date-and-time"
+            ],
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/ietf-restconf-monitoring:restconf-state/streams/stream/replay-log-creation-time",
+              "expr": "../replay-support",
+              "module": "ietf-restconf-monitoring"
+            }
+          ]
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "encoding"
+          ],
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": 1,
+          "module": "ietf-restconf-monitoring",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "user",
+          "path": "/ietf-restconf-monitoring:restconf-state/streams/stream/access",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-restconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-restconf-monitoring:restconf-state/streams/stream/access/encoding",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-restconf-monitoring",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-restconf-monitoring:restconf-state/streams/stream/access/location",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[a-z][a-z0-9+.-]*:.*",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "uri"
+            ],
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

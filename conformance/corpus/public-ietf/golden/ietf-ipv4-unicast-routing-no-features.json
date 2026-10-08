@@ -1,0 +1,2045 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ietf-routing {\n  namespace \"urn:ietf:params:xml:ns:yang:ietf-routing\";\n  prefix rt;\n\n  organization\n    \"IETF NETMOD (Network Modeling) Working Group\";\n  contact\n    \"WG Web:   <https://datatracker.ietf.org/wg/netmod/>\n     WG List:  <mailto:rtgwg@ietf.org>\n\n     Editor:   Ladislav Lhotka\n               <mailto:lhotka@nic.cz>\n               Acee Lindem\n               <mailto:acee@cisco.com>\n               Yingzhen Qu\n               <mailto:yingzhen.qu@huawei.com>\";\n  description\n    \"This YANG module defines essential components for the management\n     of a routing subsystem.  The model fully conforms to the Network\n     Management Datastore Architecture (NMDA).\n\n     Copyright (c) 2018 IETF Trust and the persons\n     identified as authors of the code.  All rights reserved.\n\n     Redistribution and use in source and binary forms, with or\n     without modification, is permitted pursuant to, and subject\n     to the license terms contained in, the Simplified BSD License\n     set forth in Section 4.c of the IETF Trust's Legal Provisions\n     Relating to IETF Documents\n     (https://trustee.ietf.org/license-info).\n     This version of this YANG module is part of RFC 8349; see\n     the RFC itself for full legal notices.\";\n\n  revision 2018-03-13;\n\n  identity address-family {\n    derived ipv4;\n    derived ipv6;\n    description\n      \"Base identity from which identities describing address\n       families are derived.\";\n  }\n\n  identity ipv4 {\n    derived v4ur:ipv4-unicast;\n    description\n      \"This identity represents an IPv4 address family.\";\n  }\n\n  identity ipv6 {\n    description\n      \"This identity represents an IPv6 address family.\";\n  }\n\n  identity control-plane-protocol {\n    derived routing-protocol;\n    description\n      \"Base identity from which control-plane protocol identities are\n       derived.\";\n  }\n\n  identity routing-protocol {\n    derived direct;\n    derived static;\n    description\n      \"Identity from which Layer 3 routing protocol identities are\n       derived.\";\n  }\n\n  identity direct {\n    description\n      \"Routing pseudo-protocol that provides routes to directly\n       connected networks.\";\n  }\n\n  identity static {\n    description\n      \"'Static' routing pseudo-protocol.\";\n  }\n\n  container routing {\n    config true;\n    status current;\n    description\n      \"Configuration parameters for the routing subsystem.\";\n    container interfaces {\n      config false;\n      status current;\n      description\n        \"Network-layer interfaces used for routing.\";\n      leaf-list interface {\n        type leafref {\n          path \"/if:interfaces/if:interface/if:name\";\n          require-instance true;\n          type string;\n        }\n        config false;\n        min-elements 0;\n        max-elements 4294967295;\n        ordered-by user;\n        status current;\n        description\n          \"Each entry is a reference to the name of a configured\n           network-layer interface.\";\n      }\n    }\n    container control-plane-protocols {\n      config true;\n      status current;\n      description\n        \"Support for control-plane protocol instances.\";\n      list control-plane-protocol {\n        key \"typename\";\n        config true;\n        min-elements 0;\n        max-elements 4294967295;\n        ordered-by system;\n        status current;\n        description\n          \"Each entry contains a control-plane protocol instance.\";\n        leaf type {\n          type identityref {\n            base control-plane-protocol;\n          }\n          config true;\n          status current;\n          description\n            \"Type of the control-plane protocol -- an identity\n             derived from the 'control-plane-protocol'\n             base identity.\";\n        }\n        leaf name {\n          type string;\n          config true;\n          status current;\n          description\n            \"An arbitrary name of the control-plane protocol\n             instance.\";\n        }\n        leaf description {\n          type string;\n          config true;\n          status current;\n          description\n            \"Textual description of the control-plane protocol\n             instance.\";\n        }\n        container static-routes {\n          when \"derived-from-or-self(../type, 'rt:static')\" {\n            description\n              \"This container is only valid for the 'static' routing\n               protocol.\";\n          }\n          config true;\n          status current;\n          description\n            \"Support for the 'static' pseudo-protocol.\n\n             Address-family-specific modules augment this node with\n             their lists of routes.\";\n          container ipv4 {\n            config true;\n            status current;\n            description\n              \"Support for a 'static' pseudo-protocol instance\n               consists of a list of routes.\";\n            list route {\n              key \"destination-prefix\";\n              config true;\n              min-elements 0;\n              max-elements 4294967295;\n              ordered-by system;\n              status current;\n              description\n                \"A list of static routes.\";\n              leaf destination-prefix {\n                type string {\n                  pattern \"(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])/(([0-9])|([1-2][0-9])|(3[0-2]))\";\n                }\n                config true;\n                mandatory true;\n                status current;\n                description\n                  \"IPv4 destination prefix.\";\n              }\n              leaf description {\n                type string;\n                config true;\n                status current;\n                description\n                  \"Textual description of the route.\";\n              }\n              container next-hop {\n                config true;\n                status current;\n                description\n                  \"Support for next-hop.\";\n                choice next-hop-options {\n                  config true;\n                  mandatory true;\n                  status current;\n                  description\n                    \"Options for next hops in static routes.\n\n                     It is expected that further cases will be added through\n                     augments from other modules.\";\n                  case simple-next-hop {\n                    config true;\n                    status current;\n                    description\n                      \"This case represents a simple next hop consisting of the\n                       next-hop address and/or outgoing interface.\n\n                       Modules for address families MUST augment this case with a\n                       leaf containing a next-hop address of that address\n                       family.\";\n                    leaf outgoing-interface {\n                      type leafref {\n                        path \"/if:interfaces/if:interface/if:name\";\n                        require-instance true;\n                        type string;\n                      }\n                      config true;\n                      status current;\n                      description\n                        \"Name of the outgoing interface.\";\n                    }\n                    leaf next-hop-address {\n                      type string {\n                        pattern \"(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?\";\n                      }\n                      config true;\n                      status current;\n                      description\n                        \"IPv4 address of the next hop.\";\n                    }\n                  }\n                  case special-next-hop {\n                    config true;\n                    status current;\n                    leaf special-next-hop {\n                      type enumeration {\n                        enum \"blackhole\" {\n                          value 0;\n                          status current;\n                          description\n                            \"Silently discard the packet.\";\n                        }\n                        enum \"unreachable\" {\n                          value 1;\n                          status current;\n                          description\n                            \"Discard the packet and notify the sender with an error\n                             message indicating that the destination host is\n                             unreachable.\";\n                        }\n                        enum \"prohibit\" {\n                          value 2;\n                          status current;\n                          description\n                            \"Discard the packet and notify the sender with an error\n                             message indicating that the communication is\n                             administratively prohibited.\";\n                        }\n                        enum \"receive\" {\n                          value 3;\n                          status current;\n                          description\n                            \"The packet will be received by the local system.\";\n                        }\n                      }\n                      config true;\n                      status current;\n                      description\n                        \"Options for special next hops.\";\n                    }\n                  }\n                  case next-hop-list {\n                    config true;\n                    status current;\n                    container next-hop-list {\n                      config true;\n                      status current;\n                      description\n                        \"Container for multiple next hops.\";\n                      list next-hop {\n                        key \"index\";\n                        config true;\n                        min-elements 0;\n                        max-elements 4294967295;\n                        ordered-by system;\n                        status current;\n                        description\n                          \"An entry in a next-hop list.\n\n                           Modules for address families MUST augment this list\n                           with a leaf containing a next-hop address of that\n                           address family.\";\n                        leaf index {\n                          type string;\n                          config true;\n                          status current;\n                          description\n                            \"A user-specified identifier utilized to uniquely\n                             reference the next-hop entry in the next-hop list.\n                             The value of this index has no semantic meaning\n                             other than for referencing the entry.\";\n                        }\n                        leaf outgoing-interface {\n                          type leafref {\n                            path \"/if:interfaces/if:interface/if:name\";\n                            require-instance true;\n                            type string;\n                          }\n                          config true;\n                          status current;\n                          description\n                            \"Name of the outgoing interface.\";\n                        }\n                        leaf next-hop-address {\n                          type string {\n                            pattern \"(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?\";\n                          }\n                          config true;\n                          status current;\n                          description\n                            \"IPv4 address of the next hop.\";\n                        }\n                      }\n                    }\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n    container ribs {\n      config true;\n      status current;\n      description\n        \"Support for RIBs.\";\n      list rib {\n        key \"name\";\n        config true;\n        min-elements 0;\n        max-elements 4294967295;\n        ordered-by system;\n        status current;\n        description\n          \"Each entry contains a configuration for a RIB identified\n           by the 'name' key.\n\n           Entries having the same key as a system-controlled entry\n           in the list '/routing/ribs/rib' are used for\n           configuring parameters of that entry.  Other entries\n           define additional user-controlled RIBs.\";\n        leaf name {\n          type string;\n          config true;\n          status current;\n          description\n            \"The name of the RIB.\n\n             For system-controlled entries, the value of this leaf\n             must be the same as the name of the corresponding entry\n             in the operational state.\n\n             For user-controlled entries, an arbitrary name can be\n             used.\";\n        }\n        leaf address-family {\n          type identityref {\n            base address-family;\n          }\n          config true;\n          mandatory true;\n          status current;\n          description\n            \"Address family.\";\n        }\n        container routes {\n          config false;\n          status current;\n          description\n            \"Current contents of the RIB.\";\n          list route {\n            config false;\n            min-elements 0;\n            max-elements 4294967295;\n            ordered-by user;\n            status current;\n            description\n              \"A RIB route entry.  This data node MUST be augmented\n               with information specific to routes of each address\n               family.\";\n            leaf route-preference {\n              type uint32;\n              config false;\n              status current;\n              description\n                \"This route attribute, also known as 'administrative\n                 distance', allows for selecting the preferred route\n                 among routes with the same destination prefix.  A\n                 smaller value indicates a route that is\n                 more preferred.\";\n            }\n            container next-hop {\n              config false;\n              status current;\n              description\n                \"Route's next-hop attribute.\";\n              choice next-hop-options {\n                config false;\n                mandatory true;\n                status current;\n                description\n                  \"Options for next hops.\n\n                   It is expected that further cases will be added through\n                   augments from other modules, e.g., for recursive\n                   next hops.\";\n                case simple-next-hop {\n                  config false;\n                  status current;\n                  description\n                    \"This case represents a simple next hop consisting of the\n                     next-hop address and/or outgoing interface.\n\n                     Modules for address families MUST augment this case with a\n                     leaf containing a next-hop address of that address\n                     family.\";\n                  leaf outgoing-interface {\n                    type leafref {\n                      path \"/if:interfaces/if:interface/if:name\";\n                      require-instance true;\n                      type string;\n                    }\n                    config false;\n                    status current;\n                    description\n                      \"Name of the outgoing interface.\";\n                  }\n                  leaf next-hop-address {\n                    when \"derived-from-or-self(../../../rt:address-family, 'v4ur:ipv4-unicast')\" {\n                      description\n                        \"This augment is valid only for IPv4 unicast.\";\n                    }\n                    type string {\n                      pattern \"(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?\";\n                    }\n                    config false;\n                    status current;\n                    description\n                      \"IPv4 address of the next hop.\";\n                  }\n                }\n                case special-next-hop {\n                  config false;\n                  status current;\n                  leaf special-next-hop {\n                    type enumeration {\n                      enum \"blackhole\" {\n                        value 0;\n                        status current;\n                        description\n                          \"Silently discard the packet.\";\n                      }\n                      enum \"unreachable\" {\n                        value 1;\n                        status current;\n                        description\n                          \"Discard the packet and notify the sender with an error\n                           message indicating that the destination host is\n                           unreachable.\";\n                      }\n                      enum \"prohibit\" {\n                        value 2;\n                        status current;\n                        description\n                          \"Discard the packet and notify the sender with an error\n                           message indicating that the communication is\n                           administratively prohibited.\";\n                      }\n                      enum \"receive\" {\n                        value 3;\n                        status current;\n                        description\n                          \"The packet will be received by the local system.\";\n                      }\n                    }\n                    config false;\n                    status current;\n                    description\n                      \"Options for special next hops.\";\n                  }\n                }\n                case next-hop-list {\n                  config false;\n                  status current;\n                  container next-hop-list {\n                    config false;\n                    status current;\n                    description\n                      \"Container for multiple next hops.\";\n                    list next-hop {\n                      config false;\n                      min-elements 0;\n                      max-elements 4294967295;\n                      ordered-by user;\n                      status current;\n                      description\n                        \"An entry in a next-hop list.\n\n                         Modules for address families MUST augment this list\n                         with a leaf containing a next-hop address of that\n                         address family.\";\n                      leaf outgoing-interface {\n                        type leafref {\n                          path \"/if:interfaces/if:interface/if:name\";\n                          require-instance true;\n                          type string;\n                        }\n                        config false;\n                        status current;\n                        description\n                          \"Name of the outgoing interface.\";\n                      }\n                      leaf address {\n                        when \"derived-from-or-self(../../../../../rt:address-family, 'v4ur:ipv4-unicast')\" {\n                          description\n                            \"This augment is valid only for IPv4 unicast.\";\n                        }\n                        type string {\n                          pattern \"(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?\";\n                        }\n                        config false;\n                        status current;\n                        description\n                          \"IPv4 address of the next hop.\";\n                      }\n                    }\n                  }\n                }\n              }\n            }\n            leaf source-protocol {\n              type identityref {\n                base routing-protocol;\n              }\n              config false;\n              mandatory true;\n              status current;\n              description\n                \"Type of the routing protocol from which the route\n                 originated.\";\n            }\n            leaf active {\n              type empty;\n              config false;\n              status current;\n              description\n                \"The presence of this leaf indicates that the route is\n                 preferred among all routes in the same RIB that have the\n                 same destination prefix.\";\n            }\n            leaf last-updated {\n              type string {\n                pattern \"[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\\\.[0-9]+)?(Z|[\\\\+\\\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?\";\n              }\n              config false;\n              status current;\n              description\n                \"Timestamp of the last modification of the route.  If the\n                 route was never modified, it is the time when the route was\n                 inserted into the RIB.\";\n            }\n            leaf destination-prefix {\n              when \"derived-from-or-self(../../rt:address-family, 'v4ur:ipv4-unicast')\" {\n                description\n                  \"This augment is valid only for IPv4 unicast.\";\n              }\n              type string {\n                pattern \"(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])/(([0-9])|([1-2][0-9])|(3[0-2]))\";\n              }\n              config false;\n              status current;\n              description\n                \"IPv4 destination prefix.\";\n            }\n          }\n        }\n        leaf description {\n          type string;\n          config true;\n          status current;\n          description\n            \"Textual description of the RIB.\";\n        }\n        action active-route {\n          status current;\n          description\n            \"Return the active RIB route that is used for the\n             destination address.\n\n             Address-family-specific modules MUST augment input\n             parameters with a leaf named 'destination-address'.\";\n\n          input {\n            leaf destination-address {\n              when \"derived-from-or-self(../rt:address-family, 'v4ur:ipv4-unicast')\" {\n                description\n                  \"This augment is valid only for IPv4 unicast RIBs.\";\n              }\n              type string {\n                pattern \"(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?\";\n              }\n              status current;\n              description\n                \"IPv4 destination address.\";\n            }\n          }\n\n          output {\n            container route {\n              status current;\n              description\n                \"The active RIB route for the specified destination.\n\n                 If no route exists in the RIB for the destination\n                 address, no output is returned.\n\n                 Address-family-specific modules MUST augment this\n                 container with appropriate route contents.\";\n              container next-hop {\n                status current;\n                description\n                  \"Route's next-hop attribute.\";\n                choice next-hop-options {\n                  mandatory true;\n                  status current;\n                  description\n                    \"Options for next hops.\n\n                     It is expected that further cases will be added through\n                     augments from other modules, e.g., for recursive\n                     next hops.\";\n                  case simple-next-hop {\n                    status current;\n                    description\n                      \"This case represents a simple next hop consisting of the\n                       next-hop address and/or outgoing interface.\n\n                       Modules for address families MUST augment this case with a\n                       leaf containing a next-hop address of that address\n                       family.\";\n                    leaf outgoing-interface {\n                      type leafref {\n                        path \"/if:interfaces/if:interface/if:name\";\n                        require-instance true;\n                        type string;\n                      }\n                      status current;\n                      description\n                        \"Name of the outgoing interface.\";\n                    }\n                    leaf next-hop-address {\n                      when \"derived-from-or-self(../../../rt:address-family, 'v4ur:ipv4-unicast')\" {\n                        description\n                          \"This augment is valid only for IPv4 unicast.\";\n                      }\n                      type string {\n                        pattern \"(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?\";\n                      }\n                      status current;\n                      description\n                        \"IPv4 address of the next hop.\";\n                    }\n                  }\n                  case special-next-hop {\n                    status current;\n                    leaf special-next-hop {\n                      type enumeration {\n                        enum \"blackhole\" {\n                          value 0;\n                          status current;\n                          description\n                            \"Silently discard the packet.\";\n                        }\n                        enum \"unreachable\" {\n                          value 1;\n                          status current;\n                          description\n                            \"Discard the packet and notify the sender with an error\n                             message indicating that the destination host is\n                             unreachable.\";\n                        }\n                        enum \"prohibit\" {\n                          value 2;\n                          status current;\n                          description\n                            \"Discard the packet and notify the sender with an error\n                             message indicating that the communication is\n                             administratively prohibited.\";\n                        }\n                        enum \"receive\" {\n                          value 3;\n                          status current;\n                          description\n                            \"The packet will be received by the local system.\";\n                        }\n                      }\n                      status current;\n                      description\n                        \"Options for special next hops.\";\n                    }\n                  }\n                  case next-hop-list {\n                    status current;\n                    container next-hop-list {\n                      status current;\n                      description\n                        \"Container for multiple next hops.\";\n                      list next-hop {\n                        min-elements 0;\n                        max-elements 4294967295;\n                        ordered-by user;\n                        status current;\n                        description\n                          \"An entry in a next-hop list.\n\n                           Modules for address families MUST augment this list\n                           with a leaf containing a next-hop address of that\n                           address family.\";\n                        leaf outgoing-interface {\n                          type leafref {\n                            path \"/if:interfaces/if:interface/if:name\";\n                            require-instance true;\n                            type string;\n                          }\n                          status current;\n                          description\n                            \"Name of the outgoing interface.\";\n                        }\n                        leaf next-hop-address {\n                          when \"derived-from-or-self(../../../../../rt:address-family, 'v4ur:ipv4-unicast')\" {\n                            description\n                              \"This augment is valid only for IPv4 unicast.\";\n                          }\n                          type string {\n                            pattern \"(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?\";\n                          }\n                          status current;\n                          description\n                            \"IPv4 address of the next hop.\";\n                        }\n                      }\n                    }\n                  }\n                }\n              }\n              leaf source-protocol {\n                type identityref {\n                  base routing-protocol;\n                }\n                mandatory true;\n                status current;\n                description\n                  \"Type of the routing protocol from which the route\n                   originated.\";\n              }\n              leaf active {\n                type empty;\n                status current;\n                description\n                  \"The presence of this leaf indicates that the route is\n                   preferred among all routes in the same RIB that have the\n                   same destination prefix.\";\n              }\n              leaf last-updated {\n                type string {\n                  pattern \"[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\\\.[0-9]+)?(Z|[\\\\+\\\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?\";\n                }\n                status current;\n                description\n                  \"Timestamp of the last modification of the route.  If the\n                   route was never modified, it is the time when the route was\n                   inserted into the RIB.\";\n              }\n              leaf destination-prefix {\n                when \"derived-from-or-self(../../rt:address-family, 'v4ur:ipv4-unicast')\" {\n                  description\n                    \"This augment is valid only for IPv4 unicast.\";\n                }\n                type string {\n                  pattern \"(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])/(([0-9])|([1-2][0-9])|(3[0-2]))\";\n                }\n                status current;\n                description\n                  \"IPv4 destination prefix.\";\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": false,
+          "name": "multiple-ribs"
+        },
+        {
+          "enabled": false,
+          "name": "router-id"
+        }
+      ],
+      "identities": [
+        {
+          "bases": [],
+          "derived": [
+            "ietf-routing:ipv4",
+            "ietf-routing:ipv6"
+          ],
+          "name": "ietf-routing:address-family"
+        },
+        {
+          "bases": [
+            "ietf-routing:address-family"
+          ],
+          "derived": [
+            "ietf-ipv4-unicast-routing:ipv4-unicast"
+          ],
+          "name": "ietf-routing:ipv4"
+        },
+        {
+          "bases": [
+            "ietf-routing:address-family"
+          ],
+          "derived": [],
+          "name": "ietf-routing:ipv6"
+        },
+        {
+          "bases": [],
+          "derived": [
+            "ietf-routing:routing-protocol"
+          ],
+          "name": "ietf-routing:control-plane-protocol"
+        },
+        {
+          "bases": [
+            "ietf-routing:control-plane-protocol"
+          ],
+          "derived": [
+            "ietf-routing:direct",
+            "ietf-routing:static"
+          ],
+          "name": "ietf-routing:routing-protocol"
+        },
+        {
+          "bases": [
+            "ietf-routing:routing-protocol"
+          ],
+          "derived": [],
+          "name": "ietf-routing:direct"
+        },
+        {
+          "bases": [
+            "ietf-routing:routing-protocol"
+          ],
+          "derived": [],
+          "name": "ietf-routing:static"
+        }
+      ],
+      "name": "ietf-routing",
+      "revision": "2018-03-13",
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/interfaces",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "user",
+          "path": "/ietf-routing:routing/interfaces/interface",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "/if:interfaces/if:interface/if:name",
+              "require_instance": true,
+              "target": "/ietf-interfaces:interfaces/interface/name"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "interface-ref"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/control-plane-protocols",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "type",
+            "name"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "system",
+          "path": "/ietf-routing:routing/control-plane-protocols/control-plane-protocol",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/control-plane-protocols/control-plane-protocol/type",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "identityref",
+            "bases": [
+              "ietf-routing:control-plane-protocol"
+            ],
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/control-plane-protocols/control-plane-protocol/name",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/control-plane-protocols/control-plane-protocol/description",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/control-plane-protocols/control-plane-protocol/static-routes",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": [
+            {
+              "context": "/ietf-routing:routing/control-plane-protocols/control-plane-protocol/static-routes",
+              "expr": "derived-from-or-self(../type, 'rt:static')",
+              "module": "ietf-routing"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-ipv4-unicast-routing",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/control-plane-protocols/control-plane-protocol/static-routes/ietf-ipv4-unicast-routing:ipv4",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "destination-prefix"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-ipv4-unicast-routing",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "system",
+          "path": "/ietf-routing:routing/control-plane-protocols/control-plane-protocol/static-routes/ietf-ipv4-unicast-routing:ipv4/route",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-ipv4-unicast-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/control-plane-protocols/control-plane-protocol/static-routes/ietf-ipv4-unicast-routing:ipv4/route/destination-prefix",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])/(([0-9])|([1-2][0-9])|(3[0-2]))",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "ipv4-prefix"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-ipv4-unicast-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/control-plane-protocols/control-plane-protocol/static-routes/ietf-ipv4-unicast-routing:ipv4/route/description",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-ipv4-unicast-routing",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/control-plane-protocols/control-plane-protocol/static-routes/ietf-ipv4-unicast-routing:ipv4/route/next-hop",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-ipv4-unicast-routing",
+          "musts": null,
+          "nodetype": "choice",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/control-plane-protocols/control-plane-protocol/static-routes/ietf-ipv4-unicast-routing:ipv4/route/next-hop/next-hop-options",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-ipv4-unicast-routing",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/control-plane-protocols/control-plane-protocol/static-routes/ietf-ipv4-unicast-routing:ipv4/route/next-hop/next-hop-options/simple-next-hop",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-ipv4-unicast-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/control-plane-protocols/control-plane-protocol/static-routes/ietf-ipv4-unicast-routing:ipv4/route/next-hop/next-hop-options/simple-next-hop/outgoing-interface",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "/if:interfaces/if:interface/if:name",
+              "require_instance": true,
+              "target": "/ietf-interfaces:interfaces/interface/name"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "interface-ref"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-ipv4-unicast-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/control-plane-protocols/control-plane-protocol/static-routes/ietf-ipv4-unicast-routing:ipv4/route/next-hop/next-hop-options/simple-next-hop/next-hop-address",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "ipv4-address"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-ipv4-unicast-routing",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/control-plane-protocols/control-plane-protocol/static-routes/ietf-ipv4-unicast-routing:ipv4/route/next-hop/next-hop-options/special-next-hop",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-ipv4-unicast-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/control-plane-protocols/control-plane-protocol/static-routes/ietf-ipv4-unicast-routing:ipv4/route/next-hop/next-hop-options/special-next-hop/special-next-hop",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "blackhole",
+                "value": 0
+              },
+              {
+                "name": "unreachable",
+                "value": 1
+              },
+              {
+                "name": "prohibit",
+                "value": 2
+              },
+              {
+                "name": "receive",
+                "value": 3
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-ipv4-unicast-routing",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/control-plane-protocols/control-plane-protocol/static-routes/ietf-ipv4-unicast-routing:ipv4/route/next-hop/next-hop-options/next-hop-list",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-ipv4-unicast-routing",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/control-plane-protocols/control-plane-protocol/static-routes/ietf-ipv4-unicast-routing:ipv4/route/next-hop/next-hop-options/next-hop-list/next-hop-list",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "index"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-ipv4-unicast-routing",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "system",
+          "path": "/ietf-routing:routing/control-plane-protocols/control-plane-protocol/static-routes/ietf-ipv4-unicast-routing:ipv4/route/next-hop/next-hop-options/next-hop-list/next-hop-list/next-hop",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-ipv4-unicast-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/control-plane-protocols/control-plane-protocol/static-routes/ietf-ipv4-unicast-routing:ipv4/route/next-hop/next-hop-options/next-hop-list/next-hop-list/next-hop/index",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-ipv4-unicast-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/control-plane-protocols/control-plane-protocol/static-routes/ietf-ipv4-unicast-routing:ipv4/route/next-hop/next-hop-options/next-hop-list/next-hop-list/next-hop/outgoing-interface",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "/if:interfaces/if:interface/if:name",
+              "require_instance": true,
+              "target": "/ietf-interfaces:interfaces/interface/name"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "interface-ref"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-ipv4-unicast-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/control-plane-protocols/control-plane-protocol/static-routes/ietf-ipv4-unicast-routing:ipv4/route/next-hop/next-hop-options/next-hop-list/next-hop-list/next-hop/next-hop-address",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "ipv4-address"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "name"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "system",
+          "path": "/ietf-routing:routing/ribs/rib",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "action",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/active-route",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "input",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/active-route/input",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-ipv4-unicast-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/active-route/input/ietf-ipv4-unicast-routing:destination-address",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "ipv4-address"
+            ],
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/ietf-routing:routing/ribs/rib/active-route",
+              "expr": "derived-from-or-self(../rt:address-family, 'v4ur:ipv4-unicast')",
+              "module": "ietf-ipv4-unicast-routing"
+            }
+          ]
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "output",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/active-route/output",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/active-route/output/route",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/active-route/output/route/next-hop",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "choice",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/active-route/output/route/next-hop/next-hop-options",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/active-route/output/route/next-hop/next-hop-options/simple-next-hop",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/active-route/output/route/next-hop/next-hop-options/simple-next-hop/outgoing-interface",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "/if:interfaces/if:interface/if:name",
+              "require_instance": true,
+              "target": "/ietf-interfaces:interfaces/interface/name"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "interface-ref"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-ipv4-unicast-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/active-route/output/route/next-hop/next-hop-options/simple-next-hop/ietf-ipv4-unicast-routing:next-hop-address",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "ipv4-address"
+            ],
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/ietf-routing:routing/ribs/rib/active-route/output/route/next-hop",
+              "expr": "derived-from-or-self(../../../rt:address-family, 'v4ur:ipv4-unicast')",
+              "module": "ietf-ipv4-unicast-routing"
+            }
+          ]
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/active-route/output/route/next-hop/next-hop-options/special-next-hop",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/active-route/output/route/next-hop/next-hop-options/special-next-hop/special-next-hop",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "blackhole",
+                "value": 0
+              },
+              {
+                "name": "unreachable",
+                "value": 1
+              },
+              {
+                "name": "prohibit",
+                "value": 2
+              },
+              {
+                "name": "receive",
+                "value": 3
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/active-route/output/route/next-hop/next-hop-options/next-hop-list",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/active-route/output/route/next-hop/next-hop-options/next-hop-list/next-hop-list",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": [],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "user",
+          "path": "/ietf-routing:routing/ribs/rib/active-route/output/route/next-hop/next-hop-options/next-hop-list/next-hop-list/next-hop",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/active-route/output/route/next-hop/next-hop-options/next-hop-list/next-hop-list/next-hop/outgoing-interface",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "/if:interfaces/if:interface/if:name",
+              "require_instance": true,
+              "target": "/ietf-interfaces:interfaces/interface/name"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "interface-ref"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-ipv4-unicast-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/active-route/output/route/next-hop/next-hop-options/next-hop-list/next-hop-list/next-hop/ietf-ipv4-unicast-routing:next-hop-address",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "ipv4-address"
+            ],
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/ietf-routing:routing/ribs/rib/active-route/output/route/next-hop/next-hop-options/next-hop-list/next-hop-list/next-hop",
+              "expr": "derived-from-or-self(../../../../../rt:address-family, 'v4ur:ipv4-unicast')",
+              "module": "ietf-ipv4-unicast-routing"
+            }
+          ]
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/active-route/output/route/source-protocol",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "identityref",
+            "bases": [
+              "ietf-routing:routing-protocol"
+            ],
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/active-route/output/route/active",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "empty",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/active-route/output/route/last-updated",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]+)?(Z|[\\+\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "date-and-time"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-ipv4-unicast-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/active-route/output/route/ietf-ipv4-unicast-routing:destination-prefix",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])/(([0-9])|([1-2][0-9])|(3[0-2]))",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "ipv4-prefix"
+            ],
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/ietf-routing:routing/ribs/rib/active-route/output/route",
+              "expr": "derived-from-or-self(../../rt:address-family, 'v4ur:ipv4-unicast')",
+              "module": "ietf-ipv4-unicast-routing"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/name",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/address-family",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "identityref",
+            "bases": [
+              "ietf-routing:address-family"
+            ],
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/routes",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": [],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "user",
+          "path": "/ietf-routing:routing/ribs/rib/routes/route",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/routes/route/route-preference",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "route-preference"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/routes/route/next-hop",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "choice",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/routes/route/next-hop/next-hop-options",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/routes/route/next-hop/next-hop-options/simple-next-hop",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/routes/route/next-hop/next-hop-options/simple-next-hop/outgoing-interface",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "/if:interfaces/if:interface/if:name",
+              "require_instance": true,
+              "target": "/ietf-interfaces:interfaces/interface/name"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "interface-ref"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-ipv4-unicast-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/routes/route/next-hop/next-hop-options/simple-next-hop/ietf-ipv4-unicast-routing:next-hop-address",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "ipv4-address"
+            ],
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/ietf-routing:routing/ribs/rib/routes/route/next-hop",
+              "expr": "derived-from-or-self(../../../rt:address-family, 'v4ur:ipv4-unicast')",
+              "module": "ietf-ipv4-unicast-routing"
+            }
+          ]
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/routes/route/next-hop/next-hop-options/special-next-hop",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/routes/route/next-hop/next-hop-options/special-next-hop/special-next-hop",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "blackhole",
+                "value": 0
+              },
+              {
+                "name": "unreachable",
+                "value": 1
+              },
+              {
+                "name": "prohibit",
+                "value": 2
+              },
+              {
+                "name": "receive",
+                "value": 3
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/routes/route/next-hop/next-hop-options/next-hop-list",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/routes/route/next-hop/next-hop-options/next-hop-list/next-hop-list",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": [],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "user",
+          "path": "/ietf-routing:routing/ribs/rib/routes/route/next-hop/next-hop-options/next-hop-list/next-hop-list/next-hop",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/routes/route/next-hop/next-hop-options/next-hop-list/next-hop-list/next-hop/outgoing-interface",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "/if:interfaces/if:interface/if:name",
+              "require_instance": true,
+              "target": "/ietf-interfaces:interfaces/interface/name"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "interface-ref"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-ipv4-unicast-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/routes/route/next-hop/next-hop-options/next-hop-list/next-hop-list/next-hop/ietf-ipv4-unicast-routing:address",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "ipv4-address"
+            ],
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/ietf-routing:routing/ribs/rib/routes/route/next-hop/next-hop-options/next-hop-list/next-hop-list/next-hop",
+              "expr": "derived-from-or-self(../../../../../rt:address-family, 'v4ur:ipv4-unicast')",
+              "module": "ietf-ipv4-unicast-routing"
+            }
+          ]
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/routes/route/source-protocol",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "identityref",
+            "bases": [
+              "ietf-routing:routing-protocol"
+            ],
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/routes/route/active",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "empty",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/routes/route/last-updated",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]+)?(Z|[\\+\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "date-and-time"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-ipv4-unicast-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/routes/route/ietf-ipv4-unicast-routing:destination-prefix",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])/(([0-9])|([1-2][0-9])|(3[0-2]))",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "ipv4-prefix"
+            ],
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/ietf-routing:routing/ribs/rib/routes/route",
+              "expr": "derived-from-or-self(../../rt:address-family, 'v4ur:ipv4-unicast')",
+              "module": "ietf-ipv4-unicast-routing"
+            }
+          ]
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-routing",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-routing:routing/ribs/rib/description",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module ietf-ipv4-unicast-routing {\n  namespace \"urn:ietf:params:xml:ns:yang:ietf-ipv4-unicast-routing\";\n  prefix v4ur;\n\n  organization\n    \"IETF NETMOD (Network Modeling) Working Group\";\n  contact\n    \"WG Web:   <https://datatracker.ietf.org/wg/netmod/>\n     WG List:  <mailto:rtgwg@ietf.org>\n\n     Editor:   Ladislav Lhotka\n               <mailto:lhotka@nic.cz>\n               Acee Lindem\n               <mailto:acee@cisco.com>\n               Yingzhen Qu\n               <mailto:yingzhen.qu@huawei.com>\";\n  description\n    \"This YANG module augments the 'ietf-routing' module with basic\n     parameters for IPv4 unicast routing.  The model fully conforms\n     to the Network Management Datastore Architecture (NMDA).\n\n     Copyright (c) 2018 IETF Trust and the persons\n     identified as authors of the code.  All rights reserved.\n\n     Redistribution and use in source and binary forms, with or\n     without modification, is permitted pursuant to, and subject\n     to the license terms contained in, the Simplified BSD License\n     set forth in Section 4.c of the IETF Trust's Legal Provisions\n     Relating to IETF Documents\n     (https://trustee.ietf.org/license-info).\n\n     This version of this YANG module is part of RFC 8349; see\n     the RFC itself for full legal notices.\";\n\n  revision 2018-03-13;\n\n  identity ipv4-unicast {\n    description\n      \"This identity represents the IPv4 unicast address family.\";\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [
+        {
+          "bases": [
+            "ietf-routing:ipv4"
+          ],
+          "derived": [],
+          "name": "ietf-ipv4-unicast-routing:ipv4-unicast"
+        }
+      ],
+      "name": "ietf-ipv4-unicast-routing",
+      "revision": "2018-03-13",
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

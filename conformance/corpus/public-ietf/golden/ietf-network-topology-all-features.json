@@ -1,0 +1,822 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ietf-network {\n  namespace \"urn:ietf:params:xml:ns:yang:ietf-network\";\n  prefix nw;\n\n  organization\n    \"IETF I2RS (Interface to the Routing System) Working Group\";\n  contact\n    \"WG Web:    <https://datatracker.ietf.org/wg/i2rs/>\n     WG List:   <mailto:i2rs@ietf.org>\n\n     Editor:    Alexander Clemm\n                <mailto:ludwig@clemm.org>\n\n     Editor:    Jan Medved\n                <mailto:jmedved@cisco.com>\n\n     Editor:    Robert Varga\n                <mailto:robert.varga@pantheon.tech>\n\n     Editor:    Nitin Bahadur\n                <mailto:nitin_bahadur@yahoo.com>\n\n     Editor:    Hariharan Ananthakrishnan\n                <mailto:hari@packetdesign.com>\n\n     Editor:    Xufeng Liu\n                <mailto:xufeng.liu.ietf@gmail.com>\";\n  description\n    \"This module defines a common base data model for a collection\n     of nodes in a network.  Node definitions are further used\n     in network topologies and inventories.\n\n     Copyright (c) 2018 IETF Trust and the persons identified as\n     authors of the code.  All rights reserved.\n\n     Redistribution and use in source and binary forms, with or\n     without modification, is permitted pursuant to, and subject\n     to the license terms contained in, the Simplified BSD License\n     set forth in Section 4.c of the IETF Trust's Legal Provisions\n     Relating to IETF Documents\n     (https://trustee.ietf.org/license-info).\n\n     This version of this YANG module is part of RFC 8345;\n     see the RFC itself for full legal notices.\";\n\n  revision 2018-02-26;\n\n  container networks {\n    config true;\n    status current;\n    description\n      \"Serves as a top-level container for a list of networks.\";\n    list network {\n      key \"network-id\";\n      config true;\n      min-elements 0;\n      max-elements 4294967295;\n      ordered-by system;\n      status current;\n      description\n        \"Describes a network.\n         A network typically contains an inventory of nodes,\n         topological information (augmented through the\n         network-topology data model), and layering information.\";\n      leaf network-id {\n        type string {\n          pattern \"[a-z][a-z0-9+.-]*:.*\";\n        }\n        config true;\n        status current;\n        description\n          \"Identifies a network.\";\n      }\n      container network-types {\n        config true;\n        status current;\n        description\n          \"Serves as an augmentation target.\n           The network type is indicated through corresponding\n           presence containers augmented into this container.\";\n      }\n      list supporting-network {\n        key \"network-ref\";\n        config true;\n        min-elements 0;\n        max-elements 4294967295;\n        ordered-by system;\n        status current;\n        description\n          \"An underlay network, used to represent layered network\n           topologies.\";\n        leaf network-ref {\n          type leafref {\n            path \"/nw:networks/nw:network/nw:network-id\";\n            require-instance false;\n            type string {\n              pattern \"[a-z][a-z0-9+.-]*:.*\";\n            }\n          }\n          config true;\n          status current;\n          description\n            \"References the underlay network.\";\n        }\n      }\n      list node {\n        key \"node-id\";\n        config true;\n        min-elements 0;\n        max-elements 4294967295;\n        ordered-by system;\n        status current;\n        description\n          \"The inventory of nodes of this network.\";\n        leaf node-id {\n          type string {\n            pattern \"[a-z][a-z0-9+.-]*:.*\";\n          }\n          config true;\n          status current;\n          description\n            \"Uniquely identifies a node within the containing\n             network.\";\n        }\n        list supporting-node {\n          key \"network-refnode-ref\";\n          config true;\n          min-elements 0;\n          max-elements 4294967295;\n          ordered-by system;\n          status current;\n          description\n            \"Represents another node that is in an underlay network\n             and that supports this node.  Used to represent layering\n             structure.\";\n          leaf network-ref {\n            type leafref {\n              path \"../../../nw:supporting-network/nw:network-ref\";\n              require-instance false;\n              type string {\n                pattern \"[a-z][a-z0-9+.-]*:.*\";\n              }\n            }\n            config true;\n            status current;\n            description\n              \"References the underlay network of which the\n               underlay node is a part.\";\n          }\n          leaf node-ref {\n            type leafref {\n              path \"/nw:networks/nw:network/nw:node/nw:node-id\";\n              require-instance false;\n              type string {\n                pattern \"[a-z][a-z0-9+.-]*:.*\";\n              }\n            }\n            config true;\n            status current;\n            description\n              \"References the underlay node itself.\";\n          }\n        }\n        list termination-point {\n          key \"tp-id\";\n          config true;\n          min-elements 0;\n          max-elements 4294967295;\n          ordered-by system;\n          status current;\n          description\n            \"A termination point can terminate a link.\n             Depending on the type of topology, a termination point\n             could, for example, refer to a port or an interface.\";\n          leaf tp-id {\n            type string {\n              pattern \"[a-z][a-z0-9+.-]*:.*\";\n            }\n            config true;\n            status current;\n            description\n              \"Termination point identifier.\";\n          }\n          list supporting-termination-point {\n            key \"network-refnode-reftp-ref\";\n            config true;\n            min-elements 0;\n            max-elements 4294967295;\n            ordered-by system;\n            status current;\n            description\n              \"This list identifies any termination points on which a\n               given termination point depends or onto which it maps.\n               Those termination points will themselves be contained\n               in a supporting node.  This dependency information can be\n               inferred from the dependencies between links.  Therefore,\n               this item is not separately configurable.  Hence, no\n               corresponding constraint needs to be articulated.\n               The corresponding information is simply provided by the\n               implementing system.\";\n            leaf network-ref {\n              type leafref {\n                path \"../../../nw:supporting-node/nw:network-ref\";\n                require-instance false;\n                type string {\n                  pattern \"[a-z][a-z0-9+.-]*:.*\";\n                }\n              }\n              config true;\n              status current;\n              description\n                \"This leaf identifies in which topology the\n                 supporting termination point is present.\";\n            }\n            leaf node-ref {\n              type leafref {\n                path \"../../../nw:supporting-node/nw:node-ref\";\n                require-instance false;\n                type string {\n                  pattern \"[a-z][a-z0-9+.-]*:.*\";\n                }\n              }\n              config true;\n              status current;\n              description\n                \"This leaf identifies in which node the supporting\n                 termination point is present.\";\n            }\n            leaf tp-ref {\n              type leafref {\n                path \"/nw:networks/nw:network[nw:network-id=current()/../network-ref]/nw:node[nw:node-id=current()/../node-ref]/termination-point/tp-id\";\n                require-instance false;\n                type string {\n                  pattern \"[a-z][a-z0-9+.-]*:.*\";\n                }\n              }\n              config true;\n              status current;\n              description\n                \"Reference to the underlay node (the underlay node must\n                 be in a different topology).\";\n            }\n          }\n        }\n      }\n      list link {\n        key \"link-id\";\n        config true;\n        min-elements 0;\n        max-elements 4294967295;\n        ordered-by system;\n        status current;\n        description\n          \"A network link connects a local (source) node and\n           a remote (destination) node via a set of the respective\n           node's termination points.  It is possible to have several\n           links between the same source and destination nodes.\n           Likewise, a link could potentially be re-homed between\n           termination points.  Therefore, in order to ensure that we\n           would always know to distinguish between links, every link\n           is identified by a dedicated link identifier.  Note that a\n           link models a point-to-point link, not a multipoint link.\";\n        leaf link-id {\n          type string {\n            pattern \"[a-z][a-z0-9+.-]*:.*\";\n          }\n          config true;\n          status current;\n          description\n            \"The identifier of a link in the topology.\n             A link is specific to a topology to which it belongs.\";\n        }\n        container source {\n          config true;\n          status current;\n          description\n            \"This container holds the logical source of a particular\n             link.\";\n          leaf source-node {\n            type leafref {\n              path \"../../../nw:node/nw:node-id\";\n              require-instance false;\n              type string {\n                pattern \"[a-z][a-z0-9+.-]*:.*\";\n              }\n            }\n            config true;\n            status current;\n            description\n              \"Source node identifier.  Must be in the same topology.\";\n          }\n          leaf source-tp {\n            type leafref {\n              path \"../../../nw:node[nw:node-id=current()/../source-node]/termination-point/tp-id\";\n              require-instance false;\n              type string {\n                pattern \"[a-z][a-z0-9+.-]*:.*\";\n              }\n            }\n            config true;\n            status current;\n            description\n              \"This termination point is located within the source node\n               and terminates the link.\";\n          }\n        }\n        container destination {\n          config true;\n          status current;\n          description\n            \"This container holds the logical destination of a\n             particular link.\";\n          leaf dest-node {\n            type leafref {\n              path \"../../../nw:node/nw:node-id\";\n              require-instance false;\n              type string {\n                pattern \"[a-z][a-z0-9+.-]*:.*\";\n              }\n            }\n            config true;\n            status current;\n            description\n              \"Destination node identifier.  Must be in the same\n               network.\";\n          }\n          leaf dest-tp {\n            type leafref {\n              path \"../../../nw:node[nw:node-id=current()/../dest-node]/termination-point/tp-id\";\n              require-instance false;\n              type string {\n                pattern \"[a-z][a-z0-9+.-]*:.*\";\n              }\n            }\n            config true;\n            status current;\n            description\n              \"This termination point is located within the\n               destination node and terminates the link.\";\n          }\n        }\n        list supporting-link {\n          key \"network-reflink-ref\";\n          config true;\n          min-elements 0;\n          max-elements 4294967295;\n          ordered-by system;\n          status current;\n          description\n            \"Identifies the link or links on which this link depends.\";\n          leaf network-ref {\n            type leafref {\n              path \"../../../nw:supporting-network/nw:network-ref\";\n              require-instance false;\n              type string {\n                pattern \"[a-z][a-z0-9+.-]*:.*\";\n              }\n            }\n            config true;\n            status current;\n            description\n              \"This leaf identifies in which underlay topology\n               the supporting link is present.\";\n          }\n          leaf link-ref {\n            type leafref {\n              path \"/nw:networks/nw:network[nw:network-id=current()/../network-ref]/link/link-id\";\n              require-instance false;\n              type string {\n                pattern \"[a-z][a-z0-9+.-]*:.*\";\n              }\n            }\n            config true;\n            status current;\n            description\n              \"This leaf identifies a link that is a part\n               of this link's underlay.  Reference loops in which\n               a link identifies itself as its underlay, either\n               directly or transitively, are not allowed.\";\n          }\n        }\n      }\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "ietf-network",
+      "revision": "2018-02-26",
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-network",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-network:networks",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "network-id"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-network",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "system",
+          "path": "/ietf-network:networks/network",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-network",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-network:networks/network/network-id",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[a-z][a-z0-9+.-]*:.*",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "uri"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-network",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-network:networks/network/network-types",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "network-ref"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-network",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "system",
+          "path": "/ietf-network:networks/network/supporting-network",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-network",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-network:networks/network/supporting-network/network-ref",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "/nw:networks/nw:network/nw:network-id",
+              "require_instance": false,
+              "target": "/ietf-network:networks/network/network-id"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "node-id"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-network",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "system",
+          "path": "/ietf-network:networks/network/node",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-network",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-network:networks/network/node/node-id",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[a-z][a-z0-9+.-]*:.*",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "uri"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "network-ref",
+            "node-ref"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-network",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "system",
+          "path": "/ietf-network:networks/network/node/supporting-node",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-network",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-network:networks/network/node/supporting-node/network-ref",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "../../../nw:supporting-network/nw:network-ref",
+              "require_instance": false,
+              "target": "/ietf-network:networks/network/supporting-network/network-ref"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-network",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-network:networks/network/node/supporting-node/node-ref",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "/nw:networks/nw:network/nw:node/nw:node-id",
+              "require_instance": false,
+              "target": "/ietf-network:networks/network/node/node-id"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "tp-id"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-network-topology",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "system",
+          "path": "/ietf-network:networks/network/node/ietf-network-topology:termination-point",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-network-topology",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-network:networks/network/node/ietf-network-topology:termination-point/tp-id",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[a-z][a-z0-9+.-]*:.*",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "uri"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "network-ref",
+            "node-ref",
+            "tp-ref"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-network-topology",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "system",
+          "path": "/ietf-network:networks/network/node/ietf-network-topology:termination-point/supporting-termination-point",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-network-topology",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-network:networks/network/node/ietf-network-topology:termination-point/supporting-termination-point/network-ref",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "../../../nw:supporting-node/nw:network-ref",
+              "require_instance": false,
+              "target": "/ietf-network:networks/network/node/supporting-node/network-ref"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-network-topology",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-network:networks/network/node/ietf-network-topology:termination-point/supporting-termination-point/node-ref",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "../../../nw:supporting-node/nw:node-ref",
+              "require_instance": false,
+              "target": "/ietf-network:networks/network/node/supporting-node/node-ref"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-network-topology",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-network:networks/network/node/ietf-network-topology:termination-point/supporting-termination-point/tp-ref",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "/nw:networks/nw:network[nw:network-id=current()/../network-ref]/nw:node[nw:node-id=current()/../node-ref]/termination-point/tp-id",
+              "require_instance": false,
+              "target": "/ietf-network:networks/network/node/ietf-network-topology:termination-point/tp-id"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "link-id"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-network-topology",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "system",
+          "path": "/ietf-network:networks/network/ietf-network-topology:link",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-network-topology",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-network:networks/network/ietf-network-topology:link/link-id",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[a-z][a-z0-9+.-]*:.*",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "uri"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-network-topology",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-network:networks/network/ietf-network-topology:link/source",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-network-topology",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-network:networks/network/ietf-network-topology:link/source/source-node",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "../../../nw:node/nw:node-id",
+              "require_instance": false,
+              "target": "/ietf-network:networks/network/node/node-id"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-network-topology",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-network:networks/network/ietf-network-topology:link/source/source-tp",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "../../../nw:node[nw:node-id=current()/../source-node]/termination-point/tp-id",
+              "require_instance": false,
+              "target": "/ietf-network:networks/network/node/ietf-network-topology:termination-point/tp-id"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-network-topology",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-network:networks/network/ietf-network-topology:link/destination",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-network-topology",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-network:networks/network/ietf-network-topology:link/destination/dest-node",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "../../../nw:node/nw:node-id",
+              "require_instance": false,
+              "target": "/ietf-network:networks/network/node/node-id"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-network-topology",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-network:networks/network/ietf-network-topology:link/destination/dest-tp",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "../../../nw:node[nw:node-id=current()/../dest-node]/termination-point/tp-id",
+              "require_instance": false,
+              "target": "/ietf-network:networks/network/node/ietf-network-topology:termination-point/tp-id"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "network-ref",
+            "link-ref"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-network-topology",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "system",
+          "path": "/ietf-network:networks/network/ietf-network-topology:link/supporting-link",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-network-topology",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-network:networks/network/ietf-network-topology:link/supporting-link/network-ref",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "../../../nw:supporting-network/nw:network-ref",
+              "require_instance": false,
+              "target": "/ietf-network:networks/network/supporting-network/network-ref"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-network-topology",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-network:networks/network/ietf-network-topology:link/supporting-link/link-ref",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "/nw:networks/nw:network[nw:network-id=current()/../network-ref]/link/link-id",
+              "require_instance": false,
+              "target": "/ietf-network:networks/network/ietf-network-topology:link/link-id"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module ietf-network-topology {\n  namespace \"urn:ietf:params:xml:ns:yang:ietf-network-topology\";\n  prefix nt;\n\n  organization\n    \"IETF I2RS (Interface to the Routing System) Working Group\";\n  contact\n    \"WG Web:    <https://datatracker.ietf.org/wg/i2rs/>\n     WG List:   <mailto:i2rs@ietf.org>\n\n     Editor:    Alexander Clemm\n                <mailto:ludwig@clemm.org>\n\n     Editor:    Jan Medved\n                <mailto:jmedved@cisco.com>\n\n     Editor:    Robert Varga\n                <mailto:robert.varga@pantheon.tech>\n\n     Editor:    Nitin Bahadur\n                <mailto:nitin_bahadur@yahoo.com>\n\n     Editor:    Hariharan Ananthakrishnan\n                <mailto:hari@packetdesign.com>\n\n     Editor:    Xufeng Liu\n                <mailto:xufeng.liu.ietf@gmail.com>\";\n  description\n    \"This module defines a common base model for a network topology,\n     augmenting the base network data model with links to connect\n     nodes, as well as termination points to terminate links\n     on nodes.\n\n     Copyright (c) 2018 IETF Trust and the persons identified as\n     authors of the code.  All rights reserved.\n\n     Redistribution and use in source and binary forms, with or\n     without modification, is permitted pursuant to, and subject\n     to the license terms contained in, the Simplified BSD License\n     set forth in Section 4.c of the IETF Trust's Legal Provisions\n     Relating to IETF Documents\n     (https://trustee.ietf.org/license-info).\n\n     This version of this YANG module is part of RFC 8345;\n     see the RFC itself for full legal notices.\";\n\n  revision 2018-02-26;\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "ietf-network-topology",
+      "revision": "2018-02-26",
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

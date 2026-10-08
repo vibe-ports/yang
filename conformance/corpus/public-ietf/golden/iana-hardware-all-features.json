@@ -1,0 +1,138 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module iana-hardware {\n  namespace \"urn:ietf:params:xml:ns:yang:iana-hardware\";\n  prefix ianahw;\n\n  organization\n    \"IANA\";\n  contact\n    \"        Internet Assigned Numbers Authority\n\n     Postal: ICANN\n             12025 Waterfront Drive, Suite 300\n             Los Angeles, CA  90094-2536\n             United States of America\n\n     Tel:    +1 310 301 5800\n     E-Mail: iana@iana.org>\";\n  description\n    \"IANA-defined identities for hardware class.\n\n     The latest revision of this YANG module can be obtained from\n     the IANA website.\n\n     Requests for new values should be made to IANA via\n     email (iana@iana.org).\n\n     Copyright (c) 2018 IETF Trust and the persons identified as\n     authors of the code.  All rights reserved.\n\n     Redistribution and use in source and binary forms, with or\n     without modification, is permitted pursuant to, and subject\n     to the license terms contained in, the Simplified BSD License\n     set forth in Section 4.c of the IETF Trust's Legal Provisions\n     Relating to IETF Documents\n     (https://trustee.ietf.org/license-info).\n\n     The initial version of this YANG module is part of RFC 8348;\n     see the RFC itself for full legal notices.\";\n  reference\n    \"https://www.iana.org/assignments/yang-parameters\";\n\n  revision 2018-03-13;\n\n  identity hardware-class {\n    derived unknown;\n    derived chassis;\n    derived backplane;\n    derived container;\n    derived power-supply;\n    derived fan;\n    derived sensor;\n    derived module;\n    derived port;\n    derived stack;\n    derived cpu;\n    derived energy-object;\n    derived battery;\n    derived storage-drive;\n    description\n      \"This identity is the base for all hardware class\n       identifiers.\";\n  }\n\n  identity unknown {\n    description\n      \"This identity is applicable if the hardware class is unknown\n       to the server.\";\n  }\n\n  identity chassis {\n    description\n      \"This identity is applicable if the hardware class is an\n       overall container for networking equipment.  Any class of\n       physical component, except a stack, may be contained within a\n       chassis; a chassis may only be contained within a stack.\";\n  }\n\n  identity backplane {\n    description\n      \"This identity is applicable if the hardware class is some sort\n       of device for aggregating and forwarding networking traffic,\n       such as a shared backplane in a modular ethernet switch.  Note\n       that an implementation may model a backplane as a single\n       physical component, which is actually implemented as multiple\n       discrete physical components (within a chassis or stack).\";\n  }\n\n  identity container {\n    description\n      \"This identity is applicable if the hardware class is capable\n       of containing one or more removable physical entities,\n       possibly of different types.  For example, each (empty or\n       full) slot in a chassis will be modeled as a container.  Note\n       that all removable physical components should be modeled\n       within a container component, such as field-replaceable\n       modules, fans, or power supplies.  Note that all known\n       containers should be modeled by the agent, including empty\n       containers.\";\n  }\n\n  identity power-supply {\n    description\n      \"This identity is applicable if the hardware class is a\n       power-supplying component.\";\n  }\n\n  identity fan {\n    description\n      \"This identity is applicable if the hardware class is a fan or\n       other heat-reduction component.\";\n  }\n\n  identity sensor {\n    description\n      \"This identity is applicable if the hardware class is some sort\n       of sensor, such as a temperature sensor within a router\n       chassis.\";\n  }\n\n  identity module {\n    description\n      \"This identity is applicable if the hardware class is some sort\n       of self-contained sub-system.  If a module component is\n       removable, then it should be modeled within a container\n       component; otherwise, it should be modeled directly within\n       another physical component (e.g., a chassis or another\n       module).\";\n  }\n\n  identity port {\n    description\n      \"This identity is applicable if the hardware class is some sort\n       of networking port capable of receiving and/or transmitting\n       networking traffic.\";\n  }\n\n  identity stack {\n    description\n      \"This identity is applicable if the hardware class is some sort\n       of super-container (possibly virtual) intended to group\n       together multiple chassis entities.  A stack may be realized\n       by a virtual cable, a real interconnect cable attached to\n       multiple chassis, or multiple interconnect cables.  A stack\n       should not be modeled within any other physical components,\n       but a stack may be contained within another stack.  Only\n       chassis components should be contained within a stack.\";\n  }\n\n  identity cpu {\n    description\n      \"This identity is applicable if the hardware class is some sort\n       of central processing unit.\";\n  }\n\n  identity energy-object {\n    description\n      \"This identity is applicable if the hardware class is some sort\n       of energy object, i.e., it is a piece of equipment that is\n       part of or attached to a communications network that is\n       monitored, it is controlled, or it aids in the management of\n       another device for Energy Management.\";\n  }\n\n  identity battery {\n    description\n      \"This identity is applicable if the hardware class is some sort\n       of battery.\";\n  }\n\n  identity storage-drive {\n    description\n      \"This identity is applicable if the hardware class is some sort\n       of component with data storage capability as its main\n       functionality, e.g., hard disk drive (HDD), solid-state device\n       (SSD), solid-state hybrid drive (SSHD), object storage device\n       (OSD), or other.\";\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [
+        {
+          "bases": [],
+          "derived": [
+            "iana-hardware:unknown",
+            "iana-hardware:chassis",
+            "iana-hardware:backplane",
+            "iana-hardware:container",
+            "iana-hardware:power-supply",
+            "iana-hardware:fan",
+            "iana-hardware:sensor",
+            "iana-hardware:module",
+            "iana-hardware:port",
+            "iana-hardware:stack",
+            "iana-hardware:cpu",
+            "iana-hardware:energy-object",
+            "iana-hardware:battery",
+            "iana-hardware:storage-drive"
+          ],
+          "name": "iana-hardware:hardware-class"
+        },
+        {
+          "bases": [
+            "iana-hardware:hardware-class"
+          ],
+          "derived": [],
+          "name": "iana-hardware:unknown"
+        },
+        {
+          "bases": [
+            "iana-hardware:hardware-class"
+          ],
+          "derived": [],
+          "name": "iana-hardware:chassis"
+        },
+        {
+          "bases": [
+            "iana-hardware:hardware-class"
+          ],
+          "derived": [],
+          "name": "iana-hardware:backplane"
+        },
+        {
+          "bases": [
+            "iana-hardware:hardware-class"
+          ],
+          "derived": [],
+          "name": "iana-hardware:container"
+        },
+        {
+          "bases": [
+            "iana-hardware:hardware-class"
+          ],
+          "derived": [],
+          "name": "iana-hardware:power-supply"
+        },
+        {
+          "bases": [
+            "iana-hardware:hardware-class"
+          ],
+          "derived": [],
+          "name": "iana-hardware:fan"
+        },
+        {
+          "bases": [
+            "iana-hardware:hardware-class"
+          ],
+          "derived": [],
+          "name": "iana-hardware:sensor"
+        },
+        {
+          "bases": [
+            "iana-hardware:hardware-class"
+          ],
+          "derived": [],
+          "name": "iana-hardware:module"
+        },
+        {
+          "bases": [
+            "iana-hardware:hardware-class"
+          ],
+          "derived": [],
+          "name": "iana-hardware:port"
+        },
+        {
+          "bases": [
+            "iana-hardware:hardware-class"
+          ],
+          "derived": [],
+          "name": "iana-hardware:stack"
+        },
+        {
+          "bases": [
+            "iana-hardware:hardware-class"
+          ],
+          "derived": [],
+          "name": "iana-hardware:cpu"
+        },
+        {
+          "bases": [
+            "iana-hardware:hardware-class"
+          ],
+          "derived": [],
+          "name": "iana-hardware:energy-object"
+        },
+        {
+          "bases": [
+            "iana-hardware:hardware-class"
+          ],
+          "derived": [],
+          "name": "iana-hardware:battery"
+        },
+        {
+          "bases": [
+            "iana-hardware:hardware-class"
+          ],
+          "derived": [],
+          "name": "iana-hardware:storage-drive"
+        }
+      ],
+      "name": "iana-hardware",
+      "revision": "2018-03-13",
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

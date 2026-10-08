@@ -1,0 +1,1508 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ietf-netconf-notifications {\n  namespace \"urn:ietf:params:xml:ns:yang:ietf-netconf-notifications\";\n  prefix ncn;\n\n  organization\n    \"IETF NETCONF (Network Configuration Protocol) Working Group\";\n  contact\n    \"WG Web:   <http://tools.ietf.org/wg/netconf/>\n     WG List:  <mailto:netconf@ietf.org>\n\n     WG Chair: Bert Wijnen\n               <mailto:bertietf@bwijnen.net>\n\n     WG Chair: Mehmet Ersue\n               <mailto:mehmet.ersue@nsn.com>\n\n     Editor:   Andy Bierman\n               <mailto:andy@netconfcentral.org>\";\n  description\n    \"This module defines a YANG data model for use with the\n     NETCONF protocol that allows the NETCONF client to\n     receive common NETCONF base event notifications.\n\n     Copyright (c) 2012 IETF Trust and the persons identified as\n     the document authors.  All rights reserved.\n\n     Redistribution and use in source and binary forms, with or\n     without modification, is permitted pursuant to, and subject\n     to the license terms contained in, the Simplified BSD License\n\n     set forth in Section 4.c of the IETF Trust's Legal Provisions\n     Relating to IETF Documents\n     (http://trustee.ietf.org/license-info).\n\n     This version of this YANG module is part of RFC 6470; see\n     the RFC itself for full legal notices.\";\n\n  revision 2012-02-06;\n\n  notification netconf-config-change {\n    status current;\n    description\n      \"Generated when the NETCONF server detects that the\n       <running> or <startup> configuration datastore\n       has been changed by a management session.\n       The notification summarizes the edits that\n       have been detected.\n\n       The server MAY choose to also generate this\n       notification while loading a datastore during the\n       boot process for the device.\";\n    container changed-by {\n      status current;\n      description\n        \"Indicates the source of the change.\n         If caused by internal action, then the\n         empty leaf 'server' will be present.\n         If caused by a management session, then\n         the name, remote host address, and session ID\n         of the session that made the change will be reported.\";\n      choice server-or-user {\n        mandatory true;\n        status current;\n        case server {\n          status current;\n          leaf server {\n            type empty;\n            status current;\n            description\n              \"If present, the change was caused\n               by the server.\";\n          }\n        }\n        case by-user {\n          status current;\n          leaf username {\n            type string;\n            mandatory true;\n            status current;\n            description\n              \"Name of the user for the session.\";\n          }\n          leaf session-id {\n            type uint32;\n            mandatory true;\n            status current;\n            description\n              \"Identifier of the session.\n               A NETCONF session MUST be identified by a non-zero value.\n               A non-NETCONF session MAY be identified by the value zero.\";\n          }\n          leaf source-host {\n            type union {\n              type string {\n                pattern \"(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?\";\n              }\n              type string {\n                pattern \"((:|[0-9a-fA-F]{0,4}):)([0-9a-fA-F]{0,4}:){0,5}((([0-9a-fA-F]{0,4}:)?(:|[0-9a-fA-F]{0,4}))|(((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\\\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])))(%[A-Za-z0-9][A-Za-z0-9\\\\-\\\\._~/]*)?\";\n                pattern \"(([^:]+:){6}(([^:]+:[^:]+)|(.*\\\\..*)))|((([^:]+:)*[^:]+)?::(([^:]+:)*[^:]+)?)(%.+)?\";\n              }\n            }\n            status current;\n            description\n              \"Address of the remote host for the session.\";\n          }\n        }\n      }\n    }\n    leaf datastore {\n      type enumeration {\n        enum \"running\" {\n          value 0;\n          status current;\n          description\n            \"The <running> datastore has changed.\";\n        }\n        enum \"startup\" {\n          value 1;\n          status current;\n          description\n            \"The <startup> datastore has changed\";\n        }\n      }\n      default \"running\";\n      status current;\n      description\n        \"Indicates which configuration datastore has changed.\";\n    }\n    list edit {\n      min-elements 0;\n      max-elements 4294967295;\n      ordered-by user;\n      status current;\n      description\n        \"An edit record SHOULD be present for each distinct\n         edit operation that the server has detected on\n         the target datastore.  This list MAY be omitted\n         if the detailed edit operations are not known.\n         The server MAY report entries in this list for\n         changes not made by a NETCONF session (e.g., CLI).\";\n      leaf target {\n        type instance-identifier {\n          require-instance true;\n        }\n        status current;\n        description\n          \"Topmost node associated with the configuration change.\n           A server SHOULD set this object to the node within\n           the datastore that is being altered.  A server MAY\n           set this object to one of the ancestors of the actual\n           node that was changed, or omit this object, if the\n           exact node is not known.\";\n      }\n      leaf operation {\n        type enumeration {\n          enum \"merge\" {\n            value 0;\n            status current;\n            description\n              \"The configuration data identified by the\n               element containing this attribute is merged\n               with the configuration at the corresponding\n               level in the configuration datastore identified\n               by the target parameter.\";\n          }\n          enum \"replace\" {\n            value 1;\n            status current;\n            description\n              \"The configuration data identified by the element\n               containing this attribute replaces any related\n               configuration in the configuration datastore\n               identified by the target parameter.  If no such\n               configuration data exists in the configuration\n               datastore, it is created.  Unlike a\n               <copy-config> operation, which replaces the\n               entire target configuration, only the configuration\n               actually present in the config parameter is affected.\";\n          }\n          enum \"create\" {\n            value 2;\n            status current;\n            description\n              \"The configuration data identified by the element\n               containing this attribute is added to the\n               configuration if and only if the configuration\n               data does not already exist in the configuration\n               datastore.  If the configuration data exists, an\n               <rpc-error> element is returned with an\n               <error-tag> value of 'data-exists'.\";\n          }\n          enum \"delete\" {\n            value 3;\n            status current;\n            description\n              \"The configuration data identified by the element\n               containing this attribute is deleted from the\n               configuration if and only if the configuration\n               data currently exists in the configuration\n               datastore.  If the configuration data does not\n               exist, an <rpc-error> element is returned with\n               an <error-tag> value of 'data-missing'.\";\n          }\n          enum \"remove\" {\n            value 4;\n            status current;\n            description\n              \"The configuration data identified by the element\n               containing this attribute is deleted from the\n               configuration if the configuration\n               data currently exists in the configuration\n               datastore.  If the configuration data does not\n               exist, the 'remove' operation is silently ignored\n               by the server.\";\n          }\n        }\n        default \"merge\";\n        status current;\n        description\n          \"Type of edit operation performed.\n           A server MUST set this object to the NETCONF edit\n           operation performed on the target datastore.\";\n      }\n    }\n  }\n  notification netconf-capability-change {\n    status current;\n    description\n      \"Generated when the NETCONF server detects that\n       the server capabilities have changed.\n       Indicates which capabilities have been added, deleted,\n       and/or modified.  The manner in which a server\n       capability is changed is outside the scope of this\n       document.\";\n    container changed-by {\n      status current;\n      description\n        \"Indicates the source of the change.\n         If caused by internal action, then the\n         empty leaf 'server' will be present.\n         If caused by a management session, then\n         the name, remote host address, and session ID\n         of the session that made the change will be reported.\";\n      choice server-or-user {\n        mandatory true;\n        status current;\n        case server {\n          status current;\n          leaf server {\n            type empty;\n            status current;\n            description\n              \"If present, the change was caused\n               by the server.\";\n          }\n        }\n        case by-user {\n          status current;\n          leaf username {\n            type string;\n            mandatory true;\n            status current;\n            description\n              \"Name of the user for the session.\";\n          }\n          leaf session-id {\n            type uint32;\n            mandatory true;\n            status current;\n            description\n              \"Identifier of the session.\n               A NETCONF session MUST be identified by a non-zero value.\n               A non-NETCONF session MAY be identified by the value zero.\";\n          }\n          leaf source-host {\n            type union {\n              type string {\n                pattern \"(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?\";\n              }\n              type string {\n                pattern \"((:|[0-9a-fA-F]{0,4}):)([0-9a-fA-F]{0,4}:){0,5}((([0-9a-fA-F]{0,4}:)?(:|[0-9a-fA-F]{0,4}))|(((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\\\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])))(%[A-Za-z0-9][A-Za-z0-9\\\\-\\\\._~/]*)?\";\n                pattern \"(([^:]+:){6}(([^:]+:[^:]+)|(.*\\\\..*)))|((([^:]+:)*[^:]+)?::(([^:]+:)*[^:]+)?)(%.+)?\";\n              }\n            }\n            status current;\n            description\n              \"Address of the remote host for the session.\";\n          }\n        }\n      }\n    }\n    leaf-list added-capability {\n      type string {\n        pattern \"[a-z][a-z0-9+.-]*:.*\";\n      }\n      min-elements 0;\n      max-elements 4294967295;\n      ordered-by user;\n      status current;\n      description\n        \"List of capabilities that have just been added.\";\n    }\n    leaf-list deleted-capability {\n      type string {\n        pattern \"[a-z][a-z0-9+.-]*:.*\";\n      }\n      min-elements 0;\n      max-elements 4294967295;\n      ordered-by user;\n      status current;\n      description\n        \"List of capabilities that have just been deleted.\";\n    }\n    leaf-list modified-capability {\n      type string {\n        pattern \"[a-z][a-z0-9+.-]*:.*\";\n      }\n      min-elements 0;\n      max-elements 4294967295;\n      ordered-by user;\n      status current;\n      description\n        \"List of capabilities that have just been modified.\n         A capability is considered to be modified if the\n         base URI for the capability has not changed, but\n         one or more of the parameters encoded at the end of\n         the capability URI have changed.\n         The new modified value of the complete URI is returned.\";\n    }\n  }\n  notification netconf-session-start {\n    status current;\n    description\n      \"Generated when a NETCONF server detects that a\n       NETCONF session has started.  A server MAY generate\n       this event for non-NETCONF management sessions.\n       Indicates the identity of the user that started\n       the session.\";\n    leaf username {\n      type string;\n      mandatory true;\n      status current;\n      description\n        \"Name of the user for the session.\";\n    }\n    leaf session-id {\n      type uint32;\n      mandatory true;\n      status current;\n      description\n        \"Identifier of the session.\n         A NETCONF session MUST be identified by a non-zero value.\n         A non-NETCONF session MAY be identified by the value zero.\";\n    }\n    leaf source-host {\n      type union {\n        type string {\n          pattern \"(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?\";\n        }\n        type string {\n          pattern \"((:|[0-9a-fA-F]{0,4}):)([0-9a-fA-F]{0,4}:){0,5}((([0-9a-fA-F]{0,4}:)?(:|[0-9a-fA-F]{0,4}))|(((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\\\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])))(%[A-Za-z0-9][A-Za-z0-9\\\\-\\\\._~/]*)?\";\n          pattern \"(([^:]+:){6}(([^:]+:[^:]+)|(.*\\\\..*)))|((([^:]+:)*[^:]+)?::(([^:]+:)*[^:]+)?)(%.+)?\";\n        }\n      }\n      status current;\n      description\n        \"Address of the remote host for the session.\";\n    }\n  }\n  notification netconf-session-end {\n    status current;\n    description\n      \"Generated when a NETCONF server detects that a\n       NETCONF session has terminated.\n       A server MAY optionally generate this event for\n       non-NETCONF management sessions.  Indicates the\n       identity of the user that owned the session,\n       and why the session was terminated.\";\n    leaf username {\n      type string;\n      mandatory true;\n      status current;\n      description\n        \"Name of the user for the session.\";\n    }\n    leaf session-id {\n      type uint32;\n      mandatory true;\n      status current;\n      description\n        \"Identifier of the session.\n         A NETCONF session MUST be identified by a non-zero value.\n         A non-NETCONF session MAY be identified by the value zero.\";\n    }\n    leaf source-host {\n      type union {\n        type string {\n          pattern \"(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?\";\n        }\n        type string {\n          pattern \"((:|[0-9a-fA-F]{0,4}):)([0-9a-fA-F]{0,4}:){0,5}((([0-9a-fA-F]{0,4}:)?(:|[0-9a-fA-F]{0,4}))|(((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\\\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])))(%[A-Za-z0-9][A-Za-z0-9\\\\-\\\\._~/]*)?\";\n          pattern \"(([^:]+:){6}(([^:]+:[^:]+)|(.*\\\\..*)))|((([^:]+:)*[^:]+)?::(([^:]+:)*[^:]+)?)(%.+)?\";\n        }\n      }\n      status current;\n      description\n        \"Address of the remote host for the session.\";\n    }\n    leaf killed-by {\n      when \"../termination-reason = 'killed'\";\n      type uint32 {\n        range \"1..4294967295\";\n      }\n      status current;\n      description\n        \"The ID of the session that directly caused this session\n         to be abnormally terminated.  If this session was abnormally\n         terminated by a non-NETCONF session unknown to the server,\n         then this leaf will not be present.\";\n    }\n    leaf termination-reason {\n      type enumeration {\n        enum \"closed\" {\n          value 0;\n          status current;\n          description\n            \"The session was terminated by the client in normal\n             fashion, e.g., by the NETCONF <close-session>\n             protocol operation.\";\n        }\n        enum \"killed\" {\n          value 1;\n          status current;\n          description\n            \"The session was terminated in abnormal\n             fashion, e.g., by the NETCONF <kill-session>\n             protocol operation.\";\n        }\n        enum \"dropped\" {\n          value 2;\n          status current;\n          description\n            \"The session was terminated because the transport layer\n             connection was unexpectedly closed.\";\n        }\n        enum \"timeout\" {\n          value 3;\n          status current;\n          description\n            \"The session was terminated because of inactivity,\n             e.g., waiting for the <hello> message or <rpc>\n             messages.\";\n        }\n        enum \"bad-hello\" {\n          value 4;\n          status current;\n          description\n            \"The client's <hello> message was invalid.\";\n        }\n        enum \"other\" {\n          value 5;\n          status current;\n          description\n            \"The session was terminated for some other reason.\";\n        }\n      }\n      mandatory true;\n      status current;\n      description\n        \"Reason the session was terminated.\";\n    }\n  }\n  notification netconf-confirmed-commit {\n    status current;\n    description\n      \"Generated when a NETCONF server detects that a\n       confirmed-commit event has occurred.  Indicates the event\n       and the current state of the confirmed-commit procedure\n       in progress.\";\n    reference\n      \"RFC 6241, Section 8.4\";\n    leaf username {\n      when \"../confirm-event != 'timeout'\";\n      type string;\n      mandatory true;\n      status current;\n      description\n        \"Name of the user for the session.\";\n    }\n    leaf session-id {\n      when \"../confirm-event != 'timeout'\";\n      type uint32;\n      mandatory true;\n      status current;\n      description\n        \"Identifier of the session.\n         A NETCONF session MUST be identified by a non-zero value.\n         A non-NETCONF session MAY be identified by the value zero.\";\n    }\n    leaf source-host {\n      when \"../confirm-event != 'timeout'\";\n      type union {\n        type string {\n          pattern \"(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?\";\n        }\n        type string {\n          pattern \"((:|[0-9a-fA-F]{0,4}):)([0-9a-fA-F]{0,4}:){0,5}((([0-9a-fA-F]{0,4}:)?(:|[0-9a-fA-F]{0,4}))|(((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\\\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])))(%[A-Za-z0-9][A-Za-z0-9\\\\-\\\\._~/]*)?\";\n          pattern \"(([^:]+:){6}(([^:]+:[^:]+)|(.*\\\\..*)))|((([^:]+:)*[^:]+)?::(([^:]+:)*[^:]+)?)(%.+)?\";\n        }\n      }\n      status current;\n      description\n        \"Address of the remote host for the session.\";\n    }\n    leaf confirm-event {\n      type enumeration {\n        enum \"start\" {\n          value 0;\n          status current;\n          description\n            \"The confirmed-commit procedure has started.\";\n        }\n        enum \"cancel\" {\n          value 1;\n          status current;\n          description\n            \"The confirmed-commit procedure has been canceled,\n             e.g., due to the session being terminated, or an\n             explicit <cancel-commit> operation.\";\n        }\n        enum \"timeout\" {\n          value 2;\n          status current;\n          description\n            \"The confirmed-commit procedure has been canceled\n             due to the confirm-timeout interval expiring.\n             The common session parameters will not be present\n             in this sub-mode.\";\n        }\n        enum \"extend\" {\n          value 3;\n          status current;\n          description\n            \"The confirmed-commit timeout has been extended,\n             e.g., by a new <confirmed-commit> operation.\";\n        }\n        enum \"complete\" {\n          value 4;\n          status current;\n          description\n            \"The confirmed-commit procedure has been completed.\";\n        }\n      }\n      mandatory true;\n      status current;\n      description\n        \"Indicates the event that caused the notification.\";\n    }\n    leaf timeout {\n      when \"../confirm-event = 'start' or ../confirm-event = 'extend'\";\n      type uint32;\n      units \"seconds\";\n      status current;\n      description\n        \"The configured timeout value if the event type\n         is 'start' or 'extend'.  This value represents\n         the approximate number of seconds from the event\n         time when the 'timeout' event might occur.\";\n    }\n  }\n}\n",
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Schema node \"confirm-event\" for parent \"<root>\" not found; in expr \"../confirm-event\" with context node \"/ietf-netconf-notifications:netconf-confirmed-commit\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Schema node \"confirm-event\" for parent \"<root>\" not found; in expr \"../confirm-event\" with context node \"/ietf-netconf-notifications:netconf-confirmed-commit\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Schema node \"confirm-event\" for parent \"<root>\" not found; in expr \"../confirm-event\" with context node \"/ietf-netconf-notifications:netconf-confirmed-commit\".",
+          "phase": "compile",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "features": [],
+      "identities": [],
+      "name": "ietf-netconf-notifications",
+      "revision": "2012-02-06",
+      "schema_tree": [
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "notif",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-config-change",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-config-change/changed-by",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "choice",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-config-change/changed-by/server-or-user",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-config-change/changed-by/server-or-user/server",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-config-change/changed-by/server-or-user/server/server",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "empty",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-config-change/changed-by/server-or-user/by-user",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-config-change/changed-by/server-or-user/by-user/username",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-config-change/changed-by/server-or-user/by-user/session-id",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "session-id-or-zero-type"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-config-change/changed-by/server-or-user/by-user/source-host",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "ip-address"
+            ],
+            "union": [
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": [
+                  {
+                    "expr": "(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?",
+                    "invert": false
+                  }
+                ],
+                "range": null,
+                "typedefs": [
+                  "ipv4-address"
+                ],
+                "union": null
+              },
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": [
+                  {
+                    "expr": "((:|[0-9a-fA-F]{0,4}):)([0-9a-fA-F]{0,4}:){0,5}((([0-9a-fA-F]{0,4}:)?(:|[0-9a-fA-F]{0,4}))|(((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])))(%[A-Za-z0-9][A-Za-z0-9\\-\\._~/]*)?",
+                    "invert": false
+                  },
+                  {
+                    "expr": "(([^:]+:){6}(([^:]+:[^:]+)|(.*\\..*)))|((([^:]+:)*[^:]+)?::(([^:]+:)*[^:]+)?)(%.+)?",
+                    "invert": false
+                  }
+                ],
+                "range": null,
+                "typedefs": [
+                  "ipv6-address"
+                ],
+                "union": null
+              }
+            ]
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": [
+            "running"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-config-change/datastore",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "running",
+                "value": 0
+              },
+              {
+                "name": "startup",
+                "value": 1
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": [],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "user",
+          "path": "/ietf-netconf-notifications:netconf-config-change/edit",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-config-change/edit/target",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "instance-identifier",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": [
+            "merge"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-config-change/edit/operation",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "merge",
+                "value": 0
+              },
+              {
+                "name": "replace",
+                "value": 1
+              },
+              {
+                "name": "create",
+                "value": 2
+              },
+              {
+                "name": "delete",
+                "value": 3
+              },
+              {
+                "name": "remove",
+                "value": 4
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "edit-operation-type"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "notif",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-capability-change",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-capability-change/changed-by",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "choice",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-capability-change/changed-by/server-or-user",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-capability-change/changed-by/server-or-user/server",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-capability-change/changed-by/server-or-user/server/server",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "empty",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-capability-change/changed-by/server-or-user/by-user",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-capability-change/changed-by/server-or-user/by-user/username",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-capability-change/changed-by/server-or-user/by-user/session-id",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "session-id-or-zero-type"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-capability-change/changed-by/server-or-user/by-user/source-host",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "ip-address"
+            ],
+            "union": [
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": [
+                  {
+                    "expr": "(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?",
+                    "invert": false
+                  }
+                ],
+                "range": null,
+                "typedefs": [
+                  "ipv4-address"
+                ],
+                "union": null
+              },
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": [
+                  {
+                    "expr": "((:|[0-9a-fA-F]{0,4}):)([0-9a-fA-F]{0,4}:){0,5}((([0-9a-fA-F]{0,4}:)?(:|[0-9a-fA-F]{0,4}))|(((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])))(%[A-Za-z0-9][A-Za-z0-9\\-\\._~/]*)?",
+                    "invert": false
+                  },
+                  {
+                    "expr": "(([^:]+:){6}(([^:]+:[^:]+)|(.*\\..*)))|((([^:]+:)*[^:]+)?::(([^:]+:)*[^:]+)?)(%.+)?",
+                    "invert": false
+                  }
+                ],
+                "range": null,
+                "typedefs": [
+                  "ipv6-address"
+                ],
+                "union": null
+              }
+            ]
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "user",
+          "path": "/ietf-netconf-notifications:netconf-capability-change/added-capability",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[a-z][a-z0-9+.-]*:.*",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "uri"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "user",
+          "path": "/ietf-netconf-notifications:netconf-capability-change/deleted-capability",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[a-z][a-z0-9+.-]*:.*",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "uri"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "user",
+          "path": "/ietf-netconf-notifications:netconf-capability-change/modified-capability",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[a-z][a-z0-9+.-]*:.*",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "uri"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "notif",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-session-start",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-session-start/username",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-session-start/session-id",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "session-id-or-zero-type"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-session-start/source-host",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "ip-address"
+            ],
+            "union": [
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": [
+                  {
+                    "expr": "(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?",
+                    "invert": false
+                  }
+                ],
+                "range": null,
+                "typedefs": [
+                  "ipv4-address"
+                ],
+                "union": null
+              },
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": [
+                  {
+                    "expr": "((:|[0-9a-fA-F]{0,4}):)([0-9a-fA-F]{0,4}:){0,5}((([0-9a-fA-F]{0,4}:)?(:|[0-9a-fA-F]{0,4}))|(((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])))(%[A-Za-z0-9][A-Za-z0-9\\-\\._~/]*)?",
+                    "invert": false
+                  },
+                  {
+                    "expr": "(([^:]+:){6}(([^:]+:[^:]+)|(.*\\..*)))|((([^:]+:)*[^:]+)?::(([^:]+:)*[^:]+)?)(%.+)?",
+                    "invert": false
+                  }
+                ],
+                "range": null,
+                "typedefs": [
+                  "ipv6-address"
+                ],
+                "union": null
+              }
+            ]
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "notif",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-session-end",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-session-end/username",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-session-end/session-id",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "session-id-or-zero-type"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-session-end/source-host",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "ip-address"
+            ],
+            "union": [
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": [
+                  {
+                    "expr": "(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?",
+                    "invert": false
+                  }
+                ],
+                "range": null,
+                "typedefs": [
+                  "ipv4-address"
+                ],
+                "union": null
+              },
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": [
+                  {
+                    "expr": "((:|[0-9a-fA-F]{0,4}):)([0-9a-fA-F]{0,4}:){0,5}((([0-9a-fA-F]{0,4}:)?(:|[0-9a-fA-F]{0,4}))|(((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])))(%[A-Za-z0-9][A-Za-z0-9\\-\\._~/]*)?",
+                    "invert": false
+                  },
+                  {
+                    "expr": "(([^:]+:){6}(([^:]+:[^:]+)|(.*\\..*)))|((([^:]+:)*[^:]+)?::(([^:]+:)*[^:]+)?)(%.+)?",
+                    "invert": false
+                  }
+                ],
+                "range": null,
+                "typedefs": [
+                  "ipv6-address"
+                ],
+                "union": null
+              }
+            ]
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-session-end/killed-by",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "1..4294967295",
+            "typedefs": [
+              "session-id-type"
+            ],
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/ietf-netconf-notifications:netconf-session-end/killed-by",
+              "expr": "../termination-reason = 'killed'",
+              "module": "ietf-netconf-notifications"
+            }
+          ]
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-session-end/termination-reason",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "closed",
+                "value": 0
+              },
+              {
+                "name": "killed",
+                "value": 1
+              },
+              {
+                "name": "dropped",
+                "value": 2
+              },
+              {
+                "name": "timeout",
+                "value": 3
+              },
+              {
+                "name": "bad-hello",
+                "value": 4
+              },
+              {
+                "name": "other",
+                "value": 5
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "notif",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-confirmed-commit",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-confirmed-commit/username",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/ietf-netconf-notifications:netconf-confirmed-commit",
+              "expr": "../confirm-event != 'timeout'",
+              "module": "ietf-netconf-notifications"
+            }
+          ]
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-confirmed-commit/session-id",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "session-id-or-zero-type"
+            ],
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/ietf-netconf-notifications:netconf-confirmed-commit",
+              "expr": "../confirm-event != 'timeout'",
+              "module": "ietf-netconf-notifications"
+            }
+          ]
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-confirmed-commit/source-host",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "ip-address"
+            ],
+            "union": [
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": [
+                  {
+                    "expr": "(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?",
+                    "invert": false
+                  }
+                ],
+                "range": null,
+                "typedefs": [
+                  "ipv4-address"
+                ],
+                "union": null
+              },
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": [
+                  {
+                    "expr": "((:|[0-9a-fA-F]{0,4}):)([0-9a-fA-F]{0,4}:){0,5}((([0-9a-fA-F]{0,4}:)?(:|[0-9a-fA-F]{0,4}))|(((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])))(%[A-Za-z0-9][A-Za-z0-9\\-\\._~/]*)?",
+                    "invert": false
+                  },
+                  {
+                    "expr": "(([^:]+:){6}(([^:]+:[^:]+)|(.*\\..*)))|((([^:]+:)*[^:]+)?::(([^:]+:)*[^:]+)?)(%.+)?",
+                    "invert": false
+                  }
+                ],
+                "range": null,
+                "typedefs": [
+                  "ipv6-address"
+                ],
+                "union": null
+              }
+            ]
+          },
+          "when": [
+            {
+              "context": "/ietf-netconf-notifications:netconf-confirmed-commit",
+              "expr": "../confirm-event != 'timeout'",
+              "module": "ietf-netconf-notifications"
+            }
+          ]
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-confirmed-commit/confirm-event",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "start",
+                "value": 0
+              },
+              {
+                "name": "cancel",
+                "value": 1
+              },
+              {
+                "name": "timeout",
+                "value": 2
+              },
+              {
+                "name": "extend",
+                "value": 3
+              },
+              {
+                "name": "complete",
+                "value": 4
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-notifications",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-notifications:netconf-confirmed-commit/timeout",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": [
+            {
+              "context": "/ietf-netconf-notifications:netconf-confirmed-commit/timeout",
+              "expr": "../confirm-event = 'start' or ../confirm-event = 'extend'",
+              "module": "ietf-netconf-notifications"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

@@ -1,0 +1,1237 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ietf-netconf-acm {\n  namespace \"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\";\n  prefix nacm;\n\n  organization\n    \"IETF NETCONF (Network Configuration) Working Group\";\n  contact\n    \"WG Web:   <https://datatracker.ietf.org/wg/netconf/>\n     WG List:  <mailto:netconf@ietf.org>\n\n     Author:   Andy Bierman\n               <mailto:andy@yumaworks.com>\n\n     Author:   Martin Bjorklund\n               <mailto:mbj@tail-f.com>\";\n  description\n    \"Network Configuration Access Control Model.\n\n     Copyright (c) 2012 - 2018 IETF Trust and the persons\n     identified as authors of the code.  All rights reserved.\n\n     Redistribution and use in source and binary forms, with or\n     without modification, is permitted pursuant to, and subject\n     to the license terms contained in, the Simplified BSD\n     License set forth in Section 4.c of the IETF Trust's\n     Legal Provisions Relating to IETF Documents\n     (https://trustee.ietf.org/license-info).\n\n     This version of this YANG module is part of RFC 8341; see\n     the RFC itself for full legal notices.\";\n\n  revision 2018-02-14;\n\n  container nacm {\n    ietf-netconf-acm:default-deny-all;\n    config true;\n    status current;\n    description\n      \"Parameters for NETCONF access control model.\";\n    leaf enable-nacm {\n      ietf-netconf-acm:default-deny-all;\n      type boolean;\n      default \"true\";\n      config true;\n      status current;\n      description\n        \"Enables or disables all NETCONF access control\n         enforcement.  If 'true', then enforcement\n         is enabled.  If 'false', then enforcement\n         is disabled.\";\n    }\n    leaf read-default {\n      ietf-netconf-acm:default-deny-all;\n      type enumeration {\n        enum \"permit\" {\n          value 0;\n          status current;\n          description\n            \"Requested action is permitted.\";\n        }\n        enum \"deny\" {\n          value 1;\n          status current;\n          description\n            \"Requested action is denied.\";\n        }\n      }\n      default \"permit\";\n      config true;\n      status current;\n      description\n        \"Controls whether read access is granted if\n         no appropriate rule is found for a\n         particular read request.\";\n    }\n    leaf write-default {\n      ietf-netconf-acm:default-deny-all;\n      type enumeration {\n        enum \"permit\" {\n          value 0;\n          status current;\n          description\n            \"Requested action is permitted.\";\n        }\n        enum \"deny\" {\n          value 1;\n          status current;\n          description\n            \"Requested action is denied.\";\n        }\n      }\n      default \"deny\";\n      config true;\n      status current;\n      description\n        \"Controls whether create, update, or delete access\n         is granted if no appropriate rule is found for a\n         particular write request.\";\n    }\n    leaf exec-default {\n      ietf-netconf-acm:default-deny-all;\n      type enumeration {\n        enum \"permit\" {\n          value 0;\n          status current;\n          description\n            \"Requested action is permitted.\";\n        }\n        enum \"deny\" {\n          value 1;\n          status current;\n          description\n            \"Requested action is denied.\";\n        }\n      }\n      default \"permit\";\n      config true;\n      status current;\n      description\n        \"Controls whether exec access is granted if no appropriate\n         rule is found for a particular protocol operation request.\";\n    }\n    leaf enable-external-groups {\n      ietf-netconf-acm:default-deny-all;\n      type boolean;\n      default \"true\";\n      config true;\n      status current;\n      description\n        \"Controls whether the server uses the groups reported by the\n         NETCONF transport layer when it assigns the user to a set of\n         NACM groups.  If this leaf has the value 'false', any group\n         names reported by the transport layer are ignored by the\n         server.\";\n    }\n    leaf denied-operations {\n      ietf-netconf-acm:default-deny-all;\n      type uint32;\n      config false;\n      mandatory true;\n      status current;\n      description\n        \"Number of times since the server last restarted that a\n         protocol operation request was denied.\";\n    }\n    leaf denied-data-writes {\n      ietf-netconf-acm:default-deny-all;\n      type uint32;\n      config false;\n      mandatory true;\n      status current;\n      description\n        \"Number of times since the server last restarted that a\n         protocol operation request to alter\n         a configuration datastore was denied.\";\n    }\n    leaf denied-notifications {\n      ietf-netconf-acm:default-deny-all;\n      type uint32;\n      config false;\n      mandatory true;\n      status current;\n      description\n        \"Number of times since the server last restarted that\n         a notification was dropped for a subscription because\n         access to the event type was denied.\";\n    }\n    container groups {\n      ietf-netconf-acm:default-deny-all;\n      config true;\n      status current;\n      description\n        \"NETCONF access control groups.\";\n      list group {\n        ietf-netconf-acm:default-deny-all;\n        key \"name\";\n        config true;\n        min-elements 0;\n        max-elements 4294967295;\n        ordered-by system;\n        status current;\n        description\n          \"One NACM group entry.  This list will only contain\n           configured entries, not any entries learned from\n           any transport protocols.\";\n        leaf name {\n          ietf-netconf-acm:default-deny-all;\n          type string {\n            length \"1..18446744073709551615\";\n            pattern \"[^\\\\*].*\";\n          }\n          config true;\n          status current;\n          description\n            \"Group name associated with this entry.\";\n        }\n        leaf-list user-name {\n          ietf-netconf-acm:default-deny-all;\n          type string {\n            length \"1..18446744073709551615\";\n          }\n          config true;\n          min-elements 0;\n          max-elements 4294967295;\n          ordered-by system;\n          status current;\n          description\n            \"Each entry identifies the username of\n             a member of the group associated with\n             this entry.\";\n        }\n      }\n    }\n    list rule-list {\n      ietf-netconf-acm:default-deny-all;\n      key \"name\";\n      config true;\n      min-elements 0;\n      max-elements 4294967295;\n      ordered-by user;\n      status current;\n      description\n        \"An ordered collection of access control rules.\";\n      leaf name {\n        ietf-netconf-acm:default-deny-all;\n        type string {\n          length \"1..18446744073709551615\";\n        }\n        config true;\n        status current;\n        description\n          \"Arbitrary name assigned to the rule-list.\";\n      }\n      leaf-list group {\n        ietf-netconf-acm:default-deny-all;\n        type union {\n          type string {\n            pattern \"\\\\*\";\n          }\n          type string {\n            length \"1..18446744073709551615\";\n            pattern \"[^\\\\*].*\";\n          }\n        }\n        config true;\n        min-elements 0;\n        max-elements 4294967295;\n        ordered-by system;\n        status current;\n        description\n          \"List of administrative groups that will be\n           assigned the associated access rights\n           defined by the 'rule' list.\n\n           The string '*' indicates that all groups apply to the\n           entry.\";\n      }\n      list rule {\n        ietf-netconf-acm:default-deny-all;\n        key \"name\";\n        config true;\n        min-elements 0;\n        max-elements 4294967295;\n        ordered-by user;\n        status current;\n        description\n          \"One access control rule.\n\n           Rules are processed in user-defined order until a match is\n           found.  A rule matches if 'module-name', 'rule-type', and\n           'access-operations' match the request.  If a rule\n           matches, the 'action' leaf determines whether or not\n           access is granted.\";\n        leaf name {\n          ietf-netconf-acm:default-deny-all;\n          type string {\n            length \"1..18446744073709551615\";\n          }\n          config true;\n          status current;\n          description\n            \"Arbitrary name assigned to the rule.\";\n        }\n        leaf module-name {\n          ietf-netconf-acm:default-deny-all;\n          type union {\n            type string {\n              pattern \"\\\\*\";\n            }\n            type string;\n          }\n          default \"*\";\n          config true;\n          status current;\n          description\n            \"Name of the module associated with this rule.\n\n             This leaf matches if it has the value '*' or if the\n             object being accessed is defined in the module with the\n             specified module name.\";\n        }\n        choice rule-type {\n          ietf-netconf-acm:default-deny-all;\n          config true;\n          status current;\n          description\n            \"This choice matches if all leafs present in the rule\n             match the request.  If no leafs are present, the\n             choice matches all requests.\";\n          case protocol-operation {\n            ietf-netconf-acm:default-deny-all;\n            config true;\n            status current;\n            leaf rpc-name {\n              ietf-netconf-acm:default-deny-all;\n              type union {\n                type string {\n                  pattern \"\\\\*\";\n                }\n                type string;\n              }\n              config true;\n              status current;\n              description\n                \"This leaf matches if it has the value '*' or if\n                 its value equals the requested protocol operation\n                 name.\";\n            }\n          }\n          case notification {\n            ietf-netconf-acm:default-deny-all;\n            config true;\n            status current;\n            leaf notification-name {\n              ietf-netconf-acm:default-deny-all;\n              type union {\n                type string {\n                  pattern \"\\\\*\";\n                }\n                type string;\n              }\n              config true;\n              status current;\n              description\n                \"This leaf matches if it has the value '*' or if its\n                 value equals the requested notification name.\";\n            }\n          }\n          case data-node {\n            ietf-netconf-acm:default-deny-all;\n            config true;\n            status current;\n            leaf path {\n              ietf-netconf-acm:default-deny-all;\n              type string;\n              config true;\n              mandatory true;\n              status current;\n              description\n                \"Data node instance-identifier associated with the\n                 data node, action, or notification controlled by\n                 this rule.\n\n                 Configuration data or state data\n                 instance-identifiers start with a top-level\n                 data node.  A complete instance-identifier is\n                 required for this type of path value.\n\n                 The special value '/' refers to all possible\n                 datastore contents.\";\n            }\n          }\n        }\n        leaf access-operations {\n          ietf-netconf-acm:default-deny-all;\n          type union {\n            type string {\n              pattern \"\\\\*\";\n            }\n            type bits {\n              bit \"create\" {\n                position 0;\n                status current;\n                description\n                  \"Any protocol operation that creates a\n                   new data node.\";\n              }\n              bit \"read\" {\n                position 1;\n                status current;\n                description\n                  \"Any protocol operation or notification that\n                   returns the value of a data node.\";\n              }\n              bit \"update\" {\n                position 2;\n                status current;\n                description\n                  \"Any protocol operation that alters an existing\n                   data node.\";\n              }\n              bit \"delete\" {\n                position 3;\n                status current;\n                description\n                  \"Any protocol operation that removes a data node.\";\n              }\n              bit \"exec\" {\n                position 4;\n                status current;\n                description\n                  \"Execution access to the specified protocol operation.\";\n              }\n            }\n          }\n          default \"*\";\n          config true;\n          status current;\n          description\n            \"Access operations associated with this rule.\n\n             This leaf matches if it has the value '*' or if the\n             bit corresponding to the requested operation is set.\";\n        }\n        leaf action {\n          ietf-netconf-acm:default-deny-all;\n          type enumeration {\n            enum \"permit\" {\n              value 0;\n              status current;\n              description\n                \"Requested action is permitted.\";\n            }\n            enum \"deny\" {\n              value 1;\n              status current;\n              description\n                \"Requested action is denied.\";\n            }\n          }\n          config true;\n          mandatory true;\n          status current;\n          description\n            \"The access control action associated with the\n             rule.  If a rule has been determined to match a\n             particular request, then this object is used\n             to determine whether to permit or deny the\n             request.\";\n        }\n        leaf comment {\n          ietf-netconf-acm:default-deny-all;\n          type string;\n          config true;\n          status current;\n          description\n            \"A textual description of the access rule.\";\n        }\n      }\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "ietf-netconf-acm",
+      "revision": "2018-02-14",
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-netconf-acm:nacm",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "true"
+          ],
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-acm:nacm/enable-nacm",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "boolean",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "permit"
+          ],
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-acm:nacm/read-default",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "permit",
+                "value": 0
+              },
+              {
+                "name": "deny",
+                "value": 1
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "action-type"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "deny"
+          ],
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-acm:nacm/write-default",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "permit",
+                "value": 0
+              },
+              {
+                "name": "deny",
+                "value": 1
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "action-type"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "permit"
+          ],
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-acm:nacm/exec-default",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "permit",
+                "value": 0
+              },
+              {
+                "name": "deny",
+                "value": 1
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "action-type"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "true"
+          ],
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-acm:nacm/enable-external-groups",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "boolean",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-acm:nacm/denied-operations",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter32"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-acm:nacm/denied-data-writes",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter32"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-acm:nacm/denied-notifications",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "counter32"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-netconf-acm:nacm/groups",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": [
+            "name"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "system",
+          "path": "/ietf-netconf-acm:nacm/groups/group",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-acm:nacm/groups/group/name",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": "1..18446744073709551615",
+            "patterns": [
+              {
+                "expr": "[^\\*].*",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "group-name-type"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "system",
+          "path": "/ietf-netconf-acm:nacm/groups/group/user-name",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": "1..18446744073709551615",
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "user-name-type"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": [
+            "name"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "user",
+          "path": "/ietf-netconf-acm:nacm/rule-list",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-acm:nacm/rule-list/name",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": "1..18446744073709551615",
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "system",
+          "path": "/ietf-netconf-acm:nacm/rule-list/group",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": [
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": [
+                  {
+                    "expr": "\\*",
+                    "invert": false
+                  }
+                ],
+                "range": null,
+                "typedefs": [
+                  "matchall-string-type"
+                ],
+                "union": null
+              },
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": "1..18446744073709551615",
+                "patterns": [
+                  {
+                    "expr": "[^\\*].*",
+                    "invert": false
+                  }
+                ],
+                "range": null,
+                "typedefs": [
+                  "group-name-type"
+                ],
+                "union": null
+              }
+            ]
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": [
+            "name"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "user",
+          "path": "/ietf-netconf-acm:nacm/rule-list/rule",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-acm:nacm/rule-list/rule/name",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": "1..18446744073709551615",
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "*"
+          ],
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-acm:nacm/rule-list/rule/module-name",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": [
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": [
+                  {
+                    "expr": "\\*",
+                    "invert": false
+                  }
+                ],
+                "range": null,
+                "typedefs": [
+                  "matchall-string-type"
+                ],
+                "union": null
+              },
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              }
+            ]
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "choice",
+          "ordered_by": null,
+          "path": "/ietf-netconf-acm:nacm/rule-list/rule/rule-type",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/ietf-netconf-acm:nacm/rule-list/rule/rule-type/protocol-operation",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-acm:nacm/rule-list/rule/rule-type/protocol-operation/rpc-name",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": [
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": [
+                  {
+                    "expr": "\\*",
+                    "invert": false
+                  }
+                ],
+                "range": null,
+                "typedefs": [
+                  "matchall-string-type"
+                ],
+                "union": null
+              },
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              }
+            ]
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/ietf-netconf-acm:nacm/rule-list/rule/rule-type/notification",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-acm:nacm/rule-list/rule/rule-type/notification/notification-name",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": [
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": [
+                  {
+                    "expr": "\\*",
+                    "invert": false
+                  }
+                ],
+                "range": null,
+                "typedefs": [
+                  "matchall-string-type"
+                ],
+                "union": null
+              },
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              }
+            ]
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/ietf-netconf-acm:nacm/rule-list/rule/rule-type/data-node",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-acm:nacm/rule-list/rule/rule-type/data-node/path",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "node-instance-identifier"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "*"
+          ],
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-acm:nacm/rule-list/rule/access-operations",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": [
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": [
+                  {
+                    "expr": "\\*",
+                    "invert": false
+                  }
+                ],
+                "range": null,
+                "typedefs": [
+                  "matchall-string-type"
+                ],
+                "union": null
+              },
+              {
+                "base": "bits",
+                "bases": null,
+                "bits": [
+                  {
+                    "name": "create",
+                    "position": 0
+                  },
+                  {
+                    "name": "read",
+                    "position": 1
+                  },
+                  {
+                    "name": "update",
+                    "position": 2
+                  },
+                  {
+                    "name": "delete",
+                    "position": 3
+                  },
+                  {
+                    "name": "exec",
+                    "position": 4
+                  }
+                ],
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": [
+                  "access-operations-type"
+                ],
+                "union": null
+              }
+            ]
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-acm:nacm/rule-list/rule/action",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "permit",
+                "value": 0
+              },
+              {
+                "name": "deny",
+                "value": 1
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "action-type"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-netconf-acm",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-netconf-acm:nacm/rule-list/rule/comment",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

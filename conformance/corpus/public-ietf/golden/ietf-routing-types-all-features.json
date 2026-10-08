@@ -1,0 +1,90 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ietf-routing-types {\n  namespace \"urn:ietf:params:xml:ns:yang:ietf-routing-types\";\n  prefix rt-types;\n\n  organization\n    \"IETF RTGWG - Routing Area Working Group\";\n  contact\n    \"WG Web:   <https://datatracker.ietf.org/wg/rtgwg/>\n     WG List:  <mailto:rtgwg@ietf.org>\n\n     Editors:  Xufeng Liu\n               <mailto:Xufeng_Liu@jabail.com>\n               Yingzhen Qu\n               <mailto:yingzhen.qu@huawei.com>\n               Acee Lindem\n               <mailto:acee@cisco.com>\n               Christian Hopps\n               <mailto:chopps@chopps.org>\n               Lou Berger\n               <mailto:lberger@labn.com>\";\n  description\n    \"This module contains a collection of YANG data types\n     considered generally useful for routing protocols.\n\n     Copyright (c) 2017 IETF Trust and the persons\n     identified as authors of the code.  All rights reserved.\n\n     Redistribution and use in source and binary forms, with or\n     without modification, is permitted pursuant to, and subject\n     to the license terms contained in, the Simplified BSD License\n     set forth in Section 4.c of the IETF Trust's Legal Provisions\n     Relating to IETF Documents\n     (https://trustee.ietf.org/license-info).\n\n     This version of this YANG module is part of RFC 8294; see\n     the RFC itself for full legal notices.\";\n\n  revision 2017-12-04;\n\n  identity mpls-label-special-purpose-value {\n    derived ipv4-explicit-null-label;\n    derived router-alert-label;\n    derived ipv6-explicit-null-label;\n    derived implicit-null-label;\n    derived entropy-label-indicator;\n    derived gal-label;\n    derived oam-alert-label;\n    derived extension-label;\n    description\n      \"Base identity for deriving identities describing\n       special-purpose Multiprotocol Label Switching (MPLS) label\n       values.\";\n    reference\n      \"RFC 7274: Allocating and Retiring Special-Purpose MPLS\n       Labels.\";\n  }\n\n  identity ipv4-explicit-null-label {\n    description\n      \"This identity represents the IPv4 Explicit NULL Label.\";\n    reference\n      \"RFC 3032: MPLS Label Stack Encoding.  Section 2.1.\";\n  }\n\n  identity router-alert-label {\n    description\n      \"This identity represents the Router Alert Label.\";\n    reference\n      \"RFC 3032: MPLS Label Stack Encoding.  Section 2.1.\";\n  }\n\n  identity ipv6-explicit-null-label {\n    description\n      \"This identity represents the IPv6 Explicit NULL Label.\";\n    reference\n      \"RFC 3032: MPLS Label Stack Encoding.  Section 2.1.\";\n  }\n\n  identity implicit-null-label {\n    description\n      \"This identity represents the Implicit NULL Label.\";\n    reference\n      \"RFC 3032: MPLS Label Stack Encoding.  Section 2.1.\";\n  }\n\n  identity entropy-label-indicator {\n    description\n      \"This identity represents the Entropy Label Indicator.\";\n    reference\n      \"RFC 6790: The Use of Entropy Labels in MPLS Forwarding.\n       Sections 3 and 10.1.\";\n  }\n\n  identity gal-label {\n    description\n      \"This identity represents the Generic Associated Channel\n       (G-ACh) Label (GAL).\";\n    reference\n      \"RFC 5586: MPLS Generic Associated Channel.\n       Sections 4 and 10.\";\n  }\n\n  identity oam-alert-label {\n    description\n      \"This identity represents the OAM Alert Label.\";\n    reference\n      \"RFC 3429: Assignment of the 'OAM Alert Label' for\n       Multiprotocol Label Switching Architecture (MPLS)\n       Operation and Maintenance (OAM) Functions.\n       Sections 3 and 6.\";\n  }\n\n  identity extension-label {\n    description\n      \"This identity represents the Extension Label.\";\n    reference\n      \"RFC 7274: Allocating and Retiring Special-Purpose MPLS\n       Labels.  Sections 3.1 and 5.\";\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [
+        {
+          "bases": [],
+          "derived": [
+            "ietf-routing-types:ipv4-explicit-null-label",
+            "ietf-routing-types:router-alert-label",
+            "ietf-routing-types:ipv6-explicit-null-label",
+            "ietf-routing-types:implicit-null-label",
+            "ietf-routing-types:entropy-label-indicator",
+            "ietf-routing-types:gal-label",
+            "ietf-routing-types:oam-alert-label",
+            "ietf-routing-types:extension-label"
+          ],
+          "name": "ietf-routing-types:mpls-label-special-purpose-value"
+        },
+        {
+          "bases": [
+            "ietf-routing-types:mpls-label-special-purpose-value"
+          ],
+          "derived": [],
+          "name": "ietf-routing-types:ipv4-explicit-null-label"
+        },
+        {
+          "bases": [
+            "ietf-routing-types:mpls-label-special-purpose-value"
+          ],
+          "derived": [],
+          "name": "ietf-routing-types:router-alert-label"
+        },
+        {
+          "bases": [
+            "ietf-routing-types:mpls-label-special-purpose-value"
+          ],
+          "derived": [],
+          "name": "ietf-routing-types:ipv6-explicit-null-label"
+        },
+        {
+          "bases": [
+            "ietf-routing-types:mpls-label-special-purpose-value"
+          ],
+          "derived": [],
+          "name": "ietf-routing-types:implicit-null-label"
+        },
+        {
+          "bases": [
+            "ietf-routing-types:mpls-label-special-purpose-value"
+          ],
+          "derived": [],
+          "name": "ietf-routing-types:entropy-label-indicator"
+        },
+        {
+          "bases": [
+            "ietf-routing-types:mpls-label-special-purpose-value"
+          ],
+          "derived": [],
+          "name": "ietf-routing-types:gal-label"
+        },
+        {
+          "bases": [
+            "ietf-routing-types:mpls-label-special-purpose-value"
+          ],
+          "derived": [],
+          "name": "ietf-routing-types:oam-alert-label"
+        },
+        {
+          "bases": [
+            "ietf-routing-types:mpls-label-special-purpose-value"
+          ],
+          "derived": [],
+          "name": "ietf-routing-types:extension-label"
+        }
+      ],
+      "name": "ietf-routing-types",
+      "revision": "2017-12-04",
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

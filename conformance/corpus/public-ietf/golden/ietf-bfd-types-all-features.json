@@ -1,0 +1,108 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ietf-bfd-types {\n  namespace \"urn:ietf:params:xml:ns:yang:ietf-bfd-types\";\n  prefix bfd-types;\n\n  organization\n    \"IETF BFD Working Group\";\n  contact\n    \"WG Web:   <https://datatracker.ietf.org/wg/bfd/>\n     WG List:  <mailto:rtg-bfd@ietf.org>\n\n     Editor:   Reshad Rahman\n               <mailto:reshad@yahoo.com>\n\n     Editor:   Lianshu Zheng\n               <mailto:veronique_cheng@hotmail.com>\n\n     Editor:   Mahesh Jethanandani\n               <mailto:mjethanandani@gmail.com>\";\n  description\n    \"This module contains a collection of BFD-specific YANG data type\n     definitions, as per RFC 5880, and also groupings that are common\n     to other BFD YANG modules.\n\n     Copyright (c) 2022 IETF Trust and the persons identified as\n     authors of the code.  All rights reserved.\n\n     Redistribution and use in source and binary forms, with or\n     without modification, is permitted pursuant to, and subject\n     to the license terms contained in, the Revised BSD License\n     set forth in Section 4.c of the IETF Trust's Legal Provisions\n     Relating to IETF Documents\n     (https://trustee.ietf.org/license-info).\n\n     This version of this YANG module is part of RFC 9314; see the\n     RFC itself for full legal notices.\";\n  reference\n    \"RFC 5880: Bidirectional Forwarding Detection (BFD)\n     RFC 9314: YANG Data Model for Bidirectional Forwarding\n     Detection (BFD)\";\n\n  revision 2022-09-22;\n\n  identity bfdv1 {\n    description\n      \"BFD protocol version 1.\";\n    reference\n      \"RFC 5880: Bidirectional Forwarding Detection (BFD)\";\n  }\n\n  identity path-type {\n    derived path-ip-sh;\n    derived path-ip-mh;\n    derived path-mpls-te;\n    derived path-mpls-lsp;\n    derived path-lag;\n    description\n      \"Base identity for the BFD path type.  The path type indicates\n       the type of path on which BFD is running.\";\n  }\n\n  identity path-ip-sh {\n    description\n      \"BFD on IP single-hop.\";\n    reference\n      \"RFC 5881: Bidirectional Forwarding Detection (BFD)\n       for IPv4 and IPv6 (Single Hop)\";\n  }\n\n  identity path-ip-mh {\n    description\n      \"BFD on IP multihop paths.\";\n    reference\n      \"RFC 5883: Bidirectional Forwarding Detection (BFD) for\n       Multihop Paths\";\n  }\n\n  identity path-mpls-te {\n    description\n      \"BFD on MPLS Traffic Engineering.\";\n    reference\n      \"RFC 5884: Bidirectional Forwarding Detection (BFD)\n       for MPLS Label Switched Paths (LSPs)\";\n  }\n\n  identity path-mpls-lsp {\n    description\n      \"BFD on an MPLS Label Switched Path.\";\n    reference\n      \"RFC 5884: Bidirectional Forwarding Detection (BFD)\n       for MPLS Label Switched Paths (LSPs)\";\n  }\n\n  identity path-lag {\n    description\n      \"Micro-BFD on LAG member links.\";\n    reference\n      \"RFC 7130: Bidirectional Forwarding Detection (BFD) on\n       Link Aggregation Group (LAG) Interfaces\";\n  }\n\n  identity encap-type {\n    derived encap-ip;\n    description\n      \"Base identity for BFD encapsulation type.\";\n  }\n\n  identity encap-ip {\n    description\n      \"BFD with IP encapsulation.\";\n  }\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": true,
+          "name": "single-minimum-interval"
+        },
+        {
+          "enabled": true,
+          "name": "authentication"
+        },
+        {
+          "enabled": true,
+          "name": "demand-mode"
+        },
+        {
+          "enabled": true,
+          "name": "echo-mode"
+        },
+        {
+          "enabled": true,
+          "name": "client-base-cfg-parms"
+        }
+      ],
+      "identities": [
+        {
+          "bases": [
+            "ietf-routing:control-plane-protocol"
+          ],
+          "derived": [],
+          "name": "ietf-bfd-types:bfdv1"
+        },
+        {
+          "bases": [],
+          "derived": [
+            "ietf-bfd-types:path-ip-sh",
+            "ietf-bfd-types:path-ip-mh",
+            "ietf-bfd-types:path-mpls-te",
+            "ietf-bfd-types:path-mpls-lsp",
+            "ietf-bfd-types:path-lag"
+          ],
+          "name": "ietf-bfd-types:path-type"
+        },
+        {
+          "bases": [
+            "ietf-bfd-types:path-type"
+          ],
+          "derived": [],
+          "name": "ietf-bfd-types:path-ip-sh"
+        },
+        {
+          "bases": [
+            "ietf-bfd-types:path-type"
+          ],
+          "derived": [],
+          "name": "ietf-bfd-types:path-ip-mh"
+        },
+        {
+          "bases": [
+            "ietf-bfd-types:path-type"
+          ],
+          "derived": [],
+          "name": "ietf-bfd-types:path-mpls-te"
+        },
+        {
+          "bases": [
+            "ietf-bfd-types:path-type"
+          ],
+          "derived": [],
+          "name": "ietf-bfd-types:path-mpls-lsp"
+        },
+        {
+          "bases": [
+            "ietf-bfd-types:path-type"
+          ],
+          "derived": [],
+          "name": "ietf-bfd-types:path-lag"
+        },
+        {
+          "bases": [],
+          "derived": [
+            "ietf-bfd-types:encap-ip"
+          ],
+          "name": "ietf-bfd-types:encap-type"
+        },
+        {
+          "bases": [
+            "ietf-bfd-types:encap-type"
+          ],
+          "derived": [],
+          "name": "ietf-bfd-types:encap-ip"
+        }
+      ],
+      "name": "ietf-bfd-types",
+      "revision": "2022-09-22",
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

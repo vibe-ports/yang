@@ -1,0 +1,1086 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ietf-system {\n  namespace \"urn:ietf:params:xml:ns:yang:ietf-system\";\n  prefix sys;\n\n  organization\n    \"IETF NETMOD (NETCONF Data Modeling Language) Working Group\";\n  contact\n    \"WG Web:   <http://tools.ietf.org/wg/netmod/>\n     WG List:  <mailto:netmod@ietf.org>\n\n     WG Chair: Thomas Nadeau\n               <mailto:tnadeau@lucidvision.com>\n\n     WG Chair: Juergen Schoenwaelder\n               <mailto:j.schoenwaelder@jacobs-university.de>\n\n     Editor:   Andy Bierman\n               <mailto:andy@yumaworks.com>\n\n     Editor:   Martin Bjorklund\n               <mailto:mbj@tail-f.com>\";\n  description\n    \"This module contains a collection of YANG definitions for the\n     configuration and identification of some common system\n     properties within a device containing a NETCONF server.  This\n     includes data node definitions for system identification,\n     time-of-day management, user management, DNS resolver\n     configuration, and some protocol operations for system\n     management.\n\n     Copyright (c) 2014 IETF Trust and the persons identified as\n     authors of the code.  All rights reserved.\n\n     Redistribution and use in source and binary forms, with or\n     without modification, is permitted pursuant to, and subject\n     to the license terms contained in, the Simplified BSD License\n     set forth in Section 4.c of the IETF Trust's Legal Provisions\n     Relating to IETF Documents\n     (http://trustee.ietf.org/license-info).\n\n     This version of this YANG module is part of RFC 7317; see\n     the RFC itself for full legal notices.\";\n\n  revision 2014-08-06;\n\n  identity authentication-method {\n    derived radius;\n    derived local-users;\n    description\n      \"Base identity for user authentication methods.\";\n  }\n\n  identity radius {\n    description\n      \"Indicates user authentication using RADIUS.\";\n    reference\n      \"RFC 2865: Remote Authentication Dial In User Service (RADIUS)\n       RFC 5607: Remote Authentication Dial-In User Service (RADIUS)\n                 Authorization for Network Access Server (NAS)\n                 Management\";\n  }\n\n  identity local-users {\n    description\n      \"Indicates password-based authentication of locally\n       configured users.\";\n  }\n\n  identity radius-authentication-type {\n    derived radius-pap;\n    derived radius-chap;\n    description\n      \"Base identity for RADIUS authentication types.\";\n  }\n\n  identity radius-pap {\n    description\n      \"The device requests Password Authentication Protocol (PAP)\n       authentication from the RADIUS server.\";\n    reference\n      \"RFC 2865: Remote Authentication Dial In User Service (RADIUS)\";\n  }\n\n  identity radius-chap {\n    description\n      \"The device requests Challenge Handshake Authentication\n       Protocol (CHAP) authentication from the RADIUS server.\";\n    reference\n      \"RFC 2865: Remote Authentication Dial In User Service (RADIUS)\";\n  }\n\n  container system {\n    config true;\n    status current;\n    description\n      \"System group configuration.\";\n    leaf contact {\n      type string;\n      config true;\n      status current;\n      description\n        \"The administrator contact information for the system.\n\n         A server implementation MAY map this leaf to the sysContact\n         MIB object.  Such an implementation needs to use some\n         mechanism to handle the differences in size and characters\n         allowed between this leaf and sysContact.  The definition of\n         such a mechanism is outside the scope of this document.\";\n      reference\n        \"RFC 3418: Management Information Base (MIB) for the\n                   Simple Network Management Protocol (SNMP)\n                   SNMPv2-MIB.sysContact\";\n    }\n    leaf hostname {\n      type string {\n        length \"1..253\";\n        pattern \"((([a-zA-Z0-9_]([a-zA-Z0-9\\\\-_]){0,61})?[a-zA-Z0-9]\\\\.)*([a-zA-Z0-9_]([a-zA-Z0-9\\\\-_]){0,61})?[a-zA-Z0-9]\\\\.?)|\\\\.\";\n      }\n      config true;\n      status current;\n      description\n        \"The name of the host.  This name can be a single domain\n         label or the fully qualified domain name of the host.\";\n    }\n    leaf location {\n      type string;\n      config true;\n      status current;\n      description\n        \"The system location.\n\n         A server implementation MAY map this leaf to the sysLocation\n         MIB object.  Such an implementation needs to use some\n         mechanism to handle the differences in size and characters\n         allowed between this leaf and sysLocation.  The definition\n         of such a mechanism is outside the scope of this document.\";\n      reference\n        \"RFC 3418: Management Information Base (MIB) for the\n                   Simple Network Management Protocol (SNMP)\n                   SNMPv2-MIB.sysLocation\";\n    }\n    container clock {\n      config true;\n      status current;\n      description\n        \"Configuration of the system date and time properties.\";\n      choice timezone {\n        config true;\n        status current;\n        description\n          \"The system time zone information.\";\n        case timezone-utc-offset {\n          config true;\n          status current;\n          leaf timezone-utc-offset {\n            type int16 {\n              range \"-1500..1500\";\n            }\n            units \"minutes\";\n            config true;\n            status current;\n            description\n              \"The number of minutes to add to UTC time to\n               identify the time zone for this system.  For example,\n               'UTC - 8:00 hours' would be represented as '-480'.\n               Note that automatic daylight saving time adjustment\n               is not provided if this object is used.\";\n          }\n        }\n      }\n    }\n    container dns-resolver {\n      config true;\n      status current;\n      description\n        \"Configuration of the DNS resolver.\";\n      leaf-list search {\n        type string {\n          length \"1..253\";\n          pattern \"((([a-zA-Z0-9_]([a-zA-Z0-9\\\\-_]){0,61})?[a-zA-Z0-9]\\\\.)*([a-zA-Z0-9_]([a-zA-Z0-9\\\\-_]){0,61})?[a-zA-Z0-9]\\\\.?)|\\\\.\";\n        }\n        config true;\n        min-elements 0;\n        max-elements 4294967295;\n        ordered-by user;\n        status current;\n        description\n          \"An ordered list of domains to search when resolving\n           a host name.\";\n      }\n      list server {\n        key \"name\";\n        config true;\n        min-elements 0;\n        max-elements 4294967295;\n        ordered-by user;\n        status current;\n        description\n          \"List of the DNS servers that the resolver should query.\n\n           When the resolver is invoked by a calling application, it\n           sends the query to the first name server in this list.  If\n           no response has been received within 'timeout' seconds,\n           the resolver continues with the next server in the list.\n           If no response is received from any server, the resolver\n           continues with the first server again.  When the resolver\n           has traversed the list 'attempts' times without receiving\n           any response, it gives up and returns an error to the\n           calling application.\n\n           Implementations MAY limit the number of entries in this\n           list.\";\n        leaf name {\n          type string;\n          config true;\n          status current;\n          description\n            \"An arbitrary name for the DNS server.\";\n        }\n        choice transport {\n          config true;\n          mandatory true;\n          status current;\n          description\n            \"The transport-protocol-specific parameters for this\n             server.\";\n          case udp-and-tcp {\n            config true;\n            status current;\n            container udp-and-tcp {\n              config true;\n              status current;\n              description\n                \"Contains UDP- and TCP-specific configuration\n                 parameters for DNS.\";\n              reference\n                \"RFC 1035: Domain Names - Implementation and\n                           Specification\n                 RFC 5966: DNS Transport over TCP - Implementation\n                           Requirements\";\n              leaf address {\n                type union {\n                  type string {\n                    pattern \"(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?\";\n                  }\n                  type string {\n                    pattern \"((:|[0-9a-fA-F]{0,4}):)([0-9a-fA-F]{0,4}:){0,5}((([0-9a-fA-F]{0,4}:)?(:|[0-9a-fA-F]{0,4}))|(((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\\\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])))(%[A-Za-z0-9][A-Za-z0-9\\\\-\\\\._~/]*)?\";\n                    pattern \"(([^:]+:){6}(([^:]+:[^:]+)|(.*\\\\..*)))|((([^:]+:)*[^:]+)?::(([^:]+:)*[^:]+)?)(%.+)?\";\n                  }\n                }\n                config true;\n                mandatory true;\n                status current;\n                description\n                  \"The address of the DNS server.\";\n              }\n            }\n          }\n        }\n      }\n      container options {\n        config true;\n        status current;\n        description\n          \"Resolver options.  The set of available options has been\n           limited to those that are generally available across\n           different resolver implementations and generally useful.\";\n        leaf timeout {\n          type uint8 {\n            range \"1..255\";\n          }\n          units \"seconds\";\n          default \"5\";\n          config true;\n          status current;\n          description\n            \"The amount of time the resolver will wait for a\n             response from each remote name server before\n             retrying the query via a different name server.\";\n        }\n        leaf attempts {\n          type uint8 {\n            range \"1..255\";\n          }\n          default \"2\";\n          config true;\n          status current;\n          description\n            \"The number of times the resolver will send a query to\n             all of its name servers before giving up and returning\n             an error to the calling application.\";\n        }\n      }\n    }\n  }\n  container system-state {\n    config false;\n    status current;\n    description\n      \"System group operational state.\";\n    container platform {\n      config false;\n      status current;\n      description\n        \"Contains vendor-specific information for\n         identifying the system platform and operating system.\";\n      reference\n        \"IEEE Std 1003.1-2008 - sys/utsname.h\";\n      leaf os-name {\n        type string;\n        config false;\n        status current;\n        description\n          \"The name of the operating system in use -\n           for example, 'Linux'.\";\n        reference\n          \"IEEE Std 1003.1-2008 - utsname.sysname\";\n      }\n      leaf os-release {\n        type string;\n        config false;\n        status current;\n        description\n          \"The current release level of the operating\n           system in use.  This string MAY indicate\n           the OS source code revision.\";\n        reference\n          \"IEEE Std 1003.1-2008 - utsname.release\";\n      }\n      leaf os-version {\n        type string;\n        config false;\n        status current;\n        description\n          \"The current version level of the operating\n           system in use.  This string MAY indicate\n           the specific OS build date and target variant\n           information.\";\n        reference\n          \"IEEE Std 1003.1-2008 - utsname.version\";\n      }\n      leaf machine {\n        type string;\n        config false;\n        status current;\n        description\n          \"A vendor-specific identifier string representing\n           the hardware in use.\";\n        reference\n          \"IEEE Std 1003.1-2008 - utsname.machine\";\n      }\n    }\n    container clock {\n      config false;\n      status current;\n      description\n        \"Monitoring of the system date and time properties.\";\n      leaf current-datetime {\n        type string {\n          pattern \"[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\\\.[0-9]+)?(Z|[\\\\+\\\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?\";\n        }\n        config false;\n        status current;\n        description\n          \"The current system date and time.\";\n      }\n      leaf boot-datetime {\n        type string {\n          pattern \"[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\\\.[0-9]+)?(Z|[\\\\+\\\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?\";\n        }\n        config false;\n        status current;\n        description\n          \"The system date and time when the system last restarted.\";\n      }\n    }\n  }\n\n  rpc set-current-datetime {\n    ietf-netconf-acm:default-deny-all;\n    status current;\n    description\n      \"Set the /system-state/clock/current-datetime leaf\n       to the specified value.\n\n       If the system is using NTP (i.e., /system/ntp/enabled\n       is set to 'true'), then this operation will fail with\n       error-tag 'operation-failed' and error-app-tag value of\n       'ntp-active'.\";\n\n    input {\n      leaf current-datetime {\n        ietf-netconf-acm:default-deny-all;\n        type string {\n          pattern \"[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\\\.[0-9]+)?(Z|[\\\\+\\\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?\";\n        }\n        mandatory true;\n        status current;\n        description\n          \"The current system date and time.\";\n      }\n    }\n  }\n  rpc system-restart {\n    ietf-netconf-acm:default-deny-all;\n    status current;\n    description\n      \"Request that the entire system be restarted immediately.\n       A server SHOULD send an rpc reply to the client before\n       restarting the system.\";\n  }\n  rpc system-shutdown {\n    ietf-netconf-acm:default-deny-all;\n    status current;\n    description\n      \"Request that the entire system be shut down immediately.\n       A server SHOULD send an rpc reply to the client before\n       shutting down the system.\";\n  }\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": false,
+          "name": "radius"
+        },
+        {
+          "enabled": false,
+          "name": "authentication"
+        },
+        {
+          "enabled": false,
+          "name": "local-users"
+        },
+        {
+          "enabled": false,
+          "name": "radius-authentication"
+        },
+        {
+          "enabled": false,
+          "name": "ntp"
+        },
+        {
+          "enabled": false,
+          "name": "ntp-udp-port"
+        },
+        {
+          "enabled": false,
+          "name": "timezone-name"
+        },
+        {
+          "enabled": false,
+          "name": "dns-udp-tcp-port"
+        }
+      ],
+      "identities": [
+        {
+          "bases": [],
+          "derived": [
+            "ietf-system:radius",
+            "ietf-system:local-users"
+          ],
+          "name": "ietf-system:authentication-method"
+        },
+        {
+          "bases": [
+            "ietf-system:authentication-method"
+          ],
+          "derived": [],
+          "name": "ietf-system:radius"
+        },
+        {
+          "bases": [
+            "ietf-system:authentication-method"
+          ],
+          "derived": [],
+          "name": "ietf-system:local-users"
+        },
+        {
+          "bases": [],
+          "derived": [
+            "ietf-system:radius-pap",
+            "ietf-system:radius-chap"
+          ],
+          "name": "ietf-system:radius-authentication-type"
+        },
+        {
+          "bases": [
+            "ietf-system:radius-authentication-type"
+          ],
+          "derived": [],
+          "name": "ietf-system:radius-pap"
+        },
+        {
+          "bases": [
+            "ietf-system:radius-authentication-type"
+          ],
+          "derived": [],
+          "name": "ietf-system:radius-chap"
+        }
+      ],
+      "name": "ietf-system",
+      "revision": "2014-08-06",
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-system:system",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-system:system/contact",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-system:system/hostname",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": "1..253",
+            "patterns": [
+              {
+                "expr": "((([a-zA-Z0-9_]([a-zA-Z0-9\\-_]){0,61})?[a-zA-Z0-9]\\.)*([a-zA-Z0-9_]([a-zA-Z0-9\\-_]){0,61})?[a-zA-Z0-9]\\.?)|\\.",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "domain-name"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-system:system/location",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-system:system/clock",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "choice",
+          "ordered_by": null,
+          "path": "/ietf-system:system/clock/timezone",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/ietf-system:system/clock/timezone/timezone-utc-offset",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-system:system/clock/timezone/timezone-utc-offset/timezone-utc-offset",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "int16",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "-1500..1500",
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-system:system/dns-resolver",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "user",
+          "path": "/ietf-system:system/dns-resolver/search",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": "1..253",
+            "patterns": [
+              {
+                "expr": "((([a-zA-Z0-9_]([a-zA-Z0-9\\-_]){0,61})?[a-zA-Z0-9]\\.)*([a-zA-Z0-9_]([a-zA-Z0-9\\-_]){0,61})?[a-zA-Z0-9]\\.?)|\\.",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "domain-name"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "name"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "user",
+          "path": "/ietf-system:system/dns-resolver/server",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-system:system/dns-resolver/server/name",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "choice",
+          "ordered_by": null,
+          "path": "/ietf-system:system/dns-resolver/server/transport",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/ietf-system:system/dns-resolver/server/transport/udp-and-tcp",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-system:system/dns-resolver/server/transport/udp-and-tcp/udp-and-tcp",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-system:system/dns-resolver/server/transport/udp-and-tcp/udp-and-tcp/address",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "union",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "ip-address"
+            ],
+            "union": [
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": [
+                  {
+                    "expr": "(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(%.+)?",
+                    "invert": false
+                  }
+                ],
+                "range": null,
+                "typedefs": [
+                  "ipv4-address"
+                ],
+                "union": null
+              },
+              {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": [
+                  {
+                    "expr": "((:|[0-9a-fA-F]{0,4}):)([0-9a-fA-F]{0,4}:){0,5}((([0-9a-fA-F]{0,4}:)?(:|[0-9a-fA-F]{0,4}))|(((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])))(%[A-Za-z0-9][A-Za-z0-9\\-\\._~/]*)?",
+                    "invert": false
+                  },
+                  {
+                    "expr": "(([^:]+:){6}(([^:]+:[^:]+)|(.*\\..*)))|((([^:]+:)*[^:]+)?::(([^:]+:)*[^:]+)?)(%.+)?",
+                    "invert": false
+                  }
+                ],
+                "range": null,
+                "typedefs": [
+                  "ipv6-address"
+                ],
+                "union": null
+              }
+            ]
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-system:system/dns-resolver/options",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "5"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-system:system/dns-resolver/options/timeout",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "1..255",
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "2"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-system:system/dns-resolver/options/attempts",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "1..255",
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-system:system-state",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-system:system-state/platform",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-system:system-state/platform/os-name",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-system:system-state/platform/os-release",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-system:system-state/platform/os-version",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-system:system-state/platform/machine",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-system:system-state/clock",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-system:system-state/clock/current-datetime",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]+)?(Z|[\\+\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "date-and-time"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-system:system-state/clock/boot-datetime",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]+)?(Z|[\\+\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "date-and-time"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "rpc",
+          "ordered_by": null,
+          "path": "/ietf-system:set-current-datetime",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "input",
+          "ordered_by": null,
+          "path": "/ietf-system:set-current-datetime/input",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-system:set-current-datetime/input/current-datetime",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]+)?(Z|[\\+\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "date-and-time"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "output",
+          "ordered_by": null,
+          "path": "/ietf-system:set-current-datetime/output",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "rpc",
+          "ordered_by": null,
+          "path": "/ietf-system:system-restart",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "input",
+          "ordered_by": null,
+          "path": "/ietf-system:system-restart/input",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "output",
+          "ordered_by": null,
+          "path": "/ietf-system:system-restart/output",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": null,
+              "module": "ietf-netconf-acm",
+              "name": "default-deny-all"
+            }
+          ],
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "rpc",
+          "ordered_by": null,
+          "path": "/ietf-system:system-shutdown",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "input",
+          "ordered_by": null,
+          "path": "/ietf-system:system-shutdown/input",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-system",
+          "musts": null,
+          "nodetype": "output",
+          "ordered_by": null,
+          "path": "/ietf-system:system-shutdown/output",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

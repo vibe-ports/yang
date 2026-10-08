@@ -1,0 +1,11 @@
+fixtures:
+  - id: public-ietf/iana-routing-types-all-features
+    dir: public-ietf
+    source: {url: "https://github.com/YangModels/yang/blob/b5465a86cd2457352dcd18a42043e40f0bab65ab/standard/iana/iana-routing-types@2025-09-03.yang", commit: b5465a86cd2457352dcd18a42043e40f0bab65ab, license: BSD-2-Clause}   # RFC 8294 (IANA-maintained module)
+    rfc: ["RFC7950#7.1", "RFC8294"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{name: iana-routing-types, features: ["*"]}]
+    golden: golden/iana-routing-types-all-features.json

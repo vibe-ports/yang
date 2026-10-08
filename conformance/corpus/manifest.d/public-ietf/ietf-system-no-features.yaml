@@ -1,0 +1,11 @@
+fixtures:
+  - id: public-ietf/ietf-system-no-features
+    dir: public-ietf
+    source: {url: "https://github.com/YangModels/yang/blob/b5465a86cd2457352dcd18a42043e40f0bab65ab/standard/ietf/RFC/ietf-system@2014-08-06.yang", commit: b5465a86cd2457352dcd18a42043e40f0bab65ab, license: BSD-2-Clause}   # RFC 7317
+    rfc: ["RFC7950#7.1", "RFC7317"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{name: ietf-system}]
+    golden: golden/ietf-system-no-features.json

@@ -1,0 +1,11 @@
+fixtures:
+  - id: public-ietf/ietf-vrrp-all-features
+    dir: public-ietf
+    source: {url: "https://github.com/YangModels/yang/blob/b5465a86cd2457352dcd18a42043e40f0bab65ab/standard/ietf/RFC/ietf-vrrp@2018-03-13.yang", commit: b5465a86cd2457352dcd18a42043e40f0bab65ab, license: BSD-2-Clause}   # RFC 8347; also dumps the augmented ietf-interfaces, ietf-ip
+    rfc: ["RFC7950#7.1", "RFC8347"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{name: ietf-interfaces, features: ["*"]}, {name: ietf-ip, features: ["*"]}, {name: ietf-vrrp, features: ["*"]}]
+    golden: golden/ietf-vrrp-all-features.json

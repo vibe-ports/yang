@@ -1,0 +1,1691 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ietf-hardware {\n  namespace \"urn:ietf:params:xml:ns:yang:ietf-hardware\";\n  prefix hw;\n\n  organization\n    \"IETF NETMOD (Network Modeling) Working Group\";\n  contact\n    \"WG Web:   <https://datatracker.ietf.org/wg/netmod/>\n     WG List:  <mailto:netmod@ietf.org>\n\n     Editor:   Andy Bierman\n               <mailto:andy@yumaworks.com>\n\n     Editor:   Martin Bjorklund\n               <mailto:mbj@tail-f.com>\n\n     Editor:   Jie Dong\n               <mailto:jie.dong@huawei.com>\n\n     Editor:   Dan Romascanu\n               <mailto:dromasca@gmail.com>\";\n  description\n    \"This module contains a collection of YANG definitions for\n     managing hardware.\n\n     This data model is designed for the Network Management Datastore\n     Architecture (NMDA) defined in RFC 8342.\n     Copyright (c) 2018 IETF Trust and the persons identified as\n     authors of the code.  All rights reserved.\n\n     Redistribution and use in source and binary forms, with or\n     without modification, is permitted pursuant to, and subject\n     to the license terms contained in, the Simplified BSD License\n     set forth in Section 4.c of the IETF Trust's Legal Provisions\n     Relating to IETF Documents\n     (https://trustee.ietf.org/license-info).\n\n     This version of this YANG module is part of RFC 8348; see\n     the RFC itself for full legal notices.\";\n\n  revision 2018-03-13;\n\n  container hardware {\n    config true;\n    status current;\n    description\n      \"Data nodes representing components.\n\n       If the server supports configuration of hardware components,\n       then this data model is instantiated in the configuration\n       datastores supported by the server.  The leaf-list 'datastore'\n       for the module 'ietf-hardware' in the YANG library provides\n       this information.\";\n    leaf last-change {\n      type string {\n        pattern \"[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\\\.[0-9]+)?(Z|[\\\\+\\\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?\";\n      }\n      config false;\n      status current;\n      description\n        \"The time the '/hardware/component' list changed in the\n         operational state.\";\n    }\n    list component {\n      key \"name\";\n      config true;\n      min-elements 0;\n      max-elements 4294967295;\n      ordered-by system;\n      status current;\n      description\n        \"List of components.\n\n         When the server detects a new hardware component, it\n         initializes a list entry in the operational state.\n\n         If the server does not support configuration of hardware\n         components, list entries in the operational state are\n         initialized with values for all nodes as detected by the\n         implementation.\n\n         Otherwise, this procedure is followed:\n\n           1. If there is an entry in the '/hardware/component' list\n              in the intended configuration with values for the nodes\n              'class', 'parent', and 'parent-rel-pos' that are equal\n              to the detected values, then the list entry in the\n              operational state is initialized with the configured\n              values, including the 'name'.\n\n           2. Otherwise (i.e., there is no matching configuration\n              entry), the list entry in the operational state is\n              initialized with values for all nodes as detected by\n              the implementation.\n\n         If the '/hardware/component' list in the intended\n         configuration is modified, then the system MUST behave as if\n         it re-initializes itself and follow the procedure in (1).\";\n      reference\n        \"RFC 6933: Entity MIB (Version 4) - entPhysicalEntry\";\n      leaf name {\n        type string;\n        config true;\n        status current;\n        description\n          \"The name assigned to this component.\n\n           This name is not required to be the same as\n           entPhysicalName.\";\n      }\n      leaf class {\n        type identityref {\n          base hardware-class;\n        }\n        config true;\n        mandatory true;\n        status current;\n        description\n          \"An indication of the general hardware type of the\n           component.\";\n        reference\n          \"RFC 6933: Entity MIB (Version 4) - entPhysicalClass\";\n      }\n      leaf physical-index {\n        type int32 {\n          range \"1..2147483647\";\n        }\n        config false;\n        status current;\n        description\n          \"The entPhysicalIndex for the entPhysicalEntry represented\n           by this list entry.\";\n        reference\n          \"RFC 6933: Entity MIB (Version 4) - entPhysicalIndex\";\n      }\n      leaf description {\n        type string;\n        config false;\n        status current;\n        description\n          \"A textual description of the component.  This node should\n           contain a string that identifies the manufacturer's name\n           for the component and should be set to a distinct value\n           for each version or model of the component.\";\n        reference\n          \"RFC 6933: Entity MIB (Version 4) - entPhysicalDescr\";\n      }\n      leaf parent {\n        type leafref {\n          path \"../../component/name\";\n          require-instance false;\n          type string;\n        }\n        config true;\n        status current;\n        description\n          \"The name of the component that physically contains this\n           component.\n\n           If this leaf is not instantiated, it indicates that this\n           component is not contained in any other component.\n\n           In the event that a physical component is contained by\n           more than one physical component (e.g., double-wide\n           modules), this node contains the name of one of these\n           components.  An implementation MUST use the same name\n           every time this node is instantiated.\";\n        reference\n          \"RFC 6933: Entity MIB (Version 4) - entPhysicalContainedIn\";\n      }\n      leaf parent-rel-pos {\n        type int32 {\n          range \"0..2147483647\";\n        }\n        config true;\n        status current;\n        description\n          \"An indication of the relative position of this child\n           component among all its sibling components.  Sibling\n           components are defined as components that:\n\n             o share the same value of the 'parent' node and\n\n             o share a common base identity for the 'class' node.\n\n           Note that the last rule gives implementations flexibility\n           in how components are numbered.  For example, some\n           implementations might have a single number series for all\n           components derived from 'ianahw:port', while some others\n           might have different number series for different\n           components with identities derived from 'ianahw:port' (for\n           example, one for registered jack 45 (RJ45) and one for\n           small form-factor pluggable (SFP)).\";\n        reference\n          \"RFC 6933: Entity MIB (Version 4) -\n                     entPhysicalParentRelPos\";\n      }\n      leaf-list contains-child {\n        type leafref {\n          path \"../../component/name\";\n          require-instance true;\n          type string;\n        }\n        config false;\n        min-elements 0;\n        max-elements 4294967295;\n        ordered-by user;\n        status current;\n        description\n          \"The name of the contained component.\";\n        reference\n          \"RFC 6933: Entity MIB (Version 4) - entPhysicalChildIndex\";\n      }\n      leaf hardware-rev {\n        type string;\n        config false;\n        status current;\n        description\n          \"The vendor-specific hardware revision string for the\n           component.  The preferred value is the hardware revision\n           identifier actually printed on the component itself (if\n           present).\";\n        reference\n          \"RFC 6933: Entity MIB (Version 4) -\n                     entPhysicalHardwareRev\";\n      }\n      leaf firmware-rev {\n        type string;\n        config false;\n        status current;\n        description\n          \"The vendor-specific firmware revision string for the\n           component.\";\n        reference\n          \"RFC 6933: Entity MIB (Version 4) -\n                     entPhysicalFirmwareRev\";\n      }\n      leaf software-rev {\n        type string;\n        config false;\n        status current;\n        description\n          \"The vendor-specific software revision string for the\n           component.\";\n        reference\n          \"RFC 6933: Entity MIB (Version 4) -\n                     entPhysicalSoftwareRev\";\n      }\n      leaf serial-num {\n        type string;\n        config false;\n        status current;\n        description\n          \"The vendor-specific serial number string for the\n           component.  The preferred value is the serial number\n           string actually printed on the component itself (if\n           present).\";\n        reference\n          \"RFC 6933: Entity MIB (Version 4) - entPhysicalSerialNum\";\n      }\n      leaf mfg-name {\n        type string;\n        config false;\n        status current;\n        description\n          \"The name of the manufacturer of this physical component.\n           The preferred value is the manufacturer name string\n           actually printed on the component itself (if present).\n\n           Note that comparisons between instances of the\n           'model-name', 'firmware-rev', 'software-rev', and\n           'serial-num' nodes are only meaningful amongst components\n           with the same value of 'mfg-name'.\n\n           If the manufacturer name string associated with the\n           physical component is unknown to the server, then this\n           node is not instantiated.\";\n        reference\n          \"RFC 6933: Entity MIB (Version 4) - entPhysicalMfgName\";\n      }\n      leaf model-name {\n        type string;\n        config false;\n        status current;\n        description\n          \"The vendor-specific model name identifier string\n           associated with this physical component.  The preferred\n           value is the customer-visible part number, which may be\n           printed on the component itself.\n           If the model name string associated with the physical\n           component is unknown to the server, then this node is not\n           instantiated.\";\n        reference\n          \"RFC 6933: Entity MIB (Version 4) - entPhysicalModelName\";\n      }\n      leaf alias {\n        type string;\n        config true;\n        status current;\n        description\n          \"An 'alias' name for the component, as specified by a\n           network manager, that provides a non-volatile 'handle' for\n           the component.\n\n           If no configured value exists, the server MAY set the\n           value of this node to a locally unique value in the\n           operational state.\n\n           A server implementation MAY map this leaf to the\n           entPhysicalAlias MIB object.  Such an implementation needs\n           to use some mechanism to handle the differences in size\n           and characters allowed between this leaf and\n           entPhysicalAlias.  The definition of such a mechanism is\n           outside the scope of this document.\";\n        reference\n          \"RFC 6933: Entity MIB (Version 4) - entPhysicalAlias\";\n      }\n      leaf asset-id {\n        type string;\n        config true;\n        status current;\n        description\n          \"This node is a user-assigned asset tracking identifier for\n           the component.\n\n           A server implementation MAY map this leaf to the\n           entPhysicalAssetID MIB object.  Such an implementation\n           needs to use some mechanism to handle the differences in\n           size and characters allowed between this leaf and\n           entPhysicalAssetID.  The definition of such a mechanism is\n           outside the scope of this document.\";\n        reference\n          \"RFC 6933: Entity MIB (Version 4) - entPhysicalAssetID\";\n      }\n      leaf is-fru {\n        type boolean;\n        config false;\n        status current;\n        description\n          \"This node indicates whether or not this component is\n           considered a 'field-replaceable unit' by the vendor.  If\n           this node contains the value 'true', then this component\n           identifies a field-replaceable unit.  For all components\n           that are permanently contained within a field-replaceable\n           unit, the value 'false' should be returned for this\n           node.\";\n        reference\n          \"RFC 6933: Entity MIB (Version 4) - entPhysicalIsFRU\";\n      }\n      leaf mfg-date {\n        type string {\n          pattern \"[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\\\.[0-9]+)?(Z|[\\\\+\\\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?\";\n        }\n        config false;\n        status current;\n        description\n          \"The date of manufacturing of the managed component.\";\n        reference\n          \"RFC 6933: Entity MIB (Version 4) - entPhysicalMfgDate\";\n      }\n      leaf-list uri {\n        type string {\n          pattern \"[a-z][a-z0-9+.-]*:.*\";\n        }\n        config true;\n        min-elements 0;\n        max-elements 4294967295;\n        ordered-by system;\n        status current;\n        description\n          \"This node contains identification information about the\n           component.\";\n        reference\n          \"RFC 6933: Entity MIB (Version 4) - entPhysicalUris\";\n      }\n      leaf uuid {\n        type string {\n          pattern \"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\";\n        }\n        config false;\n        status current;\n        description\n          \"A Universally Unique Identifier of the component.\";\n        reference\n          \"RFC 6933: Entity MIB (Version 4) - entPhysicalUUID\";\n      }\n      container state {\n        config true;\n        status current;\n        description\n          \"State-related nodes\";\n        reference\n          \"RFC 4268: Entity State MIB\";\n        leaf state-last-changed {\n          type string {\n            pattern \"[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\\\.[0-9]+)?(Z|[\\\\+\\\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?\";\n          }\n          config false;\n          status current;\n          description\n            \"The date and time when the value of any of the\n             admin-state, oper-state, usage-state, alarm-state, or\n             standby-state changed for this component.\n\n             If there has been no change since the last\n             re-initialization of the local system, this node\n             contains the date and time of local system\n             initialization.  If there has been no change since the\n             component was added to the local system, this node\n             contains the date and time of the insertion.\";\n          reference\n            \"RFC 4268: Entity State MIB - entStateLastChanged\";\n        }\n        leaf admin-state {\n          type enumeration {\n            enum \"unknown\" {\n              value 1;\n              status current;\n              description\n                \"The resource is unable to report administrative state.\";\n            }\n            enum \"locked\" {\n              value 2;\n              status current;\n              description\n                \"The resource is administratively prohibited from use.\";\n            }\n            enum \"shutting-down\" {\n              value 3;\n              status current;\n              description\n                \"The resource usage is administratively limited to current\n                 instances of use.\";\n            }\n            enum \"unlocked\" {\n              value 4;\n              status current;\n              description\n                \"The resource is not administratively prohibited from\n                 use.\";\n            }\n          }\n          config true;\n          status current;\n          description\n            \"The administrative state for this component.\n\n             This node refers to a component's administrative\n             permission to service both other components within its\n             containment hierarchy as well other users of its\n             services defined by means outside the scope of this\n             module.\n\n             Some components exhibit only a subset of the remaining\n             administrative state values.  Some components cannot be\n             locked; hence, this node exhibits only the 'unlocked'\n             state.  Other components cannot be shut down gracefully;\n             hence, this node does not exhibit the 'shutting-down'\n             state.\";\n          reference\n            \"RFC 4268: Entity State MIB - entStateAdmin\";\n        }\n        leaf oper-state {\n          type enumeration {\n            enum \"unknown\" {\n              value 1;\n              status current;\n              description\n                \"The resource is unable to report its operational state.\";\n            }\n            enum \"disabled\" {\n              value 2;\n              status current;\n              description\n                \"The resource is totally inoperable.\";\n            }\n            enum \"enabled\" {\n              value 3;\n              status current;\n              description\n                \"The resource is partially or fully operable.\";\n            }\n            enum \"testing\" {\n              value 4;\n              status current;\n              description\n                \"The resource is currently being tested and cannot\n                 therefore report whether or not it is operational.\";\n            }\n          }\n          config false;\n          status current;\n          description\n            \"The operational state for this component.\n\n             Note that this node does not follow the administrative\n             state.  An administrative state of 'down' does not\n             predict an operational state of 'disabled'.\n\n             Note that some implementations may not be able to\n             accurately report oper-state while the admin-state node\n             has a value other than 'unlocked'.  In these cases, this\n             node MUST have a value of 'unknown'.\";\n          reference\n            \"RFC 4268: Entity State MIB - entStateOper\";\n        }\n        leaf usage-state {\n          type enumeration {\n            enum \"unknown\" {\n              value 1;\n              status current;\n              description\n                \"The resource is unable to report usage state.\";\n            }\n            enum \"idle\" {\n              value 2;\n              status current;\n              description\n                \"The resource is servicing no users.\";\n            }\n            enum \"active\" {\n              value 3;\n              status current;\n              description\n                \"The resource is currently in use, and it has sufficient\n                 spare capacity to provide for additional users.\";\n            }\n            enum \"busy\" {\n              value 4;\n              status current;\n              description\n                \"The resource is currently in use, but it currently has no\n                 spare capacity to provide for additional users.\";\n            }\n          }\n          config false;\n          status current;\n          description\n            \"The usage state for this component.\n\n             This node refers to a component's ability to service\n             more components in a containment hierarchy.\n\n             Some components will exhibit only a subset of the usage\n             state values.  Components that are unable to ever\n             service any components within a containment hierarchy\n             will always have a usage state of 'busy'.  In some\n             cases, a component will be able to support only one\n             other component within its containment hierarchy and\n             will therefore only exhibit values of 'idle' and\n             'busy'.\";\n          reference\n            \"RFC 4268: Entity State MIB - entStateUsage\";\n        }\n        leaf alarm-state {\n          type bits {\n            bit \"unknown\" {\n              position 0;\n              status current;\n              description\n                \"The resource is unable to report alarm state.\";\n            }\n            bit \"under-repair\" {\n              position 1;\n              status current;\n              description\n                \"The resource is currently being repaired, which, depending\n                 on the implementation, may make the other values in this\n                 bit string not meaningful.\";\n            }\n            bit \"critical\" {\n              position 2;\n              status current;\n              description\n                \"One or more critical alarms are active against the\n                 resource.\";\n            }\n            bit \"major\" {\n              position 3;\n              status current;\n              description\n                \"One or more major alarms are active against the\n                 resource.\";\n            }\n            bit \"minor\" {\n              position 4;\n              status current;\n              description\n                \"One or more minor alarms are active against the\n                 resource.\";\n            }\n            bit \"warning\" {\n              position 5;\n              status current;\n              description\n                \"One or more warning alarms are active against the\n                 resource.\";\n            }\n            bit \"indeterminate\" {\n              position 6;\n              status current;\n              description\n                \"One or more alarms of whose perceived severity cannot be\n                 determined are active against this resource.\";\n            }\n          }\n          config false;\n          status current;\n          description\n            \"The alarm state for this component.  It does not\n             include the alarms raised on child components within its\n             containment hierarchy.\";\n          reference\n            \"RFC 4268: Entity State MIB - entStateAlarm\";\n        }\n        leaf standby-state {\n          type enumeration {\n            enum \"unknown\" {\n              value 1;\n              status current;\n              description\n                \"The resource is unable to report standby state.\";\n            }\n            enum \"hot-standby\" {\n              value 2;\n              status current;\n              description\n                \"The resource is not providing service, but it will be\n                 immediately able to take over the role of the resource to\n                 be backed up, without the need for initialization\n                 activity, and will contain the same information as the\n                 resource to be backed up.\";\n            }\n            enum \"cold-standby\" {\n              value 3;\n              status current;\n              description\n                \"The resource is to back up another resource, but it will\n                 not be immediately able to take over the role of a\n                 resource to be backed up and will require some\n                 initialization activity.\";\n            }\n            enum \"providing-service\" {\n              value 4;\n              status current;\n              description\n                \"The resource is providing service.\";\n            }\n          }\n          config false;\n          status current;\n          description\n            \"The standby state for this component.\n\n             Some components will exhibit only a subset of the\n             remaining standby state values.  If this component\n             cannot operate in a standby role, the value of this node\n             will always be 'providing-service'.\";\n          reference\n            \"RFC 4268: Entity State MIB - entStateStandby\";\n        }\n      }\n      container sensor-data {\n        when \"derived-from-or-self(../class,\n                                            \\\"ianahw:sensor\\\")\" {\n          description\n            \"Sensor data nodes present for any component of type\n             'sensor'\";\n        }\n        config false;\n        status current;\n        description\n          \"Sensor-related nodes.\";\n        reference\n          \"RFC 3433: Entity Sensor Management Information Base\";\n        leaf value {\n          type int32 {\n            range \"-1000000000..1000000000\";\n          }\n          config false;\n          status current;\n          description\n            \"The most recent measurement obtained by the server\n             for this sensor.\n\n             A client that periodically fetches this node should also\n             fetch the nodes 'value-type', 'value-scale', and\n             'value-precision', since they may change when the value\n             is changed.\";\n          reference\n            \"RFC 3433: Entity Sensor Management Information Base -\n                       entPhySensorValue\";\n        }\n        leaf value-type {\n          type enumeration {\n            enum \"other\" {\n              value 1;\n              status current;\n              description\n                \"A measure other than those listed below.\";\n            }\n            enum \"unknown\" {\n              value 2;\n              status current;\n              description\n                \"An unknown measurement or arbitrary, relative numbers\";\n            }\n            enum \"volts-AC\" {\n              value 3;\n              status current;\n              description\n                \"A measure of electric potential (alternating current).\";\n            }\n            enum \"volts-DC\" {\n              value 4;\n              status current;\n              description\n                \"A measure of electric potential (direct current).\";\n            }\n            enum \"amperes\" {\n              value 5;\n              status current;\n              description\n                \"A measure of electric current.\";\n            }\n            enum \"watts\" {\n              value 6;\n              status current;\n              description\n                \"A measure of power.\";\n            }\n            enum \"hertz\" {\n              value 7;\n              status current;\n              description\n                \"A measure of frequency.\";\n            }\n            enum \"celsius\" {\n              value 8;\n              status current;\n              description\n                \"A measure of temperature.\";\n            }\n            enum \"percent-RH\" {\n              value 9;\n              status current;\n              description\n                \"A measure of percent relative humidity.\";\n            }\n            enum \"rpm\" {\n              value 10;\n              status current;\n              description\n                \"A measure of shaft revolutions per minute.\";\n            }\n            enum \"cmm\" {\n              value 11;\n              status current;\n              description\n                \"A measure of cubic meters per minute (airflow).\";\n            }\n            enum \"truth-value\" {\n              value 12;\n              status current;\n              description\n                \"Value is one of 1 (true) or 2 (false)\";\n            }\n          }\n          config false;\n          status current;\n          description\n            \"The type of data units associated with the\n             sensor value\";\n          reference\n            \"RFC 3433: Entity Sensor Management Information Base -\n                       entPhySensorType\";\n        }\n        leaf value-scale {\n          type enumeration {\n            enum \"yocto\" {\n              value 1;\n              status current;\n              description\n                \"Data scaling factor of 10^-24.\";\n            }\n            enum \"zepto\" {\n              value 2;\n              status current;\n              description\n                \"Data scaling factor of 10^-21.\";\n            }\n            enum \"atto\" {\n              value 3;\n              status current;\n              description\n                \"Data scaling factor of 10^-18.\";\n            }\n            enum \"femto\" {\n              value 4;\n              status current;\n              description\n                \"Data scaling factor of 10^-15.\";\n            }\n            enum \"pico\" {\n              value 5;\n              status current;\n              description\n                \"Data scaling factor of 10^-12.\";\n            }\n            enum \"nano\" {\n              value 6;\n              status current;\n              description\n                \"Data scaling factor of 10^-9.\";\n            }\n            enum \"micro\" {\n              value 7;\n              status current;\n              description\n                \"Data scaling factor of 10^-6.\";\n            }\n            enum \"milli\" {\n              value 8;\n              status current;\n              description\n                \"Data scaling factor of 10^-3.\";\n            }\n            enum \"units\" {\n              value 9;\n              status current;\n              description\n                \"Data scaling factor of 10^0.\";\n            }\n            enum \"kilo\" {\n              value 10;\n              status current;\n              description\n                \"Data scaling factor of 10^3.\";\n            }\n            enum \"mega\" {\n              value 11;\n              status current;\n              description\n                \"Data scaling factor of 10^6.\";\n            }\n            enum \"giga\" {\n              value 12;\n              status current;\n              description\n                \"Data scaling factor of 10^9.\";\n            }\n            enum \"tera\" {\n              value 13;\n              status current;\n              description\n                \"Data scaling factor of 10^12.\";\n            }\n            enum \"peta\" {\n              value 14;\n              status current;\n              description\n                \"Data scaling factor of 10^15.\";\n            }\n            enum \"exa\" {\n              value 15;\n              status current;\n              description\n                \"Data scaling factor of 10^18.\";\n            }\n            enum \"zetta\" {\n              value 16;\n              status current;\n              description\n                \"Data scaling factor of 10^21.\";\n            }\n            enum \"yotta\" {\n              value 17;\n              status current;\n              description\n                \"Data scaling factor of 10^24.\";\n            }\n          }\n          config false;\n          status current;\n          description\n            \"The (power of 10) scaling factor associated\n             with the sensor value\";\n          reference\n            \"RFC 3433: Entity Sensor Management Information Base -\n                       entPhySensorScale\";\n        }\n        leaf value-precision {\n          type int8 {\n            range \"-8..9\";\n          }\n          config false;\n          status current;\n          description\n            \"The number of decimal places of precision\n             associated with the sensor value\";\n          reference\n            \"RFC 3433: Entity Sensor Management Information Base -\n                       entPhySensorPrecision\";\n        }\n        leaf oper-status {\n          type enumeration {\n            enum \"ok\" {\n              value 1;\n              status current;\n              description\n                \"Indicates that the server can obtain the sensor value.\";\n            }\n            enum \"unavailable\" {\n              value 2;\n              status current;\n              description\n                \"Indicates that the server presently cannot obtain the\n                 sensor value.\";\n            }\n            enum \"nonoperational\" {\n              value 3;\n              status current;\n              description\n                \"Indicates that the server believes the sensor is broken.\n                 The sensor could have a hard failure (disconnected wire)\n                 or a soft failure such as out-of-range, jittery, or wildly\n                 fluctuating readings.\";\n            }\n          }\n          config false;\n          status current;\n          description\n            \"The operational status of the sensor.\";\n          reference\n            \"RFC 3433: Entity Sensor Management Information Base -\n                       entPhySensorOperStatus\";\n        }\n        leaf units-display {\n          type string;\n          config false;\n          status current;\n          description\n            \"A textual description of the data units that should be\n             used in the display of the sensor value.\";\n          reference\n            \"RFC 3433: Entity Sensor Management Information Base -\n                       entPhySensorUnitsDisplay\";\n        }\n        leaf value-timestamp {\n          type string {\n            pattern \"[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\\\.[0-9]+)?(Z|[\\\\+\\\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?\";\n          }\n          config false;\n          status current;\n          description\n            \"The time the status and/or value of this sensor was last\n             obtained by the server.\";\n          reference\n            \"RFC 3433: Entity Sensor Management Information Base -\n                       entPhySensorValueTimeStamp\";\n        }\n        leaf value-update-rate {\n          type uint32;\n          units \"milliseconds\";\n          config false;\n          status current;\n          description\n            \"An indication of the frequency that the server updates\n             the associated 'value' node, represented in\n             milliseconds.  The value zero indicates:\n\n              - the sensor value is updated on demand (e.g.,\n                when polled by the server for a get-request),\n\n              - the sensor value is updated when the sensor\n                value changes (event-driven), or\n\n              - the server does not know the update rate.\";\n          reference\n            \"RFC 3433: Entity Sensor Management Information Base -\n                       entPhySensorValueUpdateRate\";\n        }\n      }\n    }\n  }\n\n  notification hardware-state-change {\n    status current;\n    description\n      \"A hardware-state-change notification is generated when the\n       value of /hardware/last-change changes in the operational\n       state.\";\n    reference\n      \"RFC 6933: Entity MIB (Version 4) - entConfigChange\";\n  }\n  notification hardware-state-oper-enabled {\n    status current;\n    description\n      \"A hardware-state-oper-enabled notification signifies that a\n       component has transitioned into the 'enabled' state.\";\n    reference\n      \"RFC 4268: Entity State MIB - entStateOperEnabled\";\n    leaf name {\n      type leafref {\n        path \"/hardware/component/name\";\n        require-instance true;\n        type string;\n      }\n      status current;\n      description\n        \"The name of the component that has transitioned into the\n         'enabled' state.\";\n    }\n    leaf admin-state {\n      type leafref {\n        path \"/hardware/component/state/admin-state\";\n        require-instance true;\n        type enumeration {\n          enum \"unknown\" {\n            value 1;\n            status current;\n            description\n              \"The resource is unable to report administrative state.\";\n          }\n          enum \"locked\" {\n            value 2;\n            status current;\n            description\n              \"The resource is administratively prohibited from use.\";\n          }\n          enum \"shutting-down\" {\n            value 3;\n            status current;\n            description\n              \"The resource usage is administratively limited to current\n               instances of use.\";\n          }\n          enum \"unlocked\" {\n            value 4;\n            status current;\n            description\n              \"The resource is not administratively prohibited from\n               use.\";\n          }\n        }\n      }\n      status current;\n      description\n        \"The administrative state for the component.\";\n    }\n    leaf alarm-state {\n      type leafref {\n        path \"/hardware/component/state/alarm-state\";\n        require-instance true;\n        type bits {\n          bit \"unknown\" {\n            position 0;\n            status current;\n            description\n              \"The resource is unable to report alarm state.\";\n          }\n          bit \"under-repair\" {\n            position 1;\n            status current;\n            description\n              \"The resource is currently being repaired, which, depending\n               on the implementation, may make the other values in this\n               bit string not meaningful.\";\n          }\n          bit \"critical\" {\n            position 2;\n            status current;\n            description\n              \"One or more critical alarms are active against the\n               resource.\";\n          }\n          bit \"major\" {\n            position 3;\n            status current;\n            description\n              \"One or more major alarms are active against the\n               resource.\";\n          }\n          bit \"minor\" {\n            position 4;\n            status current;\n            description\n              \"One or more minor alarms are active against the\n               resource.\";\n          }\n          bit \"warning\" {\n            position 5;\n            status current;\n            description\n              \"One or more warning alarms are active against the\n               resource.\";\n          }\n          bit \"indeterminate\" {\n            position 6;\n            status current;\n            description\n              \"One or more alarms of whose perceived severity cannot be\n               determined are active against this resource.\";\n          }\n        }\n      }\n      status current;\n      description\n        \"The alarm state for the component.\";\n    }\n  }\n  notification hardware-state-oper-disabled {\n    status current;\n    description\n      \"A hardware-state-oper-disabled notification signifies that a\n       component has transitioned into the 'disabled' state.\";\n    reference\n      \"RFC 4268: Entity State MIB - entStateOperDisabled\";\n    leaf name {\n      type leafref {\n        path \"/hardware/component/name\";\n        require-instance true;\n        type string;\n      }\n      status current;\n      description\n        \"The name of the component that has transitioned into the\n         'disabled' state.\";\n    }\n    leaf admin-state {\n      type leafref {\n        path \"/hardware/component/state/admin-state\";\n        require-instance true;\n        type enumeration {\n          enum \"unknown\" {\n            value 1;\n            status current;\n            description\n              \"The resource is unable to report administrative state.\";\n          }\n          enum \"locked\" {\n            value 2;\n            status current;\n            description\n              \"The resource is administratively prohibited from use.\";\n          }\n          enum \"shutting-down\" {\n            value 3;\n            status current;\n            description\n              \"The resource usage is administratively limited to current\n               instances of use.\";\n          }\n          enum \"unlocked\" {\n            value 4;\n            status current;\n            description\n              \"The resource is not administratively prohibited from\n               use.\";\n          }\n        }\n      }\n      status current;\n      description\n        \"The administrative state for the component.\";\n    }\n    leaf alarm-state {\n      type leafref {\n        path \"/hardware/component/state/alarm-state\";\n        require-instance true;\n        type bits {\n          bit \"unknown\" {\n            position 0;\n            status current;\n            description\n              \"The resource is unable to report alarm state.\";\n          }\n          bit \"under-repair\" {\n            position 1;\n            status current;\n            description\n              \"The resource is currently being repaired, which, depending\n               on the implementation, may make the other values in this\n               bit string not meaningful.\";\n          }\n          bit \"critical\" {\n            position 2;\n            status current;\n            description\n              \"One or more critical alarms are active against the\n               resource.\";\n          }\n          bit \"major\" {\n            position 3;\n            status current;\n            description\n              \"One or more major alarms are active against the\n               resource.\";\n          }\n          bit \"minor\" {\n            position 4;\n            status current;\n            description\n              \"One or more minor alarms are active against the\n               resource.\";\n          }\n          bit \"warning\" {\n            position 5;\n            status current;\n            description\n              \"One or more warning alarms are active against the\n               resource.\";\n          }\n          bit \"indeterminate\" {\n            position 6;\n            status current;\n            description\n              \"One or more alarms of whose perceived severity cannot be\n               determined are active against this resource.\";\n          }\n        }\n      }\n      status current;\n      description\n        \"The alarm state for the component.\";\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": true,
+          "name": "entity-mib"
+        },
+        {
+          "enabled": true,
+          "name": "hardware-state"
+        },
+        {
+          "enabled": true,
+          "name": "hardware-sensor"
+        }
+      ],
+      "identities": [],
+      "name": "ietf-hardware",
+      "revision": "2018-03-13",
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/last-change",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]+)?(Z|[\\+\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "date-and-time"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "name"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "system",
+          "path": "/ietf-hardware:hardware/component",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/name",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/class",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "identityref",
+            "bases": [
+              "iana-hardware:hardware-class"
+            ],
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/physical-index",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "int32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "1..2147483647",
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/description",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/parent",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "../../component/name",
+              "require_instance": false,
+              "target": "/ietf-hardware:hardware/component/name"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/parent-rel-pos",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "int32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "0..2147483647",
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "user",
+          "path": "/ietf-hardware:hardware/component/contains-child",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "../../component/name",
+              "require_instance": true,
+              "target": "/ietf-hardware:hardware/component/name"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/hardware-rev",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/firmware-rev",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/software-rev",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/serial-num",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/mfg-name",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/model-name",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/alias",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/asset-id",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/is-fru",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "boolean",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/mfg-date",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]+)?(Z|[\\+\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "date-and-time"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "system",
+          "path": "/ietf-hardware:hardware/component/uri",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[a-z][a-z0-9+.-]*:.*",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "uri"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/uuid",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "uuid"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/state",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/state/state-last-changed",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]+)?(Z|[\\+\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "date-and-time"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/state/admin-state",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "unknown",
+                "value": 1
+              },
+              {
+                "name": "locked",
+                "value": 2
+              },
+              {
+                "name": "shutting-down",
+                "value": 3
+              },
+              {
+                "name": "unlocked",
+                "value": 4
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "admin-state"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/state/oper-state",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "unknown",
+                "value": 1
+              },
+              {
+                "name": "disabled",
+                "value": 2
+              },
+              {
+                "name": "enabled",
+                "value": 3
+              },
+              {
+                "name": "testing",
+                "value": 4
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "oper-state"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/state/usage-state",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "unknown",
+                "value": 1
+              },
+              {
+                "name": "idle",
+                "value": 2
+              },
+              {
+                "name": "active",
+                "value": 3
+              },
+              {
+                "name": "busy",
+                "value": 4
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "usage-state"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/state/alarm-state",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "bits",
+            "bases": null,
+            "bits": [
+              {
+                "name": "unknown",
+                "position": 0
+              },
+              {
+                "name": "under-repair",
+                "position": 1
+              },
+              {
+                "name": "critical",
+                "position": 2
+              },
+              {
+                "name": "major",
+                "position": 3
+              },
+              {
+                "name": "minor",
+                "position": 4
+              },
+              {
+                "name": "warning",
+                "position": 5
+              },
+              {
+                "name": "indeterminate",
+                "position": 6
+              }
+            ],
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "alarm-state"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/state/standby-state",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "unknown",
+                "value": 1
+              },
+              {
+                "name": "hot-standby",
+                "value": 2
+              },
+              {
+                "name": "cold-standby",
+                "value": 3
+              },
+              {
+                "name": "providing-service",
+                "value": 4
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "standby-state"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/sensor-data",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": [
+            {
+              "context": "/ietf-hardware:hardware/component/sensor-data",
+              "expr": "derived-from-or-self(../class,\n                                   \"ianahw:sensor\")",
+              "module": "ietf-hardware"
+            }
+          ]
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/sensor-data/value",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "int32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "-1000000000..1000000000",
+            "typedefs": [
+              "sensor-value"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/sensor-data/value-type",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "other",
+                "value": 1
+              },
+              {
+                "name": "unknown",
+                "value": 2
+              },
+              {
+                "name": "volts-AC",
+                "value": 3
+              },
+              {
+                "name": "volts-DC",
+                "value": 4
+              },
+              {
+                "name": "amperes",
+                "value": 5
+              },
+              {
+                "name": "watts",
+                "value": 6
+              },
+              {
+                "name": "hertz",
+                "value": 7
+              },
+              {
+                "name": "celsius",
+                "value": 8
+              },
+              {
+                "name": "percent-RH",
+                "value": 9
+              },
+              {
+                "name": "rpm",
+                "value": 10
+              },
+              {
+                "name": "cmm",
+                "value": 11
+              },
+              {
+                "name": "truth-value",
+                "value": 12
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "sensor-value-type"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/sensor-data/value-scale",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "yocto",
+                "value": 1
+              },
+              {
+                "name": "zepto",
+                "value": 2
+              },
+              {
+                "name": "atto",
+                "value": 3
+              },
+              {
+                "name": "femto",
+                "value": 4
+              },
+              {
+                "name": "pico",
+                "value": 5
+              },
+              {
+                "name": "nano",
+                "value": 6
+              },
+              {
+                "name": "micro",
+                "value": 7
+              },
+              {
+                "name": "milli",
+                "value": 8
+              },
+              {
+                "name": "units",
+                "value": 9
+              },
+              {
+                "name": "kilo",
+                "value": 10
+              },
+              {
+                "name": "mega",
+                "value": 11
+              },
+              {
+                "name": "giga",
+                "value": 12
+              },
+              {
+                "name": "tera",
+                "value": 13
+              },
+              {
+                "name": "peta",
+                "value": 14
+              },
+              {
+                "name": "exa",
+                "value": 15
+              },
+              {
+                "name": "zetta",
+                "value": 16
+              },
+              {
+                "name": "yotta",
+                "value": 17
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "sensor-value-scale"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/sensor-data/value-precision",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "int8",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": "-8..9",
+            "typedefs": [
+              "sensor-value-precision"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/sensor-data/oper-status",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "ok",
+                "value": 1
+              },
+              {
+                "name": "unavailable",
+                "value": 2
+              },
+              {
+                "name": "nonoperational",
+                "value": 3
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "sensor-status"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/sensor-data/units-display",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/sensor-data/value-timestamp",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[0-9]{4}-(1[0-2]|0[1-9])-(0[1-9]|[1-2][0-9]|3[0-1])T(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\\.[0-9]+)?(Z|[\\+\\-]((1[0-3]|0[0-9]):([0-5][0-9])|14:00))?",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": [
+              "date-and-time"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": false,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware/component/sensor-data/value-update-rate",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "uint32",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "notif",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware-state-change",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "notif",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware-state-oper-enabled",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware-state-oper-enabled/name",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "/hardware/component/name",
+              "require_instance": true,
+              "target": "/ietf-hardware:hardware/component/name"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware-state-oper-enabled/admin-state",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "/hardware/component/state/admin-state",
+              "require_instance": true,
+              "target": "/ietf-hardware:hardware/component/state/admin-state"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware-state-oper-enabled/alarm-state",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "/hardware/component/state/alarm-state",
+              "require_instance": true,
+              "target": "/ietf-hardware:hardware/component/state/alarm-state"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "notif",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware-state-oper-disabled",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware-state-oper-disabled/name",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "/hardware/component/name",
+              "require_instance": true,
+              "target": "/ietf-hardware:hardware/component/name"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware-state-oper-disabled/admin-state",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "/hardware/component/state/admin-state",
+              "require_instance": true,
+              "target": "/ietf-hardware:hardware/component/state/admin-state"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-hardware",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-hardware:hardware-state-oper-disabled/alarm-state",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "/hardware/component/state/alarm-state",
+              "require_instance": true,
+              "target": "/ietf-hardware:hardware/component/state/alarm-state"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

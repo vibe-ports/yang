@@ -1,0 +1,19 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module iana-routing-types {\n  namespace \"urn:ietf:params:xml:ns:yang:iana-routing-types\";\n  prefix iana-rt-types;\n\n  organization\n    \"IANA\";\n  contact\n    \"Internet Assigned Numbers Authority\n\n     Postal: ICANN\n             12025 Waterfront Drive, Suite 300\n             Los Angeles, CA  90094-2536\n             United States of America\n     Tel:    +1 310 301 5800\n     <mailto:iana&iana.org>\";\n  description\n    \"This module contains a collection of YANG data types\n     considered defined by IANA and used for routing\n     protocols.\n\n     Copyright (c) 2017 IETF Trust and the persons\n     identified as authors of the code.  All rights reserved.\n\n     Redistribution and use in source and binary forms, with or\n     without modification, is permitted pursuant to, and subject\n     to the license terms contained in, the Simplified BSD License\n     set forth in Section 4.c of the IETF Trust's Legal Provisions\n     Relating to IETF Documents\n     (https://trustee.ietf.org/license-info).\n\n     This version of this YANG module is part of RFC 8294; see\n     the RFC itself for full legal notices.\";\n\n  revision 2025-09-03;\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "iana-routing-types",
+      "revision": "2025-09-03",
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

@@ -1,0 +1,2460 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module iana-if-type {\n  namespace \"urn:ietf:params:xml:ns:yang:iana-if-type\";\n  prefix ianaift;\n\n  organization\n    \"IANA\";\n  contact\n    \"        Internet Assigned Numbers Authority\n\n     Postal: ICANN\n             12025 Waterfront Drive, Suite 300\n             Los Angeles, CA 90094-2536\n             United States\n\n     Tel:    +1 310 301 5800\n     <mailto:iana@iana.org>\";\n  description\n    \"This YANG module defines YANG identities for IANA-registered\n     interface types.\n\n     This YANG module is maintained by IANA and reflects the\n     'ifType definitions' registry.\n\n     The latest revision of this YANG module can be obtained from\n     the IANA web site.\n\n     Requests for new values should be made to IANA via\n     email (iana@iana.org).\n\n     Copyright (c) 2014 IETF Trust and the persons identified as\n     authors of the code.  All rights reserved.\n\n     Redistribution and use in source and binary forms, with or\n     without modification, is permitted pursuant to, and subject\n     to the license terms contained in, the Simplified BSD License\n     set forth in Section 4.c of the IETF Trust's Legal Provisions\n     Relating to IETF Documents\n     (http://trustee.ietf.org/license-info).\n\n     The initial version of this YANG module is part of RFC 7224;\n     see the RFC itself for full legal notices.\";\n  reference\n    \"IANA 'ifType definitions' registry.\n     <http://www.iana.org/assignments/smi-numbers>\";\n\n  revision 2026-03-17;\n\n  identity iana-interface-type {\n    derived other;\n    derived regular1822;\n    derived hdh1822;\n    derived ddnX25;\n    derived rfc877x25;\n    derived ethernetCsmacd;\n    derived iso88023Csmacd;\n    derived iso88024TokenBus;\n    derived iso88025TokenRing;\n    derived iso88026Man;\n    derived starLan;\n    derived proteon10Mbit;\n    derived proteon80Mbit;\n    derived hyperchannel;\n    derived fddi;\n    derived lapb;\n    derived sdlc;\n    derived ds1;\n    derived e1;\n    derived basicISDN;\n    derived primaryISDN;\n    derived propPointToPointSerial;\n    derived ppp;\n    derived softwareLoopback;\n    derived eon;\n    derived ethernet3Mbit;\n    derived nsip;\n    derived slip;\n    derived ultra;\n    derived ds3;\n    derived sip;\n    derived frameRelay;\n    derived rs232;\n    derived para;\n    derived arcnet;\n    derived arcnetPlus;\n    derived atm;\n    derived miox25;\n    derived sonet;\n    derived x25ple;\n    derived iso88022llc;\n    derived localTalk;\n    derived smdsDxi;\n    derived frameRelayService;\n    derived v35;\n    derived hssi;\n    derived hippi;\n    derived modem;\n    derived aal5;\n    derived sonetPath;\n    derived sonetVT;\n    derived smdsIcip;\n    derived propVirtual;\n    derived propMultiplexor;\n    derived ieee80212;\n    derived fibreChannel;\n    derived hippiInterface;\n    derived frameRelayInterconnect;\n    derived aflane8023;\n    derived aflane8025;\n    derived cctEmul;\n    derived fastEther;\n    derived isdn;\n    derived v11;\n    derived v36;\n    derived g703at64k;\n    derived g703at2mb;\n    derived qllc;\n    derived fastEtherFX;\n    derived channel;\n    derived ieee80211;\n    derived ibm370parChan;\n    derived escon;\n    derived dlsw;\n    derived isdns;\n    derived isdnu;\n    derived lapd;\n    derived ipSwitch;\n    derived rsrb;\n    derived atmLogical;\n    derived ds0;\n    derived ds0Bundle;\n    derived bsc;\n    derived async;\n    derived cnr;\n    derived iso88025Dtr;\n    derived eplrs;\n    derived arap;\n    derived propCnls;\n    derived hostPad;\n    derived termPad;\n    derived frameRelayMPI;\n    derived x213;\n    derived adsl;\n    derived radsl;\n    derived sdsl;\n    derived vdsl;\n    derived iso88025CRFPInt;\n    derived myrinet;\n    derived voiceEM;\n    derived voiceFXO;\n    derived voiceFXS;\n    derived voiceEncap;\n    derived voiceOverIp;\n    derived atmDxi;\n    derived atmFuni;\n    derived atmIma;\n    derived pppMultilinkBundle;\n    derived ipOverCdlc;\n    derived ipOverClaw;\n    derived stackToStack;\n    derived virtualIpAddress;\n    derived mpc;\n    derived ipOverAtm;\n    derived iso88025Fiber;\n    derived tdlc;\n    derived gigabitEthernet;\n    derived hdlc;\n    derived lapf;\n    derived v37;\n    derived x25mlp;\n    derived x25huntGroup;\n    derived transpHdlc;\n    derived interleave;\n    derived fast;\n    derived ip;\n    derived docsCableMaclayer;\n    derived docsCableDownstream;\n    derived docsCableUpstream;\n    derived a12MppSwitch;\n    derived tunnel;\n    derived coffee;\n    derived ces;\n    derived atmSubInterface;\n    derived l2vlan;\n    derived l3ipvlan;\n    derived l3ipxvlan;\n    derived digitalPowerline;\n    derived mediaMailOverIp;\n    derived dtm;\n    derived dcn;\n    derived ipForward;\n    derived msdsl;\n    derived ieee1394;\n    derived if-gsn;\n    derived dvbRccMacLayer;\n    derived dvbRccDownstream;\n    derived dvbRccUpstream;\n    derived atmVirtual;\n    derived mplsTunnel;\n    derived srp;\n    derived voiceOverAtm;\n    derived voiceOverFrameRelay;\n    derived idsl;\n    derived compositeLink;\n    derived ss7SigLink;\n    derived propWirelessP2P;\n    derived frForward;\n    derived rfc1483;\n    derived usb;\n    derived ieee8023adLag;\n    derived bgppolicyaccounting;\n    derived frf16MfrBundle;\n    derived h323Gatekeeper;\n    derived h323Proxy;\n    derived mpls;\n    derived mfSigLink;\n    derived hdsl2;\n    derived shdsl;\n    derived ds1FDL;\n    derived pos;\n    derived dvbAsiIn;\n    derived dvbAsiOut;\n    derived plc;\n    derived nfas;\n    derived tr008;\n    derived gr303RDT;\n    derived gr303IDT;\n    derived isup;\n    derived propDocsWirelessMaclayer;\n    derived propDocsWirelessDownstream;\n    derived propDocsWirelessUpstream;\n    derived hiperlan2;\n    derived propBWAp2Mp;\n    derived sonetOverheadChannel;\n    derived digitalWrapperOverheadChannel;\n    derived aal2;\n    derived radioMAC;\n    derived atmRadio;\n    derived imt;\n    derived mvl;\n    derived reachDSL;\n    derived frDlciEndPt;\n    derived atmVciEndPt;\n    derived opticalChannel;\n    derived opticalTransport;\n    derived propAtm;\n    derived voiceOverCable;\n    derived infiniband;\n    derived teLink;\n    derived q2931;\n    derived virtualTg;\n    derived sipTg;\n    derived sipSig;\n    derived docsCableUpstreamChannel;\n    derived econet;\n    derived pon155;\n    derived pon622;\n    derived bridge;\n    derived linegroup;\n    derived voiceEMFGD;\n    derived voiceFGDEANA;\n    derived voiceDID;\n    derived mpegTransport;\n    derived sixToFour;\n    derived gtp;\n    derived pdnEtherLoop1;\n    derived pdnEtherLoop2;\n    derived opticalChannelGroup;\n    derived homepna;\n    derived gfp;\n    derived ciscoISLvlan;\n    derived actelisMetaLOOP;\n    derived fcipLink;\n    derived rpr;\n    derived qam;\n    derived lmp;\n    derived cblVectaStar;\n    derived docsCableMCmtsDownstream;\n    derived adsl2;\n    derived macSecControlledIF;\n    derived macSecUncontrolledIF;\n    derived aviciOpticalEther;\n    derived atmbond;\n    derived voiceFGDOS;\n    derived mocaVersion1;\n    derived ieee80216WMAN;\n    derived adsl2plus;\n    derived dvbRcsMacLayer;\n    derived dvbTdm;\n    derived dvbRcsTdma;\n    derived x86Laps;\n    derived wwanPP;\n    derived wwanPP2;\n    derived voiceEBS;\n    derived ifPwType;\n    derived ilan;\n    derived pip;\n    derived aluELP;\n    derived gpon;\n    derived vdsl2;\n    derived capwapDot11Profile;\n    derived capwapDot11Bss;\n    derived capwapWtpVirtualRadio;\n    derived bits;\n    derived docsCableUpstreamRfPort;\n    derived cableDownstreamRfPort;\n    derived vmwareVirtualNic;\n    derived ieee802154;\n    derived otnOdu;\n    derived otnOtu;\n    derived ifVfiType;\n    derived g9981;\n    derived g9982;\n    derived g9983;\n    derived aluEpon;\n    derived aluEponOnu;\n    derived aluEponPhysicalUni;\n    derived aluEponLogicalLink;\n    derived aluGponOnu;\n    derived aluGponPhysicalUni;\n    derived vmwareNicTeam;\n    derived docsOfdmDownstream;\n    derived docsOfdmaUpstream;\n    derived gfast;\n    derived sdci;\n    derived xboxWireless;\n    derived fastdsl;\n    derived docsCableScte55d1FwdOob;\n    derived docsCableScte55d1RetOob;\n    derived docsCableScte55d2DsOob;\n    derived docsCableScte55d2UsOob;\n    derived docsCableNdf;\n    derived docsCableNdr;\n    derived ptm;\n    derived ghn;\n    derived otnOtsi;\n    derived otnOtuc;\n    derived otnOduc;\n    derived otnOtsig;\n    derived microwaveCarrierTermination;\n    derived microwaveRadioLinkTerminal;\n    derived ieee8021axDrni;\n    derived ax25;\n    derived ieee19061nanocom;\n    derived cpri;\n    derived omni;\n    derived roe;\n    derived p2pOverLan;\n    derived docsCableScte25d1FwdOob;\n    derived docsCableScte25d1RetOob;\n    derived docsCableScte25d2MacOob;\n    derived lora;\n    derived lorawan;\n    description\n      \"This identity is used as a base for all interface types\n       defined in the 'ifType definitions' registry.\";\n  }\n\n  identity other {\n  }\n\n  identity regular1822 {\n  }\n\n  identity hdh1822 {\n  }\n\n  identity ddnX25 {\n  }\n\n  identity rfc877x25 {\n    reference\n      \"RFC 1382 - SNMP MIB Extension for the X.25 Packet Layer\";\n  }\n\n  identity ethernetCsmacd {\n    description\n      \"For all Ethernet-like interfaces, regardless of speed,\n       as per RFC 3635.\";\n    reference\n      \"RFC 3635 - Definitions of Managed Objects for the\n                  Ethernet-like Interface Types\";\n  }\n\n  identity iso88023Csmacd {\n    status deprecated;\n    description\n      \"Deprecated via RFC 3635.\n       Use ethernetCsmacd(6) instead.\";\n    reference\n      \"RFC 3635 - Definitions of Managed Objects for the\n                  Ethernet-like Interface Types\";\n  }\n\n  identity iso88024TokenBus {\n  }\n\n  identity iso88025TokenRing {\n  }\n\n  identity iso88026Man {\n  }\n\n  identity starLan {\n    status deprecated;\n    description\n      \"Deprecated via RFC 3635.\n       Use ethernetCsmacd(6) instead.\";\n    reference\n      \"RFC 3635 - Definitions of Managed Objects for the\n                  Ethernet-like Interface Types\";\n  }\n\n  identity proteon10Mbit {\n  }\n\n  identity proteon80Mbit {\n  }\n\n  identity hyperchannel {\n  }\n\n  identity fddi {\n    reference\n      \"RFC 1512 - FDDI Management Information Base\";\n  }\n\n  identity lapb {\n    reference\n      \"RFC 1381 - SNMP MIB Extension for X.25 LAPB\";\n  }\n\n  identity sdlc {\n  }\n\n  identity ds1 {\n    description\n      \"DS1-MIB.\";\n    reference\n      \"RFC 4805 - Definitions of Managed Objects for the\n                  DS1, J1, E1, DS2, and E2 Interface Types\";\n  }\n\n  identity e1 {\n    status obsolete;\n    description\n      \"Obsolete; see DS1-MIB.\";\n    reference\n      \"RFC 4805 - Definitions of Managed Objects for the\n                  DS1, J1, E1, DS2, and E2 Interface Types\";\n  }\n\n  identity basicISDN {\n    description\n      \"No longer used.  See also RFC 2127.\";\n  }\n\n  identity primaryISDN {\n    description\n      \"No longer used.  See also RFC 2127.\";\n  }\n\n  identity propPointToPointSerial {\n    description\n      \"Proprietary serial.\";\n  }\n\n  identity ppp {\n  }\n\n  identity softwareLoopback {\n  }\n\n  identity eon {\n    description\n      \"CLNP over IP.\";\n  }\n\n  identity ethernet3Mbit {\n  }\n\n  identity nsip {\n    description\n      \"XNS over IP.\";\n  }\n\n  identity slip {\n    description\n      \"Generic SLIP.\";\n  }\n\n  identity ultra {\n    description\n      \"Ultra Technologies.\";\n  }\n\n  identity ds3 {\n    description\n      \"DS3-MIB.\";\n    reference\n      \"RFC 3896 - Definitions of Managed Objects for the\n                  DS3/E3 Interface Type\";\n  }\n\n  identity sip {\n    description\n      \"SMDS, coffee.\";\n    reference\n      \"RFC 1694 - Definitions of Managed Objects for SMDS\n                  Interfaces using SMIv2\";\n  }\n\n  identity frameRelay {\n    description\n      \"DTE only.\";\n    reference\n      \"RFC 2115 - Management Information Base for Frame Relay\n                  DTEs Using SMIv2\";\n  }\n\n  identity rs232 {\n    reference\n      \"RFC 1659 - Definitions of Managed Objects for RS-232-like\n                  Hardware Devices using SMIv2\";\n  }\n\n  identity para {\n    description\n      \"Parallel-port.\";\n    reference\n      \"RFC 1660 - Definitions of Managed Objects for\n                  Parallel-printer-like Hardware Devices using\n                  SMIv2\";\n  }\n\n  identity arcnet {\n    description\n      \"ARCnet.\";\n  }\n\n  identity arcnetPlus {\n    description\n      \"ARCnet Plus.\";\n  }\n\n  identity atm {\n    description\n      \"ATM cells.\";\n  }\n\n  identity miox25 {\n    reference\n      \"RFC 1461 - SNMP MIB extension for Multiprotocol\n                  Interconnect over X.25\";\n  }\n\n  identity sonet {\n    description\n      \"SONET or SDH.\";\n  }\n\n  identity x25ple {\n    reference\n      \"RFC 2127 - ISDN Management Information Base using SMIv2\";\n  }\n\n  identity iso88022llc {\n  }\n\n  identity localTalk {\n  }\n\n  identity smdsDxi {\n  }\n\n  identity frameRelayService {\n    description\n      \"FRNETSERV-MIB.\";\n    reference\n      \"RFC 2954 - Definitions of Managed Objects for Frame\n                  Relay Service\";\n  }\n\n  identity v35 {\n  }\n\n  identity hssi {\n  }\n\n  identity hippi {\n  }\n\n  identity modem {\n    description\n      \"Generic modem.\";\n  }\n\n  identity aal5 {\n    description\n      \"AAL5 over ATM.\";\n  }\n\n  identity sonetPath {\n  }\n\n  identity sonetVT {\n  }\n\n  identity smdsIcip {\n    description\n      \"SMDS InterCarrier Interface.\";\n  }\n\n  identity propVirtual {\n    description\n      \"Proprietary virtual/internal.\";\n    reference\n      \"RFC 2863 - The Interfaces Group MIB\";\n  }\n\n  identity propMultiplexor {\n    description\n      \"Proprietary multiplexing.\";\n    reference\n      \"RFC 2863 - The Interfaces Group MIB\";\n  }\n\n  identity ieee80212 {\n    description\n      \"100BaseVG.\";\n  }\n\n  identity fibreChannel {\n    description\n      \"Fibre Channel.\";\n  }\n\n  identity hippiInterface {\n    description\n      \"HIPPI interfaces.\";\n  }\n\n  identity frameRelayInterconnect {\n    status obsolete;\n    description\n      \"Obsolete; use either\n       frameRelay(32) or frameRelayService(44).\";\n  }\n\n  identity aflane8023 {\n    description\n      \"ATM Emulated LAN for 802.3.\";\n  }\n\n  identity aflane8025 {\n    description\n      \"ATM Emulated LAN for 802.5.\";\n  }\n\n  identity cctEmul {\n    description\n      \"ATM Emulated circuit.\";\n  }\n\n  identity fastEther {\n    status deprecated;\n    description\n      \"Obsoleted via RFC 3635.\n       ethernetCsmacd(6) should be used instead.\";\n    reference\n      \"RFC 3635 - Definitions of Managed Objects for the\n                  Ethernet-like Interface Types\";\n  }\n\n  identity isdn {\n    description\n      \"ISDN and X.25.\";\n    reference\n      \"RFC 1356 - Multiprotocol Interconnect on X.25 and ISDN\n                  in the Packet Mode\";\n  }\n\n  identity v11 {\n    description\n      \"CCITT V.11/X.21.\";\n  }\n\n  identity v36 {\n    description\n      \"CCITT V.36.\";\n  }\n\n  identity g703at64k {\n    description\n      \"CCITT G703 at 64Kbps.\";\n  }\n\n  identity g703at2mb {\n    status obsolete;\n    description\n      \"Obsolete; see DS1-MIB.\";\n  }\n\n  identity qllc {\n    description\n      \"SNA QLLC.\";\n  }\n\n  identity fastEtherFX {\n    status deprecated;\n    description\n      \"Obsoleted via RFC 3635.\n       ethernetCsmacd(6) should be used instead.\";\n    reference\n      \"RFC 3635 - Definitions of Managed Objects for the\n                  Ethernet-like Interface Types\";\n  }\n\n  identity channel {\n    description\n      \"Channel.\";\n  }\n\n  identity ieee80211 {\n    description\n      \"Radio spread spectrum.\";\n  }\n\n  identity ibm370parChan {\n    description\n      \"IBM System 360/370 OEMI Channel.\";\n  }\n\n  identity escon {\n    description\n      \"IBM Enterprise Systems Connection.\";\n  }\n\n  identity dlsw {\n    description\n      \"Data Link Switching.\";\n  }\n\n  identity isdns {\n    description\n      \"ISDN S/T interface.\";\n  }\n\n  identity isdnu {\n    description\n      \"ISDN U interface.\";\n  }\n\n  identity lapd {\n    description\n      \"Link Access Protocol D.\";\n  }\n\n  identity ipSwitch {\n    description\n      \"IP Switching Objects.\";\n  }\n\n  identity rsrb {\n    description\n      \"Remote Source Route Bridging.\";\n  }\n\n  identity atmLogical {\n    description\n      \"ATM Logical Port.\";\n    reference\n      \"RFC 3606 - Definitions of Supplemental Managed Objects\n                  for ATM Interface\";\n  }\n\n  identity ds0 {\n    description\n      \"Digital Signal Level 0.\";\n    reference\n      \"RFC 2494 - Definitions of Managed Objects for the DS0\n                  and DS0 Bundle Interface Type\";\n  }\n\n  identity ds0Bundle {\n    description\n      \"Group of ds0s on the same ds1.\";\n    reference\n      \"RFC 2494 - Definitions of Managed Objects for the DS0\n                  and DS0 Bundle Interface Type\";\n  }\n\n  identity bsc {\n    description\n      \"Bisynchronous Protocol.\";\n  }\n\n  identity async {\n    description\n      \"Asynchronous Protocol.\";\n  }\n\n  identity cnr {\n    description\n      \"Combat Net Radio.\";\n  }\n\n  identity iso88025Dtr {\n    description\n      \"ISO 802.5r DTR.\";\n  }\n\n  identity eplrs {\n    description\n      \"Ext Pos Loc Report Sys.\";\n  }\n\n  identity arap {\n    description\n      \"Appletalk Remote Access Protocol.\";\n  }\n\n  identity propCnls {\n    description\n      \"Proprietary Connectionless Protocol.\";\n  }\n\n  identity hostPad {\n    description\n      \"CCITT-ITU X.29 PAD Protocol.\";\n  }\n\n  identity termPad {\n    description\n      \"CCITT-ITU X.3 PAD Facility.\";\n  }\n\n  identity frameRelayMPI {\n    description\n      \"Multiproto Interconnect over FR.\";\n  }\n\n  identity x213 {\n    description\n      \"CCITT-ITU X213.\";\n  }\n\n  identity adsl {\n    description\n      \"Asymmetric Digital Subscriber Loop.\";\n  }\n\n  identity radsl {\n    description\n      \"Rate-Adapt. Digital Subscriber Loop.\";\n  }\n\n  identity sdsl {\n    description\n      \"Symmetric Digital Subscriber Loop.\";\n  }\n\n  identity vdsl {\n    description\n      \"Very H-Speed Digital Subscrib. Loop.\";\n  }\n\n  identity iso88025CRFPInt {\n    description\n      \"ISO 802.5 CRFP.\";\n  }\n\n  identity myrinet {\n    description\n      \"Myricom Myrinet.\";\n  }\n\n  identity voiceEM {\n    description\n      \"Voice recEive and transMit.\";\n  }\n\n  identity voiceFXO {\n    description\n      \"Voice Foreign Exchange Office.\";\n  }\n\n  identity voiceFXS {\n    description\n      \"Voice Foreign Exchange Station.\";\n  }\n\n  identity voiceEncap {\n    description\n      \"Voice encapsulation.\";\n  }\n\n  identity voiceOverIp {\n    description\n      \"Voice over IP encapsulation.\";\n  }\n\n  identity atmDxi {\n    description\n      \"ATM DXI.\";\n  }\n\n  identity atmFuni {\n    description\n      \"ATM FUNI.\";\n  }\n\n  identity atmIma {\n    description\n      \"ATM IMA.\";\n  }\n\n  identity pppMultilinkBundle {\n    description\n      \"PPP Multilink Bundle.\";\n  }\n\n  identity ipOverCdlc {\n    description\n      \"IBM ipOverCdlc.\";\n  }\n\n  identity ipOverClaw {\n    description\n      \"IBM Common Link Access to Workstn.\";\n  }\n\n  identity stackToStack {\n    description\n      \"IBM stackToStack.\";\n  }\n\n  identity virtualIpAddress {\n    description\n      \"IBM VIPA.\";\n  }\n\n  identity mpc {\n    description\n      \"IBM multi-protocol channel support.\";\n  }\n\n  identity ipOverAtm {\n    description\n      \"IBM ipOverAtm.\";\n    reference\n      \"RFC 2320 - Definitions of Managed Objects for Classical IP\n                  and ARP Over ATM Using SMIv2 (IPOA-MIB)\";\n  }\n\n  identity iso88025Fiber {\n    description\n      \"ISO 802.5j Fiber Token Ring.\";\n  }\n\n  identity tdlc {\n    description\n      \"IBM twinaxial data link control.\";\n  }\n\n  identity gigabitEthernet {\n    status deprecated;\n    description\n      \"Obsoleted via RFC 3635.\n       ethernetCsmacd(6) should be used instead.\";\n    reference\n      \"RFC 3635 - Definitions of Managed Objects for the\n                  Ethernet-like Interface Types\";\n  }\n\n  identity hdlc {\n    description\n      \"HDLC.\";\n  }\n\n  identity lapf {\n    description\n      \"LAP F.\";\n  }\n\n  identity v37 {\n    description\n      \"V.37.\";\n  }\n\n  identity x25mlp {\n    description\n      \"Multi-Link Protocol.\";\n  }\n\n  identity x25huntGroup {\n    description\n      \"X25 Hunt Group.\";\n  }\n\n  identity transpHdlc {\n    description\n      \"Transp HDLC.\";\n  }\n\n  identity interleave {\n    description\n      \"Interleave channel.\";\n  }\n\n  identity fast {\n    description\n      \"Fast channel.\";\n  }\n\n  identity ip {\n    description\n      \"IP (for APPN HPR in IP networks).\";\n  }\n\n  identity docsCableMaclayer {\n    description\n      \"CATV Mac Layer.\";\n  }\n\n  identity docsCableDownstream {\n    description\n      \"CATV Downstream interface.\";\n  }\n\n  identity docsCableUpstream {\n    description\n      \"CATV Upstream interface.\";\n  }\n\n  identity a12MppSwitch {\n    description\n      \"Avalon Parallel Processor.\";\n  }\n\n  identity tunnel {\n    description\n      \"Encapsulation interface.\";\n  }\n\n  identity coffee {\n    description\n      \"Coffee pot.\";\n    reference\n      \"RFC 2325 - Coffee MIB\";\n  }\n\n  identity ces {\n    description\n      \"Circuit Emulation Service.\";\n  }\n\n  identity atmSubInterface {\n    description\n      \"ATM Sub Interface.\";\n  }\n\n  identity l2vlan {\n    description\n      \"Layer 2 Virtual LAN using 802.1Q.\";\n  }\n\n  identity l3ipvlan {\n    description\n      \"Layer 3 Virtual LAN using IP.\";\n  }\n\n  identity l3ipxvlan {\n    description\n      \"Layer 3 Virtual LAN using IPX.\";\n  }\n\n  identity digitalPowerline {\n    description\n      \"IP over Power Lines.\";\n  }\n\n  identity mediaMailOverIp {\n    description\n      \"Multimedia Mail over IP.\";\n  }\n\n  identity dtm {\n    description\n      \"Dynamic synchronous Transfer Mode.\";\n  }\n\n  identity dcn {\n    description\n      \"Data Communications Network.\";\n  }\n\n  identity ipForward {\n    description\n      \"IP Forwarding Interface.\";\n  }\n\n  identity msdsl {\n    description\n      \"Multi-rate Symmetric DSL.\";\n  }\n\n  identity ieee1394 {\n    description\n      \"IEEE1394 High Performance Serial Bus.\";\n  }\n\n  identity if-gsn {\n    description\n      \"HIPPI-6400.\";\n  }\n\n  identity dvbRccMacLayer {\n    description\n      \"DVB-RCC MAC Layer.\";\n  }\n\n  identity dvbRccDownstream {\n    description\n      \"DVB-RCC Downstream Channel.\";\n  }\n\n  identity dvbRccUpstream {\n    description\n      \"DVB-RCC Upstream Channel.\";\n  }\n\n  identity atmVirtual {\n    description\n      \"ATM Virtual Interface.\";\n  }\n\n  identity mplsTunnel {\n    description\n      \"MPLS Tunnel Virtual Interface.\";\n  }\n\n  identity srp {\n    description\n      \"Spatial Reuse Protocol.\";\n  }\n\n  identity voiceOverAtm {\n    description\n      \"Voice over ATM.\";\n  }\n\n  identity voiceOverFrameRelay {\n    description\n      \"Voice Over Frame Relay.\";\n  }\n\n  identity idsl {\n    description\n      \"Digital Subscriber Loop over ISDN.\";\n  }\n\n  identity compositeLink {\n    description\n      \"Avici Composite Link Interface.\";\n  }\n\n  identity ss7SigLink {\n    description\n      \"SS7 Signaling Link.\";\n  }\n\n  identity propWirelessP2P {\n    description\n      \"Prop. P2P wireless interface.\";\n  }\n\n  identity frForward {\n    description\n      \"Frame Forward Interface.\";\n  }\n\n  identity rfc1483 {\n    description\n      \"Multiprotocol over ATM AAL5.\";\n    reference\n      \"RFC 1483 - Multiprotocol Encapsulation over ATM\n                  Adaptation Layer 5\";\n  }\n\n  identity usb {\n    description\n      \"USB Interface.\";\n  }\n\n  identity ieee8023adLag {\n    description\n      \"IEEE 802.3ad Link Aggregate.\";\n  }\n\n  identity bgppolicyaccounting {\n    description\n      \"BGP Policy Accounting.\";\n  }\n\n  identity frf16MfrBundle {\n    description\n      \"FRF.16 Multilink Frame Relay.\";\n  }\n\n  identity h323Gatekeeper {\n    description\n      \"H323 Gatekeeper.\";\n  }\n\n  identity h323Proxy {\n    description\n      \"H323 Voice and Video Proxy.\";\n  }\n\n  identity mpls {\n    description\n      \"MPLS.\";\n  }\n\n  identity mfSigLink {\n    description\n      \"Multi-frequency signaling link.\";\n  }\n\n  identity hdsl2 {\n    description\n      \"High Bit-Rate DSL - 2nd generation.\";\n  }\n\n  identity shdsl {\n    description\n      \"Multirate HDSL2.\";\n  }\n\n  identity ds1FDL {\n    description\n      \"Facility Data Link (4Kbps) on a DS1.\";\n  }\n\n  identity pos {\n    description\n      \"Packet over SONET/SDH Interface.\";\n  }\n\n  identity dvbAsiIn {\n    description\n      \"DVB-ASI Input.\";\n  }\n\n  identity dvbAsiOut {\n    description\n      \"DVB-ASI Output.\";\n  }\n\n  identity plc {\n    description\n      \"Power Line Communications.\";\n  }\n\n  identity nfas {\n    description\n      \"Non-Facility Associated Signaling.\";\n  }\n\n  identity tr008 {\n    description\n      \"TR008.\";\n  }\n\n  identity gr303RDT {\n    description\n      \"Remote Digital Terminal.\";\n  }\n\n  identity gr303IDT {\n    description\n      \"Integrated Digital Terminal.\";\n  }\n\n  identity isup {\n    description\n      \"ISUP.\";\n  }\n\n  identity propDocsWirelessMaclayer {\n    description\n      \"Cisco proprietary Maclayer.\";\n  }\n\n  identity propDocsWirelessDownstream {\n    description\n      \"Cisco proprietary Downstream.\";\n  }\n\n  identity propDocsWirelessUpstream {\n    description\n      \"Cisco proprietary Upstream.\";\n  }\n\n  identity hiperlan2 {\n    description\n      \"HIPERLAN Type 2 Radio Interface.\";\n  }\n\n  identity propBWAp2Mp {\n    description\n      \"PropBroadbandWirelessAccesspt2Multipt (use of this value\n       for IEEE 802.16 WMAN interfaces as per IEEE Std 802.16f\n       is deprecated, and ieee80216WMAN(237) should be used\n       instead).\";\n  }\n\n  identity sonetOverheadChannel {\n    description\n      \"SONET Overhead Channel.\";\n  }\n\n  identity digitalWrapperOverheadChannel {\n    description\n      \"Digital Wrapper.\";\n  }\n\n  identity aal2 {\n    description\n      \"ATM adaptation layer 2.\";\n  }\n\n  identity radioMAC {\n    description\n      \"MAC layer over radio links.\";\n  }\n\n  identity atmRadio {\n    description\n      \"ATM over radio links.\";\n  }\n\n  identity imt {\n    description\n      \"Inter-Machine Trunks.\";\n  }\n\n  identity mvl {\n    description\n      \"Multiple Virtual Lines DSL.\";\n  }\n\n  identity reachDSL {\n    description\n      \"Long Reach DSL.\";\n  }\n\n  identity frDlciEndPt {\n    description\n      \"Frame Relay DLCI End Point.\";\n  }\n\n  identity atmVciEndPt {\n    description\n      \"ATM VCI End Point.\";\n  }\n\n  identity opticalChannel {\n    description\n      \"Optical Channel.\";\n  }\n\n  identity opticalTransport {\n    description\n      \"Optical Transport.\";\n  }\n\n  identity propAtm {\n    description\n      \"Proprietary ATM.\";\n  }\n\n  identity voiceOverCable {\n    description\n      \"Voice Over Cable Interface.\";\n  }\n\n  identity infiniband {\n    description\n      \"Infiniband.\";\n  }\n\n  identity teLink {\n    description\n      \"TE Link.\";\n  }\n\n  identity q2931 {\n    description\n      \"Q.2931.\";\n  }\n\n  identity virtualTg {\n    description\n      \"Virtual Trunk Group.\";\n  }\n\n  identity sipTg {\n    description\n      \"SIP Trunk Group.\";\n  }\n\n  identity sipSig {\n    description\n      \"SIP Signaling.\";\n  }\n\n  identity docsCableUpstreamChannel {\n    description\n      \"CATV Upstream Channel.\";\n  }\n\n  identity econet {\n    description\n      \"Acorn Econet.\";\n  }\n\n  identity pon155 {\n    description\n      \"FSAN 155Mb Symetrical PON interface.\";\n  }\n\n  identity pon622 {\n    description\n      \"FSAN 622Mb Symetrical PON interface.\";\n  }\n\n  identity bridge {\n    description\n      \"Transparent bridge interface.\";\n  }\n\n  identity linegroup {\n    description\n      \"Interface common to multiple lines.\";\n  }\n\n  identity voiceEMFGD {\n    description\n      \"Voice E&M Feature Group D.\";\n  }\n\n  identity voiceFGDEANA {\n    description\n      \"Voice FGD Exchange Access North American.\";\n  }\n\n  identity voiceDID {\n    description\n      \"Voice Direct Inward Dialing.\";\n  }\n\n  identity mpegTransport {\n    description\n      \"MPEG transport interface.\";\n  }\n\n  identity sixToFour {\n    status deprecated;\n    description\n      \"6to4 interface (DEPRECATED).\";\n    reference\n      \"RFC 4087 - IP Tunnel MIB\";\n  }\n\n  identity gtp {\n    description\n      \"GTP (GPRS Tunneling Protocol).\";\n  }\n\n  identity pdnEtherLoop1 {\n    description\n      \"Paradyne EtherLoop 1.\";\n  }\n\n  identity pdnEtherLoop2 {\n    description\n      \"Paradyne EtherLoop 2.\";\n  }\n\n  identity opticalChannelGroup {\n    description\n      \"Optical Channel Group.\";\n  }\n\n  identity homepna {\n    description\n      \"HomePNA ITU-T G.989.\";\n  }\n\n  identity gfp {\n    description\n      \"Generic Framing Procedure (GFP).\";\n  }\n\n  identity ciscoISLvlan {\n    description\n      \"Layer 2 Virtual LAN using Cisco ISL.\";\n  }\n\n  identity actelisMetaLOOP {\n    description\n      \"Acteleis proprietary MetaLOOP High Speed Link.\";\n  }\n\n  identity fcipLink {\n    description\n      \"FCIP Link.\";\n  }\n\n  identity rpr {\n    description\n      \"Resilient Packet Ring Interface Type.\";\n  }\n\n  identity qam {\n    description\n      \"RF Qam Interface.\";\n  }\n\n  identity lmp {\n    description\n      \"Link Management Protocol.\";\n    reference\n      \"RFC 4327 - Link Management Protocol (LMP) Management\n                  Information Base (MIB)\";\n  }\n\n  identity cblVectaStar {\n    description\n      \"Cambridge Broadband Networks Limited VectaStar.\";\n  }\n\n  identity docsCableMCmtsDownstream {\n    description\n      \"CATV Modular CMTS Downstream Interface.\";\n  }\n\n  identity adsl2 {\n    status deprecated;\n    description\n      \"Asymmetric Digital Subscriber Loop Version 2\n       (DEPRECATED/OBSOLETED - please use adsl2plus(238)\n       instead).\";\n    reference\n      \"RFC 4706 - Definitions of Managed Objects for Asymmetric\n                  Digital Subscriber Line 2 (ADSL2)\";\n  }\n\n  identity macSecControlledIF {\n    description\n      \"MACSecControlled.\";\n  }\n\n  identity macSecUncontrolledIF {\n    description\n      \"MACSecUncontrolled.\";\n  }\n\n  identity aviciOpticalEther {\n    description\n      \"Avici Optical Ethernet Aggregate.\";\n  }\n\n  identity atmbond {\n    description\n      \"atmbond.\";\n  }\n\n  identity voiceFGDOS {\n    description\n      \"Voice FGD Operator Services.\";\n  }\n\n  identity mocaVersion1 {\n    description\n      \"MultiMedia over Coax Alliance (MoCA) Interface\n       as documented in information provided privately to IANA.\";\n  }\n\n  identity ieee80216WMAN {\n    description\n      \"IEEE 802.16 WMAN interface.\";\n  }\n\n  identity adsl2plus {\n    description\n      \"Asymmetric Digital Subscriber Loop Version 2 -\n       Version 2 Plus and all variants.\";\n  }\n\n  identity dvbRcsMacLayer {\n    description\n      \"DVB-RCS MAC Layer.\";\n    reference\n      \"RFC 5728 - The SatLabs Group DVB-RCS MIB\";\n  }\n\n  identity dvbTdm {\n    description\n      \"DVB Satellite TDM.\";\n    reference\n      \"RFC 5728 - The SatLabs Group DVB-RCS MIB\";\n  }\n\n  identity dvbRcsTdma {\n    description\n      \"DVB-RCS TDMA.\";\n    reference\n      \"RFC 5728 - The SatLabs Group DVB-RCS MIB\";\n  }\n\n  identity x86Laps {\n    description\n      \"LAPS based on ITU-T X.86/Y.1323.\";\n  }\n\n  identity wwanPP {\n    description\n      \"3GPP WWAN.\";\n  }\n\n  identity wwanPP2 {\n    description\n      \"3GPP2 WWAN.\";\n  }\n\n  identity voiceEBS {\n    description\n      \"Voice P-phone EBS physical interface.\";\n  }\n\n  identity ifPwType {\n    description\n      \"Pseudowire interface type.\";\n    reference\n      \"RFC 5601 - Pseudowire (PW) Management Information Base (MIB)\";\n  }\n\n  identity ilan {\n    description\n      \"Internal LAN on a bridge per IEEE 802.1ap.\";\n  }\n\n  identity pip {\n    description\n      \"Provider Instance Port on a bridge per IEEE 802.1ah PBB.\";\n  }\n\n  identity aluELP {\n    description\n      \"Alcatel-Lucent Ethernet Link Protection.\";\n  }\n\n  identity gpon {\n    description\n      \"Gigabit-capable passive optical networks (G-PON) as per\n       ITU-T G.984.\";\n  }\n\n  identity vdsl2 {\n    description\n      \"Very high speed digital subscriber line Version 2\n       (as per ITU-T Recommendation G.993.2).\";\n    reference\n      \"RFC 5650 - Definitions of Managed Objects for Very High\n                  Speed Digital Subscriber Line 2 (VDSL2)\";\n  }\n\n  identity capwapDot11Profile {\n    description\n      \"WLAN Profile Interface.\";\n    reference\n      \"RFC 5834 - Control and Provisioning of Wireless Access\n                  Points (CAPWAP) Protocol Binding MIB for\n                  IEEE 802.11\";\n  }\n\n  identity capwapDot11Bss {\n    description\n      \"WLAN BSS Interface.\";\n    reference\n      \"RFC 5834 - Control and Provisioning of Wireless Access\n                  Points (CAPWAP) Protocol Binding MIB for\n                  IEEE 802.11\";\n  }\n\n  identity capwapWtpVirtualRadio {\n    description\n      \"WTP Virtual Radio Interface.\";\n    reference\n      \"RFC 5833 - Control and Provisioning of Wireless Access\n                  Points (CAPWAP) Protocol Base MIB\";\n  }\n\n  identity bits {\n    description\n      \"bitsport.\";\n  }\n\n  identity docsCableUpstreamRfPort {\n    description\n      \"DOCSIS CATV Upstream RF Port.\";\n  }\n\n  identity cableDownstreamRfPort {\n    description\n      \"CATV downstream RF Port.\";\n  }\n\n  identity vmwareVirtualNic {\n    description\n      \"VMware Virtual Network Interface.\";\n  }\n\n  identity ieee802154 {\n    description\n      \"IEEE 802.15.4 WPAN interface.\";\n    reference\n      \"IEEE 802.15.4-2006\";\n  }\n\n  identity otnOdu {\n    description\n      \"OTN Optical Data Unit.\";\n  }\n\n  identity otnOtu {\n    description\n      \"OTN Optical channel Transport Unit.\";\n  }\n\n  identity ifVfiType {\n    description\n      \"VPLS Forwarding Instance Interface Type.\";\n  }\n\n  identity g9981 {\n    description\n      \"G.998.1 bonded interface.\";\n  }\n\n  identity g9982 {\n    description\n      \"G.998.2 bonded interface.\";\n  }\n\n  identity g9983 {\n    description\n      \"G.998.3 bonded interface.\";\n  }\n\n  identity aluEpon {\n    description\n      \"Ethernet Passive Optical Networks (E-PON).\";\n  }\n\n  identity aluEponOnu {\n    description\n      \"EPON Optical Network Unit.\";\n  }\n\n  identity aluEponPhysicalUni {\n    description\n      \"EPON physical User to Network interface.\";\n  }\n\n  identity aluEponLogicalLink {\n    description\n      \"The emulation of a point-to-point link over the EPON\n       layer.\";\n  }\n\n  identity aluGponOnu {\n    description\n      \"GPON Optical Network Unit.\";\n    reference\n      \"ITU-T G.984.2\";\n  }\n\n  identity aluGponPhysicalUni {\n    description\n      \"GPON physical User to Network interface.\";\n    reference\n      \"ITU-T G.984.2\";\n  }\n\n  identity vmwareNicTeam {\n    description\n      \"VMware NIC Team.\";\n  }\n\n  identity docsOfdmDownstream {\n    description\n      \"CATV Downstream OFDM interface.\";\n    reference\n      \"Cable Modem Operations Support System Interface\n       Specification\";\n  }\n\n  identity docsOfdmaUpstream {\n    description\n      \"CATV Upstream OFDMA interface.\";\n    reference\n      \"Cable Modem Operations Support System Interface\n       Specification\";\n  }\n\n  identity gfast {\n    description\n      \"G.fast port.\";\n    reference\n      \"ITU-T G.9701\";\n  }\n\n  identity sdci {\n    description\n      \"SDCI (IO-Link).\";\n    reference\n      \"IEC 61131-9 Edition 1.0 2013-09\";\n  }\n\n  identity xboxWireless {\n    description\n      \"Xbox wireless.\";\n  }\n\n  identity fastdsl {\n    description\n      \"FastDSL.\";\n    reference\n      \"BBF TR-355\";\n  }\n\n  identity docsCableScte55d1FwdOob {\n    description\n      \"Cable SCTE 55-1 OOB Forward Channel.\";\n    reference\n      \"ANSI/SCTE 55-1 2009\";\n  }\n\n  identity docsCableScte55d1RetOob {\n    description\n      \"Cable SCTE 55-1 OOB Return Channel.\";\n    reference\n      \"ANSI/SCTE 55-1 2009\";\n  }\n\n  identity docsCableScte55d2DsOob {\n    description\n      \"Cable SCTE 55-2 OOB Downstream Channel.\";\n    reference\n      \"ANSI/SCTE 55-2 2008\";\n  }\n\n  identity docsCableScte55d2UsOob {\n    description\n      \"Cable SCTE 55-2 OOB Upstream Channel.\";\n    reference\n      \"ANSI/SCTE 55-2 2008\";\n  }\n\n  identity docsCableNdf {\n    description\n      \"Cable Narrowband Digital Forward.\";\n  }\n\n  identity docsCableNdr {\n    description\n      \"Cable Narrowband Digital Return.\";\n  }\n\n  identity ptm {\n    description\n      \"Packet Transfer Mode.\";\n    reference\n      \"IEEE G.993.1, Annex H; IEEE G.993.2; IEEE G.9701\";\n  }\n\n  identity ghn {\n    description\n      \"G.hn port.\";\n    reference\n      \"IEEE G.9961\";\n  }\n\n  identity otnOtsi {\n    description\n      \"Optical Tributary Signal.\";\n    reference\n      \"ITU-T G.959.1\";\n  }\n\n  identity otnOtuc {\n    description\n      \"OTN OTUCn.\";\n    reference\n      \"ITU-T G.709/Y.1331\";\n  }\n\n  identity otnOduc {\n    description\n      \"OTN ODUC.\";\n    reference\n      \"ITU-T G.709\";\n  }\n\n  identity otnOtsig {\n    description\n      \"OTN OTUC Signal.\";\n    reference\n      \"ITU-T G.709\";\n  }\n\n  identity microwaveCarrierTermination {\n    description\n      \"air interface of a single microwave carrier.\";\n    reference\n      \"RFC 8561 - A YANG Data Model for Microwave Radio Link\";\n  }\n\n  identity microwaveRadioLinkTerminal {\n    description\n      \"radio link interface for one or several aggregated microwave carriers.\";\n    reference\n      \"RFC 8561 - A YANG Data Model for Microwave Radio Link\";\n  }\n\n  identity ieee8021axDrni {\n    description\n      \"IEEE 802.1AX Distributed Resilient Network Interface.\";\n    reference\n      \"IEEE 802.1AX-Rev-d2-0\";\n  }\n\n  identity ax25 {\n    description\n      \"AX.25 network interfaces.\";\n    reference\n      \"AX.25 Link Access Protocol for Amateur Packet Radio version 2.2\";\n  }\n\n  identity ieee19061nanocom {\n    description\n      \"Nanoscale and Molecular Communication.\";\n    reference\n      \"IEEE 1906.1-2015\";\n  }\n\n  identity cpri {\n    description\n      \"Common Public Radio Interface.\";\n    reference\n      \"CPRI v7.0\";\n  }\n\n  identity omni {\n    description\n      \"Overlay Multilink Network Interface (OMNI).\";\n    reference\n      \"draft-templin-6man-omni-00\";\n  }\n\n  identity roe {\n    description\n      \"Radio over Ethernet Interface.\";\n    reference\n      \"1914.3-2018 - IEEE Standard for Radio over Ethernet Encapsulations and Mappings\";\n  }\n\n  identity p2pOverLan {\n    description\n      \"Point to Point over LAN interface.\";\n    reference\n      \"RFC 9296 - ifStackTable for the Point-to-Point (P2P) Interface over a LAN Type: Definition and Examples\";\n  }\n\n  identity docsCableScte25d1FwdOob {\n    description\n      \"Cable SCTE 25-1 OOB Forward Channel.\";\n    reference\n      \"ANSI/SCTE 25-1 2025\";\n  }\n\n  identity docsCableScte25d1RetOob {\n    description\n      \"Cable SCTE 25-1 OOB Return Channel.\";\n    reference\n      \"ANSI/SCTE 25-1 2025\";\n  }\n\n  identity docsCableScte25d2MacOob {\n    description\n      \"Cable SCTE 25-2 OOB MAC.\";\n    reference\n      \"ANSI/SCTE 25-2 2025\";\n  }\n\n  identity lora {\n    description\n      \"LoRa.\";\n    reference\n      \"SX1276\";\n  }\n\n  identity lorawan {\n    description\n      \"LoRaWAN.\";\n    reference\n      \"TS001-1.0.4 LoRaWAN L2 1.0.4\";\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [
+        {
+          "bases": [
+            "ietf-interfaces:interface-type"
+          ],
+          "derived": [
+            "iana-if-type:other",
+            "iana-if-type:regular1822",
+            "iana-if-type:hdh1822",
+            "iana-if-type:ddnX25",
+            "iana-if-type:rfc877x25",
+            "iana-if-type:ethernetCsmacd",
+            "iana-if-type:iso88023Csmacd",
+            "iana-if-type:iso88024TokenBus",
+            "iana-if-type:iso88025TokenRing",
+            "iana-if-type:iso88026Man",
+            "iana-if-type:starLan",
+            "iana-if-type:proteon10Mbit",
+            "iana-if-type:proteon80Mbit",
+            "iana-if-type:hyperchannel",
+            "iana-if-type:fddi",
+            "iana-if-type:lapb",
+            "iana-if-type:sdlc",
+            "iana-if-type:ds1",
+            "iana-if-type:e1",
+            "iana-if-type:basicISDN",
+            "iana-if-type:primaryISDN",
+            "iana-if-type:propPointToPointSerial",
+            "iana-if-type:ppp",
+            "iana-if-type:softwareLoopback",
+            "iana-if-type:eon",
+            "iana-if-type:ethernet3Mbit",
+            "iana-if-type:nsip",
+            "iana-if-type:slip",
+            "iana-if-type:ultra",
+            "iana-if-type:ds3",
+            "iana-if-type:sip",
+            "iana-if-type:frameRelay",
+            "iana-if-type:rs232",
+            "iana-if-type:para",
+            "iana-if-type:arcnet",
+            "iana-if-type:arcnetPlus",
+            "iana-if-type:atm",
+            "iana-if-type:miox25",
+            "iana-if-type:sonet",
+            "iana-if-type:x25ple",
+            "iana-if-type:iso88022llc",
+            "iana-if-type:localTalk",
+            "iana-if-type:smdsDxi",
+            "iana-if-type:frameRelayService",
+            "iana-if-type:v35",
+            "iana-if-type:hssi",
+            "iana-if-type:hippi",
+            "iana-if-type:modem",
+            "iana-if-type:aal5",
+            "iana-if-type:sonetPath",
+            "iana-if-type:sonetVT",
+            "iana-if-type:smdsIcip",
+            "iana-if-type:propVirtual",
+            "iana-if-type:propMultiplexor",
+            "iana-if-type:ieee80212",
+            "iana-if-type:fibreChannel",
+            "iana-if-type:hippiInterface",
+            "iana-if-type:frameRelayInterconnect",
+            "iana-if-type:aflane8023",
+            "iana-if-type:aflane8025",
+            "iana-if-type:cctEmul",
+            "iana-if-type:fastEther",
+            "iana-if-type:isdn",
+            "iana-if-type:v11",
+            "iana-if-type:v36",
+            "iana-if-type:g703at64k",
+            "iana-if-type:g703at2mb",
+            "iana-if-type:qllc",
+            "iana-if-type:fastEtherFX",
+            "iana-if-type:channel",
+            "iana-if-type:ieee80211",
+            "iana-if-type:ibm370parChan",
+            "iana-if-type:escon",
+            "iana-if-type:dlsw",
+            "iana-if-type:isdns",
+            "iana-if-type:isdnu",
+            "iana-if-type:lapd",
+            "iana-if-type:ipSwitch",
+            "iana-if-type:rsrb",
+            "iana-if-type:atmLogical",
+            "iana-if-type:ds0",
+            "iana-if-type:ds0Bundle",
+            "iana-if-type:bsc",
+            "iana-if-type:async",
+            "iana-if-type:cnr",
+            "iana-if-type:iso88025Dtr",
+            "iana-if-type:eplrs",
+            "iana-if-type:arap",
+            "iana-if-type:propCnls",
+            "iana-if-type:hostPad",
+            "iana-if-type:termPad",
+            "iana-if-type:frameRelayMPI",
+            "iana-if-type:x213",
+            "iana-if-type:adsl",
+            "iana-if-type:radsl",
+            "iana-if-type:sdsl",
+            "iana-if-type:vdsl",
+            "iana-if-type:iso88025CRFPInt",
+            "iana-if-type:myrinet",
+            "iana-if-type:voiceEM",
+            "iana-if-type:voiceFXO",
+            "iana-if-type:voiceFXS",
+            "iana-if-type:voiceEncap",
+            "iana-if-type:voiceOverIp",
+            "iana-if-type:atmDxi",
+            "iana-if-type:atmFuni",
+            "iana-if-type:atmIma",
+            "iana-if-type:pppMultilinkBundle",
+            "iana-if-type:ipOverCdlc",
+            "iana-if-type:ipOverClaw",
+            "iana-if-type:stackToStack",
+            "iana-if-type:virtualIpAddress",
+            "iana-if-type:mpc",
+            "iana-if-type:ipOverAtm",
+            "iana-if-type:iso88025Fiber",
+            "iana-if-type:tdlc",
+            "iana-if-type:gigabitEthernet",
+            "iana-if-type:hdlc",
+            "iana-if-type:lapf",
+            "iana-if-type:v37",
+            "iana-if-type:x25mlp",
+            "iana-if-type:x25huntGroup",
+            "iana-if-type:transpHdlc",
+            "iana-if-type:interleave",
+            "iana-if-type:fast",
+            "iana-if-type:ip",
+            "iana-if-type:docsCableMaclayer",
+            "iana-if-type:docsCableDownstream",
+            "iana-if-type:docsCableUpstream",
+            "iana-if-type:a12MppSwitch",
+            "iana-if-type:tunnel",
+            "iana-if-type:coffee",
+            "iana-if-type:ces",
+            "iana-if-type:atmSubInterface",
+            "iana-if-type:l2vlan",
+            "iana-if-type:l3ipvlan",
+            "iana-if-type:l3ipxvlan",
+            "iana-if-type:digitalPowerline",
+            "iana-if-type:mediaMailOverIp",
+            "iana-if-type:dtm",
+            "iana-if-type:dcn",
+            "iana-if-type:ipForward",
+            "iana-if-type:msdsl",
+            "iana-if-type:ieee1394",
+            "iana-if-type:if-gsn",
+            "iana-if-type:dvbRccMacLayer",
+            "iana-if-type:dvbRccDownstream",
+            "iana-if-type:dvbRccUpstream",
+            "iana-if-type:atmVirtual",
+            "iana-if-type:mplsTunnel",
+            "iana-if-type:srp",
+            "iana-if-type:voiceOverAtm",
+            "iana-if-type:voiceOverFrameRelay",
+            "iana-if-type:idsl",
+            "iana-if-type:compositeLink",
+            "iana-if-type:ss7SigLink",
+            "iana-if-type:propWirelessP2P",
+            "iana-if-type:frForward",
+            "iana-if-type:rfc1483",
+            "iana-if-type:usb",
+            "iana-if-type:ieee8023adLag",
+            "iana-if-type:bgppolicyaccounting",
+            "iana-if-type:frf16MfrBundle",
+            "iana-if-type:h323Gatekeeper",
+            "iana-if-type:h323Proxy",
+            "iana-if-type:mpls",
+            "iana-if-type:mfSigLink",
+            "iana-if-type:hdsl2",
+            "iana-if-type:shdsl",
+            "iana-if-type:ds1FDL",
+            "iana-if-type:pos",
+            "iana-if-type:dvbAsiIn",
+            "iana-if-type:dvbAsiOut",
+            "iana-if-type:plc",
+            "iana-if-type:nfas",
+            "iana-if-type:tr008",
+            "iana-if-type:gr303RDT",
+            "iana-if-type:gr303IDT",
+            "iana-if-type:isup",
+            "iana-if-type:propDocsWirelessMaclayer",
+            "iana-if-type:propDocsWirelessDownstream",
+            "iana-if-type:propDocsWirelessUpstream",
+            "iana-if-type:hiperlan2",
+            "iana-if-type:propBWAp2Mp",
+            "iana-if-type:sonetOverheadChannel",
+            "iana-if-type:digitalWrapperOverheadChannel",
+            "iana-if-type:aal2",
+            "iana-if-type:radioMAC",
+            "iana-if-type:atmRadio",
+            "iana-if-type:imt",
+            "iana-if-type:mvl",
+            "iana-if-type:reachDSL",
+            "iana-if-type:frDlciEndPt",
+            "iana-if-type:atmVciEndPt",
+            "iana-if-type:opticalChannel",
+            "iana-if-type:opticalTransport",
+            "iana-if-type:propAtm",
+            "iana-if-type:voiceOverCable",
+            "iana-if-type:infiniband",
+            "iana-if-type:teLink",
+            "iana-if-type:q2931",
+            "iana-if-type:virtualTg",
+            "iana-if-type:sipTg",
+            "iana-if-type:sipSig",
+            "iana-if-type:docsCableUpstreamChannel",
+            "iana-if-type:econet",
+            "iana-if-type:pon155",
+            "iana-if-type:pon622",
+            "iana-if-type:bridge",
+            "iana-if-type:linegroup",
+            "iana-if-type:voiceEMFGD",
+            "iana-if-type:voiceFGDEANA",
+            "iana-if-type:voiceDID",
+            "iana-if-type:mpegTransport",
+            "iana-if-type:sixToFour",
+            "iana-if-type:gtp",
+            "iana-if-type:pdnEtherLoop1",
+            "iana-if-type:pdnEtherLoop2",
+            "iana-if-type:opticalChannelGroup",
+            "iana-if-type:homepna",
+            "iana-if-type:gfp",
+            "iana-if-type:ciscoISLvlan",
+            "iana-if-type:actelisMetaLOOP",
+            "iana-if-type:fcipLink",
+            "iana-if-type:rpr",
+            "iana-if-type:qam",
+            "iana-if-type:lmp",
+            "iana-if-type:cblVectaStar",
+            "iana-if-type:docsCableMCmtsDownstream",
+            "iana-if-type:adsl2",
+            "iana-if-type:macSecControlledIF",
+            "iana-if-type:macSecUncontrolledIF",
+            "iana-if-type:aviciOpticalEther",
+            "iana-if-type:atmbond",
+            "iana-if-type:voiceFGDOS",
+            "iana-if-type:mocaVersion1",
+            "iana-if-type:ieee80216WMAN",
+            "iana-if-type:adsl2plus",
+            "iana-if-type:dvbRcsMacLayer",
+            "iana-if-type:dvbTdm",
+            "iana-if-type:dvbRcsTdma",
+            "iana-if-type:x86Laps",
+            "iana-if-type:wwanPP",
+            "iana-if-type:wwanPP2",
+            "iana-if-type:voiceEBS",
+            "iana-if-type:ifPwType",
+            "iana-if-type:ilan",
+            "iana-if-type:pip",
+            "iana-if-type:aluELP",
+            "iana-if-type:gpon",
+            "iana-if-type:vdsl2",
+            "iana-if-type:capwapDot11Profile",
+            "iana-if-type:capwapDot11Bss",
+            "iana-if-type:capwapWtpVirtualRadio",
+            "iana-if-type:bits",
+            "iana-if-type:docsCableUpstreamRfPort",
+            "iana-if-type:cableDownstreamRfPort",
+            "iana-if-type:vmwareVirtualNic",
+            "iana-if-type:ieee802154",
+            "iana-if-type:otnOdu",
+            "iana-if-type:otnOtu",
+            "iana-if-type:ifVfiType",
+            "iana-if-type:g9981",
+            "iana-if-type:g9982",
+            "iana-if-type:g9983",
+            "iana-if-type:aluEpon",
+            "iana-if-type:aluEponOnu",
+            "iana-if-type:aluEponPhysicalUni",
+            "iana-if-type:aluEponLogicalLink",
+            "iana-if-type:aluGponOnu",
+            "iana-if-type:aluGponPhysicalUni",
+            "iana-if-type:vmwareNicTeam",
+            "iana-if-type:docsOfdmDownstream",
+            "iana-if-type:docsOfdmaUpstream",
+            "iana-if-type:gfast",
+            "iana-if-type:sdci",
+            "iana-if-type:xboxWireless",
+            "iana-if-type:fastdsl",
+            "iana-if-type:docsCableScte55d1FwdOob",
+            "iana-if-type:docsCableScte55d1RetOob",
+            "iana-if-type:docsCableScte55d2DsOob",
+            "iana-if-type:docsCableScte55d2UsOob",
+            "iana-if-type:docsCableNdf",
+            "iana-if-type:docsCableNdr",
+            "iana-if-type:ptm",
+            "iana-if-type:ghn",
+            "iana-if-type:otnOtsi",
+            "iana-if-type:otnOtuc",
+            "iana-if-type:otnOduc",
+            "iana-if-type:otnOtsig",
+            "iana-if-type:microwaveCarrierTermination",
+            "iana-if-type:microwaveRadioLinkTerminal",
+            "iana-if-type:ieee8021axDrni",
+            "iana-if-type:ax25",
+            "iana-if-type:ieee19061nanocom",
+            "iana-if-type:cpri",
+            "iana-if-type:omni",
+            "iana-if-type:roe",
+            "iana-if-type:p2pOverLan",
+            "iana-if-type:docsCableScte25d1FwdOob",
+            "iana-if-type:docsCableScte25d1RetOob",
+            "iana-if-type:docsCableScte25d2MacOob",
+            "iana-if-type:lora",
+            "iana-if-type:lorawan"
+          ],
+          "name": "iana-if-type:iana-interface-type"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:other"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:regular1822"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:hdh1822"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ddnX25"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:rfc877x25"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ethernetCsmacd"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:iso88023Csmacd"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:iso88024TokenBus"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:iso88025TokenRing"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:iso88026Man"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:starLan"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:proteon10Mbit"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:proteon80Mbit"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:hyperchannel"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:fddi"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:lapb"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:sdlc"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ds1"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:e1"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:basicISDN"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:primaryISDN"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:propPointToPointSerial"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ppp"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:softwareLoopback"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:eon"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ethernet3Mbit"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:nsip"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:slip"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ultra"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ds3"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:sip"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:frameRelay"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:rs232"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:para"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:arcnet"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:arcnetPlus"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:atm"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:miox25"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:sonet"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:x25ple"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:iso88022llc"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:localTalk"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:smdsDxi"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:frameRelayService"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:v35"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:hssi"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:hippi"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:modem"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:aal5"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:sonetPath"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:sonetVT"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:smdsIcip"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:propVirtual"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:propMultiplexor"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ieee80212"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:fibreChannel"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:hippiInterface"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:frameRelayInterconnect"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:aflane8023"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:aflane8025"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:cctEmul"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:fastEther"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:isdn"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:v11"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:v36"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:g703at64k"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:g703at2mb"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:qllc"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:fastEtherFX"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:channel"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ieee80211"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ibm370parChan"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:escon"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:dlsw"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:isdns"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:isdnu"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:lapd"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ipSwitch"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:rsrb"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:atmLogical"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ds0"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ds0Bundle"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:bsc"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:async"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:cnr"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:iso88025Dtr"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:eplrs"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:arap"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:propCnls"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:hostPad"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:termPad"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:frameRelayMPI"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:x213"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:adsl"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:radsl"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:sdsl"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:vdsl"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:iso88025CRFPInt"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:myrinet"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:voiceEM"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:voiceFXO"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:voiceFXS"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:voiceEncap"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:voiceOverIp"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:atmDxi"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:atmFuni"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:atmIma"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:pppMultilinkBundle"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ipOverCdlc"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ipOverClaw"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:stackToStack"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:virtualIpAddress"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:mpc"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ipOverAtm"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:iso88025Fiber"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:tdlc"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:gigabitEthernet"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:hdlc"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:lapf"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:v37"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:x25mlp"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:x25huntGroup"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:transpHdlc"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:interleave"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:fast"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ip"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:docsCableMaclayer"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:docsCableDownstream"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:docsCableUpstream"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:a12MppSwitch"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:tunnel"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:coffee"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ces"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:atmSubInterface"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:l2vlan"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:l3ipvlan"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:l3ipxvlan"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:digitalPowerline"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:mediaMailOverIp"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:dtm"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:dcn"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ipForward"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:msdsl"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ieee1394"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:if-gsn"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:dvbRccMacLayer"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:dvbRccDownstream"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:dvbRccUpstream"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:atmVirtual"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:mplsTunnel"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:srp"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:voiceOverAtm"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:voiceOverFrameRelay"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:idsl"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:compositeLink"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ss7SigLink"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:propWirelessP2P"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:frForward"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:rfc1483"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:usb"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ieee8023adLag"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:bgppolicyaccounting"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:frf16MfrBundle"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:h323Gatekeeper"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:h323Proxy"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:mpls"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:mfSigLink"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:hdsl2"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:shdsl"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ds1FDL"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:pos"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:dvbAsiIn"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:dvbAsiOut"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:plc"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:nfas"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:tr008"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:gr303RDT"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:gr303IDT"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:isup"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:propDocsWirelessMaclayer"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:propDocsWirelessDownstream"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:propDocsWirelessUpstream"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:hiperlan2"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:propBWAp2Mp"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:sonetOverheadChannel"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:digitalWrapperOverheadChannel"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:aal2"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:radioMAC"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:atmRadio"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:imt"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:mvl"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:reachDSL"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:frDlciEndPt"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:atmVciEndPt"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:opticalChannel"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:opticalTransport"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:propAtm"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:voiceOverCable"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:infiniband"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:teLink"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:q2931"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:virtualTg"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:sipTg"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:sipSig"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:docsCableUpstreamChannel"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:econet"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:pon155"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:pon622"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:bridge"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:linegroup"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:voiceEMFGD"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:voiceFGDEANA"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:voiceDID"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:mpegTransport"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:sixToFour"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:gtp"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:pdnEtherLoop1"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:pdnEtherLoop2"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:opticalChannelGroup"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:homepna"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:gfp"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ciscoISLvlan"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:actelisMetaLOOP"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:fcipLink"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:rpr"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:qam"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:lmp"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:cblVectaStar"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:docsCableMCmtsDownstream"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:adsl2"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:macSecControlledIF"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:macSecUncontrolledIF"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:aviciOpticalEther"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:atmbond"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:voiceFGDOS"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:mocaVersion1"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ieee80216WMAN"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:adsl2plus"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:dvbRcsMacLayer"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:dvbTdm"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:dvbRcsTdma"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:x86Laps"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:wwanPP"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:wwanPP2"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:voiceEBS"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ifPwType"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ilan"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:pip"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:aluELP"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:gpon"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:vdsl2"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:capwapDot11Profile"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:capwapDot11Bss"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:capwapWtpVirtualRadio"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:bits"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:docsCableUpstreamRfPort"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:cableDownstreamRfPort"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:vmwareVirtualNic"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ieee802154"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:otnOdu"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:otnOtu"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ifVfiType"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:g9981"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:g9982"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:g9983"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:aluEpon"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:aluEponOnu"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:aluEponPhysicalUni"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:aluEponLogicalLink"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:aluGponOnu"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:aluGponPhysicalUni"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:vmwareNicTeam"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:docsOfdmDownstream"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:docsOfdmaUpstream"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:gfast"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:sdci"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:xboxWireless"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:fastdsl"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:docsCableScte55d1FwdOob"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:docsCableScte55d1RetOob"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:docsCableScte55d2DsOob"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:docsCableScte55d2UsOob"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:docsCableNdf"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:docsCableNdr"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ptm"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ghn"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:otnOtsi"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:otnOtuc"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:otnOduc"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:otnOtsig"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:microwaveCarrierTermination"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:microwaveRadioLinkTerminal"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ieee8021axDrni"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ax25"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:ieee19061nanocom"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:cpri"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:omni"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:roe"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:p2pOverLan"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:docsCableScte25d1FwdOob"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:docsCableScte25d1RetOob"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:docsCableScte25d2MacOob"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:lora"
+        },
+        {
+          "bases": [
+            "iana-if-type:iana-interface-type"
+          ],
+          "derived": [],
+          "name": "iana-if-type:lorawan"
+        }
+      ],
+      "name": "iana-if-type",
+      "revision": "2026-03-17",
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

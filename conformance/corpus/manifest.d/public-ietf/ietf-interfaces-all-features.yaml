@@ -1,0 +1,11 @@
+fixtures:
+  - id: public-ietf/ietf-interfaces-all-features
+    dir: public-ietf
+    source: {url: "https://github.com/YangModels/yang/blob/b5465a86cd2457352dcd18a42043e40f0bab65ab/standard/ietf/RFC/ietf-interfaces@2018-02-20.yang", commit: b5465a86cd2457352dcd18a42043e40f0bab65ab, license: BSD-2-Clause}   # RFC 8343
+    rfc: ["RFC7950#7.1", "RFC8343"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{name: ietf-interfaces, features: ["*"]}]
+    golden: golden/ietf-interfaces-all-features.json

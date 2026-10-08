@@ -1,0 +1,19 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ietf-ethertypes {\n  namespace \"urn:ietf:params:xml:ns:yang:ietf-ethertypes\";\n  prefix ethertypes;\n\n  organization\n    \"IETF NETMOD (Network Modeling) Working Group.\";\n  contact\n    \"WG Web:   <https://datatracker.ietf.org/wg/netmod/>\n     WG List:  <mailto:netmod@ietf.org>\n\n     Editor:   Mahesh Jethanandani\n               <mjethanandani@gmail.com>\";\n  description\n    \"This module contains common definitions for the\n     Ethertype used by different modules.  It is a\n     placeholder module, till such time that IEEE\n     starts a project to define these Ethertypes\n     and publishes a standard.\n\n     At that time, this module can be deprecated.\n\n     Copyright (c) 2019 IETF Trust and the persons identified as\n     the document authors.  All rights reserved.\n\n     Redistribution and use in source and binary forms, with or\n     without modification, is permitted pursuant to, and subject\n     to the license terms contained in, the Simplified BSD\n     License set forth in Section 4.c of the IETF Trust's Legal\n     Provisions Relating to IETF Documents\n     (http://trustee.ietf.org/license-info).\n\n     This version of this YANG module is part of RFC 8519; see\n     the RFC itself for full legal notices.\";\n\n  revision 2019-03-04;\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "ietf-ethertypes",
+      "revision": "2019-03-04",
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

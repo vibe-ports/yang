@@ -1,0 +1,723 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ietf-access-control-list {\n  namespace \"urn:ietf:params:xml:ns:yang:ietf-access-control-list\";\n  prefix acl;\n\n  organization\n    \"IETF NETMOD (Network Modeling) Working Group.\";\n  contact\n    \"WG Web:  <https://datatracker.ietf.org/wg/netmod/>\n     WG List: netmod@ietf.org\n\n     Editor: Mahesh Jethanandani\n             mjethanandani@gmail.com\n     Editor: Lisa Huang\n             huangyi_99@yahoo.com\n     Editor: Sonal Agarwal\n             sagarwal12@gmail.com\n     Editor: Dana Blair\n             dana@blairhome.com\";\n  description\n    \"This YANG module defines a component that describes the\n     configuration and monitoring of Access Control Lists (ACLs).\n\n     The key words 'MUST', 'MUST NOT', 'REQUIRED', 'SHALL',\n     'SHALL NOT', 'SHOULD', 'SHOULD NOT', 'RECOMMENDED',\n     'NOT RECOMMENDED', 'MAY', and 'OPTIONAL' in this document\n     are to be interpreted as described in BCP 14 (RFC 2119)\n     (RFC 8174) when, and only when, they appear in all\n     capitals, as shown here.\n\n     Copyright (c) 2019 IETF Trust and the persons identified as\n     the document authors.  All rights reserved.\n\n     Redistribution and use in source and binary forms, with or\n     without modification, is permitted pursuant to, and subject\n     to the license terms contained in, the Simplified BSD\n     License set forth in Section 4.c of the IETF Trust's Legal\n     Provisions Relating to IETF Documents\n     (http://trustee.ietf.org/license-info).\n\n     This version of this YANG module is part of RFC 8519; see\n     the RFC itself for full legal notices.\";\n\n  revision 2019-03-04;\n\n  identity forwarding-action {\n    derived accept;\n    derived drop;\n    derived reject;\n    description\n      \"Base identity for actions in the forwarding category.\";\n  }\n\n  identity accept {\n    description\n      \"Accept the packet.\";\n  }\n\n  identity drop {\n    description\n      \"Drop packet without sending any ICMP error message.\";\n  }\n\n  identity reject {\n    description\n      \"Drop the packet and send an ICMP error message to the source.\";\n  }\n\n  identity log-action {\n    derived log-syslog;\n    derived log-none;\n    description\n      \"Base identity for defining the destination for logging\n       actions.\";\n  }\n\n  identity log-syslog {\n    description\n      \"System log (syslog) the information for the packet.\";\n  }\n\n  identity log-none {\n    description\n      \"No logging for the packet.\";\n  }\n\n  identity acl-base {\n    derived ipv4-acl-type;\n    derived ipv6-acl-type;\n    derived eth-acl-type;\n    description\n      \"Base Access Control List type for all Access Control List type\n       identifiers.\";\n  }\n\n  identity ipv4-acl-type {\n    /* identity \"ipv4-acl-type\" is disabled by if-feature(s) */\n    derived mixed-eth-ipv4-acl-type;\n    derived mixed-eth-ipv4-ipv6-acl-type;\n    description\n      \"An ACL that matches on fields from the IPv4 header\n       (e.g., IPv4 destination address) and Layer 4 headers (e.g., TCP\n       destination port).  An ACL of type ipv4 does not contain\n       matches on fields in the Ethernet header or the IPv6 header.\";\n  }\n\n  identity ipv6-acl-type {\n    /* identity \"ipv6-acl-type\" is disabled by if-feature(s) */\n    derived mixed-eth-ipv6-acl-type;\n    derived mixed-eth-ipv4-ipv6-acl-type;\n    description\n      \"An ACL that matches on fields from the IPv6 header\n       (e.g., IPv6 destination address) and Layer 4 headers (e.g., TCP\n       destination port).  An ACL of type ipv6 does not contain\n       matches on fields in the Ethernet header or the IPv4 header.\";\n  }\n\n  identity eth-acl-type {\n    /* identity \"eth-acl-type\" is disabled by if-feature(s) */\n    derived mixed-eth-ipv4-acl-type;\n    derived mixed-eth-ipv6-acl-type;\n    derived mixed-eth-ipv4-ipv6-acl-type;\n    description\n      \"An ACL that matches on fields in the Ethernet header,\n       like 10/100/1000baseT or a Wi-Fi Access Control List.  An ACL\n       of type ethernet does not contain matches on fields in the\n       IPv4 header, the IPv6 header, or Layer 4 headers.\";\n  }\n\n  identity mixed-eth-ipv4-acl-type {\n    /* identity \"mixed-eth-ipv4-acl-type\" is disabled by if-feature(s) */\n    description\n      \"An ACL that contains a mix of entries that match\n       on fields in Ethernet headers and in IPv4 headers.\n       Matching on Layer 4 header fields may also exist in the\n       list.\";\n  }\n\n  identity mixed-eth-ipv6-acl-type {\n    /* identity \"mixed-eth-ipv6-acl-type\" is disabled by if-feature(s) */\n    description\n      \"An ACL that contains a mix of entries that match on fields\n       in Ethernet headers and in IPv6 headers.  Matching\n       on Layer 4 header fields may also exist in the list.\";\n  }\n\n  identity mixed-eth-ipv4-ipv6-acl-type {\n    /* identity \"mixed-eth-ipv4-ipv6-acl-type\" is disabled by if-feature(s) */\n    description\n      \"An ACL that contains a mix of entries that\n       match on fields in Ethernet headers, IPv4 headers, and IPv6\n       headers.  Matching on Layer 4 header fields may also exist\n       in the list.\";\n  }\n\n  container acls {\n    config true;\n    status current;\n    description\n      \"This is a top-level container for Access Control Lists.\n       It can have one or more acl nodes.\";\n    list acl {\n      key \"name\";\n      config true;\n      min-elements 0;\n      max-elements 4294967295;\n      ordered-by system;\n      status current;\n      description\n        \"An ACL is an ordered list of ACEs.  Each ACE has a\n         list of match criteria and a list of actions.\n         Since there are several kinds of ACLs implemented\n         with different attributes for different vendors,\n         this model accommodates customizing ACLs for\n         each kind and for each vendor.\";\n      leaf name {\n        type string {\n          length \"1..64\";\n        }\n        config true;\n        status current;\n        description\n          \"The name of the access list.  A device MAY further\n           restrict the length of this name; space and special\n           characters are not allowed.\";\n      }\n      leaf type {\n        type identityref {\n          base acl-base;\n        }\n        config true;\n        status current;\n        description\n          \"Type of ACL.  Indicates the primary intended\n           type of match criteria (e.g., Ethernet, IPv4, IPv6, mixed,\n           etc.) used in the list instance.\";\n      }\n      container aces {\n        config true;\n        status current;\n        description\n          \"The aces container contains one or more ACE nodes.\";\n        list ace {\n          key \"name\";\n          config true;\n          min-elements 0;\n          max-elements 4294967295;\n          ordered-by user;\n          status current;\n          description\n            \"List of ACEs.\";\n          leaf name {\n            type string {\n              length \"1..64\";\n            }\n            config true;\n            status current;\n            description\n              \"A unique name identifying this ACE.\";\n          }\n          container matches {\n            config true;\n            status current;\n            description\n              \"The rules in this set determine what fields will be\n               matched upon before any action is taken on them.\n               The rules are selected based on the feature set\n               defined by the server and the acl-type defined.\n               If no matches are defined in a particular container,\n               then any packet will match that container.  If no\n               matches are specified at all in an ACE, then any\n               packet will match the ACE.\";\n            choice l2 {\n              config true;\n              status current;\n              description\n                \"Match Layer 2 headers, for example, Ethernet\n                 header fields.\";\n              case eth {\n                config true;\n                status current;\n              }\n            }\n            choice l3 {\n              config true;\n              status current;\n              description\n                \"Choice of either IPv4 or IPv6 headers\";\n              case ipv4 {\n                config true;\n                status current;\n              }\n              case ipv6 {\n                config true;\n                status current;\n              }\n            }\n            choice l4 {\n              config true;\n              status current;\n              description\n                \"Choice of TCP, UDP, or ICMP headers.\";\n              case tcp {\n                config true;\n                status current;\n              }\n              case udp {\n                config true;\n                status current;\n              }\n              case icmp {\n                config true;\n                status current;\n              }\n            }\n            leaf egress-interface {\n              type leafref {\n                path \"/if:interfaces/if:interface/if:name\";\n                require-instance true;\n                type string;\n              }\n              config true;\n              status current;\n              description\n                \"Egress interface.  This should not be used if this ACL\n                 is attached as an egress ACL (or the value should\n                 equal the interface to which the ACL is attached).\";\n            }\n            leaf ingress-interface {\n              type leafref {\n                path \"/if:interfaces/if:interface/if:name\";\n                require-instance true;\n                type string;\n              }\n              config true;\n              status current;\n              description\n                \"Ingress interface.  This should not be used if this ACL\n                 is attached as an ingress ACL (or the value should\n                 equal the interface to which the ACL is attached).\";\n            }\n          }\n          container actions {\n            config true;\n            status current;\n            description\n              \"Definition of actions for this ace entry.\";\n            leaf forwarding {\n              type identityref {\n                base forwarding-action;\n              }\n              config true;\n              mandatory true;\n              status current;\n              description\n                \"Specifies the forwarding action per ace entry.\";\n            }\n            leaf logging {\n              type identityref {\n                base log-action;\n              }\n              default \"log-none\";\n              config true;\n              status current;\n              description\n                \"Specifies the log action and destination for\n                 matched packets.  Default value is not to log the\n                 packet.\";\n            }\n          }\n        }\n      }\n    }\n    container attachment-points {\n      config true;\n      status current;\n      description\n        \"Enclosing container for the list of\n         attachment points on which ACLs are set.\";\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [
+        {
+          "enabled": false,
+          "name": "match-on-eth"
+        },
+        {
+          "enabled": false,
+          "name": "match-on-ipv4"
+        },
+        {
+          "enabled": false,
+          "name": "match-on-ipv6"
+        },
+        {
+          "enabled": false,
+          "name": "match-on-tcp"
+        },
+        {
+          "enabled": false,
+          "name": "match-on-udp"
+        },
+        {
+          "enabled": false,
+          "name": "match-on-icmp"
+        },
+        {
+          "enabled": false,
+          "name": "eth"
+        },
+        {
+          "enabled": false,
+          "name": "ipv4"
+        },
+        {
+          "enabled": false,
+          "name": "ipv6"
+        },
+        {
+          "enabled": false,
+          "name": "mixed-eth-ipv4"
+        },
+        {
+          "enabled": false,
+          "name": "mixed-eth-ipv6"
+        },
+        {
+          "enabled": false,
+          "name": "mixed-eth-ipv4-ipv6"
+        },
+        {
+          "enabled": false,
+          "name": "interface-stats"
+        },
+        {
+          "enabled": false,
+          "name": "acl-aggregate-stats"
+        },
+        {
+          "enabled": false,
+          "name": "interface-attachment"
+        }
+      ],
+      "identities": [
+        {
+          "bases": [],
+          "derived": [
+            "ietf-access-control-list:accept",
+            "ietf-access-control-list:drop",
+            "ietf-access-control-list:reject"
+          ],
+          "name": "ietf-access-control-list:forwarding-action"
+        },
+        {
+          "bases": [
+            "ietf-access-control-list:forwarding-action"
+          ],
+          "derived": [],
+          "name": "ietf-access-control-list:accept"
+        },
+        {
+          "bases": [
+            "ietf-access-control-list:forwarding-action"
+          ],
+          "derived": [],
+          "name": "ietf-access-control-list:drop"
+        },
+        {
+          "bases": [
+            "ietf-access-control-list:forwarding-action"
+          ],
+          "derived": [],
+          "name": "ietf-access-control-list:reject"
+        },
+        {
+          "bases": [],
+          "derived": [
+            "ietf-access-control-list:log-syslog",
+            "ietf-access-control-list:log-none"
+          ],
+          "name": "ietf-access-control-list:log-action"
+        },
+        {
+          "bases": [
+            "ietf-access-control-list:log-action"
+          ],
+          "derived": [],
+          "name": "ietf-access-control-list:log-syslog"
+        },
+        {
+          "bases": [
+            "ietf-access-control-list:log-action"
+          ],
+          "derived": [],
+          "name": "ietf-access-control-list:log-none"
+        },
+        {
+          "bases": [],
+          "derived": [
+            "ietf-access-control-list:ipv4-acl-type",
+            "ietf-access-control-list:ipv6-acl-type",
+            "ietf-access-control-list:eth-acl-type"
+          ],
+          "name": "ietf-access-control-list:acl-base"
+        },
+        {
+          "bases": [
+            "ietf-access-control-list:acl-base"
+          ],
+          "derived": [
+            "ietf-access-control-list:mixed-eth-ipv4-acl-type",
+            "ietf-access-control-list:mixed-eth-ipv4-ipv6-acl-type"
+          ],
+          "name": "ietf-access-control-list:ipv4-acl-type"
+        },
+        {
+          "bases": [
+            "ietf-access-control-list:acl-base"
+          ],
+          "derived": [
+            "ietf-access-control-list:mixed-eth-ipv6-acl-type",
+            "ietf-access-control-list:mixed-eth-ipv4-ipv6-acl-type"
+          ],
+          "name": "ietf-access-control-list:ipv6-acl-type"
+        },
+        {
+          "bases": [
+            "ietf-access-control-list:acl-base"
+          ],
+          "derived": [
+            "ietf-access-control-list:mixed-eth-ipv4-acl-type",
+            "ietf-access-control-list:mixed-eth-ipv6-acl-type",
+            "ietf-access-control-list:mixed-eth-ipv4-ipv6-acl-type"
+          ],
+          "name": "ietf-access-control-list:eth-acl-type"
+        },
+        {
+          "bases": [
+            "ietf-access-control-list:ipv4-acl-type",
+            "ietf-access-control-list:eth-acl-type"
+          ],
+          "derived": [],
+          "name": "ietf-access-control-list:mixed-eth-ipv4-acl-type"
+        },
+        {
+          "bases": [
+            "ietf-access-control-list:ipv6-acl-type",
+            "ietf-access-control-list:eth-acl-type"
+          ],
+          "derived": [],
+          "name": "ietf-access-control-list:mixed-eth-ipv6-acl-type"
+        },
+        {
+          "bases": [
+            "ietf-access-control-list:ipv4-acl-type",
+            "ietf-access-control-list:ipv6-acl-type",
+            "ietf-access-control-list:eth-acl-type"
+          ],
+          "derived": [],
+          "name": "ietf-access-control-list:mixed-eth-ipv4-ipv6-acl-type"
+        }
+      ],
+      "name": "ietf-access-control-list",
+      "revision": "2019-03-04",
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-access-control-list",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-access-control-list:acls",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "name"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-access-control-list",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "system",
+          "path": "/ietf-access-control-list:acls/acl",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-access-control-list",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-access-control-list:acls/acl/name",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": "1..64",
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-access-control-list",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-access-control-list:acls/acl/type",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "identityref",
+            "bases": [
+              "ietf-access-control-list:acl-base"
+            ],
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "acl-type"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-access-control-list",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-access-control-list:acls/acl/aces",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "name"
+          ],
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "ietf-access-control-list",
+          "musts": null,
+          "nodetype": "list",
+          "ordered_by": "user",
+          "path": "/ietf-access-control-list:acls/acl/aces/ace",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-access-control-list",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-access-control-list:acls/acl/aces/ace/name",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": "1..64",
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-access-control-list",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-access-control-list:acls/acl/aces/ace/matches",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-access-control-list",
+          "musts": null,
+          "nodetype": "choice",
+          "ordered_by": null,
+          "path": "/ietf-access-control-list:acls/acl/aces/ace/matches/l2",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-access-control-list",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/ietf-access-control-list:acls/acl/aces/ace/matches/l2/eth",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-access-control-list",
+          "musts": null,
+          "nodetype": "choice",
+          "ordered_by": null,
+          "path": "/ietf-access-control-list:acls/acl/aces/ace/matches/l3",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-access-control-list",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/ietf-access-control-list:acls/acl/aces/ace/matches/l3/ipv4",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-access-control-list",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/ietf-access-control-list:acls/acl/aces/ace/matches/l3/ipv6",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-access-control-list",
+          "musts": null,
+          "nodetype": "choice",
+          "ordered_by": null,
+          "path": "/ietf-access-control-list:acls/acl/aces/ace/matches/l4",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-access-control-list",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/ietf-access-control-list:acls/acl/aces/ace/matches/l4/tcp",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-access-control-list",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/ietf-access-control-list:acls/acl/aces/ace/matches/l4/udp",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-access-control-list",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/ietf-access-control-list:acls/acl/aces/ace/matches/l4/icmp",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-access-control-list",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-access-control-list:acls/acl/aces/ace/matches/egress-interface",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "/if:interfaces/if:interface/if:name",
+              "require_instance": true,
+              "target": "/ietf-interfaces:interfaces/interface/name"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "interface-ref"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-access-control-list",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-access-control-list:acls/acl/aces/ace/matches/ingress-interface",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "leafref",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": {
+              "path": "/if:interfaces/if:interface/if:name",
+              "require_instance": true,
+              "target": "/ietf-interfaces:interfaces/interface/name"
+            },
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "interface-ref"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-access-control-list",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-access-control-list:acls/acl/aces/ace/actions",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": true,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-access-control-list",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-access-control-list:acls/acl/aces/ace/actions/forwarding",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "identityref",
+            "bases": [
+              "ietf-access-control-list:forwarding-action"
+            ],
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "ietf-access-control-list:log-none"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-access-control-list",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ietf-access-control-list:acls/acl/aces/ace/actions/logging",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "identityref",
+            "bases": [
+              "ietf-access-control-list:log-action"
+            ],
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ietf-access-control-list",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ietf-access-control-list:acls/attachment-points",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

@@ -70,3 +70,14 @@ with the libyang file, tag/commit and license):
 - docs/conformance/utests-inventory.md quotes counts and file names from that suite.
 
 The names of CESNET and of its contributors are not used to endorse or promote anything here.
+
+
+Third-party notice: IETF and IANA YANG modules
+==============================================
+
+conformance/corpus/ietf/ and conformance/corpus/public-ietf/ hold byte-identical copies of YANG
+modules published in IETF RFCs or maintained by IANA. They are Code Components under the IETF
+Trust Legal Provisions (https://trustee.ietf.org/license-info): the Simplified BSD License, or the
+Revised BSD License for modules published under the 2021+ provisions. The copyright notice and
+license text stay inside each module; each set's SOURCE.md lists every file with its origin and
+license.
