@@ -8,7 +8,9 @@ import "testing"
 // change that lowers it is a regression.
 const agreeFloor = 1534
 
-// TestYangEngineSchema runs every fixture through package yang and logs the tally.
+// TestYangEngineSchema runs every fixture through package yang and logs the tally. No fixture may
+// differ: a disagreement is either fixed or recorded as a deviation (deviations.md) or as
+// unsupported, never absorbed by new agreements under the floor.
 func TestYangEngineSchema(t *testing.T) {
 	m := load(t)
 	rep, err := m.Compare(Yang{})
@@ -22,8 +24,8 @@ func TestYangEngineSchema(t *testing.T) {
 	t.Logf("agree %d, agree (skipped fields) %d, differ %d, deviation %d, unsupported %d", counts[Agree],
 		counts[AgreeSkipped], counts[Differ], counts[Deviation], counts[Unsupported])
 	for _, r := range rep.Results {
-		if r.Status == Differ && testing.Verbose() {
-			t.Logf("differ %s: %s", r.ID, r.Detail)
+		if r.Status == Differ {
+			t.Errorf("differ %s: %s", r.ID, r.Detail)
 		}
 	}
 	if n := counts[Agree] + counts[AgreeSkipped]; n < agreeFloor {
