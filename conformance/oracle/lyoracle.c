@@ -919,7 +919,64 @@ snode_cb(struct lysc_node *node, void *data, ly_bool *dfs_continue)
     return LY_SUCCESS;
 }
 
-/* schema_tree, identities and features of one accepted module. */
+/*
+ * ext_trees: the compiled schema subtrees of the module's top-level extension instances
+ * (yang-data, structure). A plugin compiles them into substatement storage; every data-def
+ * storage is walked from the root of its first node, so structure's virtual top-level container
+ * is included. Several substatements share one storage: each root is dumped once. Omitted when
+ * no instance has a subtree.
+ */
+static void
+dump_ext_trees(cJSON *m, const struct lys_module *mod)
+{
+    cJSON *a = NULL;
+    LY_ARRAY_COUNT_TYPE i, j, k;
+
+    LY_ARRAY_FOR(mod->compiled->exts, i) {
+        const struct lysc_ext_instance *ext = &mod->compiled->exts[i];
+        const struct lysc_node *roots[16];
+        LY_ARRAY_COUNT_TYPE nroots = 0;
+        cJSON *e, *nodes;
+
+        LY_ARRAY_FOR(ext->substmts, j) {
+            const struct lysc_node *n;
+
+            if (!(ext->substmts[j].stmt & (LY_STMT_DATA_NODE_MASK | LY_STMT_USES)) || !ext->substmts[j].storage_p ||
+                    !(n = *ext->substmts[j].storage_p)) {
+                continue;
+            }
+            while (n->parent) {
+                n = n->parent;
+            }
+            for (k = 0; (k < nroots) && (roots[k] != n); k++) {}
+            if (k == nroots) {
+                if (nroots == sizeof roots / sizeof *roots) {
+                    die("too many subtree roots in extension instance %s", ext->def->name);
+                }
+                roots[nroots++] = n;
+            }
+        }
+        if (!nroots) {
+            continue;
+        }
+        if (!a) {
+            a = cJSON_AddArrayToObject(m, "ext_trees");
+        }
+        e = cJSON_CreateObject();
+        cJSON_AddStringToObject(e, "module", ext->def->module->name);
+        cJSON_AddStringToObject(e, "name", ext->def->name);
+        add_opt_str(e, "argument", ext->argument);
+        nodes = cJSON_AddArrayToObject(e, "schema_tree");
+        for (k = 0; k < nroots; k++) {
+            for (const struct lysc_node *s = roots[k]; s; s = s->next) {
+                lysc_tree_dfs_full(s, snode_cb, nodes);
+            }
+        }
+        cJSON_AddItemToArray(a, e);
+    }
+}
+
+/* schema_tree, identities, features and ext_trees of one accepted module. */
 static void
 dump_schema(cJSON *m, const struct lys_module *mod)
 {
@@ -965,6 +1022,8 @@ dump_schema(cJSON *m, const struct lys_module *mod)
         cJSON_AddBoolToObject(o, "enabled", lys_feature_value(mod, f->name) == LY_SUCCESS);
         cJSON_AddItemToArray(a, o);
     }
+
+    dump_ext_trees(m, mod);
 }
 
 /* ---------- schema ---------- */

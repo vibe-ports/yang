@@ -216,9 +216,9 @@ func withoutAsserted(r Response) Response {
 
 // flippedModuleFields are the fields of a module item whose acceptance flipped that follow from
 // it: the flip itself (accepted, phase, rc, the module's diagnostics) and what only an accepted
-// module has (revision, schema_tree, compiled, features, identities).
+// module has (revision, schema_tree, compiled, features, identities, ext_trees).
 var flippedModuleFields = []string{"accepted", "phase", "rc", "diagnostics", "revision", "schema_tree", "compiled",
-	"features", "identities"}
+	"features", "identities", "ext_trees"}
 
 // withoutDerived drops, from a golden g and a result r whose verdicts differ under a deviation,
 // what follows from the verdict: tree and typed; the fields of module items (paired by

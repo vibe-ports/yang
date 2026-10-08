@@ -44,7 +44,7 @@ assert covers (verdict, rc, failed_step, diagnostics); when the engine's verdict
 golden's (one accepts, the other rejects), also what follows from that verdict: `tree` and `typed`;
 in a `modules` item whose `accepted` flipped, the flip (`accepted`, `phase`, `rc`, its
 `diagnostics`) and what only an accepted module has (`revision`, `schema_tree`, `compiled`,
-`features`, `identities`), other module items compared in full; and the `steps` from the
+`features`, `identities`, `ext_trees`), other module items compared in full; and the `steps` from the
 earlier `failed_step` of the two on, earlier steps compared. With the same verdict all of these
 are compared. With `waive` it waives instead only the
 named response fields, dropped at the top level and in every `modules` item before the golden

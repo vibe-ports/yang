@@ -134,6 +134,12 @@ Per accepted module (protocol 2) also:
 - `identities`: `[{"name": "pv2:one", "bases": ["pv2:base-id"], "derived": ["pv2:two"]}]` —
   `derived` as libyang links it (direct only); `bases` found by scanning every context module.
 - `features`: `[{"name": "extra", "enabled": true}]` (`lysp_feature_next` + `lys_feature_value`).
+- `ext_trees` (only when a top-level extension instance of the module compiled a schema subtree:
+  yang-data, structure): `[{"module", "name", "argument", "schema_tree"}]` per instance, in
+  `lysc_module.exts` order; `module`/`name` are the extension definition's. `schema_tree` holds the
+  same node objects as above, pre-order (`lysc_tree_dfs_full`) from the root of every data-def
+  substatement storage (`lysc_ext_instance.substmts`, each storage once), so structure's virtual
+  top-level container (`/m:<argument>`, carrying the structure's must/status) comes first.
 
 Phases: modules are processed in order in one context created with `LY_CTX_EXPLICIT_COMPILE`.
 `parse` = `ly_ctx_load_module()` failed (syntax, missing import/include, unknown feature, ...);

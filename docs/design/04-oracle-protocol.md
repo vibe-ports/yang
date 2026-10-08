@@ -58,6 +58,14 @@ chain); `range`/`length` are the compiled intervals, not the original text; `max
 = unbounded; a choice's `defaults` is its default case name; a leafref member of a union gets its
 target only when `lysc_node_lref_targets` resolves one per leafref member (it skips unresolved).
 
+`ext_trees` (#32), present only when some top-level extension instance of the module has a
+compiled schema subtree (yang-data, structure): `[{"module": "<extension's module>", "name":
+"<extension>", "argument": "…", "schema_tree": [node objects as above]}]`, one per instance in
+`lysc_module.exts` order. The nodes are walked pre-order from the root of each data-def
+substatement storage of `lysc_ext_instance.substmts` (shared storages once), so a structure's
+virtual top-level container `/m:<argument>` comes first. The `yang` engine skips the field until
+the yang-data / structure plugins dump it (#33, #34).
+
 ## 4. op `sequence` — stateful runs on one retained tree
 ```json
 {"op": "sequence", "searchdirs": [...], "modules": [...],
