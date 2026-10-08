@@ -124,6 +124,39 @@ func TestInetTypes(t *testing.T) {
 	}
 }
 
+// TestOracleGoldensPrefixDerived replays types/ip-prefix-derived-v4/-v6 (schema ty8.yang): host bits
+// are zeroed only when the compiled type is named ipv4-prefix/ipv6-prefix. The types are built as
+// the reuse rule names them (design 06 §2.3): a typedef that adds nothing reuses the inet type,
+// one with its own length or pattern is a new type named after itself, an inline restriction of
+// the leaf keeps the typedef's name, and ip-prefix stores through its member.
+func TestOracleGoldensPrefixDerived(t *testing.T) {
+	ts := ietfTypes("2025-12-22")
+	ty8 := &schema.Module{Name: "ty8", Implemented: true}
+	derive := func(base *schema.Type, name string, m *schema.Module, opts ...opt) *schema.Type {
+		t := typ(schema.String, opts...)
+		t.Typedef, t.TypedefModule, t.From = name, m, base
+		return t
+	}
+	for _, v := range []string{"4", "6"} {
+		base := ts["ipv"+v+"-prefix"]
+		leaves := map[string]*schema.Type{
+			"p" + v:         base,
+			"p" + v + "len": derive(base, "p"+v+"len", ty8, length(1, 18)),
+			"p" + v + "pat": derive(base, "p"+v+"pat", ty8, pat(`[0-9a-fA-F:./]*`, false)),
+			"p" + v + "i":   derive(base, base.Typedef, base.TypedefModule, length(1, 60)),
+			"ipp" + v:       ts["ip-prefix"],
+		}
+		lex := map[string]string{"4": "12.1.58.4/8", "6": "2001:db8:1:2::3/32"}[v]
+		g := loadGolden(t, filepath.Join("..", "..", "conformance", "corpus", "types", "golden", "ip-prefix-derived-v"+v+".json"))
+		for leaf, lt := range leaves {
+			got, d := Store(lt, lex, FormatXML, HintData, nil, nil)
+			if want := g.canonical("/ty8:c/" + leaf); d != nil || got.Canonical() != want {
+				t.Errorf("%s: got %v %q, golden %q", leaf, d, got.Canonical(), want)
+			}
+		}
+	}
+}
+
 func TestYangTypes(t *testing.T) {
 	ts := ietfTypes("2025-12-22")
 	pe := func(v string) string {

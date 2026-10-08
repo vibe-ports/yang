@@ -1,0 +1,15 @@
+fixtures:
+# BEGIN types ip-prefix host bits through derived types (#8)
+  - id: types/ip-prefix-derived-v4
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # which compiled type name libyang's strcmp(type->name, "ipv4-prefix") sees: a typedef that adds nothing, one with length/pattern, an inline restriction, the ip-prefix union
+    rfc: ["RFC6991#4"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty8}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty8"><p4>12.1.58.4/8</p4><p4len>12.1.58.4/8</p4len><p4pat>12.1.58.4/8</p4pat><p4i>12.1.58.4/8</p4i><ipp4>12.1.58.4/8</ipp4></c>'
+    golden: golden/ip-prefix-derived-v4.json

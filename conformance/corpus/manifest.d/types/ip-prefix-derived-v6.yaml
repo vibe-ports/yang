@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/ip-prefix-derived-v6
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # the ipv6-prefix counterparts of ip-prefix-derived-v4
+    rfc: ["RFC6991#4"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty8}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty8"><p6>2001:db8:1:2::3/32</p6><p6len>2001:db8:1:2::3/32</p6len><p6pat>2001:db8:1:2::3/32</p6pat><p6i>2001:db8:1:2::3/32</p6i><ipp6>2001:db8:1:2::3/32</ipp6></c>'
+    golden: golden/ip-prefix-derived-v6.json

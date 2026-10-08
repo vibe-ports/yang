@@ -1,0 +1,143 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ty8",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"ty8:c\": {\n    \"p6\": \"2001:db8::/32\",\n    \"p6len\": \"2001:db8:1:2::3/32\",\n    \"p6pat\": \"2001:db8:1:2::3/32\",\n    \"p6i\": \"2001:db8::/32\",\n    \"ipp6\": \"2001:db8::/32\"\n  }\n}\n",
+    "xml": "<c xmlns=\"urn:vibe-ports:ty8\">\n  <p6>2001:db8::/32</p6>\n  <p6len>2001:db8:1:2::3/32</p6len>\n  <p6pat>2001:db8:1:2::3/32</p6pat>\n  <p6i>2001:db8::/32</p6i>\n  <ipp6>2001:db8::/32</ipp6>\n</c>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty8:c",
+      "schema": "/ty8:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty8:c/p6",
+      "schema": "/ty8:c/p6",
+      "value": {
+        "canonical": "2001:db8::/32",
+        "type": "string",
+        "typedef": "ipv6-prefix",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty8:c/p6len",
+      "schema": "/ty8:c/p6len",
+      "value": {
+        "canonical": "2001:db8:1:2::3/32",
+        "type": "string",
+        "typedef": "p6len",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty8:c/p6pat",
+      "schema": "/ty8:c/p6pat",
+      "value": {
+        "canonical": "2001:db8:1:2::3/32",
+        "type": "string",
+        "typedef": "p6pat",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty8:c/p6i",
+      "schema": "/ty8:c/p6i",
+      "value": {
+        "canonical": "2001:db8::/32",
+        "type": "string",
+        "typedef": "ipv6-prefix",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty8:c/ipp6",
+      "schema": "/ty8:c/ipp6",
+      "value": {
+        "canonical": "2001:db8::/32",
+        "type": "union",
+        "typedef": "ip-prefix",
+        "union_member": {
+          "index": 1,
+          "realtype": {
+            "type": "string",
+            "typedef": "ipv6-prefix"
+          },
+          "type": "string",
+          "typedef": "ipv6-prefix"
+        }
+      }
+    }
+  ],
+  "verdict": "valid"
+}

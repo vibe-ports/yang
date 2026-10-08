@@ -1,0 +1,29 @@
+module ty8 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:ty8";
+  prefix t8;
+
+  import ietf-inet-types { prefix inet; }
+
+  description "ipv4-prefix / ipv6-prefix host-bit zeroing through derived and restricted types (#8).";
+
+  typedef p4 { type inet:ipv4-prefix; }
+  typedef p4len { type inet:ipv4-prefix { length "1..18"; } }
+  typedef p4pat { type inet:ipv4-prefix { pattern '[0-9./]*'; } }
+  typedef p6 { type inet:ipv6-prefix; }
+  typedef p6len { type inet:ipv6-prefix { length "1..60"; } }
+  typedef p6pat { type inet:ipv6-prefix { pattern '[0-9a-fA-F:./]*'; } }
+
+  container c {
+    leaf p4 { type p4; }
+    leaf p4len { type p4len; }
+    leaf p4pat { type p4pat; }
+    leaf p4i { type inet:ipv4-prefix { length "1..18"; } }
+    leaf ipp4 { type inet:ip-prefix; }
+    leaf p6 { type p6; }
+    leaf p6len { type p6len; }
+    leaf p6pat { type p6pat; }
+    leaf p6i { type inet:ipv6-prefix { length "1..60"; } }
+    leaf ipp6 { type inet:ip-prefix; }
+  }
+}

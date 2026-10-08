@@ -1,0 +1,143 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ty8",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"ty8:c\": {\n    \"p4\": \"12.0.0.0/8\",\n    \"p4len\": \"12.1.58.4/8\",\n    \"p4pat\": \"12.1.58.4/8\",\n    \"p4i\": \"12.0.0.0/8\",\n    \"ipp4\": \"12.0.0.0/8\"\n  }\n}\n",
+    "xml": "<c xmlns=\"urn:vibe-ports:ty8\">\n  <p4>12.0.0.0/8</p4>\n  <p4len>12.1.58.4/8</p4len>\n  <p4pat>12.1.58.4/8</p4pat>\n  <p4i>12.0.0.0/8</p4i>\n  <ipp4>12.0.0.0/8</ipp4>\n</c>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty8:c",
+      "schema": "/ty8:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty8:c/p4",
+      "schema": "/ty8:c/p4",
+      "value": {
+        "canonical": "12.0.0.0/8",
+        "type": "string",
+        "typedef": "ipv4-prefix",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty8:c/p4len",
+      "schema": "/ty8:c/p4len",
+      "value": {
+        "canonical": "12.1.58.4/8",
+        "type": "string",
+        "typedef": "p4len",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty8:c/p4pat",
+      "schema": "/ty8:c/p4pat",
+      "value": {
+        "canonical": "12.1.58.4/8",
+        "type": "string",
+        "typedef": "p4pat",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty8:c/p4i",
+      "schema": "/ty8:c/p4i",
+      "value": {
+        "canonical": "12.0.0.0/8",
+        "type": "string",
+        "typedef": "ipv4-prefix",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty8:c/ipp4",
+      "schema": "/ty8:c/ipp4",
+      "value": {
+        "canonical": "12.0.0.0/8",
+        "type": "union",
+        "typedef": "ip-prefix",
+        "union_member": {
+          "index": 0,
+          "realtype": {
+            "type": "string",
+            "typedef": "ipv4-prefix"
+          },
+          "type": "string",
+          "typedef": "ipv4-prefix"
+        }
+      }
+    }
+  ],
+  "verdict": "valid"
+}
