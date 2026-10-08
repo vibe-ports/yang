@@ -480,6 +480,24 @@ type ExtInstance struct {
 	Def      *Module // module defining the extension
 	Name     string  // extension name in Def
 	Argument string
+	Module   *Module        // module the instance is compiled in (lysc_ext_instance.module)
+	Plugin   string         // id of the plugin that compiled it ("ly2 yang-data", ...); "" without one
 	Exts     []*ExtInstance // nested instances
 	Type     *Type          // ietf-yang-metadata annotation: the compiled type of the metadata value
+	// Nodes are the schema nodes the plugin compiled as the instance's top level (the data-node
+	// substatement storage, yang-data); their Parent is nil. A plugin that compiles them under a
+	// node of its own (structure) keeps that node in Root instead.
+	Nodes []*Node
+	// Root is the node the plugin made to hold the instance's schema tree (structure: the
+	// container named by the argument); its Children are the top-level nodes of the tree.
+	Root *Node
+}
+
+// DataNodes are the top-level schema nodes of the instance's tree (lyplg_ext_get_storage_p with
+// LY_STMT_DATA_NODE_MASK): Root's children, else Nodes.
+func (e *ExtInstance) DataNodes() []*Node {
+	if e.Root != nil {
+		return e.Root.Children
+	}
+	return e.Nodes
 }

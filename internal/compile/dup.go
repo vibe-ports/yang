@@ -45,6 +45,29 @@ func (sc *scopes) collect(s *parser.Stmt, top bool) {
 	}
 }
 
+// collectExt is the tpdfs_nodes part of parser_common.c lysp_stmt_typedef for the subtree of an
+// extension instance a plugin parsed (lyplg_ext_parse_extension_instance): its top-level
+// statements have no parent node, and a typedef is recorded only in a statement that is not a
+// grouping, an operation or its input/output (the instance's own typedefs are not recorded, and
+// groupings never are).
+func (sc *scopes) collectExt(s *parser.Stmt, top bool) {
+	for _, c := range s.Subs {
+		if c.ExtPrefix != "" {
+			continue
+		}
+		sc.parent[c] = s // the instance itself ends the parent walk (inAncestors), as the module does
+		sc.collectExt(c, false)
+		if top || c.Keyword != "typedef" || slices.Contains(sc.tpdfs, s) {
+			continue
+		}
+		switch s.Keyword {
+		case "grouping", "rpc", "action", "input", "output", "notification":
+		default:
+			sc.tpdfs = append(sc.tpdfs, s)
+		}
+	}
+}
+
 func subs(s *parser.Stmt, kw string) []*parser.Stmt {
 	var r []*parser.Stmt
 	for _, c := range s.Subs {
@@ -66,6 +89,22 @@ func (c *Context) checkDups(p *pctx) error {
 	sc.collect(p.main.Parsed.Stmt, true)
 	for _, s := range p.done {
 		sc.collect(s.Parsed.Stmt, true)
+	}
+	// then the subtrees the extension plugins parsed (lysp_resolve_ext_instance_records)
+	for _, pm := range append([]*pmod{&p.main.pmod}, func() (l []*pmod) {
+		for _, s := range p.done {
+			l = append(l, &s.pmod)
+		}
+		return
+	}()...) {
+		for _, owner := range parser.ExtOwners(pm.Parsed.Stmt) {
+			arr, _ := c.ownedExts(owner)
+			for _, e := range arr {
+				if c.extParsed[e] != nil {
+					sc.collectExt(e, true)
+				}
+			}
+		}
 	}
 	dup := func(name, kw, detail string) error {
 		return c.logVal(ly.SyntaxYang, 0, "Duplicate identifier \"%s\" of %s statement - %s.", name, kw, detail)

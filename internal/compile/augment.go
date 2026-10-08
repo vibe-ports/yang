@@ -128,7 +128,7 @@ func (w *nodeCtx) compileAugment(aug *parser.Node, target *schema.Node) error {
 		return err
 	}
 	disabled := false
-	if !enabled && w.opts&(optDisabled|optGrouping) == 0 {
+	if !enabled && w.opts&(optNoDisabled|optDisabled|optGrouping) == 0 {
 		w.opts |= optDisabled
 		disabled = true
 	}
@@ -183,7 +183,7 @@ func (w *nodeCtx) augmentChildren(aug *parser.Node, list []*parser.Node, target 
 		if err != nil {
 			return err
 		}
-		if !enabled && w.opts&(optDisabled|optGrouping) == 0 {
+		if !enabled && w.opts&(optNoDisabled|optDisabled|optGrouping) == 0 {
 			w.opts |= optDisabled
 		}
 		// the augment is not in the compiled tree: pass its statements to the children

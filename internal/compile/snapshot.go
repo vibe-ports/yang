@@ -148,8 +148,15 @@ func (cp *snapCopy) exts(es []*schema.ExtInstance) []*schema.ExtInstance {
 	}
 	out := make([]*schema.ExtInstance, 0, len(es)) // an empty array stays empty, not nil
 	for _, e := range es {
-		out = append(out, &schema.ExtInstance{Def: cp.mod(e.Def), Name: e.Name, Argument: e.Argument,
-			Exts: cp.exts(e.Exts), Type: cp.typ(e.Type)})
+		x := &schema.ExtInstance{Def: cp.mod(e.Def), Name: e.Name, Argument: e.Argument, Module: cp.mod(e.Module),
+			Plugin: e.Plugin, Exts: cp.exts(e.Exts), Type: cp.typ(e.Type)}
+		for _, n := range e.Nodes {
+			x.Nodes = append(x.Nodes, cp.tree(n, nil))
+		}
+		if e.Root != nil {
+			x.Root = cp.tree(e.Root, nil)
+		}
+		out = append(out, x)
 	}
 	return out
 }

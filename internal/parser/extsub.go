@@ -5,7 +5,11 @@
 
 package parser
 
-import "github.com/vibe-ports/yang/internal/ly"
+import (
+	"slices"
+
+	"github.com/vibe-ports/yang/internal/ly"
+)
 
 // OwnedExts returns the exts array of s: its extension instances and those of its
 // substatements that have no exts array of their own, in text order.
@@ -23,7 +27,8 @@ type ExtSubstmt struct {
 // subs is rejected, then for each of subs in order every child with that keyword is checked for
 // duplicates (lys_parser_ext_instance_stmt) and parsed with the checks of the YANG parser
 // (lysp_stmt_parse). Nested extension instances are not children. The result holds the parsed
-// substatements as a Node (Type, IfFeatures, Status, Units, ...). Errors carry no position:
+// substatements as a Node (Type, IfFeatures, Status, Units, ...; data definitions in Children,
+// in subs order, then text order, as libyang links them). Errors carry no position:
 // libyang reports them at the instance path.
 func ParseExtInstance(ext *Stmt, subs []ExtSubstmt, v11 bool) (*Node, *Error) {
 	arg := ""
@@ -61,6 +66,11 @@ func ParseExtInstance(ext *Stmt, subs []ExtSubstmt, v11 bool) (*Node, *Error) {
 	}
 	n := &Node{}
 	(&builder{v11: v11}).node(n, ext)
+	// the parsed nodes are linked in the order they were parsed: per substatement of subs
+	slices.SortStableFunc(n.Children, func(a, b *Node) int {
+		return slices.IndexFunc(subs, func(s ExtSubstmt) bool { return s.Keyword == a.Kind }) -
+			slices.IndexFunc(subs, func(s ExtSubstmt) bool { return s.Keyword == b.Kind })
+	})
 	return n, nil
 }
 

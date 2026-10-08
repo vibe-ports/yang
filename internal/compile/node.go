@@ -18,15 +18,16 @@ import (
 
 // ctx->compile_opts bits (plugins_exts.h LYS_COMPILE_*, tree_schema.h LYS_IS_*).
 const (
-	optGrouping  = 0x01
-	optDisabled  = 0x02
-	optNoConfig  = 0x04
-	optIsInput   = 0x1000
-	optIsOutput  = 0x2000
-	optIsNotif   = 0x4000
-	optRPCInput  = optIsInput | optNoConfig
-	optRPCOutput = optIsOutput | optNoConfig
-	optNotif     = optIsNotif | optNoConfig
+	optGrouping   = 0x01
+	optDisabled   = 0x02
+	optNoConfig   = 0x04
+	optNoDisabled = 0x08 // LYS_COMPILE_NO_DISABLED: if-feature and obsolete status do not disable
+	optIsInput    = 0x1000
+	optIsOutput   = 0x2000
+	optIsNotif    = 0x4000
+	optRPCInput   = optIsInput | optNoConfig
+	optRPCOutput  = optIsOutput | optNoConfig
+	optNotif      = optIsNotif | optNoConfig
 )
 
 // Compiled node flags that schema.Node does not carry (lysc_node.flags).
@@ -72,6 +73,7 @@ type nodeCtx struct {
 	from      map[any]*pmod             // origin: where values added by a refine are written
 	rfnExts   map[*parser.Node][]stmtIn // refines whose extension instances a refined copy got
 	mustLocal map[*schema.Must]*pmod    // musts a refine added: the module they are written in
+	ext       *extState                 // ctx->ext: the extension instance being compiled
 }
 
 // newNodeCtx is the start of lys_compile / LYSC_CTX_INIT_PMOD: the compile context of m into out.
@@ -437,6 +439,10 @@ func mandatoryParents(p *schema.Node) {
 // connect is lys_compile_node_connect.
 func (w *nodeCtx) connect(parent, n *schema.Node) error {
 	n.Parent = parent
+	if parent == nil && w.ext != nil { // top level of an extension instance
+		w.ext.inst.Nodes = append(w.ext.inst.Nodes, n)
+		return w.uniqueness(nil, n.Name, n)
+	}
 	if parent == nil {
 		switch n.Kind {
 		case schema.RPC:
@@ -520,6 +526,7 @@ func (w *nodeCtx) findChild(parent *schema.Node, mod *schema.Module, name string
 // uniqKey is one name in the scope lys_compile_node_uniqness scans: the nearest ancestor that
 // is not a choice or case (nil: top level), or the choice for a case.
 type uniqKey struct {
+	ext   *schema.ExtInstance // ctx->ext: its top level is a scope of its own
 	scope *schema.Node
 	mod   *schema.Module
 	name  string
@@ -532,6 +539,9 @@ type uniqKey struct {
 // harmless: the scan finds nothing).
 func (w *nodeCtx) uniqueness(parent *schema.Node, name string, excl *schema.Node) error {
 	k := uniqKey{scope: parent, mod: excl.Module, name: name, cs: excl.Kind == schema.Case}
+	if w.ext != nil {
+		k.ext = w.ext.inst
+	}
 	for !k.cs && k.scope != nil && (k.scope.Kind == schema.Choice || k.scope.Kind == schema.Case) {
 		k.scope = k.scope.Parent
 	}
@@ -583,6 +593,9 @@ func (w *nodeCtx) uniqueness(parent *schema.Node, name string, excl *schema.Node
 		var top []*schema.Node
 		if parent == nil {
 			top = w.top()
+			if w.ext != nil {
+				top = w.ext.inst.Nodes
+			}
 		}
 		for it := range schema.GetNext(parent, top, opts) {
 			if !slices.Contains(choices, it) && same(it) {
@@ -597,6 +610,9 @@ func (w *nodeCtx) uniqueness(parent *schema.Node, name string, excl *schema.Node
 			}
 		}
 		actions, notifs := w.rpcs, w.notifs
+		if parent == nil && w.ext != nil {
+			return nil // the extension's top level has no operations
+		}
 		if parent != nil {
 			actions, notifs = parent.Actions, parent.Notifs
 		}

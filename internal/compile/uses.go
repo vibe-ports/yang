@@ -36,26 +36,27 @@ func (w *nodeCtx) addDisabled(n *schema.Node) { w.c.disabled = append(w.c.disabl
 func (w *nodeCtx) parentOf(pn *parser.Node) *parser.Node {
 	if !w.indexed[w.pm] {
 		w.indexed[w.pm] = true
-		var walk func(p *parser.Node, list []*parser.Node)
-		walk = func(p *parser.Node, list []*parser.Node) {
-			for _, n := range list {
-				w.pparent[n] = p
-				for _, l := range [][]*parser.Node{n.Children, n.Groupings, n.Actions, n.Notifications, n.Augments} {
-					walk(n, l)
-				}
-				for _, io := range []*parser.Node{n.Input, n.Output} {
-					if io != nil {
-						walk(n, []*parser.Node{io})
-					}
-				}
-			}
-		}
 		m := w.pm.Parsed
 		for _, l := range [][]*parser.Node{m.Children, m.Groupings, m.Actions, m.Notifications, m.Augments} {
-			walk(nil, l)
+			w.indexParsed(nil, l)
 		}
 	}
 	return w.pparent[pn]
+}
+
+// indexParsed records p as the parent of the nodes of list and of their subtrees.
+func (w *nodeCtx) indexParsed(p *parser.Node, list []*parser.Node) {
+	for _, n := range list {
+		w.pparent[n] = p
+		for _, l := range [][]*parser.Node{n.Children, n.Groupings, n.Actions, n.Notifications, n.Augments} {
+			w.indexParsed(n, l)
+		}
+		for _, io := range []*parser.Node{n.Input, n.Output} {
+			if io != nil {
+				w.indexParsed(n, []*parser.Node{io})
+			}
+		}
+	}
 }
 
 // scopeOf is the typedef scope of a node: its parsed ancestors, innermost first.
@@ -102,6 +103,12 @@ func (w *nodeCtx) findGrouping(uses *parser.Node) (*parser.Node, *pmod, error) {
 		pm = w.parsedOf(w.pm.mod)
 		for p := w.parentOf(uses); found == nil && p != nil; p = w.parentOf(p) {
 			if grp = w.groupingNamed(p, name); grp != nil {
+				found = w.pm
+			}
+		}
+		// if in an extension, search possible groupings in it
+		if found == nil && w.ext != nil && w.ext.parsed != nil {
+			if grp = w.groupingNamed(w.ext.parsed, name); grp != nil {
 				found = w.pm
 			}
 		}
@@ -199,7 +206,7 @@ func (w *nodeCtx) uses(pn *parser.Node, parent *schema.Node, inherited int, chil
 		return err
 	}
 	disabled := false
-	if !enabled && w.opts&(optDisabled|optGrouping) == 0 {
+	if !enabled && w.opts&(optNoDisabled|optDisabled|optGrouping) == 0 {
 		w.opts |= optDisabled
 		disabled = true
 	}
@@ -297,7 +304,7 @@ func (w *nodeCtx) usesChildren(uses *parser.Node, inherited int, list []*parser.
 		if err != nil {
 			return err
 		}
-		if !enabled && w.opts&(optDisabled|optGrouping) == 0 {
+		if !enabled && w.opts&(optNoDisabled|optDisabled|optGrouping) == 0 {
 			w.opts |= optDisabled
 		}
 		w.pm = prevPm

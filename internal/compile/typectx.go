@@ -55,6 +55,9 @@ type typeCtx struct {
 	iff    func(pm *pmod, ifs []*parser.IfFeature) (bool, error)
 	budget Budget
 	types  int // compiled types plus union member slots in this Load (Budget.MaxTypes)
+	// extTpdfs are the typedefs of the extension instance being compiled (ctx->ext, through
+	// lyplg_ext_parsed_get_storage)
+	extTpdfs []*parser.Node
 }
 
 // countTypes charges n type objects or member slots against Budget.MaxTypes.
@@ -81,7 +84,8 @@ var builtinBase = func() map[string]schema.BaseType {
 }()
 
 // findType ports lysp_type_find: a built-in type (unprefixed names only), or a typedef in the
-// enclosing scopes (own module only), the main module's top level, then its submodules. ok is
+// enclosing scopes and the extension instance being compiled (own module only), the main
+// module's top level, then its submodules. ok is
 // false when nothing is found; base is Unknown for a typedef.
 func (c *typeCtx) findType(id string, start *scope, pm *pmod) (base schema.BaseType, it *tpdfItem, ok bool) {
 	local, name := pm, id
@@ -102,6 +106,10 @@ func (c *typeCtx) findType(id string, start *scope, pm *pmod) (base schema.BaseT
 			if t := typedefNamed(s.node.Typedefs, name); t != nil {
 				return schema.Unknown, &tpdfItem{t, s, pm}, true
 			}
+		}
+		// search typedefs directly in the extension
+		if t := typedefNamed(c.extTpdfs, name); t != nil {
+			return schema.Unknown, &tpdfItem{t, nil, pm}, true
 		}
 	}
 	// go to the main module if in a submodule

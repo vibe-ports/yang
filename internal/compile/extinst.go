@@ -17,33 +17,33 @@ import (
 )
 
 // extPlugin is a ported extension plugin record (lyplg_ext_record): the plugin of extension
-// name defined in module@revision.
-type extPlugin struct{ module, revision, name, id string }
+// name defined in module@revision, with its parse and compile callbacks (compile nil: none).
+type extPlugin struct {
+	module, revision, name, id string
+	parse                      func(c *Context, x *extParse) error
+	compile                    func(w *nodeCtx, e *parser.Stmt, inst *schema.ExtInstance, parent *schema.Node) error
+}
 
 const metadataID = "ly2 metadata"
 
-func (p *extPlugin) parse(c *Context, x *extParse) error {
-	if p.id == metadataID {
-		return annotationParse(c, x)
-	}
-	return nacmParse(c, x)
-}
+// extPlugins are the ported built-in plugins (plugins.c: plugins_metadata, plugins_nacm); the
+// unported ones fail the load (unsupportedPlugins). Set in init: the callbacks look plugins up.
+var extPlugins []extPlugin
 
-func (p *extPlugin) compile(w *nodeCtx, e *parser.Stmt, inst *schema.ExtInstance, parent *schema.Node) error {
-	if p.id == metadataID {
+func init() {
+	annotation := func(w *nodeCtx, e *parser.Stmt, inst *schema.ExtInstance, _ *schema.Node) error {
 		return annotationCompile(w, e, inst)
 	}
-	return nacmCompile(inst, parent)
-}
-
-// extPlugins are the ported built-in plugins (plugins.c: plugins_metadata, plugins_nacm); the
-// unported ones fail the load (unsupportedPlugins).
-var extPlugins = []extPlugin{
-	{"ietf-yang-metadata", "2016-08-05", "annotation", metadataID},
-	{"ietf-netconf-acm", "2012-02-22", "default-deny-write", "ly2 NACM"},
-	{"ietf-netconf-acm", "2018-02-14", "default-deny-write", "ly2 NACM"},
-	{"ietf-netconf-acm", "2012-02-22", "default-deny-all", "ly2 NACM"},
-	{"ietf-netconf-acm", "2018-02-14", "default-deny-all", "ly2 NACM"},
+	nacm := func(_ *nodeCtx, _ *parser.Stmt, inst *schema.ExtInstance, parent *schema.Node) error {
+		return nacmCompile(inst, parent)
+	}
+	extPlugins = []extPlugin{
+		{"ietf-yang-metadata", "2016-08-05", "annotation", metadataID, annotationParse, annotation},
+		{"ietf-netconf-acm", "2012-02-22", "default-deny-write", "ly2 NACM", nacmParse, nacm},
+		{"ietf-netconf-acm", "2018-02-14", "default-deny-write", "ly2 NACM", nacmParse, nacm},
+		{"ietf-netconf-acm", "2012-02-22", "default-deny-all", "ly2 NACM", nacmParse, nacm},
+		{"ietf-netconf-acm", "2018-02-14", "default-deny-all", "ly2 NACM", nacmParse, nacm},
+	}
 }
 
 // pluginOf is lyplg_ext_plugin_find for extension name defined in m.
@@ -171,18 +171,29 @@ func annotationParse(c *Context, x *extParse) error {
 			return c.extLog(x, false, "Extension %s is instantiated multiple times.", name)
 		}
 	}
-	n, perr := parser.ParseExtInstance(x.e, annotationSubs, x.v11)
-	if perr != nil {
-		return c.logPath(perr.Code, x.path, "%s", perr.Msg)
+	n, err := c.parseExtInstance(x, annotationSubs)
+	if err != nil {
+		return err
 	}
 	if n.Type == nil {
+		delete(c.extParsed, x.e)
 		return c.extLog(x, false, "Missing mandatory keyword \"type\" as a child of \"%s %s\".", name, x.e.Arg)
+	}
+	return nil
+}
+
+// parseExtInstance is lyplg_ext_parse_extension_instance for the plugin substatements subs; the
+// parsed substatements are kept for the compile (lysp_ext_instance.parsed / substmts storage).
+func (c *Context) parseExtInstance(x *extParse, subs []parser.ExtSubstmt) (*parser.Node, error) {
+	n, perr := parser.ParseExtInstance(x.e, subs, x.v11)
+	if perr != nil {
+		return nil, c.logPath(perr.Code, x.path, "%s", perr.Msg)
 	}
 	if c.extParsed == nil {
 		c.extParsed = map[*parser.Stmt]*parser.Node{}
 	}
 	c.extParsed[x.e] = n
-	return nil
+	return n, nil
 }
 
 // annotationCompile is metadata.c annotation_compile with lyplg_ext_compile_extension_instance:
@@ -327,7 +338,7 @@ func (w *nodeCtx) compileExt(e, owner *parser.Stmt, parent *schema.Node) (*schem
 	if def == nil { // never reached when w.pm is the module the instance is written in
 		return nil, w.errf(ly.Reference, "Invalid prefix \"%s\" used for extension instance identifier.", e.ExtPrefix)
 	}
-	inst := &schema.ExtInstance{Def: def.mod, Name: e.Keyword, Argument: e.Arg}
+	inst := &schema.ExtInstance{Def: def.mod, Name: e.Keyword, Argument: e.Arg, Module: w.cur}
 	exts, err := w.compileExts(e, nil, nil)
 	if err != nil {
 		return nil, err
@@ -335,6 +346,10 @@ func (w *nodeCtx) compileExt(e, owner *parser.Stmt, parent *schema.Node) (*schem
 	inst.Exts = exts
 	plg := pluginOf(def, e.Keyword)
 	if plg == nil {
+		return inst, nil
+	}
+	inst.Plugin = plg.id
+	if plg.compile == nil {
 		return inst, nil
 	}
 	if e.HasArg {
@@ -345,6 +360,159 @@ func (w *nodeCtx) compileExt(e, owner *parser.Stmt, parent *schema.Node) (*schem
 		return nil, err
 	}
 	return inst, nil
+}
+
+// extState is the extension instance being compiled by lyplg_ext_compile_extension_instance
+// (ctx->ext): top-level nodes compiled without a parent go to its Nodes, and the groupings and
+// typedefs of its parsed form are in scope.
+type extState struct {
+	inst   *schema.ExtInstance
+	parsed *parser.Node // lyplg_ext_parsed_get_storage: groupings, typedefs
+}
+
+// extCSubstmt is a lysc_ext_substmt of a plugin's compile callback: the statement and whether
+// its compiled form is stored (storage_p set). The plugins keep must and status on the parent
+// node they pass (structure's container), data definitions under it, or without one in the
+// instance's Nodes.
+type extCSubstmt struct {
+	kw    string
+	store bool
+}
+
+// dataDefKw are the statements of LY_STMT_DATA_NODE_MASK plus case, uses and the operations: the
+// plugins link them all into one list of parsed nodes, so the first of them compiles the list.
+var dataDefKw = map[string]bool{"container": true, "leaf": true, "leaf-list": true, "list": true,
+	"choice": true, "case": true, "anydata": true, "anyxml": true, "uses": true}
+
+// extParsedOf is lyplg_ext_parsed_get_storage's instance lookup: the parsed form of the first
+// extension instance of the module's own statement (not of a submodule) with the instance's
+// extension name, whatever its prefix; nil when there is none (libyang asserts).
+func (w *nodeCtx) extParsedOf(inst *schema.ExtInstance) *parser.Node {
+	main := w.c.mainOf(w.pm)
+	arr, _ := w.c.ownedExts(main.Parsed.Stmt)
+	for _, e := range arr {
+		if e.ExtPrefix != "" && e.Keyword == inst.Name {
+			return w.c.extParsed[e]
+		}
+	}
+	return nil
+}
+
+// compileExtInstance is lyplg_ext_compile_extension_instance: the substatements e's parse
+// callback parsed (in its order psubs) compiled through the plugin's table csubs
+// (lys_compile_ext_instance_stmt) with inst as ctx->ext; parent is the optional parent of the
+// compiled schema nodes. A parsed statement with no entry in csubs is skipped.
+func (w *nodeCtx) compileExtInstance(e *parser.Stmt, psubs []parser.ExtSubstmt, csubs []extCSubstmt,
+	inst *schema.ExtInstance, parent *schema.Node) error {
+	n := w.c.extParsed[e]
+	if n == nil {
+		return fmt.Errorf("compile: extension instance %s:%s was not parsed", e.ExtPrefix, e.Keyword)
+	}
+	prev, prevTpdfs := w.ext, w.tc.extTpdfs
+	w.ext = &extState{inst: inst, parsed: w.extParsedOf(inst)}
+	if w.ext.parsed != nil {
+		w.tc.extTpdfs = w.ext.parsed.Typedefs
+	}
+	defer func() { w.ext, w.tc.extTpdfs = prev, prevTpdfs }()
+	w.indexParsed(nil, n.Children)
+	w.indexParsed(nil, n.Groupings)
+	status := 0 // the compiled status (lyplg_ext_get_storage of LY_STMT_STATUS), statusOf values
+	dataDone := false
+	for _, ps := range psubs {
+		if !extParsedHas(n, ps.Keyword) || dataDefKw[ps.Keyword] && dataDone {
+			continue // nothing parsed or already compiled
+		}
+		dataDone = dataDone || dataDefKw[ps.Keyword]
+		i := slices.IndexFunc(csubs, func(c extCSubstmt) bool { return c.kw == ps.Keyword })
+		if i < 0 {
+			continue
+		}
+		if err := w.compileExtStmt(n, csubs[i], inst, parent, &status); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// extParsedHas reports whether the parse stored something for statement kw.
+func extParsedHas(n *parser.Node, kw string) bool {
+	switch {
+	case dataDefKw[kw]:
+		return len(n.Children) > 0
+	case kw == "must":
+		return len(n.Musts) > 0
+	case kw == "status":
+		return n.Status != ""
+	case kw == "description":
+		return n.Description != ""
+	case kw == "reference":
+		return n.Reference != ""
+	case kw == "typedef":
+		return len(n.Typedefs) > 0
+	case kw == "grouping":
+		return len(n.Groupings) > 0
+	case kw == "if-feature":
+		return len(n.IfFeatures) > 0
+	}
+	return false
+}
+
+// compileExtStmt is lys_compile_ext_instance_stmt for the statements of the generic table.
+func (w *nodeCtx) compileExtStmt(n *parser.Node, cs extCSubstmt, inst *schema.ExtInstance, parent *schema.Node,
+	status *int) error {
+	var rcErr error
+	if cs.kw == "if-feature" { // compilation without any storage
+		on, err := w.iffeatures(w.pm, n.IfFeatures)
+		if err != nil {
+			return err
+		}
+		if !on {
+			rcErr = errNot // disabled, remove the whole extension instance
+		}
+	}
+	if !cs.store {
+		return rcErr // nothing to store
+	}
+	switch {
+	case dataDefKw[cs.kw]:
+		for _, pn := range n.Children {
+			// with no parent the nodes are connected to ctx->ext (connect)
+			if err := w.node(pn, parent, *status, nil); err != nil {
+				return err
+			}
+		}
+	case cs.kw == "description" || cs.kw == "reference":
+		// copied; the compiled schema keeps no descriptions
+	case cs.kw == "status":
+		*status = statusOf(n.Status)
+		if parent != nil {
+			parent.Status = parsedStatus(n.Status)
+		}
+	case cs.kw == "must":
+		for _, pr := range n.Musts { // lys_compile_must, no unres check
+			ns := nsCtx(w.pm)
+			x, err := w.xpathCompile(pr.Arg, ns)
+			if err != nil {
+				return err
+			}
+			if parent != nil {
+				parent.Musts = append(parent.Musts, &schema.Must{Src: pr.Arg, Msg: pr.ErrorMessage, AppTag: pr.ErrorAppTag,
+					Ctx: ns, Compiled: x})
+			}
+		}
+	case cs.kw == "typedef" || cs.kw == "grouping" || cs.kw == "if-feature":
+		_ = w.errf(ly.SyntaxYang, "Statement \"%s\" compilation is not supported.", cs.kw)
+		return eValid
+	default:
+		arg := ""
+		if inst.Argument != "" {
+			arg = " " + inst.Argument
+		}
+		_ = w.errf(ly.SyntaxYang, "Statement \"%s\" is not supported as an extension (found in \"%s%s\") substatement.",
+			cs.kw, inst.Name, arg)
+		return eValid
+	}
+	return nil
 }
 
 // vlog logs an error of the type compiler (a vErr) at the current path.

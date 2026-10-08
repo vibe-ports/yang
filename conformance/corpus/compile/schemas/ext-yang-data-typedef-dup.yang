@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module ext-yang-data-typedef-dup {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:ext-yang-data-typedef-dup";
+  prefix ydt;
+  import ietf-restconf { prefix rc; }
+  typedef t { type string; }
+  rc:yang-data d {
+    container c {
+      list l {
+        typedef t { type int8; }
+        leaf x { type t; }
+      }
+    }
+  }
+}

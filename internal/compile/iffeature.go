@@ -37,9 +37,10 @@ func (c *Context) mainOf(pm *pmod) *Module { return pm.main }
 
 // disable is the LYS_COMPILE_DISABLED part of lys_compile_node_: a node whose if-feature is false
 // (or an obsolete one) is compiled like any other, but goes to the disabled set and makes its
-// subtree disabled; nothing is added inside an already disabled subtree or a grouping.
+// subtree disabled; nothing is added inside an already disabled subtree, a grouping or an
+// extension instance compiled with LYS_COMPILE_NO_DISABLED.
 func (w *nodeCtx) disable(n *schema.Node) {
-	if w.opts&(optDisabled|optGrouping) != 0 {
+	if w.opts&(optNoDisabled|optDisabled|optGrouping) != 0 {
 		return
 	}
 	w.c.disabled = append(w.c.disabled, n)
