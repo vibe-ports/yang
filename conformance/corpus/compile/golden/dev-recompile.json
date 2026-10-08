@@ -1,0 +1,562 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module dev-amend-base {\n  namespace \"urn:dev-amend-base\";\n  prefix b;\n\n  identity base {\n    derived one;\n    derived d:two;\n  }\n\n  identity one {\n  }\n\n  container c {\n    config true;\n    status current;\n    leaf-list ids {\n      dev-amend-base:tag \"own\";\n      dev-add:note \"added\";\n      type identityref {\n        base base;\n      }\n      default \"one\";\n      default \"d:two\";\n      config true;\n      min-elements 0;\n      max-elements 4294967295;\n      ordered-by system;\n      status current;\n    }\n    leaf l {\n      dev-amend-base:tag \"first\";\n      dev-amend-base:tag \"second\";\n      dev-amend-base:mark;\n      dev-amend-base:mark;\n      type string {\n        length \"1..8\";\n      }\n      units \"m\";\n      must \". != 'x'\" {\n        error-message\n          \"not x\";\n      }\n      must \". != 'y'\";\n      config true;\n      status current;\n    }\n    list lst {\n      must \"b:k != 'z'\";\n      key \", k\";\n      unique \"u;\n      unique \"v;\n      unique \"k, v;\n      config true;\n      min-elements 0;\n      max-elements 4;\n      ordered-by system;\n      status current;\n      leaf k {\n        type string;\n        config true;\n        status current;\n      }\n      leaf u {\n        type string;\n        config true;\n        status current;\n      }\n      leaf v {\n        type string;\n        config true;\n        status current;\n      }\n    }\n    choice ch {\n      default \"one\";\n      config true;\n      status current;\n      case one {\n        config true;\n        status current;\n        leaf one {\n          type string;\n          config true;\n          status current;\n        }\n      }\n      case two {\n        config true;\n        status current;\n        leaf two {\n          type string;\n          config true;\n          status current;\n        }\n      }\n    }\n    leaf-list words {\n      type string;\n      default \"a\";\n      default \"b\";\n      default \"c\";\n      config true;\n      min-elements 0;\n      max-elements 4294967295;\n      ordered-by system;\n      status current;\n    }\n  }\n\n  rpc r {\n    status current;\n\n    input {\n      leaf a {\n        type string;\n        status current;\n      }\n    }\n\n    output {\n      leaf b {\n        type string;\n        status current;\n      }\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [
+        {
+          "bases": [],
+          "derived": [
+            "dev-amend-base:one",
+            "dev-add:two"
+          ],
+          "name": "dev-amend-base:base"
+        },
+        {
+          "bases": [
+            "dev-amend-base:base"
+          ],
+          "derived": [],
+          "name": "dev-amend-base:one"
+        }
+      ],
+      "name": "dev-amend-base",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "dev-amend-base",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/dev-amend-base:c",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "dev-amend-base:one",
+            "dev-add:two"
+          ],
+          "extensions": [
+            {
+              "argument": "own",
+              "module": "dev-amend-base",
+              "name": "tag"
+            },
+            {
+              "argument": "added",
+              "module": "dev-add",
+              "name": "note"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "dev-amend-base",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "system",
+          "path": "/dev-amend-base:c/ids",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "identityref",
+            "bases": [
+              "dev-amend-base:base"
+            ],
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": "first",
+              "module": "dev-amend-base",
+              "name": "tag"
+            },
+            {
+              "argument": "second",
+              "module": "dev-amend-base",
+              "name": "tag"
+            },
+            {
+              "argument": null,
+              "module": "dev-amend-base",
+              "name": "mark"
+            },
+            {
+              "argument": null,
+              "module": "dev-amend-base",
+              "name": "mark"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "dev-amend-base",
+          "musts": [
+            {
+              "apptag": null,
+              "expr": ". != 'x'",
+              "message": "not x"
+            },
+            {
+              "apptag": null,
+              "expr": ". != 'y'",
+              "message": null
+            }
+          ],
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/dev-amend-base:c/l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": "1..8",
+            "patterns": null,
+            "range": null,
+            "typedefs": [
+              "local"
+            ],
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": [
+            "k"
+          ],
+          "mandatory": false,
+          "max_elements": 4,
+          "min_elements": 0,
+          "module": "dev-amend-base",
+          "musts": [
+            {
+              "apptag": null,
+              "expr": "b:k != 'z'",
+              "message": null
+            }
+          ],
+          "nodetype": "list",
+          "ordered_by": "system",
+          "path": "/dev-amend-base:c/lst",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "dev-amend-base",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/dev-amend-base:c/lst/k",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "dev-amend-base",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/dev-amend-base:c/lst/u",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "dev-amend-base",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/dev-amend-base:c/lst/v",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "one"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "dev-amend-base",
+          "musts": null,
+          "nodetype": "choice",
+          "ordered_by": null,
+          "path": "/dev-amend-base:c/ch",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "dev-amend-base",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/dev-amend-base:c/ch/one",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "dev-amend-base",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/dev-amend-base:c/ch/one/one",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "dev-amend-base",
+          "musts": null,
+          "nodetype": "case",
+          "ordered_by": null,
+          "path": "/dev-amend-base:c/ch/two",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "dev-amend-base",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/dev-amend-base:c/ch/two/two",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": [
+            "a",
+            "b",
+            "c"
+          ],
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": 0,
+          "module": "dev-amend-base",
+          "musts": null,
+          "nodetype": "leaflist",
+          "ordered_by": "system",
+          "path": "/dev-amend-base:c/words",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "dev-amend-base",
+          "musts": null,
+          "nodetype": "rpc",
+          "ordered_by": null,
+          "path": "/dev-amend-base:r",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "dev-amend-base",
+          "musts": null,
+          "nodetype": "input",
+          "ordered_by": null,
+          "path": "/dev-amend-base:r/input",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "dev-amend-base",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/dev-amend-base:r/input/a",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": null,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "dev-amend-base",
+          "musts": null,
+          "nodetype": "output",
+          "ordered_by": null,
+          "path": "/dev-amend-base:r/output",
+          "presence": null,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": null,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "dev-amend-base",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/dev-amend-base:r/output/b",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    },
+    {
+      "accepted": true,
+      "compiled": "module dev-add {\n  namespace \"urn:dev-add\";\n  prefix d;\n\n  identity two {\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [
+        {
+          "bases": [
+            "dev-amend-base:base"
+          ],
+          "derived": [],
+          "name": "dev-add:two"
+        }
+      ],
+      "name": "dev-add",
+      "revision": null,
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

@@ -1,0 +1,9 @@
+module dev-mixed2 {
+  namespace "urn:dev-mixed2";
+  prefix e;
+  import dev-amend-base { prefix b; }
+  deviation "/b:c/b:l" {
+    deviate add { must "string-length(.) < 5"; }
+    deviate replace { units "cm"; }
+  }
+}

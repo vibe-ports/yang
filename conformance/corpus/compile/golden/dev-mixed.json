@@ -1,0 +1,29 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module dev-mixed {\n  namespace \"urn:dev-mixed\";\n  prefix d;\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "dev-mixed",
+      "revision": null,
+      "schema_tree": []
+    },
+    {
+      "accepted": true,
+      "compiled": "module dev-mixed2 {\n  namespace \"urn:dev-mixed2\";\n  prefix e;\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "dev-mixed2",
+      "revision": null,
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

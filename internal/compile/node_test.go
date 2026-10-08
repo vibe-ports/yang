@@ -390,7 +390,7 @@ func TestNodeGoldens(t *testing.T) {
 					ran++
 					return
 				case errors.Is(loadErr, ErrUnsupported):
-					t.Skip(loadErr) // U-0020, U-0023…U-0025: engine-only
+					t.Skip(loadErr) // U-0023…U-0025: engine-only
 				case loadErr != nil:
 					t.Fatalf("%s: load: %v", gm.Name, loadErr)
 				case gm.Phase == "parse":

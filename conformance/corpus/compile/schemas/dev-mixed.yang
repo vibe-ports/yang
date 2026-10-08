@@ -1,0 +1,10 @@
+module dev-mixed {
+  namespace "urn:dev-mixed";
+  prefix d;
+  import dev-amend-base { prefix b; }
+  deviation /b:c/b:l {
+    deviate delete { units "m"; b:tag first; }
+    deviate add { units "mm"; default "q"; }
+    deviate replace { type string; }
+  }
+}

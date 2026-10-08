@@ -30046,7 +30046,7 @@ fixtures:
       deviation: null
 
   # the same with a deviation of the preloaded module: the "/" left on libyang's log-location
-  # stack comes from precompiling deviations too (the port applies deviations in M2, U-0020)
+  # stack comes from precompiling deviations too
   - id: ref-impl/instid-recompile-deviation
     dir: compile
     source: *own
@@ -33544,3 +33544,36 @@ fixtures:
       rfc: ["RFC7950#7.20.3.2", "RFC7950#7.19"]
       deviation: null
 # END dev #29
+
+# BEGIN dev #30 (hand-written, deviations: track A of M2)
+
+  - id: dev/recompile
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # the deviated module is compiled before the deviating one is loaded: it is compiled again with the deviations
+    rfc: ["RFC7950#7.20.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{name: dev-amend-base}, {name: dev-add}]
+    golden: golden/dev-recompile.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3"]
+      deviation: null
+
+  - id: dev/mixed
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # delete, add and replace in one deviation, and a second module deviating the same node later
+    rfc: ["RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{name: dev-mixed}, {name: dev-mixed2}]
+    golden: golden/dev-mixed.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3.2"]
+      deviation: null
+# END dev #30

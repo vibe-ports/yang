@@ -20,7 +20,7 @@ payloads and diff/merge are not done yet.
 | Built-in types, unions, decimal64, `ietf-yang-types` / `ietf-inet-types` canonical forms | supported | |
 | `pattern` (XSD regular expressions) | supported | compiled to RE2 through an XSD-regex compiler; intentional differences D-0002…D-0008 |
 | Extension instances | partial | metadata (RFC 7952) and NACM are compiled; schema-mount, `yang-data`/`structure`, OpenConfig `regexp-posix` make `Load` fail (U-0023…U-0025) |
-| `deviation` statements | **unsupported** | an implemented module with deviations fails with `ErrUnsupported` (U-0020); planned |
+| `deviation` statements | supported | not-supported, add, delete, replace; a deviated rpc/action input or output keeps its children, which libyang drops (D-0080) or crashes on when a must is added (D-0090) |
 | Datastore data: JSON (RFC 7951) and XML parse, print, unknown-node policy (reject / skip / opaque) | supported | |
 | Validation: types, leafref, instance-identifier, mandatory, min/max-elements, unique, must, when (with auto-delete), choice/case, NMDA operational mode | supported | libyang's diagnostics: LY_ERR / LY_VECODE names, data path, error-app-tag |
 | Defaults and with-defaults printing (RFC 6243: explicit, trim, report-all, report-all-tagged) | supported | |
@@ -161,20 +161,19 @@ check finds no instance. Schema traversal is shown in the [`yang` package exampl
   may differ on purpose. Each case is listed with its RFC reference and fixture in
   [conformance/deviations.md](conformance/deviations.md); an unlisted difference is a bug.
 
-Report as of 2026-10-08 (commit 82db0b8). Every CI run prints the current report in its job
+Report as of 2026-10-09 (deviations close-out, #30). Every CI run prints the current report in its job
 summary, and `make compat-report` reproduces it locally:
 
 | | agree | agree (skipped fields) | differ | deviation | unsupported |
 |---|--:|--:|--:|--:|--:|
-| fixtures (1 880) | 597 | 937 | 0 | 16 | 330 |
+| fixtures (1 963) | 659 | 1041 | 0 | 18 | 245 |
 
-Of the 330 unsupported fixtures, 151 are operations the report engine does not run yet: 146
+Of the 245 unsupported fixtures, 151 are operations the report engine does not run yet: 146
 `xpath` (the XPath evaluator is compared with the oracle by its own tests in `internal/xpath`)
 and 5 `diff`. 19 `sequence` fixtures (edit and revalidate a retained tree) use steps package
 `data` has no public API for (duplication, leafref links, `lyd_new_term` inserts) or contain
-anydata. The other 160 are inputs the port refuses (104 schema, 56 data), mainly modules with
-`deviation` statements (U-0020), `yang-data`/`structure` extension instances and anydata/anyxml
-instances.
+anydata. The other 75 are inputs the port refuses (22 schema, 53 data), mainly
+`yang-data`/`structure` extension instances and anydata/anyxml instances.
 
 ## Packages
 
