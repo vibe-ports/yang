@@ -1,0 +1,6 @@
+module dev-ns-key {
+  namespace "urn:dev-ns-key";
+  prefix d;
+  import dev-base { prefix b; }
+  deviation /b:lst/b:k { deviate not-supported; }
+}

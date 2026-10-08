@@ -6,7 +6,6 @@ package compile
 
 import (
 	"errors"
-	"fmt"
 	"slices"
 
 	"github.com/vibe-ports/yang/internal/ly"
@@ -88,8 +87,8 @@ func hasCompiledImport(m *Module) error {
 
 // precompileAugmentsDeviations is lys_precompile_augments_deviations: the
 // modules targeted by top-level augments of m (and its submodules) become
-// implemented, or are recompiled when already compiled. A module with
-// deviations is not supported yet (U-0020).
+// implemented, or are recompiled when already compiled; the same for the
+// targets of its deviations.
 func (c *Context) precompileAugmentsDeviations(m *Module) error {
 	var set []*Module
 	if err := c.precompileModAugments(m, &m.pmod, &set); err != nil {
@@ -121,18 +120,20 @@ func (c *Context) precompileAugmentsDeviations(m *Module) error {
 // precompileModAugments is lys_precompile_mod_augments_deviations for the
 // (sub)module pm of m.
 func (c *Context) precompileModAugments(m *Module, pm *pmod, set *[]*Module) error {
-	for _, aug := range pm.Parsed.Augments {
-		path := "/" + m.Name + ":{augment='" + aug.Name + "'}"
-		_, mods, err := nodeidModCheck(pm, aug.Name, true, func(code ly.Code, f string, a ...any) error {
+	// target is lys_nodeid_mod_check of an augment or deviation node-id, then the target
+	// module gets m in its augmented_by/deviated_by (lys_array_add_mod_ref)
+	target := func(kw, nodeid string, by func(t *Module) *[]*Module) error {
+		path := "/" + m.Name + ":{" + kw + "='" + nodeid + "'}"
+		_, mods, err := nodeidModCheck(pm, nodeid, true, func(code ly.Code, f string, a ...any) error {
 			return c.logPath(code, path, f, a...)
 		})
 		if err != nil {
 			return err
 		}
-		t := mods[0] // the module of the first node test
-		added := !slices.Contains(t.augmentedBy, m)
+		refs := by(mods[0]) // the module of the first node test
+		added := !slices.Contains(*refs, m)
 		if added {
-			t.augmentedBy = append(t.augmentedBy, m)
+			*refs = append(*refs, m)
 		}
 		if added || slices.ContainsFunc(mods, func(x *Module) bool { return !x.Implemented }) {
 			for _, x := range mods { // ly_set_merge without duplicates
@@ -141,12 +142,20 @@ func (c *Context) precompileModAugments(m *Module, pm *pmod, set *[]*Module) err
 				}
 			}
 		}
+		return nil
+	}
+	for _, aug := range pm.Parsed.Augments {
+		if err := target("augment", aug.Name, func(t *Module) *[]*Module { return &t.augmentedBy }); err != nil {
+			return err
+		}
+	}
+	for _, dev := range pm.Parsed.Deviations {
+		if err := target("deviation", dev.Nodeid, func(t *Module) *[]*Module { return &t.deviatedBy }); err != nil {
+			return err
+		}
 	}
 	if len(pm.Parsed.Augments) > 0 || len(pm.Parsed.Deviations) > 0 {
 		c.locTop = "/" // lysc_update_path's context path, left on the log-location stack
-	}
-	if len(pm.Parsed.Deviations) > 0 {
-		return fmt.Errorf("%w: deviations of module %q are applied in M2 (U-0020)", ErrUnsupported, m.Name)
 	}
 	// augments in extension instances (augment-structure) never get here: U-0023
 	return nil
@@ -369,6 +378,9 @@ func (c *Context) revert() {
 			if i := slices.Index(o.augmentedBy, m); i >= 0 {
 				o.augmentedBy = slices.Delete(o.augmentedBy, i, i+1)
 			}
+			if i := slices.Index(o.deviatedBy, m); i >= 0 {
+				o.deviatedBy = slices.Delete(o.deviatedBy, i, i+1)
+			}
 		}
 		c.free(m)
 		m.toCompile = false
@@ -387,6 +399,8 @@ func (c *Context) revert() {
 		c.dropTypedefs(m)
 	}
 	if len(c.implementing) > 0 {
+		// the failed dep set left its unres behind (lys_compile_unres_depset_erase on error)
+		c.ur, c.disabled = unresSets{}, nil
 		n := len(c.diags)
 		err := c.compileDepSetAll()
 		c.diags = c.diags[:n]

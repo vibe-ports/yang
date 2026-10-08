@@ -62,6 +62,7 @@ type nodeCtx struct {
 	usesAugs  pending[*usesAug]                        // ctx->uses_augs
 	augs      pending[*topAug]                         // ctx->augs
 	usesRfns  pending[*usesRfn]                        // ctx->uses_rfns
+	devs      pending[*devSet]                         // ctx->devs
 	pendingOf map[*parser.Node]int                     // pending augments and refines per uses
 	groupings map[*parser.Node]bool                    // ctx->groupings: the uses stack
 	grpIdx    map[*parser.Node]map[string]*parser.Node // groupings by name per parent (module: &Parsed.Node)
@@ -110,6 +111,9 @@ func (c *Context) compileNodes(m *Module, out *schema.Module) error {
 	defer func() { out.Top, c.types = slices.Concat(w.data, w.rpcs, w.notifs), w.tc.types }()
 	out.Exts = nil
 	w.precompileOwnAugments(m)
+	if err := w.precompileOwnDeviations(m); err != nil {
+		return err
+	}
 	if err := w.topLevel(m.Parsed); err != nil {
 		return err
 	}
@@ -130,7 +134,10 @@ func (c *Context) compileNodes(m *Module, out *schema.Module) error {
 	for _, a := range w.augs.items {
 		augs = append(augs, pendingAug{nodeid: a.nid.str, pm: a.pm})
 	}
-	return w.unresMod(augs) // P5
+	if err := w.unresMod(augs); err != nil { // P5
+		return err
+	}
+	return w.unresDeviations()
 }
 
 func (w *nodeCtx) topLevel(p *parser.Module) error {
@@ -237,10 +244,19 @@ func (w *nodeCtx) nodeGeneric(pn *parser.Node, parent *schema.Node, inherited in
 		return fmt.Errorf("%w: more than %d compiled schema nodes", ErrBudget, orDefault(w.c.opts.Budget.MaxNodes, DefaultMaxNodes))
 	}
 	n.Module, n.Parent = w.cur, parent
-	// refines of the node (deviations: M2)
+	// refines and deviations of the node (lys_compile_node_deviations_refines)
 	dev, err := w.nodeRefines(pn, parent)
 	if err != nil {
 		return err
+	}
+	dev, notSupported, err := w.nodeDeviations(pn, parent, dev)
+	if err != nil {
+		return err
+	}
+	prev := w.opts
+	defer func() { w.opts = prev }()
+	if notSupported {
+		w.disable(n) // kept just like nodes disabled by if-feature
 	}
 	if dev == nil {
 		return w.nodeGenericRest(pn, parent, inherited, spec, n, childSet)

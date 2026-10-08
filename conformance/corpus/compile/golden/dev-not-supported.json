@@ -1,0 +1,19 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module dev-ns {\n  namespace \"urn:dev-ns\";\n  prefix d;\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "dev-ns",
+      "revision": null,
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

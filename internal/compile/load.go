@@ -132,6 +132,7 @@ type Module struct {
 	Schema      *schema.Module
 	features    []*feature // lysp_feature_next order
 	augmentedBy []*Module  // modules with top-level augments of this one
+	deviatedBy  []*Module  // modules with deviations of this one
 	toCompile   bool
 	compiled    bool
 }

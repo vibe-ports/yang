@@ -1,0 +1,6 @@
+submodule dev-ns-sub {
+  belongs-to dev-ns { prefix d; }
+  import dev-base { prefix base; }
+  deviation /base:top-ntf { deviate not-supported; }
+  deviation /base:r/base:input/base:a { deviate not-supported; }
+}

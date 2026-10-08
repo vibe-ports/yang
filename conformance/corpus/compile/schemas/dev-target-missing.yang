@@ -1,0 +1,7 @@
+module dev-target-missing {
+  namespace "urn:dev-target-missing";
+  prefix d;
+  import dev-base { prefix b; }
+  deviation /b:c/b:z { deviate not-supported; }
+  deviation /b:lst/b:act/b:input/b:nope { deviate not-supported; }
+}

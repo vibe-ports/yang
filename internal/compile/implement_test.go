@@ -82,20 +82,35 @@ func TestNodeWalk(t *testing.T) {
 	}
 }
 
-// TestDeviationUnsupported: implementing a module with deviations fails
-// with ErrUnsupported (U-0020) and the load is reverted; the target stays
-// import-only.
-func TestDeviationUnsupported(t *testing.T) {
+// TestDeviationNotSupported: implementing a module with a not-supported
+// deviation implements its target with the node removed and records the
+// deviating module (deviated_by); a deviate add/delete/replace still fails
+// with ErrUnsupported (U-0020) and the load is reverted.
+func TestDeviationNotSupported(t *testing.T) {
 	c := newCtx(t, Options{}, filepath.Join(corpus, "load", "implement"))
+	dv, _, err := c.Load("dv", "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tg := c.implemented("tg")
+	if tg == nil || len(tg.deviatedBy) != 1 || tg.deviatedBy[0] != dv || len(tg.Schema.Top) != 0 {
+		t.Fatalf("tg %+v", tg)
+	}
+
+	dir := t.TempDir()
+	write(t, dir, "tg.yang", `module tg { namespace urn:tg; prefix tg; leaf l { type string; } }`)
+	write(t, dir, "da.yang", `module da { namespace urn:da; prefix da; import tg { prefix t; }
+  deviation /t:l { deviate add { units km; } } }`)
+	c = newCtx(t, Options{}, dir)
+	if _, _, err := c.Load("tg", "", nil); err != nil {
+		t.Fatal(err)
+	}
 	n := len(c.Modules)
-	if _, _, err := c.Load("dv", "", nil); !errors.Is(err, ErrUnsupported) {
+	if _, _, err := c.Load("da", "", nil); !errors.Is(err, ErrUnsupported) {
 		t.Fatalf("got %v", err)
 	}
-	if len(c.Modules) != n {
-		t.Errorf("%d modules after the failed load, want %d", len(c.Modules), n)
-	}
-	if _, _, err := c.Load("dvu", "", nil); err != nil { // import-only is fine
-		t.Fatal(err)
+	if tg := c.implemented("tg"); len(c.Modules) != n || len(tg.deviatedBy) != 0 {
+		t.Errorf("%d modules after the failed load, want %d; tg deviated by %d", len(c.Modules), n, len(tg.deviatedBy))
 	}
 }
 
@@ -235,5 +250,21 @@ func TestImportFeatures(t *testing.T) {
 		if !f.enabled {
 			t.Errorf("fa feature %s disabled", f.p.Name)
 		}
+	}
+}
+
+// TestRevertDropsUnres: the revert after a failed load compiles the previous state without the
+// unres of the failed dep set (libyang erases it on error): a default of a module the failed load
+// created and implemented is not checked again, so no internal error follows.
+func TestRevertDropsUnres(t *testing.T) {
+	dir := t.TempDir()
+	write(t, dir, "base.yang", `module base { namespace urn:base; prefix b; identity i; identity one { base i; }
+  container c { leaf id { type identityref { base i; } default one; } } }`)
+	write(t, dir, "af.yang", `module af { namespace urn:af; prefix af; import base { prefix b; }
+  augment /b:c { leaf x { type nonexistent; } } }`)
+	c := newCtx(t, Options{}, dir)
+	_, diags, err := c.Load("af", "", nil)
+	if err == nil || len(diags) != 1 {
+		t.Fatalf("%v, %+v", err, diags)
 	}
 }

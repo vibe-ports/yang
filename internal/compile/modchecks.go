@@ -15,7 +15,7 @@ type pendingAug struct {
 }
 
 // unresMod is P5, lys_compile_unres_mod: every augment left unapplied is logged, all of them,
-// then the compile fails with LY_ENOTFOUND. Deviations are M2 (U-0020).
+// then the compile fails with LY_ENOTFOUND. The deviations follow (unresDeviations).
 func (w *nodeCtx) unresMod(augs []pendingAug) error {
 	orig := w.path.cur
 	for _, a := range augs {

@@ -1,0 +1,7 @@
+module dev-ns-subtree {
+  namespace "urn:dev-ns-subtree";
+  prefix d;
+  import dev-base { prefix b; }
+  deviation /b:c { deviate not-supported; }
+  deviation /b:c/b:y { deviate not-supported; }
+}

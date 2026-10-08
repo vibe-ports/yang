@@ -249,7 +249,7 @@ func prefixUndefined(pm *pmod, prefix string) bool {
 }
 
 // nodeRefines is the refine part of lys_compile_node_deviations_refines: a copy of pn with every
-// matching refine applied, or nil when none matches (deviations: M2, U-0020).
+// matching refine applied, or nil when none matches (deviations: nodeDeviations).
 func (w *nodeCtx) nodeRefines(pn *parser.Node, parent *schema.Node) (*parser.Node, error) {
 	var dev *parser.Node
 	sc := w.usesRfns.scan(w.usesRfns.keys(pnodeName(pn), parent, &w.c.work), &w.c.work)

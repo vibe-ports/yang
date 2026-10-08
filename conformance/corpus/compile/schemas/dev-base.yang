@@ -1,0 +1,31 @@
+module dev-base {
+  yang-version 1.1;
+  namespace "urn:dev-base";
+  prefix b;
+  container c {
+    leaf x { type string; }
+    leaf y { type string; }
+  }
+  list lst {
+    key "k";
+    unique "u v";
+    leaf k { type string; }
+    leaf u { type string; }
+    leaf v { type string; }
+    action act {
+      input { leaf i { type string; } }
+      output { leaf o { type string; } }
+    }
+    notification ntf { leaf n { type string; } }
+  }
+  choice ch {
+    default one;
+    leaf one { type string; }
+    leaf two { type string; }
+  }
+  rpc r {
+    input { leaf a { type string; } }
+    output { leaf b { type string; } }
+  }
+  notification top-ntf;
+}

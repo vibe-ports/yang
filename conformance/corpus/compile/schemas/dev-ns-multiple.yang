@@ -1,0 +1,8 @@
+module dev-ns-multiple {
+  namespace "urn:dev-ns-multiple";
+  prefix d;
+  import dev-base { prefix b; }
+  deviation /b:c { deviate not-supported; }
+  deviation /b:c/b:y { deviate not-supported; }
+  deviation "/b:c" { deviate not-supported; }
+}

@@ -1,0 +1,12 @@
+module dev-ns {
+  namespace "urn:dev-ns";
+  prefix d;
+  import dev-base { prefix b; }
+  include dev-ns-sub;
+  deviation /b:c/b:x { deviate not-supported; }
+  deviation /b:lst/b:u { deviate not-supported; }
+  deviation /b:lst/b:act/b:input { deviate not-supported; }
+  deviation /b:lst/b:ntf { deviate not-supported; }
+  deviation /b:ch/b:two { deviate not-supported; }
+  deviation /b:r/b:output { deviate not-supported; }
+}

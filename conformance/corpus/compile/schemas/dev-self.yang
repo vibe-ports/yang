@@ -1,0 +1,6 @@
+module dev-self {
+  namespace "urn:dev-self";
+  prefix s;
+  container c { leaf x { type string; } }
+  deviation /s:c/s:x { deviate not-supported; }
+}
