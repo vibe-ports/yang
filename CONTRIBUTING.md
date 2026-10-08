@@ -61,9 +61,10 @@ DEV_PLATFORM=linux/amd64 ./dev make oracle-golden   # only ever generate goldens
 Agents follow [AGENTS.md](AGENTS.md), the same rules as humans: provenance headers, port-map rows,
 oracle fixtures as proof, the deviations registry, append-only manifest, no AI trailers.
 
-- Start from issues labelled `good first issue`, `help wanted` or `up-for-grabs`. Each names the
+- Start from issues labelled `good first issue` or `help wanted`. Most task issues name the
   libyang functions to port and the fixtures that prove it.
-- Comment on the issue to take it. Outsiders don't use `scripts/claim`.
+- Comment on the issue to take it. `up-for-grabs` and `agent-ready` with `scripts/claim` are the
+  maintainer's own agent queue, not for outside contributors.
 - Run `./dev make ci` before opening the PR (`DEV_PLATFORM=linux/amd64` for oracle work).
 - The maintainer reviews and merges the PR as for any contributor.
 - Disclosing AI assistance is fine; the [README](README.md) already says the port is AI-assisted.
