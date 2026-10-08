@@ -8,7 +8,6 @@ package compile
 
 import (
 	"errors"
-	"fmt"
 	"slices"
 
 	"github.com/vibe-ports/yang/internal/ly"
@@ -173,7 +172,7 @@ func (w *nodeCtx) applyDeviation(d *parser.Deviation, pm *pmod, t *devTarget) er
 		case "delete":
 			err = w.deviateDelete(dv, t)
 		case "replace":
-			return fmt.Errorf("%w: deviate %s of \"%s\" (U-0020)", ErrUnsupported, dv.Mod, d.Nodeid)
+			err = w.deviateReplace(dv, t)
 		default:
 			return w.errf(ly.Other, "Internal error (schema_compile_amend.c:1681).") // LOGINT
 		}

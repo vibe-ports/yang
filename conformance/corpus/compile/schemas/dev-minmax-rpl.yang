@@ -1,0 +1,9 @@
+module dev-minmax-rpl {
+  namespace "urn:dev-minmax-rpl";
+  prefix d;
+  import dev-minmax-base { prefix t; }
+  deviation /t:c/t:two {
+    deviate replace { min-elements 3; max-elements 6; }
+    deviate add { min-elements 1; max-elements 2; }
+  }
+}

@@ -1,0 +1,8 @@
+module dev-replace-ext-arg {
+  namespace "urn:dev-replace-ext-arg";
+  prefix d;
+  import dev-amend-base { prefix b; }
+  deviation /b:c/b:l {
+    deviate replace { b:tag second; }
+  }
+}

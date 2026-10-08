@@ -1,0 +1,9 @@
+module dev-empty-11 {
+  yang-version 1.1;
+  namespace "urn:dev-empty-11";
+  prefix d;
+  import dev-empty-10 { prefix t; }
+  deviation /t:flags {
+    deviate replace { type empty; }
+  }
+}

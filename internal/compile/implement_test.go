@@ -84,8 +84,7 @@ func TestNodeWalk(t *testing.T) {
 
 // TestDeviationNotSupported: implementing a module with a not-supported
 // deviation implements its target with the node removed and records the
-// deviating module (deviated_by); a deviate replace still fails
-// with ErrUnsupported (U-0020) and the load is reverted.
+// deviating module (deviated_by).
 func TestDeviationNotSupported(t *testing.T) {
 	c := newCtx(t, Options{}, filepath.Join(corpus, "load", "implement"))
 	dv, _, err := c.Load("dv", "", nil)
@@ -97,21 +96,6 @@ func TestDeviationNotSupported(t *testing.T) {
 		t.Fatalf("tg %+v", tg)
 	}
 
-	dir := t.TempDir()
-	write(t, dir, "tg.yang", `module tg { namespace urn:tg; prefix tg; leaf l { type string; } }`)
-	write(t, dir, "da.yang", `module da { namespace urn:da; prefix da; import tg { prefix t; }
-  deviation /t:l { deviate replace { type int8; } } }`)
-	c = newCtx(t, Options{}, dir)
-	if _, _, err := c.Load("tg", "", nil); err != nil {
-		t.Fatal(err)
-	}
-	n := len(c.Modules)
-	if _, _, err := c.Load("da", "", nil); !errors.Is(err, ErrUnsupported) {
-		t.Fatalf("got %v", err)
-	}
-	if tg := c.implemented("tg"); len(c.Modules) != n || len(tg.deviatedBy) != 0 {
-		t.Errorf("%d modules after the failed load, want %d; tg deviated by %d", len(c.Modules), n, len(tg.deviatedBy))
-	}
 }
 
 // TestUnsupportedExtensionPlugin: an instance of an unported plugin fails

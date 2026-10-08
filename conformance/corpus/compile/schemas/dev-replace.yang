@@ -1,0 +1,23 @@
+module dev-replace {
+  yang-version 1.1;
+  namespace "urn:dev-replace";
+  prefix d;
+  import dev-amend-base { prefix b; }
+  typedef short { type string { length "1..3"; } default "abc"; }
+  leaf target { type string; }
+  deviation /b:c/b:l {
+    deviate replace {
+      type d:short;
+      units "km";
+    }
+  }
+  deviation /b:c/b:words {
+    deviate replace { type leafref { path "/d:target"; } }
+  }
+  deviation /b:c/b:ch {
+    deviate replace { default b:two; mandatory false; }
+  }
+  deviation /b:c/b:lst {
+    deviate replace { config false; min-elements 1; max-elements 3; }
+  }
+}

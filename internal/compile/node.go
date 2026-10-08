@@ -758,7 +758,7 @@ func (w *nodeCtx) nodeType(pn *parser.Node, n *schema.Node) error {
 	if dflt != nil && w.fl[n]&flSetDflt == 0 && w.opts&(optDisabled|optGrouping) == 0 {
 		n.Default = []schema.DefaultValue{*dflt}
 	}
-	w.addTypeUnres(n, w.pm, dflt != nil && w.fl[n]&flSetDflt == 0)
+	w.addTypeUnres(n, w.origin(pn.Type), dflt != nil && w.fl[n]&flSetDflt == 0)
 	return nil
 }
 
@@ -1267,7 +1267,7 @@ func (w *nodeCtx) compileLeafType(n *schema.Node, pn *parser.Node, wantUnits boo
 	units *string, dflt *schema.DefaultValue, err error) {
 	sc := w.scopeOf(pn)
 	w.tc.pmod = w.pm
-	t, units, td, err := w.tc.compileNodeType(sc, n, pn.Type, w.pm, wantUnits)
+	t, units, td, err := w.tc.compileNodeType(sc, n, pn.Type, w.origin(pn.Type), wantUnits) // a deviation's type in its module
 	if err != nil {
 		return nil, nil, err
 	}
