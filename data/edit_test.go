@@ -277,6 +277,15 @@ func TestNewPathAPI(t *testing.T) {
 		len(ve.Diags) != 0 {
 		t.Errorf("invalid leaf-list value: %v", err)
 	}
+	// a type plugin's own rc passes through: date (ly_time_str2time) fails with LY_EINVAL
+	f := newFixture()
+	dt := &schema.Type{Base: schema.String, Typedef: "date", TypedefModule: &schema.Module{Name: "ietf-yang-types"}}
+	dl := &schema.Node{Kind: schema.LeafList, Name: "dl", Module: f.b, Parent: f.c, Type: dt, Config: true}
+	f.c.Children = append(f.c.Children, dl)
+	if _, err := newTree(f.set).NewPath("/b:c/dl", "2024-13-01", NewPathOptions{}); !errors.As(err, &ve) ||
+		ve.RC() != "LY_EINVAL" || len(ve.Diags) != 0 {
+		t.Errorf("invalid date leaf-list value: %v", err)
+	}
 	key, err := tr.Find("/pv2-edit:c/l[k='a']/k")
 	if err != nil || key == nil || key.value.Canonical() != "a" {
 		t.Fatalf("Find key: %v %v", key, err)

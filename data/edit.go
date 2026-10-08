@@ -340,7 +340,7 @@ func (t *Tree) checkFindPath(lg *logger, p types.Path, path, value string) (type
 		case sn.Kind == schema.LeafList && (len(preds) == 0 || preds[0].Kind != types.PredLeafList):
 			v, d := types.Store(sn.Type, value, types.FormatJSON, types.HintData, types.ModuleNames{Set: t.set}, sn)
 			if d != nil {
-				return nil, rcError("LY_EVALID") // lyd_value_validate3 without logging
+				return nil, rcError(d.RC()) // lyd_value_validate3 without logging: the plugin's rc
 			}
 			p[u].Preds = append(p[u].Preds, types.PathPred{Kind: types.PredLeafList, Value: v})
 		}
