@@ -17,7 +17,7 @@ payloads and diff/merge are not done yet.
 |---|---|---|
 | YANG 1.0 / 1.1 parser (modules, submodules, import/include with revision-date) | supported | YANG text only |
 | Schema compilation: typedef chains, grouping/uses/refine, augment, choice/case, if-feature, identities, status, must/when/leafref XPath checks | supported | |
-| Built-in types, unions, decimal64, `ietf-yang-types` / `ietf-inet-types` canonical forms | supported | xpath1.0 prints its canonical text in every format (U-0010) |
+| Built-in types, unions, decimal64, `ietf-yang-types` / `ietf-inet-types` canonical forms | supported | |
 | `pattern` (XSD regular expressions) | supported | compiled to RE2 through an XSD-regex compiler; intentional differences D-0002…D-0008 |
 | Extension instances | partial | metadata (RFC 7952) and NACM are compiled; schema-mount, `yang-data`/`structure`, OpenConfig `regexp-posix` make `Load` fail (U-0023…U-0025) |
 | `deviation` statements | **unsupported** | an implemented module with deviations fails with `ErrUnsupported` (U-0020); planned |

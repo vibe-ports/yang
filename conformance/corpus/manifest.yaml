@@ -33033,3 +33033,61 @@ fixtures:
       deviation: null
 
 # END ver
+# BEGIN types xpath1.0 printing (#10)
+
+  - id: types/xpath10-xml-prefixes
+    dir: types
+    source: *own   # XML input: canonical with module names, XML output re-prefixed
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty7}, {name: ty6}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty7"><xp xmlns:a="urn:vibe-ports:ty6" xmlns:b="urn:vibe-ports:ty7">/a:c/a:l[a:k = /b:c/b:k]/a:v | count(/a:c/ll) + 1</xp><xpl xmlns:t="urn:vibe-ports:ty7">/t:c/t:k</xpl><xpl>/c/k</xpl><k>x</k></c>'
+    golden: golden/xpath10-xml-prefixes.json
+
+  - id: types/xpath10-json
+    dir: types
+    source: *own   # JSON input: kept as given, XML output with XML prefixes
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty7}, {name: ty6}]
+      format: json
+      data_type: config
+      data: '{"ty7:c": {"xp": "/ty6:c/l[k = /ty7:c/k]/v and /ty6:c/ty6:ll = ''a:b''", "xpl": ["/ty7:c/k", "../k"], "k": "x"}}'
+    golden: golden/xpath10-json.json
+
+  - id: types/xpath10-unknown-prefix
+    dir: types
+    source: *own   # an XML prefix with no namespace: the canonical form fails
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty7}, {name: ty6}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty7"><xp xmlns:a="urn:vibe-ports:ty6">/a:c/zz:l</xp></c>'
+    golden: golden/xpath10-unknown-prefix.json
+
+  - id: types/xpath10-syntax-error
+    dir: types
+    source: *own   # lyxp_expr_parse error
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty7}, {name: ty6}]
+      format: json
+      data_type: config
+      data: '{"ty7:c": {"xp": "/ty6:c/l["}}'
+    golden: golden/xpath10-syntax-error.json
+# END types xpath1.0 printing

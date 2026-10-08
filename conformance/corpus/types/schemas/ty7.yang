@@ -1,0 +1,16 @@
+module ty7 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:ty7";
+  prefix t7;
+
+  import ietf-yang-types { prefix yang; }
+  import ty6 { prefix t6; }
+
+  description "ietf-yang-types xpath1.0 values printed in XML and JSON for internal/types (#10).";
+
+  container c {
+    leaf xp { type yang:xpath1.0; }
+    leaf-list xpl { type yang:xpath1.0; }
+    leaf k { type string; }
+  }
+}

@@ -9,6 +9,7 @@ import (
 	"maps"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -394,6 +395,47 @@ func TestXPath10(t *testing.T) {
 	}
 }
 
+// TestOracleGoldensXPath10 replays types/xpath10-* (schemas ty7.yang, ty6.yang): the canonical
+// value and the XML print of the tree printout, or the first error.
+func TestOracleGoldensXPath10(t *testing.T) {
+	xp := ietfTypes("2025-12-22")["xpath1.0"]
+	ty6 := &schema.Module{Name: "ty6", Namespace: "urn:vibe-ports:ty6", Prefix: "t6", Implemented: true}
+	ty7 := &schema.Module{Name: "ty7", Namespace: "urn:vibe-ports:ty7", Prefix: "t7", Implemented: true}
+	set := &schema.Set{Modules: []*schema.Module{ty6, ty7}}
+	xml := XMLNamespaces{Set: set, NS: map[string]string{"": ty7.Namespace, "a": ty6.Namespace, "b": ty7.Namespace}}
+	for _, c := range []struct {
+		id, lex string
+		f       Format
+		xml     string // the value in the golden's XML printout
+	}{
+		{"xpath10-xml-prefixes", "/a:c/a:l[a:k = /b:c/b:k]/a:v | count(/a:c/ll) + 1", FormatXML,
+			"/t6:c/t6:l[t6:k=/t7:c/t7:k]/t6:v | count(/t6:c/t6:ll) + 1"},
+		{"xpath10-json", "/ty6:c/l[k = /ty7:c/k]/v and /ty6:c/ty6:ll = 'a:b'", FormatJSON,
+			"/t6:c/t6:l[t6:k=/t7:c/t7:k]/t6:v and /t6:c/t6:ll='a:b'"},
+		{"xpath10-unknown-prefix", "/a:c/zz:l", FormatXML, ""},
+		{"xpath10-syntax-error", "/ty6:c/l[", FormatJSON, ""},
+	} {
+		g := loadGolden(t, filepath.Join("..", "..", "conformance", "corpus", "types", "golden", c.id+".json"))
+		var pc PrefixCtx = xml
+		h := HintData
+		if c.f == FormatJSON {
+			pc, h = ModuleNames{set}, JSONHints("string")
+		}
+		v, d := Store(xp, c.lex, c.f, h, pc, nil)
+		if g.Verdict == "invalid" {
+			if d == nil || d.Msg != g.Diagnostics[0].Msg {
+				t.Errorf("%s: got %v, golden %+v", c.id, d, g.Diagnostics[0])
+			}
+			continue
+		}
+		got, err := Print(v, FormatXML, &PrintCtx{Local: ty7})
+		if want := g.canonical("/ty7:c/xp"); d != nil || err != nil || v.Canonical() != want || got != c.xml ||
+			!strings.Contains(g.Tree.XML, ">"+c.xml+"<") {
+			t.Errorf("%s: got %v %q / XML %q, golden %q", c.id, d, v.Canonical(), got, want)
+		}
+	}
+}
+
 // FuzzIETF: the ietf-type handlers never panic and their canonical forms re-store unchanged.
 func FuzzIETF(f *testing.F) {
 	for _, s := range []string{"1.2.3.4%x", "::ffff:1.2.3.4", "1::/0", "10.0.0.1/33", "2005-05-25T23:15:15.5+04:30",
@@ -406,8 +448,8 @@ func FuzzIETF(f *testing.F) {
 		"date-no-zone", "time", "time-no-zone", "xpath1.0"}
 	// the XML namespaces in scope of the value: x/y as written, a/b equal to the module names so that
 	// a canonical (JSON) xpath1.0 re-stores in XML to itself
-	set := &schema.Set{Modules: []*schema.Module{{Name: "a", Namespace: "urn:a", Implemented: true},
-		{Name: "b", Namespace: "urn:b", Implemented: true}}}
+	set := &schema.Set{Modules: []*schema.Module{{Name: "a", Namespace: "urn:a", Prefix: "a", Implemented: true},
+		{Name: "b", Namespace: "urn:b", Prefix: "b", Implemented: true}}}
 	pc := XMLNamespaces{Set: set, NS: map[string]string{"": "urn:a", "x": "urn:a", "y": "urn:b", "a": "urn:a", "b": "urn:b"}}
 	f.Fuzz(func(t *testing.T, lex string) {
 		for _, n := range names {
@@ -423,6 +465,12 @@ func FuzzIETF(f *testing.F) {
 				v2, d := Store(ts[n], v.Canonical(), FormatXML, HintData, pc, nil)
 				if d == nil && v2.Canonical() != v.Canonical() {
 					t.Fatalf("%s: %q -> %q -> %q", n, lex, v.Canonical(), v2.Canonical())
+				}
+				// xpath1.0 printed in XML (every prefix the module's own) stores back to the same value
+				if xml, err := Print(v, FormatXML, &PrintCtx{}); n == "xpath1.0" && err == nil {
+					if v3, d := Store(ts[n], xml, FormatXML, HintData, pc, nil); d == nil && v3.Canonical() != v.Canonical() {
+						t.Fatalf("%s: %q -> XML %q -> %q", n, lex, xml, v3.Canonical())
+					}
 				}
 			}
 		}

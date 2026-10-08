@@ -18,7 +18,8 @@ func init() {
 }
 
 // keysValue is the stored form of yang:instance-identifier-keys (struct
-// lyd_value_instance_identifier_keys): the parsed predicates and the prefix data of the value.
+// lyd_value_instance_identifier_keys) and of ietf-yang-types:xpath1.0 (struct lyd_value_xpath10,
+// the same layout): the parsed expression and the prefix data of the value.
 type keysValue struct {
 	e  *lyxp.Expr
 	f  Format
@@ -31,6 +32,39 @@ type prefixSnap map[string]*schema.Module
 
 // Resolve implements PrefixCtx.
 func (p prefixSnap) Resolve(prefix string) *schema.Module { return p[prefix] }
+
+// prefixDataNew ports lyplg_type_prefix_data_new: the prefix data a value keeps for printing it
+// later. For the schema and XML formats the modules of the prefixes the value uses are copied out
+// of a.pc (the parser's namespace context does not outlive the value); the other formats name
+// modules and keep a.pc.
+func prefixDataNew(a *storeArgs) PrefixCtx {
+	switch a.f {
+	case FormatSchema, FormatSchemaResolved, FormatXML:
+	default:
+		return a.pc
+	}
+	snap := prefixSnap{}
+	if a.pc == nil {
+		return snap
+	}
+	for i := 0; ; {
+		n, isPrefix, next := valuePrefixNext(a.lex, i)
+		if n == 0 {
+			break
+		}
+		if isPrefix {
+			p := a.lex[i : i+n]
+			if m := a.pc.Resolve(p); m != nil {
+				snap[p] = m
+			}
+		}
+		if next < 0 {
+			break
+		}
+		i = next
+	}
+	return snap
+}
 
 // storeInstanceIDKeys ports lyplg_type_store_instanceid_keys.
 func storeInstanceIDKeys(a *storeArgs) (Value, *Diag) {
@@ -53,31 +87,7 @@ func storeInstanceIDKeys(a *storeArgs) (Value, *Diag) {
 	if msg != "" {
 		return Value{}, errf("%s", msg)
 	}
-	k := &keysValue{e: e, f: a.f, pc: a.pc}
-	switch a.f {
-	case FormatSchema, FormatSchemaResolved, FormatXML:
-		// keep the prefixes of the value, the parser's context does not outlive it
-		snap := prefixSnap{}
-		if a.pc != nil {
-			for i := 0; ; {
-				n, isPrefix, next := valuePrefixNext(a.lex, i)
-				if n == 0 {
-					break
-				}
-				if isPrefix {
-					p := a.lex[i : i+n]
-					if m := a.pc.Resolve(p); m != nil {
-						snap[p] = m
-					}
-				}
-				if next < 0 {
-					break
-				}
-				i = next
-			}
-		}
-		k.pc = snap
-	}
+	k := &keysValue{e: e, f: a.f, pc: prefixDataNew(a)}
 	v := Value{typ: a.t, ext: k, canon: a.lex}
 	switch a.f {
 	case FormatSchema, FormatSchemaResolved, FormatXML:

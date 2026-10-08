@@ -1,0 +1,136 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ty7",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ty6",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"ty7:c\": {\n    \"xp\": \"/ty6:c/l[k = /ty7:c/k]/v and /ty6:c/ty6:ll = 'a:b'\",\n    \"xpl\": [\n      \"../k\",\n      \"/ty7:c/k\"\n    ],\n    \"k\": \"x\"\n  }\n}\n",
+    "xml": "<c xmlns=\"urn:vibe-ports:ty7\">\n  <xp xmlns:t6=\"urn:vibe-ports:ty6\" xmlns:t7=\"urn:vibe-ports:ty7\">/t6:c/t6:l[t6:k=/t7:c/t7:k]/t6:v and /t6:c/t6:ll='a:b'</xp>\n  <xpl>../k</xpl>\n  <xpl xmlns:t7=\"urn:vibe-ports:ty7\">/t7:c/t7:k</xpl>\n  <k>x</k>\n</c>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty6:c",
+      "schema": "/ty6:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty7:c",
+      "schema": "/ty7:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty7:c/xp",
+      "schema": "/ty7:c/xp",
+      "value": {
+        "canonical": "/ty6:c/l[k = /ty7:c/k]/v and /ty6:c/ty6:ll = 'a:b'",
+        "type": "string",
+        "typedef": "xpath1.0",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty7:c/xpl[.='../k']",
+      "schema": "/ty7:c/xpl",
+      "value": {
+        "canonical": "../k",
+        "type": "string",
+        "typedef": "xpath1.0",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty7:c/xpl[.='/ty7:c/k']",
+      "schema": "/ty7:c/xpl",
+      "value": {
+        "canonical": "/ty7:c/k",
+        "type": "string",
+        "typedef": "xpath1.0",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty7:c/k",
+      "schema": "/ty7:c/k",
+      "value": {
+        "canonical": "x",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

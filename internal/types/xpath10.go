@@ -32,16 +32,18 @@ func storeXPath10(a *storeArgs) (Value, *Diag) {
 		}
 		return Value{}, &Diag{Code: CodeNone, Msg: err.Error()}
 	}
-	v := Value{typ: a.t, canon: a.lex}
-	switch a.f {
-	case FormatCanon, FormatJSON:
-		return v, nil
-	}
 	e, msg := lyxp.Lex(a.lex)
 	if msg != "" { // the parse above accepted it
 		return Value{}, &Diag{Code: CodeNone, Msg: msg}
 	}
-	canon, d := printXPath10(e, a.pc, FormatJSON, &PrintCtx{})
+	// the expression and its prefix data, for printing in other formats (lyplg_type_print_xpath10)
+	k := &keysValue{e: e, f: a.f, pc: prefixDataNew(a)}
+	v := Value{typ: a.t, canon: a.lex, ext: k}
+	switch a.f {
+	case FormatCanon, FormatJSON:
+		return v, nil
+	}
+	canon, d := printXPath10(e, k.pc, FormatJSON, &PrintCtx{})
 	if d != nil {
 		return Value{}, d
 	}

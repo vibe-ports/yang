@@ -92,8 +92,10 @@ func printValue(v Value, f Format, pc *PrintCtx) string {
 		return v.canon
 	}
 	if k, ok := v.ext.(*keysValue); ok && f != FormatCanon && f != FormatJSON {
-		// instance-identifier-keys: lyplg_type_print_xpath10 reads the value as the identically laid
-		// out lyd_value_xpath10 and prints it with xpath10_print_subexpr_r.
+		// lyplg_type_print_xpath10 (xpath1.0.c), also for instance-identifier-keys, whose
+		// lyd_value_instance_identifier_keys it reads as the identically laid out lyd_value_xpath10:
+		// the expression printed with xpath10_print_subexpr_r. On an error libyang prints nothing
+		// (NULL); the canonical text is kept here.
 		if s, d := printXPath10(k.e, k.pc, f, pc); d == nil {
 			return s
 		}

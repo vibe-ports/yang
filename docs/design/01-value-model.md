@@ -64,9 +64,9 @@ type UnionValue struct {
   (`ext`), keyed by (module, revision, typedef); revision `""` matches every revision. A typedef
   inherits the plugin of the nearest typedef in its derivation chain, as `lys_compile_type` does.
   Ported: the `ietf-inet-types` address/prefix plugins, the `ietf-yang-types` `date-and-time`,
-  `date`/`date-no-zone`, `time`/`time-no-zone`, hex-string family and `xpath1.0` (store; its print is
-  canonical text in every format) plugins, and `yang:instance-identifier-keys`. `time-period`
-  and `node-instance-identifier` are ported too; U-0010 lists what is left (xpath1.0 printing).
+  `date`/`date-no-zone`, `time`/`time-no-zone`, hex-string family and `xpath1.0` plugins,
+  `yang:instance-identifier-keys`, libnetconf2 `time-period` and ietf-netconf-acm
+  `node-instance-identifier` (U-0010 is closed).
 
 ## Revised after M1
 What the slice changed, and why:
