@@ -33091,3 +33091,133 @@ fixtures:
       data: '{"ty7:c": {"xp": "/ty6:c/l["}}'
     golden: golden/xpath10-syntax-error.json
 # END types xpath1.0 printing
+
+# BEGIN ut-compare (libyang tests/utests/data/test_tree_data.c test_compare, imported by hand; PoC #135)
+
+  - id: ut-compare/list-keys
+    dir: ut-compare
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_tree_data.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_compare:89
+    rfc: []   # libyang API: lyd_compare_single
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: a}]
+      steps:
+        - {do: parse, format: xml, data_type: data, validate_options: [present], data: '<l1 xmlns="urn:tests:a"><a>a</a><b>b</b><c>x</c></l1>'}
+        - {do: compare, format: xml, data_type: data, validate_options: [present], data: '<l1 xmlns="urn:tests:a"><a>a</a><b>b</b><c>y</c></l1>', first: "/a:l1[a='a'][b='b']", second: "/a:l1[a='a'][b='b']", options: []}
+        - {do: compare, format: xml, data_type: data, validate_options: [present], data: '<l1 xmlns="urn:tests:a"><a>a</a><b>b</b><c>y</c></l1>', first: "/a:l1[a='a'][b='b']", second: "/a:l1[a='a'][b='b']", options: [full_recursion]}
+        - {do: compare, format: xml, data_type: data, validate_options: [present], data: '<l1 xmlns="urn:tests:a"><a>a</a><b>b</b><c>y</c></l1>', first: "/a:l1[a='a'][b='b']/a", second: "/a:l1[a='a'][b='b']", options: []}
+    golden: golden/list-keys.json
+
+  - id: ut-compare/keyless-list
+    dir: ut-compare
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_tree_data.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_compare:99
+    rfc: []   # libyang API: lyd_compare_single
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: a}]
+      steps:
+        - {do: parse, format: xml, data_type: data, validate_options: [present], data: '<l2 xmlns="urn:tests:a"><c><x>a</x></c></l2><l2 xmlns="urn:tests:a"><c><x>b</x></c></l2>'}
+        - {do: compare, format: xml, data_type: data, validate_options: [present], data: '<l2 xmlns="urn:tests:a"><c><x>b</x></c></l2>', first: "/a:l2[1]", second: "/a:l2[1]", options: [full_recursion]}
+        - {do: compare, format: xml, data_type: data, validate_options: [present], data: '<l2 xmlns="urn:tests:a"><c><x>b</x></c></l2>', first: "/a:l2[2]", second: "/a:l2[1]", options: []}
+    golden: golden/keyless-list.json
+
+  - id: ut-compare/leaf-list
+    dir: ut-compare
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_tree_data.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_compare:108
+    rfc: []   # libyang API: lyd_compare_single
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: a}]
+      steps:
+        - {do: parse, format: xml, data_type: data, validate_options: [present], data: '<ll xmlns="urn:tests:a">a</ll><ll xmlns="urn:tests:a">b</ll>'}
+        - {do: compare, format: xml, data_type: data, validate_options: [present], data: '<ll xmlns="urn:tests:a">b</ll>', first: "/a:ll[.='a']", second: "/a:ll[.='b']", options: []}
+        - {do: compare, format: xml, data_type: data, validate_options: [present], data: '<ll xmlns="urn:tests:a">b</ll>', first: "/a:ll[.='b']", second: "/a:ll[.='b']", options: []}
+    golden: golden/leaf-list.json
+
+  - id: ut-compare/container
+    dir: ut-compare
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_tree_data.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_compare:119
+    rfc: []   # libyang API: lyd_compare_single
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: a}]
+      steps:
+        - {do: parse, format: xml, data_type: data, validate_options: [present], data: '<c xmlns="urn:tests:a"><x>x</x></c>'}
+        - {do: compare, format: xml, data_type: data, validate_options: [present], data: '<c xmlns="urn:tests:a"><x>y</x></c>', first: "/a:c", second: "/a:c", options: []}
+        - {do: compare, format: xml, data_type: data, validate_options: [present], data: '<c xmlns="urn:tests:a"><x>y</x></c>', first: "/a:c", second: "/a:c", options: [full_recursion]}
+    golden: golden/container.json
+
+  - id: ut-compare/container-more
+    dir: ut-compare
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_tree_data.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_compare:128
+    rfc: []   # libyang API: lyd_compare_single
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: a}]
+      steps:
+        - {do: parse, format: xml, data_type: data, validate_options: [present], data: '<c xmlns="urn:tests:a"><x>x</x></c>'}
+        - {do: compare, format: xml, data_type: data, validate_options: [present], data: '<c xmlns="urn:tests:a"><x>x</x><x>y</x></c>', first: "/a:c", second: "/a:c", options: []}
+        - {do: compare, format: xml, data_type: data, validate_options: [present], data: '<c xmlns="urn:tests:a"><x>x</x><x>y</x></c>', first: "/a:c", second: "/a:c", options: [full_recursion]}
+    golden: golden/container-more.json
+
+  - id: ut-compare/leaf-list-order
+    dir: ut-compare
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_tree_data.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_compare:149
+    rfc: []   # libyang API: lyd_compare_single
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: a}]
+      steps:
+        - {do: parse, format: xml, data_type: data, validate_options: [present], data: '<c xmlns="urn:tests:a"><x>c</x><x>a</x><x>b</x></c>'}
+        - {do: compare, format: xml, data_type: data, validate_options: [present], data: '<c xmlns="urn:tests:a"><x>a</x><x>b</x><x>c</x></c>', first: "/a:c", second: "/a:c", options: [full_recursion]}
+    golden: golden/leaf-list-order.json
+# END ut-compare
+
+# BEGIN PoC compare options (#135)
+  - id: seq/compare-defaults
+    dir: protocol-v2
+    source: *own   # LYD_COMPARE_DEFAULTS: an implicit default leaf against an explicit one with its value
+    rfc: []   # libyang API: lyd_compare_single
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: parse, format: json, data_type: config, data: '{"pv2-edit:c": {"a": "x"}}'}
+        - {do: compare, format: json, data_type: config, data: '{"pv2-edit:c": {"a": "x", "np": {"d": 5}}}', first: "/pv2-edit:c/np/d", second: "/pv2-edit:c/np/d", options: []}
+        - {do: compare, format: json, data_type: config, data: '{"pv2-edit:c": {"a": "x", "np": {"d": 5}}}', first: "/pv2-edit:c/np/d", second: "/pv2-edit:c/np/d", options: [defaults]}
+        - {do: compare, format: json, data_type: config, data: '{"pv2-edit:c": {"a": "x", "np": {"d": 5}}}', first: "/pv2-edit:c/np", second: "/pv2-edit:c/np", options: [defaults]}
+        - {do: compare, format: json, data_type: config, data: '{"pv2-edit:c": {"a": "x", "np": {"d": 5}}}', first: "/pv2-edit:c", second: "/pv2-edit:c", options: [full_recursion]}
+        - {do: compare, format: json, data_type: config, data: '{"pv2-edit:c": {"a": "x", "np": {"d": 5}}}', first: "/pv2-edit:c", second: "/pv2-edit:c", options: [full_recursion, defaults]}
+    golden: golden/seq-compare-defaults.json
+
+  - id: seq/compare-opaq
+    dir: protocol-v2
+    source: *own   # LYD_COMPARE_OPAQ: an opaque leaf (a JSON string for a uint8) against the leaf it stands for
+    rfc: []   # libyang API: lyd_compare_single
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: parse, format: json, data_type: data, unknown: opaque, parse_only: true, data: '{"pv2-edit:c": {"b": "5"}}'}
+        - {do: compare, format: xml, data_type: data, parse_only: true, data: '<c xmlns="urn:vibe-ports:yang:conformance:pv2-edit"><b>5</b></c>', first: "/pv2-edit:c", second: "/pv2-edit:c", options: [full_recursion]}
+        - {do: compare, format: xml, data_type: data, parse_only: true, data: '<c xmlns="urn:vibe-ports:yang:conformance:pv2-edit"><b>5</b></c>', first: "/pv2-edit:c", second: "/pv2-edit:c", options: [full_recursion, opaq]}
+        - {do: compare, format: xml, data_type: data, parse_only: true, data: '<c xmlns="urn:vibe-ports:yang:conformance:pv2-edit"><b>6</b></c>', first: "/pv2-edit:c", second: "/pv2-edit:c", options: [full_recursion, opaq]}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/seq-compare-opaq.json
+# END PoC compare options

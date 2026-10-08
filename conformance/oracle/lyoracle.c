@@ -101,6 +101,14 @@ static const struct flag dup_flags[] = {
     {NULL, 0}
 };
 
+/* sequence step compare: LYD_COMPARE_* */
+static const struct flag compare_flags[] = {
+    {"full_recursion", LYD_COMPARE_FULL_RECURSION},
+    {"defaults", LYD_COMPARE_DEFAULTS},
+    {"opaq", LYD_COMPARE_OPAQ},
+    {NULL, 0}
+};
+
 static const struct flag diff_flags[] = {
     {"defaults", LYD_DIFF_DEFAULTS},
     {"meta", LYD_DIFF_META},
@@ -1559,7 +1567,9 @@ check_step(const cJSON *step)
     keys_only(step, !strcmp(what, "parse") ? "do format data_type data data_file unknown parse_only "
             "parse_options validate_options" : !strcmp(what, "validate") ? "do data_type validate_options" :
             !strcmp(what, "edit") ? "do merge merge_file set delete insert_term insert_inner format data_type unknown parse_options" :
-            !strcmp(what, "dump") ? "do with_defaults" : !strcmp(what, "dup") ? "do node parent options siblings" : "do",
+            !strcmp(what, "dump") ? "do with_defaults" : !strcmp(what, "dup") ? "do node parent options siblings" :
+            !strcmp(what, "compare") ? "do format data_type data data_file unknown parse_only parse_options "
+            "validate_options first second options" : "do",
             "unknown key \"%s\" in a sequence step");
     if (!strcmp(what, "edit")) {
         /* the parse options belong to merge only */
@@ -1623,6 +1633,17 @@ check_step(const cJSON *step)
         if (sib && !cJSON_IsBool(sib)) {
             die("dup siblings must be a boolean%s", NULL);
         }
+    } else if (!strcmp(what, "compare")) {
+        dparams_of(step, &p);
+        if (p.optype != LYD_TYPE_DATA_YANG) {
+            die("sequence supports datastore data types only%s", NULL);
+        }
+        if (!input_of(step, "data")) {
+            die("compare step needs data%s", NULL);
+        }
+        str_of(step, "first");
+        str_of(step, "second");
+        flags_of(step, "options", compare_flags);
     } else if (strcmp(what, "link") && strcmp(what, "links")) {
         die("unknown step %s", what);
     }
@@ -1658,6 +1679,34 @@ step_dup(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *d
         lyd_free_all(*tree);
         *tree = lyd_first_sibling(dup);
     }
+    return rc;
+}
+
+/* lyd_compare_single of the node at "first" in the tree and the node at "second" in a second tree
+ * parsed from the step's data as by a parse step ("first"/"second" omitted: the first top-level
+ * node); "compare" is its rc (LY_SUCCESS equal, LY_ENOT not), the step's rc that of the parse */
+static LY_ERR
+step_compare(struct ly_ctx *ctx, const cJSON *step, struct lyd_node *tree, cJSON *diag, cJSON *s)
+{
+    const char *p1 = str_of(step, "first"), *p2 = str_of(step, "second");
+    struct lyd_node *other = NULL, *n1 = tree, *n2;
+    struct dparams p;
+    LY_ERR rc;
+
+    dparams_of(step, &p);
+    rc = parse_one(ctx, &p, input_of(step, "data"), NULL, &other, diag, "parse");
+    if (!rc) {
+        n2 = other;
+        if (p1 && (!tree || lyd_find_path(tree, p1, 0, &n1))) {
+            die("compare first %s not found", p1);
+        }
+        if (p2 && (!other || lyd_find_path(other, p2, 0, &n2))) {
+            die("compare second %s not found", p2);
+        }
+        cJSON_AddItemToObject(s, "compare", code_json(lyd_compare_single(n1, n2,
+                flags_of(step, "options", compare_flags))));
+    }
+    lyd_free_all(other);
     return rc;
 }
 
@@ -1816,6 +1865,8 @@ op_sequence(const cJSON *req)
             cJSON_AddItemToObject(s, "leafref_links", links_json(tree));
         } else if (!strcmp(what, "dup")) {
             rc = step_dup(ctx, step, &tree, diag);
+        } else if (!strcmp(what, "compare")) {
+            rc = step_compare(ctx, step, tree, diag, s);
         } else {
             cJSON_AddItemToObject(s, "tree", print_tree(tree, wd_of(step), 1));
         }

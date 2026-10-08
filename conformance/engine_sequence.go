@@ -18,6 +18,8 @@ var seqKeys = map[string]map[string]bool{
 	"validate": set("do", "data_type", "validate_options"),
 	"edit":     set("do", "set", "delete", "merge", "merge_file", "format", "data_type", "unknown", "parse_options"),
 	"dump":     set("do", "with_defaults"),
+	"compare": set("do", "format", "data_type", "data", "data_file", "unknown", "parse_only", "parse_options",
+		"validate_options", "first", "second", "options"),
 }
 
 var seqRequestKeys = set("op", "base_dir", "searchdirs", "modules", "context_options", "steps")
@@ -92,6 +94,9 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any) error {
 			tree, diags, err = stepValidate(s, st, tree, so)
 		case "edit":
 			tree, diags, rc, err = stepEdit(r, s, st, tree)
+		case "compare":
+			phase = "parse"
+			diags, err = stepCompare(r, s, st, tree, so)
 		case "dump":
 			wd, werr := wdOf(st)
 			if werr != nil {
@@ -144,6 +149,60 @@ func emptyTree(s *yang.Schema) (*data.Tree, error) {
 	t, _, err := data.Parse(context.Background(), strings.NewReader(""), data.FormatXML, s,
 		data.ParseOptions{ParseOnly: true})
 	return t, err
+}
+
+// stepCompare is step_compare: Node.Equal of the node at first in the tree and the node at second
+// in a second tree parsed like a parse step (omitted: the first top-level node).
+func stepCompare(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, so map[string]any) (
+	[]yang.Diagnostic, error) {
+	var o data.CompareOptions
+	for _, x := range list(st["options"]) {
+		switch x {
+		case "full_recursion":
+			o.FullRecursion = true
+		case "defaults":
+			o.Defaults = true
+		case "opaq":
+			o.Opaque = true
+		default:
+			return nil, fmt.Errorf("%w: compare option %v", ErrUnsupported, x)
+		}
+	}
+	other, diags, err := stepParse(r, s, st, nil)
+	if err != nil || other == nil {
+		return diags, err
+	}
+	n1, err := nodeAt(tree, str(st, "first", ""))
+	if err != nil {
+		return nil, err
+	}
+	n2, err := nodeAt(other, str(st, "second", ""))
+	if err != nil {
+		return nil, err
+	}
+	so["compare"] = codeJSON("LY_ENOT")
+	if n1.Equal(n2, o) {
+		so["compare"] = codeJSON("LY_SUCCESS")
+	}
+	return diags, nil
+}
+
+// nodeAt is the node at path in tree, its first top-level node for "" (nil for no tree).
+func nodeAt(tree *data.Tree, path string) (*data.Node, error) {
+	if tree == nil {
+		return nil, nil
+	}
+	if path == "" {
+		for n := range tree.Top() {
+			return n, nil
+		}
+		return nil, nil
+	}
+	n, err := tree.Find(path)
+	if err == nil && n == nil {
+		err = fmt.Errorf("compare node %s not found", path)
+	}
+	return n, err
 }
 
 // stepParse is step_parse: the parsed tree replaces the retained one only on success.

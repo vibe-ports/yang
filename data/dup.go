@@ -74,14 +74,21 @@ func compareSchemaParentsEqual(a, b *schema.Node) bool {
 	return p == nil && q == nil
 }
 
-// compareSingleSchema is lyd_compare_single_schema without LYD_COMPARE_OPAQ: the same schema node
-// in one context, an equal one with equal parents (unless parentsChecked) across contexts.
-func compareSingleSchema(a, b *Node, parentsChecked bool) bool {
-	if a.schema == b.schema {
+// compareSingleSchema is lyd_compare_single_schema: in one context the same schema node, with
+// opaq (LYD_COMPARE_OPAQ) the same lyd_node_schema, so an opaque node matches the data node it
+// stands for; across contexts an equal schema node with equal parents (unless parentsChecked).
+func compareSingleSchema(a, b *Node, opaq, parentsChecked bool) bool {
+	if !opaq && a.schema == b.schema {
 		return true
 	}
-	if sameSet(setOf(a), setOf(b)) {
-		return false
+	if sa, sb := setOf(a), setOf(b); sameSet(sa, sb) {
+		if sa == nil {
+			sa = sb
+		}
+		if !opaq || sa == nil {
+			return a.schema == b.schema
+		}
+		return nodeSchema(sa, a) == nodeSchema(sa, b)
 	}
 	return compareSchemaEqual(a.schema, b.schema, false) &&
 		(parentsChecked || a.schema == nil || compareSchemaParentsEqual(a.schema, b.schema))

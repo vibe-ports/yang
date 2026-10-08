@@ -289,32 +289,47 @@ func hashEqual(a, b *Node) bool {
 	return true
 }
 
-// compareSingle is lyd_compare_single; full is LYD_COMPARE_FULL_RECURSION. Values compare by
-// canonical text (lyd_compare_single_value: a plain leaf's union "1" as int and as string are
-// equal, VERIFY(cmp/union-leaf-text)); opaque nodes by value only, not by name
-// (VERIFY(cmp/opaque-value-only); the XML prefix rewrite of opaque values comes with the XML
-// parser). Nodes of two contexts compare by their schema nodes' names (compareSingleSchema).
+// compareSingle is lyd_compare_single; full is LYD_COMPARE_FULL_RECURSION (Node.Equal for all
+// the options).
 func compareSingle(t *Tree, a, b *Node, full bool) bool {
-	return compareSingleChecked(t, a, b, full, false)
+	return compareSingleChecked(t, a, b, CompareOptions{FullRecursion: full}, false)
 }
 
-// compareSingleChecked is compareSingle with lyd_compare_single_schema's parental_schemas_checked.
-func compareSingleChecked(t *Tree, a, b *Node, full, parentsChecked bool) bool {
-	if !compareSingleSchema(a, b, parentsChecked) || !hashEqual(a, b) {
+// compareSingleChecked is lyd_compare_single_schema with its parental_schemas_checked, then
+// lyd_compare_single_data. Values compare by canonical text (lyd_compare_single_value: a plain
+// leaf's union "1" as int and as string are equal, VERIFY(cmp/union-leaf-text)); opaque nodes by
+// value only, not by name (VERIFY(cmp/opaque-value-only); the XML prefix rewrite of opaque values
+// is not ported). Nodes of two contexts compare by their schema nodes' names (compareSingleSchema).
+func compareSingleChecked(t *Tree, a, b *Node, o CompareOptions, parentsChecked bool) bool {
+	return compareSingleSchema(a, b, o.Opaque, parentsChecked) && compareSingleData(t, a, b, o)
+}
+
+// compareSingleData is lyd_compare_single_data (any nodes come with M5).
+func compareSingleData(t *Tree, a, b *Node, o CompareOptions) bool {
+	if !o.Opaque && !hashEqual(a, b) {
 		return false
 	}
-	if a.schema == nil {
-		if a.opaq.Value != b.opaq.Value {
+	if a.schema == nil || b.schema == nil {
+		if !o.Opaque && (a.schema == nil) != (b.schema == nil) {
 			return false
 		}
-		return !full || compareSiblings(t, &a.kids, &b.kids)
+		// compare values only if there are any to compare
+		if a.schema == nil && b.schema == nil || a.isTerm() || b.isTerm() {
+			if a.Value() != b.Value() {
+				return false
+			}
+		}
+		return !o.FullRecursion || compareSiblings(t, &a.kids, &b.kids, o)
 	}
 	switch a.schema.Kind {
 	case schema.Leaf, schema.LeafList:
+		if o.Defaults && a.flags&FlagDefault != b.flags&FlagDefault {
+			return false
+		}
 		return a.value.Canonical() == b.value.Canonical()
 	case schema.List:
-		if full {
-			return compareSiblings(t, &a.kids, &b.kids)
+		if o.FullRecursion {
+			return compareSiblings(t, &a.kids, &b.kids, o)
 		}
 		if a.schema.Keyless() {
 			return true
@@ -323,24 +338,25 @@ func compareSingleChecked(t *Tree, a, b *Node, full, parentsChecked bool) bool {
 			if i >= len(a.kids.list) || i >= len(b.kids.list) {
 				return len(a.kids.list) == len(b.kids.list)
 			}
-			if !compareSingleChecked(t, a.kids.list[i], b.kids.list[i], false, true) {
+			if !compareSingleChecked(t, a.kids.list[i], b.kids.list[i], o, true) {
 				return false
 			}
 		}
 		return true
 	}
-	// container, rpc, action, notification (any nodes come with M5)
-	return !full || compareSiblings(t, &a.kids, &b.kids)
+	// container, rpc, action, notification: an implicit container equals one with explicit
+	// descendants
+	return !o.FullRecursion || compareSiblings(t, &a.kids, &b.kids, o)
 }
 
 // compareSiblings is lyd_compare_siblings_: pairwise in order, except that a system-ordered
 // keyed list or config leaf-list instance is looked up among b's siblings.
-func compareSiblings(t *Tree, a, b *siblings) bool {
+func compareSiblings(t *Tree, a, b *siblings, o CompareOptions) bool {
 	al, bl := slices.Concat(a.list, a.opq), slices.Concat(b.list, b.opq)
 	i := 0
 	for ; i < len(al) && i < len(bl); i++ {
 		n, m := al[i], bl[i]
-		if !compareSingleSchema(n, m, true) {
+		if !compareSingleSchema(n, m, o.Opaque, true) {
 			return false
 		}
 		if sortedSupported(n) && !isDupInstList(n.schema) {
@@ -348,7 +364,8 @@ func compareSiblings(t *Tree, a, b *siblings) bool {
 				return false
 			}
 		}
-		if !compareSingleChecked(t, n, m, true, true) {
+		o.FullRecursion = true
+		if !compareSingleData(t, n, m, o) {
 			return false
 		}
 	}
