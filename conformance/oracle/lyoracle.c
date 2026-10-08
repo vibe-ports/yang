@@ -1566,7 +1566,8 @@ check_step(const cJSON *step)
     }
     keys_only(step, !strcmp(what, "parse") ? "do format data_type data data_file unknown parse_only "
             "parse_options validate_options" : !strcmp(what, "validate") ? "do data_type validate_options" :
-            !strcmp(what, "edit") ? "do merge merge_file set delete insert_term insert_inner format data_type unknown parse_options" :
+            !strcmp(what, "edit") ? "do merge merge_file set delete insert_term insert_inner new_meta free_meta format data_type "
+            "unknown parse_options" :
             !strcmp(what, "dump") ? "do with_defaults" : !strcmp(what, "dup") ? "do node parent options siblings" :
             !strcmp(what, "compare") ? "do format data_type data data_file unknown parse_only parse_options "
             "validate_options first second options" : "do",
@@ -1577,6 +1578,8 @@ check_step(const cJSON *step)
                 cJSON_GetObjectItemCaseSensitive(step, "delete") ? "do delete" :
                 cJSON_GetObjectItemCaseSensitive(step, "insert_term") ? "do insert_term" :
                 cJSON_GetObjectItemCaseSensitive(step, "insert_inner") ? "do insert_inner" :
+                cJSON_GetObjectItemCaseSensitive(step, "new_meta") ? "do new_meta" :
+                cJSON_GetObjectItemCaseSensitive(step, "free_meta") ? "do free_meta" :
                 "do merge merge_file format data_type unknown parse_options",
                 "key \"%s\" not allowed in this edit step");
     }
@@ -1595,9 +1598,24 @@ check_step(const cJSON *step)
         const cJSON *set = cJSON_GetObjectItemCaseSensitive(step, "set");
         const cJSON *ins = cJSON_GetObjectItemCaseSensitive(step, "insert_term");
         const cJSON *inn = cJSON_GetObjectItemCaseSensitive(step, "insert_inner");
+        const cJSON *nm = cJSON_GetObjectItemCaseSensitive(step, "new_meta");
+        const cJSON *fm = cJSON_GetObjectItemCaseSensitive(step, "free_meta");
 
-        if (!!merge + !!del + !!set + !!ins + !!inn != 1) {
-            die("edit step needs exactly one of merge, merge_file, set, delete, insert_term, insert_inner%s", NULL);
+        if (!!merge + !!del + !!set + !!ins + !!inn + !!nm + !!fm != 1) {
+            die("edit step needs exactly one of merge, merge_file, set, delete, insert_term, insert_inner, new_meta, "
+                    "free_meta%s", NULL);
+        }
+        if (nm || fm) {
+            const cJSON *o = nm ? nm : fm;
+
+            /* "module:name": the API's module argument is always NULL */
+            if (!cJSON_IsObject(o) || !str_of(o, "node") || !str_of(o, "name") || !strchr(str_of(o, "name"), ':')) {
+                die("new_meta/free_meta need an object with node and a module-qualified name%s", NULL);
+            }
+            keys_only(o, nm ? "node name value" : "node name", "unknown key \"%s\" in new_meta/free_meta");
+            if (nm && !str_of(o, "value")) {
+                die("new_meta needs a value%s", NULL);
+            }
         }
         if (ins || inn) {
             const cJSON *o = ins ? ins : inn;
@@ -1753,10 +1771,24 @@ step_edit(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *
     const cJSON *set = cJSON_GetObjectItemCaseSensitive(step, "set");
     const cJSON *ins = cJSON_GetObjectItemCaseSensitive(step, "insert_term");
     const cJSON *inn = cJSON_GetObjectItemCaseSensitive(step, "insert_inner");
+    const cJSON *nm = cJSON_GetObjectItemCaseSensitive(step, "new_meta");
+    const cJSON *fm = cJSON_GetObjectItemCaseSensitive(step, "free_meta");
     struct lyd_node *node = NULL;
     LY_ERR rc = LY_SUCCESS;
 
-    if (ins || inn) {
+    if (nm || fm) {
+        /* lyd_new_meta, or lyd_find_meta + lyd_free_meta_single, on the node at "node" */
+        const cJSON *o = nm ? nm : fm;
+
+        if (!*tree || lyd_find_path(*tree, str_of(o, "node"), 0, &node)) {
+            die("metadata node %s not found", str_of(o, "node"));
+        }
+        if (nm) {
+            rc = lyd_new_meta(NULL, node, NULL, str_of(o, "name"), str_of(o, "value"), 0, NULL);
+        } else {
+            lyd_free_meta_single(lyd_find_meta(node->meta, NULL, str_of(o, "name")));
+        }
+    } else if (ins || inn) {
         /* lyd_new_term / lyd_new_inner + lyd_insert_sibling (top level) or a child of "parent" */
         const cJSON *o = ins ? ins : inn;
         const char *mname = str_of(o, "module"), *ppath = str_of(o, "parent");

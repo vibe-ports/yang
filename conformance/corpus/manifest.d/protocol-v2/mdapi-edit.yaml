@@ -1,0 +1,26 @@
+fixtures:
+  - id: protocol-v2/mdapi-edit
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7952#3"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas, ../ietf]
+      modules: [{name: pv2-mdapi}, {name: ietf-netconf}]
+      steps:
+        - {do: parse, format: json, data_type: config, data_file: data/mdapi-small.json}
+        - {do: edit, new_meta: {node: /pv2-mdapi:c/s, name: "yang:operation", value: create}}
+        - {do: edit, new_meta: {node: "/pv2-mdapi:c/l[k='a']", name: "ietf-netconf:operation", value: delete}}
+        - {do: edit, new_meta: {node: "/pv2-mdapi:c/l[k='a']", name: "yang:key", value: ""}}
+        - {do: edit, new_meta: {node: "/pv2-mdapi:c/ll[.='2']", name: "yang:position", value: "1"}}
+        - {do: edit, new_meta: {node: /pv2-mdapi:c, name: "pv2-mdapi:num", value: "255"}}
+        - {do: edit, new_meta: {node: /pv2-mdapi:c/s, name: "pv2-mdapi:num", value: "2"}}
+        - {do: edit, new_meta: {node: /pv2-mdapi:c/s, name: "yang:orig-default", value: "false"}}
+        - {do: dump, with_defaults: explicit}
+        - {do: edit, free_meta: {node: /pv2-mdapi:c/s, name: "pv2-mdapi:num"}}
+        - {do: edit, free_meta: {node: /pv2-mdapi:c/s, name: "pv2-mdapi:tag"}}
+        - {do: edit, free_meta: {node: "/pv2-mdapi:c/ll[.='1']", name: "yang:operation"}}
+        - {do: edit, free_meta: {node: /pv2-mdapi:c, name: "pv2-mdapi:num"}}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/mdapi-edit.json

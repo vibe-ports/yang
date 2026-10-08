@@ -269,18 +269,24 @@ func TestMetaAPI(t *testing.T) {
 		t.Fatalf("no module: %v", err)
 	}
 	for _, e := range []struct {
-		parent          *Node
-		name, val, want string
+		parent              *Node
+		name, val, want, rc string // rc: the LY_ERR returned when it is not the logged one
 	}{
-		{s, "pj:num", "300", `LY_EVALID LYVE_DATA |/pj:c/s|0: Value "300" is out of type uint8 min/max bounds.`},
-		{s, "nope:ann", "x", `LY_EINVAL LYVE_SUCCESS ||0: Module "nope" not found.`},
-		{s, "pj:zz", "x", `LY_EVALID LYVE_REFERENCE /pj:c/s||0: Annotation definition for attribute "pj:zz" not found.`},
-		{s, "pj:", "x", `LY_EINVAL LYVE_SUCCESS ||0: Metadata name "" is not valid.`},
-		{s, "pj:a b", "x", `LY_EINVAL LYVE_SUCCESS ||0: Metadata name "a b" is not valid.`},
-		{s, "1x:ann", "x", `LY_EINVAL LYVE_SUCCESS ||0: Metadata name "(null)" is not valid.`},
-		{o, "pj:ann", "x", `LY_EINVAL LYVE_SUCCESS ||0: Cannot add metadata "pj:ann" to an opaque node "o".`},
+		{s, "pj:num", "300", `LY_EVALID LYVE_DATA |/pj:c/s|0: Value "300" is out of type uint8 min/max bounds.`, ""},
+		{s, "nope:ann", "x", `LY_EINVAL LYVE_SUCCESS ||0: Module "nope" not found.`, "LY_ENOTFOUND"},
+		{s, "pj:zz", "x", `LY_EVALID LYVE_REFERENCE /pj:c/s||0: Annotation definition for attribute "pj:zz" not found.`,
+			"LY_EINVAL"},
+		{s, "pj:", "x", `LY_EINVAL LYVE_SUCCESS ||0: Metadata name "" is not valid.`, ""},
+		{s, "pj:a b", "x", `LY_EINVAL LYVE_SUCCESS ||0: Metadata name "a b" is not valid.`, ""},
+		{s, "1x:ann", "x", `LY_EINVAL LYVE_SUCCESS ||0: Metadata name "(null)" is not valid.`, ""},
+		{o, "pj:ann", "x", `LY_EINVAL LYVE_SUCCESS ||0: Cannot add metadata "pj:ann" to an opaque node "o".`, ""},
 	} {
-		if _, err := l.newMeta(e.parent, nil, e.name, e.val, false); !errors.Is(err, errLogged) || last() != e.want {
+		_, err := l.newMeta(e.parent, nil, e.name, e.val, false)
+		ok := errors.Is(err, errLogged)
+		if e.rc != "" {
+			ok = err == rcError(e.rc) //nolint:errorlint // newMeta returns it unwrapped
+		}
+		if !ok || last() != e.want {
 			t.Errorf("new %s=%s: %v\n%s\nwant\n%s", e.name, e.val, err, last(), e.want)
 		}
 	}

@@ -87,6 +87,9 @@ func wrapMod(m *schema.Module) *Module {
 	return &Module{m}
 }
 
+// ModuleOf is the handle of a compiled module, nil for nil (the data tree's Meta.Module).
+func ModuleOf(m *schema.Module) *Module { return wrapMod(m) }
+
 // NodeOf is the handle of a compiled schema node, nil for nil (the data tree's Node.Schema).
 func NodeOf(n *schema.Node) *Node { return wrapNode(n) }
 

@@ -1,0 +1,9 @@
+<c xmlns="urn:vibe-ports:yang:conformance:pv2-mdapi" xmlns:pa="urn:vibe-ports:yang:conformance:pv2-mdapi"
+   xmlns:yang="urn:ietf:params:xml:ns:yang:1" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0"
+   yang:operation="none" pa:num="7">
+  <s yang:operation="replace" yang:orig-default="true" yang:orig-value="y" nc:operation="merge">x</s>
+  <ll>1</ll>
+  <ll yang:operation="create" yang:value="1" pa:tag="b">2</ll>
+  <l yang:operation="create" yang:key="" nc:operation="create"><k>a</k><v>1</v></l>
+  <l yang:operation="replace" yang:key="[k='a']" yang:orig-key=""><k>b</k></l>
+</c>

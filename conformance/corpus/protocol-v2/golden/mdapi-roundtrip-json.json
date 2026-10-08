@@ -1,0 +1,268 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-mdapi",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ietf-netconf",
+      "revision": "2011-06-01"
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"pv2-mdapi:c\": {\n    \"@\": {\n      \"yang:operation\": \"none\",\n      \"pv2-mdapi:num\": 7\n    },\n    \"s\": \"x\",\n    \"@s\": {\n      \"yang:operation\": \"replace\",\n      \"yang:orig-default\": true,\n      \"yang:orig-value\": \"y\",\n      \"ietf-netconf:operation\": \"merge\"\n    },\n    \"ll\": [\n      1,\n      2\n    ],\n    \"@ll\": [\n      null,\n      {\n        \"yang:operation\": \"create\",\n        \"yang:value\": \"1\",\n        \"pv2-mdapi:tag\": \"b\"\n      }\n    ],\n    \"l\": [\n      {\n        \"@\": {\n          \"yang:operation\": \"create\",\n          \"yang:key\": [null],\n          \"ietf-netconf:operation\": \"create\"\n        },\n        \"k\": \"a\",\n        \"v\": \"1\"\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"replace\",\n          \"yang:key\": \"[k='a']\",\n          \"yang:orig-key\": [null]\n        },\n        \"k\": \"b\"\n      }\n    ]\n  }\n}\n",
+    "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-mdapi\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\" xmlns:pa=\"urn:vibe-ports:yang:conformance:pv2-mdapi\" pa:num=\"7\">\n  <s yang:operation=\"replace\" yang:orig-default=\"true\" yang:orig-value=\"y\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:operation=\"merge\">x</s>\n  <ll>1</ll>\n  <ll yang:operation=\"create\" yang:value=\"1\" pa:tag=\"b\">2</ll>\n  <l yang:operation=\"create\" yang:key=\"\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:operation=\"create\">\n    <k>a</k>\n    <v>1</v>\n  </l>\n  <l yang:operation=\"replace\" yang:key=\"[k='a']\" yang:orig-key=\"\">\n    <k>b</k>\n  </l>\n</c>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [
+        {
+          "module": "yang",
+          "name": "operation",
+          "value": "none"
+        },
+        {
+          "module": "pv2-mdapi",
+          "name": "num",
+          "value": "7"
+        }
+      ],
+      "opaque": null,
+      "path": "/pv2-mdapi:c",
+      "schema": "/pv2-mdapi:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [
+        {
+          "module": "yang",
+          "name": "operation",
+          "value": "replace"
+        },
+        {
+          "module": "yang",
+          "name": "orig-default",
+          "value": "true"
+        },
+        {
+          "module": "yang",
+          "name": "orig-value",
+          "value": "y"
+        },
+        {
+          "module": "ietf-netconf",
+          "name": "operation",
+          "value": "merge"
+        }
+      ],
+      "opaque": null,
+      "path": "/pv2-mdapi:c/s",
+      "schema": "/pv2-mdapi:c/s",
+      "value": {
+        "canonical": "x",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-mdapi:c/ll[.='1']",
+      "schema": "/pv2-mdapi:c/ll",
+      "value": {
+        "canonical": "1",
+        "type": "uint8",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [
+        {
+          "module": "yang",
+          "name": "operation",
+          "value": "create"
+        },
+        {
+          "module": "yang",
+          "name": "value",
+          "value": "1"
+        },
+        {
+          "module": "pv2-mdapi",
+          "name": "tag",
+          "value": "b"
+        }
+      ],
+      "opaque": null,
+      "path": "/pv2-mdapi:c/ll[.='2']",
+      "schema": "/pv2-mdapi:c/ll",
+      "value": {
+        "canonical": "2",
+        "type": "uint8",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [
+        {
+          "module": "yang",
+          "name": "operation",
+          "value": "create"
+        },
+        {
+          "module": "yang",
+          "name": "key",
+          "value": ""
+        },
+        {
+          "module": "ietf-netconf",
+          "name": "operation",
+          "value": "create"
+        }
+      ],
+      "opaque": null,
+      "path": "/pv2-mdapi:c/l[k='a']",
+      "schema": "/pv2-mdapi:c/l",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-mdapi:c/l[k='a']/k",
+      "schema": "/pv2-mdapi:c/l/k",
+      "value": {
+        "canonical": "a",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-mdapi:c/l[k='a']/v",
+      "schema": "/pv2-mdapi:c/l/v",
+      "value": {
+        "canonical": "1",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [
+        {
+          "module": "yang",
+          "name": "operation",
+          "value": "replace"
+        },
+        {
+          "module": "yang",
+          "name": "key",
+          "value": "[k='a']"
+        },
+        {
+          "module": "yang",
+          "name": "orig-key",
+          "value": ""
+        }
+      ],
+      "opaque": null,
+      "path": "/pv2-mdapi:c/l[k='b']",
+      "schema": "/pv2-mdapi:c/l",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-mdapi:c/l[k='b']/k",
+      "schema": "/pv2-mdapi:c/l/k",
+      "value": {
+        "canonical": "b",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

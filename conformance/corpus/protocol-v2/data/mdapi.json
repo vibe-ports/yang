@@ -1,0 +1,13 @@
+{
+  "pv2-mdapi:c": {
+    "@": {"yang:operation": "none", "pv2-mdapi:num": 7},
+    "s": "x",
+    "@s": {"yang:operation": "replace", "yang:orig-default": true, "yang:orig-value": "y", "ietf-netconf:operation": "merge"},
+    "ll": [1, 2],
+    "@ll": [null, {"yang:operation": "create", "yang:value": "1", "pv2-mdapi:tag": "b"}],
+    "l": [
+      {"@": {"yang:operation": "create", "yang:key": [null], "ietf-netconf:operation": "create"}, "k": "a", "v": "1"},
+      {"@": {"yang:operation": "replace", "yang:key": "[k='a']", "yang:orig-key": [null]}, "k": "b"}
+    ]
+  }
+}

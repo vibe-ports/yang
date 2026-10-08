@@ -16,8 +16,9 @@ var seqKeys = map[string]map[string]bool{
 	"parse": set("do", "format", "data_type", "data", "data_file", "unknown", "parse_only", "parse_options",
 		"validate_options"),
 	"validate": set("do", "data_type", "validate_options"),
-	"edit":     set("do", "set", "delete", "merge", "merge_file", "format", "data_type", "unknown", "parse_options"),
-	"dump":     set("do", "with_defaults"),
+	"edit": set("do", "set", "delete", "new_meta", "free_meta", "merge", "merge_file", "format", "data_type", "unknown",
+		"parse_options"),
+	"dump": set("do", "with_defaults"),
 	"compare": set("do", "format", "data_type", "data", "data_file", "unknown", "parse_only", "parse_options",
 		"validate_options", "first", "second", "options"),
 }
@@ -246,9 +247,10 @@ func stepValidate(s *yang.Schema, st map[string]any, tree *data.Tree, so map[str
 	return tree, diags, err
 }
 
-// stepEdit is step_edit for set (lyd_new_path UPDATE), delete (lyd_find_path + lyd_free_tree)
-// and merge (a parse-only parse + lyd_merge_siblings). rc is set when the outcome is an LY_ERR
-// without a diagnostic (a delete that finds nothing).
+// stepEdit is step_edit for set (lyd_new_path UPDATE), delete (lyd_find_path + lyd_free_tree),
+// new_meta (Tree.NewMeta), free_meta (Node.FindMeta + Meta.Remove) and merge (a parse-only parse
+// + lyd_merge_siblings). rc is set when the outcome is an LY_ERR without a diagnostic (a delete
+// that finds nothing).
 func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*data.Tree, []yang.Diagnostic, string,
 	error) {
 	rc := "LY_SUCCESS"
@@ -262,6 +264,24 @@ func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*d
 	case st["set"] != nil:
 		x, _ := st["set"].(map[string]any)
 		_, err = tree.NewPath(str(x, "path", ""), str(x, "value", ""), data.NewPathOptions{Update: true})
+	case st["new_meta"] != nil || st["free_meta"] != nil:
+		x, _ := st["new_meta"].(map[string]any)
+		if x == nil {
+			x, _ = st["free_meta"].(map[string]any)
+		}
+		path := str(x, "node", "")
+		n, ferr := tree.Find(path)
+		if ferr != nil || n == nil {
+			return nil, nil, rc, fmt.Errorf("metadata node %s not found (a request-error)", path)
+		}
+		if st["new_meta"] != nil {
+			_, err = tree.NewMeta(n, str(x, "name", ""), str(x, "value", ""))
+		} else {
+			var m *data.Meta
+			if m, err = n.FindMeta(str(x, "name", "")); m != nil {
+				m.Remove()
+			}
+		}
 	case st["delete"] != nil:
 		path := str(st, "delete", "")
 		if empty(tree) {

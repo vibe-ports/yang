@@ -159,7 +159,8 @@ func parseNodeID(s string) (prefix, name string, hasPrefix bool, shown string, o
 
 // newMeta is lyd_new_meta: the metadata name ("prefix:name" with the implemented module of that
 // name, else of mod) with the JSON value val, appended to the metadata of parent (nil: a detached
-// instance). clearDflt is LYD_NEW_META_CLEAR_DFLT. Errors are logged as libyang does.
+// instance). clearDflt is LYD_NEW_META_CLEAR_DFLT. Errors are logged as libyang does; an unknown
+// module returns LY_ENOTFOUND.
 func (l *logger) newMeta(parent *Node, mod *schema.Module, name, val string, clearDflt bool) (*meta, error) {
 	if mod == nil && !strings.Contains(name, ":") {
 		return nil, errMetaArg
@@ -173,7 +174,8 @@ func (l *logger) newMeta(parent *Node, mod *schema.Module, name, val string, cle
 	}
 	if hasPrefix {
 		if mod = l.set.Implemented(prefix); mod == nil {
-			return nil, l.logErr("LY_EINVAL", "Module \"%s\" not found.", prefix) // LY_ENOTFOUND
+			_ = l.logErr("LY_EINVAL", "Module \"%s\" not found.", prefix)
+			return nil, rcError("LY_ENOTFOUND")
 		}
 	}
 	var ctxNode *schema.Node
@@ -194,11 +196,13 @@ func (l *logger) newMeta(parent *Node, mod *schema.Module, name, val string, cle
 }
 
 // storeMeta is lyd_create_meta of the API: the annotation name of mod, the JSON value val stored
-// with ctxNode as the context node; an unknown annotation is logged at parent.
+// with ctxNode as the context node; an unknown annotation is logged at parent and returns
+// LY_EINVAL.
 func (l *logger) storeMeta(parent *Node, mod *schema.Module, name, val string, ctxNode *schema.Node) (*meta, error) {
 	ant := annotation(mod, name)
 	if ant == nil {
-		return nil, l.val(parent, "", ly.Reference, "Annotation definition for attribute \"%s:%s\" not found.", mod.Name, name)
+		_ = l.val(parent, "", ly.Reference, "Annotation definition for attribute \"%s:%s\" not found.", mod.Name, name)
+		return nil, rcError("LY_EINVAL") // after a LOGVAL
 	}
 	v, d := types.Store(ant.Type, val, types.FormatJSON, types.HintData, types.ModuleNames{Set: l.set}, ctxNode)
 	if d != nil {

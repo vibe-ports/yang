@@ -1,0 +1,20 @@
+// Metadata on data nodes through the API (lyd_new_meta, lyd_find_meta, lyd_free_meta_single) and
+// through parse/print: annotations of this module, of yang and of ietf-netconf.
+module pv2-mdapi {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-mdapi";
+  prefix pa;
+  import ietf-yang-metadata { prefix md; }
+  md:annotation num { type uint8; }
+  md:annotation tag { type enumeration { enum a; enum b; } }
+  container c {
+    leaf s { type string; }
+    leaf-list ll { type uint8; ordered-by user; }
+    list l {
+      key k;
+      ordered-by user;
+      leaf k { type string; }
+      leaf v { type string; }
+    }
+  }
+}

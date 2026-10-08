@@ -1,0 +1,16 @@
+fixtures:
+# ---- PoC #138: public metadata API (lyd_new_meta, lyd_find_meta, lyd_free_meta_single) ----
+  - id: protocol-v2/mdapi-roundtrip-json
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7952#5.1", "RFC7952#5.2"]   # plus libyang's yang:* diff metadata, no RFC
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas, ../ietf]
+      modules: [{name: pv2-mdapi}, {name: ietf-netconf}]
+      format: json
+      data_type: config
+      data_file: data/mdapi.json
+      with_defaults: explicit
+    golden: golden/mdapi-roundtrip-json.json

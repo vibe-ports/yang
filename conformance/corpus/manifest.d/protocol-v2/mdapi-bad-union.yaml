@@ -1,0 +1,16 @@
+fixtures:
+  - id: protocol-v2/mdapi-bad-union
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7952#3"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas, ../ietf]
+      modules: [{name: pv2-mdapi}, {name: ietf-netconf}]
+      steps:
+        - {do: parse, format: json, data_type: config, data_file: data/mdapi-small.json}
+        - {do: edit, new_meta: {node: /pv2-mdapi:c/s, name: "yang:operation", value: none}}
+        - {do: edit, new_meta: {node: /pv2-mdapi:c/s, name: "yang:position", value: "0"}}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/mdapi-bad-union.json

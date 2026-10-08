@@ -304,13 +304,15 @@ becomes observable. Context fields as in `schema`; step fields are per step (not
 | | `delete: "<path>"` only | `lyd_find_path` + `lyd_free_tree` (`LY_EINCOMPLETE` if only a parent exists; a list key is refused, see below) |
 | | `insert_term: {"module" \| "parent", "name", "value"}` only | `lyd_new_term` (`module`: top level, then `lyd_insert_sibling`; `parent`: path of an existing node, new child) |
 | | `insert_inner: {"module" \| "parent", "name"}` only | `lyd_new_inner` (container/list without keys), inserted like `insert_term` |
+| | `new_meta: {"node", "name", "value"}` only (`name` = `module:name`, value in JSON format) | `lyd_find_path` + `lyd_new_meta(NULL, node, NULL, name, value, 0, NULL)` |
+| | `free_meta: {"node", "name"}` only (`name` = `module:name`) | `lyd_find_path` + `lyd_free_meta_single(lyd_find_meta(node->meta, NULL, name))` (nothing found: nothing freed) |
 | `dump` | `with_defaults` | `tree` = `{"json", "xml"}` as op `data` |
 | `link` | — | `lyd_leafref_link_node_tree(tree)` (`LY_EDENIED` without the `leafref_linking` context option) |
 | `links` | — | `leafref_links`: the record of every term node that has one (`lyd_leafref_get_links`), in DFS order: `{"node", "leafref_nodes", "target_nodes"}` as `lyd_path(LYD_PATH_STD)` lists in record order |
 | `dup` | `node` (path), `parent` (path, optional), `options` (`recursive no_meta with_parents with_flags no_lyds`), `siblings` (bool) | `lyd_dup_siblings` (`siblings: true`) or `lyd_dup_single` of `node` into `parent`; without `parent` the duplicate, from its top duplicated parent, replaces the tree (diagnostics phase `edit`) |
 | `compare` | the fields of `parse` for a second tree, `first` / `second` (paths in the retained / second tree, omitted: its first top-level node), `options` (`full_recursion defaults opaq`) | `lyd_compare_single(first, second, options)`; `compare` = its rc (`LY_SUCCESS` equal, `LY_ENOT` not); the step's rc is the second parse's, the retained tree is unchanged |
 
-`insert_term` / `insert_inner` with a `parent` path that does not exist in the tree is a request-error raised when the step runs (not in the pre-check).
+`insert_term` / `insert_inner` with a `parent` path, and `new_meta` / `free_meta` with a `node` path, that does not exist in the tree is a request-error raised when the step runs (not in the pre-check).
 
 All steps are checked before the first runs (unknown `do`, keys not listed in the table for that
 step or edit kind or in `set` — matched as whole names, an empty key never matches — missing/extra
