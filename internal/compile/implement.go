@@ -157,8 +157,7 @@ func (c *Context) precompileModAugments(m *Module, pm *pmod, set *[]*Module) err
 	if len(pm.Parsed.Augments) > 0 || len(pm.Parsed.Deviations) > 0 {
 		c.locTop = "/" // lysc_update_path's context path, left on the log-location stack
 	}
-	// augments in extension instances (augment-structure) never get here: U-0023
-	return nil
+	return c.precompileExtAugments(m, pm, set)
 }
 
 // --- dependency sets (tree_schema.c) ---

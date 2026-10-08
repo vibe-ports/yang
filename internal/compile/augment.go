@@ -5,6 +5,8 @@
 package compile
 
 import (
+	"slices"
+
 	"github.com/vibe-ports/yang/internal/ly"
 	"github.com/vibe-ports/yang/internal/lyxp"
 	"github.com/vibe-ports/yang/internal/parser"
@@ -16,12 +18,13 @@ type topAug struct {
 	nid *nodeid
 	pm  *pmod // aug_pmod
 	aug *parser.Node
+	ext string // the extension instance defining it (prefix:name), "" for an augment statement
 }
 
 // precompileOwnAugments is lys_precompile_own_augments: the top-level augments of the modules
 // augmenting the one being compiled (module, then its submodules, statement order) that target
-// it. The loader checked their node-ids (lys_nodeid_mod_check, design 06 C1b); augments in
-// extension instances are U-0023.
+// it, then those of the module's extension instances (augment-structure). The loader checked
+// their node-ids (lys_nodeid_mod_check, design 06 C1b).
 func (w *nodeCtx) precompileOwnAugments(m *Module) {
 	for _, am := range m.augmentedBy {
 		pms := []*pmod{&am.pmod}
@@ -32,18 +35,65 @@ func (w *nodeCtx) precompileOwnAugments(m *Module) {
 		}
 		for _, pm := range pms {
 			for _, a := range pm.Parsed.Augments {
-				e, msg := lyxp.Lex(a.Name)
-				if msg != "" || len(e.Toks) == 0 { // defensive: Lex returns a message for empty/blank input
-					continue // reported when the augmenting module was implemented
+				w.precompileOwnAugment(pm, a, "")
+			}
+			// parsed extension instances
+			exts, _ := w.c.ownedExts(pm.Parsed.Stmt)
+			for _, x := range exts {
+				if a := w.c.extAugs[x]; a != nil {
+					w.precompileOwnAugment(pm, a, x.ExtPrefix+":"+x.Keyword)
 				}
-				nid := precompileNodeid(e)
-				if pm.resolve(nid.prefix[0]) != w.cur {
-					continue // augment for another module
-				}
-				w.augs.add(&topAug{nid: nid, pm: pm, aug: a}, w.nidKey(nid, pm), nid)
 			}
 		}
 	}
+}
+
+// precompileExtAugments is the extension-instance loop of lys_precompile_mod_augments_deviations:
+// the module an augment-structure instance targets is augmented by m.
+func (c *Context) precompileExtAugments(m *Module, pm *pmod, set *[]*Module) error {
+	exts, _ := c.ownedExts(pm.Parsed.Stmt)
+	for _, x := range exts {
+		aug := c.extAugs[x]
+		if aug == nil {
+			continue
+		}
+		// the check logs at its own path (lysc_update_path replaces the top of the location stack)
+		c.locTop = ""
+		path := "/" + m.Name + ":{ext-augment='" + aug.Name + "'}"
+		_, mods, err := nodeidModCheck(pm, aug.Name, true, func(code ly.Code, f string, a ...any) error {
+			return c.logPath(code, path, f, a...)
+		})
+		if err != nil {
+			return err
+		}
+		c.locTop = "/" // lysc_update_path's context path, left on the log-location stack
+		t := mods[0]   // the module of the first node test
+		added := !slices.Contains(t.augmentedBy, m)
+		if added {
+			t.augmentedBy = append(t.augmentedBy, m)
+		}
+		if added || slices.ContainsFunc(mods, func(x *Module) bool { return !x.Implemented }) {
+			for _, x := range mods { // ly_set_merge without duplicates
+				if !slices.Contains(*set, x) {
+					*set = append(*set, x)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// precompileOwnAugment is lys_precompile_own_augment.
+func (w *nodeCtx) precompileOwnAugment(pm *pmod, a *parser.Node, ext string) {
+	e, msg := lyxp.Lex(a.Name)
+	if msg != "" || len(e.Toks) == 0 { // defensive: Lex returns a message for empty/blank input
+		return // reported when the augmenting module was implemented
+	}
+	nid := precompileNodeid(e)
+	if pm.resolve(nid.prefix[0]) != w.cur {
+		return // augment for another module
+	}
+	w.augs.add(&topAug{nid: nid, pm: pm, aug: a, ext: ext}, w.nidKey(nid, pm), nid)
 }
 
 // augments is lys_compile_node_augments: apply the uses augments, then the top-level augments
@@ -87,7 +137,8 @@ func (w *nodeCtx) augments(node *schema.Node) error {
 		if !ok {
 			break
 		}
-		if !w.nodeidMatch(aug.nid, aug.pm, nil, node, nil, nil) {
+		// an extension-instance augment never matches a node outside an extension instance
+		if aug.ext != "" && w.ext == nil || !w.nodeidMatch(aug.nid, aug.pm, nil, node, nil, nil) {
 			i = j + 1
 			continue
 		}

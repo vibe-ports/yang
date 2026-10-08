@@ -135,7 +135,7 @@ func (c *Context) compileNodes(m *Module, out *schema.Module) error {
 	}
 	augs := make([]pendingAug, 0, len(w.augs.items))
 	for _, a := range w.augs.items {
-		augs = append(augs, pendingAug{nodeid: a.nid.str, pm: a.pm})
+		augs = append(augs, pendingAug{nodeid: a.nid.str, pm: a.pm, ext: a.ext})
 	}
 	if err := w.unresMod(augs); err != nil { // P5
 		return err

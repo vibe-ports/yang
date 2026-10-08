@@ -477,6 +477,9 @@ func (p *xmlParser) getSnode(parent *Node, prefix, name string) (*schema.Node, e
 				}
 				return p.checkOpaq(sn)
 			}
+			if err := extData(sparent, mod, name); err != nil {
+				return nil, err
+			}
 		}
 	}
 	if !nsOK {

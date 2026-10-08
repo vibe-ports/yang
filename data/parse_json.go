@@ -171,6 +171,9 @@ func (p *jsonParser) getSnode(isAttr bool, prefix, name string, parent *Node) (*
 		if sn := schema.FindChild(sparent, mod.Top, mod, name, 0); sn != nil {
 			return sn, lc.checkSchema(sn)
 		}
+		if err := extData(sparent, mod, name); err != nil {
+			return nil, err
+		}
 	}
 	switch {
 	case prefix != "":
@@ -1047,4 +1050,15 @@ func (p *jsonParser) subtree(parent *Node) error {
 		return err
 	}
 	return rc
+}
+
+// extData is the extension-instance branch of lys_find_child_node (lys_find_child_node_ext with
+// the plugins' snode callbacks): a node of a yang-data or structure tree is found there, and its
+// data is not parsed (deviations.md U-0060).
+func extData(sparent *schema.Node, mod *schema.Module, name string) error {
+	if sn, e := schema.FindExtNode(sparent, mod, mod, name, false); sn != nil {
+		return fmt.Errorf("%w: data of extension instance %s:%s %q (deviations.md U-0060)", yang.ErrUnsupported,
+			e.Def.Name, e.Name, e.Argument)
+	}
+	return nil
 }

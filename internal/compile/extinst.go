@@ -46,6 +46,7 @@ func init() {
 		{"ietf-netconf-acm", "2018-02-14", "default-deny-all", "ly2 NACM", nacmParse, nacm},
 		{"ietf-restconf", "2017-01-26", "yang-data", schema.PluginYangData, yangDataParse, yangDataCompile},
 		{"ietf-yang-structure-ext", "2020-06-17", "structure", schema.PluginStructure, structureParse, structureCompile},
+		{"ietf-yang-structure-ext", "2020-06-17", "augment-structure", schema.PluginStructure, augmentStructureParse, nil},
 	}
 }
 
@@ -411,12 +412,22 @@ func (w *nodeCtx) compileExtInstance(e *parser.Stmt, psubs []parser.ExtSubstmt, 
 	if n == nil {
 		return fmt.Errorf("compile: extension instance %s:%s was not parsed", e.ExtPrefix, e.Keyword)
 	}
+	return w.withExt(inst, func() error { return w.compileExtSubstmts(n, psubs, csubs, inst, parent) })
+}
+
+// withExt runs f with inst as ctx->ext.
+func (w *nodeCtx) withExt(inst *schema.ExtInstance, f func() error) error {
 	prev, prevTpdfs := w.ext, w.tc.extTpdfs
 	w.ext = &extState{inst: inst, parsed: w.extParsedOf(inst)}
 	if w.ext.parsed != nil {
 		w.tc.extTpdfs = w.ext.parsed.Typedefs
 	}
 	defer func() { w.ext, w.tc.extTpdfs = prev, prevTpdfs }()
+	return f()
+}
+
+func (w *nodeCtx) compileExtSubstmts(n *parser.Node, psubs []parser.ExtSubstmt, csubs []extCSubstmt,
+	inst *schema.ExtInstance, parent *schema.Node) error {
 	w.indexParsed(nil, n.Children)
 	w.indexParsed(nil, n.Groupings)
 	status := 0 // the compiled status (lyplg_ext_get_storage of LY_STMT_STATUS), statusOf values

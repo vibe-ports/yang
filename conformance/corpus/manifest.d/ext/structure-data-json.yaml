@@ -1,0 +1,18 @@
+fixtures:
+  - id: ext/structure-data-json
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # data of a structure tree: libyang parses it through the plugin's snode callback; this engine refuses it (U-0060)
+    rfc: ["RFC8791#4"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [schemas]
+      modules: [{name: "ext-structure-base"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"ext-structure-base:s\": {\"c\": {\"x\": \"a\"}}}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/ext-structure-data-json.json

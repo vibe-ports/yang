@@ -136,6 +136,9 @@ func (e *ExtInstance) findNode(sparent *Node, prefix *Module, name string, xpath
 			}
 		}
 	case PluginStructure:
+		if e.Root == nil {
+			return nil // augment-structure: same plugin id, no tree
+		}
 		if !xpath { // structure_snode: the data tree starts at the top-level container
 			if name != "" && name != e.Root.Name {
 				return nil

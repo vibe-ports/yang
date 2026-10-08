@@ -419,7 +419,7 @@ a fixture with `assert` (extractor, inventory §5.4).
 | opaque nodes | `unknown: opaque`, printing, validation error | envelopes M4 |
 | diff | implicit diff (create/delete/none); since #137 Diff, ApplyDiff, MergeDiff, ReverseDiff (PoC #133) | anydata/anyxml values in diffs (M5) |
 | edits | NewPath(Update), Find, Remove, Merge without options | `ApplyEdit` M6 |
-| extension data (`LYD_EXT`, schema-mount, yang-data) | never reached (compile rejects instances, U-0023/U-0024) | later |
+| extension data (`LYD_EXT`, schema-mount, yang-data, structure) | never reached: compile rejects schema-mount (U-0024); a data node of a yang-data/structure tree fails the parse with `ErrUnsupported` (U-0060) | later |
 | LYB, `lyd_parse_value_fragment`, RESTCONF/NETCONF wrappers | no | out of v1 / M4 |
 
 ## 7. Deviation candidates (D-0050…D-0069, U-0040…U-0059)

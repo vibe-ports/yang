@@ -177,6 +177,8 @@ type Context struct {
 	extArrs map[*parser.Stmt][]*parser.Stmt
 	// extParsed are the substatements a plugin parse callback parsed (lysp_ext_instance.parsed).
 	extParsed map[*parser.Stmt]*parser.Node
+	// extAugs are the augments augment-structure instances define (their LY_STMT_AUGMENT storage).
+	extAugs map[*parser.Stmt]*parser.Node
 	// LYS_USED_GRP of parsed groupings: set by any instantiating uses, never cleared
 	usedGrp map[*parser.Node]bool
 	// work counts index entries and pending items looked at by the C6 lookups (tests bound it)

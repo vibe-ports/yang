@@ -1,0 +1,12 @@
+fixtures:
+# BEGIN ext augment-structure (issue #35)
+  - id: ext/structure-plain-augment
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # an augment statement may target a node of a structure (lysp_schema_nodeid_match: standard augments match extension nodes)
+    rfc: ["RFC8791#4", "RFC7950#7.17"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ext-structure-base"}, {"name": "ext-structure-plain-augment"}]
+    golden: golden/ext-structure-plain-augment.json

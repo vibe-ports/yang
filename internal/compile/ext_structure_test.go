@@ -69,3 +69,33 @@ func TestStructureEmpty(t *testing.T) {
 		t.Errorf("instance %+v", e)
 	}
 }
+
+// TestAugmentStructure pins the tree of test_structure.c test_schema with module b's
+// augment-structure instances: one into a structure node (its status for the new leaf), one into
+// the structure's container, compiled after the options are restored (config true).
+func TestAugmentStructure(t *testing.T) {
+	h := newNodeHarness(t, Options{}, mapFS(map[string]string{"a.yang": structA,
+		"b.yang": `module b {yang-version 1.1; namespace urn:tests:extensions:structure:b; prefix b;` +
+			`import ietf-yang-structure-ext {prefix sx;}import a {prefix a;}` +
+			`sx:augment-structure "/a:struct/a:n1" {  status obsolete;  reference none;  leaf aug-leaf {type string;}}` +
+			`sx:augment-structure "/a:struct" {  leaf l {type uint32;}}}`}))
+	if _, _, loadErr, err := h.load("a"); loadErr != nil || err != nil {
+		t.Fatal(loadErr, err)
+	}
+	b, diags, loadErr, err := h.load("b")
+	if loadErr != nil || err != nil {
+		t.Fatalf("%v %v %v", loadErr, err, diags)
+	}
+	a := h.c.module("a", "").Schema
+	if got, want := treeOf(a.Exts[0].DataNodes()),
+		"n1[container,d](l[leaf,d] aug-leaf[leaf,o]) n2[list,d](l[leaf,d]) gl[leaf,d] l[leaf,c,d]"; got != want {
+		t.Errorf("tree %s, want %s", got, want)
+	}
+	n1 := a.Exts[0].Root.Children[0]
+	if aug := n1.Children[1]; aug.Module != b || aug.Parent != n1 {
+		t.Errorf("aug-leaf module %v parent %v", aug.Module, aug.Parent)
+	}
+	if len(b.Exts) != 2 || b.Exts[0].Plugin != schema.PluginStructure || b.Exts[0].Root != nil {
+		t.Errorf("b instances %+v", b.Exts)
+	}
+}

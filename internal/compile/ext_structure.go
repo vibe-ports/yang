@@ -5,6 +5,7 @@ package compile
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/vibe-ports/yang/internal/parser"
 	"github.com/vibe-ports/yang/internal/schema"
@@ -61,5 +62,39 @@ func structureCompile(w *nodeCtx, e *parser.Stmt, inst *schema.ExtInstance, _ *s
 	}
 	// compile config properly even though it is ignored
 	inst.Root.Config = true
+	// connect any augments (lyplg_ext_compiled_node_augments: with ctx->ext, the options restored)
+	return w.withExt(inst, func() error { return w.augments(inst.Root) })
+}
+
+// augmentStructureSubs are the substatements structure_aug_parse declares, in order; the data
+// definitions and case share one storage.
+var augmentStructureSubs = []parser.ExtSubstmt{{Keyword: "status"}, {Keyword: "description"},
+	{Keyword: "reference"}, {Keyword: "container", Many: true}, {Keyword: "leaf", Many: true},
+	{Keyword: "leaf-list", Many: true}, {Keyword: "list", Many: true}, {Keyword: "choice", Many: true},
+	{Keyword: "anydata", Many: true}, {Keyword: "anyxml", Many: true}, {Keyword: "uses", Many: true},
+	{Keyword: "case", Many: true}}
+
+// augmentStructureParse is structure_aug_parse: only at the top level, with some data-def-stmt;
+// the substatements make a parsed augment of the argument (the LY_STMT_AUGMENT storage) that
+// lys_precompile_own_augments collects like a top-level one.
+func augmentStructureParse(c *Context, x *extParse) error {
+	name := x.e.ExtPrefix + ":" + x.e.Keyword
+	if !x.root {
+		return c.extLog(x, false, "Extension %s must not be used as a non top-level statement in \"%s\" statement.",
+			name, stmtStr(x.parentStmt))
+	}
+	if !slices.ContainsFunc(x.e.Subs, func(s *parser.Stmt) bool {
+		return s.ExtPrefix == "" && dataDefKw[s.Keyword] && s.Keyword != "case"
+	}) {
+		return c.extLog(x, false, "Extension %s does not define any data-def-stmt statements.", name)
+	}
+	n, err := c.parseExtInstance(x, augmentStructureSubs)
+	if err != nil {
+		return err
+	}
+	if c.extAugs == nil {
+		c.extAugs = map[*parser.Stmt]*parser.Node{}
+	}
+	c.extAugs[x.e] = &parser.Node{Kind: "augment", Name: x.e.Arg, Status: n.Status, Children: n.Children}
 	return nil
 }

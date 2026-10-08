@@ -1,0 +1,11 @@
+fixtures:
+  - id: ext/augment-structure-nodata
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # augment-structure without a data-def-stmt is a plugin parse error
+    rfc: ["RFC8791#4"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ext-structure-base"}, {"name": "ext-augment-structure-nodata"}]
+    golden: golden/ext-augment-structure-nodata.json

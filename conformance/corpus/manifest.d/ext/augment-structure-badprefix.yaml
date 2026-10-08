@@ -1,0 +1,12 @@
+fixtures:
+# BEGIN ext augment-structure review (issue #35)
+  - id: ext/augment-structure-badprefix
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # an augment-structure target with an unknown prefix: the ext-augment node-id check, at its own path
+    rfc: ["RFC8791#4", "RFC7950#6.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ext-structure-base"}, {"name": "ext-augment-structure-badprefix"}]
+    golden: golden/ext-augment-structure-badprefix.json

@@ -504,8 +504,8 @@ with `ErrUnsupported` as soon as an instance of it is parsed (in any module, bef
 |---|---|---|
 | ietf-yang-metadata `annotation` | metadata.c:49-121 parse: only at module/submodule top level, not instantiated twice with one name, allowed substatements, **mandatory `type`** (`Missing mandatory keyword "type" as a child of "%s %s".`, metadata.c:111); compile: type compiled | **ported** (C4b) — the internal modules `yang`, `default` and ietf-netconf-with-defaults use it, and `data/` needs annotations |
 | ietf-netconf-acm `default-deny-write` / `default-deny-all` (2012-02-22, 2018-02-14) | nacm.c:82-126 parse: placement (warnings), multiple instances (error); compile: inherited flags | **ported** (C4b): small, and NACM models are common |
-| ietf-restconf `yang-data` | yangdata.c parse/compile: top-level only, one container, schema compiled into the extension | `ErrUnsupported` (**U-0023**) until its consumer (PLAN §1 lists yang-data for v1, later milestone) |
-| ietf-yang-structure-ext `structure`, `augment-structure` | structure.c parse/compile, own data trees | `ErrUnsupported` (**U-0023**), same reason |
+| ietf-restconf `yang-data` | yangdata.c parse/compile: top-level only, one container, schema compiled into the extension | **ported** (M2 #33, schema side; data trees: U-0060) |
+| ietf-yang-structure-ext `structure`, `augment-structure` | structure.c parse/compile, own data trees | **ported** (M2 #34, #35, schema side; data trees: U-0060) |
 | ietf-yang-schema-mount `mount-point` | schema_mount.c | `ErrUnsupported` (**U-0024**): out of v1 (PLAN §1) |
 | openconfig-extensions `regexp-posix`, `posix-pattern` | openconfig.c; changes pattern semantics (SCN:1106) | `ErrUnsupported` (**U-0025**) |
 

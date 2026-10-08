@@ -19,7 +19,7 @@ payloads and diff/merge are not done yet.
 | Schema compilation: typedef chains, grouping/uses/refine, augment, choice/case, if-feature, identities, status, must/when/leafref XPath checks | supported | |
 | Built-in types, unions, decimal64, `ietf-yang-types` / `ietf-inet-types` canonical forms | supported | |
 | `pattern` (XSD regular expressions) | supported | compiled to RE2 through an XSD-regex compiler; intentional differences D-0002…D-0008 |
-| Extension instances | partial | metadata (RFC 7952) and NACM are compiled; schema-mount, `yang-data`/`structure`, OpenConfig `regexp-posix` make `Load` fail (U-0023…U-0025) |
+| Extension instances | partial | metadata (RFC 7952), NACM, `yang-data` and `structure`/`augment-structure` (schema side) are compiled; schema-mount and OpenConfig `regexp-posix` make `Load` fail (U-0024, U-0025); data in yang-data/structure trees is not parsed (U-0060) |
 | `deviation` statements | supported | not-supported, add, delete, replace; a deviated rpc/action input or output keeps its children, which libyang drops (D-0080) or crashes on when a must is added (D-0090) |
 | Datastore data: JSON (RFC 7951) and XML parse, print, unknown-node policy (reject / skip / opaque) | supported | |
 | Validation: types, leafref, instance-identifier, mandatory, min/max-elements, unique, must, when (with auto-delete), choice/case, NMDA operational mode | supported | libyang's diagnostics: LY_ERR / LY_VECODE names, data path, error-app-tag |
