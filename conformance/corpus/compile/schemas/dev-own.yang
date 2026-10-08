@@ -1,0 +1,23 @@
+module dev-own {
+  namespace "urn:dev-own";
+  prefix d;
+  import dev-own-base { prefix b; }
+  extension note { argument text; }
+  deviation /b:l {
+    deviate add {
+      must "string-length(.) < 9" {
+        error-message "too long" { d:note in-error-message; }
+        d:note in-must;
+      }
+      d:note on-deviate;
+    }
+  }
+  deviation /b:l2 {
+    deviate replace {
+      type enumeration {
+        enum a { d:note in-enum; }
+        d:note in-type;
+      }
+    }
+  }
+}

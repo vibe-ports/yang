@@ -1,0 +1,6 @@
+module dev-own-base {
+  namespace "urn:dev-own-base";
+  prefix b;
+  leaf l { type string; }
+  leaf l2 { type string; }
+}

@@ -1,0 +1,107 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module dev-own {\n  namespace \"urn:dev-own\";\n  prefix d;\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "dev-own",
+      "revision": null,
+      "schema_tree": []
+    },
+    {
+      "accepted": true,
+      "compiled": "module dev-own-base {\n  namespace \"urn:dev-own-base\";\n  prefix b;\n\n  leaf l {\n    dev-own:note \"on-deviate\";\n    type string;\n    must \"string-length(.) < 9\" {\n      dev-own:note \"in-error-message\";\n      dev-own:note \"in-must\";\n      error-message\n        \"too long\";\n    }\n    config true;\n    status current;\n  }\n  leaf l2 {\n    type enumeration {\n      dev-own:note \"in-type\";\n      enum \"a\" {\n        dev-own:note \"in-enum\";\n        value 0;\n        status current;\n      }\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "dev-own-base",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": [
+            {
+              "argument": "on-deviate",
+              "module": "dev-own",
+              "name": "note"
+            }
+          ],
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "dev-own-base",
+          "musts": [
+            {
+              "apptag": null,
+              "expr": "string-length(.) < 9",
+              "message": "too long"
+            }
+          ],
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/dev-own-base:l",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "dev-own-base",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/dev-own-base:l2",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "enumeration",
+            "bases": null,
+            "bits": null,
+            "enums": [
+              {
+                "name": "a",
+                "value": 0
+              }
+            ],
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}
