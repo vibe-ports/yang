@@ -1,0 +1,33 @@
+module units-empty {
+  yang-version 1.1;
+  namespace "urn:units-empty";
+  prefix ue;
+
+  typedef t-empty-units {
+    type string;
+    units "";
+  }
+  typedef t-units {
+    type string;
+    units "m";
+  }
+
+  leaf empty-units {
+    type string;
+    units "";
+  }
+  leaf no-units {
+    type string;
+  }
+  leaf inherited-empty {
+    type t-empty-units;
+  }
+  leaf override-empty {
+    type t-units;
+    units "";
+  }
+  leaf-list ll-empty-units {
+    type string;
+    units "";
+  }
+}

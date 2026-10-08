@@ -579,6 +579,23 @@ func TestMandatoryLeafTypedefDefault(t *testing.T) {
 	}
 }
 
+// TestUnitsPresence: units "" is kept apart from no units, own or inherited from a typedef, as
+// libyang prints `units "";` (fixture units/empty-vs-absent, issue #9).
+func TestUnitsPresence(t *testing.T) {
+	h := newNodeHarness(t, Options{}, os.DirFS("../../conformance/corpus/compile/schemas"))
+	mod, _, loadErr, err := h.load("units-empty")
+	if loadErr != nil || err != nil {
+		t.Fatal(loadErr, err)
+	}
+	want := map[string]bool{"empty-units": true, "no-units": false, "inherited-empty": true, "override-empty": true,
+		"ll-empty-units": true}
+	for _, n := range mod.Top {
+		if has := n.Units != nil; has != want[n.Name] || has && *n.Units != "" {
+			t.Errorf("%s: units %v, want present %v and empty", n.Name, n.Units, want[n.Name])
+		}
+	}
+}
+
 // TestUniquenessIndex: connecting many distinct siblings runs no sibling scan; a duplicate (also
 // one inside a choice, and a case name) still runs the libyang scan and reports it.
 func TestUniquenessIndex(t *testing.T) {

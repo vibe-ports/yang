@@ -337,8 +337,14 @@ func (n *Node) Type() *Type {
 	return &Type{n.n.Type}
 }
 
-// Units is the units of a leaf or leaf-list (own or from the typedef chain).
-func (n *Node) Units() string { return n.n.Units }
+// Units is the units of a leaf or leaf-list (own or from the typedef chain); "" also when there
+// is no units statement.
+func (n *Node) Units() string {
+	if n.n.Units == nil {
+		return ""
+	}
+	return *n.n.Units
+}
 
 // Status is the node's status.
 func (n *Node) Status() Status { return Status(n.n.Status) }

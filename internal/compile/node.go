@@ -730,7 +730,7 @@ func (w *nodeCtx) nodeType(pn *parser.Node, n *schema.Node) error {
 		return err
 	}
 	if units != nil {
-		n.Units = *units
+		n.Units = units
 	}
 	if dflt != nil && w.fl[n]&flSetDflt == 0 && w.opts&(optDisabled|optGrouping) == 0 {
 		n.Default = []schema.DefaultValue{*dflt}
@@ -745,7 +745,7 @@ func (w *nodeCtx) leaf(pn *parser.Node, n *schema.Node) error {
 		return err
 	}
 	if pn.Units != nil {
-		n.Units = *pn.Units
+		n.Units = pn.Units
 		w.fl[n] |= flSetUnits
 	}
 	if err := w.nodeType(pn, n); err != nil {
@@ -774,7 +774,7 @@ func (w *nodeCtx) leafList(pn *parser.Node, n *schema.Node) error {
 		return err
 	}
 	if pn.Units != nil {
-		n.Units = *pn.Units
+		n.Units = pn.Units
 		w.fl[n] |= flSetUnits
 	}
 	if err := w.nodeType(pn, n); err != nil {

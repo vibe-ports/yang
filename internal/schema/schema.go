@@ -241,8 +241,8 @@ type Node struct {
 	// DefaultCaseName is the name of a choice's default case, kept when the case itself was
 	// removed as disabled: libyang still dumps that name (D-0070). Never a node to follow.
 	DefaultCaseName string
-	Type            *Type  // leaf, leaf-list
-	Units           string // leaf, leaf-list: own units, else inherited from the typedef chain
+	Type            *Type   // leaf, leaf-list
+	Units           *string // leaf, leaf-list: own, else from the typedef chain; nil = no units (`units ""` differs: issue #9)
 	Musts           []*Must
 	Whens           []*When
 	Status          Status
