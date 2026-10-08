@@ -353,7 +353,7 @@ func (t *Tree) checkFindPath(lg *logger, p types.Path, path, value string) (type
 func (t *Tree) createTerm(lg *logger, lnode *Node, sn *schema.Node, value string) (*Node, error) {
 	v, d := types.Store(sn.Type, value, types.FormatJSON, types.HintData, types.ModuleNames{Set: t.set}, sn)
 	if d != nil {
-		return nil, lg.item(lnode, sn, false, d.RC(), codeOf(d.Code), d.AppTag, d.Msg)
+		return nil, lg.storeErr(lnode, sn, d)
 	}
 	n := newTerm(sn, v)
 	n.flags = FlagNew
@@ -377,7 +377,7 @@ func (t *Tree) newPathUpdate(lg *logger, n *Node, value string) (*Node, error) {
 	// _lyd_change_term
 	v, d := types.Store(n.schema.Type, value, types.FormatJSON, types.HintData, types.ModuleNames{Set: t.set}, n.schema)
 	if d != nil {
-		return nil, lg.item(n, n.schema, false, d.RC(), codeOf(d.Code), d.AppTag, d.Msg)
+		return nil, lg.storeErr(n, n.schema, d)
 	}
 	if valChange, dfltChange := t.changeTermVal(n, v, false); valChange || dfltChange {
 		return n, nil

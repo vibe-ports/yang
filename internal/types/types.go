@@ -126,6 +126,10 @@ type Diag struct {
 	Msg    string
 	AppTag string
 	Err    string // the LY_ERR of the plugin's error item when not LY_EVALID ("" = LY_EVALID)
+	// Logged is an error the plugin left in the context log before its error item (LOGVAL
+	// located at the value's schema node, no data path): node-instance-identifier does not spend
+	// the path parser's or compiler's error as instance-identifier does.
+	Logged *Diag
 }
 
 func (d *Diag) Error() string { return d.Msg }

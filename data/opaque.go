@@ -49,7 +49,7 @@ func nodeSchema(set *schema.Set, n *Node) *schema.Node {
 // a rejection at the schema node (no data node).
 func (l *logger) valueValidate(sn *schema.Node, o *opaque) error {
 	if _, d := types.Store(sn.Type, o.Value, o.Format, o.Hints, o.Prefixes, sn); d != nil {
-		return l.item(nil, sn, false, d.RC(), codeOf(d.Code), d.AppTag, d.Msg)
+		return l.storeErr(nil, sn, d)
 	}
 	return nil
 }

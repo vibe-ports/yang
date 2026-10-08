@@ -1,0 +1,58 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [
+    {
+      "apptag": null,
+      "code": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "data_path": null,
+      "level": "error",
+      "line": 1,
+      "msg": "Prefix missing for \"c\" in path.",
+      "phase": "data",
+      "schema_path": "/ietf-netconf-acm:nacm/rule-list/rule/rule-type/data-node/path",
+      "vecode": 5,
+      "vecode_name": "LYVE_XPATH"
+    },
+    {
+      "apptag": null,
+      "code": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "data_path": "/ietf-netconf-acm:nacm/rule-list[name='r']/rule[name='a']/path",
+      "level": "error",
+      "line": 1,
+      "msg": "Invalid node-instance-identifier \"/c/l\" value - syntax error.",
+      "phase": "data",
+      "schema_path": null,
+      "vecode": 9,
+      "vecode_name": "LYVE_DATA"
+    }
+  ],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ietf-netconf-acm",
+      "revision": "2018-02-14"
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ty6",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 7,
+    "name": "LY_EVALID"
+  },
+  "tree": null,
+  "verdict": "invalid"
+}

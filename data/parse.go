@@ -310,7 +310,7 @@ func (lc *lydCtx) createTerm(sn *schema.Node, lnode *Node, lex string, f types.F
 	}
 	v, d := store(sn.Type, lex, f, h, pc, sn)
 	if d != nil {
-		return nil, lc.log.item(lnode, sn, false, d.RC(), codeOf(d.Code), d.AppTag, d.Msg)
+		return nil, lc.log.storeErr(lnode, sn, d)
 	}
 	n := newTerm(sn, v)
 	n.flags = lc.newFlags()

@@ -419,13 +419,22 @@ func TestUnionDefaultReresolves(t *testing.T) {
 // canonical form re-stores to the same value.
 func FuzzInstanceID(f *testing.F) {
 	for _, s := range []string{"/xdf:cont/xdf:l", "/a:list2[a:id='a:xxx'][a:id2='y']/a:id2", "/t:llist[1", "[1]",
-		"/t:cont:t:1l", `/a:list-inst[a:id="/a:llist[.='1']"]/a:value`, "/x:a::b", "/$v", "/a:b[c:d=$x]", "/a:b[.=1.5]"} {
+		"/t:cont:t:1l", `/a:list-inst[a:id="/a:llist[.='1']"]/a:value`, "/x:a::b", "/$v", "/a:b[c:d=$x]", "/a:b[.=1.5]",
+		"/", "/t:c/t:l", "/t:c/t:l[t:k='x']/t:v", "/t:c/t:ll[.='y']"} {
 		f.Add(s)
 	}
 	fx := newInstFixture()
 	pc := fx.xml(map[string]string{"xdf": "defs", "a": "defs", "t": "defs"})
 	un := &schema.Type{Base: schema.Union, Union: []*schema.Type{fx.l2.Type, typ(schema.Int8)}}
+	nset, _, nid, npath := nacmFixture() // node-instance-identifier mode
+	npc := XMLNamespaces{Set: nset, NS: map[string]string{"t": "urn:vibe-ports:ty6", "a": "urn:vibe-ports:ty6"}}
 	f.Fuzz(func(t *testing.T, lex string) {
+		if nv, d := Store(nid, lex, FormatXML, HintData, npc, npath); d == nil {
+			nv2, d := Store(nid, nv.Canonical(), FormatJSON, JSONHints("string"), ModuleNames{nset}, npath)
+			if d != nil || !Equal(nv, nv2) {
+				t.Fatalf("node-instance-identifier canonical %q of %q: %v", nv.Canonical(), lex, d)
+			}
+		}
 		v, d := Store(fx.l2.Type, lex, FormatXML, HintData, pc, fx.l2)
 		_, _ = Store(un, lex, FormatXML, HintData, pc, fx.l2)
 		if d != nil {

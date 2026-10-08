@@ -12,6 +12,7 @@ import (
 	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/ly"
 	"github.com/vibe-ports/yang/internal/schema"
+	"github.com/vibe-ports/yang/internal/types"
 )
 
 // ValidationError is the error of a parse or validation that logged at least one error; Diags
@@ -131,6 +132,15 @@ func (l *logger) item(lnode *Node, sn *schema.Node, warning bool, err string, co
 	d.DataPath, d.SchemaPath, d.Line = l.location(lnode, sn)
 	l.diags = append(l.diags, d)
 	return errLogged
+}
+
+// storeErr is ly_err_print of a type plugin's error item d for a value of the schema node sn
+// stored under lnode, after the errors the plugin left in the context log (located at sn).
+func (l *logger) storeErr(lnode *Node, sn *schema.Node, d *types.Diag) error {
+	if e := d.Logged; e != nil {
+		_ = l.item(nil, sn, false, e.RC(), codeOf(e.Code), e.AppTag, e.Msg)
+	}
+	return l.item(lnode, sn, false, d.RC(), codeOf(d.Code), d.AppTag, d.Msg)
 }
 
 // warn is LOGWRN: a warning without location.

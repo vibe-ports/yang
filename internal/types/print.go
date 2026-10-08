@@ -99,6 +99,14 @@ func printValue(v Value, f Format, pc *PrintCtx) string {
 		}
 		return v.canon
 	}
+	if n, ok := v.ext.(*nodeInstanceID); ok && f != FormatCanon && f != FormatJSON {
+		// lyplg_type_print_node_instanceid (node_instanceid.c): node_instanceid_path2str in f, the
+		// same as instanceid_path2str but for the special path "/"
+		if n.path == nil {
+			return "/"
+		}
+		return printPath(n.path, f, pc)
+	}
 	switch v.typ.Base {
 	case schema.IdentityRef: // lyplg_type_print_identityref
 		if f == FormatCanon {

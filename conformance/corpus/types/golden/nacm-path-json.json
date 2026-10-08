@@ -1,0 +1,452 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ietf-netconf-acm",
+      "revision": "2018-02-14"
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ty6",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"ietf-netconf-acm:nacm\": {\n    \"rule-list\": [\n      {\n        \"name\": \"r\",\n        \"rule\": [\n          {\n            \"name\": \"a\",\n            \"path\": \"/ty6:c/ll[.='x']\",\n            \"action\": \"permit\"\n          },\n          {\n            \"name\": \"b\",\n            \"path\": \"/ty6:c/l/k\",\n            \"action\": \"deny\"\n          }\n        ]\n      }\n    ]\n  }\n}\n",
+    "xml": "<nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">\n  <rule-list>\n    <name>r</name>\n    <rule>\n      <name>a</name>\n      <path xmlns:t6=\"urn:vibe-ports:ty6\">/t6:c/t6:ll[.='x']</path>\n      <action>permit</action>\n    </rule>\n    <rule>\n      <name>b</name>\n      <path xmlns:t6=\"urn:vibe-ports:ty6\">/t6:c/t6:l/t6:k</path>\n      <action>deny</action>\n    </rule>\n  </rule-list>\n</nacm>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf-acm:nacm",
+      "schema": "/ietf-netconf-acm:nacm",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf-acm:nacm/enable-nacm",
+      "schema": "/ietf-netconf-acm:nacm/enable-nacm",
+      "value": {
+        "canonical": "true",
+        "type": "boolean",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf-acm:nacm/read-default",
+      "schema": "/ietf-netconf-acm:nacm/read-default",
+      "value": {
+        "canonical": "permit",
+        "type": "enumeration",
+        "typedef": "action-type",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf-acm:nacm/write-default",
+      "schema": "/ietf-netconf-acm:nacm/write-default",
+      "value": {
+        "canonical": "deny",
+        "type": "enumeration",
+        "typedef": "action-type",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf-acm:nacm/exec-default",
+      "schema": "/ietf-netconf-acm:nacm/exec-default",
+      "value": {
+        "canonical": "permit",
+        "type": "enumeration",
+        "typedef": "action-type",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf-acm:nacm/enable-external-groups",
+      "schema": "/ietf-netconf-acm:nacm/enable-external-groups",
+      "value": {
+        "canonical": "true",
+        "type": "boolean",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf-acm:nacm/groups",
+      "schema": "/ietf-netconf-acm:nacm/groups",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf-acm:nacm/rule-list[name='r']",
+      "schema": "/ietf-netconf-acm:nacm/rule-list",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf-acm:nacm/rule-list[name='r']/name",
+      "schema": "/ietf-netconf-acm:nacm/rule-list/name",
+      "value": {
+        "canonical": "r",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf-acm:nacm/rule-list[name='r']/rule[name='a']",
+      "schema": "/ietf-netconf-acm:nacm/rule-list/rule",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf-acm:nacm/rule-list[name='r']/rule[name='a']/name",
+      "schema": "/ietf-netconf-acm:nacm/rule-list/rule/name",
+      "value": {
+        "canonical": "a",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf-acm:nacm/rule-list[name='r']/rule[name='a']/module-name",
+      "schema": "/ietf-netconf-acm:nacm/rule-list/rule/module-name",
+      "value": {
+        "canonical": "*",
+        "type": "union",
+        "typedef": null,
+        "union_member": {
+          "index": 0,
+          "realtype": {
+            "type": "string",
+            "typedef": "matchall-string-type"
+          },
+          "type": "string",
+          "typedef": "matchall-string-type"
+        }
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf-acm:nacm/rule-list[name='r']/rule[name='a']/path",
+      "schema": "/ietf-netconf-acm:nacm/rule-list/rule/rule-type/data-node/path",
+      "value": {
+        "canonical": "/ty6:c/ll[.='x']",
+        "type": "string",
+        "typedef": "node-instance-identifier",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf-acm:nacm/rule-list[name='r']/rule[name='a']/access-operations",
+      "schema": "/ietf-netconf-acm:nacm/rule-list/rule/access-operations",
+      "value": {
+        "canonical": "*",
+        "type": "union",
+        "typedef": null,
+        "union_member": {
+          "index": 0,
+          "realtype": {
+            "type": "string",
+            "typedef": "matchall-string-type"
+          },
+          "type": "string",
+          "typedef": "matchall-string-type"
+        }
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf-acm:nacm/rule-list[name='r']/rule[name='a']/action",
+      "schema": "/ietf-netconf-acm:nacm/rule-list/rule/action",
+      "value": {
+        "canonical": "permit",
+        "type": "enumeration",
+        "typedef": "action-type",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf-acm:nacm/rule-list[name='r']/rule[name='b']",
+      "schema": "/ietf-netconf-acm:nacm/rule-list/rule",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf-acm:nacm/rule-list[name='r']/rule[name='b']/name",
+      "schema": "/ietf-netconf-acm:nacm/rule-list/rule/name",
+      "value": {
+        "canonical": "b",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf-acm:nacm/rule-list[name='r']/rule[name='b']/module-name",
+      "schema": "/ietf-netconf-acm:nacm/rule-list/rule/module-name",
+      "value": {
+        "canonical": "*",
+        "type": "union",
+        "typedef": null,
+        "union_member": {
+          "index": 0,
+          "realtype": {
+            "type": "string",
+            "typedef": "matchall-string-type"
+          },
+          "type": "string",
+          "typedef": "matchall-string-type"
+        }
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf-acm:nacm/rule-list[name='r']/rule[name='b']/path",
+      "schema": "/ietf-netconf-acm:nacm/rule-list/rule/rule-type/data-node/path",
+      "value": {
+        "canonical": "/ty6:c/l/k",
+        "type": "string",
+        "typedef": "node-instance-identifier",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf-acm:nacm/rule-list[name='r']/rule[name='b']/access-operations",
+      "schema": "/ietf-netconf-acm:nacm/rule-list/rule/access-operations",
+      "value": {
+        "canonical": "*",
+        "type": "union",
+        "typedef": null,
+        "union_member": {
+          "index": 0,
+          "realtype": {
+            "type": "string",
+            "typedef": "matchall-string-type"
+          },
+          "type": "string",
+          "typedef": "matchall-string-type"
+        }
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf-acm:nacm/rule-list[name='r']/rule[name='b']/action",
+      "schema": "/ietf-netconf-acm:nacm/rule-list/rule/action",
+      "value": {
+        "canonical": "deny",
+        "type": "enumeration",
+        "typedef": "action-type",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ty6:c",
+      "schema": "/ty6:c",
+      "value": null
+    }
+  ],
+  "verdict": "valid"
+}

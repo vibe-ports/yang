@@ -122,28 +122,38 @@ func lypathNew(a *storeArgs) (Path, *Diag) {
 	if msg != "" {
 		return fail("syntax", msg)
 	}
-	if a.impl != nil { // implement all prefixes (lys_compile_expr_implement)
-		for i, tk := range e.Toks {
-			if tk != lyxp.TokNameTest && tk != lyxp.TokLiteral {
-				continue
-			}
-			tok := e.Src[e.Pos[i] : e.Pos[i]+e.Len[i]]
-			c := strings.IndexByte(tok, ':')
-			if c < 0 {
-				continue
-			}
-			if m := resolveModule(tok[:c], a.f, a.pc, a.ctx); m != nil {
-				if err := a.impl(m, true); err != nil {
-					return nil, errf("Failed to implement a module referenced by instance-identifier \"%s\".", a.lex)
-				}
-			}
-		}
+	if !implementPrefixes(a, e) {
+		return nil, errf("Failed to implement a module referenced by instance-identifier \"%s\".", a.lex)
 	}
 	p, msg := pathCompile(a, e)
 	if msg != "" {
 		return fail("semantic", msg)
 	}
 	return p, nil
+}
+
+// implementPrefixes ports lys_compile_expr_implement for LYPLG_TYPE_STORE_IMPLEMENT (a.impl set):
+// implements the module of every prefix in e; false when that fails.
+func implementPrefixes(a *storeArgs, e *lyxp.Expr) bool {
+	if a.impl == nil {
+		return true
+	}
+	for i, tk := range e.Toks {
+		if tk != lyxp.TokNameTest && tk != lyxp.TokLiteral {
+			continue
+		}
+		tok := e.Src[e.Pos[i] : e.Pos[i]+e.Len[i]]
+		c := strings.IndexByte(tok, ':')
+		if c < 0 {
+			continue
+		}
+		if m := resolveModule(tok[:c], a.f, a.pc, a.ctx); m != nil {
+			if err := a.impl(m, true); err != nil {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // leadingInt is the digit prefix C atoi reads.

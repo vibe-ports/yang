@@ -1,0 +1,16 @@
+module ty6 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:ty6";
+  prefix t6;
+
+  description "Targets of ietf-netconf-acm node-instance-identifier values for internal/types (#11).";
+
+  container c {
+    list l {
+      key "k";
+      leaf k { type string; }
+      leaf v { type string; }
+    }
+    leaf-list ll { type string; }
+  }
+}

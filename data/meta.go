@@ -80,7 +80,7 @@ func (lc *lydCtx) createMeta(parent *Node, list *[]*meta, mod *schema.Module, na
 	}
 	v, d := store(ant.Type, lex, f, h, pc, ctxNode)
 	if d != nil {
-		return lc.log.item(lnode, ctxNode, false, d.RC(), codeOf(d.Code), d.AppTag, d.Msg)
+		return lc.log.storeErr(lnode, ctxNode, d)
 	}
 	m := &meta{mod: mod, name: name, value: v}
 	*list = append(*list, m)
@@ -202,7 +202,7 @@ func (l *logger) storeMeta(parent *Node, mod *schema.Module, name, val string, c
 	}
 	v, d := types.Store(ant.Type, val, types.FormatJSON, types.HintData, types.ModuleNames{Set: l.set}, ctxNode)
 	if d != nil {
-		return nil, l.item(nil, ctxNode, false, d.RC(), codeOf(d.Code), d.AppTag, d.Msg) // ly_err_print
+		return nil, l.storeErr(nil, ctxNode, d) // ly_err_print
 	}
 	return &meta{mod: mod, name: name, value: v}, nil
 }
