@@ -132,7 +132,7 @@ func (t *Tree) upper(l []*Node, lo int, after func(*Node) bool) int {
 // Schema nodes are monotone in (module name at the top level, schema rank); every search relies
 // on it, so insertLast never breaks it: libyang appends after the last sibling whatever it is,
 // which only LYD_PARSE_ORDERED input that is not in schema order, or that has unknown nodes,
-// reaches (D-0058 candidate, design 07 §7).
+// reaches (D-0058).
 func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 	l := sib.list
 	if len(l) == 0 {

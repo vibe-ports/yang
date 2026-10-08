@@ -131,7 +131,7 @@ func (t *Tree) insertSibling(sibling, n *Node) error {
 // instance of the same schema node. Go keeps schema nodes in schema order and before opaque
 // ones, so a schema node after an opaque sibling goes after the last instance of its own run
 // (insertLastBySchema) and an opaque node after a schema sibling becomes the first opaque one
-// (libyang links them where asked; D-0058 candidate).
+// (libyang links them where asked; D-0058).
 func (t *Tree) insertAfter(sibling, n *Node) error {
 	switch {
 	case sibling == nil:

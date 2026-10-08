@@ -1,0 +1,24 @@
+module pv2-dummy {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-dummy";
+  prefix dm;
+
+  description
+    "Hand-written (this repo): the when of an absent mandatory node reads a node whose own when
+     stays unresolved (operational: a false when only warns), D-0055.";
+
+  container c {
+    leaf sel {
+      type string;
+    }
+    leaf w {
+      when "../sel = 'on'";
+      type string;
+    }
+    leaf m {
+      when "not(../w)";
+      mandatory true;
+      type string;
+    }
+  }
+}

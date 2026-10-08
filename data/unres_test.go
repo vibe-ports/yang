@@ -243,6 +243,17 @@ func TestDummyWhen(t *testing.T) {
 	if w, err := vc.dummyWhen(c, f.b); err != nil || w != nil {
 		t.Fatalf("true when: %v %v", w, err)
 	}
+	// D-0055: e's when reads b, whose own when is unresolved: ignored (check runs) under
+	// multi-error, LY_EINT otherwise; the dummy is unlinked either way.
+	vc, c, _ = f.build(t, ValidateOptions{MultiError: true}, f.b, "x")
+	if w, err := vc.dummyWhen(c, f.e); err != nil || w != nil || c.kids.len() != 1 {
+		t.Fatalf("multi-error: %v %v, %d children left", w, err, c.kids.len())
+	}
+	vc, c, _ = f.build(t, ValidateOptions{}, f.b, "x")
+	if w, err := vc.dummyWhen(c, f.e); err == nil || w != nil || c.kids.len() != 1 ||
+		vc.log.diags[len(vc.log.diags)-1].Err != "LY_EINT" {
+		t.Fatalf("single error: %v %v, %d children left", w, err, c.kids.len())
+	}
 }
 
 // TestXPathBudget: the cumulative step budget aborts with yang.ErrBudget (U-0042); cancellation

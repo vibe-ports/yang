@@ -32224,3 +32224,54 @@ fixtures:
       unknown: "skip"
     golden: golden/deref-xperr-leafref.json
 # END protocol-v2 deref-xperr
+# BEGIN protocol-v2 D-0055 D-0058
+  - id: protocol-v2/dummy-when-unresolved
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # D-0055: the when of absent mandatory m, not(../w), reads w, whose false when only warned (operational) and stays unresolved: the dummy-when evaluation is incomplete, under multi-error the when is ignored and m is reported (if evaluated, the when would be false and the check skipped)
+    rfc: ["RFC7950#7.21.5", "RFC7950#7.6.5"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-dummy"}]
+      format: "json"
+      data_type: "data-operational"
+      data: "{\"pv2-dummy:c\": {\"sel\": \"off\", \"w\": \"x\"}}"
+      unknown: "reject"
+    golden: golden/dummy-when-unresolved.json
+
+  - id: protocol-v2/ordered-schema-order
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # D-0058: LYD_PARSE_ORDERED appends every node last, so b before a stays in input order; the port places by schema
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"pv2-ordered:c\": {\"b\": \"y\", \"a\": \"x\"}}"
+      parse_options: ["ordered"]
+      unknown: "reject"
+    golden: golden/ordered-schema-order.json
+
+  - id: protocol-v2/ordered-opaque-between
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # D-0058: LYD_PARSE_ORDERED links a schema node after an opaque sibling; the port keeps opaque nodes last
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered"}]
+      format: "json"
+      data_type: "get"
+      data: "{\"pv2-ordered:c\": {\"a\": \"x\", \"zz\": \"u\", \"b\": \"y\"}}"
+      parse_options: ["ordered"]
+      unknown: "opaque"
+    golden: golden/ordered-opaque-between.json
+# END protocol-v2 D-0055 D-0058
