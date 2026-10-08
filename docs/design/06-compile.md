@@ -610,6 +610,15 @@ later `MaxNodes`, `MaxDepth`), next to the loader's `Options.MaxSearchDirs` and
   when dependencies (worklist). Bits: positions are not bounded; a value keeps its set bits
   sparse (no bitmap up to the highest position), so position 4294967295 costs nothing.
 - XPath: `xpath.MaxTokens` per expression; atomize gets the same step budget as `Eval`.
+- XPath steps per `Load` (U-0036, default `xpath.DefaultMaxSteps` = 10 000 000), measured on real
+  models (#14, `TestXPathStepsRealModels`). The test loads all 30 supported modules of
+  conformance/corpus/public-ietf with all features into one context: NETCONF/RESTCONF, interfaces,
+  routing with OSPF, ACL, alarms, NTP, VRRP, hardware and more.
+  - The largest Load (ietf-vrrp) takes 22 397 steps, 0.22 % of the default. All Loads together
+    take 97 431 steps, still under 1 % of one Load's budget.
+  - The default is therefore about 450× above the largest real Load, so it stays. The test fails
+    if a Load passes 1 % of the default, so a regression in atomize cost shows up.
+  - openconfig-sized sets are out of v1 (U-0025) and were not measured.
 
 ## 6. Conformance
 
