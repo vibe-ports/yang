@@ -1,0 +1,10 @@
+module c {
+  namespace urn:tests:c;
+  prefix c;yang-version 1.1;
+  import a {
+    prefix a;
+  }
+  deviation /a:foo2 {
+    deviate not-supported;
+  }
+}

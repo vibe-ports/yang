@@ -1,0 +1,17 @@
+fixtures:
+# BEGIN ut-context review follow-up (PR #58): all_implemented observed through data
+  - id: ut-context/all-implemented-data
+    dir: ut-context
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_context.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_all_implemented:1020 rfc [] = libyang context option; with LY_CTX_ALL_IMPLEMENTED the imported base-mod is implemented, so its top-level leaf val is data
+    rfc: []
+    areas: [schema, validation]
+    request:
+      op: data
+      searchdirs: [all-implemented]
+      context_options: [all_implemented]
+      modules: [{"name": "top"}]
+      format: json
+      data_type: config
+      data: "{\"base-mod:val\": \"x\"}"
+      unknown: reject
+    golden: golden/all-implemented-data.json

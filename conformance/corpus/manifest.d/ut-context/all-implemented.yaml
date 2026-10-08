@@ -1,0 +1,12 @@
+fixtures:
+  - id: ut-context/all-implemented
+    dir: ut-context
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_context.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_all_implemented:1020 rfc [] = libyang context option; LY_CTX_ALL_IMPLEMENTED: imports are implemented too (tests/modules/yang, byte-identical)
+    rfc: []
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [all-implemented]
+      context_options: [all_implemented]
+      modules: [{"name": "top"}]
+    golden: golden/all-implemented.json

@@ -1,0 +1,12 @@
+module b {
+  namespace urn:tests:b;
+  prefix b;yang-version 1.1;
+  import a {
+    prefix a;
+  }
+  augment /a:cont {
+    leaf augleaf {
+      type uint16;
+    }
+  }
+}

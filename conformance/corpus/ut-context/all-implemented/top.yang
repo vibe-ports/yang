@@ -1,0 +1,7 @@
+module top {
+  yang-version 1.1;
+  namespace "urn:example:top";
+  prefix t;
+  import base-mod { prefix bm; }
+  identity derived { base bm:base-type; }
+}

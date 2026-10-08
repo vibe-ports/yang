@@ -1,0 +1,7 @@
+module base-mod {
+  yang-version 1.1;
+  namespace "urn:example:base-mod";
+  prefix bm;
+  identity base-type;
+  leaf val { type string; }
+}

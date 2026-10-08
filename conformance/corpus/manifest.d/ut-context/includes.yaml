@@ -1,0 +1,11 @@
+fixtures:
+  - id: ut-context/includes
+    dir: ut-context
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_context.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_includes:365 module b with submodules c and d (tests/modules/yang, byte-identical)
+    rfc: ["RFC7950#7.1.6"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [includes]
+      modules: [{"name": "b"}]
+    golden: golden/includes.json

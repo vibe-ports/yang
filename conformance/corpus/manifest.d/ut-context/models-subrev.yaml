@@ -1,0 +1,12 @@
+fixtures:
+# BEGIN ut-context (tests/utests/basic/test_context.c, issue #41)
+  - id: ut-context/models-subrev
+    dir: ut-context
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_context.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_models:266 include without revision-date selects the newest submodule revision (a leaf per revision added to make the choice visible)
+    rfc: ["RFC7950#7.1.6"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [models-subrev]
+      modules: [{"name": "a"}]
+    golden: golden/models-subrev.json

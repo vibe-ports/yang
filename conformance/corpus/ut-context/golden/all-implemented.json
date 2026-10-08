@@ -1,0 +1,27 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module top {\n  namespace \"urn:example:top\";\n  prefix t;\n\n  identity derived {\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [
+        {
+          "bases": [
+            "base-mod:base-type"
+          ],
+          "derived": [],
+          "name": "top:derived"
+        }
+      ],
+      "name": "top",
+      "revision": null,
+      "schema_tree": []
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

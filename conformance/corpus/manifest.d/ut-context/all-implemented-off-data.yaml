@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-context/all-implemented-off-data
+    dir: ut-context
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_context.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # control for all-implemented-data: without the option base-mod is only imported and val is unknown data
+    rfc: ["RFC7950#5.6.5"]
+    areas: [schema, validation]
+    request:
+      op: data
+      searchdirs: [all-implemented]
+      modules: [{"name": "top"}]
+      format: json
+      data_type: config
+      data: "{\"base-mod:val\": \"x\"}"
+      unknown: reject
+    golden: golden/all-implemented-off-data.json

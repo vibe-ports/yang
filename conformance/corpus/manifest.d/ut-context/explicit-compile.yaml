@@ -1,0 +1,11 @@
+fixtures:
+  - id: ut-context/explicit-compile
+    dir: ut-context
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_context.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_explicit_compile:930 modules only: incremental augment and deviation of a target with a feature (lyoracle compiles after every module, so the deferred compilation the C test asserts is not covered; see utests-inventory.md)
+    rfc: ["RFC7950#7.17", "RFC7950#7.20.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [explicit-compile]
+      modules: [{"name": "a", "features": ["f1"]}, {"name": "b"}, {"name": "c"}]
+    golden: golden/explicit-compile.json

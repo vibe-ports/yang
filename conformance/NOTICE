@@ -62,6 +62,8 @@ with the libyang file, tag/commit and license):
   - conformance/corpus/ut-validation-ops/ (tests/utests/data/test_validation.c, operations and defaults).
   - conformance/corpus/ut-parser/ (tests/utests/data/test_parser_json.c, test_parser_xml.c).
   - conformance/corpus/ut-compare/ (tests/utests/data/test_tree_data.c, test_compare).
+  - conformance/corpus/ut-context/ (tests/utests/basic/test_context.c; includes/ and all-implemented/
+    are byte-identical copies from tests/modules/yang).
   - conformance/corpus/ietf/ietf-netconf-nmda@2019-01-07.yang and ietf-origin@2018-02-14.yang
     (tests/modules/yang, byte-identical; IETF modules under the Simplified BSD License stated in
     each file).
