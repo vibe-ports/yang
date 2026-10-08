@@ -44,18 +44,17 @@ func (Yang) SkippedFields(op string) []string {
 
 // ctxOptions are the oracle's context_options this engine supports.
 var ctxOptions = map[string]func(*yang.Options){
-	"all_implemented":     func(o *yang.Options) { o.AllImplemented = true },
-	"no_yanglibrary":      func(o *yang.Options) { o.NoYangLibrary = true },
-	"enable_imp_features": func(o *yang.Options) { o.EnableImportFeatures = true },
-	"compile_obsolete":    func(o *yang.Options) { o.CompileObsolete = true },
-	"ref_implemented":     func(o *yang.Options) { o.RefImplemented = true },
-	"leafref_extended":    func(o *yang.Options) { o.LeafrefExtended = true },
+	"all_implemented":      func(o *yang.Options) { o.AllImplemented = true },
+	"no_yanglibrary":       func(o *yang.Options) { o.NoYangLibrary = true },
+	"enable_imp_features":  func(o *yang.Options) { o.EnableImportFeatures = true },
+	"compile_obsolete":     func(o *yang.Options) { o.CompileObsolete = true },
+	"ref_implemented":      func(o *yang.Options) { o.RefImplemented = true },
+	"leafref_extended":     func(o *yang.Options) { o.LeafrefExtended = true },
+	"builtin_plugins_only": func(o *yang.Options) { o.BuiltinPluginsOnly = true },
 }
 
 // ctxUnsupported are the oracle's context_options this engine refuses, with the reason.
-var ctxUnsupported = map[string]string{
-	"builtin_plugins_only": "(the port always applies its ietf-yang-types / ietf-inet-types handlers)",
-}
+var ctxUnsupported = map[string]string{}
 
 // Run implements Engine for ops "schema" (lyoracle.c op_schema/build_ctx/dump_schema), "data"
 // (op_data, datastore data types) and "sequence" (op_sequence over the public data API).

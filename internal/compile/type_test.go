@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/vibe-ports/yang/internal/parser"
@@ -86,7 +87,7 @@ func TestTypedefPluginReuse(t *testing.T) {
 		module, name string
 	}{{a, "ietf-inet-types", "ipv4-address-link-local"}, {b, "ietf-inet-types", "ipv4-address-no-zone"},
 		{d, "ietf-yang-types", "mac-address"}} {
-		if x.typ.Typedef != x.name || x.typ.From == nil || types.Plugin(x.typ) != types.TypedefPlugin(x.module, "", x.name) {
+		if x.typ.Typedef != x.name || x.typ.From == nil || types.Plugin(x.typ) != types.TypedefPlugin(x.typ.TypedefModule, x.name) || x.typ.TypedefModule.Name != x.module {
 			t.Errorf("%s: compiled as %q, want its own type", x.name, x.typ.Typedef)
 		}
 	}
@@ -343,5 +344,32 @@ func TestValuePrefixes(t *testing.T) {
 	got := valuePrefixes("/a:x[b:k = current()/../c:y]/1d:z/é:w")
 	if strings.Join(got, ",") != "a,b,c,d,é" {
 		t.Errorf("%v", got)
+	}
+}
+
+// TestBuiltinPluginsOnly: under LY_CTX_BUILTIN_PLUGINS_ONLY no typedef has a handler, so Store
+// applies the built-in one of the base type (snapshot copies included).
+func TestBuiltinPluginsOnly(t *testing.T) {
+	dir := fstest.MapFS{"p.yang": {Data: []byte(`module p {namespace urn:p;prefix p;
+		import ietf-inet-types {prefix inet;} leaf l {type inet:ipv4-address-no-zone;}}`)}}
+	for _, only := range []bool{false, true} {
+		c, _, err := NewContext(Options{BuiltinPluginsOnly: only}, dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		m, _, err := c.Load("p", "", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		typ := m.Schema.Top[0].Type
+		var styp *schema.Type
+		for _, sm := range c.Snapshot().Modules {
+			if sm.Name == "p" {
+				styp = sm.Top[0].Type
+			}
+		}
+		if (types.Plugin(typ) == nil) != only || (types.Plugin(styp) == nil) != only {
+			t.Errorf("only=%v: plugin %v, snapshot %v", only, types.Plugin(typ), types.Plugin(styp))
+		}
 	}
 }

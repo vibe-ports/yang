@@ -23,12 +23,16 @@ type pluginKey struct{ module, revision, name string }
 var plugins = map[pluginKey]*plugin{}
 
 // TypedefPlugin returns the identity of the handler record registered for the typedef name of
-// module@revision, nil if there is none (lyplg_type_plugin_find). Compile compares identities for
+// module m, nil if there is none or m.BuiltinPluginsOnly (lyplg_type_plugin_find; lyplg_init does
+// not register those records under LY_CTX_BUILTIN_PLUGINS_ONLY). Compile compares identities for
 // libyang's typedef reuse rule: a typedef with its own record is never merged into its base type.
 // As libyang's records are per name, so are identities, also where names share one handler
 // (hex-string, phys-address, …).
-func TypedefPlugin(module, revision, name string) any {
-	if k, _ := lookup(module, revision, name); k != nil {
+func TypedefPlugin(m *schema.Module, name string) any {
+	if m.BuiltinPluginsOnly {
+		return nil
+	}
+	if k, _ := lookup(m.Name, m.Revision, name); k != nil {
 		return *k
 	}
 	return nil
@@ -57,7 +61,7 @@ func lookup(module, revision, name string) (*pluginKey, *plugin) {
 // lys_compile_type inheriting the plugin of the base typedef.
 func find(t *schema.Type) (*pluginKey, *plugin) {
 	for c := t; c != nil; c = c.From {
-		if m := c.TypedefModule; m != nil && c.Typedef != "" {
+		if m := c.TypedefModule; m != nil && c.Typedef != "" && !m.BuiltinPluginsOnly {
 			if k, p := lookup(m.Name, m.Revision, c.Typedef); p != nil {
 				return k, p
 			}

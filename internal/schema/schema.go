@@ -99,6 +99,9 @@ type Module struct {
 	// add to other modules live in their targets, never here.
 	Top  []*Node
 	Exts []*ExtInstance // extension instances of the module statement
+	// BuiltinPluginsOnly is the context's LY_CTX_BUILTIN_PLUGINS_ONLY: the typedefs of this module
+	// have no type-specific handler (ietf-inet-types, ietf-yang-types, …) and store as their base.
+	BuiltinPluginsOnly bool
 }
 
 // Extension is a compiled extension definition (lysc_ext).

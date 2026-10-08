@@ -35,6 +35,11 @@ type Options struct {
 	RefImplemented bool
 	// LeafrefExtended allows deref() in leafref paths (LY_CTX_LEAFREF_EXTENDED).
 	LeafrefExtended bool
+	// BuiltinPluginsOnly limits the context to the built-in type handlers
+	// (LY_CTX_BUILTIN_PLUGINS_ONLY): typedefs of ietf-inet-types, ietf-yang-types and the
+	// other modules with their own handler store as their base type, with only its
+	// restrictions and canonical form.
+	BuiltinPluginsOnly bool
 	// Loader supplies modules and submodules not found otherwise (libyang's
 	// import callback): the YANG text of module@revision, or of its submodule
 	// when submodule is not empty; ok false when it has none. It is called
@@ -94,7 +99,8 @@ func NewContext(opts Options, dirs ...fs.FS) (*Context, []Diagnostic, error) {
 	c, diags, err := compile.NewContext(compile.Options{AllImplemented: opts.AllImplemented,
 		NoYangLibrary: opts.NoYangLibrary, DisableSearchdirs: opts.DisableSearchdirs,
 		PreferSearchdirs: opts.PreferSearchdirs, EnableImportFeatures: opts.EnableImportFeatures, CompileObsolete: opts.CompileObsolete,
-		RefImplemented: opts.RefImplemented, LeafrefExtended: opts.LeafrefExtended, Loader: opts.Loader, MaxSearchDirs: opts.MaxSearchDirs,
+		RefImplemented: opts.RefImplemented, LeafrefExtended: opts.LeafrefExtended,
+		BuiltinPluginsOnly: opts.BuiltinPluginsOnly, Loader: opts.Loader, MaxSearchDirs: opts.MaxSearchDirs,
 		Parse: parser.Budget(opts.ParseBudget)}, dirs...)
 	if err != nil {
 		return nil, convert(diags), err

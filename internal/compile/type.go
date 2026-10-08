@@ -204,7 +204,7 @@ func (c *typeCtx) compileType(sc *scope, st schema.Status, name string, tp *pars
 			base = ct
 			continue
 		}
-		plugin := types.TypedefPlugin(it.pm.mod.Name, it.pm.mod.Revision, it.tpdf.Name)
+		plugin := types.TypedefPlugin(it.pm.mod, it.tpdf.Name)
 		if plugin == nil && base != nil {
 			plugin = types.Plugin(base)
 		}

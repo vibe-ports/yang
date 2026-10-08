@@ -28,7 +28,8 @@ func (c *Context) Snapshot() *schema.Set {
 		}
 		o := m.Schema
 		n := &schema.Module{Name: o.Name, Revision: o.Revision, Namespace: o.Namespace, Prefix: o.Prefix,
-			Version: o.Version, Implemented: m.Implemented, Submodules: slices.Clone(o.Submodules)}
+			Version: o.Version, Implemented: m.Implemented, Submodules: slices.Clone(o.Submodules),
+			BuiltinPluginsOnly: o.BuiltinPluginsOnly}
 		cp.mods[o] = n
 		for _, id := range o.Identities {
 			cp.idents[id] = &schema.Identity{Name: id.Name, Module: n, Status: id.Status, Disabled: id.Disabled}

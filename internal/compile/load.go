@@ -54,6 +54,9 @@ type Options struct {
 	RefImplemented bool
 	// LeafrefExtended allows deref() in leafref paths (LY_CTX_LEAFREF_EXTENDED).
 	LeafrefExtended bool
+	// BuiltinPluginsOnly disables the type plugins of non-built-in typedefs
+	// (LY_CTX_BUILTIN_PLUGINS_ONLY): every module gets schema.Module.BuiltinPluginsOnly.
+	BuiltinPluginsOnly bool
 }
 
 // Level is a diagnostic's log level.
@@ -213,7 +216,7 @@ func NewContext(opts Options, dirs ...fs.FS) (*Context, []Diagnostic, error) {
 		opts.Parse.MaxBytes = 64 << 20 // the parser's default
 	}
 	c := &Context{opts: Options{AllImplemented: opts.AllImplemented, EnableImportFeatures: opts.EnableImportFeatures,
-		MaxSearchDirs: opts.MaxSearchDirs, Parse: opts.Parse},
+		MaxSearchDirs: opts.MaxSearchDirs, Parse: opts.Parse, BuiltinPluginsOnly: opts.BuiltinPluginsOnly},
 		dirs: []fs.FS{models.Libyang}, phase: "parse", typeCache: newTypeCache()}
 	n := len(internalModules)
 	if opts.NoYangLibrary {
@@ -547,7 +550,7 @@ func (c *Context) parseModule(src []byte, d loadData) (m *Module, err error) {
 	m.main = m
 	m.Revision = c.lastRevision(pm.Revisions, "module", m.Name)
 	m.Schema = &schema.Module{Name: m.Name, Revision: m.Revision, Namespace: m.Namespace, Prefix: pm.Prefix,
-		Version: schema.Version1}
+		Version: schema.Version1, BuiltinPluginsOnly: c.opts.BuiltinPluginsOnly}
 	if pm.Version == "1.1" {
 		m.Schema.Version = schema.Version11
 	}
