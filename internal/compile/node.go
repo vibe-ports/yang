@@ -758,7 +758,8 @@ func (w *nodeCtx) leaf(pn *parser.Node, n *schema.Node) error {
 		w.addDflt(n)
 		w.fl[n] |= flSetDflt
 	}
-	if w.fl[n]&flSetDflt != 0 && n.Mandatory {
+	n.DefaultSet = w.fl[n]&flSetDflt != 0
+	if n.DefaultSet && n.Mandatory {
 		return w.errf(ly.Semantics, "Invalid mandatory leaf with a default value.")
 	}
 	if n.Mandatory {
@@ -798,7 +799,8 @@ func (w *nodeCtx) leafList(pn *parser.Node, n *schema.Node) error {
 	if w.fl[n]&flConfigR != 0 {
 		n.UserOrdered = true // state leaf-list is always ordered-by user
 	}
-	if w.fl[n]&flSetDflt != 0 && n.Mandatory {
+	n.DefaultSet = w.fl[n]&flSetDflt != 0
+	if n.DefaultSet && n.Mandatory {
 		return w.errf(ly.Semantics, "The default statement is present on leaf-list with a nonzero min-elements.")
 	}
 	if n.Max != 0 && n.Min > n.Max {
@@ -1170,6 +1172,7 @@ func (w *nodeCtx) choiceDflt(dflt string, pm *pmod, ch *schema.Node) error {
 		return w.errf(ly.Semantics, "Invalid mandatory choice with a default case.")
 	}
 	ch.DefaultCase, ch.DefaultCaseName = cs, cs.Name
+	cs.DefaultSet = true
 	return nil
 }
 

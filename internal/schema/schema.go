@@ -237,7 +237,10 @@ type Node struct {
 	Uniques                     [][]*Node      // list: the leaves of each unique statement, in statement order
 	Min, Max                    uint32         // min-elements, max-elements; Max 0 = unbounded
 	Default                     []DefaultValue // leaf, leaf-list
-	DefaultCase                 *Node          // choice: the default case, nil if none or removed as disabled
+	// DefaultSet is LYS_SET_DFLT: a leaf or leaf-list with its own (or refined) default
+	// statement, not one taken from its type; the default case of a choice.
+	DefaultSet  bool
+	DefaultCase *Node // choice: the default case, nil if none or removed as disabled
 	// DefaultCaseName is the name of a choice's default case, kept when the case itself was
 	// removed as disabled: libyang still dumps that name (D-0070). Never a node to follow.
 	DefaultCaseName string
@@ -251,6 +254,12 @@ type Node struct {
 
 // Keyless reports whether n is a list without keys (libyang LYS_KEYLESS).
 func (n *Node) Keyless() bool { return n.Kind == List && n.Keys == nil }
+
+// IsDupInstList is lysc_is_dup_inst_list: a keyless list or a state leaf-list, whose instances
+// may be equal.
+func (n *Node) IsDupInstList() bool {
+	return n.Kind == List && n.Keyless() || n.Kind == LeafList && !n.Config
+}
 
 // Child returns the data child of module mod with the name, looking through choice and case
 // like libyang lys_find_child. mod nil means n.Module.

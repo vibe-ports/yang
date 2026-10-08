@@ -299,6 +299,18 @@ func (n *Node) UserOrdered() bool { return n.n.UserOrdered }
 // Keys yields the keys of a list in key order.
 func (n *Node) Keys() iter.Seq[*Node] { return nodes(n.n.Keys) }
 
+// IsKey is lysc_is_key: n is a key leaf of its list.
+func (n *Node) IsKey() bool { return n.n.Kind == schema.Leaf && n.n.IsKey() }
+
+// IsDupInstList is lysc_is_dup_inst_list: a keyless list or a state leaf-list, whose data
+// instances may be equal (they are not identified by keys or values).
+func (n *Node) IsDupInstList() bool { return n.n.IsDupInstList() }
+
+// DefaultSet is LYS_SET_DFLT: a leaf or leaf-list whose default comes from its own (or a refined)
+// default statement rather than its type, or the default case of a choice. Defaults yields the
+// values either way.
+func (n *Node) DefaultSet() bool { return n.n.DefaultSet }
+
 // MinElements is min-elements of a list or leaf-list.
 func (n *Node) MinElements() uint32 { return n.n.Min }
 

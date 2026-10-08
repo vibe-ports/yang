@@ -188,7 +188,7 @@ func (t *Tree) schemaIndex(s *siblings, sn *schema.Node) int {
 // isDupInstList is lysc_is_dup_inst_list: keyless lists and state leaf-lists may have equal
 // instances.
 func isDupInstList(s *schema.Node) bool {
-	return s != nil && (s.Kind == schema.List && s.Keyless() || s.Kind == schema.LeafList && !s.Config)
+	return s != nil && s.IsDupInstList()
 }
 
 // findFirst is lyd_find_sibling_first. With a children hash table: the first record of the

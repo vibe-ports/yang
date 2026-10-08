@@ -295,7 +295,10 @@ func nodeJSON(n *yang.SchemaNode) map[string]any {
 	}
 	if k == yang.KindList {
 		keys := []any{}
-		for c := range n.Keys() {
+		for c := range n.Children() { // lyoracle.c: the leading children that lysc_is_key
+			if !c.IsKey() {
+				break
+			}
 			keys = append(keys, c.Name())
 		}
 		o["keys"] = keys
