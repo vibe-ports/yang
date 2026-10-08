@@ -27,7 +27,7 @@ type extPlugin struct {
 const metadataID = "ly2 metadata"
 
 // extPlugins are the ported built-in plugins (plugins.c: plugins_metadata, plugins_nacm,
-// plugins_yangdata); the
+// plugins_yangdata, plugins_structure); the
 // unported ones fail the load (unsupportedPlugins). Set in init: the callbacks look plugins up.
 var extPlugins []extPlugin
 
@@ -45,6 +45,7 @@ func init() {
 		{"ietf-netconf-acm", "2012-02-22", "default-deny-all", "ly2 NACM", nacmParse, nacm},
 		{"ietf-netconf-acm", "2018-02-14", "default-deny-all", "ly2 NACM", nacmParse, nacm},
 		{"ietf-restconf", "2017-01-26", "yang-data", schema.PluginYangData, yangDataParse, yangDataCompile},
+		{"ietf-yang-structure-ext", "2020-06-17", "structure", schema.PluginStructure, structureParse, structureCompile},
 	}
 }
 

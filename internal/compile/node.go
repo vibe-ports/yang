@@ -421,6 +421,7 @@ func (w *nodeCtx) config(n *schema.Node) error {
 	}
 	w.fl[n] = f
 	n.Config = f&flConfigW != 0
+	n.ConfigUnset = f&flConfig == 0 && w.ext != nil
 	if n.Parent != nil && w.fl[n.Parent]&flConfigR != 0 && f&flConfigW != 0 {
 		return w.errf(ly.Semantics, "Configuration node cannot be child of any state data node.")
 	}

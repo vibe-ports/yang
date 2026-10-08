@@ -1,0 +1,12 @@
+fixtures:
+# BEGIN ext structure xpath config (issue #34 review)
+  - id: ext/structure-xpath-config
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # structure nodes have no config flag: a config-true context reaches their children (only LYS_CONFIG_R is filtered), and a structure node's context gets the plain root
+    rfc: ["RFC8791#4", "RFC7950#7.5.3"]
+    areas: [schema, xpath]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ext-structure-xpath-config"}]
+    golden: golden/ext-structure-xpath-config.json

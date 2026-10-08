@@ -1,0 +1,203 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ext-structure-xpath-config {\n  namespace \"urn:vibe-ports:yang:conformance:ext-structure-xpath-config\";\n  prefix p;\n\n  ietf-yang-structure-ext:structure \"struct\" {\n    container n1 {\n      status current;\n      leaf l {\n        type uint32;\n        status current;\n      }\n    }\n    container n2 {\n      must \"/p:top/p:t\";\n      status current;\n      leaf s {\n        type string;\n        status current;\n      }\n    }\n  }\n\n  container top {\n    config true;\n    status current;\n    leaf t {\n      type string;\n      must \"/p:n1/p:l\";\n      config true;\n      status current;\n    }\n  }\n}\n",
+      "diagnostics": [],
+      "ext_trees": [
+        {
+          "argument": "struct",
+          "module": "ietf-yang-structure-ext",
+          "name": "structure",
+          "schema_tree": [
+            {
+              "config": true,
+              "defaults": null,
+              "extensions": null,
+              "keys": null,
+              "mandatory": false,
+              "max_elements": null,
+              "min_elements": null,
+              "module": "ext-structure-xpath-config",
+              "musts": null,
+              "nodetype": "container",
+              "ordered_by": null,
+              "path": "/ext-structure-xpath-config:struct",
+              "presence": false,
+              "status": null,
+              "type": null,
+              "when": null
+            },
+            {
+              "config": null,
+              "defaults": null,
+              "extensions": null,
+              "keys": null,
+              "mandatory": false,
+              "max_elements": null,
+              "min_elements": null,
+              "module": "ext-structure-xpath-config",
+              "musts": null,
+              "nodetype": "container",
+              "ordered_by": null,
+              "path": "/ext-structure-xpath-config:struct/n1",
+              "presence": false,
+              "status": "current",
+              "type": null,
+              "when": null
+            },
+            {
+              "config": null,
+              "defaults": null,
+              "extensions": null,
+              "keys": null,
+              "mandatory": false,
+              "max_elements": null,
+              "min_elements": null,
+              "module": "ext-structure-xpath-config",
+              "musts": null,
+              "nodetype": "leaf",
+              "ordered_by": null,
+              "path": "/ext-structure-xpath-config:struct/n1/l",
+              "presence": null,
+              "status": "current",
+              "type": {
+                "base": "uint32",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              },
+              "when": null
+            },
+            {
+              "config": null,
+              "defaults": null,
+              "extensions": null,
+              "keys": null,
+              "mandatory": false,
+              "max_elements": null,
+              "min_elements": null,
+              "module": "ext-structure-xpath-config",
+              "musts": [
+                {
+                  "apptag": null,
+                  "expr": "/p:top/p:t",
+                  "message": null
+                }
+              ],
+              "nodetype": "container",
+              "ordered_by": null,
+              "path": "/ext-structure-xpath-config:struct/n2",
+              "presence": false,
+              "status": "current",
+              "type": null,
+              "when": null
+            },
+            {
+              "config": null,
+              "defaults": null,
+              "extensions": null,
+              "keys": null,
+              "mandatory": false,
+              "max_elements": null,
+              "min_elements": null,
+              "module": "ext-structure-xpath-config",
+              "musts": null,
+              "nodetype": "leaf",
+              "ordered_by": null,
+              "path": "/ext-structure-xpath-config:struct/n2/s",
+              "presence": null,
+              "status": "current",
+              "type": {
+                "base": "string",
+                "bases": null,
+                "bits": null,
+                "enums": null,
+                "fraction_digits": null,
+                "leafref": null,
+                "length": null,
+                "patterns": null,
+                "range": null,
+                "typedefs": null,
+                "union": null
+              },
+              "when": null
+            }
+          ]
+        }
+      ],
+      "features": [],
+      "identities": [],
+      "name": "ext-structure-xpath-config",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ext-structure-xpath-config",
+          "musts": null,
+          "nodetype": "container",
+          "ordered_by": null,
+          "path": "/ext-structure-xpath-config:top",
+          "presence": false,
+          "status": "current",
+          "type": null,
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "ext-structure-xpath-config",
+          "musts": [
+            {
+              "apptag": null,
+              "expr": "/p:n1/p:l",
+              "message": null
+            }
+          ],
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/ext-structure-xpath-config:top/t",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": null,
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

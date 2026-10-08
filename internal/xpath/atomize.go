@@ -72,16 +72,15 @@ func (e *Expr) Atomize(ac AtomizeContext) ([]Atom, error) {
 }
 
 // rootType is the schema branch of lyxp_get_root_type. libyang tests
-// LYS_CONFIG_W, so a node with neither config flag (extension-instance data)
-// gets the plain root there; Config() cannot tell such a node apart and it
-// gets the config root here. No such node reaches Atomize while extension
-// plugins are unsupported (design 06 §2.17).
+// LYS_CONFIG_W, so a node with neither config flag (extension-instance data:
+// Config() true, ConfigUnset() true) gets the plain root.
 func rootType(ctx SchemaNode, rules bool) ntype {
 	op := ctx
 	for op != nil && !isOp(op) {
 		op = op.Parent()
 	}
-	if op == nil && rules && (ctx == nil || ctx.Config()) {
+	u, ok := ctx.(interface{ ConfigUnset() bool })
+	if op == nil && rules && (ctx == nil || ctx.Config() && (!ok || !u.ConfigUnset())) {
 		return nRootConfig // only config data, "because we said so" (libyang)
 	}
 	return nRoot
@@ -588,9 +587,30 @@ func inCtx(use *AtomUse, axis string) bool {
 	return true
 }
 
-// moveto is moveto_scnode (and xpath_pi_node for nameTest{}). Nodes of
-// extension instances (lys_find_child_node_ext) are not searched: their
-// plugins are unsupported (design 06 §2.17).
+// ExtSchemaInfo is the optional SchemaInfo part that finds schema nodes in
+// extension instances.
+type ExtSchemaInfo interface {
+	// ExtNode is lys_find_child_node_ext for XPath: the node named name of
+	// module that an extension instance of parent (nil: the root), else of
+	// the module, provides; nil when none does.
+	ExtNode(parent SchemaNode, module, name string) SchemaNode
+}
+
+func (a *atomizer) extNode(x scnode, nt nameTest) SchemaNode {
+	ei, ok := a.info.(ExtSchemaInfo)
+	if !ok {
+		return nil
+	}
+	var parent SchemaNode
+	if x.t == nElem {
+		parent = x.n
+	}
+	return ei.ExtNode(parent, nt.mod, nt.name)
+}
+
+// moveto is moveto_scnode (and xpath_pi_node for nameTest{}). When it finds
+// nothing for a name, a node of an extension instance is looked up
+// (lys_find_child_node_ext).
 func (a *atomizer) moveto(s *scset, axis string, nt nameTest) error {
 	orig := len(s.n)
 	a.charge(orig)
@@ -610,6 +630,15 @@ func (a *atomizer) moveto(s *scset, axis string, nt nameTest) error {
 			if idx := s.insert(it.n, it.t, axis); idx < orig && idx > i {
 				s.n[idx].use = atomNewCtx
 				temp = true
+			}
+		}
+		// only consider extension nodes after no local ones were found
+		if len(s.n) == orig && nt.mod != "" && nt.name != "" && (axis == "descendant" || axis == "child") {
+			if x := a.extNode(s.n[i], nt); x != nil {
+				if idx := s.insert(x, nElem, axis); idx < orig && idx > i {
+					s.n[idx].use = atomNewCtx
+					temp = true
+				}
 			}
 		}
 	}

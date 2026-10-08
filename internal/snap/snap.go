@@ -171,6 +171,9 @@ func (m *Module) Identities() iter.Seq[*Identity] {
 	}
 }
 
+// Extensions yields the extension instances of the module statement.
+func (m *Module) Extensions() iter.Seq[*Extension] { return exts(m.m.Exts) }
+
 // Top yields the top-level data nodes, then the rpcs, then the notifications.
 func (m *Module) Top() iter.Seq[*Node] { return nodes(m.m.Top) }
 
@@ -219,6 +222,15 @@ func (e *Extension) Name() string { return e.e.Name }
 
 // Argument is the instance's argument, "" if it has none.
 func (e *Extension) Argument() string { return e.e.Argument }
+
+// Tree yields the top-level nodes of the schema tree the instance holds: the container of a
+// structure (also when it is empty), the nodes of a yang-data; nothing for other extensions.
+func (e *Extension) Tree() iter.Seq[*Node] {
+	if e.e.Root != nil {
+		return nodes([]*schema.Node{e.e.Root})
+	}
+	return nodes(e.e.Nodes)
+}
 
 // --- Node ---
 
@@ -287,8 +299,13 @@ func (n *Node) Child(module, name string) *Node {
 // Path is the schema path libyang logs (lysc_path LYSC_PATH_LOG).
 func (n *Node) Path() string { return n.n.LogPath() }
 
-// Config reports config true; false also for nodes inside an rpc, action or notification.
+// Config reports config true; false also for nodes inside an rpc, action or notification, and
+// for nodes without a config flag (see HasConfig).
 func (n *Node) Config() bool { return n.n.Config }
+
+// HasConfig is false for a node of an extension instance's tree compiled without a config flag
+// (yang-data, structure): its Config is false, but it is not state data either.
+func (n *Node) HasConfig() bool { return !n.n.ConfigUnset }
 
 // Mandatory is the mandatory flag (min-elements > 0, propagated to non-presence containers).
 func (n *Node) Mandatory() bool { return n.n.Mandatory }
@@ -363,6 +380,10 @@ func (n *Node) Units() string {
 
 // Status is the node's status.
 func (n *Node) Status() Status { return Status(n.n.Status) }
+
+// HasStatus is false only for the container of a structure extension instance written without
+// a status statement (it has no status flag; Status reports current); true for every other node.
+func (n *Node) HasStatus() bool { return !n.n.StatusUnset }
 
 // Musts yields the must restrictions.
 func (n *Node) Musts() iter.Seq[*Must] {

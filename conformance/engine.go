@@ -26,15 +26,13 @@ type FieldSkipper interface {
 type Yang struct{}
 
 // SkippedFields implements FieldSkipper: the YANG printer of compiled modules is not ported;
-// the compiled subtrees of extension instances (ext_trees: yang-data, structure) are not dumped
-// yet (#33/#34 un-skip them);
 // the typed dump of data trees compares path, schema, kind, flags and canonical value, but not
 // the details package data does not export (value types, union members, metadata, anydata
 // values, opaque names and hints).
 func (Yang) SkippedFields(op string) []string {
 	switch op {
 	case "schema":
-		return []string{"compiled", "ext_trees"}
+		return []string{"compiled"}
 	case "data", "diff":
 		return typedSkipped("typed")
 	case "sequence":
@@ -216,9 +214,9 @@ func opt(s string) any {
 	return s
 }
 
-// dumpSchema is lyoracle.c dump_schema: schema_tree, identities and features of mod.
+// dumpSchema is lyoracle.c dump_schema: schema_tree, identities, features and ext_trees of mod.
 func dumpSchema(m map[string]any, s *yang.Schema, mod *yang.Module) {
-	tree := []any{}
+	var tree []any
 	var dfs func(n *yang.SchemaNode)
 	dfs = func(n *yang.SchemaNode) { // lysc_module_dfs_full: node, actions, notifications, children
 		tree = append(tree, nodeJSON(n))
@@ -232,10 +230,34 @@ func dumpSchema(m map[string]any, s *yang.Schema, mod *yang.Module) {
 			dfs(c)
 		}
 	}
+	tree = []any{}
 	for n := range mod.Top() {
 		dfs(n)
 	}
 	m["schema_tree"] = tree
+	// ext_trees: the schema trees of the module's extension instances, omitted when none has one
+	var extTrees []any
+	for e := range mod.Extensions() {
+		tree = []any{}
+		for n := range e.Tree() {
+			empty := true
+			for range n.Children() {
+				empty = false
+				break
+			}
+			if e.Name() == "structure" && e.Module() == "ietf-yang-structure-ext" && empty {
+				continue // the oracle walks the data-node storage: an empty structure has none
+			}
+			dfs(n)
+		}
+		if len(tree) > 0 {
+			extTrees = append(extTrees, map[string]any{"module": e.Module(), "name": e.Name(),
+				"argument": opt(e.Argument()), "schema_tree": tree})
+		}
+	}
+	if extTrees != nil {
+		m["ext_trees"] = extTrees
+	}
 	ids := []any{}
 	for id := range mod.Identities() {
 		bases, derived := []any{}, []any{}
@@ -282,8 +304,11 @@ func nodeJSON(n *yang.SchemaNode) map[string]any {
 			inOp = true
 		}
 	}
-	if !inOp {
+	if !inOp && n.HasConfig() {
 		o["config"] = n.Config()
+	}
+	if !n.HasStatus() {
+		o["status"] = nil
 	}
 	switch k {
 	case yang.KindLeaf, yang.KindLeafList, yang.KindList, yang.KindChoice, yang.KindAnyData, yang.KindAnyXML,

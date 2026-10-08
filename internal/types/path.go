@@ -43,7 +43,7 @@ type derefKey struct {
 // (lyxp.ParsePath with the leafref options) for the leaf or leaf-list ctxNode, resolving prefixes
 // through prefixes (the leafref's lysc_prefix array). output is LY_PATH_OPER_OUTPUT (the node is
 // in an output). Predicates are only checked, so segments carry none. The target is the last
-// segment. Nodes provided by extension instances are not found (extensions are unsupported).
+// segment. A name found nowhere else is looked up in extension instances (schema.FindExtNode).
 //
 // Return contract: logged are the errors libyang logs at error level for union members of a
 // deref() that it then skips; they are emitted whether or not the compile succeeds, in order, and
@@ -135,6 +135,14 @@ func (c *leafrefCompiler) snode(ctxNode *schema.Node, qname string, output bool)
 		return nil, fmt.Sprintf("Not implemented module \"%s\" in path.", mod.Name)
 	}
 	if n := findSNode(ctxNode, mod, name, output); n != nil {
+		return n, ""
+	}
+	// find a node in an extension (lys_find_child_node_ext); an unprefixed name checks no module
+	var pmod *schema.Module
+	if prefix != "" {
+		pmod = mod
+	}
+	if n, _ := schema.FindExtNode(ctxNode, mod, pmod, name, true); n != nil {
 		return n, ""
 	}
 	return nil, fmt.Sprintf("Not found node \"%s\" in path.", name)

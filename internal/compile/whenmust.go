@@ -411,8 +411,12 @@ func (s snode) Module() string    { return s.n.Module.Name }
 func (s snode) Namespace() string { return s.n.Module.Namespace }
 func (s snode) Path() string      { return s.n.LogPath() }
 
-// Config is false only for LYS_CONFIG_R: nodes inside operations have no config flag.
-func (s snode) Config() bool { return s.n.Config || noConfig(s.n) }
+// Config is false only for LYS_CONFIG_R: nodes inside operations and extension-instance trees
+// have no config flag.
+func (s snode) Config() bool { return s.n.Config || noConfig(s.n) || s.n.ConfigUnset }
+
+// ConfigUnset reports a node of an extension-instance tree without a config flag (xpath.rootType).
+func (s snode) ConfigUnset() bool { return s.n.ConfigUnset }
 
 func (s snode) Keys() []string {
 	var ks []string
@@ -567,6 +571,18 @@ func (si schemaInfo) TopLevel(module, name string) []xpath.SchemaNode {
 		}
 	}
 	return out
+}
+
+// ExtNode is lys_find_child_node_ext with the snode_xpath callbacks; the name's prefix is the
+// module's own name (moveto_scnode passes the JSON module name).
+func (si schemaInfo) ExtNode(parent xpath.SchemaNode, module, name string) xpath.SchemaNode {
+	mod := si.mod(module)
+	var sparent *schema.Node
+	if parent != nil {
+		sparent = unwrap(parent)
+	}
+	n, _ := schema.FindExtNode(sparent, mod, mod, name, true)
+	return wrap(n)
 }
 
 func (si schemaInfo) Modules() []string {

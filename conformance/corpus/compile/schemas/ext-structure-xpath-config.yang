@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module ext-structure-xpath-config {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:ext-structure-xpath-config";
+  prefix p;
+  import ietf-yang-structure-ext { prefix sx; }
+  container top {
+    leaf t { type string; must "/p:n1/p:l"; }
+  }
+  sx:structure struct {
+    container n1 { leaf l { type uint32; } }
+    container n2 {
+      must "/p:top/p:t";
+      leaf s { type string; }
+    }
+  }
+}

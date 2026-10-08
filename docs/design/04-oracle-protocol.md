@@ -63,8 +63,8 @@ compiled schema subtree (yang-data, structure): `[{"module": "<extension's modul
 "<extension>", "argument": "…", "schema_tree": [node objects as above]}]`, one per instance in
 `lysc_module.exts` order. The nodes are walked pre-order from the root of each data-def
 substatement storage of `lysc_ext_instance.substmts` (shared storages once), so a structure's
-virtual top-level container `/m:<argument>` comes first. The `yang` engine skips the field until
-the yang-data / structure plugins dump it (#33, #34).
+virtual top-level container `/m:<argument>` comes first. The `yang` engine dumps it through
+`Module.Extensions` and `Extension.Tree` (#34).
 
 ## 4. op `sequence` — stateful runs on one retained tree
 ```json

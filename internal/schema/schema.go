@@ -250,6 +250,11 @@ type Node struct {
 	Whens           []*When
 	Status          Status
 	Exts            []*ExtInstance
+	// ConfigUnset: compiled with neither config flag (LYS_COMPILE_NO_CONFIG inside an extension
+	// instance: yang-data, structure); Config is false, but the node is not state data either.
+	ConfigUnset bool
+	// StatusUnset: a node made by an extension plugin without a status (structure's container).
+	StatusUnset bool
 }
 
 // Keyless reports whether n is a list without keys (libyang LYS_KEYLESS).
