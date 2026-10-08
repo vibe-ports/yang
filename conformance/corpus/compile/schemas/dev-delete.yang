@@ -1,0 +1,22 @@
+module dev-delete {
+  yang-version 1.1;
+  namespace "urn:dev-delete";
+  prefix d;
+  import dev-amend-base { prefix b; }
+  deviation /b:c/b:l {
+    deviate delete {
+      units "m";
+      must ". != 'y'";
+      b:tag second;
+    }
+  }
+  deviation /b:c/b:lst {
+    deviate delete { unique "u"; }
+  }
+  deviation /b:c/b:words {
+    deviate delete { default "b"; }
+  }
+  deviation /b:c/b:ch {
+    deviate delete { default one; }
+  }
+}

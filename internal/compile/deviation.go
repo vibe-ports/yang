@@ -170,7 +170,9 @@ func (w *nodeCtx) applyDeviation(d *parser.Deviation, pm *pmod, t *devTarget) er
 		switch dv.Mod {
 		case "add":
 			err = w.deviateAdd(dv, t)
-		case "delete", "replace":
+		case "delete":
+			err = w.deviateDelete(dv, t)
+		case "replace":
 			return fmt.Errorf("%w: deviate %s of \"%s\" (U-0020)", ErrUnsupported, dv.Mod, d.Nodeid)
 		default:
 			return w.errf(ly.Other, "Internal error (schema_compile_amend.c:1681).") // LOGINT

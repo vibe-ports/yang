@@ -1,0 +1,8 @@
+module dev-delete-ext-missing {
+  namespace "urn:dev-delete-ext-missing";
+  prefix d;
+  import dev-amend-base { prefix b; }
+  deviation /b:c/b:l {
+    deviate delete { b:tag third; }
+  }
+}

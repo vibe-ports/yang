@@ -1,0 +1,11 @@
+module dev-io-base {
+  yang-version 1.1;
+  namespace "urn:dev-io-base";
+  prefix b;
+  rpc r {
+    input {
+      must "a != 'x'";
+      leaf a { type string; }
+    }
+  }
+}

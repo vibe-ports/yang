@@ -1,0 +1,8 @@
+module dev-delete-input-must {
+  namespace "urn:dev-delete-input-must";
+  prefix d;
+  import dev-io-base { prefix b; }
+  deviation /b:r/b:input {
+    deviate delete { must "a != 'x'"; }
+  }
+}
