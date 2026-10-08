@@ -69,7 +69,7 @@ budget is `MaxSteps` + `Ctx`; `Result.Steps` lets `data` keep a cumulative budge
    name test), the whens of the node and its choice/case ancestors are evaluated (context node = the
    dummy or its parent, per `When.ContextNode`), root kind from the schema node's config, then the
    dummy is unlinked; a false `when` waives the check. An unresolved `when` is ignored under
-   multi-error and `LY_EINT` otherwise (design 07 §7, candidate D-0055). The dummy is never visible to callers.
+   multi-error and `LY_EINT` otherwise (D-0055, candidate). The dummy is never visible to callers.
 4. **`when` context node** (RFC 7950 §7.21.5): under `augment` → the augment's target node if it is a
    data node, else its closest data-node ancestor; under `uses`/`choice`/`case` → the closest data-node
    ancestor of the statement's node; otherwise the node itself. Compile stores it as

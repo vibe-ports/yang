@@ -79,7 +79,7 @@ What the slice changed, and why:
   lookups go through it, as in libyang; XPath steps still scan (`xpath.ChildLookup` over it is [#16](https://github.com/vibe-ports/yang/issues/16)).
 - **Opaque nodes live in their own slice**, always after schema nodes; schema nodes stay in schema
   order even where libyang's `LYD_PARSE_ORDERED` or `lyd_insert_after` would place them after an
-  opaque sibling (design 07 §7, D-0058; not yet in deviations.md).
+  opaque sibling (D-0058, not mirrored).
 - **A list waits unlinked for its keys** (`parent == nil` while its children point to it), which is
   also why its error path starts at the list (design 07 §1.10).
 - **`WhenFalse` was missing** from the M0 flag list; it decides multi-error results (design 07 §2).
