@@ -1,0 +1,11 @@
+fixtures:
+  - id: ext/yang-data-dup-ident
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # the top level of a yang-data instance is its own identifier scope: a module node of the same name is no clash, two of its own nodes are
+    rfc: ["RFC8040#8", "RFC7950#6.2.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ietf-restconf"}, {"name": "ext-yang-data-dup"}]
+    golden: golden/ext-yang-data-dup.json

@@ -1,0 +1,45 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module ietf-restconf {\n  namespace \"urn:ietf:params:xml:ns:yang:ietf-restconf\";\n  prefix rc;\n\n  revision 2017-01-26;\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "ietf-restconf",
+      "revision": "2017-01-26",
+      "schema_tree": []
+    },
+    {
+      "accepted": false,
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Duplicate identifier \"/ext-yang-data-dup:x\" of data definition/RPC/action/notification statement.",
+          "phase": "compile",
+          "schema_path": "/ext-yang-data-dup:{ext-inst='rc:yang-data'}/t/ext-yang-data-dup:c/x/x",
+          "vecode": 2,
+          "vecode_name": "LYVE_SYNTAX_YANG"
+        }
+      ],
+      "name": "ext-yang-data-dup",
+      "phase": "compile",
+      "rc": {
+        "err": 4,
+        "name": "LY_EEXIST"
+      }
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "invalid"
+}

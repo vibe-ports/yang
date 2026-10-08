@@ -74,7 +74,6 @@ func (c *Context) resolveExts(p *pctx) error {
 // not ported: an instance makes the load fail (design 06 §2.17). The
 // revision "" matches any (lyplg_record_find).
 var unsupportedPlugins = []struct{ module, revision, name, id string }{
-	{"ietf-restconf", "2017-01-26", "yang-data", "U-0023"},
 	{"ietf-yang-structure-ext", "2020-06-17", "structure", "U-0023"},
 	{"ietf-yang-structure-ext", "2020-06-17", "augment-structure", "U-0023"},
 	{"ietf-yang-schema-mount", "2019-01-14", "mount-point", "U-0024"},

@@ -99,14 +99,16 @@ func TestDeviationNotSupported(t *testing.T) {
 }
 
 // TestUnsupportedExtensionPlugin: an instance of an unported plugin fails
-// the load (U-0023), a definition alone does not.
+// the load (U-0024), a definition alone does not.
 func TestUnsupportedExtensionPlugin(t *testing.T) {
 	dir := t.TempDir()
-	write(t, dir, "ietf-restconf@2017-01-26.yang", `module ietf-restconf { namespace "urn:ietf:params:xml:ns:yang:ietf-restconf";
-  prefix rc; revision 2017-01-26; extension yang-data { argument name; } }`)
-	write(t, dir, "yd.yang", `module yd { namespace urn:yd; prefix yd; import ietf-restconf { prefix rc; } rc:yang-data d; }`)
+	write(t, dir, "ietf-yang-schema-mount@2019-01-14.yang", `module ietf-yang-schema-mount {
+  namespace "urn:ietf:params:xml:ns:yang:ietf-yang-schema-mount";
+  prefix yangmnt; revision 2019-01-14; extension mount-point { argument label; } }`)
+	write(t, dir, "yd.yang", `module yd { namespace urn:yd; prefix yd; import ietf-yang-schema-mount { prefix mnt; }
+  container c { mnt:mount-point d; } }`)
 	c := newCtx(t, Options{}, dir)
-	if _, _, err := c.Load("ietf-restconf", "", nil); err != nil {
+	if _, _, err := c.Load("ietf-yang-schema-mount", "", nil); err != nil {
 		t.Fatal(err)
 	}
 	if _, _, err := c.Load("yd", "", nil); !errors.Is(err, ErrUnsupported) {
