@@ -115,3 +115,38 @@ compatibility mode is warranted (it would be opt-in, never default).
 - `TestErrors`: 39 invalid patterns → `ErrSyntax`, 6 → `ErrUnsupported`, all with a reason.
 - Unicode version, XSD 1.0 block-name coverage, set algebra, category partition.
 - `FuzzCompile`: 2 min / 9.7 M executions, no panic, every error typed.
+
+## Addendum (2026-10-08, #40): pattern completeness scan, D-0008 decision
+
+Two scans:
+
+- **Corpus**, enforced in CI by `TestCorpusPatterns` (`internal/xsdre/corpus_patterns_test.go`).
+  A pattern counts as accepted by libyang if it appears in a golden's compiled type
+  (`patterns[].expr`, the original text). It also counts if its module or submodule is reported
+  accepted by some golden of the same corpus set.
+  - Result: 1267 `.yang` files, of which 56 are invalid on purpose. libyang accepted 59 distinct
+    patterns, and `Compile` handles all of them except one.
+  - The exception is `\p{IsBasicLatinBogus}` (xsdre-blocks, D-0006), which is listed in the
+    test's deviation map with its id. A listed pattern that starts to compile fails the test, so
+    the list cannot go stale.
+- **Published IETF and IANA modules**, run on demand by `TestPublicModelPatterns`
+  (`XSDRE_SCAN=<dir>`).
+  - Input: every module in YangModels/yang `standard/ietf/RFC/` and `standard/iana/` at
+    `b5465a86cd2457352dcd18a42043e40f0bab65ab`.
+  - Result: 512 modules parsed and 79 distinct patterns, and `Compile` accepts all 79.
+  - Five modules do not parse: `ietf-netconf-acm@2012-02-22` (`"\*"`), `ietf-ipfix-psamp`
+    2012/2016 (`"\S"` in double quotes), and `ietf-template` (two copies, with an invalid
+    revision). libyang v5.8.6 refuses them with the same parser errors, which I checked with the
+    oracle on the first two.
+  - The common IETF types (`ietf-inet-types`, `ietf-yang-types`, RFC 6991/9911) were already
+    100 % in agreement (see `TestCases`).
+
+**Decision on D-0008 (maintainer):** strict XSD stays the default.
+- The scan shows no real model using the PCRE-only syntax `Compile` refuses (`a+?`, `(?:`, an
+  unescaped `{`, `a{,n}`, `\b`, `\$`).
+  - Every corpus pattern libyang accepts compiles, apart from the D-0006 case above.
+  - Every pattern in the 512 IETF and IANA modules compiles.
+- A PCRE-compatibility mode remains possible: an opt-in Context option, never the default. It is
+  recorded as future work in #73 and is out of scope for M2.
+- D-0008 stays a recorded deviation.
+- openconfig is out of v1 (U-0025), so this scan did not cover it.
