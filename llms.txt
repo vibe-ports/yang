@@ -1,0 +1,39 @@
+# yang
+
+> A pure-Go YANG library (no cgo): an AI-assisted source port of libyang v5.8.6 that aims to give the same verdicts, diagnostics and output as libyang for the same schemas and data. Module `github.com/vibe-ports/yang`, v0: the API is unstable and may change in any release, so pin a version.
+
+- Install: `go get github.com/vibe-ports/yang`. Needs Go 1.26 or newer. No C toolchain, libyang or libpcre2.
+- Agreement with libyang is measured on a fixture corpus with a test-only C oracle; any difference not listed in the deviations registry is a bug.
+- Package `yang` loads and compiles schemas; package `data` (`github.com/vibe-ports/yang/data`) handles instance data.
+
+## Main API flow
+
+- Schema: `yang.NewContext(yang.Options{...}, fsys...)` (modules come from `fs.FS` directories) returns `(*Context, []Diagnostic, error)`; `ctx.Load(name, revision, features)` loads and compiles a module and returns `([]Diagnostic, error)`; `ctx.Schema()` returns an immutable `*yang.Schema` snapshot, safe to share between goroutines.
+- Data: `data.Parse(ctx, reader, data.FormatJSON | data.FormatXML, schema, data.ParseOptions{})` returns `(*Tree, []yang.Diagnostic, error)` and validates unless `ParseOptions.ParseOnly` is set; `tree.Validate(ctx, data.ValidateOptions{})` re-validates; `tree.PrintJSON(w, data.PrintOptions{})` and `tree.PrintXML(w, ...)` print, with-defaults modes are `data.WDExplicit`, `data.WDAll`, ...
+- Diagnostics: `yang.Diagnostic` carries libyang's LY_ERR and LY_VECODE names, data path, schema path and error-app-tag. A failed data call returns `*data.ValidationError` (field `Diags`).
+- Errors: `errors.Is(err, yang.ErrUnsupported)` means input the port does not handle yet; `errors.Is(err, yang.ErrBudget)` means a resource limit was hit (`yang.ParseBudget`, `data.Budget`).
+
+## Status
+
+- [README status table](https://github.com/vibe-ports/yang/blob/main/README.md#status): what is supported, partial and unsupported (for example `deviation` statements, anydata, RPC/action/notification data, full diff and yang-library are unsupported today). Read it before assuming a libyang feature exists.
+
+## Behaviour differences
+
+- [Deviations registry](https://github.com/vibe-ports/yang/blob/main/conformance/deviations.md): D-* entries are intentional differences from libyang (where libyang contradicts the RFC, crashes or depends on the host; "(candidate)" means libyang is mirrored for now); the "Known libyang behaviour (mirrored)" section lists libyang quirks the port copies. U-* entries are unsupported features of this port: a U-* limit means the port refuses the input (usually `ErrUnsupported`), not that libyang differs.
+
+## Docs
+
+- [API reference: yang](https://pkg.go.dev/github.com/vibe-ports/yang): contexts, schema snapshots and handles
+- [API reference: data](https://pkg.go.dev/github.com/vibe-ports/yang/data): parse, validate, print, edit
+- [README](https://github.com/vibe-ports/yang/blob/main/README.md): status, install, runnable example with output
+- [Compatibility report](https://github.com/vibe-ports/yang/blob/main/README.md#how-compatibility-is-measured): how agreement with libyang is measured, current numbers
+- [Documentation index](https://github.com/vibe-ports/yang/blob/main/docs/README.md): designs, decisions, registries
+- [CONTRIBUTING](https://github.com/vibe-ports/yang/blob/main/CONTRIBUTING.md): setup, workflow, using an AI coding agent
+- [SECURITY](https://github.com/vibe-ports/yang/blob/main/SECURITY.md): report vulnerabilities privately
+- [AGENTS.md](https://github.com/vibe-ports/yang/blob/main/AGENTS.md): rules for every coding agent and human contributor
+
+## Optional
+
+- [Design notes](https://github.com/vibe-ports/yang/blob/main/docs/README.md#design-notes): value model, data nodes, XPath, compile, data
+- [Port map](https://github.com/vibe-ports/yang/blob/main/docs/port-map.md): every libyang function mapped to its Go symbol and status
+- [PLAN.md](https://github.com/vibe-ports/yang/blob/main/PLAN.md): scope, architecture, milestones

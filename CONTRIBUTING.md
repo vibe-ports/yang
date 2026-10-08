@@ -56,6 +56,19 @@ DEV_PLATFORM=linux/amd64 ./dev make oracle-golden   # only ever generate goldens
    (`TZ=UTC git commit`), no AI trailers.
 6. Open a PR from your fork to `main` and fill in the template checklist.
 
+## Using an AI coding agent
+
+Agents follow [AGENTS.md](AGENTS.md), the same rules as humans: provenance headers, port-map rows,
+oracle fixtures as proof, the deviations registry, append-only manifest, no AI trailers.
+
+- Start from issues labelled `good first issue`, `help wanted` or `up-for-grabs`. Each names the
+  libyang functions to port and the fixtures that prove it.
+- Comment on the issue to take it. Outsiders don't use `scripts/claim`.
+- Run `./dev make ci` before opening the PR (`DEV_PLATFORM=linux/amd64` for oracle work).
+- The maintainer reviews and merges the PR as for any contributor.
+- Disclosing AI assistance is fine; the [README](README.md) already says the port is AI-assisted.
+- The private-data and secrets checks below still apply.
+
 ## Review and merge
 
 The maintainer manages review and merge. A PR from a fork gets the same CI as any other (it may

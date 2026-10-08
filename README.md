@@ -187,6 +187,7 @@ instances.
 
 Documentation index: [docs/README.md](docs/README.md). Design notes: [docs/design](docs/design).
 Plan and milestones: [PLAN.md](PLAN.md).
+Machine-readable summary for LLMs and agents: [llms.txt](llms.txt).
 
 ## Contributing
 
