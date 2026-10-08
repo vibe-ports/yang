@@ -25,7 +25,7 @@ type Module struct {
 	Revisions             []*Revision
 	Extensions            []*Node // Argument holds the argument name
 	Features, Identities  []*Node
-	Deviations            []*Stmt // kept generic until deviations are compiled (M2)
+	Deviations            []*Deviation
 }
 
 // Import is an import statement.
@@ -151,7 +151,7 @@ func Build(s *Stmt) (*Module, error) {
 		case "identity":
 			m.Identities = append(m.Identities, b.child(c))
 		case "deviation":
-			m.Deviations = append(m.Deviations, c)
+			m.Deviations = append(m.Deviations, b.deviation(c))
 		}
 	}
 	return m, nil

@@ -55,7 +55,7 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | parser_yang.c | `parse_yangversion`, `parse_config`, `parse_mandatory`, `parse_status`, `parse_orderedby`, `parse_type_reqinstance`, `parse_type_pattern_modifier`, `parse_yinelement`, `parse_minelements`, `parse_maxelements`, `parse_type_fracdigits` | `checker.arg` | ported | internal/parser build_test, oracle_test | yang-version takes effect when reached |
 | parser_yang.c | `parse_type_enum_value_pos` | `enumValue` | ported | internal/parser build_test, oracle_test | strtoll/strtoull semantics |
 | parser_yang.c | `parse_type_enum` | `checker.arg` (CHECK_UNIQUENESS) | ported | internal/parser build_test, oracle_test | |
-| parser_yang.c | `parse_deviate` | `deviateAllows`, `checker.child` | partial | internal/parser build_test, oracle_test | deviations kept as `Stmt` until M2 |
+| parser_yang.c | `parse_deviate` (and the records of `parse_deviation`: lysp_deviation, lysp_deviate_add/_del/_rpl) | `deviateAllows`, `checker.child`; `builder.deviation`, `builder.deviate` (`Deviation`, `Deviate`) | ported | internal/parser build_test, oracle_test, TestDeviationRecords, TestDeviationTyped | a deviate reads its substatements with the node builder |
 | parser_yang.c | `parse_type` (`path`: `ly_path_parse`) | `Type.Path` | partial | — | U-0005: syntax not checked until the XPath lexer (M1-3) |
 | parser_yang.c | `YANG_READ_SUBSTMT_NEXT_ITER` (exts arrays into `ext_inst`) | `checker.close`, `extOwner`, `appendOwned` | ported | internal/parser build_test, oracle_test | registration on close, libyang's resolution order |
 | tree_schema_common.c | `lys_check_date` | `checker.arg` | ported | internal/parser build_test, oracle_test | |
