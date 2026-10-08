@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -133,6 +134,52 @@ func TestDeviationTyped(t *testing.T) {
 	} {
 		if !c.ok {
 			t.Errorf("%s: wrong", c.name)
+		}
+	}
+}
+
+// TestDeviationNestedExts: extension instances below a deviate's must and replacement type are
+// in the exts array of the statement owning them (libyang's parse_restr, parse_type, parse_enum),
+// not in the deviate's.
+func TestDeviationNestedExts(t *testing.T) {
+	m, err := parseBuild(`module d {
+  yang-version 1.1; namespace "urn:d"; prefix d;
+  import t { prefix t; }
+  extension e { argument a; }
+  deviation /t:l {
+    deviate add { must "1" { error-message msg { d:e m; } d:e must; } units u { d:e units; } }
+    deviate replace {
+      type union {
+        type decimal64 { fraction-digits 2 { d:e fd; } range "1..2" { error-app-tag x { d:e tag; } } }
+        type enumeration { enum a { value 1 { d:e val; } } }
+        d:e type;
+      }
+    }
+  }
+}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	args := func(l []*Stmt) string {
+		var b []string
+		for _, e := range l {
+			b = append(b, e.Arg)
+		}
+		return strings.Join(b, " ")
+	}
+	add, rpl := m.Deviations[0].Deviates[0], m.Deviations[0].Deviates[1]
+	u := rpl.Type
+	for _, c := range []struct{ name, got, want string }{
+		{"must", args(add.Musts[0].Exts), "m must"},
+		{"add", args(add.Exts), "units"},
+		{"union", args(u.Exts), "type"},
+		{"decimal64", args(u.Types[0].Exts), "fd"},
+		{"range", args(u.Types[0].Range.Exts), "tag"},
+		{"enum", args(u.Types[1].Enums[0].Exts), "val"},
+		{"replace", args(rpl.Exts), ""},
+	} {
+		if c.got != c.want {
+			t.Errorf("%s: exts %q, want %q", c.name, c.got, c.want)
 		}
 	}
 }

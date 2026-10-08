@@ -87,11 +87,12 @@ type Type struct {
 	RequireInstance *bool
 	Bases           []string
 	Types           []*Type // union members
-	Exts            []*Stmt
+	Exts            []*Stmt // exts array (OwnedExts): also those of path, fraction-digits, base, ...
 	Stmt            *Stmt
 }
 
-// Restr is must, when, range, length or pattern.
+// Restr is must, when, range, length or pattern. Exts is its exts array (OwnedExts): the
+// instances in it and in its substatements.
 type Restr struct {
 	Arg, Description, Reference, ErrorMessage, ErrorAppTag string
 	Invert                                                 bool // pattern modifier invert-match
@@ -99,7 +100,7 @@ type Restr struct {
 	Stmt                                                   *Stmt
 }
 
-// Enum is an enum or a bit; Value holds value or position.
+// Enum is an enum or a bit; Value holds value or position. Exts is its exts array (OwnedExts).
 type Enum struct {
 	Name, Description, Reference, Status string
 	Value                                *int64
@@ -253,11 +254,10 @@ func (b *builder) node(n *Node, s *Stmt) {
 }
 
 func restriction(s *Stmt) *Restr {
-	r := &Restr{Arg: s.Arg, Stmt: s}
+	r := &Restr{Arg: s.Arg, Exts: OwnedExts(s), Stmt: s}
 	for _, c := range s.Subs {
 		switch {
 		case c.ExtPrefix != "":
-			r.Exts = append(r.Exts, c)
 		case c.Keyword == "description":
 			r.Description = c.Arg
 		case c.Keyword == "reference":
@@ -274,10 +274,9 @@ func restriction(s *Stmt) *Restr {
 }
 
 func (b *builder) typ(s *Stmt) *Type {
-	t := &Type{Name: s.Arg, Stmt: s}
+	t := &Type{Name: s.Arg, Exts: OwnedExts(s), Stmt: s}
 	for _, c := range s.Subs {
 		if c.ExtPrefix != "" {
-			t.Exts = append(t.Exts, c)
 			continue
 		}
 		switch c.Keyword {
@@ -291,11 +290,10 @@ func (b *builder) typ(s *Stmt) *Type {
 			v, _ := strconv.ParseUint(c.Arg, 10, 8)
 			t.FractionDigits = uint8(v)
 		case "enum", "bit":
-			e := &Enum{Name: c.Arg, Stmt: c}
+			e := &Enum{Name: c.Arg, Exts: OwnedExts(c), Stmt: c}
 			for _, d := range c.Subs {
 				switch {
 				case d.ExtPrefix != "":
-					e.Exts = append(e.Exts, d)
 				case d.Keyword == "description":
 					e.Description = d.Arg
 				case d.Keyword == "reference":
