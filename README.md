@@ -161,18 +161,20 @@ check finds no instance. Schema traversal is shown in the [`yang` package exampl
   may differ on purpose. Each case is listed with its RFC reference and fixture in
   [conformance/deviations.md](conformance/deviations.md); an unlisted difference is a bug.
 
-Report as of 2026-10-08 (commit 92fc7fc). Every CI run prints the current report in its job
+Report as of 2026-10-08 (commit 82db0b8). Every CI run prints the current report in its job
 summary, and `make compat-report` reproduces it locally:
 
 | | agree | agree (skipped fields) | differ | deviation | unsupported |
 |---|--:|--:|--:|--:|--:|
-| fixtures (1 876) | 595 | 894 | 0 | 16 | 371 |
+| fixtures (1 880) | 597 | 937 | 0 | 16 | 330 |
 
-Of the 371 unsupported fixtures, 197 are operations the report engine does not run yet: 146
-`xpath` (the XPath evaluator is compared with the oracle by its own tests in `internal/xpath`),
-46 `sequence` (edit and revalidate a retained tree) and 5 `diff`. The other 174 are inputs the
-port refuses (120 schema, 54 data), mainly modules with `deviation` statements (U-0020),
-`yang-data`/`structure` extension instances and anydata/anyxml instances.
+Of the 330 unsupported fixtures, 151 are operations the report engine does not run yet: 146
+`xpath` (the XPath evaluator is compared with the oracle by its own tests in `internal/xpath`)
+and 5 `diff`. 19 `sequence` fixtures (edit and revalidate a retained tree) use steps package
+`data` has no public API for (duplication, leafref links, `lyd_new_term` inserts) or contain
+anydata. The other 160 are inputs the port refuses (104 schema, 56 data), mainly modules with
+`deviation` statements (U-0020), `yang-data`/`structure` extension instances and anydata/anyxml
+instances.
 
 ## Packages
 
