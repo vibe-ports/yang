@@ -1,0 +1,6 @@
+module ver-llist-dflt-10 {
+  yang-version 1;
+  namespace "urn:ver:ver-llist-dflt-10";
+  prefix p;
+  leaf-list l { type string; default "x"; }
+}

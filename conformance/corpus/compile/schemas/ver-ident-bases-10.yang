@@ -1,0 +1,8 @@
+module ver-ident-bases-10 {
+  yang-version 1;
+  namespace "urn:ver:ver-ident-bases-10";
+  prefix p;
+  identity a;
+  identity b;
+  identity c { base a; base b; }
+}

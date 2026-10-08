@@ -1,0 +1,7 @@
+module ver-x-enum-restrict-11 {
+  yang-version 1.1;
+  namespace "urn:ver:ver-x-enum-restrict-11";
+  prefix p;
+  import ver-def-11 { prefix d; }
+  leaf l { type d:e { enum b; } }
+}

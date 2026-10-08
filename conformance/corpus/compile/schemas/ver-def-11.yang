@@ -1,0 +1,12 @@
+module ver-def-11 {
+  yang-version 1.1;
+  namespace "urn:ver:ver-def-11";
+  prefix p;
+  feature f;
+  typedef e { type enumeration { enum a; enum b; } }
+  typedef e-sub { type e { enum a; } }
+  grouping g-iffeat { leaf x { if-feature "not f"; type string; } }
+  grouping g-llist-empty { leaf-list y { type empty; } }
+  grouping g-llist-dflt { leaf-list z { type string; default "d"; } }
+  grouping g-llist { leaf-list w { type string; } }
+}

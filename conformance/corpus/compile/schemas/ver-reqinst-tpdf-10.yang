@@ -1,0 +1,8 @@
+module ver-reqinst-tpdf-10 {
+  yang-version 1;
+  namespace "urn:ver:ver-reqinst-tpdf-10";
+  prefix p;
+  typedef r { type leafref { path "/t"; require-instance false; } }
+  leaf t { type string; }
+  leaf l { type r; }
+}

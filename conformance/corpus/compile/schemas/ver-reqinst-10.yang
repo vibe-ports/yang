@@ -1,0 +1,7 @@
+module ver-reqinst-10 {
+  yang-version 1;
+  namespace "urn:ver:ver-reqinst-10";
+  prefix p;
+  leaf t { type string; }
+  leaf l { type leafref { path "../t"; require-instance false; } }
+}

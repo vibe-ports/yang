@@ -1,0 +1,7 @@
+module ver-x-enum-subtype-10 {
+  yang-version 1;
+  namespace "urn:ver:ver-x-enum-subtype-10";
+  prefix p;
+  import ver-def-11 { prefix d; }
+  leaf l { type d:e-sub; }
+}

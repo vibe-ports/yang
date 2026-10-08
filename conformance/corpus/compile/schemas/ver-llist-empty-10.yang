@@ -1,0 +1,6 @@
+module ver-llist-empty-10 {
+  yang-version 1;
+  namespace "urn:ver:ver-llist-empty-10";
+  prefix p;
+  leaf-list l { type empty; }
+}

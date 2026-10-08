@@ -634,6 +634,35 @@ otherwise negative; most are new and owned by stream F):
 | data `when` order (design 03 rule 5, op `sequence`) | — | when/order-a-after-b, when/order-b-after-a |
 | errors (§3) | — | errpath/uses, errpath/augment, errpath/refine, errpath/grouping, errpath/ext-inst, errpath/unres-node |
 
+**YANG 1.0 vs 1.1 gates (#42).** One `ver/<gate>-10` fixture (the module is `yang-version 1`) and
+one `ver/<gate>-11` fixture (`yang-version 1.1`) per gate, all in `compile/` (modules
+`schemas/ver-*.yang`). The `x-*` gates put the construct in the YANG 1.1 module `ver-def-11` and
+use it from the fixture's module, so they show whose version libyang checks. All agree.
+
+| gate (libyang v5.8.6) | fixtures | 1.0 | 1.1 |
+|---|---|---|---|
+| several `base` in identity (parser_yang.c:4383) | ver/ident-bases-{10,11} | invalid (parse) | valid |
+| several `base` in identityref (schema_compile.c:298) | ver/idref-bases-{10,11} | invalid | valid |
+| if-feature expression (schema_features.c:417) | ver/iffeat-expr-{10,11} | invalid | valid |
+| `if-feature` in enum / bit (parser_yang.c:2000) | ver/enum-iffeat-{10,11}, ver/bit-iffeat-{10,11} | invalid (parse) | valid |
+| restricted enumeration / bits (schema_compile_node.c:1249) | ver/enum-subtype-{10,11}, ver/bits-subtype-{10,11} | invalid | valid |
+| leafref `require-instance`, inline / in a typedef (schema_compile_node.c:1811) | ver/reqinst-{10,11}, ver/reqinst-tpdf-{10,11} | invalid | valid |
+| leaf-list of `empty` (schema_compile_node.c:2824) | ver/llist-empty-{10,11} | invalid | valid |
+| leaf-list `default` (parser_yang.c:2710; schema_compile_node.c:2916) | ver/llist-dflt-{10,11} | invalid (parse) | valid |
+| list key of `empty` (schema_compile_node.c:3293) | ver/key-empty-{10,11} | invalid | valid |
+| submodule includes a submodule the main module does not (tree_schema_common.c:1066) | ver/subinc-{10,11} | valid | invalid (parse) |
+| include in a submodule (parser_yang.c:4712) | ver/subwarn-{10,11} | valid | valid + warning |
+| if-feature expression in a 1.1 grouping | ver/x-iffeat-grp-{10,11} | valid | valid |
+| leaf-list of `empty` in a 1.1 grouping | ver/x-llist-empty-grp-{10,11} | valid | valid |
+| leaf-list `default` in a 1.1 grouping | ver/x-llist-dflt-grp-{10,11} | valid | valid |
+| 1.1 typedef restricting an enumeration, used by the module | ver/x-enum-subtype-{10,11} | invalid (the using module's version is checked) | valid |
+| the module restricts a 1.1 enumeration typedef | ver/x-enum-restrict-{10,11} | invalid | valid |
+| refine `default` of a 1.1 grouping's leaf-list (schema_compile_amend.c:921) | ver/x-refine-dflt-{10,11} | invalid | valid |
+
+The internal ietf-netconf statements that tree_schema.c:2310 adds (enum `if-feature` only for a
+1.1 ietf-netconf) are covered by public-ietf/ietf-netconf-{all,no}-features (#39; a 1.0 module).
+Deviation-reached version checks are out of scope (deviation fixtures, track A).
+
 libyang utests: `test_tree_schema_compile.c` (151 tier-B cases) maps by function: `test_module`,
 `test_submodule`, `test_name_collisions` → §1; `test_type_*`, `test_type_union`, `test_type_dflt`
 → 2.3–2.4, 2.12; `test_identity` → P0; `test_status` → 2.11; `test_node_*`, `test_action`,

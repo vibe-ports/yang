@@ -1,0 +1,7 @@
+module ver-bit-iffeat-10 {
+  yang-version 1;
+  namespace "urn:ver:ver-bit-iffeat-10";
+  prefix p;
+  feature f;
+  leaf l { type bits { bit a { if-feature f; } bit b; } }
+}

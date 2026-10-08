@@ -1,0 +1,7 @@
+module ver-enum-iffeat-10 {
+  yang-version 1;
+  namespace "urn:ver:ver-enum-iffeat-10";
+  prefix p;
+  feature f;
+  leaf l { type enumeration { enum a { if-feature f; } enum b; } }
+}

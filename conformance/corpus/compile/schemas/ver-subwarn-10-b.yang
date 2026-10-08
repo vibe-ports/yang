@@ -1,0 +1,5 @@
+submodule ver-subwarn-10-b {
+  yang-version 1;
+  belongs-to ver-subwarn-10 { prefix m; }
+  leaf b { type string; }
+}

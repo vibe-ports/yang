@@ -1,0 +1,7 @@
+module ver-iffeat-expr-10 {
+  yang-version 1;
+  namespace "urn:ver:ver-iffeat-expr-10";
+  prefix p;
+  feature f;
+  leaf l { if-feature "not f"; type string; }
+}

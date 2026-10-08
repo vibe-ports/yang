@@ -1,0 +1,7 @@
+module ver-bits-subtype-10 {
+  yang-version 1;
+  namespace "urn:ver:ver-bits-subtype-10";
+  prefix p;
+  typedef t { type bits { bit a; bit b; } }
+  leaf l { type t { bit b; } }
+}

@@ -32421,3 +32421,615 @@ fixtures:
       rfc: ["RFC7950#7.3.3"]
       deviation: null
 # END units
+
+# BEGIN ver (YANG 1.0 vs 1.1 gates, issue #42; the -10 module is YANG 1, the -11 module YANG 1.1;
+ # x-* use the YANG 1.1 module ver-def-11; table in docs/design/06-compile.md)
+  - id: ver/ident-bases-10
+    dir: compile
+    source: *own   # parser_yang.c:4383 identity with several base statements
+    rfc: ["RFC7950#7.18.2", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-ident-bases-10"}]
+    golden: golden/ver-ident-bases-10.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.18.2"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ver/ident-bases-11
+    dir: compile
+    source: *own   # parser_yang.c:4383 identity with several base statements
+    rfc: ["RFC7950#7.18.2", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-ident-bases-11"}]
+    golden: golden/ver-ident-bases-11.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.18.2"]
+      deviation: null
+
+  - id: ver/idref-bases-10
+    dir: compile
+    source: *own   # schema_compile.c:298 identityref with several bases
+    rfc: ["RFC7950#9.10.2", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-idref-bases-10"}]
+    golden: golden/ver-idref-bases-10.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.10.2"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ver/idref-bases-11
+    dir: compile
+    source: *own   # schema_compile.c:298 identityref with several bases
+    rfc: ["RFC7950#9.10.2", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-idref-bases-11"}]
+    golden: golden/ver-idref-bases-11.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.10.2"]
+      deviation: null
+
+  - id: ver/iffeat-expr-10
+    dir: compile
+    source: *own   # schema_features.c:417 if-feature expression
+    rfc: ["RFC7950#7.20.2", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-iffeat-expr-10"}]
+    golden: golden/ver-iffeat-expr-10.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.20.2"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ver/iffeat-expr-11
+    dir: compile
+    source: *own   # schema_features.c:417 if-feature expression
+    rfc: ["RFC7950#7.20.2", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-iffeat-expr-11"}]
+    golden: golden/ver-iffeat-expr-11.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.20.2"]
+      deviation: null
+
+  - id: ver/enum-iffeat-10
+    dir: compile
+    source: *own   # parser_yang.c:2000 if-feature in enum
+    rfc: ["RFC7950#9.6.4", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-enum-iffeat-10"}]
+    golden: golden/ver-enum-iffeat-10.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.6.4"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ver/enum-iffeat-11
+    dir: compile
+    source: *own   # parser_yang.c:2000 if-feature in enum
+    rfc: ["RFC7950#9.6.4", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-enum-iffeat-11"}]
+    golden: golden/ver-enum-iffeat-11.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null
+
+  - id: ver/bit-iffeat-10
+    dir: compile
+    source: *own   # parser_yang.c:2000 if-feature in bit
+    rfc: ["RFC7950#9.7.4", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-bit-iffeat-10"}]
+    golden: golden/ver-bit-iffeat-10.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.7.4"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ver/bit-iffeat-11
+    dir: compile
+    source: *own   # parser_yang.c:2000 if-feature in bit
+    rfc: ["RFC7950#9.7.4", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-bit-iffeat-11"}]
+    golden: golden/ver-bit-iffeat-11.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.7.4"]
+      deviation: null
+
+  - id: ver/enum-subtype-10
+    dir: compile
+    source: *own   # schema_compile_node.c:1249 restricted enumeration
+    rfc: ["RFC7950#9.6.4", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-enum-subtype-10"}]
+    golden: golden/ver-enum-subtype-10.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.6.4"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ver/enum-subtype-11
+    dir: compile
+    source: *own   # schema_compile_node.c:1249 restricted enumeration
+    rfc: ["RFC7950#9.6.4", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-enum-subtype-11"}]
+    golden: golden/ver-enum-subtype-11.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null
+
+  - id: ver/bits-subtype-10
+    dir: compile
+    source: *own   # schema_compile_node.c:1249 restricted bits
+    rfc: ["RFC7950#9.7.4", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-bits-subtype-10"}]
+    golden: golden/ver-bits-subtype-10.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.7.4"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ver/bits-subtype-11
+    dir: compile
+    source: *own   # schema_compile_node.c:1249 restricted bits
+    rfc: ["RFC7950#9.7.4", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-bits-subtype-11"}]
+    golden: golden/ver-bits-subtype-11.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.7.4"]
+      deviation: null
+
+  - id: ver/reqinst-10
+    dir: compile
+    source: *own   # schema_compile_node.c:1811 leafref require-instance
+    rfc: ["RFC7950#9.9.3", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-reqinst-10"}]
+    golden: golden/ver-reqinst-10.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9.3"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  - id: ver/reqinst-11
+    dir: compile
+    source: *own   # schema_compile_node.c:1811 leafref require-instance
+    rfc: ["RFC7950#9.9.3", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-reqinst-11"}]
+    golden: golden/ver-reqinst-11.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.9.3"]
+      deviation: null
+
+  - id: ver/reqinst-tpdf-10
+    dir: compile
+    source: *own   # schema_compile_node.c:1811 leafref typedef require-instance
+    rfc: ["RFC7950#9.9.3", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-reqinst-tpdf-10"}]
+    golden: golden/ver-reqinst-tpdf-10.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9.3"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  - id: ver/reqinst-tpdf-11
+    dir: compile
+    source: *own   # schema_compile_node.c:1811 leafref typedef require-instance
+    rfc: ["RFC7950#9.9.3", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-reqinst-tpdf-11"}]
+    golden: golden/ver-reqinst-tpdf-11.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.9.3"]
+      deviation: null
+
+  - id: ver/llist-empty-10
+    dir: compile
+    source: *own   # schema_compile_node.c:2824 leaf-list of type empty
+    rfc: ["RFC7950#7.7", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-llist-empty-10"}]
+    golden: golden/ver-llist-empty-10.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.7"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  - id: ver/llist-empty-11
+    dir: compile
+    source: *own   # schema_compile_node.c:2824 leaf-list of type empty
+    rfc: ["RFC7950#7.7", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-llist-empty-11"}]
+    golden: golden/ver-llist-empty-11.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.7"]
+      deviation: null
+
+  - id: ver/llist-dflt-10
+    dir: compile
+    source: *own   # parser_yang.c:2710 / schema_compile_node.c:2916 leaf-list default
+    rfc: ["RFC7950#7.7.4", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-llist-dflt-10"}]
+    golden: golden/ver-llist-dflt-10.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.7.4"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ver/llist-dflt-11
+    dir: compile
+    source: *own   # parser_yang.c:2710 / schema_compile_node.c:2916 leaf-list default
+    rfc: ["RFC7950#7.7.4", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-llist-dflt-11"}]
+    golden: golden/ver-llist-dflt-11.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.7.4"]
+      deviation: null
+
+  - id: ver/key-empty-10
+    dir: compile
+    source: *own   # schema_compile_node.c:3293 list key of type empty
+    rfc: ["RFC7950#7.8.2", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-key-empty-10"}]
+    golden: golden/ver-key-empty-10.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.8.2"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  - id: ver/key-empty-11
+    dir: compile
+    source: *own   # schema_compile_node.c:3293 list key of type empty
+    rfc: ["RFC7950#7.8.2", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-key-empty-11"}]
+    golden: golden/ver-key-empty-11.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.8.2"]
+      deviation: null
+
+  - id: ver/x-iffeat-grp-10
+    dir: compile
+    source: *own   # schema_features.c:417 if-feature expression in a 1.1 grouping used by the module
+    rfc: ["RFC7950#7.20.2", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-x-iffeat-grp-10"}]
+    golden: golden/ver-x-iffeat-grp-10.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.20.2"]
+      deviation: null
+
+  - id: ver/x-iffeat-grp-11
+    dir: compile
+    source: *own   # schema_features.c:417 if-feature expression in a 1.1 grouping used by the module
+    rfc: ["RFC7950#7.20.2", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-x-iffeat-grp-11"}]
+    golden: golden/ver-x-iffeat-grp-11.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.20.2"]
+      deviation: null
+
+  - id: ver/x-enum-subtype-10
+    dir: compile
+    source: *own   # schema_compile_node.c:1249 restricted enumeration typedef of a 1.1 module used by the module; no assert: libyang checks the using module's version, RFC 7950 does not say
+    rfc: ["RFC7950#9.6.4", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-x-enum-subtype-10"}]
+    golden: golden/ver-x-enum-subtype-10.json
+
+  - id: ver/x-enum-subtype-11
+    dir: compile
+    source: *own   # schema_compile_node.c:1249 restricted enumeration typedef of a 1.1 module used by the module; no assert: libyang checks the using module's version, RFC 7950 does not say
+    rfc: ["RFC7950#9.6.4", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-x-enum-subtype-11"}]
+    golden: golden/ver-x-enum-subtype-11.json
+
+  - id: ver/x-enum-restrict-10
+    dir: compile
+    source: *own   # schema_compile_node.c:1249 the module restricts a 1.1 module's enumeration typedef
+    rfc: ["RFC7950#9.6.4", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-x-enum-restrict-10"}]
+    golden: golden/ver-x-enum-restrict-10.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.6.4"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null
+
+  - id: ver/x-enum-restrict-11
+    dir: compile
+    source: *own   # schema_compile_node.c:1249 the module restricts a 1.1 module's enumeration typedef
+    rfc: ["RFC7950#9.6.4", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-x-enum-restrict-11"}]
+    golden: golden/ver-x-enum-restrict-11.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null
+
+  - id: ver/x-llist-empty-grp-10
+    dir: compile
+    source: *own   # schema_compile_node.c:2824 leaf-list of empty in a 1.1 grouping used by the module
+    rfc: ["RFC7950#7.7", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-x-llist-empty-grp-10"}]
+    golden: golden/ver-x-llist-empty-grp-10.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.7"]
+      deviation: null
+
+  - id: ver/x-llist-empty-grp-11
+    dir: compile
+    source: *own   # schema_compile_node.c:2824 leaf-list of empty in a 1.1 grouping used by the module
+    rfc: ["RFC7950#7.7", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-x-llist-empty-grp-11"}]
+    golden: golden/ver-x-llist-empty-grp-11.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.7"]
+      deviation: null
+
+  - id: ver/x-llist-dflt-grp-10
+    dir: compile
+    source: *own   # schema_compile_node.c:2916 leaf-list default in a 1.1 grouping used by the module
+    rfc: ["RFC7950#7.7.4", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-x-llist-dflt-grp-10"}]
+    golden: golden/ver-x-llist-dflt-grp-10.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.7.4"]
+      deviation: null
+
+  - id: ver/x-llist-dflt-grp-11
+    dir: compile
+    source: *own   # schema_compile_node.c:2916 leaf-list default in a 1.1 grouping used by the module
+    rfc: ["RFC7950#7.7.4", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-x-llist-dflt-grp-11"}]
+    golden: golden/ver-x-llist-dflt-grp-11.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.7.4"]
+      deviation: null
+
+  - id: ver/x-refine-dflt-10
+    dir: compile
+    source: *own   # schema_compile_amend.c:921 the module refines a default into a 1.1 grouping's leaf-list
+    rfc: ["RFC7950#7.13.2", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-x-refine-dflt-10"}]
+    golden: golden/ver-x-refine-dflt-10.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.13.2"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null
+
+  - id: ver/x-refine-dflt-11
+    dir: compile
+    source: *own   # schema_compile_amend.c:921 the module refines a default into a 1.1 grouping's leaf-list
+    rfc: ["RFC7950#7.13.2", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-x-refine-dflt-11"}]
+    golden: golden/ver-x-refine-dflt-11.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.13.2"]
+      deviation: null
+
+  - id: ver/subinc-10
+    dir: compile
+    source: *own   # tree_schema_common.c:1066 submodule includes a submodule the main module does not include
+    rfc: ["RFC7950#7.1.6", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-subinc-10"}]
+    golden: golden/ver-subinc-10.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.1.6"]
+      deviation: null
+
+  - id: ver/subinc-11
+    dir: compile
+    source: *own   # tree_schema_common.c:1066 submodule includes a submodule the main module does not include
+    rfc: ["RFC7950#7.1.6", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-subinc-11"}]
+    golden: golden/ver-subinc-11.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.1.6"]
+      diagnostics: [{"vecode_name": "LYVE_REFERENCE"}]
+      deviation: null
+
+  - id: ver/subwarn-10
+    dir: compile
+    source: *own   # parser_yang.c:4712 include in a 1.1 submodule (warning)
+    rfc: ["RFC7950#7.2.2", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-subwarn-10"}]
+    golden: golden/ver-subwarn-10.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.2.2"]
+      deviation: null
+
+  - id: ver/subwarn-11
+    dir: compile
+    source: *own   # parser_yang.c:4712 include in a 1.1 submodule (warning)
+    rfc: ["RFC7950#7.2.2", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-subwarn-11"}]
+    golden: golden/ver-subwarn-11.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.2.2"]
+      diagnostics: [{"level": "warning"}]
+      deviation: null
+
+# END ver

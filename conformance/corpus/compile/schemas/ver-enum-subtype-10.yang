@@ -1,0 +1,7 @@
+module ver-enum-subtype-10 {
+  yang-version 1;
+  namespace "urn:ver:ver-enum-subtype-10";
+  prefix p;
+  typedef e { type enumeration { enum a; enum b; } }
+  leaf l { type e { enum a; } }
+}

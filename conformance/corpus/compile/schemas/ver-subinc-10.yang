@@ -1,0 +1,6 @@
+module ver-subinc-10 {
+  yang-version 1;
+  namespace "urn:ver:ver-subinc-10";
+  prefix p;
+  include ver-subinc-10-a;
+}

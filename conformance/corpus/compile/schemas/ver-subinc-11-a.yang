@@ -1,0 +1,6 @@
+submodule ver-subinc-11-a {
+  yang-version 1.1;
+  belongs-to ver-subinc-11 { prefix m; }
+  include ver-subinc-11-b;
+  leaf a { type string; }
+}

@@ -1,0 +1,7 @@
+module ver-subwarn-11 {
+  yang-version 1.1;
+  namespace "urn:ver:ver-subwarn-11";
+  prefix p;
+  include ver-subwarn-11-a;
+  include ver-subwarn-11-b;
+}
