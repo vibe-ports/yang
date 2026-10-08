@@ -1,0 +1,7 @@
+module dev-minmax-two {
+  namespace "urn:dev-minmax-two";
+  prefix d;
+  import dev-minmax-base { prefix t; }
+  deviation /t:c/t:two { deviate add { min-elements 1; max-elements 5; } }
+  deviation /t:c/t:two { deviate add { min-elements 2; max-elements 4; } }
+}

@@ -33353,4 +33353,65 @@ fixtures:
       verdict: valid
       rfc: ["RFC7950#7.20.3.2"]
       deviation: null
+
+  - id: dev/add-minmax-two
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # two deviations adding min/max-elements to one leaf-list: the second overwrites the first (only the node's own statement makes them exist)
+    rfc: ["RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{name: dev-minmax-two}]
+    golden: golden/dev-add-minmax-two.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: dev/add-minmax-refined
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # deviate add of min-elements to a leaf-list whose min-elements a refine set
+    rfc: ["RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{name: dev-minmax-refined}]
+    golden: golden/dev-add-minmax-refined.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: dev/add-minmax-blocks
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # one deviation with two deviate add blocks of min-elements
+    rfc: ["RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{name: dev-minmax-blocks}]
+    golden: golden/dev-add-minmax-blocks.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3.2"]
+      deviation: null
+
+  - id: dev/add-input-ext
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # deviate add of an extension instance to an rpc input: libyang's copy of the input has no children
+    rfc: ["RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{name: dev-add-input-ext}, {name: dev-amend-base}]
+    golden: golden/dev-add-input-ext.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3.2"]
+      deviation: "D-0080"
+      waive: [schema_tree, compiled]
 # END dev #27

@@ -1,0 +1,8 @@
+module dev-add-input-ext {
+  namespace "urn:dev-add-input-ext";
+  prefix d;
+  import dev-amend-base { prefix b; }
+  deviation /b:r/b:input {
+    deviate add { b:mark; }
+  }
+}

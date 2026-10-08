@@ -111,7 +111,7 @@ func (w *nodeCtx) deviateAdd(d *parser.Deviate, t *devTarget) error {
 		if n.Kind != "leaf-list" && n.Kind != "list" {
 			return w.wrongNodetype(t, "add", "min-elements")
 		}
-		if n.MinElements != nil {
+		if t.orig.MinElements != nil { // LYS_SET_MIN: the node's own statement only
 			return exists("min-elements", fmtUint(*n.MinElements))
 		}
 		n.MinElements = d.MinElements
@@ -122,7 +122,7 @@ func (w *nodeCtx) deviateAdd(d *parser.Deviate, t *devTarget) error {
 		if n.Kind != "leaf-list" && n.Kind != "list" {
 			return w.wrongNodetype(t, "add", "max-elements")
 		}
-		if n.MaxElements != nil {
+		if t.orig.MaxElements != nil { // LYS_SET_MAX: the node's own statement only
 			v := "unbounded"
 			if *n.MaxElements != 0 {
 				v = fmtUint(*n.MaxElements)

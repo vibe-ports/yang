@@ -1,0 +1,11 @@
+module dev-minmax-base {
+  yang-version 1.1;
+  namespace "urn:dev-minmax-base";
+  prefix t;
+  grouping g { leaf-list gl { type string; } }
+  container c {
+    leaf-list two { type string; }
+    leaf-list blocks { type string; }
+    uses g { refine gl { min-elements 2; } }
+  }
+}

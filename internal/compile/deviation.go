@@ -133,7 +133,7 @@ func (w *nodeCtx) nodeDeviations(pn *parser.Node, parent *schema.Node, dev *pars
 			dev = &cp
 			w.pparent[dev] = w.parentOf(pn)
 		}
-		t := &devTarget{n: dev, pm: w.pm}
+		t := &devTarget{n: dev, orig: pn, pm: w.pm}
 		for u, dv := range d.devs {
 			if err := w.applyDeviation(dv, d.pms[u], t); err != nil {
 				return nil, false, err
@@ -143,10 +143,12 @@ func (w *nodeCtx) nodeDeviations(pn *parser.Node, parent *schema.Node, dev *pars
 	}
 }
 
-// devTarget is the parsed copy a deviation changes and the (sub)module its own text is written in.
+// devTarget is the parsed copy a deviation changes, the parsed node it copies (whose statements
+// set the parser flags, e.g. LYS_SET_MIN, that refines and deviations never set) and the
+// (sub)module its own text is written in.
 type devTarget struct {
-	n  *parser.Node
-	pm *pmod
+	n, orig *parser.Node
+	pm      *pmod
 }
 
 // applyDeviation is lys_apply_deviation: the deviates of d, written in pm, change the parsed

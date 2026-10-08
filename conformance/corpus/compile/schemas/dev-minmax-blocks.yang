@@ -1,0 +1,9 @@
+module dev-minmax-blocks {
+  namespace "urn:dev-minmax-blocks";
+  prefix d;
+  import dev-minmax-base { prefix t; }
+  deviation /t:c/t:blocks {
+    deviate add { min-elements 1; }
+    deviate add { min-elements 2; max-elements 3; }
+  }
+}

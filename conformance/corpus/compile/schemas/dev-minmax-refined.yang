@@ -1,0 +1,6 @@
+module dev-minmax-refined {
+  namespace "urn:dev-minmax-refined";
+  prefix d;
+  import dev-minmax-base { prefix t; }
+  deviation /t:c/t:gl { deviate add { min-elements 1; } }
+}
