@@ -428,8 +428,7 @@ type Enum struct {
 	Disabled bool
 }
 
-// Bit is one bits item. A value's bitmap has Position/8+1 bytes of the highest position, so
-// compile must bound positions by a resource budget (YANG allows up to 4294967295).
+// Bit is one bits item. Positions go up to 4294967295; values keep their set bits sparse.
 type Bit struct {
 	Name     string
 	Position uint32

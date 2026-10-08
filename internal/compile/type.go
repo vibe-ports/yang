@@ -528,10 +528,6 @@ func (c *typeCtx) compileEnums(items []*parser.Enum, pm *pmod, basetype schema.B
 	if base != nil && !c.pmod.v11() {
 		return verr(ly.SyntaxYang, "%s type can be subtyped only in YANG 1.1 modules.", word)
 	}
-	maxPos := c.budget.MaxBitPosition
-	if maxPos == 0 {
-		maxPos = DefaultMaxBitPosition
-	}
 	highestVal, curVal := int64(math.MinInt32), int64(0)
 	var highestPos, curPos uint32
 	for u, e := range items {
@@ -600,9 +596,6 @@ func (c *typeCtx) compileEnums(items []*parser.Enum, pm *pmod, basetype schema.B
 			if bBit != nil && curPos != bBit.Position {
 				return verr(ly.SyntaxYang, "Invalid bits - position of the item \"%s\" has changed from %d to %d in the derived type.",
 					e.Name, bBit.Position, curPos)
-			}
-			if curPos > maxPos {
-				return budgetErr("bit \"%s\" position %d is above %d", e.Name, curPos, maxPos)
 			}
 		}
 		enabled := true

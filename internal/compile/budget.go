@@ -14,9 +14,6 @@ type Budget struct {
 	// MaxUnionMembers caps the flattened members of one union (U-0030): each value is tried
 	// against every member.
 	MaxUnionMembers int
-	// MaxBitPosition caps bit positions (U-0031): a bits value carries a bitmap up to the
-	// highest position.
-	MaxBitPosition uint32
 	// MaxNodes caps the schema nodes compiled and uses instantiated per Load (U-0034, U-0037):
 	// grouping expansion is exponential in the schema text.
 	MaxNodes int
@@ -33,7 +30,6 @@ type Budget struct {
 const (
 	DefaultMaxTypes        = 1 << 20
 	DefaultMaxUnionMembers = 1 << 16
-	DefaultMaxBitPosition  = 1<<16 - 1
 	DefaultMaxNodes        = 1 << 20
 	DefaultMaxDepth        = 10000
 )

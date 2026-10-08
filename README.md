@@ -172,8 +172,7 @@ Of the 371 unsupported fixtures, 197 are operations the report engine does not r
 `xpath` (the XPath evaluator is compared with the oracle by its own tests in `internal/xpath`),
 46 `sequence` (edit and revalidate a retained tree) and 5 `diff`. The other 174 are inputs the
 port refuses (120 schema, 54 data), mainly modules with `deviation` statements (U-0020),
-`yang-data`/`structure` extension instances, anydata/anyxml instances and bit positions above
-the 65 535 budget (U-0031).
+`yang-data`/`structure` extension instances and anydata/anyxml instances.
 
 ## Packages
 

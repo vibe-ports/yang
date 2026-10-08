@@ -67,7 +67,7 @@ func FuzzLoad(f *testing.F) {
 		c, _, err := NewContext(Options{
 			MaxSearchDirs: 20,
 			Parse:         parser.Budget{MaxBytes: 64 << 10, MaxDepth: 50, MaxStmts: 5000, MaxArgLen: 4 << 10},
-			Budget: Budget{MaxTypes: 2000, MaxUnionMembers: 200, MaxBitPosition: 1000, MaxNodes: 2000,
+			Budget: Budget{MaxTypes: 2000, MaxUnionMembers: 200, MaxNodes: 2000,
 				MaxDepth: 50},
 		}, files)
 		if err != nil {

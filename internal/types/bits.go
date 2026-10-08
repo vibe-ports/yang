@@ -4,6 +4,7 @@
 package types
 
 import (
+	"math"
 	"strings"
 
 	"github.com/vibe-ports/yang/internal/schema"
@@ -14,12 +15,7 @@ func storeBits(a *storeArgs) (Value, *Diag) {
 	if _, d := checkHints(a.h, a.lex, a.t.Base); d != nil {
 		return Value{}, d
 	}
-	var last uint32
-	if n := len(a.t.Bits); n > 0 {
-		last = a.t.Bits[n-1].Position
-	}
-	bmap := make([]byte, last/8+1)
-	isSet := func(p uint32) bool { return bmap[p/8]&(1<<(p%8)) != 0 }
+	set := map[uint32]bool{} // the bitmap, kept sparse: positions go up to 4294967295
 	for i := 0; i < len(a.lex); {
 		for i < len(a.lex) && cIsSpace(a.lex[i]) {
 			i++
@@ -42,15 +38,15 @@ func storeBits(a *storeArgs) (Value, *Diag) {
 		if bit == nil {
 			return Value{}, errf("Invalid bit \"%s\".", name)
 		}
-		if isSet(bit.Position) {
+		if set[bit.Position] {
 			return Value{}, errf("Duplicate bit \"%s\".", bit.Name)
 		}
-		bmap[bit.Position/8] |= 1 << (bit.Position % 8)
+		set[bit.Position] = true
 	}
-	v := Value{typ: a.t, bmap: bmap}
+	v := Value{typ: a.t}
 	names := make([]string, 0, len(a.t.Bits))
 	for _, b := range a.t.Bits { // in position order
-		if isSet(b.Position) {
+		if set[b.Position] {
 			v.bits = append(v.bits, b)
 			names = append(names, b.Name)
 		}
@@ -60,4 +56,30 @@ func storeBits(a *storeArgs) (Value, *Diag) {
 		v.canon = a.lex
 	}
 	return v, nil
+}
+
+// compareBits ports lyplg_type_sort_bits, the memcmp of two little-endian bitmaps (byte i holds
+// positions 8i..8i+7, bit p%8 of it), over the set bits in position order: the first byte that
+// differs decides, a byte with no set bit being 0.
+func compareBits(a, b []*schema.Bit) int {
+	for i, j := 0, 0; i < len(a) || j < len(b); {
+		var ba, bb byte
+		idx := uint32(math.MaxUint32 / 8)
+		if i < len(a) {
+			idx = a[i].Position / 8
+		}
+		if j < len(b) {
+			idx = min(idx, b[j].Position/8)
+		}
+		for ; i < len(a) && a[i].Position/8 == idx; i++ {
+			ba |= 1 << (a[i].Position % 8)
+		}
+		for ; j < len(b) && b[j].Position/8 == idx; j++ {
+			bb |= 1 << (b[j].Position % 8)
+		}
+		if ba != bb {
+			return cmp3(ba < bb, true)
+		}
+	}
+	return 0
 }

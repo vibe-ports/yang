@@ -24,7 +24,7 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | src/plugins_types/empty.c | lyplg_type_store_empty | types.storeEmpty | ported | types/json-empty-string | |
 | src/plugins_types/enumeration.c | lyplg_type_store_enum, lyplg_type_sort_enum | types.storeEnum, types.Compare | ported | types/json-valid | |
 | src/plugins_types/bits.c | lyplg_type_store_bits, bits_str2bitmap, bits_bitmap2items, bits_items2canon | types.storeBits | ported | types/bits-* | |
-| src/plugins_types/bits.c | lyplg_type_compare_bits, lyplg_type_sort_bits | types.Equal, types.Compare | ported | — | bitmap in libyang's little-endian layout |
+| src/plugins_types/bits.c | lyplg_type_compare_bits, lyplg_type_sort_bits | types.Equal, types.Compare (compareBits) | ported | ut-bits-enum/bits-schema-yang-* | memcmp of libyang's little-endian bitmap emulated over the sparse set bits (D-0029) |
 | src/plugins_types/binary.c | lyplg_type_store_binary, lyplg_type_validate_value_binary | types.storeBinary | ported | types/binary-* | decoding via encoding/base64 after libyang's validation |
 | src/plugins_types/binary.c | binary_base64_newlines, binary_base64_validate | types.base64Newlines, types.base64Validate | ported | types/binary-padding | |
 | src/plugins_types/binary.c | lyplg_type_compare_binary, lyplg_type_sort_binary | types.Equal, types.Compare | ported | — | |
@@ -170,7 +170,7 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | src/schema_compile_node.c | lys_compile_type | compile.typeCtx.compileType | ported | types/unchanged-typedef-reuse, types/typedef-cycle, types/restriction-wrong-type, lref/typedef-prefix-direct, lref/union-typedef-direct, lref/union-typedef-via-derived-typedef, lref/typedef-across-loads | typedef chain, reuse rule SCN:2084, holder-count cache (typeCache); D-0040 |
 | src/schema_compile_node.c | lys_compile_type_, lys_new_type | compile.typeCtx.newType | partial | types/compile-errors | extension instances on types are not compiled yet (Type.Exts empty; nothing observable: the ported plugins reject or drop instances there at parse time); D-0038 |
 | src/schema_compile_node.c | lys_compile_type_union | compile.typeCtx.compileUnion | ported | types/union-nested-index | Budget.MaxTypes, Budget.MaxUnionMembers (U-0030) |
-| src/schema_compile_node.c | lys_compile_type_enums | compile.typeCtx.compileEnums | ported | types/compile-errors, types/unchanged-typedef-reuse | if-features through typeCtx.iff (lys_eval_iffeatures, C4b), resolved in the (sub)module writing the items; Budget.MaxBitPosition (U-0031) |
+| src/schema_compile_node.c | lys_compile_type_enums | compile.typeCtx.compileEnums | ported | types/compile-errors, types/unchanged-typedef-reuse | if-features through typeCtx.iff (lys_eval_iffeatures, C4b), resolved in the (sub)module writing the items |
 | src/schema_compile_node.c | lys_compile_type_patterns, lysc_patterns_dup | compile.typeCtx.newType (string) | partial | types/compile-errors | internal/xsdre (D-0039); openconfig regexp-posix: U-0025 (C4b) |
 | src/schema_compile_node.c | lys_compile_node_type | compile.typeCtx.compileNodeType, compile.nodeCtx.nodeType, compile.nodeCtx.compileLeafType | partial | types/*, compile/node-leaflist-empty-10 | the walk calls C5 through compileLeafType (scope chain, typedef default with its prefixes); leafref/bit-enum unres sets: C7 |
 | src/schema_compile.c | lys_compile_identity_bases (identityref) | compile.typeCtx.identityBases | partial | types/compile-errors | identity bases themselves: C1b |
@@ -317,8 +317,8 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | src/plugins_types/binary.c | binary_base64_encode | — | skipped | — | only regenerates the canonical form of a value loaded from LYB (print_binary with _canonical NULL); Go keeps the given text as canonical; LYB out of v1 (PLAN §1) |
 | src/plugins_types/binary.c | lyplg_type_print_binary | types.Print (canonical) | replaced | — | canonical set at store; LYB branch out of v1 |
 | src/plugins_types/bits.c | bits_add_item | types.storeBits | ported | — | items collected in position order in the loop over Type.Bits (bits_bitmap2items) |
-| src/plugins_types/bits.c | bits_bit_set | types.storeBits | ported | — | bmap[p/8] /= 1<<(p%8), libyang's little-endian bitmap layout |
-| src/plugins_types/bits.c | lyplg_type_bits_is_bit_set | types.storeBits (isSet) | ported | — | public C helper; Go exposes the set bits as Value.Bits() |
+| src/plugins_types/bits.c | bits_bit_set | types.storeBits | ported | — | the set positions are kept sparse, not as a bitmap |
+| src/plugins_types/bits.c | lyplg_type_bits_is_bit_set | types.storeBits (set) | ported | — | public C helper; Go exposes the set bits as Value.Bits() |
 | src/plugins_types/bits.c | lyplg_type_print_bits | types.Print (canonical) | replaced | — | canonical set at store; LYB branch out of v1 |
 | src/plugins_types/boolean.c | lyplg_type_print_boolean | types.Print (canonical) | replaced | — | canonical set at store; LYB branch out of v1 |
 | src/plugins_types/date_and_time.c | lyplg_type_fractions_is_zero | types.compareDateAndTime | ported | — | strings.Trim(frac, "0") == "" (time.c has a static copy, see #69) |

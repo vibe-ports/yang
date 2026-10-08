@@ -19,7 +19,6 @@ type Value struct {
 	u     uint64 // uint8..uint64
 	enum  *schema.Enum
 	bits  []*schema.Bit // set bits in position order
-	bmap  []byte        // bits bitmap, byte i holds positions 8i..8i+7 (libyang little-endian layout)
 	bin   []byte
 	ident *schema.Identity
 	path  Path
@@ -102,7 +101,7 @@ func Equal(a, b Value) bool {
 	case schema.Uint8, schema.Uint16, schema.Uint32, schema.Uint64:
 		return a.u == b.u
 	case schema.Bits:
-		return bytes.Equal(a.bmap, b.bmap)
+		return compareBits(a.bits, b.bits) == 0 // lyplg_type_compare_bits: memcmp of the bitmaps
 	case schema.Binary:
 		return bytes.Equal(a.bin, b.bin)
 	case schema.IdentityRef:
@@ -134,7 +133,7 @@ func Compare(a, b Value) int {
 	case schema.Enumeration:
 		return cmp3(a.enum.Value < b.enum.Value, a.enum.Value > b.enum.Value)
 	case schema.Bits:
-		return bytes.Compare(a.bmap, b.bmap) // lyplg_type_sort_bits: memcmp of the bitmaps
+		return compareBits(a.bits, b.bits) // lyplg_type_sort_bits
 	case schema.Binary:
 		if len(a.bin) != len(b.bin) {
 			return cmp3(len(a.bin) < len(b.bin), true)

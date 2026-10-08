@@ -591,8 +591,8 @@ readers during `Load`.
 
 libyang has none of these limits, so each becomes a `U-00xx` entry in deviations.md
 ("Unsupported") in the PR that implements it — not before (same for U-0020/U-0021).
-The compile limits are one struct, `compile.Options.Budget` (`MaxTypes`, `MaxUnionMembers`,
-`MaxBitPosition`; later `MaxNodes`, `MaxDepth`), next to the loader's `Options.MaxSearchDirs` and
+The compile limits are one struct, `compile.Options.Budget` (`MaxTypes`, `MaxUnionMembers`;
+later `MaxNodes`, `MaxDepth`), next to the loader's `Options.MaxSearchDirs` and
 `Options.Parse`; every limit wraps the package's single `ErrBudget`.
 - **Grouping expansion:** `g(n)` using `g(n-1)` twice gives 2^n nodes from linear text. Cap total
   compiled nodes per `Load` (`MaxNodes`, default 1<<20) and check `context.Context` every 1k nodes.
@@ -607,7 +607,8 @@ The compile limits are one struct, `compile.Options.Budget` (`MaxTypes`, `MaxUni
 - **IffExpr:** explicit-stack evaluation; `Err` from the parser already bounds pathological input.
 - **Cycles** (all detected without recursion): imports/includes (`parsing` flag), groupings (uses
   stack), typedefs (chain sets), identities and features (BFS as SC:246/SF:655), leafref chains,
-  when dependencies (worklist). Bits: positions bounded by `MaxBitPosition` (schema.go note).
+  when dependencies (worklist). Bits: positions are not bounded; a value keeps its set bits
+  sparse (no bitmap up to the highest position), so position 4294967295 costs nothing.
 - XPath: `xpath.MaxTokens` per expression; atomize gets the same step budget as `Eval`.
 
 ## 6. Conformance

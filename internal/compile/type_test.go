@@ -296,10 +296,9 @@ func TestDefaultOverDiscardedChain(t *testing.T) {
 	}
 }
 
-func TestBitPositionBudget(t *testing.T) {
-	_, _, err := compileOne(t, "module b {namespace urn:b;prefix b;leaf l {type bits {bit a {position 4294967295;}}}}")
-	if !errors.Is(err, ErrBudget) {
-		t.Fatalf("got %v, want ErrBudget", err)
+func TestBitPositions(t *testing.T) {
+	if _, _, err := compileOne(t, "module b {namespace urn:b;prefix b;leaf l {type bits {bit a {position 4294967295;}}}}"); err != nil {
+		t.Fatal(err)
 	}
 	ls, _, err := compileOne(t, "module b {namespace urn:b;prefix b;leaf l {type bits {bit a {position 9;} bit b {position 2;} bit c;}}}")
 	if err != nil {
