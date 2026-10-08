@@ -32361,3 +32361,46 @@ fixtures:
       data: '<nacm xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-acm"><rule-list><name>r</name><rule><name>a</name><module-name>*</module-name><access-operations>*</access-operations><action>permit</action><path>/c/l</path></rule></rule-list></nacm>'
     golden: golden/nacm-path-missing-prefix.json
 # END types node-instance-identifier
+# BEGIN types time-period (#36)
+  - id: types/time-period-leaflist-order
+    dir: types
+    source: {url: "https://github.com/CESNET/libnetconf2/blob/2add91c6f2e5864463922aa27293f8956ee9cbbe/modules/libnetconf2-netconf-server@2026-04-17.yang", commit: 2add91c6f2e5864463922aa27293f8956ee9cbbe, license: BSD-3-Clause}   # time-period typedef (module trimmed); ty5.yang and data hand-written
+    rfc: ["RFC7950#7.7.7"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty5}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty5"><tpl>3h</tpl><tpl>2d</tpl><tpl>12h</tpl><tpl>1m</tpl><tpl>4w</tpl><tpl>7d</tpl><tpl>12m</tpl><tpl>1w</tpl><tpl>24h</tpl><tpl>9m</tpl></c>'
+    golden: golden/time-period-leaflist-order.json
+
+  - id: types/time-period-derived
+    dir: types
+    source: {url: "https://github.com/CESNET/libnetconf2/blob/2add91c6f2e5864463922aa27293f8956ee9cbbe/modules/libnetconf2-netconf-server@2026-04-17.yang", commit: 2add91c6f2e5864463922aa27293f8956ee9cbbe, license: BSD-3-Clause}   # typedefs derived from time-period keep its sort
+    rfc: ["RFC7950#7.3", "RFC7950#7.7.7"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty5}]
+      format: json
+      data_type: config
+      data: '{"ty5:c": {"tp": "5d", "mpl": ["1h", "1d", "1m", "1w", "10h"], "sp": "9m"}}'
+    golden: golden/time-period-derived.json
+
+  - id: types/time-period-invalid
+    dir: types
+    source: {url: "https://github.com/CESNET/libnetconf2/blob/2add91c6f2e5864463922aa27293f8956ee9cbbe/modules/libnetconf2-netconf-server@2026-04-17.yang", commit: 2add91c6f2e5864463922aa27293f8956ee9cbbe, license: BSD-3-Clause}   # the pattern still applies (lyplg_type_store_string validates)
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty5}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty5"><tp>13m</tp></c>'
+    golden: golden/time-period-invalid.json
+# END types time-period

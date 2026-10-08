@@ -1,0 +1,19 @@
+module ty5 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:ty5";
+  prefix t5;
+
+  import libnetconf2-netconf-server { prefix np2; }
+
+  description "libnetconf2-netconf-server time-period handler for internal/types (#36).";
+
+  typedef my-period { type np2:time-period; }
+  typedef short-period { type np2:time-period { length "2"; } }
+
+  container c {
+    leaf tp { type np2:time-period; }
+    leaf-list tpl { type np2:time-period; }
+    leaf-list mpl { type my-period; }
+    leaf sp { type short-period; }
+  }
+}

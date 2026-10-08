@@ -1,0 +1,22 @@
+// Trimmed from https://github.com/CESNET/libnetconf2/blob/2add91c6f2e5864463922aa27293f8956ee9cbbe/modules/libnetconf2-netconf-server@2026-04-17.yang
+// (BSD-3-Clause, CESNET): only the time-period typedef, which libyang's time_period.c plugin matches by
+// module and typedef name; the imports, groupings and augments are dropped.
+module libnetconf2-netconf-server {
+  yang-version 1.1;
+  namespace "urn:cesnet:libnetconf2-netconf-server";
+  prefix np2;
+
+  revision "2026-04-17" {
+    description "Change SSH banner description, reference and string length to reflect its correct purpose.";
+  }
+
+  typedef time-period {
+    type string {
+      pattern '(1[0-2]|[1-9])m|[1-4]w|[1-7]d|(2[0-4]|1[0-9]|[1-9])h';
+    }
+
+    description
+      "The time-period type allows to specify time in either months, weeks, days, or hours.
+       Its purpose is to create time intervals for the certificate expiration notifications.";
+  }
+}
