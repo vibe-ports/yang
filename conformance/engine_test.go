@@ -6,7 +6,7 @@ import "testing"
 
 // agreeFloor is the number of fixtures that agree (with or without skipped fields) on main; a
 // change that lowers it is a regression.
-const agreeFloor = 1434
+const agreeFloor = 1516
 
 // TestYangEngineSchema runs every fixture through package yang and logs the tally.
 func TestYangEngineSchema(t *testing.T) {
@@ -67,5 +67,14 @@ func TestTypedCompared(t *testing.T) {
 	got["typed"].([]any)[0].(map[string]any)["flags"] = map[string]any{"new": true}
 	if diffResponses(want, got) == "" {
 		t.Fatal("flags not compared")
+	}
+}
+
+// TestPathPrefixes: the prefixes notFoundRC re-finds split only at '/' outside predicates.
+func TestPathPrefixes(t *testing.T) {
+	got := pathPrefixes(`/m:c/l[k='a/b'][n="x]y"]/v`)
+	want := []string{`/m:c/l[k='a/b'][n="x]y"]`, `/m:c`}
+	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
+		t.Errorf("%q, want %q", got, want)
 	}
 }

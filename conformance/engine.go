@@ -35,7 +35,7 @@ func (Yang) SkippedFields(op string) []string {
 	switch op {
 	case "schema":
 		return []string{"compiled", "ext_trees"}
-	case "data":
+	case "data", "sequence":
 		return []string{"typed.value.type", "typed.value.typedef", "typed.value.union_member", "typed.value.hints",
 			"typed.meta", "typed.any", "typed.opaque"}
 	}
@@ -57,11 +57,11 @@ var ctxUnsupported = map[string]string{
 	"builtin_plugins_only": "(the port always applies its ietf-yang-types / ietf-inet-types handlers)",
 }
 
-// Run implements Engine for ops "schema" (lyoracle.c op_schema/build_ctx/dump_schema) and
-// "data" (op_data, datastore data types).
+// Run implements Engine for ops "schema" (lyoracle.c op_schema/build_ctx/dump_schema), "data"
+// (op_data, datastore data types) and "sequence" (op_sequence over the public data API).
 func (Yang) Run(r Request) (Response, error) {
 	op, _ := r.Params["op"].(string)
-	if op != "schema" && op != "data" {
+	if op != "schema" && op != "data" && op != "sequence" {
 		return nil, ErrUnsupported
 	}
 	ctx, resp, mods, verdict, err := buildContext(r)
@@ -70,11 +70,15 @@ func (Yang) Run(r Request) (Response, error) {
 	}
 	resp["op"] = op
 	resp["modules"] = mods
-	if op == "data" {
+	if op == "data" || op == "sequence" {
 		if verdict != "valid" {
-			return nil, fmt.Errorf("%w: data request with a rejected module", ErrUnsupported)
+			return nil, fmt.Errorf("%w: %s request with a rejected module", ErrUnsupported, op)
 		}
-		if err := runData(r, ctx.Schema(), resp); err != nil {
+		run := runData
+		if op == "sequence" {
+			run = runSequence
+		}
+		if err := run(r, ctx.Schema(), resp); err != nil {
 			return nil, err
 		}
 	} else {

@@ -266,6 +266,17 @@ func TestNewPathAPI(t *testing.T) {
 	if _, err := tr.NewPath("pv2-edit:c/a", "1", NewPathOptions{}); err == nil {
 		t.Error("relative path accepted")
 	}
+	// lyd_new_path's return codes that are not those of its log: LY_EINVAL after the predicate
+	// message, LY_EVALID with nothing logged for an invalid leaf-list value
+	var ve *ValidationError
+	if _, err := tr.NewPath("/pv2-edit:c/l/v", "1", NewPathOptions{}); !errors.As(err, &ve) || ve.RC() != "LY_EINVAL" ||
+		len(ve.Diags) != 1 || ve.Diags[0].Err != "LY_EVALID" {
+		t.Errorf("predicate missing: %v", err)
+	}
+	if _, err := tr.NewPath("/pv2-edit:c/nl", "300", NewPathOptions{}); !errors.As(err, &ve) || ve.RC() != "LY_EVALID" ||
+		len(ve.Diags) != 0 {
+		t.Errorf("invalid leaf-list value: %v", err)
+	}
 	key, err := tr.Find("/pv2-edit:c/l[k='a']/k")
 	if err != nil || key == nil || key.value.Canonical() != "a" {
 		t.Fatalf("Find key: %v %v", key, err)

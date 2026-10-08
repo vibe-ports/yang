@@ -160,6 +160,12 @@ func (l *logger) lexVal(code ly.Code, msg string, line int) {
 // errLogged is returned by the logging helpers: the details are in the logger's diagnostics.
 var errLogged = errors.New("data: error logged")
 
+// rcError is a failure whose LY_ERR is not that of the last error logged: LY_EINVAL returned after
+// a LOGVAL, or a failure libyang does not log at all. done turns it into a *ValidationError.
+type rcError string
+
+func (e rcError) Error() string { return "data: " + string(e) }
+
 // result is the error of the operation: nil when only warnings were logged, else a
 // *ValidationError with every diagnostic.
 func (l *logger) result() error {

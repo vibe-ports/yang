@@ -34,6 +34,10 @@ func (l *logger) done(err error) error {
 	if errors.Is(err, errLogged) {
 		return l.result()
 	}
+	var rc rcError
+	if errors.As(err, &rc) {
+		return &ValidationError{Diags: l.diags, rc: string(rc)}
+	}
 	return err
 }
 
@@ -323,18 +327,20 @@ func (t *Tree) checkFindPath(lg *logger, p types.Path, path, value string) (type
 			} else if preds[0].Kind != types.PredPosition {
 				lg.locSet(sn)
 				defer lg.locBack(1)
-				return nil, lg.val(nil, "", ly.XPath, "Invalid predicate for state %s \"%s\" in path \"%s\".",
+				_ = lg.val(nil, "", ly.XPath, "Invalid predicate for state %s \"%s\" in path \"%s\".",
 					nodetypeStr(sn.Kind), sn.Name, path)
+				return nil, rcError("LY_EINVAL")
 			}
 		case sn.Kind == schema.List && (len(preds) == 0 || preds[0].Kind != types.PredKey):
 			lg.locSet(sn)
 			defer lg.locBack(1)
-			return nil, lg.val(nil, "", ly.XPath, "Predicate missing for %s \"%s\" in path \"%s\".",
+			_ = lg.val(nil, "", ly.XPath, "Predicate missing for %s \"%s\" in path \"%s\".",
 				nodetypeStr(sn.Kind), sn.Name, path)
+			return nil, rcError("LY_EINVAL")
 		case sn.Kind == schema.LeafList && (len(preds) == 0 || preds[0].Kind != types.PredLeafList):
 			v, d := types.Store(sn.Type, value, types.FormatJSON, types.HintData, types.ModuleNames{Set: t.set}, sn)
 			if d != nil {
-				return nil, fmt.Errorf("data: invalid value of %s %q: %s", nodetypeStr(sn.Kind), sn.Name, d.Msg)
+				return nil, rcError("LY_EVALID") // lyd_value_validate3 without logging
 			}
 			p[u].Preds = append(p[u].Preds, types.PathPred{Kind: types.PredLeafList, Value: v})
 		}

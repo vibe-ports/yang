@@ -67,20 +67,76 @@ func runData(r Request, s *yang.Schema, resp map[string]any) error {
 			return fmt.Errorf("%w: data request field %s", ErrUnsupported, k)
 		}
 	}
-	str := func(k, def string) string {
-		if v, ok := p[k].(string); ok {
-			return v
-		}
-		return def
+	o, err := dataOptions(p)
+	if err != nil {
+		return err
 	}
+	wd, err := wdOf(p)
+	if err != nil {
+		return err
+	}
+	f, err := formatOf(p)
+	if err != nil {
+		return err
+	}
+	in, err := inputOf(r, p, "data")
+	if err != nil {
+		return err
+	}
+	tree, diags, err := data.Parse(context.Background(), strings.NewReader(in), f, s, o)
+	rc, err := rcOf(err)
+	if err != nil {
+		return err
+	}
+	resp["verdict"], resp["rc"] = "valid", codeJSON(rc)
+	if rc != "LY_SUCCESS" {
+		resp["verdict"] = "invalid"
+	}
+	resp["diagnostics"] = diagsJSON(diags, "data")
+	resp["tree"] = nil
+	if tree != nil && !empty(tree) {
+		if resp["tree"], err = printTree(tree, wd); err != nil {
+			return err
+		}
+		resp["typed"] = typedJSON(tree)
+	}
+	return nil
+}
+
+// printTree is lyoracle.c print_tree with siblings: the JSON and XML printouts, "" for no tree.
+func printTree(tree *data.Tree, wd data.WD) (map[string]any, error) {
+	po := data.PrintOptions{WithDefaults: wd}
+	var j, x strings.Builder
+	if tree != nil && !empty(tree) {
+		if err := tree.PrintJSON(&j, po); err != nil {
+			return nil, unsupported(err)
+		}
+		if err := tree.PrintXML(&x, po); err != nil {
+			return nil, unsupported(err)
+		}
+	}
+	return map[string]any{"json": j.String(), "xml": x.String()}, nil
+}
+
+// str is the string field k of p, def when absent.
+func str(p map[string]any, k, def string) string {
+	if v, ok := p[k].(string); ok {
+		return v
+	}
+	return def
+}
+
+// dataOptions is lyoracle.c dparams_of for datastore data: the data_type preset, unknown policy,
+// parse_only, parse_options and validate_options (LYD_VALIDATE_MULTI_ERROR always set).
+func dataOptions(p map[string]any) (data.ParseOptions, error) {
 	o := data.ParseOptions{Validate: data.ValidateOptions{MultiError: true}}
-	preset, ok := dataPresets[str("data_type", "data-operational")]
+	preset, ok := dataPresets[str(p, "data_type", "data-operational")]
 	if !ok {
-		return fmt.Errorf("%w: data_type %v", ErrUnsupported, p["data_type"])
+		return o, fmt.Errorf("%w: data_type %v", ErrUnsupported, p["data_type"])
 	}
 	preset(&o)
-	if o.Unknown, ok = unknownPolicies[str("unknown", "reject")]; !ok {
-		return fmt.Errorf("%w: unknown %v", ErrUnsupported, p["unknown"])
+	if o.Unknown, ok = unknownPolicies[str(p, "unknown", "reject")]; !ok {
+		return o, fmt.Errorf("%w: unknown %v", ErrUnsupported, p["unknown"])
 	}
 	if b, _ := p["parse_only"].(bool); b {
 		o.ParseOnly = true
@@ -88,69 +144,66 @@ func runData(r Request, s *yang.Schema, resp map[string]any) error {
 	for _, f := range list(p["parse_options"]) {
 		set, ok := parseFlags[fmt.Sprint(f)]
 		if !ok {
-			return fmt.Errorf("%w: parse option %v %s", ErrUnsupported, f, parseUnsupported[fmt.Sprint(f)])
+			return o, fmt.Errorf("%w: parse option %v %s", ErrUnsupported, f, parseUnsupported[fmt.Sprint(f)])
 		}
 		set(&o)
 	}
 	for _, f := range list(p["validate_options"]) {
 		set, ok := validateFlags[fmt.Sprint(f)]
 		if !ok {
-			return fmt.Errorf("%w: validate option %v", ErrUnsupported, f)
+			return o, fmt.Errorf("%w: validate option %v", ErrUnsupported, f)
 		}
 		set(&o.Validate)
 	}
-	wd, ok := wdModes[str("with_defaults", "explicit")]
+	return o, nil
+}
+
+// wdOf is lyoracle.c wd_of: the with_defaults print mode, explicit by default.
+func wdOf(p map[string]any) (data.WD, error) {
+	wd, ok := wdModes[str(p, "with_defaults", "explicit")]
 	if !ok {
-		return fmt.Errorf("%w: with_defaults %v", ErrUnsupported, p["with_defaults"])
+		return wd, fmt.Errorf("%w: with_defaults %v", ErrUnsupported, p["with_defaults"])
 	}
-	var f data.Format
-	switch str("format", "") {
+	return wd, nil
+}
+
+// formatOf is lyoracle.c fmt_of: JSON unless the field says xml.
+func formatOf(p map[string]any) (data.Format, error) {
+	switch str(p, "format", "json") {
 	case "json":
-		f = data.FormatJSON
+		return data.FormatJSON, nil
 	case "xml":
-		f = data.FormatXML
-	default:
-		return fmt.Errorf("%w: format %v", ErrUnsupported, p["format"])
+		return data.FormatXML, nil
 	}
-	in, ok := p["data"].(string)
-	if file, isFile := p["data_file"].(string); isFile {
+	return 0, fmt.Errorf("%w: format %v", ErrUnsupported, p["format"])
+}
+
+// inputOf is lyoracle.c input_of: the inline field key or the file named by key+"_file".
+func inputOf(r Request, p map[string]any, key string) (string, error) {
+	if file, ok := p[key+"_file"].(string); ok {
 		b, err := os.ReadFile(filepath.Join(r.BaseDir, file)) //nolint:gosec // fixture path
-		if err != nil {
-			return err
-		}
-		in, ok = string(b), true
+		return string(b), err
 	}
-	if !ok {
-		return fmt.Errorf("%w: no data", ErrUnsupported)
+	if in, ok := p[key].(string); ok {
+		return in, nil
 	}
-	tree, diags, err := data.Parse(context.Background(), strings.NewReader(in), f, s, o)
+	return "", fmt.Errorf("%w: no %s", ErrUnsupported, key)
+}
+
+// rcOf is the LY_ERR name of a data call's error; errors the port refuses on purpose (budgets,
+// unsupported input) make the fixture unsupported, other errors are returned.
+func rcOf(err error) (string, error) {
 	var ve *data.ValidationError
 	switch {
+	case err == nil:
+		return "LY_SUCCESS", nil
 	case errors.Is(err, yang.ErrBudget) || errors.Is(err, data.ErrUnsupported) || errors.Is(err, yang.ErrUnsupported) ||
 		errors.Is(err, errors.ErrUnsupported):
-		return unsupported(err)
+		return "", unsupported(err)
 	case errors.As(err, &ve):
-		resp["verdict"], resp["rc"] = "invalid", codeJSON(ve.RC())
-	case err != nil:
-		return err
-	default:
-		resp["verdict"], resp["rc"] = "valid", codeJSON("LY_SUCCESS")
+		return ve.RC(), nil
 	}
-	resp["diagnostics"] = diagsJSON(diags, "data")
-	resp["tree"] = nil
-	if tree != nil && !empty(tree) {
-		po := data.PrintOptions{WithDefaults: wd}
-		var j, x strings.Builder
-		if err := tree.PrintJSON(&j, po); err != nil {
-			return unsupported(err)
-		}
-		if err := tree.PrintXML(&x, po); err != nil {
-			return unsupported(err)
-		}
-		resp["tree"] = map[string]any{"json": j.String(), "xml": x.String()}
-		resp["typed"] = typedJSON(tree)
-	}
-	return nil
+	return "", err
 }
 
 func empty(t *data.Tree) bool {
