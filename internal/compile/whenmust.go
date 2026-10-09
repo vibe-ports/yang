@@ -503,12 +503,24 @@ func wrapAll(ns []*schema.Node) []xpath.SchemaNode {
 	return out
 }
 
-// LeafrefTarget is the resolved target of a leaf whose own type is a leafref.
+// LeafrefTarget is the resolved target of a leaf whose own type is a leafref. A snapshot drops
+// the compiled path (FindXPathAtoms over Context.Snapshot), so the path is compiled again from
+// this node then, as snap.target does.
 func (s snode) LeafrefTarget() xpath.SchemaNode {
-	if t := s.n.Type; t != nil && t.Base == schema.Leafref {
-		if p, ok := t.PathCompiled.(types.Path); ok && len(p) > 0 {
-			return wrap(p[len(p)-1].Node)
-		}
+	t := s.n.Type
+	if t == nil || t.Base != schema.Leafref {
+		return nil
+	}
+	if p, ok := t.PathCompiled.(types.Path); ok && len(p) > 0 {
+		return wrap(p[len(p)-1].Node)
+	}
+	e, msg := lyxp.ParsePath(t.Path, lyxp.Opts{Begin: lyxp.BeginEither, Prefix: lyxp.PrefixOptional,
+		Pred: lyxp.PredLeafref, Leafref: true, Extended: t.PathExtended})
+	if msg != "" {
+		return nil
+	}
+	if p, _, err := types.CompileLeafref(s.n, e, t.Prefixes, s.n.InOutput(), t.PathExtended); err == nil && len(p) > 0 {
+		return wrap(p[len(p)-1].Node)
 	}
 	return nil
 }

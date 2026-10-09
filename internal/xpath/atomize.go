@@ -4,6 +4,7 @@
 package xpath
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -40,11 +41,19 @@ type AtomizeContext struct {
 	Output      bool       // LYXP_SCNODE_OUTPUT: RPC/action output instead of input
 	Schema      SchemaInfo
 	Warn        func(msg string) // LOGWRN; nil drops warnings
-	MaxSteps    int              // 0 = DefaultMaxSteps
+	// NoMatchError is LYXP_SCNODE_ERROR (LYS_FIND_NO_MATCH_ERROR): a step that matches nothing is
+	// an error, logged through Error (LOGERR LY_ENOTFOUND) instead of Warn, and the walk fails
+	// with ErrNoMatch unless a union finds another branch.
+	NoMatchError bool
+	Error        func(msg string) // LOGERR of the no-match messages; nil drops them
+	MaxSteps     int              // 0 = DefaultMaxSteps
 	// Steps, when set, is a budget shared by several walks: the walk starts from *Steps (MaxSteps is
 	// ignored) and leaves what remains there, ErrBudget once it is used up.
 	Steps *int
 }
+
+// ErrNoMatch is lyxp_atomize's LY_ENOTFOUND under NoMatchError; its messages went to Error.
+var ErrNoMatch = errors.New("xpath: a schema node of the expression was not found")
 
 // Atomize walks e over the schema (lyxp_atomize) and returns every schema
 // node it reaches, in libyang's set order, the context node first.
@@ -57,12 +66,16 @@ func (e *Expr) Atomize(ac AtomizeContext) ([]Atom, error) {
 		steps = *ac.Steps
 	}
 	a := newAtomizer(e.ns, ac.Schema, ac.Node, ac.Node, rootType(ac.Node, ac.SchemaRules), ac.Output, ac.Warn, steps)
+	a.noMatch, a.errLog = ac.NoMatchError, ac.Error
 	set, err := a.run(e.src, e.root)
 	if ac.Steps != nil {
 		*ac.Steps = max(a.steps, 0)
 	}
 	if err != nil {
 		return nil, err
+	}
+	if set.notFound {
+		return nil, ErrNoMatch
 	}
 	out := make([]Atom, len(set.n))
 	for i, x := range set.n {
@@ -108,9 +121,10 @@ type skey struct {
 
 // scset is LYXP_SET_SCNODE_SET; its work is charged to a's step budget.
 type scset struct {
-	n   []scnode
-	idx map[skey]int // index of each (node, type) in n
-	a   *atomizer
+	n        []scnode
+	idx      map[skey]int // index of each (node, type) in n
+	a        *atomizer
+	notFound bool // lyxp_set.not_found: a step matched nothing under NoMatchError
 }
 
 type atomizer struct {
@@ -122,11 +136,14 @@ type atomizer struct {
 	root   ntype
 	output bool
 	warn   func(string)
-	src    string
-	steps  int
-	err    error
-	pos    map[SchemaNode]int // index of a node in its sibling list
-	mods   []string
+	// noMatch is LYXP_SCNODE_ERROR; errLog takes its messages
+	noMatch bool
+	errLog  func(string)
+	src     string
+	steps   int
+	err     error
+	pos     map[SchemaNode]int // index of a node in its sibling list
+	mods    []string
 }
 
 func newAtomizer(ns NamespaceCtx, info SchemaInfo, cur, ctx SchemaNode, root ntype, output bool, warn func(string), steps int) *atomizer {
@@ -236,13 +253,13 @@ func (s *scset) merge(s2 *scset) {
 // clone is set_fill_set.
 func (s *scset) clone() *scset {
 	s.a.charge(len(s.n))
-	return &scset{n: slices.Clone(s.n), idx: maps.Clone(s.idx), a: s.a}
+	return &scset{n: slices.Clone(s.n), idx: maps.Clone(s.idx), a: s.a, notFound: s.notFound}
 }
 
 // copyCtx is set_copy: only the nodes in context or at the start.
 func (s *scset) copyCtx() *scset {
 	s.a.charge(len(s.n))
-	c := &scset{a: s.a}
+	c := &scset{a: s.a, notFound: s.notFound}
 	for _, x := range s.n {
 		if x.use == AtomCtx || x.use == atomStart {
 			c.n[c.insert(x.n, x.t, x.axis)].use = x.use
@@ -303,6 +320,11 @@ func (a *atomizer) chain(x chainExpr, s *scset) error {
 	if err := a.eval(x.args[0], s); err != nil {
 		return err
 	}
+	// eval_union_expr: a union fails to match only when all its branches do
+	union, found := x.ops[0] == "|", false
+	if union {
+		found, s.notFound = !s.notFound, false
+	}
 	logic := x.ops[0] == "or" || x.ops[0] == "and"
 	if logic {
 		s.clearCtx(AtomNode)
@@ -311,6 +333,11 @@ func (a *atomizer) chain(x chainExpr, s *scset) error {
 		s2 := orig.clone()
 		if err := a.eval(x.args[i+1], s2); err != nil {
 			return err
+		}
+		if union {
+			found = found || !s2.notFound
+		} else if s2.notFound {
+			s.notFound = true
 		}
 		switch {
 		case logic:
@@ -329,6 +356,9 @@ func (a *atomizer) chain(x chainExpr, s *scset) error {
 			s.clearCtx(AtomVal)
 		}
 	}
+	if union && !found {
+		s.notFound = true
+	}
 	return nil
 }
 
@@ -344,6 +374,11 @@ func (a *atomizer) call(x callExpr, s *scset) error {
 		args[i] = s.copyCtx()
 		if err := a.eval(arg, args[i]); err != nil {
 			return err
+		}
+		if i == 0 { // eval_function_call: the first argument decides, the others only add
+			s.notFound = args[0].notFound
+		} else if args[i].notFound {
+			s.notFound = true
 		}
 	}
 	a.warnFuncArgs(x.name, args, s)
@@ -473,6 +508,7 @@ func (a *atomizer) step(st step, s *scset) (bool, error) {
 			p = &s.n[parent]
 		}
 		a.notFound(st, nt, p)
+		s.notFound = s.notFound || a.noMatch
 		return false, nil // predicates and the rest of the path are skipped
 	}
 	return true, a.predicates(s, st.preds)
@@ -491,7 +527,11 @@ func (a *atomizer) resolve(qname string) (nameTest, error) {
 
 // notFound is eval_name_test_scnode_no_match_msg.
 func (a *atomizer) notFound(st step, nt nameTest, parent *scnode) {
-	if a.warn == nil {
+	log := a.warn
+	if a.noMatch {
+		log = a.errLog
+	}
+	if log == nil {
 		return
 	}
 	var parentPath string
@@ -511,14 +551,14 @@ func (a *atomizer) notFound(st step, nt nameTest, parent *scnode) {
 	if nt.name != "" {
 		expr = a.src[:st.end]
 	}
-	cur := "(null)"
+	cur := "/" // lysc_path(NULL): the document root
 	if a.cur != nil {
 		cur = a.cur.Path()
 	}
 	if parentPath != "" {
-		a.warn(fmt.Sprintf("Schema node \"%s\" for parent \"%s\" not found; in expr \"%s\" with context node \"%s\".", nt.name, parentPath, expr, cur))
+		log(fmt.Sprintf("Schema node \"%s\" for parent \"%s\" not found; in expr \"%s\" with context node \"%s\".", nt.name, parentPath, expr, cur))
 	} else {
-		a.warn(fmt.Sprintf("Schema node \"%s\" not found; in expr \"%s\" with context node \"%s\".", nt.name, expr, cur))
+		log(fmt.Sprintf("Schema node \"%s\" not found; in expr \"%s\" with context node \"%s\".", nt.name, expr, cur))
 	}
 }
 
@@ -536,6 +576,9 @@ func (a *atomizer) predicates(s *scset, preds []ast) error {
 			s.n[i].use = AtomCtx
 			if err := a.eval(pr, s); err != nil {
 				return err
+			}
+			if s.notFound {
+				break // eval_predicate: the rest of the context is not evaluated, this node leaves it
 			}
 			s.n[i].use = pc
 		}

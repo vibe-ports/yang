@@ -70,17 +70,7 @@ type ParseBudget struct {
 }
 
 // Diagnostic is an error or warning libyang would log against the context.
-type Diagnostic struct {
-	Phase      string // "parse" or "compile" (oracle phases, design 06 §1.6); empty for data trees
-	Warning    bool
-	Err        string // libyang LY_ERR name, e.g. "LY_EVALID"
-	Code       string // libyang LY_VECODE name, e.g. "LYVE_REFERENCE"
-	SchemaPath string
-	DataPath   string // data trees: lyd_path of the node the message is about (design 07 §1.10)
-	AppTag     string // data trees: error-app-tag
-	Line       int    // 0 when unknown
-	Msg        string
-}
+type Diagnostic = snap.Diagnostic
 
 // Context is a set of loaded modules (ly_ctx). It is safe for concurrent use.
 type Context struct {
@@ -132,11 +122,4 @@ func (x *Context) Load(name, revision string, features []string) ([]Diagnostic, 
 	return convert(diags), err
 }
 
-func convert(ds []compile.Diagnostic) []Diagnostic {
-	r := make([]Diagnostic, len(ds))
-	for i, d := range ds {
-		r[i] = Diagnostic{Phase: d.Phase, Warning: d.Level == compile.LevelWarning, Err: d.Err, Code: d.Code.String(),
-			SchemaPath: d.SchemaPath, Line: d.Line, Msg: d.Msg}
-	}
-	return r
-}
+func convert(ds []compile.Diagnostic) []Diagnostic { return snap.Convert(ds) }

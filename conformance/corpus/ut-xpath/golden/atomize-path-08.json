@@ -1,0 +1,37 @@
+{
+  "atoms": null,
+  "context_diagnostics": [],
+  "diagnostics": [
+    {
+      "apptag": null,
+      "code": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "data_path": null,
+      "level": "error",
+      "line": 0,
+      "msg": "Unexpected XPath token \"..\" (\"../l\"), expected \"NameTest\".",
+      "phase": "path",
+      "schema_path": "/atm:top/x",
+      "vecode": 5,
+      "vecode_name": "LYVE_XPATH"
+    }
+  ],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "atm",
+      "revision": null
+    }
+  ],
+  "op": "atoms",
+  "protocol": 2,
+  "rc": {
+    "err": 7,
+    "name": "LY_EVALID"
+  },
+  "verdict": "invalid"
+}

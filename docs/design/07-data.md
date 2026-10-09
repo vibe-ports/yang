@@ -326,10 +326,14 @@ tree. Safe to run concurrently with other read-only calls on the tree, not with 
 
 Planned for the other M3 items (signatures fixed here, implemented there), in the same
 options-struct style:
-- #85, package `yang`: `func (s *Schema) FindXPathAtoms(node *SchemaNode, expr string, o AtomOptions) ([]*SchemaNode, error)`
-  (lys_find_xpath_atoms) and `func (s *Schema) FindPathAtoms(node *SchemaNode, path string, o AtomOptions) ([]*SchemaNode, error)`
+- #85, package `yang`: `func (s *Schema) FindXPathAtoms(node *SchemaNode, expr string, o AtomOptions) ([]*SchemaNode, []Diagnostic, error)`
+  (lys_find_xpath_atoms) and `func (s *Schema) FindPathAtoms(node *SchemaNode, path string, o AtomOptions) ([]*SchemaNode, []Diagnostic, error)`
   (lys_find_path_atoms, which reads only `o.Output`), with `AtomOptions{Schema, Output, NoMatchError bool}` =
   LYS_FIND_XP_SCHEMA, LYS_FIND_XP_OUTPUT, LYS_FIND_NO_MATCH_ERROR; `node` nil = the document root.
+  Diagnostics as for the data queries: also on success (no-match warnings, and the LY_ENOTFOUND
+  errors of a union branch that another branch makes good); a failed query's error goes with its
+  diagnostic, the last error in the slice (`Err` = the return code). `Diagnostic` moves to
+  internal/snap (package `yang` aliases it) so that the snapshot methods can return it.
   `lys_find_expr_atoms` takes a compiled expression and stays internal.
 - #87: `func (t *Tree) TrimXPath(expr string, o XPathOptions) error` is public (lyd_trim_xpath: the
   context node is always the first top-level sibling, so a non-nil `o.Node` is an LY_EINVAL

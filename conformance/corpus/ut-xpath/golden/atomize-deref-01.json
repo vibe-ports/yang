@@ -1,0 +1,27 @@
+{
+  "atoms": [
+    "/atm:top/l/v",
+    "/atm:top",
+    "/atm:top/ref",
+    "/atm:top/l",
+    "/atm:top/l/k1"
+  ],
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "atm",
+      "revision": null
+    }
+  ],
+  "op": "atoms",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "verdict": "valid"
+}

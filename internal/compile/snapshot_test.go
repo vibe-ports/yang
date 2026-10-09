@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
-package compile
+package compile_test
 
 import (
 	"reflect"
 	"sync"
 	"testing"
+	"testing/fstest"
 
+	"github.com/vibe-ports/yang/internal/compile"
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/snap"
 )
@@ -77,10 +79,15 @@ func reach(v reflect.Value, seen map[uintptr]reflect.Type) {
 	}
 }
 
-// snapHarness is a context over files whose Loads run the whole compile (dep sets, unres).
-func snapHarness(t *testing.T, files map[string]string) *Context {
+// snapHarness is a context over files whose Loads run the whole compile (dep sets, unres). An
+// external test: package snap imports compile.
+func snapHarness(t *testing.T, files map[string]string) *compile.Context {
 	t.Helper()
-	c, _, err := NewContext(Options{}, mapFS(files))
+	fsys := fstest.MapFS{}
+	for name, src := range files {
+		fsys[name] = &fstest.MapFile{Data: []byte(src)}
+	}
+	c, _, err := compile.NewContext(compile.Options{}, fsys)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,0 +1,16 @@
+fixtures:
+  - id: ut-xpath/atomize-invalid-03
+    dir: ut-xpath
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # undefined variable: LOGERR LY_ENOTFOUND without a validation code
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: atoms
+      searchdirs: [atm.1]
+      modules: [{name: atm}]
+      xpath: "$v"
+    golden: golden/atomize-invalid-03.json
+    assert:
+      verdict: invalid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null

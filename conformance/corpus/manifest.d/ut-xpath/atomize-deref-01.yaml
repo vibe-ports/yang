@@ -1,0 +1,16 @@
+fixtures:
+  - id: ut-xpath/atomize-deref-01
+    dir: ut-xpath
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # deref() adds the leafref target and its path
+    rfc: ["RFC7950#10.3.1"]
+    areas: [xpath]
+    request:
+      op: atoms
+      searchdirs: [atm.1]
+      modules: [{name: atm}]
+      xpath: "deref(/atm:top/ref)/../k1"
+    golden: golden/atomize-deref-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#10.3.1"]
+      deviation: null

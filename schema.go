@@ -27,6 +27,8 @@ type (
 	Kind = snap.Kind
 	// Status is a YANG status.
 	Status = snap.Status
+	// AtomOptions are the options of Schema.FindXPathAtoms and Schema.FindPathAtoms.
+	AtomOptions = snap.AtomOptions
 )
 
 // Schema node kinds.

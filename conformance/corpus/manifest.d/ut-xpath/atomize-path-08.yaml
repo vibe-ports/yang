@@ -1,0 +1,17 @@
+fixtures:
+  - id: ut-xpath/atomize-path-08
+    dir: ut-xpath
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # path parse error, located at the context node
+    rfc: ["RFC7950#9.13", "RFC7951#6.11"]
+    areas: [xpath]
+    request:
+      op: atoms
+      searchdirs: [atm.1]
+      modules: [{name: atm}]
+      context_path: "/atm:top/x"
+      path: "../l"
+    golden: golden/atomize-path-08.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.13", "RFC7951#6.11"]
+      deviation: null

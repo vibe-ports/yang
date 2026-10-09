@@ -28,6 +28,7 @@ it; the issue tracks the public API.
 | (the compiled context passed to data calls) | `Context.Schema()`: an immutable `*yang.Schema` snapshot, safe to share between goroutines |
 | `ly_ctx_get_module` / `ly_ctx_get_module_implemented` | `Schema.Module(name, revision)` / `Schema.Implemented(name)` |
 | `lys_find_path` | `Schema.FindSchema(path)` (data paths, module names as prefixes) |
+| `lys_find_xpath_atoms`, `lys_find_path_atoms` | `Schema.FindXPathAtoms(node, expr, o)`, `Schema.FindPathAtoms(node, path, o)` with `AtomOptions{Schema, Output, NoMatchError}` (LYS_FIND_*); `lys_find_expr_atoms` is not exported |
 | `lysc_node` traversal (`lysc_node_child`, `->next`, `->parent`) | `Module.Top()`, `SchemaNode.Children()`, `SchemaNode.Child(module, name)`, `SchemaNode.Parent()` |
 | `lysc_is_key`, `LYS_KEY` | `SchemaNode.IsKey()` |
 | `LYS_SET_DFLT` | `SchemaNode.DefaultSet()` |
