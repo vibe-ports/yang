@@ -38,9 +38,15 @@ type Error struct {
 	Pattern string
 	Offset  int // byte offset in Pattern
 	Reason  string
+	// Compat marks a CompileCompat syntax error: Reason is then libyang's detail text,
+	// `"<rest of the PCRE2 pattern>": <message>`, and Error() returns it alone.
+	Compat bool
 }
 
 func (e *Error) Error() string {
+	if e.Compat {
+		return e.Reason
+	}
 	return fmt.Sprintf("%v %q at offset %d: %s", e.Kind, e.Pattern, e.Offset, e.Reason)
 }
 func (e *Error) Unwrap() error { return e.Kind }
@@ -60,7 +66,7 @@ type Pattern struct {
 // Compile parses an XSD regular expression.
 func Compile(pattern string) (*Pattern, error) {
 	if !utf8.ValidString(pattern) {
-		return nil, &Error{ErrSyntax, pattern, 0, "pattern is not valid UTF-8"}
+		return nil, &Error{ErrSyntax, pattern, 0, "pattern is not valid UTF-8", false}
 	}
 	p := &parser{src: pattern}
 	n, err := p.regExp(0)
@@ -70,6 +76,11 @@ func Compile(pattern string) (*Pattern, error) {
 	if p.pos < len(p.src) { // only an unmatched ')' stops the top level early
 		return nil, p.errf(ErrSyntax, "unmatched ')'")
 	}
+	return build(pattern, n)
+}
+
+// build emits n as an RE2 program anchored to the whole string.
+func build(pattern string, n *node) (*Pattern, error) {
 	var b strings.Builder
 	b.WriteString(`\A(?:`)
 	emit(&b, n)
@@ -78,7 +89,7 @@ func Compile(pattern string) (*Pattern, error) {
 	if err != nil {
 		var se *syntax.Error
 		if errors.As(err, &se) && (se.Code == syntax.ErrInvalidRepeatSize || se.Code == syntax.ErrNestingDepth || se.Code == syntax.ErrLarge) {
-			return nil, &Error{ErrUnsupported, pattern, 0, "Go RE2 limit: " + string(se.Code)}
+			return nil, &Error{ErrUnsupported, pattern, 0, "Go RE2 limit: " + string(se.Code), false}
 		}
 		return nil, fmt.Errorf("xsdre: internal error translating %q: %w", pattern, err)
 	}
@@ -100,6 +111,7 @@ const (
 	opConcat           // subs in sequence (empty = empty string)
 	opAlt              // one of subs
 	opRepeat           // subs[0]{min,max}, max<0 = unbounded
+	opAssert           // CompileCompat only: start (min 0) or end (min 1) of the string
 )
 
 type node struct {
@@ -117,7 +129,7 @@ type parser struct {
 }
 
 func (p *parser) errf(kind error, format string, a ...any) error {
-	return &Error{kind, p.src, p.pos, fmt.Sprintf(format, a...)}
+	return &Error{kind, p.src, p.pos, fmt.Sprintf(format, a...), false}
 }
 
 func (p *parser) eof() bool { return p.pos >= len(p.src) }
@@ -233,10 +245,10 @@ func (p *parser) quantity() (lo, hi int, err error) {
 	}
 	p.next()
 	if hi >= 0 && lo > hi {
-		return 0, 0, &Error{ErrSyntax, p.src, start, "quantifier {n,m} with n > m"}
+		return 0, 0, &Error{ErrSyntax, p.src, start, "quantifier {n,m} with n > m", false}
 	}
 	if lo > maxRepeat || hi > maxRepeat {
-		return 0, 0, &Error{ErrUnsupported, p.src, start, fmt.Sprintf("repeat count above Go RE2 limit %d", maxRepeat)}
+		return 0, 0, &Error{ErrUnsupported, p.src, start, fmt.Sprintf("repeat count above Go RE2 limit %d", maxRepeat), false}
 	}
 	return
 }
@@ -312,11 +324,11 @@ func (p *parser) escape() (s charSet, isChar bool, err error) {
 		return single(c), true, nil
 	case 'p', 'P':
 		if p.eof() || p.next() != '{' {
-			return nil, false, &Error{ErrSyntax, p.src, start, "expected '{' after \\p"}
+			return nil, false, &Error{ErrSyntax, p.src, start, "expected '{' after \\p", false}
 		}
 		end := strings.IndexByte(p.src[p.pos:], '}')
 		if end < 0 {
-			return nil, false, &Error{ErrSyntax, p.src, start, "unterminated \\p{"}
+			return nil, false, &Error{ErrSyntax, p.src, start, "unterminated \\p{", false}
 		}
 		name := p.src[p.pos : p.pos+end]
 		p.pos += end + 1
@@ -327,7 +339,7 @@ func (p *parser) escape() (s charSet, isChar bool, err error) {
 			s, ok = category(name)
 		}
 		if !ok {
-			return nil, false, &Error{ErrSyntax, p.src, start, fmt.Sprintf("unknown category or block %q", name)}
+			return nil, false, &Error{ErrSyntax, p.src, start, fmt.Sprintf("unknown category or block %q", name), false}
 		}
 		if c == 'P' {
 			s = complement(s)
@@ -337,7 +349,7 @@ func (p *parser) escape() (s charSet, isChar bool, err error) {
 	if s, ok := multiChar(c); ok {
 		return s, false, nil
 	}
-	return nil, false, &Error{ErrSyntax, p.src, start, fmt.Sprintf("unknown escape \\%c", c)}
+	return nil, false, &Error{ErrSyntax, p.src, start, fmt.Sprintf("unknown escape \\%c", c), false}
 }
 
 // charGroup parses after '[' through the closing ']':
@@ -437,6 +449,8 @@ func emit(b *strings.Builder, n *node) {
 	switch n.op {
 	case opSet:
 		emitSet(b, n.set)
+	case opAssert:
+		b.WriteString([]string{`\A`, `\z`}[n.min])
 	case opConcat:
 		for _, s := range n.subs {
 			if s.op == opAlt {

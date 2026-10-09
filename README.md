@@ -207,7 +207,9 @@ issues privately as described in [SECURITY.md](SECURITY.md).
 BSD-3-Clause, see [LICENSE](LICENSE). Portions are derived from libyang, © CESNET, BSD-3-Clause;
 the CESNET notice is part of [LICENSE](LICENSE). Third-party material carries its own notices:
 libyang's internal YANG modules ([internal/models/NOTICE](internal/models/NOTICE)), libyang test
-material in the corpus ([conformance/NOTICE](conformance/NOTICE)) and cJSON in the oracle
-([conformance/oracle/cjson/LICENSE](conformance/oracle/cjson/LICENSE)).
+material in the corpus ([conformance/NOTICE](conformance/NOTICE)), cJSON in the oracle
+([conformance/oracle/cjson/LICENSE](conformance/oracle/cjson/LICENSE)), and in `internal/xsdre` the
+Unicode block data and the parts of PCRE2 translated for libyang-compatible patterns (PCRE2,
+BSD-3-Clause WITH PCRE2-exception; [internal/xsdre/NOTICE](internal/xsdre/NOTICE)).
 
 This project is not affiliated with or endorsed by CESNET or the libyang authors.

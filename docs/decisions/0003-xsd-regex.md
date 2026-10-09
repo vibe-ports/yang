@@ -9,7 +9,8 @@ Go's `regexp` is RE2, whose syntax and several semantics differ (Perl-style `\w 
 `^`/`$` are anchors, no class subtraction, no `\i \c`, no Unicode blocks, repeat limit 1000).
 libyang v5.8.6 (`ly_common.c: ly_pat_compile_xmlschema`) does *not* translate: it escapes
 `^`/`$` outside brackets, substitutes `\p{IsX}` by a hard-coded BMP range table, and hands the
-rest to PCRE2 (`UTF|UCP|ANCHORED|ENDANCHORED`). It therefore inherits Perl semantics wherever
+rest to PCRE2 (`UTF|UCP|DOLLAR_ENDONLY|NO_AUTO_CAPTURE|ANCHORED`, plus `ENDANCHORED`, both
+anchors also passed to `pcre2_match`). It therefore inherits Perl semantics wherever
 XSD and Perl disagree.
 
 ## Decision

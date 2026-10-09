@@ -16,6 +16,7 @@ package xsdre
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand/v2"
 	"os"
@@ -25,6 +26,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -251,4 +253,90 @@ var knownDeviations = map[string]string{
 	"\\p{IsGreekExtended}": "D-0006",
 	// D-0007 escaped ^ never matches
 	"\\n\\r\\t\\\\\\|\\.\\?\\*\\+\\(\\)\\{\\}\\-\\[\\]\\^": "D-0007",
+}
+
+// TestOracleCompat compares CompileCompat with libyang: same verdict, the same "is not valid"
+// message for a rejected pattern, the same match verdicts. Patterns CompileCompat refuses as
+// ErrUnsupported (U-0011) are skipped; every other difference fails.
+func TestOracleCompat(t *testing.T) {
+	if _, err := exec.LookPath(yanglint()); err != nil {
+		if os.Getenv("YANG_ORACLE_REQUIRED") != "" {
+			t.Fatal("yanglint not found:", err)
+		}
+		t.Skip("yanglint not found:", err)
+	}
+	var all []tc
+	all = append(all, cases...)
+	all = append(all, compatCases...)
+	for _, p := range append(append(append([]string{}, badSyntax...), unsupported...), compatBad...) {
+		all = append(all, tc{name: "bad", pattern: p})
+	}
+	var (
+		mu               sync.Mutex
+		matches, schemas int
+		unsupport        []string
+	)
+	sem := make(chan struct{}, 8)
+	var wg sync.WaitGroup
+	r := rand.New(rand.NewPCG(3, 4))
+	for _, c := range all {
+		if !utf8.ValidString(c.pattern) || len(c.pattern) > 200000 {
+			continue
+		}
+		cands := candidates(c, r)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			p, err := CompileCompat(c.pattern)
+			if errors.Is(err, ErrUnsupported) {
+				mu.Lock()
+				unsupport = append(unsupport, c.pattern)
+				mu.Unlock()
+				return
+			}
+			dir := t.TempDir()
+			lyOK, lyMsg := oracleSchema(dir, c.pattern)
+			mu.Lock()
+			schemas++
+			mu.Unlock()
+			switch {
+			case err == nil && !lyOK:
+				t.Errorf("%q: accepted, libyang: %s", c.pattern, firstLine(lyMsg))
+				return
+			case err != nil && lyOK:
+				t.Errorf("%q: rejected (%v), libyang accepts", c.pattern, err)
+				return
+			case err != nil:
+				if want := fmt.Sprintf("Regular expression \"%s\" is not valid (%v).", c.pattern, err); !strings.Contains(lyMsg, want) {
+					t.Errorf("%q: message %q, libyang: %s", c.pattern, want, firstLine(lyMsg))
+				}
+				return
+			}
+			for i, s := range cands {
+				if o, l := p.Match(s), oracleMatch(dir, i, s); o != l {
+					t.Errorf("%q on %q: match %v, libyang %v", c.pattern, s, o, l)
+				}
+				mu.Lock()
+				matches++
+				mu.Unlock()
+			}
+		}()
+	}
+	wg.Wait()
+	// D-0032: Go's Unicode tables (unicode.Version) against PCRE2 10.46's Unicode 16.0.0. U+10940
+	// (SIDETIC LETTER N01) is new in Unicode 17.0.0: a letter here, unassigned for libyang.
+	if unicode.Version != "16.0.0" {
+		dir := t.TempDir()
+		p, err := CompileCompat(`\p{L}`)
+		if lyOK, _ := oracleSchema(dir, `\p{L}`); err != nil || !lyOK {
+			t.Fatal(err)
+		}
+		if o, l := p.Match("\U00010940"), oracleMatch(dir, 0, "\U00010940"); !o || l {
+			t.Errorf("D-0032 stale: \\p{L} on U+10940: match %v, libyang %v", o, l)
+		}
+	}
+	sort.Strings(unsupport)
+	t.Logf("compat: %d schema verdicts, %d match verdicts compared; unsupported (U-0011): %q", schemas, matches, unsupport)
 }
