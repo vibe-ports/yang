@@ -805,41 +805,49 @@ func (ev *evaluator) moveto(set value, axis string, nt nameTest) (value, error) 
 
 // allDescChild is moveto_node_alldesc_child ('//' NameTest).
 func (ev *evaluator) allDescChild(set value, nt nameTest) (value, error) {
-	starts := len(set.nodes)
 	set, err := ev.moveto(set, "child", nameTest{any: true})
 	if err != nil {
 		return value{}, err
 	}
+	// set_dup_node_check: a matching node that is also another item of the set is not descended
+	// into (that item's own walk covers it), but it is added each time; libyang neither removes
+	// these duplicates nor sorts (its set_sort is an assert, compiled out)
+	count := make(map[Node]int, len(set.nodes))
+	for _, it := range set.nodes {
+		count[it.n]++
+	}
 	var out []item
-	var dfs func(n Node) error
-	dfs = func(n Node) error {
+	var dfs func(n, start Node) error
+	dfs = func(n, start Node) error {
 		if err := ev.tick(); err != nil {
 			return err
 		}
-		ok, skip, err := ev.check(item{n, itElem}, nt)
+		ok, skip, err := ev.check(item{n: n, t: itElem}, nt)
 		if err != nil || skip {
 			return err
 		}
 		if ok {
-			out = append(out, item{n, itElem})
+			out = append(out, item{n: n, t: itElem})
+			if c := count[n]; n == start && c > 1 || n != start && c > 0 {
+				return nil
+			}
 		}
 		// libyang descends into when-false nodes here: their descendants match
 		for _, c := range n.Children() {
-			if err := dfs(c); err != nil {
+			if err := dfs(c, start); err != nil {
 				return err
 			}
 		}
 		return nil
 	}
 	for _, it := range set.nodes {
-		if err := dfs(it.n); err != nil {
+		if err := dfs(it.n, it.n); err != nil {
 			return value{}, err
 		}
 	}
-	if starts > 1 { // several start nodes may nest
-		out = ev.sortUnique(out)
-	}
-	return nodesV(out), nil
+	v := nodesV(out)
+	v.nonChild = set.nonChild
+	return v, nil
 }
 
 // text is xpath_pi_text.

@@ -786,3 +786,6 @@
 {"cp": "/pv2:c", "x": "(. | l[1]/following::*)/*"}
 {"cp": "/pv2:c", "x": "l[2]/preceding-sibling::*[1]/../*"}
 {"cp": "/pv2:c", "x": "l[1]/following::*[k]/k/../.."}
+{"cp": "/pv2:c", "x": "(l[1]/following::* | .)//k"}
+{"cp": "/pv2:c", "x": "(l | .)//k"}
+{"cp": "/pv2:c", "x": "l//k"}
