@@ -71,6 +71,25 @@ func (x xn) LookupChild(sn xpath.SchemaNode, vals []string) ([]xpath.Node, bool)
 	return nil, true
 }
 
+// FirstChild is lyd_find_sibling_schema over the children of x: their first live instance of sn,
+// found by the binary search of the sorted sibling list (declined for a node outside a tree or
+// with dead children of sn, which the scan skips).
+func (x xn) FirstChild(sn xpath.SchemaNode) (xpath.Node, bool) {
+	s, ok := sn.(xs)
+	t := treeOf(x.n)
+	if !ok || t == nil || x.n.flags&flagDead != 0 {
+		return nil, false
+	}
+	i := t.schemaIndex(&x.n.kids, s.s)
+	if i < 0 {
+		return nil, true
+	}
+	if c := x.n.kids.list[i]; c.flags&flagDead == 0 {
+		return xn{c, x.set}, true
+	}
+	return nil, false
+}
+
 func (x xn) Name() string { return x.n.Name() }
 
 func (x xn) Module() string {

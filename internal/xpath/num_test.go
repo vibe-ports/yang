@@ -57,13 +57,13 @@ func TestHugeNumbers(t *testing.T) {
 	}
 	tree := bigTree(10_000)
 	start = time.Now()
-	if r, err := eval("count(/c/l[k = number('1e-4000')])", EvalContext{Tree: tree}); err != nil || r.Num != 1 { // k = "0" equals 1e-4000 to 6 decimals, as libyang
+	if r, err := eval("count(/c/l[number('1e-4000') = k])", EvalContext{Tree: tree}); err != nil || r.Num != 1 { // k = "0" equals 1e-4000 to 6 decimals, as libyang
 		t.Errorf("tiny: %v %v", r.Num, err)
 	}
 	if d := time.Since(start); d > 30*time.Second { // sanity bound only (CI runners under -race)
 		t.Errorf("tiny comparisons took %v", d)
 	}
-	_, err := eval("count(/c/l[k = number('1e4000')])", EvalContext{Tree: tree, MaxSteps: 100_000})
+	_, err := eval("count(/c/l[number('1e4000') = k])", EvalContext{Tree: tree, MaxSteps: 100_000})
 	if !errors.Is(err, ErrBudget) {
 		t.Errorf("huge comparisons not charged: %v", err)
 	}

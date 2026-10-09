@@ -92,6 +92,10 @@ func replay(t *testing.T, cases []oracleCase) {
 			tree = unionTree()
 		case "aug":
 			tree = augTree()
+		case "hash":
+			tree = hashTree()
+		case "opq":
+			tree = opqTree()
 		case "anydata":
 			tree = top(cont("pv2:c", mk(KindAnydata, "any", &tval{})))
 		}

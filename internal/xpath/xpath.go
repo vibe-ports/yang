@@ -86,19 +86,22 @@ type Node interface {
 // knows, which costs O(siblings) per step.
 type ChildLookup interface {
 	// LookupChild returns, in document order, every child instance of sn whose
-	// list keys (in key order) or leaf-list value have the string values
-	// (Value().String()) vals, or every instance of sn when vals is nil (a
-	// container, leaf or any node). vals are canonical already (the evaluator
-	// canonizes the predicate literals by the key's type, set_comp_canonize), so
-	// the comparison is plain string equality; no match is an empty result. Only
-	// when the node has no instance of sn at all, the result is the first opaque
-	// child named like sn (lyd_find_sibling_opaq_next) if there is one, and the
-	// evaluator runs the consumed predicates on it: the scan's fallback (D-0013;
-	// libyang falls back whenever the value is not found and does not filter).
+	// list keys (in key order) have the string values (Value().String()) vals,
+	// or every instance of sn when vals is nil (a container, leaf or any node).
+	// vals are canonical already (stored by the key's type, as
+	// ly_path_compile_predicate does), so the comparison is plain string
+	// equality; no match is an empty result, or the first opaque child named
+	// like sn (lyd_find_sibling_opaq_next), which libyang returns as it is.
 	// ok=false declines the lookup: the evaluator scans this node's children
 	// instead, charging the step budget per child. A lookup must cost O(1)
 	// steps; decline wherever it would have to scan.
 	LookupChild(sn SchemaNode, vals []string) (nodes []Node, ok bool)
+}
+
+// FirstLookup is an optional interface of a Node: its first child instance of sn found through
+// an index (lyd_find_sibling_schema), nil if it has none. ok=false declines: the evaluator scans.
+type FirstLookup interface {
+	FirstChild(sn SchemaNode) (n Node, ok bool)
 }
 
 // SchemaNode is what the evaluator needs from a data node's schema node and

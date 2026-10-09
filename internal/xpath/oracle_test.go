@@ -30,6 +30,8 @@ var oracleSets = map[string]string{
 	"":        `"data_type":"get","modules":[{"name":"pv2","features":["extra"]}],"data_file":"data/xpath.json"`,
 	"union":   `"data_type":"get","modules":[{"name":"pv2"},{"name":"pv2-xp"}],"data_file":"data/xpath-union.json"`,
 	"aug":     `"data_type":"get","modules":[{"name":"pv2","features":["extra"]},{"name":"pv2-aug"},{"name":"pv2-xp"}],"data_file":"data/xpath-aug.json"`,
+	"hash":    `"data_type":"get","modules":[{"name":"pv2"},{"name":"pv2-hk"}],"data_file":"data/xpath-hash.json"`,
+	"opq":     `"data_type":"get","modules":[{"name":"pv2"}],"data_file":"data/xpath-opq.json","parse_only":true,"unknown":"opaque"`,
 	"anydata": `"data_type":"get","modules":[{"name":"pv2"}],"data_file":"data/xpath-anydata.json"`,
 }
 

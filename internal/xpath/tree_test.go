@@ -416,6 +416,28 @@ func augTree() []Node {
 		keyed(list("pv2-xp:l", leaf("k", "b")), "k"), list("pv2-xp:l", leaf("k", "c"))))
 }
 
+// hashTree mirrors protocol-v2/data/xpath-hash.json: pv2-hk augments c with a leaf-list ll
+// like pv2's and a list outer (key n, uint8) with a nested list inner (key k).
+func hashTree() []Node {
+	tree := top(cont("pv2:c", keyed(list("l", leaf("k", "a")), "k"), list("l", leaf("k", "b")),
+		leafl("ll", "b"), leafl("pv2-hk:ll", "b"),
+		keyed(list("pv2-hk:outer", leaf("n", "1")), "n"),
+		list("pv2-hk:outer", leaf("n", "2"), keyed(list("inner", leaf("k", "x")), "k"))))
+	n := tree[0].(*tnode).sch.kids[[2]string{"pv2-hk", "outer"}].kids[[2]string{"pv2-hk", "n"}]
+	n.canon = uintCanon
+	n.check = func(v string) (string, bool) { _, ok := uintCanon(v); return "", ok }
+	return tree
+}
+
+// opqTree mirrors protocol-v2/data/xpath-opq.json parsed parse-only with unknown nodes opaque:
+// the second l instance has no key, so it is an opaque node named l.
+func opqTree() []Node {
+	opq := list("l")
+	tree := top(cont("pv2:c", keyed(list("l", leaf("k", "a")), "k"), opq))
+	opq.sch = nil
+	return tree
+}
+
 // pv2Deref resolves the leafrefs of pv2 (ref → ../l/k; u2 holds a percent).
 func pv2Deref(tree []Node) func(Node) ([]Node, error) {
 	return func(n Node) ([]Node, error) {

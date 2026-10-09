@@ -27,6 +27,7 @@ func TestVarsGoldens(t *testing.T) {
 		"eval-error-location":    "/zz:c",
 		"reparse-error-location": "l[",
 		"lex-error-location":     "l['",
+		"hash-giveup":            "string(l[k = $s != 'zz']/k)", // a variable: no hash lookup
 	}
 	var ocs []oracleCase
 	for id, x := range cases {

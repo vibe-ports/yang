@@ -790,3 +790,21 @@
 {"cp":"/pv2:c","x":"(l[1]/following::* | .)//k","result":{"type":"node-set","nodes":["/pv2:c/l[k='a']/k","/pv2:c/l[k='b']/k","/pv2:c/l[k='b']/k","/pv2:c/l[k='c']/k","/pv2:c/l[k='c']/k"]}}
 {"cp":"/pv2:c","x":"(l | .)//k","result":{"type":"node-set","nodes":["/pv2:c/l[k='a']/k","/pv2:c/l[k='b']/k","/pv2:c/l[k='c']/k","/pv2:c/l[k='a']/k","/pv2:c/l[k='b']/k","/pv2:c/l[k='c']/k"]}}
 {"cp":"/pv2:c","x":"l//k","result":{"type":"node-set","nodes":["/pv2:c/l[k='a']/k","/pv2:c/l[k='b']/k","/pv2:c/l[k='c']/k"]}}
+{"set":"aug","cp":"/pv2:c","x":"string(l[k = 'a' != 'zz']/k)","result":{"type":"string","value":"a"}}
+{"set":"aug","cp":"/pv2:c","x":"string(l[k = 'b' != 'zz']/k)","result":{"type":"string","value":"b"}}
+{"set":"hash","cp":"/pv2:c","x":"string(l[k = 'a' != 'zz']/k)","result":{"type":"string","value":"a"}}
+{"set":"hash","cp":"/pv2:c","x":"count(l[k = 'zz' = 'zz'])","result":{"type":"number","value":0}}
+{"set":"hash","cp":"/pv2:c","x":"count(ll[. = 'b'])","result":{"type":"number","value":2}}
+{"set":"hash","cp":"/pv2:c","x":"count(ll)","result":{"type":"number","value":2}}
+{"set":"hash","cp":"/pv2:c","x":"count(pv2-hk:ll[. = 'b'])","result":{"type":"number","value":1}}
+{"set":"hash","cp":"/pv2:c","x":"count(pv2-hk:outer/inner[k = 'x' != 'zz'])","result":{"type":"number","value":0}}
+{"set":"hash","cp":"/pv2:c","x":"count(pv2-hk:outer[n = '2']/inner[k = 'x' != 'zz'])","result":{"type":"number","value":1}}
+{"set":"hash","cp":"/pv2:c","x":"count(pv2-hk:outer[n = 300 != 'zz'])","result":{"type":"number","value":2}}
+{"set":"hash","cp":"/pv2:c","x":"count(pv2-hk:outer[n = 1 != 'zz'])","result":{"type":"number","value":1}}
+{"set":"hash","cp":"/pv2:c","x":"count(pv2-hk:outer[n = '01'])","result":{"type":"number","value":1}}
+{"set":"hash","cp":"/pv2:c","x":"count(pv2-hk:outer[n = 'abc' != 'zz'])","result":{"type":"number","value":2}}
+{"set":"hash","cp":"/pv2:c","x":"count(pv2-hk:outer[n = ../l[1]/k != 'zz'])","result":{"type":"number","value":2}}
+{"set":"hash","cp":"","x":"count(/pv2:c/pv2-hk:outer[n = 2 != 'zz'])","result":{"type":"number","value":1}}
+{"set":"hash","cp":"/pv2:c","x":"count(l[k = concat(\"a'\", '\"') != 'zz'])","result":{"type":"number","value":2}}
+{"set":"opq","cp":"/pv2:c","x":"count(l[k = 'zz' != 'q'])","result":{"type":"number","value":1}}
+{"set":"opq","cp":"/pv2:c","x":"count(l[k = 'a' != 'q'])","result":{"type":"number","value":1}}

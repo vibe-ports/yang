@@ -282,10 +282,11 @@ func TestXPathBudget(t *testing.T) {
 }
 
 // TestWhenQueueWork: n queued nodes with true whens cost O(n) XPath steps in one pass, and so do
-// n leafrefs: `../t[.='v']` finds its target through the children hash table (xn.LookupChild,
-// moveto_node_hash_child), not by a scan of the siblings.
+// n leafrefs to a keyed list: `../l[k='v']/k` finds its target through the children hash table
+// (xn.LookupChild, moveto_node_hash_child), not by a scan of the siblings. A leafref to a
+// leaf-list (`../t[.='v']`) scans, as libyang does: a leaf-list predicate is never hashed.
 func TestWhenQueueWork(t *testing.T) {
-	f := newUnresFixture(t)
+	f, l, k, _, _, _, _ := listFixture(t)
 	const n = 2000
 	w := &schema.Node{Kind: schema.LeafList, Name: "w", Module: f.m, Parent: f.c, Type: &schema.Type{Base: schema.Uint16}, Config: true}
 	e, _ := xpath.Compile("true()", testNS("u"))
@@ -302,6 +303,27 @@ func TestWhenQueueWork(t *testing.T) {
 	if vc.budget.steps > 20*n {
 		t.Fatalf("when queue: %d steps for %d nodes", vc.budget.steps, n)
 	}
+	str := &schema.Type{Base: schema.String}
+	rl := &schema.Node{Kind: schema.LeafList, Name: "rl", Module: f.m, Parent: f.c, Config: true,
+		Type: &schema.Type{Base: schema.Leafref, Path: "../l/k", Prefixes: schema.NSCtx{"": f.m}, RequireInstance: true, Realtype: str}}
+	f.c.Children = append(f.c.Children, rl)
+	args = nil
+	for i := range n / 4 {
+		args = append(args, rl, fmt.Sprint(i))
+	}
+	vc, c, _ := f.build(t, ValidateOptions{}, args...)
+	for i := range n / 4 {
+		inst := newInner(l)
+		key, _ := types.Store(k.Type, fmt.Sprint(i), types.FormatJSON, types.JSONHints("string"), nil, k)
+		vc.t.insert(inst, newTerm(k, key), insertDefault)
+		vc.t.insert(c, inst, insertDefault)
+	}
+	if err := vc.unres(); err != nil {
+		t.Fatal(err, diagCodes(vc.log.diags))
+	}
+	if vc.budget.steps > 20*n/4 {
+		t.Fatalf("leafrefs to a list: %d steps for %d references", vc.budget.steps, n/4)
+	}
 	f.t.Type = &schema.Type{Base: schema.Uint16}
 	f.r.Type.Realtype = f.t.Type
 	args = nil
@@ -309,12 +331,16 @@ func TestWhenQueueWork(t *testing.T) {
 		args = append(args, f.t, fmt.Sprint(i), f.r, fmt.Sprint(i))
 	}
 	vc, _, _ = f.build(t, ValidateOptions{}, args...)
+	w0 := vc.t.work
 	if err := vc.unres(); err != nil {
 		t.Fatal(err, diagCodes(vc.log.diags))
 	}
-	if vc.budget.steps > 10*n/4 {
-		t.Fatalf("leafrefs: %d steps for %d references", vc.budget.steps, n/4)
+	// O(n²) sibling visits in all (each `..` result is sorted once per evaluation, its sibling list
+	// read once); reading the list again per sorted node made it O(n³), outside the step budget
+	if w := vc.t.work - w0; w > 8*(n/2)*(n/2) {
+		t.Fatalf("leafrefs to a leaf-list: %d sibling visits for %d references", w, n/4)
 	}
+	t.Logf("leafrefs to a leaf-list: %d steps, %d sibling visits for %d references", vc.budget.steps, vc.t.work-w0, n/4)
 }
 
 // TestPathEvalPositions: an instance-identifier position beyond the instances — including the

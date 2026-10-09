@@ -24,7 +24,7 @@ func TestFuncTables(t *testing.T) {
 }
 
 func eval(src string, ec EvalContext) (Result, error) {
-	e, err := Compile(src, jsonNS{"pv2": true, "pv2-aug": true, "pv2-xp": true, "a": true, "b": true})
+	e, err := Compile(src, jsonNS{"pv2": true, "pv2-aug": true, "pv2-xp": true, "pv2-hk": true, "a": true, "b": true})
 	if err != nil {
 		return Result{}, err
 	}

@@ -789,3 +789,21 @@
 {"cp": "/pv2:c", "x": "(l[1]/following::* | .)//k"}
 {"cp": "/pv2:c", "x": "(l | .)//k"}
 {"cp": "/pv2:c", "x": "l//k"}
+{"set": "aug", "cp": "/pv2:c", "x": "string(l[k = 'a' != 'zz']/k)"}
+{"set": "aug", "cp": "/pv2:c", "x": "string(l[k = 'b' != 'zz']/k)"}
+{"set": "hash", "cp": "/pv2:c", "x": "string(l[k = 'a' != 'zz']/k)"}
+{"set": "hash", "cp": "/pv2:c", "x": "count(l[k = 'zz' = 'zz'])"}
+{"set": "hash", "cp": "/pv2:c", "x": "count(ll[. = 'b'])"}
+{"set": "hash", "cp": "/pv2:c", "x": "count(ll)"}
+{"set": "hash", "cp": "/pv2:c", "x": "count(pv2-hk:ll[. = 'b'])"}
+{"set": "hash", "cp": "/pv2:c", "x": "count(pv2-hk:outer/inner[k = 'x' != 'zz'])"}
+{"set": "hash", "cp": "/pv2:c", "x": "count(pv2-hk:outer[n = '2']/inner[k = 'x' != 'zz'])"}
+{"set": "hash", "cp": "/pv2:c", "x": "count(pv2-hk:outer[n = 300 != 'zz'])"}
+{"set": "hash", "cp": "/pv2:c", "x": "count(pv2-hk:outer[n = 1 != 'zz'])"}
+{"set": "hash", "cp": "/pv2:c", "x": "count(pv2-hk:outer[n = '01'])"}
+{"set": "hash", "cp": "/pv2:c", "x": "count(pv2-hk:outer[n = 'abc' != 'zz'])"}
+{"set": "hash", "cp": "/pv2:c", "x": "count(pv2-hk:outer[n = ../l[1]/k != 'zz'])"}
+{"set": "hash", "cp": "", "x": "count(/pv2:c/pv2-hk:outer[n = 2 != 'zz'])"}
+{"set": "hash", "cp": "/pv2:c", "x": "count(l[k = concat(\"a'\", '\"') != 'zz'])"}
+{"set": "opq", "cp": "/pv2:c", "x": "count(l[k = 'zz' != 'q'])"}
+{"set": "opq", "cp": "/pv2:c", "x": "count(l[k = 'a' != 'q'])"}

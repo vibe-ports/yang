@@ -48,8 +48,8 @@ func TestChildLookup(t *testing.T) {
 		want   string
 		lookup bool
 	}{
-		{"/a:c/ll[.='1999']", "1999", true},
-		{"/a:c/ll[. = '7']", "7", true},
+		{"/a:c/ll[.='1999']", "1999", false}, // a leaf-list predicate is never hashed
+		{"/a:c/ll[. = '7']", "7", false},
 		{"/a:c/a", "x", true},
 		{"/a:c/ll[.=concat('19','99')]", "1999", false},
 	} {
@@ -190,9 +190,9 @@ func (l lnode) LookupChild(sn SchemaNode, vals []string) ([]Node, bool) {
 }
 
 // TestChildLookupContract: lookups through LookupChild select the same nodes as the scan for
-// multi-key lists, canonized literals, the opaque fallback (its predicates still run), steps
-// whose predicates are not consumed, and mixed context sets (one context node without the
-// interface: every context node scans).
+// multi-key lists, canonized literals, leaf-lists and steps whose predicates are not consumed
+// (no lookup), and mixed context sets (a context node without the interface scans, the others
+// still look up).
 func TestChildLookupContract(t *testing.T) {
 	stripZeros := func(v string) (string, bool) {
 		n, err := strconv.Atoi(v)
@@ -219,11 +219,11 @@ func TestChildLookupContract(t *testing.T) {
 	}{
 		{"/a:c/l[k='a'][j='2']/v", []string{"y"}, false, false},
 		{"/a:c/l[k='a'][j='01']/v", []string{"x"}, false, false}, // canonized literal
-		{"/a:c/n[.='002']", []string{"2"}, false, false},
-		{"/a:c/l/ll[.='1']", []string{"1"}, false, false},     // opaque ll=2 filtered out
-		{"/a:c/l/ll[.='2']", nil, false, false},               // '.' never selects an opaque node
-		{"/a:c/l[k='a'][j='1']/v[.='zz']", nil, false, false}, // a leaf: nothing consumed
-		{"/a:c/l/v", []string{"x", "y"}, true, true},
+		{"/a:c/n[.='002']", []string{"2"}, false, true},          // leaf-lists are never hashed
+		{"/a:c/l/ll[.='1']", []string{"1"}, false, true},         // opaque ll=2 filtered out
+		{"/a:c/l/ll[.='2']", nil, false, true},                   // '.' never selects an opaque node
+		{"/a:c/l[k='a'][j='1']/v[.='zz']", nil, false, false},    // a leaf: nothing consumed
+		{"/a:c/l/v", []string{"x", "y"}, true, false},            // per context node: the others still look up
 		{"/a:c/l/ll[.='1']", []string{"1"}, true, true},
 	} {
 		plain, err := eval(tc.src, EvalContext{Tree: tree})

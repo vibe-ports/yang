@@ -66,17 +66,17 @@ type evaluator struct {
 	ns      NamespaceCtx
 	ec      *EvalContext
 	ctx     context.Context
-	cur     item                  // current()
-	op      SchemaNode            // set->context_op: the RPC/action/notification of current()
-	steps   int                   // remaining budget
-	budget  int                   // initial budget
-	err     error                 // sticky budget / cancellation error
-	sib     map[Node]map[Node]int // per parent (nil: top level), index of each child; built lazily
-	keys    map[Node][]int        // sibling indexes from the top level down to the node
-	nums    map[string]ld         // parsed long number texts
-	parses  int                   // long number texts actually parsed (tests)
-	vars    int                   // variable references being evaluated, nested
-	varASTs map[int]varAST        // parsed variable values, by index in ec.Vars
+	cur     item             // current()
+	op      SchemaNode       // set->context_op: the RPC/action/notification of current()
+	steps   int              // remaining budget
+	budget  int              // initial budget
+	err     error            // sticky budget / cancellation error
+	sib     map[Node]sibList // per parent (nil: top level), its children; built lazily
+	keys    map[Node][]int   // sibling indexes from the top level down to the node
+	nums    map[string]ld    // parsed long number texts
+	parses  int              // long number texts actually parsed (tests)
+	vars    int              // variable references being evaluated, nested
+	varASTs map[int]varAST   // parsed variable values, by index in ec.Vars
 }
 
 func newEvaluator(e *Expr, ec *EvalContext) *evaluator {
@@ -90,9 +90,9 @@ func newEvaluator(e *Expr, ec *EvalContext) *evaluator {
 	ev.budget = ev.steps
 	switch {
 	case ec.Current != nil:
-		ev.cur = item{ec.Current, itElem}
+		ev.cur = item{n: ec.Current, t: itElem}
 	case ec.Node != nil:
-		ev.cur = item{ec.Node, itElem}
+		ev.cur = item{n: ec.Node, t: itElem}
 	default:
 		ev.cur = item{t: itRoot}
 	}
@@ -398,10 +398,9 @@ func (ev *evaluator) step1(set value, s step) (value, error) {
 		case s.allDesc && s.axis == "child":
 			set, err = ev.allDescChild(set, nt)
 		default:
-			if sn := ev.schemaTarget(set, nt, s); sn != nil {
-				var used int
-				set, used, err = ev.hashChild(set, sn, nt.name, s.preds)
-				preds = s.preds[used:]
+			if sn, vals, ok := ev.schemaTarget(set, nt, s); ok {
+				set, err = ev.hashChild(set, sn, nt.name, vals)
+				preds = s.preds[len(vals):] // the hashed key predicates are not evaluated
 			} else {
 				set, err = ev.moveto(set, s.axis, nt)
 			}
@@ -444,20 +443,20 @@ func (ev *evaluator) resolveName(qname string) (nameTest, error) {
 // node a child NameTest denotes, which libyang then looks up by hash
 // (restricting an unprefixed JSON name to the context node's module); nil
 // when libyang falls back to matching by name in every module.
-func (ev *evaluator) schemaTarget(set value, nt nameTest, s step) SchemaNode {
+func (ev *evaluator) schemaTarget(set value, nt nameTest, s step) (sn SchemaNode, vals []string, ok bool) {
 	if nt.name == "" || s.axis != "child" {
-		return nil
+		return nil, nil, false
 	}
 	var found, foundParent SchemaNode
 	for _, it := range set.nodes {
 		var cand SchemaNode
 		if it.t == itRoot {
 			if ev.ec.Schema == nil {
-				return nil // cannot search: match by name
+				return nil, nil, false // cannot search: match by name
 			}
 			tops := ev.ec.Schema.TopLevel(nt.mod, nt.name)
 			if len(tops) > 1 {
-				return nil // matches in several modules
+				return nil, nil, false // matches in several modules
 			}
 			if len(tops) == 1 {
 				cand = tops[0]
@@ -481,61 +480,154 @@ func (ev *evaluator) schemaTarget(set value, nt nameTest, s step) SchemaNode {
 		}
 		if cand != nil {
 			if found != nil {
-				return nil // found at different levels
+				return nil, nil, false // found at different levels
 			}
 			found = cand
 		}
 	}
-	if found != nil && (found.Kind() == KindList || found.Kind() == KindLeafList) && !ev.hashPredicates(found, s.preds) {
-		return nil
+	if found == nil {
+		return nil, nil, false
 	}
-	return found
+	if found.Kind() == KindList || found.Kind() == KindLeafList {
+		if vals, ok = ev.hashPredicates(found, s.preds, set); !ok {
+			return nil, nil, false
+		}
+	}
+	return found, vals, true
 }
 
-// hashPredicates is eval_name_test_try_compile_predicates: whether the step
-// starts with "[key = value]" for every list key in order (leaf-list:
-// "[. = value]") whose values do not depend on the instance.
-func (ev *evaluator) hashPredicates(sn SchemaNode, preds []ast) bool {
+// hashPredicates is eval_name_test_try_compile_predicates: the key values of a list step that
+// starts with "[key = value]" for every key in order, each value independent of the instance.
+// Like libyang, it gives up (ok=false: the step matches by name and evaluates its predicates)
+// for a leaf-list (ly_path_compile_predicate rejects the "[ll='v']" predicate it builds), when
+// the first context node has no instance of the list (lyd_find_sibling_schema), when a value
+// does not evaluate (a variable: libyang evaluates without them) or does not fit the key's type,
+// and when it contains both quote characters. A value is only the first operand of an '='
+// chain (the copied tokens lose the chain): [k = 'a' != 'zz'] looks up k = 'a'.
+func (ev *evaluator) hashPredicates(sn SchemaNode, preds []ast, set value) (vals []string, ok bool) {
 	keys := sn.Keys()
-	if sn.Kind() == KindLeafList {
-		keys = []string{"."}
+	if sn.Kind() != KindList || len(keys) == 0 || len(preds) < len(keys) {
+		return nil, false
 	}
-	if len(keys) == 0 || len(preds) < len(keys) {
-		return false
-	}
+	var inst Node // eval_name_test_try_compile_predicate_append: any instance, the first
 	for i, k := range keys {
 		c, ok := preds[i].(chainExpr)
 		if !ok || c.ops[0] != "=" {
-			return false
+			return nil, false
 		}
 		p, ok := c.args[0].(pathExpr)
 		if !ok || p.abs || p.prim != nil || len(p.steps) != 1 {
-			return false
+			return nil, false
 		}
 		st := p.steps[0]
-		if st.allDesc || st.explicit || len(st.preds) > 0 {
-			return false // '[' NameTest '=' only
+		if st.allDesc || st.explicit || len(st.preds) > 0 || st.test != tNameTest {
+			return nil, false // '[' NameTest '=' only
 		}
-		if k == "." {
-			if st.test != tDot {
-				return false
-			}
-		} else {
-			// eval_name_test_try_compile_predicate_key: the key's module and name
-			nt, err := ev.resolveName(st.name)
-			if nt.mod == "" {
-				nt.mod = sn.Module() // JSON: the list's module
-			}
-			if st.test != tNameTest || err != nil || nt.name != k || nt.mod != sn.Module() {
-				return false
-			}
+		// eval_name_test_try_compile_predicate_key: the key's module and name
+		nt, err := ev.resolveName(st.name)
+		if nt.mod == "" {
+			nt.mod = sn.Module() // JSON: the list's module
+		}
+		if err != nil || nt.name != k || nt.mod != sn.Module() {
+			return nil, false
 		}
 		if slices.ContainsFunc(c.args[1:], hasLogOp) || !ev.atomsOK(c.args[1], sn) {
-			return false
+			return nil, false
+		}
+		if inst == nil {
+			if inst = ev.firstInstance(set, sn); inst == nil {
+				return nil, false
+			}
+		}
+		if hasVar(c.args[1]) {
+			return nil, false
+		}
+		v, err := ev.eval(c.args[1], nodesV([]item{{n: inst, t: itElem}}))
+		if err != nil {
+			return nil, false // a budget error stays in ev.err
+		}
+		str := ev.toString(v)
+		if strings.Contains(str, "'") && strings.Contains(str, `"`) {
+			return nil, false // the predicate it builds does not parse
+		}
+		ks := sn.Child(sn.Module(), k)
+		if ks == nil {
+			return nil, false
+		}
+		if _, ok := ks.CheckValue(str, jsonPrefixes{}); !ok {
+			return nil, false // ly_path_compile_predicate stores the value by the key's type
+		}
+		if cv, ok := ks.Canonical(str, jsonPrefixes{}); ok { // ly_path_compile_predicate: LY_VALUE_JSON, no prefix data
+			str = cv
+		}
+		vals = append(vals, str)
+	}
+	return vals, true
+}
+
+// firstInstance is lyd_find_sibling_schema over the children of the first context node (the
+// document root: the tree): its first instance of sn, nil if there is none.
+func (ev *evaluator) firstInstance(set value, sn SchemaNode) Node {
+	if len(set.nodes) == 0 {
+		return nil
+	}
+	var kids []Node
+	switch it := set.nodes[0]; it.t {
+	case itRoot:
+		kids = ev.ec.Tree
+	case itElem:
+		if f, ok := it.n.(FirstLookup); ok {
+			if err := ev.tick(); err != nil {
+				return nil
+			}
+			if n, ok := f.FirstChild(sn); ok {
+				return n
+			}
+		}
+		kids = it.n.Children()
+	}
+	for _, c := range kids {
+		if ev.tick() != nil {
+			return nil
+		}
+		if c.Schema() == sn {
+			return c
 		}
 	}
-	return true
+	return nil
 }
+
+// hasVar reports a variable reference in a.
+func hasVar(a ast) bool {
+	switch a := a.(type) {
+	case varExpr:
+		return true
+	case chainExpr:
+		return slices.ContainsFunc(a.args, hasVar)
+	case negExpr:
+		return hasVar(a.x)
+	case callExpr:
+		return slices.ContainsFunc(a.args, hasVar)
+	case pathExpr:
+		if a.prim != nil && hasVar(a.prim) || slices.ContainsFunc(a.preds, hasVar) {
+			return true
+		}
+		for _, st := range a.steps {
+			if slices.ContainsFunc(st.preds, hasVar) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// jsonPrefixes is LY_VALUE_JSON without prefix data, the format ly_path_compile_predicate stores
+// a hashed key value in: prefixes are module names, unprefixed names the context node's module.
+type jsonPrefixes struct{}
+
+func (jsonPrefixes) Resolve(p string) (string, bool) { return p, true }
+func (jsonPrefixes) Prefix(m string) string          { return m }
+func (jsonPrefixes) Default() string                 { return "" }
 
 // hasLogOp reports an 'or'/'and' token outside nested brackets, which makes
 // eval_name_test_try_compile_predicates give up on a value.
@@ -596,48 +688,53 @@ func (ev *evaluator) atomsOK(val ast, sn SchemaNode) bool {
 	return true
 }
 
-// hashChild is moveto_node_hash_child: the instances of sn under each context
-// node (an opaque node of that name if there is none). When every context node
-// is a ChildLookup (the document root: EvalContext.TreeLookup) and the predicates
-// libyang hashes (preds, see hashPredicates)
-// have literal values, the instances come from LookupChild and those predicates
-// are consumed (used); otherwise the children are scanned and the predicates
-// are left to the caller.
-func (ev *evaluator) hashChild(set value, sn SchemaNode, name string, preds []ast) (value, int, error) {
+// hashChild is moveto_node_hash_child: under each context node, the first instance of sn whose
+// keys are vals (hashPredicates; any instance for a node that is not a list), or else the first
+// opaque child of that name, which libyang returns without evaluating anything on it. A context
+// node that is a ChildLookup (the document root: EvalContext.TreeLookup) is asked first; one
+// that declines, or is none, has its children scanned.
+func (ev *evaluator) hashChild(set value, sn SchemaNode, name string, vals []string) (value, error) {
 	if ev.ec.Root == RootConfig && !sn.Config() || ev.op != nil && isOp(sn) && sn != ev.op {
-		return nodesV(nil), 0, nil
+		return nodesV(nil), nil
 	}
-	vals, used, lookup := lookupValues(sn, preds, ev.ns)
-	lookupOf := func(it item) ChildLookup {
-		switch it.t {
-		case itRoot:
-			return ev.ec.TreeLookup
-		case itElem:
-			if l, ok := it.n.(ChildLookup); ok {
-				return l
+	var keys []SchemaNode
+	for _, k := range sn.Keys()[:len(vals)] {
+		keys = append(keys, sn.Child(sn.Module(), k))
+	}
+	matches := func(c Node) bool { // lyd_find_sibling_first / lyd_find_sibling_val
+		if c.Schema() != sn {
+			return false
+		}
+		kids := c.Children()
+		for i, ks := range keys {
+			j := slices.IndexFunc(kids, func(k Node) bool { return k.Schema() == ks })
+			if j < 0 || valueOf(kids[j]).String() != vals[i] {
+				return false
 			}
 		}
-		return nil
-	}
-	for _, it := range set.nodes {
-		if lookupOf(it) == nil {
-			lookup = false
-		}
-	}
-	if !lookup {
-		used = 0
+		return true
 	}
 	var out []item
 	for _, it := range set.nodes {
+		var lookup ChildLookup
+		switch it.t {
+		case itRoot:
+			lookup = ev.ec.TreeLookup
+		case itElem:
+			lookup, _ = it.n.(ChildLookup)
+		}
 		var hit []Node
 		looked := false
-		if lookup {
+		if lookup != nil {
 			if err := ev.tick(); err != nil {
-				return value{}, 0, err
+				return value{}, err
 			}
-			hit, looked = lookupOf(it).LookupChild(sn, vals)
+			hit, looked = lookup.LookupChild(sn, vals)
+			if len(hit) > 1 {
+				hit = hit[:1]
+			}
 		}
-		if !looked { // no lookup, or the node declined it: scan (one step per child)
+		if !looked { // scan, one step per child
 			var kids []Node
 			switch it.t {
 			case itRoot:
@@ -647,13 +744,14 @@ func (ev *evaluator) hashChild(set value, sn SchemaNode, name string, preds []as
 			}
 			for _, c := range kids {
 				if err := ev.tick(); err != nil {
-					return value{}, 0, err
+					return value{}, err
 				}
-				if c.Schema() == sn {
-					hit = append(hit, c)
+				if matches(c) {
+					hit = []Node{c}
+					break
 				}
 			}
-			if hit == nil {
+			if hit == nil { // lyd_find_sibling_opaq_next
 				for _, c := range kids {
 					if c.Schema() == nil && c.Name() == name {
 						hit = []Node{c}
@@ -662,84 +760,19 @@ func (ev *evaluator) hashChild(set value, sn SchemaNode, name string, preds []as
 				}
 			}
 		}
-		if used > 0 && (!looked || len(hit) == 1 && hit[0].Schema() == nil) {
-			// the consumed predicates run on a scan's instances and on the opaque fallback
-			// (D-0013; libyang returns the opaque node unfiltered)
-			v, err := ev.predicates(nodesV(nodeItems(hit)), preds[:used], "child")
-			if err != nil {
-				return value{}, 0, err
-			}
-			hit = nil
-			for _, o := range v.nodes {
-				hit = append(hit, o.n)
-			}
-		}
 		for _, c := range hit {
 			switch c.When() {
 			case WhenUnresolved:
 				if !ev.ec.IgnoreWhen {
-					return value{}, 0, ErrIncomplete
+					return value{}, ErrIncomplete
 				}
 			case WhenFalse:
 				continue // no exception for current() here, as libyang
 			}
-			out = append(out, item{c, itElem})
+			out = append(out, item{n: c, t: itElem})
 		}
 	}
-	return nodesV(out), used, nil
-}
-
-func nodeItems(ns []Node) []item {
-	out := make([]item, len(ns))
-	for i, n := range ns {
-		out[i] = item{n, itElem}
-	}
-	return out
-}
-
-// lookupValues returns the values of the predicates libyang turns into a hash
-// lookup (the list keys in key order, a leaf-list's '.'), when every one is a
-// literal; ok is false when a value is any other expression. A container,
-// leaf or any node is looked up without values. Each literal is canonized by
-// the key's (leaf-list's) type as the scan's comparison does (set_comp_canonize:
-// kept as written when that fails).
-func lookupValues(sn SchemaNode, preds []ast, ns NamespaceCtx) (vals []string, used int, ok bool) {
-	keys := sn.Keys()
-	n := len(keys)
-	switch sn.Kind() {
-	case KindLeafList:
-		n = 1
-	case KindList:
-		if n == 0 {
-			return nil, 0, false // keyless lists are never hashed by schemaTarget
-		}
-	default:
-		return nil, 0, true
-	}
-	if len(preds) < n {
-		return nil, 0, false
-	}
-	for i, p := range preds[:n] {
-		c, isChain := p.(chainExpr)
-		if !isChain || len(c.args) != 2 {
-			return nil, 0, false
-		}
-		lit, isLit := c.args[1].(litExpr)
-		if !isLit {
-			return nil, 0, false
-		}
-		v, ts := string(lit), sn
-		if keys != nil {
-			if ts = sn.Child(sn.Module(), keys[i]); ts == nil {
-				return nil, 0, false
-			}
-		}
-		if cv, ok := ts.Canonical(v, ns); ok {
-			v = cv
-		}
-		vals = append(vals, v)
-	}
-	return vals, n, true
+	return nodesV(out), nil
 }
 
 // check is moveto_node_check: match, or skip (LY_EINVAL: config-false under
@@ -861,7 +894,7 @@ func (ev *evaluator) text(set value, axis string) (value, error) {
 	var out []item
 	for _, it := range set.nodes {
 		if it.t == itElem && (it.n.Schema() == nil || isTerm(it.n)) {
-			out = append(out, item{it.n, itText})
+			out = append(out, item{n: it.n, t: itText})
 		}
 	}
 	return nodesV(out), nil
@@ -883,27 +916,33 @@ func (ev *evaluator) siblings(n Node) []Node {
 // numbered once per evaluation, and only when reached (set_assign_pos without
 // walking the whole tree).
 func (ev *evaluator) index(n Node) ([]Node, int) {
-	sib := ev.siblings(n)
 	p := n.Parent()
-	m, ok := ev.sib[p]
-	if !ok {
+	sl, ok := ev.sib[p]
+	if !ok { // the sibling list is read (Children() allocates it) and numbered once per parent
 		if ev.sib == nil {
-			ev.sib = map[Node]map[Node]int{}
+			ev.sib = map[Node]sibList{}
 		}
-		m = make(map[Node]int, len(sib))
-		for i, s := range sib {
+		sl.nodes = ev.siblings(n)
+		sl.idx = make(map[Node]int, len(sl.nodes))
+		for i, s := range sl.nodes {
 			if ev.tick() != nil {
 				break
 			}
-			m[s] = i
+			sl.idx[s] = i
 		}
-		ev.sib[p] = m
+		ev.sib[p] = sl
 	}
-	i, ok := m[n]
+	i, ok := sl.idx[n]
 	if !ok {
 		i = -1 // not under Tree
 	}
-	return sib, i
+	return sl.nodes, i
+}
+
+// sibList is one parent's children and the index of each, cached by index.
+type sibList struct {
+	nodes []Node
+	idx   map[Node]int
 }
 
 // axis is moveto_axis_node_next: every node on axis from it, in any order
@@ -911,7 +950,7 @@ func (ev *evaluator) index(n Node) ([]Node, int) {
 func (ev *evaluator) axis(it item, axis string, yield func(item) error) error {
 	var subtree func(n Node) error // n and its descendants
 	subtree = func(n Node) error {
-		if err := yield(item{n, itElem}); err != nil {
+		if err := yield(item{n: n, t: itElem}); err != nil {
 			return err
 		}
 		for _, c := range n.Children() {
@@ -924,9 +963,9 @@ func (ev *evaluator) axis(it item, axis string, yield func(item) error) error {
 	parent := func(x item) (item, bool) {
 		switch {
 		case x.t == itText:
-			return item{x.n, itElem}, true
+			return item{n: x.n, t: itElem}, true
 		case x.t == itElem && x.n.Parent() != nil:
-			return item{x.n.Parent(), itElem}, true
+			return item{n: x.n.Parent(), t: itElem}, true
 		case x.t == itElem:
 			return item{t: itRoot}, true
 		}
@@ -966,7 +1005,7 @@ func (ev *evaluator) axis(it item, axis string, yield func(item) error) error {
 		for _, c := range kids {
 			var err error
 			if axis == "child" {
-				err = yield(item{c, itElem})
+				err = yield(item{n: c, t: itElem})
 			} else {
 				err = subtree(c)
 			}
@@ -981,7 +1020,7 @@ func (ev *evaluator) axis(it item, axis string, yield func(item) error) error {
 		sib, i := ev.index(it.n)
 		for j, s := range sib {
 			if j != i && (j > i) == (axis == "following-sibling") {
-				if err := yield(item{s, itElem}); err != nil {
+				if err := yield(item{n: s, t: itElem}); err != nil {
 					return err
 				}
 			}
@@ -1005,7 +1044,7 @@ func (ev *evaluator) axis(it item, axis string, yield func(item) error) error {
 			}
 			if !fwd && x.Parent() != nil {
 				// libyang: preceding also returns the ancestors (moveto_axis_node_next_dfs_backward)
-				if err := yield(item{x.Parent(), itElem}); err != nil {
+				if err := yield(item{n: x.Parent(), t: itElem}); err != nil {
 					return err
 				}
 			}

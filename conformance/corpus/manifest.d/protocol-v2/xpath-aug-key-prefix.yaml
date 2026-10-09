@@ -1,5 +1,5 @@
 fixtures:
-  # key predicates of a same-named list (pv2:l / pv2-xp:l): hash lookup or name matching (D-0013)
+  # key predicates of a same-named list (pv2:l / pv2-xp:l): hash lookup or name matching (eval_name_test_try_compile_predicates)
   - id: protocol-v2/xpath-aug-key-prefix
     dir: protocol-v2
     source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}

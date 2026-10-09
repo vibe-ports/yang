@@ -1,0 +1,32 @@
+module pv2-hk {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-hk";
+  prefix hk;
+
+  import pv2 {
+    prefix p;
+  }
+
+  description
+    "Hand-written: when libyang turns key predicates into a hash lookup
+     (eval_name_test_try_compile_predicates): a leaf-list of the same name as
+     pv2's, and nested lists to probe the instance and key-type checks.";
+
+  augment "/p:c" {
+    leaf-list ll {
+      type string;
+    }
+    list outer {
+      key "n";
+      leaf n {
+        type uint8;
+      }
+      list inner {
+        key "k";
+        leaf k {
+          type string;
+        }
+      }
+    }
+  }
+}
