@@ -34,7 +34,7 @@ it; the issue tracks the public API.
 | `lysc_is_dup_inst_list` | `SchemaNode.IsDupInstList()` |
 | `lysc_is_userordered`, `LYS_ORDBY_USER` | `SchemaNode.UserOrdered()` |
 | `LYS_CONFIG_W` / `LYS_MAND_TRUE` / `LYS_PRESENCE` | `SchemaNode.Config()`, `Mandatory()`, `Presence()` |
-| PCRE2-compatible `pattern` semantics | `yang.Options.PatternCompat`: pending #148 (not on `main` yet; strict XSD patterns by default, D-0002…D-0008) |
+| PCRE2-compatible `pattern` semantics | `yang.Options.PatternCompat` (opt-in; strict XSD patterns by default, D-0002…D-0008; compat-mode differences D-0031…D-0033, U-0011) |
 
 ### Data trees
 

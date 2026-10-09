@@ -18,7 +18,7 @@ usable and measured; operations and anydata payloads are not done yet.
 | YANG 1.0 / 1.1 parser (modules, submodules, import/include with revision-date) | supported | YANG text only |
 | Schema compilation: typedef chains, grouping/uses/refine, augment, choice/case, if-feature, identities, status, must/when/leafref XPath checks | supported | |
 | Built-in types, unions, decimal64, `ietf-yang-types` / `ietf-inet-types` canonical forms | supported | |
-| `pattern` (XSD regular expressions) | supported | compiled to RE2 through an XSD-regex compiler; intentional differences D-0002…D-0008; a libyang-compatible PCRE2 mode (`Options.PatternCompat`) is pending #148 |
+| `pattern` (XSD regular expressions) | supported | compiled to RE2 through an XSD-regex compiler; intentional differences D-0002…D-0008; `Options.PatternCompat` opts into libyang's PCRE2 pattern semantics (D-0031…D-0033, U-0011) |
 | Extension instances | partial | metadata (RFC 7952), NACM, `yang-data` and `structure`/`augment-structure` (schema side) are compiled; schema-mount and OpenConfig `regexp-posix` make `Load` fail (U-0024, U-0025); data in yang-data/structure trees is not parsed (U-0060) |
 | `deviation` statements | supported | not-supported, add, delete, replace; a deviated rpc/action input or output keeps its children, which libyang drops (D-0080) or crashes on when a must is added (D-0090) |
 | Datastore data: JSON (RFC 7951) and XML parse, print, unknown-node policy (reject / skip / opaque) | supported | |
