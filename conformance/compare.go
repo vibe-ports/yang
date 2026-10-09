@@ -69,7 +69,7 @@ func (m *Manifest) Compare(e Engine) (Report, error) {
 		r := Result{ID: f.ID, Areas: f.Areas}
 		switch {
 		case errors.Is(err, ErrUnsupported):
-			r.Status = Unsupported
+			r.Status, r.Detail = Unsupported, err.Error()
 		case err != nil:
 			r.Status, r.Detail = Differ, err.Error()
 		default:
