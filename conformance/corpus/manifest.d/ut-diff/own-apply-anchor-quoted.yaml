@@ -1,0 +1,19 @@
+fixtures:
+# BEGIN ut-diff own anchors (#147 review: yang:key by value)
+  - id: ut-diff/own-apply-anchor-quoted
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # a yang:key anchor with a double-quoted and a spaced key value, matched by value (lyd_find_sibling_val)
+    rfc: []   # libyang diff API mechanics (yang:operation metadata), no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: defaults}, {name: dm2}]
+      steps:
+        - {"do": "parse", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\"><ul><l1>a</l1></ul><ul><l1>c</l1></ul></df>"}
+        - {"do": "diff_parse", "format": "xml", "data_type": "data", "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><ul yang:operation=\"create\" yang:key=\"[l1=&quot;a&quot;]\"><l1>b</l1></ul></df>"}
+        - {"do": "diff_apply"}
+        - {"do": "diff_parse", "format": "xml", "data_type": "data", "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><ul yang:operation=\"create\" yang:key=\"[ l1 = 'c' ]\"><l1>d</l1></ul></df>"}
+        - {"do": "diff_apply"}
+        - {"do": "dump"}
+    golden: golden/own-apply-anchor-quoted.json

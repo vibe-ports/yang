@@ -111,11 +111,17 @@ func runDiff(r Request, s *yang.Schema, resp map[string]any) error {
 	return nil
 }
 
-// stepDiff is lyoracle.c step_diff without merge: lyd_diff_siblings (lyd_diff_tree with
-// single) of the tree (or its node at "node") and the parsed data (or its node at "data_node"),
-// the result replacing the diff register. The diagnostics carry their phase (parse, diff).
-func stepDiff(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, reg **data.Tree) ([]yang.Diagnostic, error) {
+// stepDiff is lyoracle.c step_diff: lyd_diff_siblings (lyd_diff_tree with single) of the tree
+// (or its node at "node") and the parsed data (or its node at "data_node"); the result replaces
+// the diff register, or with merge is merged into it (reported as new_diff). The diagnostics carry
+// their phase (parse, diff).
+func stepDiff(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, reg **data.Tree,
+	so map[string]any) ([]yang.Diagnostic, error) {
 	o, err := diffOptions(st, "options")
+	if err != nil {
+		return nil, err
+	}
+	mo, err := mergeOptions(st, "merge_options")
 	if err != nil {
 		return nil, err
 	}
@@ -127,16 +133,9 @@ func stepDiff(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, reg
 	}
 	var second *data.Node
 	var diags []yang.Diagnostic
-	phased := func(ds []yang.Diagnostic, phase string) []yang.Diagnostic {
-		for _, d := range ds {
-			d.Phase = phase
-			diags = append(diags, d)
-		}
-		return diags
-	}
 	if st["data"] != nil || st["data_file"] != nil {
 		t, d, perr := parseInput(r, s, st, "data")
-		phased(d, "parse")
+		diags = phased(diags, d, "parse")
 		if perr != nil {
 			return diags, perr
 		}
@@ -153,10 +152,101 @@ func stepDiff(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, reg
 	}
 	res, err := diff(first, second, o)
 	if err != nil {
-		return phased(diagsOf(err), "diff"), err
+		return phased(diags, diagsOf(err), "diff"), err
 	}
-	*reg = res
-	return diags, nil
+	if b, _ := st["merge"].(bool); !b {
+		*reg = res
+		return diags, nil
+	}
+	so["new_diff"] = nil
+	if res != nil {
+		if so["new_diff"], err = printTree(res, data.WDAll); err != nil {
+			return nil, err
+		}
+	}
+	err = mergeInto(s, reg, func(t *data.Tree) error { return t.MergeDiff(res, mo) })
+	return phased(diags, diagsOf(err), "diff"), err
+}
+
+// phased appends ds to diags with the phase set.
+func phased(diags, ds []yang.Diagnostic, phase string) []yang.Diagnostic {
+	for _, d := range ds {
+		d.Phase = phase
+		diags = append(diags, d)
+	}
+	return diags
+}
+
+// mergeOptions are lyoracle.c diff_merge_flags.
+func mergeOptions(p map[string]any, key string) (data.MergeDiffOptions, error) {
+	var o data.MergeDiffOptions
+	for _, f := range list(p[key]) {
+		if f != "defaults" {
+			return o, fmt.Errorf("%w: diff merge option %v", ErrUnsupported, f)
+		}
+		o.Defaults = true
+	}
+	return o, nil
+}
+
+// mergeInto runs merge on the diff register, an empty diff for libyang's NULL one, which an empty
+// result becomes again.
+func mergeInto(s *yang.Schema, reg **data.Tree, merge func(*data.Tree) error) error {
+	if *reg == nil {
+		t, err := emptyTree(s)
+		if err != nil {
+			return err
+		}
+		*reg = t
+	}
+	err := merge(*reg)
+	if empty(*reg) {
+		*reg = nil
+	}
+	return err
+}
+
+// parseDiff is the parse of a diff_parse or diff_merge step: the data parsed with LYD_PARSE_ONLY.
+func parseDiff(r Request, s *yang.Schema, st map[string]any) (*data.Tree, []yang.Diagnostic, error) {
+	p := map[string]any{}
+	for k, v := range st {
+		p[k] = v
+	}
+	p["parse_only"] = true
+	return parseInput(r, s, p, "data")
+}
+
+// stepDiffMerge is lyoracle.c step_diff_merge: the parsed source merged into the register
+// (MergeDiff with the module filter, or MergeDiffTree of src_node under parent).
+func stepDiffMerge(r Request, s *yang.Schema, st map[string]any, reg **data.Tree) ([]yang.Diagnostic, error) {
+	o, err := mergeOptions(st, "options")
+	if err != nil {
+		return nil, err
+	}
+	o.Module = str(st, "module", "")
+	src, d, err := parseDiff(r, s, st)
+	diags := phased(nil, d, "parse")
+	if err != nil {
+		return diags, err
+	}
+	var merge func(*data.Tree) error
+	if path, ok := st["src_node"].(string); ok {
+		sn, err := findNode(src, path)
+		if err != nil {
+			return nil, err
+		}
+		var parent *data.Node
+		if pp, ok := st["parent"].(string); ok {
+			if parent, err = findNode(*reg, pp); err != nil {
+				return nil, err
+			}
+		}
+		merge = func(t *data.Tree) error { return t.MergeDiffTree(parent, sn, o) }
+	} else {
+		merge = func(t *data.Tree) error { return t.MergeDiff(src, o) }
+	}
+	err = mergeInto(s, reg, merge)
+	return phased(diags, diagsOf(err), "diff"), err
 }
 
 // findNode is the node at path in t; none is an engine error (the oracle's request-error).

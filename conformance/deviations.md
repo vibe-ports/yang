@@ -61,6 +61,7 @@ questionable. Format: id · area · libyang behaviour · ours · RFC reference �
 | `string()` of an anydata/anyxml with empty content (`string(any)`, `string(.)`) | `strlen(NULL)` after `strtok_r` (oracle: crash) | `""` / `"\n"` |
 | `string()` of a subtree containing an action node | `LOGINT` (internal error) in `cast_string_recursive` (from the source; lyoracle cannot load an action without its operational parent) | the action is dumped like a container (TestActionStringValue) |
 | `lyd_diff_siblings` / `lyd_diff_tree` of a list key node | `assert(!(schema->flags & LYS_KEY))` in `lyd_diff_siblings_r` (abort in a debug build, undefined otherwise) | LY_EINVAL `Invalid argument a list key "…" (lyd_diff()).` (data/TestDiffKeyRefused) |
+| `lyd_diff_apply_all` of a diff with an opaque node carrying its own `yang:operation="create"` (`<df yang:operation="none"><zz yang:operation="create">1</zz></df>` parsed with unknown opaque) | segmentation fault (oracle exit 139, so no fixture) | the port reads no operation from opaque nodes (port-map), takes the parent's `none` and fails: LY_EINVAL `Failed to find node "/defaults:df/zz" instance in data.` (data/TestApplyOpaqueCreate) |
 
 ## Known libyang behaviour (mirrored)
 

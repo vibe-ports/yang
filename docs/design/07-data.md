@@ -273,6 +273,10 @@ func (t *Tree) Merge(src *Tree) error
 func Diff(first, second *Tree, o DiffOptions) (*Tree, error)          // lyd_diff_siblings of the top levels; DiffOptions{Defaults, Meta bool}
 func DiffSiblings(first, second *Node, o DiffOptions) (*Tree, error)  // lyd_diff_siblings
 func DiffTree(first, second *Node, o DiffOptions) (*Tree, error)      // lyd_diff_tree
+func (t *Tree) ApplyDiff(diff *Tree, o ApplyDiffOptions) error         // lyd_diff_apply_all/_module; ApplyDiffOptions{Module string; Callback}
+func (t *Tree) MergeDiff(src *Tree, o MergeDiffOptions) error          // lyd_diff_merge_all/_module; MergeDiffOptions{Defaults bool; Module string; Callback}
+func (t *Tree) MergeDiffTree(parent, src *Node, o MergeDiffOptions) error // lyd_diff_merge_tree
+func (t *Tree) ReverseDiff() (*Tree, error)                            // lyd_diff_reverse_all
 func (t *Tree) Top() iter.Seq[*Node]   // + Node: Schema(), Value(), Name(), Children(), All() (pre-order), Parent(), Path(), Flags()
 func (e *ValidationError) RC() string // the call's LY_ERR name (LY_EVALID, LY_EINVAL, LY_ENOTFOUND, ...): that of the last error logged
 ```
@@ -413,7 +417,7 @@ a fixture with `assert` (extractor, inventory §5.4).
 | anydata/anyxml | instance → `ErrUnsupported` (U-0043) | M5 |
 | metadata | annotation lookup + store, `default`, `yang:operation`, with-defaults tags | full RFC 7952 / origin inheritance M4–M5 |
 | opaque nodes | `unknown: opaque`, printing, validation error | envelopes M4 |
-| diff | implicit diff (create/delete/none) | full diff/merge/apply M6 |
+| diff | implicit diff (create/delete/none); since #137 Diff, ApplyDiff, MergeDiff, ReverseDiff (PoC #133) | anydata/anyxml values in diffs (M5) |
 | edits | NewPath(Update), Find, Remove, Merge without options | `ApplyEdit` M6 |
 | extension data (`LYD_EXT`, schema-mount, yang-data) | never reached (compile rejects instances, U-0023/U-0024) | later |
 | LYB, `lyd_parse_value_fragment`, RESTCONF/NETCONF wrappers | no | out of v1 / M4 |

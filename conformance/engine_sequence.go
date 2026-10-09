@@ -22,7 +22,11 @@ var seqKeys = map[string]map[string]bool{
 	"compare": set("do", "format", "data_type", "data", "data_file", "unknown", "parse_only", "parse_options",
 		"validate_options", "first", "second", "options"),
 	"diff": set("do", "format", "data_type", "data", "data_file", "unknown", "parse_only", "parse_options",
-		"validate_options", "node", "data_node", "single", "options"),
+		"validate_options", "node", "data_node", "single", "options", "merge", "merge_options"),
+	"diff_parse":   set("do", "format", "data_type", "data", "data_file", "unknown", "parse_options"),
+	"diff_merge":   set("do", "format", "data_type", "data", "data_file", "unknown", "parse_options", "options", "module", "src_node", "parent"),
+	"diff_apply":   set("do", "module"),
+	"diff_reverse": set("do"),
 }
 
 var seqRequestKeys = set("op", "base_dir", "searchdirs", "modules", "context_options", "steps")
@@ -102,7 +106,32 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any) error {
 			diags, err = stepCompare(r, s, st, tree, so)
 		case "diff":
 			phase = "" // the diagnostics carry theirs
-			diags, err = stepDiff(r, s, st, tree, &diff)
+			diags, err = stepDiff(r, s, st, tree, &diff, so)
+		case "diff_parse":
+			phase = "parse"
+			var d *data.Tree
+			if d, diags, err = parseDiff(r, s, st); err == nil {
+				diff = d
+				if empty(diff) {
+					diff = nil
+				}
+			}
+		case "diff_merge":
+			phase = ""
+			diags, err = stepDiffMerge(r, s, st, &diff)
+		case "diff_apply":
+			phase = "diff"
+			if tree == nil {
+				if tree, err = emptyTree(s); err != nil {
+					return err
+				}
+			}
+			err = tree.ApplyDiff(diff, data.ApplyDiffOptions{Module: str(st, "module", "")})
+			diags = diagsOf(err)
+		case "diff_reverse":
+			phase = "diff"
+			diff, err = diff.ReverseDiff()
+			diags = diagsOf(err)
 		case "dump":
 			wd, werr := wdOf(st)
 			if werr != nil {

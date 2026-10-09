@@ -113,3 +113,93 @@ func ExampleDiff() {
 	//   <ll yang:operation="replace" yang:orig-default="false" yang:orig-value="1" yang:value="">2</ll>
 	// </c>
 }
+
+// ApplyDiff, ReverseDiff and MergeDiff: a diff applied with a callback, undone by its reverse,
+// and two diffs merged into one.
+func ExampleTree_ApplyDiff() {
+	models := fstest.MapFS{"ex.yang": {Data: []byte(`module ex {
+  namespace "urn:ex";
+  prefix ex;
+  container c {
+    leaf a { type string; }
+    leaf-list ll { type string; ordered-by user; }
+  }
+}`)}}
+	ctx, _, err := yang.NewContext(yang.Options{NoYangLibrary: true}, models)
+	if err != nil {
+		panic(err)
+	}
+	if _, err := ctx.Load("ex", "", nil); err != nil {
+		panic(err)
+	}
+	parse := func(in string) *data.Tree {
+		t, _, err := data.Parse(context.Background(), strings.NewReader(in), data.FormatJSON, ctx.Schema(),
+			data.ParseOptions{})
+		if err != nil {
+			panic(err)
+		}
+		return t
+	}
+	show := func(t *data.Tree) {
+		if err := t.PrintJSON(os.Stdout, data.PrintOptions{}); err != nil {
+			panic(err)
+		}
+	}
+	first := parse(`{"ex:c": {"a": "x", "ll": ["1", "2"]}}`)
+	second := parse(`{"ex:c": {"a": "y", "ll": ["2", "1", "3"]}}`)
+	third := parse(`{"ex:c": {"a": "x"}}`)
+	d12, _ := data.Diff(first, second, data.DiffOptions{})
+	d23, _ := data.Diff(second, third, data.DiffOptions{})
+
+	err = first.ApplyDiff(d12, data.ApplyDiffOptions{Callback: func(_, node *data.Node) error {
+		fmt.Println("applied", node.Path())
+		return nil
+	}})
+	if err != nil {
+		panic(err)
+	}
+	show(first) // now equal to second
+
+	back, _ := d12.ReverseDiff()
+	if err := first.ApplyDiff(back, data.ApplyDiffOptions{}); err != nil {
+		panic(err)
+	}
+	show(first) // the original first again
+
+	if err := d12.MergeDiff(d23, data.MergeDiffOptions{}); err != nil {
+		panic(err)
+	}
+	if err := first.ApplyDiff(d12, data.ApplyDiffOptions{}); err != nil {
+		panic(err)
+	}
+	show(first) // equal to third
+	// Output:
+	// applied /ex:c
+	// applied /ex:c/a
+	// applied /ex:c/ll[.='2']
+	// applied /ex:c/ll[.='3']
+	// {
+	//   "ex:c": {
+	//     "a": "y",
+	//     "ll": [
+	//       "2",
+	//       "1",
+	//       "3"
+	//     ]
+	//   }
+	// }
+	// {
+	//   "ex:c": {
+	//     "a": "x",
+	//     "ll": [
+	//       "1",
+	//       "2"
+	//     ]
+	//   }
+	// }
+	// {
+	//   "ex:c": {
+	//     "a": "x"
+	//   }
+	// }
+}

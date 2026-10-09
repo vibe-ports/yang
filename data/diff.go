@@ -11,7 +11,9 @@ package data
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -149,13 +151,43 @@ func diffGetOp(n *Node) (op diffOp, found bool) {
 	return 0, false
 }
 
-// diffOpOf is lyd_diff_get_op without found: no operation is an error.
+// diffOpOf is lyd_diff_get_op without found: no operation is an error (logged LY_EINVAL,
+// returned LY_EINT).
 func (t *Tree) diffOpOf(n *Node) (diffOp, error) {
 	op, ok := diffGetOp(n)
 	if !ok {
-		return 0, &opError{"LY_EINVAL", fmt.Sprintf("Node \"%s\" without an operation.", lydPath(t.set, n, false))}
+		return 0, &diffError{items: []*opError{{"LY_EINVAL", fmt.Sprintf("Node \"%s\" without an operation.",
+			lydPath(t.set, n, false))}}, rc: "LY_EINT"}
 	}
 	return op, nil
+}
+
+// diffError is a failed diff call: the LOGERR items libyang logs, in order, and the LY_ERR it
+// returns when that is not the code of the last item.
+type diffError struct {
+	items []*opError
+	rc    string
+}
+
+func (e *diffError) Error() string { return e.items[0].Msg }
+
+// diffDone is the error of a public diff call: the items of an *opError or *diffError logged.
+func diffDone(lg *logger, err error) error {
+	var oe *opError
+	var de *diffError
+	switch {
+	case errors.As(err, &de):
+		for _, it := range de.items {
+			_ = lg.logErr(it.Err, "%s", it.Msg)
+		}
+		if de.rc != "" {
+			return lg.done(rcError(de.rc))
+		}
+		return lg.done(errLogged)
+	case errors.As(err, &oe):
+		return lg.done(lg.logErr(oe.Err, "%s", oe.Msg))
+	}
+	return lg.done(err)
 }
 
 // diffChangeOp is lyd_diff_change_op.
@@ -316,11 +348,28 @@ func (t *Tree) diffCreateNestedUserord(n *Node) error {
 	return t.yangMeta(n, "value", v)
 }
 
-// diffMergeAll is lyd_diff_merge_all (no options, no callback) of the diff src into t.
+// diffMergeAll is lyd_diff_merge_all of the diff src into t without options.
 func (t *Tree) diffMergeAll(src *Tree) error {
+	return t.diffMergeModule(src, mergeOpts{})
+}
+
+// mergeOpts are the arguments of lyd_diff_merge_module besides the diffs: LYD_DIFF_MERGE_DEFAULTS,
+// the module filter (nil: all) and the callback.
+type mergeOpts struct {
+	defaults bool
+	mod      *schema.Module
+	cb       func(src, diff *Node) error
+}
+
+// diffMergeModule is lyd_diff_merge_module: the top-level subtrees of src (of o.mod only, when
+// set) merged into the diff t.
+func (t *Tree) diffMergeModule(src *Tree, o mergeOpts) error {
 	cache := &dupCache{}
 	for _, n := range src.top.nodes() {
-		if err := t.diffMergeR(n, nil, cache); err != nil {
+		if o.mod != nil && nodeModule(t.set, n) != o.mod {
+			continue // data of another module
+		}
+		if err := t.diffMergeR(n, nil, cache, o); err != nil {
 			return err
 		}
 	}
@@ -333,10 +382,9 @@ func (t *Tree) diffFindMatch(parent, target *Node, cache *dupCache) *Node {
 	return t.findMatch(t.childrenOf(parent), target, true, cache)
 }
 
-// diffMergeR is lyd_diff_merge_r for the operations of an implicit diff (create, delete, none):
-// src merged under parent; a node left without a change is removed. The diff metadata merge
-// (meta-create, …) has nothing to act on in implicit diffs (M6).
-func (t *Tree) diffMergeR(src, parent *Node, cache *dupCache) error {
+// diffMergeR is lyd_diff_merge_r: src merged under parent (nil: the top of t); a node left
+// without a change is removed.
+func (t *Tree) diffMergeR(src, parent *Node, cache *dupCache, o mergeOpts) error {
 	srcOp, err := t.diffOpOf(src)
 	if err != nil {
 		return err
@@ -353,26 +401,48 @@ func (t *Tree) diffMergeR(src, parent *Node, cache *dupCache) error {
 	}
 	if dn != nil {
 		switch srcOp {
+		case diffReplace:
+			err = t.diffMergeReplace(dn, cur, src)
 		case diffCreate:
-			err = t.diffMergeCreate(dn, cur, src)
+			dn, err = t.diffMergeCreate(dn, cur, src, o.defaults)
 		case diffDelete:
 			err = t.diffMergeDelete(dn, cur, src)
 		case diffNone:
 			err = t.diffMergeNone(dn, cur, src)
-		default:
-			err = &opError{"LY_EINT", "Internal error."} // replace comes only from lyd_diff (M6)
 		}
 		if err != nil {
-			return err // libyang also logs "Merging operation \"%s\" failed."
+			de := &diffError{}
+			var oe *opError
+			switch {
+			case errors.As(err, &de):
+				de = &diffError{items: slices.Clone(de.items), rc: de.rc}
+			case errors.As(err, &oe):
+				de = &diffError{items: []*opError{oe}}
+			default:
+				return err
+			}
+			if de.rc == "" {
+				de.rc = de.items[len(de.items)-1].Err
+			}
+			de.items = append(de.items, &opError{"LY_EOTHER", fmt.Sprintf("Merging operation \"%s\" failed.", srcOp)})
+			return de
+		}
+		if err := t.diffMergeMetadataR(src, dn, !isDupInstList(src.schema)); err != nil {
+			return err
+		}
+		if o.cb != nil {
+			if err := o.cb(src, dn); err != nil {
+				return err
+			}
 		}
 		parent = dn
-		if !isDupInstList(src.schema) {
+		if !isDupInstList(src.schema) { // a key-less list: all its descendants act as keys
 			childCache := &dupCache{}
 			for _, c := range src.kids.nodes() {
 				if c.isKey() { // lyd_child_no_keys
 					continue
 				}
-				if err := t.diffMergeR(c, parent, childCache); err != nil {
+				if err := t.diffMergeR(c, parent, childCache, o); err != nil {
 					return err
 				}
 			}
@@ -393,6 +463,11 @@ func (t *Tree) diffMergeR(src, parent *Node, cache *dupCache) error {
 		if err := t.diffChangeOp(dn, srcOp); err != nil {
 			return err
 		}
+		if o.cb != nil {
+			if err := o.cb(nil, dn); err != nil {
+				return err
+			}
+		}
 		parent = dn
 	}
 	if t.diffIsRedundant(parent) {
@@ -411,11 +486,15 @@ func (t *Tree) metaErr(name string, n *Node) error {
 	return &opError{"LY_EINVAL", fmt.Sprintf("Failed to find metadata \"%s\" for node \"%s\".", name, lydPath(t.set, n, false))}
 }
 
-// diffMergeCreate is lyd_diff_merge_create without LYD_DIFF_MERGE_DEFAULTS (the opaque-node
-// replace has no implicit diff to come from).
-func (t *Tree) diffMergeCreate(dm *Node, cur diffOp, src *Node) error {
+// diffMergeCreate is lyd_diff_merge_create; with defaults (LYD_DIFF_MERGE_DEFAULTS) a leaf
+// created with its schema default over its delete is no change. It returns the diff node, which
+// stays dm (the opaque-node replace has no yang attributes to come from here, see diffGetOp).
+func (t *Tree) diffMergeCreate(dm *Node, cur diffOp, src *Node, defaults bool) (*Node, error) {
+	if src.schema == nil {
+		return nil, &opError{"LY_EINT", "Internal error."}
+	}
 	if cur != diffDelete {
-		return t.diffMergeOpErr(dm, diffCreate, cur)
+		return nil, t.diffMergeOpErr(dm, diffCreate, cur)
 	}
 	trgFlags := dm.flags
 	switch {
@@ -429,63 +508,76 @@ func (t *Tree) diffMergeCreate(dm *Node, cur diffOp, src *Node) error {
 		}
 		mi := findYangMeta(src, name)
 		if mi < 0 {
-			return t.metaErr("yang:"+name, src)
+			return nil, t.metaErr("yang:"+name, src)
 		}
 		oi := findYangMeta(dm, orig)
 		if oi < 0 {
-			return t.metaErr("yang:"+orig, dm)
+			return nil, t.metaErr("yang:"+orig, dm)
 		}
 		if src.meta[mi].value.Canonical() != dm.meta[oi].value.Canonical() {
 			if err := t.diffChangeOp(dm, diffReplace); err != nil { // created at another position
-				return err
+				return nil, err
 			}
 			anchor := *src.meta[mi] // lyd_dup_meta_single
 			dm.meta = append(dm.meta, &anchor)
 			// the anchors of later creates count it: moved after the instances (lyd_insert_after)
 			if last := lastInst(dm); last != dm {
 				if err := t.insertAfter(last, dm); err != nil {
-					return err
+					return nil, err
 				}
 			}
 		} else {
 			if err := t.diffChangeOp(dm, diffNone); err != nil {
-				return err
+				return nil, err
 			}
 			delYangMeta(dm, orig)
 		}
 	case src.schema.Kind == schema.Leaf:
-		if compareSingle(t, dm, src, false) {
-			if err := t.diffChangeOp(dm, diffNone); err != nil { // deleted + created
-				return err
+		switch {
+		case defaults && len(src.schema.Default) > 0 && defaultEquals(src):
+			// deleted, so its default was in use, and it is created with that value
+			if err := t.diffChangeOp(dm, diffNone); err != nil {
+				return nil, err
 			}
-		} else {
+		case compareSingle(t, dm, src, false):
+			if err := t.diffChangeOp(dm, diffNone); err != nil { // deleted + created
+				return nil, err
+			}
+		default:
 			if err := t.diffChangeOp(dm, diffReplace); err != nil { // created with another value
-				return err
+				return nil, err
 			}
 			if err := t.yangMeta(dm, "orig-value", dm.value.Canonical()); err != nil {
-				return err
+				return nil, err
 			}
 			t.changeTermVal(dm, src.value, false)
 		}
 	default:
 		if err := t.diffChangeOp(dm, diffNone); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	if dm.isTerm() {
 		if err := t.yangMeta(dm, "orig-default", strconv.FormatBool(trgFlags&FlagDefault != 0)); err != nil {
-			return err
+			return nil, err
 		}
 		dm.flags = dm.flags&^FlagDefault | src.flags&FlagDefault
 	}
 	for _, c := range dm.kids.nodes() { // the children stay deleted
 		if !c.isKey() {
 			if err := t.diffChangeOp(c, diffDelete); err != nil {
-				return err
+				return nil, err
 			}
 		}
 	}
-	return nil
+	return dm, nil
+}
+
+// defaultEquals is !lysc_value_cmp of a leaf's schema default and n's value: the canonical texts
+// equal.
+func defaultEquals(n *Node) bool {
+	v, d := types.StoreDefault(n.schema, n.schema.Default[0])
+	return d == nil && v.Canonical() == n.value.Canonical()
 }
 
 // lastInst is the last instance of n's schema node from n on.
@@ -526,12 +618,9 @@ func (t *Tree) diffMergeDelete(dm *Node, cur diffOp, src *Node) error {
 			if oi < 0 {
 				return t.metaErr("yang:orig-value", dm)
 			}
-			v, d := types.Store(dm.schema.Type, dm.meta[oi].value.Canonical(), types.FormatJSON, types.HintData,
-				types.ModuleNames{Set: t.set}, dm.schema)
-			if d != nil {
+			if t.changeTerm(dm, dm.meta[oi].value.Canonical()) != "" {
 				return &opError{"LY_EINVAL", fmt.Sprintf("Unexpected value of node \"%s\" in target diff.", lydPath(t.set, dm, false))}
 			}
-			t.changeTermVal(dm, v, false)
 			di := findYangMeta(dm, "orig-default")
 			if di < 0 {
 				return t.metaErr("yang:orig-default", dm)
@@ -589,47 +678,46 @@ func (t *Tree) diffMergeNone(dm *Node, cur diffOp, src *Node) error {
 	return nil
 }
 
-// diffIsRedundant is lyd_diff_is_redundant for implicit diffs: a none without children, or a none
-// on a term whose default flag did not change. (A user-ordered replace, which needs
-// lyd_diff_is_redundant_userord_move, cannot come from the validation: its create merge fails for
-// lack of the orig anchor first.)
+// diffIsRedundant is lyd_diff_is_redundant: a user-ordered move that is no move or undoes an
+// earlier one, a none without children (all descendants of a key-less list are keys), or a none
+// on a term whose default flag did not change; a none with diff metadata stays.
 func (t *Tree) diffIsRedundant(n *Node) bool {
 	op, found := diffGetOp(n)
 	if !found {
 		return false // LY_CHECK_RET(…, 0)
 	}
-	if op != diffNone {
-		return false
+	var child *Node
+	if !isDupInstList(n.schema) {
+		child = firstNoKeys(n)
 	}
-	if n.schema == nil {
-		return true // an opaque node with none
-	}
-	for _, m := range n.meta { // lyd_diff_is_redundant_meta: diff metadata on the node
-		if strings.HasPrefix(m.name, "meta-") {
-			return false
+	switch {
+	case op == diffReplace && isUserOrdered(n.schema):
+		if t.isRedundantUserordMove(n, child) {
+			return true
 		}
-	}
-	for _, k := range n.kids.list { // … and on its keys
-		if !k.isKey() {
-			break
+	case op == diffNone:
+		if n.schema == nil {
+			return true // an opaque node with none
 		}
-		for _, m := range k.meta {
+		for _, m := range n.meta { // lyd_diff_is_redundant_meta: diff metadata on the node
 			if strings.HasPrefix(m.name, "meta-") {
 				return false
 			}
 		}
-	}
-	if n.isTerm() {
-		i := findYangMeta(n, "orig-default")
-		return i >= 0 && n.meta[i].value.Bool() == (n.flags&FlagDefault != 0)
-	}
-	if isDupInstList(n.schema) {
-		return true // all its descendants are keys
-	}
-	for _, c := range n.kids.nodes() {
-		if !c.isKey() {
-			return false
+		for _, k := range n.kids.list { // … and on its keys
+			if !k.isKey() {
+				break
+			}
+			for _, m := range k.meta {
+				if strings.HasPrefix(m.name, "meta-") {
+					return false
+				}
+			}
+		}
+		if n.isTerm() {
+			i := findYangMeta(n, "orig-default")
+			return i >= 0 && n.meta[i].value.Bool() == (n.flags&FlagDefault != 0)
 		}
 	}
-	return true
+	return child == nil && op == diffNone
 }

@@ -7,5 +7,6 @@ module dm2 {
     leaf a { type string; }
     leaf d { type int8; default "3"; }
     leaf-list ll { type string; ordered-by user; }
+    list ol { key k; ordered-by user; leaf k { type int8; } }
   }
 }

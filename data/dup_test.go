@@ -35,14 +35,6 @@ func findNode(t *testing.T, tr *Tree, path string) *Node {
 	return n
 }
 
-// treeOf is the tree a duplicate (or its duplicated parents) went to.
-func treeOf(n *Node) *Tree {
-	for n.parent != nil {
-		n = n.parent
-	}
-	return n.tree
-}
-
 // TestDupSiblings: lyd_dup_siblings / lyd_dup_single in one context, with and without
 // LYD_DUP_RECURSIVE (a list keeps its keys), the flags (LYD_DUP_WITH_FLAGS or default + new) and
 // LYD_DUP_NO_META.

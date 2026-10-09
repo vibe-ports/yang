@@ -1,0 +1,18 @@
+fixtures:
+  - id: ut-diff/own-apply-anchor-noncanonical
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # a yang:key anchor with a non-canonical int8 key value (01), stored through the type
+    rfc: []   # libyang diff API mechanics (yang:operation metadata), no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: defaults}, {name: dm2}]
+      steps:
+        - {"do": "parse", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:dm2\"><ol><k>1</k></ol><ol><k>3</k></ol></c>"}
+        - {"do": "diff_parse", "format": "xml", "data_type": "data", "unknown": "skip", "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:dm2\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><ol yang:operation=\"create\" yang:key=\"[k='01']\"><k>2</k></ol></c>"}
+        - {"do": "diff_apply"}
+        - {"do": "diff_parse", "format": "xml", "data_type": "data", "unknown": "skip", "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:dm2\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><ol yang:operation=\"replace\" yang:orig-key=\"[k='2']\" yang:key=\"[k='+3']\"><k>1</k></ol></c>"}
+        - {"do": "diff_apply"}
+        - {"do": "dump"}
+    golden: golden/own-apply-anchor-noncanonical.json
