@@ -1,0 +1,16 @@
+fixtures:
+  - id: ver/subwarn-11
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # parser_yang.c:4712 include in a 1.1 submodule (warning)
+    rfc: ["RFC7950#7.2.2", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-subwarn-11"}]
+    golden: golden/ver-subwarn-11.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.2.2"]
+      diagnostics: [{"level": "warning"}]
+      deviation: null

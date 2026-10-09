@@ -1,0 +1,15 @@
+fixtures:
+  - id: iff/expression-and-or-not
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "iff-expression-and-or-not", "features": ["a", "c"]}]
+    golden: golden/iff-expression-and-or-not.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.20.2"]
+      deviation: null

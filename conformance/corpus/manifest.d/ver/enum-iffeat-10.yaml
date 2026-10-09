@@ -1,0 +1,16 @@
+fixtures:
+  - id: ver/enum-iffeat-10
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # parser_yang.c:2000 if-feature in enum
+    rfc: ["RFC7950#9.6.4", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-enum-iffeat-10"}]
+    golden: golden/ver-enum-iffeat-10.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.6.4"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null

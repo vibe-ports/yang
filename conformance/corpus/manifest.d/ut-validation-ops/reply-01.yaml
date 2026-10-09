@@ -1,0 +1,12 @@
+fixtures:
+  - id: ut-validation-ops/reply-01
+    dir: ut-validation-ops
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_reply:1475 (missing leafref)
+    rfc: ["RFC7950#7.5.3", "RFC7950#7.14"]
+    areas: [validation]
+    request: {"op": "data", "searchdirs": ["j.1"], "modules": [{"name": "j", "features": ["feat1"]}], "format": "xml", "data_type": "reply", "data": "<cont xmlns=\"urn:tests:j\">\n  <l1>\n    <k>val1</k>\n    <act>\n      <lf2>target</lf2>\n    </act>\n  </l1>\n</cont>\n"}
+    golden: golden/reply-01.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.5.3", "RFC7950#7.14"]
+      deviation: null

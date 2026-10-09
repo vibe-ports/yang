@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-scalar/decimal64-08
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/decimal64.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:94
+    rfc: ["RFC7950#9.3", "RFC7950#9.3.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [decimal64/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\">xxx</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/decimal64-08.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.3", "RFC7950#9.3.4"]
+      deviation: null

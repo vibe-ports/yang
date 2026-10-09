@@ -1,0 +1,16 @@
+fixtures:
+  - id: ut-schema-load/test_collision_grouping-4
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_collision_grouping:489
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.12", "RFC7950#5.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_collision_grouping-4]
+      modules: [{"name": "a"}]
+    golden: golden/test_collision_grouping-4.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null

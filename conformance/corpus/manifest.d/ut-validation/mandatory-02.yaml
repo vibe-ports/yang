@@ -1,0 +1,23 @@
+fixtures:
+  - id: ut-validation/mandatory-02
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_mandatory:266
+    rfc: ["RFC7950#7.6.5", "RFC7950#7.9"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [b.1]
+      modules: [{name: "b"}]
+      format: "xml"
+      data_type: "data"
+      data: "<d xmlns=\"urn:tests:b\"/>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/mandatory-02.json
+    assert:
+      verdict: invalid
+      diagnostics: [{apptag: "missing-choice"}]
+      rfc: ["RFC7950#7.6.5", "RFC7950#7.9"]
+      deviation: null

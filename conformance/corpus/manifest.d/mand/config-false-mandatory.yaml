@@ -1,0 +1,15 @@
+fixtures:
+  - id: mand/config-false-mandatory
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.6.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "mand-config-false-mandatory"}]
+    golden: golden/mand-config-false-mandatory.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.6.5"]
+      deviation: null

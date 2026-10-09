@@ -1,0 +1,15 @@
+fixtures:
+  - id: ext/annotation-union-and-leafref-type
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7952#3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ext-annotation-union-and-leafref-type"}]
+    golden: golden/ext-annotation-union-and-leafref-type.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7952#3"]
+      deviation: null

@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-validation/state-02
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_state:1162
+    rfc: ["RFC7950#7.21.1"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [h.1]
+      modules: [{name: "h"}]
+      format: "xml"
+      data_type: "data"
+      data: "<cont xmlns=\"urn:tests:h\">\n  <cont2>\n    <l>val</l>\n  </cont2>\n</cont>\n"
+      parse_only: true
+      parse_options: ["no_state"]
+      validate_options: []
+      unknown: "skip"
+    golden: golden/state-02.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.21.1"]
+      deviation: null

@@ -1,0 +1,17 @@
+fixtures:
+  - id: types/restriction-wrong-type
+    dir: ctypes
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.2.4", "RFC7950#9.4.4"]
+    areas: [schema, types]
+    request:
+      op: schema
+      searchdirs: [wrongtype]
+      modules: [{name: rw}, {name: rw2}]
+    golden: golden/restriction-wrong-type.json
+    assert:
+      verdict: invalid
+      diagnostics:
+        - {vecode_name: LYVE_SYNTAX_YANG, schema_path: /rw:l}
+        - {vecode_name: LYVE_SYNTAX_YANG, schema_path: /rw2:c/l}
+      deviation: null

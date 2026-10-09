@@ -1,0 +1,12 @@
+fixtures:
+  # libyang compares parsed modules: main<->submodule reference is not checked (RFC text says same module, so no assert)
+  - id: status/submodule-uses-ok
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "status-main"}]
+    golden: golden/status-submodule-uses-ok.json

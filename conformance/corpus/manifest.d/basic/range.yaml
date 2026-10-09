@@ -1,0 +1,21 @@
+fixtures:
+  - id: basic/range
+    dir: basic
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.2.4", "RFC7950#9.2.5"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: basic, features: [jumbo]}]
+      format: json
+      data_type: config
+      data_file: data/range.json
+      with_defaults: explicit
+    golden: golden/range.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2.4"]
+      diagnostics:
+        - {vecode_name: LYVE_DATA, data_path: /basic:sys/mtu}
+      deviation: null

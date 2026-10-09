@@ -1,0 +1,15 @@
+fixtures:
+# BEGIN types time-period (#36)
+  - id: types/time-period-leaflist-order
+    dir: types
+    source: {url: "https://github.com/CESNET/libnetconf2/blob/2add91c6f2e5864463922aa27293f8956ee9cbbe/modules/libnetconf2-netconf-server@2026-04-17.yang", commit: 2add91c6f2e5864463922aa27293f8956ee9cbbe, license: BSD-3-Clause}   # time-period typedef (module trimmed); ty5.yang and data hand-written
+    rfc: ["RFC7950#7.7.7"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty5}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty5"><tpl>3h</tpl><tpl>2d</tpl><tpl>12h</tpl><tpl>1m</tpl><tpl>4w</tpl><tpl>7d</tpl><tpl>12m</tpl><tpl>1w</tpl><tpl>24h</tpl><tpl>9m</tpl></c>'
+    golden: golden/time-period-leaflist-order.json

@@ -1,0 +1,12 @@
+fixtures:
+  # libyang: when check skipped, referenced module is import-only
+  - id: load/when-check-skipped-warning
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "when-skipped"}]
+    golden: golden/load-when-check-skipped-warning.json

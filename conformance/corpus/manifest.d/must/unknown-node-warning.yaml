@@ -1,0 +1,12 @@
+fixtures:
+  # libyang schema-mode XPath warning, node not found
+  - id: must/unknown-node-warning
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "must-unknown-node"}]
+    golden: golden/must-unknown-node-warning.json

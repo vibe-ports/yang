@@ -1,0 +1,16 @@
+fixtures:
+  - id: dev/delete-input-must
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # deviate delete of the must of an rpc input: libyang's copy of the input has no children
+    rfc: ["RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{name: dev-delete-input-must}, {name: dev-io-base}]
+    golden: golden/dev-delete-input-must.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3.2"]
+      deviation: "D-0080"
+      waive: [schema_tree, compiled]

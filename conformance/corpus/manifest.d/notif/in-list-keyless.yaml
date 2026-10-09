@@ -1,0 +1,12 @@
+fixtures:
+  # observed only: RFC 7950 7.16 forbids a notification in a list without a key, libyang accepts (candidate deviation, no assert)
+  - id: notif/in-list-keyless
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.16"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "notif-in-list-keyless"}]
+    golden: golden/notif-in-list-keyless.json

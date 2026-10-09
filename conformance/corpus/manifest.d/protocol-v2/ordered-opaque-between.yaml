@@ -1,0 +1,17 @@
+fixtures:
+  - id: protocol-v2/ordered-opaque-between
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # D-0058: LYD_PARSE_ORDERED links a schema node after an opaque sibling; the port keeps opaque nodes last
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered"}]
+      format: "json"
+      data_type: "get"
+      data: "{\"pv2-ordered:c\": {\"a\": \"x\", \"zz\": \"u\", \"b\": \"y\"}}"
+      parse_options: ["ordered"]
+      unknown: "opaque"
+    golden: golden/ordered-opaque-between.json

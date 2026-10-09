@@ -1,0 +1,23 @@
+fixtures:
+  - id: ut-validation/unique-04
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_unique:417
+    rfc: ["RFC7950#7.8.3", "RFC7950#7.8.2"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [d.1]
+      modules: [{name: "d"}]
+      format: "xml"
+      data_type: "data"
+      data: "<lt xmlns=\"urn:tests:d\">\n    <k>val1</k>\n    <l1>same</l1>\n</lt>\n<lt xmlns=\"urn:tests:d\">\n    <k>val2</k>\n    <l1>same</l1>\n</lt>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/unique-04.json
+    assert:
+      verdict: invalid
+      diagnostics: [{apptag: "data-not-unique"}]
+      rfc: ["RFC7950#7.8.3", "RFC7950#7.8.2"]
+      deviation: null

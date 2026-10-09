@@ -1,0 +1,15 @@
+fixtures:
+  - id: choice/mandatory-no-default
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.9.4"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "choice-mandatory-no-default"}]
+    golden: golden/choice-mandatory-no-default.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.9.4"]
+      deviation: null

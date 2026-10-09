@@ -1,0 +1,15 @@
+fixtures:
+  - id: disabled/list-state-sibling-removed-keeps-order
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "disabled-list-state-sibling-removed-keeps-order"}]
+    golden: golden/disabled-list-state-sibling-removed-keeps-order.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.20.2"]
+      deviation: null

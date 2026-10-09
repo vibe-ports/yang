@@ -1,0 +1,15 @@
+fixtures:
+  - id: dev/add-minmax-refined
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # deviate add of min-elements to a leaf-list whose min-elements a refine set
+    rfc: ["RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{name: dev-minmax-refined}, {name: dev-minmax-base}]
+    golden: golden/dev-add-minmax-refined.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3.2"]
+      deviation: null

@@ -1,0 +1,13 @@
+fixtures:
+  # extension instances of a grouping move to the uses' parent; their prefixes resolve in the
+  # grouping's module (ext-grp-b imports ext-def as gx, ext-grp-a does not)
+  - id: ext/grouping-instance-other-module
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.19", "RFC7950#7.13"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ext-grp-a"}]
+    golden: golden/ext-grouping-instance-other-module.json

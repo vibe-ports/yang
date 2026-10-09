@@ -1,0 +1,21 @@
+fixtures:
+  - id: basic/when-false
+    dir: basic
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.5", "RFC7950#8.1"]
+    areas: [validation]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: basic, features: [jumbo]}]
+      format: json
+      data_type: config
+      data_file: data/when.json
+      with_defaults: explicit
+    golden: golden/when-false.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.21.5"]
+      diagnostics:
+        - {vecode_name: LYVE_DATA, data_path: /basic:sys/jumbo-frames}
+      deviation: null

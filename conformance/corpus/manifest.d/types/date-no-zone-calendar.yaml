@@ -1,0 +1,15 @@
+fixtures:
+  # #68/#69 date-no-zone-calendar: Feb 30 through strptime and timegm: Mar 2
+  - id: types/date-no-zone-calendar
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty3}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty3"><dnz>2005-02-30</dnz></c>'
+    golden: golden/date-no-zone-calendar.json

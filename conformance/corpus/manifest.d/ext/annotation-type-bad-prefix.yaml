@@ -1,0 +1,16 @@
+fixtures:
+  # a digit first after the prefix
+  - id: ext/annotation-type-bad-prefix
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#6.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ext-annotation-type-bad-prefix"}]
+    golden: golden/ext-annotation-type-bad-prefix.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2"]
+      deviation: null

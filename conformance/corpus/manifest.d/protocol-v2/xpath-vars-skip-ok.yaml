@@ -1,0 +1,18 @@
+fixtures:
+  - id: protocol-v2/xpath-vars-skip-ok
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["XPath1.0#3.1"]
+    areas: [xpath]
+    # a skipped reference that resolves leaves the result alone
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "true() or $s"
+      vars: {"abc": "1 + 2", "s": "'x'", "bad": "1 +", "und": "$nope", "lx": "'"}
+    golden: golden/xpath-vars-skip-ok.json

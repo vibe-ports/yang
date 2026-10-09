@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/print-prefixes-xml
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.13.2", "RFC7950#9.10"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty2}, {name: ty4}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty4" xmlns:a="urn:vibe-ports:ty2"><ext>a:der</ext><loc>own</loc><ii xmlns:x="urn:vibe-ports:ty4" xmlns:y="urn:vibe-ports:ty2">/x:c/x:l[x:k="y:der"]/x:v</ii><l><k>a:der</k><v>1</v></l><ll>a:der</ll><ll>own</ll><un>a:der</un><lr>a:der</lr></c>'
+    golden: golden/print-prefixes-xml.json

@@ -1,0 +1,20 @@
+fixtures:
+  - id: ut-xpath/augment-01
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_augment:710 (expected 4 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1, b.2]
+      modules: [{name: a}, {name: b}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<c xmlns=\"urn:tests:a\">\n    <x>value</x>\n    <ll>\n        <a>key</a>\n    </ll>\n    <a xmlns=\"urn:tests:b\">25</a>\n    <ll2>c1</ll2>\n</c>"
+      xpath: "/a:c/*"
+    golden: golden/augment-01.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null

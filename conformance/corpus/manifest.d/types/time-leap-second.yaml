@@ -1,0 +1,15 @@
+fixtures:
+  # #68/#69 time-leap-second: a leap second matches the pattern; timegm makes it the next day's 00:00:00
+  - id: types/time-leap-second
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty3}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty3"><tnz>23:59:60</tnz></c>'
+    golden: golden/time-leap-second.json

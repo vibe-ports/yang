@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-restriction/range-data-xml-06
+    dir: ut-restriction
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/restriction/test_range.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:400
+    rfc: ["RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [test_range/TRANGE_0.1, test_range/TRANGE_1.1]
+      modules: [{name: "TRANGE_0"}, {name: "TRANGE_1"}]
+    golden: golden/range-data-xml-06.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2.4"]
+      deviation: null

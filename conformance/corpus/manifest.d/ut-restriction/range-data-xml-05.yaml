@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-restriction/range-data-xml-05
+    dir: ut-restriction
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/restriction/test_range.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:391
+    rfc: ["RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [test_range/TRANGE_0.1]
+      modules: [{name: "TRANGE_0"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:TRANGE_0\">127</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/range-data-xml-05.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2.4"]
+      deviation: null

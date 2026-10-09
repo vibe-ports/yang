@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-string-data/xml-53
+    dir: ut-string-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:863
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [string/T0.1, string/T1.1, string/T2.1, string/T_WHITE.1, string/T_UTF8.1, string/T_ANCHOR.1, string/T_UB_1.1, string/T_UB_2.1, string/T_UB_3.1, string/T_UB_4.1, string/T_UB_5.1, string/T_UB_6.1, string/T_UB_8.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_WHITE"}, {name: "T_UTF8"}, {name: "T_ANCHOR"}, {name: "T_UB_1"}, {name: "T_UB_2"}, {name: "T_UB_3"}, {name: "T_UB_4"}, {name: "T_UB_5"}, {name: "T_UB_6"}, {name: "T_UB_8"}]
+    golden: golden/xml-53.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6", "RFC7950#7.3.4"]
+      deviation: null

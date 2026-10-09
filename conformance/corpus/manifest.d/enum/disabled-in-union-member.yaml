@@ -1,0 +1,15 @@
+fixtures:
+  - id: enum/disabled-in-union-member
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.6.4"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "enum-disabled-in-union-member"}]
+    golden: golden/enum-disabled-in-union-member.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null

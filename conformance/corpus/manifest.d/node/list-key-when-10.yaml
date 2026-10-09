@@ -1,0 +1,16 @@
+fixtures:
+  # libyang accepts a key with when only in YANG 1.0 modules (see list/key-when-11)
+  - id: node/list-key-when-10
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.8.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "node-list-key-when-10", "features": ["f"]}]
+    golden: golden/node-list-key-when-10.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.8.2"]
+      deviation: null

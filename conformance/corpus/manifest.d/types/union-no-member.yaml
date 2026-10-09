@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/union-no-member
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty2}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty2"><un>123456789012345678901</un></c>'
+    golden: golden/union-no-member.json

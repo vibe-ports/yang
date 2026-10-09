@@ -1,0 +1,16 @@
+fixtures:
+  - id: ver/bits-subtype-10
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # schema_compile_node.c:1249 restricted bits
+    rfc: ["RFC7950#9.7.4", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-bits-subtype-10"}]
+    golden: golden/ver-bits-subtype-10.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.7.4"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null

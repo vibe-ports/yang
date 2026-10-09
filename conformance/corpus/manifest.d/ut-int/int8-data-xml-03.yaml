@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-int/int8-data-xml-03
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:1115
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<port xmlns=\"urn:tests:defs\">50</port>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-xml-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1"]
+      deviation: null

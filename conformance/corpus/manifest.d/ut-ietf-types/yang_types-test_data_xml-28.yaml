@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-ietf-types/yang_types-test_data_xml-28
+    dir: ut-ietf-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/yang_types.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:145 (under #ifndef _WIN32)
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [yt]
+      modules: [{name: a}, {name: b}]
+      format: xml
+      data_type: data
+      validate_options: [present]
+      data: '<l2nz xmlns="urn:tests:a">1950-01-01</l2nz>'
+    golden: golden/yang_types-test_data_xml-28.json

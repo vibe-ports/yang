@@ -1,0 +1,15 @@
+fixtures:
+  - id: dev/ext-ownership
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # extension instances inside a deviate-added must (and its error-message) and a replacement type's enum belong to them, not to the target node: only the deviate's own instance reaches the node
+    rfc: ["RFC7950#7.20.3.2", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{name: dev-own}, {name: dev-own-base}]
+    golden: golden/dev-ext-ownership.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3.2", "RFC7950#7.19"]
+      deviation: null

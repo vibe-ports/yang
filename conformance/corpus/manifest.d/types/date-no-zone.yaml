@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/date-no-zone
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty3}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty3"><dnz>2005-05-31</dnz></c>'
+    golden: golden/date-no-zone.json

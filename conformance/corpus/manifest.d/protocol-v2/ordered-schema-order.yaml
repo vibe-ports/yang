@@ -1,0 +1,17 @@
+fixtures:
+  - id: protocol-v2/ordered-schema-order
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # D-0058: LYD_PARSE_ORDERED appends every node last, so b before a stays in input order; the port places by schema
+    rfc: ["RFC7950#7.5.7"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-ordered"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"pv2-ordered:c\": {\"b\": \"y\", \"a\": \"x\"}}"
+      parse_options: ["ordered"]
+      unknown: "reject"
+    golden: golden/ordered-schema-order.json

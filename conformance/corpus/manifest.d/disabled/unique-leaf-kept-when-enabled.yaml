@@ -1,0 +1,15 @@
+fixtures:
+  - id: disabled/unique-leaf-kept-when-enabled
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.8.3", "RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "disabled-unique-leaf-kept-when-enabled", "features": ["f"]}]
+    golden: golden/disabled-unique-leaf-kept-when-enabled.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.8.3", "RFC7950#7.20.2"]
+      deviation: null

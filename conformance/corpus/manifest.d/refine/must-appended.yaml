@@ -1,0 +1,16 @@
+fixtures:
+  # refine adds to the must list (dump shows both)
+  - id: refine/must-appended
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.13.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "refine-must-appended"}]
+    golden: golden/refine-must-appended.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.13.2"]
+      deviation: null

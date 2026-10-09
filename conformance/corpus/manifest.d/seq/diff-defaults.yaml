@@ -1,0 +1,16 @@
+fixtures:
+  # #185 (D8b): the implicit diff of lyd_validate_all (validate steps' implicit_diff) over pv2-diff
+  # every implicit default: leaf, NP container, system- and user-ordered leaf-lists (yang:value anchors), the default case
+  - id: seq/diff-defaults
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang lyd_validate_all diff (yang:operation metadata): no RFC behaviour
+    areas: [validation, diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-diff}]
+      steps:
+        - {do: parse, format: json, data_type: config, parse_only: true, data: '{"pv2-diff:c": {"mode": "off"}}'}
+        - {do: validate, data_type: config}
+    golden: golden/seq-diff-defaults.json

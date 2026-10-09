@@ -1,0 +1,15 @@
+fixtures:
+  - id: refine/max-elements-list
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.13.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "refine-max-elements-list"}]
+    golden: golden/refine-max-elements-list.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.13.2"]
+      deviation: null

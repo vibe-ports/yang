@@ -1,0 +1,15 @@
+fixtures:
+  - id: aug/if-feature-augment-disabled
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.17", "RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "aug-if-feature-augment-disabled"}]
+    golden: golden/aug-if-feature-augment-disabled.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.17", "RFC7950#7.20.2"]
+      deviation: null

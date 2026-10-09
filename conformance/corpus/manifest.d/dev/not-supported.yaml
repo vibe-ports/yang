@@ -1,0 +1,16 @@
+fixtures:
+# BEGIN dev (hand-written, deviations: track A of M2)
+  - id: dev/not-supported
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # not-supported deviations from a module and its submodule: a leaf, a unique leaf, an action input, a notification, a shorthand case, rpc input/output children
+    rfc: ["RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{name: dev-ns}]
+    golden: golden/dev-not-supported.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3.2"]
+      deviation: null

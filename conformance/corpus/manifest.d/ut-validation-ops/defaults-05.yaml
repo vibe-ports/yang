@@ -1,0 +1,12 @@
+fixtures:
+  - id: ut-validation-ops/defaults-05
+    dir: ut-validation-ops
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_defaults:1057 (second explicit container, so the first tree node should be removed (insert_inner))
+    rfc: ["RFC7950#7.6.1", "RFC7950#7.7.2", "RFC7950#7.9.3", "RFC6243#3"]
+    areas: [validation]
+    request: {"op": "sequence", "searchdirs": ["f.1", "../ietf"], "modules": [{"name": "f"}, {"name": "ietf-netconf-with-defaults"}], "steps": [{"do": "parse", "format": "xml", "data_type": "data", "data": "<l xmlns=\"urn:tests:f\">value</l>", "parse_only": true}, {"do": "validate", "data_type": "data", "validate_options": ["present"]}, {"do": "dump", "with_defaults": "implicit-tagged"}, {"do": "edit", "insert_term": {"name": "d", "module": "f", "value": "15"}}, {"do": "edit", "insert_term": {"name": "ll2", "module": "f", "value": "dflt2"}}, {"do": "validate", "data_type": "data", "validate_options": ["present"]}, {"do": "dump", "with_defaults": "implicit-tagged"}, {"do": "edit", "insert_inner": {"name": "cont", "module": "f"}}, {"do": "validate", "data_type": "data", "validate_options": ["present"]}, {"do": "dump", "with_defaults": "implicit-tagged"}, {"do": "edit", "insert_inner": {"name": "cont", "module": "f"}}, {"do": "validate", "data_type": "data", "validate_options": ["present"]}, {"do": "dump", "with_defaults": "implicit-tagged"}]}
+    golden: golden/defaults-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.6.1", "RFC7950#7.7.2", "RFC7950#7.9.3", "RFC6243#3"]
+      deviation: null

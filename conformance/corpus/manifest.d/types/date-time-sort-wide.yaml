@@ -1,0 +1,23 @@
+fixtures:
+  # D-0028: lyplg_type_sort_date / sort_date_and_time / sort_time return difftime() as int; a gap
+  # over 2^31 s is UB, on the amd64 oracle host INT_MIN, so these leaf-lists are not sorted by time
+  # (the port sorts them); observed only, the golden records libyang's order
+  - id: types/date-time-sort-wide
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    host: amd64   # golden pinned to the amd64 oracle (D-0028): libyang UB, `oracle-check` skips it elsewhere
+    rfc: []   # libyang UB (C11 §6.3.1.4), no RFC behaviour; see D-0028
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty3}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty3"><dl>2100-01-01Z</dl><dl>1900-01-01Z</dl><dl>2000-01-01Z</dl><dtl>2100-01-01T00:00:00Z</dtl><dtl>1900-01-01T00:00:00Z</dtl><dtl>2000-01-01T00:00:00Z</dtl><tl>12:00:00Z</tl><tl>00:30:00+01:00</tl><tl>06:00:00Z</tl></c>'
+    golden: golden/date-time-sort-wide.json
+    assert:
+      verdict: valid
+      rfc: []
+      deviation: "D-0028"
+      waive: [tree, typed]   # only the leaf-list order differs (libyang leaves it in input order)

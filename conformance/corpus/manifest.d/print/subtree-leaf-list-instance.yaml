@@ -1,0 +1,16 @@
+fixtures:
+  - id: print/subtree-leaf-list-instance
+    dir: print
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang lyd_print_tree of one leaf-list instance: its metadata array is left out; no RFC form
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pj}, {name: pk}]
+      format: json
+      data_type: config
+      parse_only: true
+      data_file: data/subtree.json
+      print_subtree: /pj:c/ll[.='2']
+    golden: golden/subtree-leaf-list-instance.json

@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-lref-union/leafref-data-xml-05
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:102
+    rfc: ["RFC7950#9.9"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [leafref/defs.1, leafref/leafrefs.1]
+      modules: [{name: "defs"}, {name: "leafrefs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<str-norestr xmlns=\"urn:tests:defs\">y</str-norestr><c xmlns=\"urn:tests:leafrefs\"><l><id>x</id><value>x</value><lr1>y</lr1></l></c>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/leafref-data-xml-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.9"]
+      deviation: null

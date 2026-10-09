@@ -1,0 +1,15 @@
+fixtures:
+  - id: bit/enabled-values-present
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.7.4"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "bit-enabled-values-present", "features": ["f"]}]
+    golden: golden/bit-enabled-values-present.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.7.4"]
+      deviation: null

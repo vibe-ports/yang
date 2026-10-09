@@ -1,0 +1,16 @@
+fixtures:
+  - id: dev/replace-empty-10
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # deviate replace of a YANG 1.0 leaf-list type by empty, from a YANG 1.1 module
+    rfc: ["RFC7950#7.20.3.2", "RFC7950#7.7"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{name: dev-empty-11}]
+    golden: golden/dev-replace-empty-10.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3.2", "RFC7950#7.7"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null

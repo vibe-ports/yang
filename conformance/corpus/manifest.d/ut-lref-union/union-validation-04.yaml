@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-lref-union/union-validation-04
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/union.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_validation:275
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [union/val.1, union/lref.1]
+      modules: [{name: "val"}, {name: "lref"}]
+      format: "xml"
+      data_type: "data"
+      data: "<test xmlns=\"urn:tests:lref\"><b><name>2</name></b><community><name>test</name><view>2</view></community></test>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "reject"
+    golden: golden/union-validation-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.12"]
+      deviation: null

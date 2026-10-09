@@ -1,0 +1,18 @@
+fixtures:
+# BEGIN PoC data.NewTree (#134)
+  - id: seq/new-tree-from-paths
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # a tree built only by lyd_new_path on a NULL tree, then validated (data.NewTree)
+    rfc: []   # libyang API mechanics: lyd_new_path with no parent creates the first top-level node
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: edit, set: {path: "/pv2-edit:c/l[k='a']/v", value: "1"}}
+        - {do: edit, set: {path: "/pv2-edit:c/a", value: "x"}}
+        - {do: edit, set: {path: "/pv2-edit:c/ll", value: "z"}}
+        - {do: validate}
+        - {do: dump, with_defaults: all}
+    golden: golden/seq-new-tree-from-paths.json

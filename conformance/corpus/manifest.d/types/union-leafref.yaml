@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/union-leafref
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty2}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty2"><i8>12</i8><un>12</un></c>'
+    golden: golden/union-leafref.json

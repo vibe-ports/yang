@@ -1,0 +1,17 @@
+fixtures:
+  # an instance-identifier default
+  - id: ref-impl/instid-default
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#5.6.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ref-impl-instid"}]
+      context_options: ["ref_implemented"]
+    golden: golden/ref-impl-instid-default.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#5.6.5"]
+      deviation: null

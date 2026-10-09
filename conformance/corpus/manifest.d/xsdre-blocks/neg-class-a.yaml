@@ -1,0 +1,12 @@
+fixtures:
+  - id: xsdre-blocks/neg-class-a
+    dir: xsdre-blocks
+    source: {url: "hand-written (this repo), see issue 177", commit: null, license: BSD-3-Clause}   # [^\p{IsBasicLatin}] against U+0061 (measures libyang v5.8.6 block handling, issue 177 step 1)
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request: {"op": "data", "searchdirs": ["blk7"], "modules": [{"name": "blk7"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<l xmlns=\"urn:tests:blk7\">&#x61;</l>"}
+    golden: golden/neg-class-a.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: null

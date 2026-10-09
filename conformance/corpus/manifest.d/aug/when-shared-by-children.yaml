@@ -1,0 +1,15 @@
+fixtures:
+  - id: aug/when-shared-by-children
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.17"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "aug-when-shared-by-children"}]
+    golden: golden/aug-when-shared-by-children.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.17"]
+      deviation: null

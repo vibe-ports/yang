@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-ietf-types/inet_types-test_data_xml-06
+    dir: ut-ietf-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/inet_types.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:121
+    rfc: ["RFC6991#4"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [inet]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: [present]
+      data: '<l3 xmlns="urn:tests:a">0:00:000:0000:000:00:0:1</l3>'
+    golden: golden/inet_types-test_data_xml-06.json

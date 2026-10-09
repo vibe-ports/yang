@@ -1,0 +1,12 @@
+fixtures:
+  # libyang does not validate an unused grouping nested in another grouping (design 06 s2.4 P4 scope)
+  - id: grp/nested-unused-not-validated
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang does not validate an unused grouping nested in another grouping (design 06 s2.4 P4 scope)
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "grp-nested-unused"}]
+    golden: golden/grp-nested-unused-not-validated.json

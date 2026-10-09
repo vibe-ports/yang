@@ -1,0 +1,16 @@
+fixtures:
+  - id: protocol-v2/unknown-opaque
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang LYD_PARSE_OPAQ: unknown data kept as opaque nodes; no RFC mode
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      format: json
+      data_type: config
+      parse_only: true
+      unknown: opaque
+      data_file: data/unknown.json
+    golden: golden/unknown-opaque.json

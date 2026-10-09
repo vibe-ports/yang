@@ -1,0 +1,19 @@
+fixtures:
+  - id: protocol-v2/unknown-opaque-validated
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#8.3.1"]
+    areas: [codecs, validation]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      format: json
+      data_type: config
+      unknown: opaque
+      data_file: data/unknown.json
+    golden: golden/unknown-opaque-validated.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#8.3.1"]
+      deviation: null

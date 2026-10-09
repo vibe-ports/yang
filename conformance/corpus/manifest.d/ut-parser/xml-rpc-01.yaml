@@ -1,0 +1,19 @@
+fixtures:
+  - id: ut-parser/xml-rpc-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_rpc:463
+    rfc: ["RFC7950#7.14"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2, ../ietf]
+      modules: [{name: "a"}, {name: "ietf-netconf", features: ["writable-running"]}]
+      format: "xml"
+      data_type: "rpc"
+      data: "<edit-config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\n  <target>\n    <running/>\n  </target>\n  <config xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\n    <l1 xmlns=\"urn:tests:a\" nc:operation=\"replace\">\n      <a>val_a</a>\n      <b>val_b</b>\n      <c>val_c</c>\n    </l1>\n    <cp xmlns=\"urn:tests:a\">\n      <z nc:operation=\"delete\"/>\n    </cp>\n  </config>\n</edit-config>\n"
+      unknown: "reject"
+    golden: golden/xml-rpc-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.14"]
+      deviation: null

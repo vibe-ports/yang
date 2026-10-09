@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/int64-overflow
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty"><i64>9223372036854775808</i64></c>'
+    golden: golden/int64-overflow.json

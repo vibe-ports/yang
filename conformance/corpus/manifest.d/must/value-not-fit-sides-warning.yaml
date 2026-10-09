@@ -1,0 +1,11 @@
+fixtures:
+  - id: must/value-not-fit-sides-warning
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.3"]
+    areas: ["schema", "xpath"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "must-value-nofit-sides"}]
+    golden: golden/must-value-not-fit-sides-warning.json

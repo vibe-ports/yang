@@ -1,0 +1,12 @@
+fixtures:
+  # libyang NACM plugin: same extension twice on one node
+  - id: ext/nacm-twice
+    dir: compile
+    source: {url: "hand-written (this repo); extension definitions reduced from RFC 8341 (IETF Trust), see compile/SOURCE.md", commit: null, license: "BSD-3-Clause AND BSD-2-Clause"}
+    rfc: ["RFC8341#3.5.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ietf-netconf-acm"}, {"name": "ext-nacm-twice"}]
+    golden: golden/ext-nacm-twice.json

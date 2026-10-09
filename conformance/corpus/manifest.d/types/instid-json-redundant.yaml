@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/instid-json-redundant
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7951#6.11"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty2}]
+      format: json
+      data_type: config
+      data: '{"ty2:c":{"iif":"/ty2:c/ty2:ll[.=''1'']"}}'
+    golden: golden/instid-json-redundant.json

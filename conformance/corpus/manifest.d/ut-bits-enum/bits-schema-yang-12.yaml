@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-bits-enum/bits-schema-yang-12
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:235
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [bits/T0.1, bits/T1.1, bits/T2.1, bits/T3.1, bits/TERR_7.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "TERR_7"}]
+    golden: golden/bits-schema-yang-12.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+      deviation: null

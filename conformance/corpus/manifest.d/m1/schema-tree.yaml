@@ -1,0 +1,16 @@
+fixtures:
+  # ---- m1: slice corpus (design 05); sources in m1/SOURCE.md ----
+  - id: m1/schema-tree
+    dir: m1
+    source: {url: "https://github.com/YangModels/yang (see m1/SOURCE.md) + hand-written m1-ext (this repo)", commit: 0e28ed86b0a9070b7f15fd06ba4fa501723fac84, license: "BSD-3-Clause AND BSD-2-Clause"}
+    rfc: ["RFC7950#7.20", "RFC7950#7.18.1", "RFC7950#7.13", "RFC7950#7.9", "RFC7950#7.5.3", "RFC7950#7.21.5", "RFC7950#9.9", "RFC7950#9.12", "RFC7950#9.3", "RFC7950#9.10", "RFC8343#5", "RFC8344#4"]
+    areas: [schema, types]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules:
+        - {name: ietf-interfaces, features: [arbitrary-names, pre-provisioning, if-mib]}
+        - {name: iana-if-type}
+        - {name: ietf-ip, features: [ipv4-non-contiguous-netmasks]}
+        - {name: m1-ext, features: [fast-path]}
+    golden: golden/schema-tree.json

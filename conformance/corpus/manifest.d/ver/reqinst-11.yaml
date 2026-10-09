@@ -1,0 +1,15 @@
+fixtures:
+  - id: ver/reqinst-11
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # schema_compile_node.c:1811 leafref require-instance
+    rfc: ["RFC7950#9.9.3", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-reqinst-11"}]
+    golden: golden/ver-reqinst-11.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.9.3"]
+      deviation: null

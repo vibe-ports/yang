@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/dec64-canonical
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.3.2"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty"><d1> +8.00 </d1></c>'
+    golden: golden/dec64-canonical.json

@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/instid-no-instance
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty2}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty2"><ll>1</ll><ii xmlns:x="urn:vibe-ports:ty2">/x:c/x:ll[.=''3'']</ii></c>'
+    golden: golden/instid-no-instance.json

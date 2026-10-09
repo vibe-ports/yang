@@ -1,0 +1,20 @@
+fixtures:
+  - id: ut-xpath/toplevel-01
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_toplevel:488 (expected 5 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1, b.1]
+      modules: [{name: a}, {name: b}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\">\n    <a>a1</a>\n    <b>b1</b>\n    <c>c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n    <a>a2</a>\n    <b>b2</b>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n    <a>a3</a>\n    <b>b3</b>\n    <c>c3</c>\n</l1>\n<foo xmlns=\"urn:tests:a\">foo value</foo>\n<l2 xmlns=\"urn:tests:b\">\n    <a>1</a>\n    <b>1</b>\n</l2>\n<l2 xmlns=\"urn:tests:b\">\n    <a>2</a>\n    <b>1</b>\n</l2>\n<l2 xmlns=\"urn:tests:b\">\n    <a>3</a>\n    <b>1</b>\n</l2>"
+      xpath: "/a:*"
+    golden: golden/toplevel-01.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null

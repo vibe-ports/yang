@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-deviation/089-emod-a
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3753 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [emod-a.1]
+      modules: [{name: emod-a}]
+    golden: golden/089-emod-a.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3"]
+      deviation: null

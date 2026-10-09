@@ -1,0 +1,15 @@
+fixtures:
+  - id: lref/state-to-state-ok
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9.3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-state-to-state-ok"}]
+    golden: golden/lref-state-to-state-ok.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.9.3"]
+      deviation: null

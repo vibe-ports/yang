@@ -1,0 +1,15 @@
+fixtures:
+  - id: dflt/bits-default-canonicalised
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.7"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-bits-default-canonicalised"}]
+    golden: golden/dflt-bits-default-canonicalised.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.7"]
+      deviation: null

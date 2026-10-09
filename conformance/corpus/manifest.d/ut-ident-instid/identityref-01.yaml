@@ -1,0 +1,16 @@
+fixtures:
+# BEGIN ut-ident-instid (generated from libyang tests/utests/types/identityref.c, instanceid.c and instanceid_keys.c by conformance/tools/extract-utests, reviewed)
+  - id: ut-ident-instid/identityref-01
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/identityref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:69
+    rfc: ["RFC7950#9.10"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [identityref/ident-base.1]
+      modules: [{name: "ident-base"}]
+    golden: golden/identityref-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.10"]
+      deviation: null

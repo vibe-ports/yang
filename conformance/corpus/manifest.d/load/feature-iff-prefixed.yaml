@@ -1,0 +1,11 @@
+fixtures:
+  - id: load/feature-iff-prefixed
+    dir: load
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.20.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [features]
+      modules: [{"name": "fc", "features": ["*"]}]
+    golden: golden/feature-iff-prefixed.json

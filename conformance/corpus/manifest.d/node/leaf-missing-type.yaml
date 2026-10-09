@@ -1,0 +1,16 @@
+fixtures:
+  - id: node/leaf-missing-type
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.6"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "node-leaf-missing-type"}]
+    golden: golden/node-leaf-missing-type.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.6"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null

@@ -1,0 +1,20 @@
+fixtures:
+  - id: basic/xpath-count
+    dir: basic
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["XPath1.0#4.1", "RFC7950#6.4.1"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: basic, features: [jumbo]}]
+      format: json
+      data_type: config
+      data_file: data/valid.json
+      context_path: /basic:sys
+      xpath: "count(iface[type = 'eth'])"
+    golden: golden/xpath-count.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#4.1"]
+      deviation: null

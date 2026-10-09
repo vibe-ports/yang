@@ -1,0 +1,16 @@
+fixtures:
+  # RFC 7950 7.21.2 applies within a module; libyang never checks across modules (SC:567)
+  - id: status/typedef-deprecated-cross-module
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "status-typedef-deprecated-cross-module"}]
+    golden: golden/status-typedef-deprecated-cross-module.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.21.2"]
+      deviation: null

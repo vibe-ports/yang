@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/string-invert-match
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.4.6"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty"><s>xab</s></c>'
+    golden: golden/string-invert-match.json

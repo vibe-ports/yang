@@ -1,0 +1,15 @@
+fixtures:
+  - id: uses/if-feature-enabled-keeps-children
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.13", "RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "uses-if-feature-enabled-keeps-children", "features": ["f"]}]
+    golden: golden/uses-if-feature-enabled-keeps-children.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.13", "RFC7950#7.20.2"]
+      deviation: null

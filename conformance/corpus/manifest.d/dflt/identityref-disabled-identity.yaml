@@ -1,0 +1,17 @@
+fixtures:
+  # default naming an identity disabled by if-feature
+  - id: dflt/identityref-disabled-identity
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.10", "RFC7950#7.18.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-identityref-disabled-identity"}]
+    golden: golden/dflt-identityref-disabled-identity.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.10", "RFC7950#7.18.2"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null

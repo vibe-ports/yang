@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-deviation/029-bmod-b
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3455 (expected LY_SUCCESS)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [bmod-a.1, bmod-b.1]
+      modules: [{name: bmod-a}, {name: bmod-b}]
+    golden: golden/029-bmod-b.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null

@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/inet-bad-v6
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC6991#4"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty3}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty3"><v6nz>1:::2</v6nz></c>'
+    golden: golden/inet-bad-v6.json

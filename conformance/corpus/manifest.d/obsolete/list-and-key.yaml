@@ -1,0 +1,12 @@
+fixtures:
+  # obsolete list with obsolete key: whole list dropped, no error
+  - id: obsolete/list-and-key
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "obsolete-list-and-key"}]
+    golden: golden/obsolete-list-and-key.json

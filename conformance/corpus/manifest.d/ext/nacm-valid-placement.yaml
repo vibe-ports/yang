@@ -1,0 +1,15 @@
+fixtures:
+  - id: ext/nacm-valid-placement
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC8341#3.4.3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ext-nacm-valid-placement"}]
+    golden: golden/ext-nacm-valid-placement.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC8341#3.4.3"]
+      deviation: null

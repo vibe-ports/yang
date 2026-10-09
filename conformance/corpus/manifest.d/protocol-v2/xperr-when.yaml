@@ -1,0 +1,15 @@
+fixtures:
+  - id: protocol-v2/xperr-when
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.3", "XPath1.0#4.1"]
+    areas: [validation, xpath]
+    # a when whose evaluation fails is logged at its context node
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2-xperr}]
+      format: json
+      data_type: config
+      data_file: data/xperr-when.json
+    golden: golden/xperr-when.json

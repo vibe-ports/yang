@@ -1,0 +1,16 @@
+fixtures:
+  - id: ut-validation/type-incomplete-when-03
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_incomplete_when:196
+    rfc: ["RFC7950#7.21.5"]
+    areas: [validation]
+    request:
+      op: "sequence"
+      searchdirs: [a.3]
+      modules: [{name: "a"}]
+      steps: [{"do": "parse", "format": "xml", "data_type": "data", "data": "<cont xmlns=\"urn:tests:a\"><a>val_c</a><b>val</b></cont><c xmlns=\"urn:tests:a\">val_c</c>", "unknown": "skip", "validate_options": ["present"]}, {"do": "edit", "set": {"path": "/a:c", "value": "wrong-val"}}, {"do": "validate", "data_type": "data", "validate_options": ["present"]}, {"do": "dump", "with_defaults": "explicit"}]
+    golden: golden/type-incomplete-when-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.21.5"]
+      deviation: null

@@ -1,0 +1,30 @@
+fixtures:
+  # --- tree edits (design 07 §1.11, D11; Go side: data TestEditGoldens) ---
+  - id: seq/new-path-update
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang API mechanics: lyd_new_path(UPDATE) creates parents, changes terms; flags
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: edit, set: {path: "/pv2-edit:c/a", value: "x"}}
+        - {do: edit, set: {path: "/pv2-edit:c/l[k='b']/v", value: "1"}}
+        - {do: edit, set: {path: "/pv2-edit:c/l[k='a']/v", value: "2"}}
+        - {do: edit, set: {path: "/pv2-edit:c/a", value: "y"}}
+        - {do: edit, set: {path: "/pv2-edit:c/a", value: "y"}}
+        - {do: edit, set: {path: "/pv2-edit:c/ll", value: "z"}}
+        - {do: edit, set: {path: "/pv2-edit:c/ll[.='m']", value: "ignored"}}
+        - {do: edit, set: {path: "/pv2-edit:c/ll", value: "z"}}
+        - {do: edit, set: {path: "/pv2-edit:c/st/x", value: "1"}}
+        - {do: edit, set: {path: "/pv2-edit:c/st/x", value: "1"}}
+        - {do: edit, set: {path: "/pv2-edit:c/st[1]/x", value: "2"}}
+        - {do: edit, set: {path: "/pv2-edit:c/sll", value: "s"}}
+        - {do: edit, set: {path: "/pv2-edit:c/sll", value: "s"}}
+        - {do: edit, set: {path: "/pv2-edit:c/np/d", value: "6"}}
+        - {do: edit, delete: "/pv2-edit:c/l[k='b']"}
+        - {do: edit, delete: "/pv2-edit:c/st[2]"}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/seq-new-path-update.json

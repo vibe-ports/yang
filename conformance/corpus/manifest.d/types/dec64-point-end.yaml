@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/dec64-point-end
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.3.1"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty"><d1>2.</d1></c>'
+    golden: golden/dec64-point-end.json

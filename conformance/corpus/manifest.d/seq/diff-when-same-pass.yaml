@@ -1,0 +1,15 @@
+fixtures:
+  # created and deleted in one validation: the defaults of wc merge with its delete
+  - id: seq/diff-when-same-pass
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang lyd_validate_all diff (yang:operation metadata): no RFC behaviour
+    areas: [validation, diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-diff}]
+      steps:
+        - {do: parse, format: json, data_type: config, parse_only: true, data: '{"pv2-diff:c": {"mode": "off", "wc": {"y": "b"}}}'}
+        - {do: validate, data_type: config}
+    golden: golden/seq-diff-when-same-pass.json

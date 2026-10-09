@@ -1,0 +1,12 @@
+fixtures:
+  # observed only: keys ignore defaults (SC:1026); RFC 7950 7.8.2 says a key has no default semantics
+  - id: dflt/key-default-ignored
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.6.4"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-key-default-ignored"}]
+    golden: golden/dflt-key-default-ignored.json

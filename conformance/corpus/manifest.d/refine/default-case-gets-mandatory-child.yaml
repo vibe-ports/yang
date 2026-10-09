@@ -1,0 +1,16 @@
+fixtures:
+  - id: refine/default-case-gets-mandatory-child
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.13.2", "RFC7950#7.9.3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "refine-default-case-gets-mandatory-child-h1", "features": ["f"]}, {"name": "refine-default-case-gets-mandatory-child"}]
+    golden: golden/refine-default-case-gets-mandatory-child.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.13.2", "RFC7950#7.9.3"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null

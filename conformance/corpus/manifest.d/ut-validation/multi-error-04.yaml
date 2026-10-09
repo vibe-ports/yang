@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-validation/multi-error-04
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_multi_error:1296
+    rfc: ["RFC7950#7.5.3", "RFC7950#7.8.5"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [ii.1]
+      modules: [{name: "ii"}]
+      format: "json"
+      data_type: "data"
+      data: "{\n  \"ii:cont\": {\n    \"l\": \"wrong\",\n    \"l\": \"wrong2\",\n    \"l2\": \"val\",\n    \"l3\": \"val\",\n    \"ll\": [25]\n  }\n}\n"
+      parse_only: true
+      parse_options: []
+      validate_options: []
+      unknown: "skip"
+    golden: golden/multi-error-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.5.3", "RFC7950#7.8.5"]
+      deviation: null

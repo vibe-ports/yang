@@ -1,0 +1,21 @@
+fixtures:
+  - id: protocol-v2/union-member
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      steps:
+        # u: int8 | percent (typedef) | string; u2: percent | leafref ../l/k
+        - {do: parse, format: json, data_type: config, data: '{"pv2:c": {"u": "abc", "l": [{"k": "a"}], "u2": "a"}}'}
+        - {do: edit, set: {path: /pv2:c/u, value: "-5"}}
+        - {do: edit, set: {path: /pv2:c/u2, value: "50"}}
+        - {do: validate, data_type: config}
+    golden: golden/union-member.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.12"]
+      deviation: null

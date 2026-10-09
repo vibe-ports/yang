@@ -1,0 +1,16 @@
+fixtures:
+  # NeedsTree results count as success at compile time (SC:971)
+  - id: dflt/union-with-leafref-kept-raw
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.12"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-union-with-leafref-kept-raw"}]
+    golden: golden/dflt-union-with-leafref-kept-raw.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.12"]
+      deviation: null

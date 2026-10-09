@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/json-int8-string
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: json
+      data_type: config
+      data: '{"ty:c":{"i8":"5"}}'
+    golden: golden/json-int8-string.json

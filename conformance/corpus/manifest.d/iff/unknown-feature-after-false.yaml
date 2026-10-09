@@ -1,0 +1,16 @@
+fixtures:
+  # VERIFY (design 06 s2.2): evaluation stops at the first false if-feature, a later unknown one is never reported
+  - id: iff/unknown-feature-after-false
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "iff-unknown-feature-after-false"}]
+    golden: golden/iff-unknown-feature-after-false.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.20.2"]
+      deviation: null

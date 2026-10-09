@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/xpath10-json
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # JSON input: kept as given, XML output with XML prefixes
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty7}, {name: ty6}]
+      format: json
+      data_type: config
+      data: '{"ty7:c": {"xp": "/ty6:c/l[k = /ty7:c/k]/v and /ty6:c/ty6:ll = ''a:b''", "xpl": ["/ty7:c/k", "../k"], "k": "x"}}'
+    golden: golden/xpath10-json.json

@@ -1,0 +1,17 @@
+fixtures:
+  # same-module current uses -> obsolete grouping (compare status/grouping-obsolete-same-module)
+  - id: uses/grouping-status-obsolete-from-current
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "uses-grouping-status-obsolete-from-current"}]
+    golden: golden/uses-grouping-status-obsolete-from-current.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.21.2"]
+      diagnostics: [{"vecode_name": "LYVE_REFERENCE"}]
+      deviation: null

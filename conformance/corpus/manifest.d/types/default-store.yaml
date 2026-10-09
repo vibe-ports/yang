@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/default-store
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.6.1", "RFC7950#7.7.2"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty2}, {name: ty4}]
+      format: xml
+      data_type: config
+      data: '<d xmlns="urn:vibe-ports:ty4"/>'
+    golden: golden/default-store.json

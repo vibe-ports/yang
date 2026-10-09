@@ -1,0 +1,16 @@
+fixtures:
+  - id: iff/unknown-feature
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "iff-unknown-feature"}]
+    golden: golden/iff-unknown-feature.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.20.2"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null

@@ -1,0 +1,16 @@
+fixtures:
+  - id: node/dup-top-level-leaf-container
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#6.2.1"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "node-dup-top-level-leaf-container"}]
+    golden: golden/node-dup-top-level-leaf-container.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null

@@ -1,0 +1,12 @@
+fixtures:
+  # libyang-specific warning: refine config inside rpc has no effect
+  - id: refine/config-in-rpc-warning
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.14.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "refine-config-in-rpc"}]
+    golden: golden/refine-config-in-rpc-warning.json

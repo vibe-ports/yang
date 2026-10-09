@@ -1,0 +1,15 @@
+fixtures:
+  - id: protocol-v2/links-denied
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9"]
+    areas: [types, validation]
+    # without LY_CTX_LEAFREF_LINKING lyd_leafref_link_node_tree returns LY_EDENIED
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-links}]
+      steps:
+        - {do: parse, format: json, data_type: config, data_file: data/links.json}
+        - {do: link}
+    golden: golden/links-denied.json

@@ -1,0 +1,12 @@
+fixtures:
+  - id: ut-validation-ops/action-03
+    dir: ut-validation-ops
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_action:1403 (success (operational tree also holds the l1 parent that the oracle requires))
+    rfc: ["RFC7950#7.5.3", "RFC7950#7.14"]
+    areas: [validation]
+    request: {"op": "data", "searchdirs": ["j.1"], "modules": [{"name": "j", "features": ["feat1"]}], "format": "xml", "data_type": "rpc", "data": "<cont xmlns=\"urn:tests:j\">\n  <l1>\n    <k>val1</k>\n    <act>\n      <lf2>target</lf2>\n    </act>\n  </l1>\n</cont>\n", "operational": "<cont xmlns=\"urn:tests:j\">\n  <l1><k>val1</k></l1>\n  <lf1>true</lf1>\n</cont>\n<lf3 xmlns=\"urn:tests:j\">target</lf3>\n"}
+    golden: golden/action-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.5.3", "RFC7950#7.14"]
+      deviation: null

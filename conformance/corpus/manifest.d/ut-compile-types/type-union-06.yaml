@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-compile-types/type-union-06
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_union:2188
+    rfc: ["RFC7950#9.12"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.7, b.6, c.4, cc.5]
+      modules: [{name: "a"}, {name: "b"}, {name: "c"}, {name: "cc"}]
+    golden: golden/type-union-06.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.12"]
+      deviation: null

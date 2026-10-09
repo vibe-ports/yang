@@ -1,0 +1,16 @@
+fixtures:
+# BEGIN ut-bits-enum (generated from libyang tests/utests/types/bits.c and enumeration.c by conformance/tools/extract-utests, reviewed)
+  - id: ut-bits-enum/bits-schema-yang-01
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/bits.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:108
+    rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [bits/T0.1]
+      modules: [{name: "T0"}]
+    golden: golden/bits-schema-yang-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.7", "RFC7950#9.7.4"]
+      deviation: null

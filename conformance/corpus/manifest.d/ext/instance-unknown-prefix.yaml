@@ -1,0 +1,16 @@
+fixtures:
+  - id: ext/instance-unknown-prefix
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.19"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ext-instance-unknown-prefix"}]
+    golden: golden/ext-instance-unknown-prefix.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.19"]
+      diagnostics: [{"vecode_name": "LYVE_REFERENCE"}]
+      deviation: null

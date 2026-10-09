@@ -1,0 +1,17 @@
+fixtures:
+  # path syntax is checked by the YANG parser (parse phase, U-0005)
+  - id: lref/path-syntax-parse-phase
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-path-syntax-parse-phase"}]
+    golden: golden/lref-path-syntax-parse-phase.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9.2"]
+      diagnostics: [{"vecode_name": "LYVE_XPATH"}]
+      deviation: null

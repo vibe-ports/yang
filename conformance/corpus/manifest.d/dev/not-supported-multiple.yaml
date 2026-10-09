@@ -1,0 +1,16 @@
+fixtures:
+  - id: dev/not-supported-multiple
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # two deviations of one node, one of them not-supported
+    rfc: ["RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{name: dev-ns-multiple}]
+    golden: golden/dev-not-supported-multiple.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3.2"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null

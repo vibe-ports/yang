@@ -1,0 +1,15 @@
+fixtures:
+  - id: ver/llist-empty-11
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # schema_compile_node.c:2824 leaf-list of type empty
+    rfc: ["RFC7950#7.7", "RFC7950#1.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ver-llist-empty-11"}]
+    golden: golden/ver-llist-empty-11.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.7"]
+      deviation: null

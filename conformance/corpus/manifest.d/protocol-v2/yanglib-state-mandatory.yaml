@@ -1,0 +1,15 @@
+fixtures:
+  - id: protocol-v2/yanglib-state-mandatory
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC8525#4", "RFC7950#7.6.5"]
+    areas: [validation]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2-meta}]
+      format: json
+      data_type: data
+      data: '{"pv2-meta:c": {"x": "y"}}'
+      with_defaults: explicit
+    golden: golden/yanglib-state-mandatory.json

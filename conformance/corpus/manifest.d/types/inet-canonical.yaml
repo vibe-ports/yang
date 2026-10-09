@@ -1,0 +1,15 @@
+fixtures:
+  # ---- types: ietf-inet-types / ietf-yang-types handlers (M1-4) ----
+  - id: types/inet-canonical
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC6991#4"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty3}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty3"><ip>2008:15:0:0:0:0:feAC:1</ip><v4>192.168.0.1%12</v4><v6>FAAC:21:011:Da85::87:daaF%1</v6><v6nz>::0102:0304</v6nz><p4>12.1.58.4/8</p4><p6>::C:D:E:f:a/110</p6><ipp>2000:A:B:C:D:E:f:a/16</ipp></c>'
+    golden: golden/inet-canonical.json

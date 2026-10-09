@@ -1,0 +1,22 @@
+fixtures:
+  - id: protocol-v2/unknown-reject
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#8.3.1"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      format: json
+      data_type: config
+      parse_only: true
+      unknown: reject
+      data_file: data/unknown.json
+    golden: golden/unknown-reject.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#8.3.1"]
+      diagnostics:
+        - {level: error, vecode_name: LYVE_REFERENCE, data_path: /pv2:c}
+      deviation: null

@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-validation/when-must-cross-ref-01
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_when_must_cross_ref:1681
+    rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3", "RFC7950#7.6.5"]
+    areas: [validation]
+    request:
+      op: "schema"
+      searchdirs: [twm.1]
+      modules: [{name: "twm"}]
+    golden: golden/when-must-cross-ref-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3", "RFC7950#7.6.5"]
+      deviation: null

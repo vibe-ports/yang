@@ -1,0 +1,20 @@
+fixtures:
+  - id: ut-xpath/axes-02
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_axes:1035 (expected 7 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a>a1</a>\n  <b yang:operation=\"replace\">b1</b>\n  <c yang:operation=\"none\">c1</c>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n  <a>a2</a>\n  <b>b2</b>\n</l1><l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\">\n  <a yang:operation=\"none\" yang:key=\"[no-key='no-value']\">a3</a>\n  <b>b3</b>\n  <c yang:value=\"no-val\">c3</c>\n</l1><c xmlns=\"urn:tests:a\">  <x>val</x>  <ll>    <a>key1</a>    <ll>      <a>key11</a>      <b>val11</b>    </ll>    <ll>      <a>key12</a>      <b>val12</b>    </ll>    <ll>      <a>key13</a>      <b>val13</b>    </ll>  </ll>  <ll>    <a>key2</a>    <ll>      <a>key21</a>      <b>val21</b>    </ll>    <ll>      <a>key22</a>      <b>val22</b>    </ll>  </ll></c>"
+      xpath: "//ll[a and b]/ancestor-or-self::ll"
+    golden: golden/axes-02.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null

@@ -1,0 +1,20 @@
+fixtures:
+  - id: ut-parser/json-notification-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_notification:866 (oracle requires the parent container c in the operational tree)
+    rfc: ["RFC7950#7.16"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "notif"
+      data: "{\"a:c\":{\"n1\":{\"nl\":\"value\"}}}"
+      unknown: "reject"
+      operational: "{\"a:c\":{}}"
+    golden: golden/json-notification-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.16"]
+      deviation: null

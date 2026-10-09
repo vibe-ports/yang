@@ -1,0 +1,16 @@
+fixtures:
+  # musts of disabled nodes are never queued: no warning
+  - id: must/in-disabled-node-bad-xpath-not-atomized
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "must-in-disabled-node-bad-xpath-not-atomized"}]
+    golden: golden/must-in-disabled-node-bad-xpath-not-atomized.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.5.3"]
+      deviation: null

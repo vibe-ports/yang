@@ -1,0 +1,17 @@
+fixtures:
+  - id: seq/compare-opaq
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # LYD_COMPARE_OPAQ: an opaque leaf (a JSON string for a uint8) against the leaf it stands for
+    rfc: []   # libyang API: lyd_compare_single
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: parse, format: json, data_type: data, unknown: opaque, parse_only: true, data: '{"pv2-edit:c": {"b": "5"}}'}
+        - {do: compare, format: xml, data_type: data, parse_only: true, data: '<c xmlns="urn:vibe-ports:yang:conformance:pv2-edit"><b>5</b></c>', first: "/pv2-edit:c", second: "/pv2-edit:c", options: [full_recursion]}
+        - {do: compare, format: xml, data_type: data, parse_only: true, data: '<c xmlns="urn:vibe-ports:yang:conformance:pv2-edit"><b>5</b></c>', first: "/pv2-edit:c", second: "/pv2-edit:c", options: [full_recursion, opaq]}
+        - {do: compare, format: xml, data_type: data, parse_only: true, data: '<c xmlns="urn:vibe-ports:yang:conformance:pv2-edit"><b>6</b></c>', first: "/pv2-edit:c", second: "/pv2-edit:c", options: [full_recursion, opaq]}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/seq-compare-opaq.json

@@ -1,0 +1,12 @@
+fixtures:
+  # unres-phase error: lysc_path of the node
+  - id: errpath/unres-node
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # unres-phase error: lysc_path of the node
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "errpath-unres"}]
+    golden: golden/errpath-unres-node.json

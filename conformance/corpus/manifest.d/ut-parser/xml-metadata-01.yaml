@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-parser/xml-metadata-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_metadata:1068
+    rfc: ["RFC7952#5"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<c xmlns=\"urn:tests:a\" xmlns:a=\"urn:tests:a\"><x a:attr=\"value\">xval</x></c>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-metadata-01.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7952#5"]
+      deviation: null

@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-parser/json-leaflist-08
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaflist:340
+    rfc: ["RFC7950#7.7", "RFC7951#5.4"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"@a:ll1\":[{\"a:hint\":1},{\"a:hint\":2},{\"a:hint\":3}],\"a:ll1\" : [1, 2]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-leaflist-08.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.7", "RFC7951#5.4"]
+      deviation: null

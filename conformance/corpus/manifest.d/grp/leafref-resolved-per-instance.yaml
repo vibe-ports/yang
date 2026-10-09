@@ -1,0 +1,15 @@
+fixtures:
+  - id: grp/leafref-resolved-per-instance
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.12"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "grp-leafref-resolved-per-instance"}]
+    golden: golden/grp-leafref-resolved-per-instance.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.12"]
+      deviation: null

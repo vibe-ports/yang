@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/instid-pos-config
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.13.2"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty2}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty2"><iif xmlns:x="urn:vibe-ports:ty2">/x:c/x:l[2]</iif></c>'
+    golden: golden/instid-pos-config.json

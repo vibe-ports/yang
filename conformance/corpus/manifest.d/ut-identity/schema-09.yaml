@@ -1,0 +1,12 @@
+fixtures:
+  - id: ut-identity/schema-09
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1260 (identity base error)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+    areas: [schema]
+    request: {"op": "schema", "searchdirs": ["inv.3"], "modules": [{"name": "inv"}]}
+    golden: golden/schema-09.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+      deviation: null

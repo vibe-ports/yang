@@ -1,0 +1,12 @@
+fixtures:
+  # --- module loading (design 06 §1.2-1.4; hand-written; Go side: internal/compile load_test) ---
+  - id: load/import-cycle
+    dir: load
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.1.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [import-cycle]
+      modules: [{name: ca}]
+    golden: golden/import-cycle.json

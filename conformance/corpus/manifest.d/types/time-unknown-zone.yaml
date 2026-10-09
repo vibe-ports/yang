@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/time-unknown-zone
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty3}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty3"><t>12:00:00.50Z</t></c>'
+    golden: golden/time-unknown-zone.json

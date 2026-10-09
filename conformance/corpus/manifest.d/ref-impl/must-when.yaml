@@ -1,0 +1,17 @@
+fixtures:
+  # a must and a when are checked (no skip warning)
+  - id: ref-impl/must-when
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#5.6.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ref-impl-must"}]
+      context_options: ["ref_implemented"]
+    golden: golden/ref-impl-must-when.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#5.6.5"]
+      deviation: null

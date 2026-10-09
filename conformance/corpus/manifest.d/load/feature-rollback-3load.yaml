@@ -1,0 +1,12 @@
+fixtures:
+  # design 06 §1.7: a failed compile does not revert the features of a module implemented before
+  - id: load/feature-rollback-3load
+    dir: load
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.20.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [features]
+      modules: [{"name": "fa", "features": []}, {"name": "fa", "features": ["a"]}, {"name": "fa"}]
+    golden: golden/feature-rollback-3load.json

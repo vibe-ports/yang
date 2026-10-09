@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-ident-instid/identityref-04
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/identityref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:91
+    rfc: ["RFC7950#9.10"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [identityref/ident-base.1, identityref/defs.1]
+      modules: [{name: "ident-base"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\" xmlns:ib=\"urn:tests:ident-base\">ib:ident-imp</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/identityref-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.10"]
+      deviation: null

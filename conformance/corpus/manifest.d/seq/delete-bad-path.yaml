@@ -1,0 +1,14 @@
+fixtures:
+  - id: seq/delete-bad-path
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: edit, set: {path: "/pv2-edit:c/a", value: "x"}}
+        - {do: edit, delete: "/pv2-edit:c/l"}
+    golden: golden/seq-delete-bad-path.json

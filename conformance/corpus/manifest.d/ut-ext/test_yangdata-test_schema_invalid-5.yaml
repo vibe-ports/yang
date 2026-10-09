@@ -1,0 +1,16 @@
+fixtures:
+  - id: ut-ext/test_yangdata-test_schema_invalid-5
+    dir: ut-ext
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/extensions/test_yangdata.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_invalid:200
+    rfc: ["RFC8040#8", "RFC7950#7.19"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: ["common", "test_yangdata-test_schema_invalid-5"]
+      modules: [{"name": "ietf-restconf", "revision": "2017-01-26"}, {"name": "a"}]
+    golden: golden/test_yangdata-test_schema_invalid-5.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC8040#8"]
+      diagnostics: [{"vecode_name": "LYVE_OTHER"}]
+      deviation: null

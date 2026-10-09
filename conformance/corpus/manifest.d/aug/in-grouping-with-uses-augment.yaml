@@ -1,0 +1,16 @@
+fixtures:
+  # uses-augments apply before top-level augments (design 06 2.7)
+  - id: aug/in-grouping-with-uses-augment
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.17", "RFC7950#7.13.1"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "aug-in-grouping-with-uses-augment"}]
+    golden: golden/aug-in-grouping-with-uses-augment.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.17", "RFC7950#7.13.1"]
+      deviation: null

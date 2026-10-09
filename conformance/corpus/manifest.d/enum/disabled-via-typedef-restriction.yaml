@@ -1,0 +1,15 @@
+fixtures:
+  - id: enum/disabled-via-typedef-restriction
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.6.4"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "enum-disabled-via-typedef-restriction"}]
+    golden: golden/enum-disabled-via-typedef-restriction.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null

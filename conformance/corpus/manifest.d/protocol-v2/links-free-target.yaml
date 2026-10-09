@@ -1,0 +1,18 @@
+fixtures:
+  - id: protocol-v2/links-free-target
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9"]
+    areas: [types, validation]
+    # freeing a target subtree frees its records and removes it from its leafrefs' records
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-links}]
+      context_options: [leafref_linking]
+      steps:
+        - {do: parse, format: json, data_type: config, data_file: data/links.json}
+        - {do: link}
+        - {do: edit, delete: "/pv2-links:c/l[k='a']"}
+        - {do: links}
+    golden: golden/links-free-target.json

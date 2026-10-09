@@ -1,0 +1,17 @@
+fixtures:
+  # LY_EEXIST at compile time
+  - id: node/dup-sibling-leaf
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#6.2.1"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "node-dup-sibling-leaf"}]
+    golden: golden/node-dup-sibling-leaf.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#6.2.1"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null

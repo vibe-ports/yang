@@ -1,0 +1,18 @@
+fixtures:
+  # a refine targets an action's input by its keyword; libyang's refined copy of the input
+  # loses its children (D-0080: we keep them)
+  - id: refine/action-input
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.13.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "refine-action-input"}]
+    golden: golden/refine-action-input.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.13.2"]
+      deviation: "D-0080"
+      waive: [schema_tree, compiled]

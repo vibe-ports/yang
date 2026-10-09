@@ -1,0 +1,20 @@
+fixtures:
+  # a list instance without LYD_DUP_RECURSIVE keeps its keys
+  - id: seq/dup-single-keys
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang API (lyd_dup_single, lyd_dup_siblings): no RFC behaviour
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: edit, set: {path: "/pv2-edit:c/a", value: "x"}}
+        - {do: edit, set: {path: "/pv2-edit:c/l[k='a']/v", value: "1"}}
+        - {do: edit, set: {path: "/pv2-edit:c/l[k='b']"}}
+        - {do: edit, set: {path: "/pv2-edit:c/ll", value: "b"}}
+        - {do: edit, set: {path: "/pv2-edit:c/ll", value: "a"}}
+        - {do: edit, set: {path: "/pv2-edit:c/np/d", value: "7"}}
+        - {do: dup, node: "/pv2-edit:c/l[k='a']"}
+    golden: golden/seq-dup-single-keys.json

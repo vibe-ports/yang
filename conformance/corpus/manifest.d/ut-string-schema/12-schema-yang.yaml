@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-string-schema/12-schema-yang
+    dir: ut-string-schema
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/string.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:265
+    rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [string/base.1, string/T0.1, string/T1.1, string/T2.1, string/TS0.1, string/TPATTERN_0.1, string/TPATTERN_1.1, string/TPATTERN_2.1]
+      modules: [{name: "base"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "TS0"}, {name: "TPATTERN_0"}, {name: "TPATTERN_1"}, {name: "TPATTERN_2"}]
+    golden: golden/12-schema-yang.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.4.6"]
+      deviation: null

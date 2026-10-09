@@ -1,0 +1,16 @@
+fixtures:
+  # ---- ctypes: type compilation (design 06 §2.3-2.4, C5); Go side: internal/compile type tests ----
+  - id: types/unchanged-typedef-reuse
+    dir: ctypes
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.3", "RFC7950#7.3.4", "RFC7950#9.2.4", "RFC7950#9.4.5", "RFC7950#9.6.4", "RFC7950#9.7.4", "RFC7950#9.12"]
+    areas: [schema, types]
+    request:
+      op: schema
+      searchdirs: [reuse]
+      modules: [{name: tr}]
+    golden: golden/unchanged-typedef-reuse.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.3"]
+      deviation: null

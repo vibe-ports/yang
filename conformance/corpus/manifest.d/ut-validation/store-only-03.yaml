@@ -1,0 +1,16 @@
+fixtures:
+  - id: ut-validation/store-only-03
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_store_only:1629
+    rfc: ["RFC7950#9.4.5"]
+    areas: [validation]
+    request:
+      op: "sequence"
+      searchdirs: [k.2]
+      modules: [{name: "k"}]
+      steps: [{"do": "parse", "format": "xml", "data_type": "data", "data": "<l xmlns=\"urn:tests:k\">no-lowercAse-A</l>", "unknown": "reject", "parse_options": ["store_only"]}, {"do": "validate", "data_type": "data", "validate_options": ["present"]}]
+    golden: golden/store-only-03.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: null

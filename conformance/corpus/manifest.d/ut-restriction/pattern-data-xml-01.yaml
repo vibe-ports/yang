@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-restriction/pattern-data-xml-01
+    dir: ut-restriction
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/restriction/test_pattern.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:372
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [test_pattern/TPATTERN_0.1]
+      modules: [{name: "TPATTERN_0"}]
+    golden: golden/pattern-data-xml-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: null

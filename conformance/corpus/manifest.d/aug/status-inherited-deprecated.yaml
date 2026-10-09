@@ -1,0 +1,15 @@
+fixtures:
+  - id: aug/status-inherited-deprecated
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.17", "RFC7950#7.21.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "aug-status-inherited-deprecated"}]
+    golden: golden/aug-status-inherited-deprecated.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.17", "RFC7950#7.21.2"]
+      deviation: null

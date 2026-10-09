@@ -1,0 +1,15 @@
+fixtures:
+  # #68/#69 date-invalid: the pattern rejects month 13
+  - id: types/date-invalid
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty3}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty3"><d>2005-13-01</d></c>'
+    golden: golden/date-invalid.json

@@ -1,0 +1,13 @@
+fixtures:
+  # refine node-ids are matched against the prefixes of the module being compiled (nodeid_pmod =
+  # cur_mod->parsed), so a prefix imported only by the submodule writing the refine is unknown
+  - id: refine/submodule-prefix-not-in-main
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # observed only: the prefix error is logged at every match attempt, then the target is not found
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "refine-sub-prefix"}]
+    golden: golden/refine-submodule-prefix-not-in-main.json

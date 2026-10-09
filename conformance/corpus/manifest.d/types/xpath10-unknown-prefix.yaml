@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/xpath10-unknown-prefix
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # an XML prefix with no namespace: the canonical form fails
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty7}, {name: ty6}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty7"><xp xmlns:a="urn:vibe-ports:ty6">/a:c/zz:l</xp></c>'
+    golden: golden/xpath10-unknown-prefix.json

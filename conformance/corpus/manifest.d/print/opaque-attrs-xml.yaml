@@ -1,0 +1,17 @@
+fixtures:
+  # data printers (#146): opaque attributes with their prefix data, lyd_print_tree, empty (leaf-)lists
+  - id: print/opaque-attrs-xml
+    dir: print
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang LYD_PARSE_OPAQ: opaque nodes keep their XML attributes and value prefixes; no RFC mode
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pj}, {name: pk}]
+      format: xml
+      data_type: config
+      parse_only: true
+      unknown: opaque
+      data_file: data/opaque-attrs.xml
+    golden: golden/opaque-attrs-xml.json

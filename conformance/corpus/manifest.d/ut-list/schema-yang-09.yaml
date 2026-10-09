@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-list/schema-yang-09
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:195
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.1, list/T1.1, list/T2.1, list/T3.1, list/T4.1, list/T5.1, list/TERR_0.3]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "TERR_0"}]
+    golden: golden/schema-yang-09.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+      deviation: null

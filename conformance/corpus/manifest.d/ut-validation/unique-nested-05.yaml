@@ -1,0 +1,23 @@
+fixtures:
+  - id: ut-validation/unique-nested-05
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_unique_nested:689
+    rfc: ["RFC7950#7.8.3", "RFC7950#7.8.2"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [d.1]
+      modules: [{name: "d"}]
+      format: "xml"
+      data_type: "data"
+      data: "<lt2 xmlns=\"urn:tests:d\">\n    <k>val1</k>\n    <cont>\n        <l2>1</l2>\n    </cont>\n    <l4>1</l4>\n    <l5>1</l5>\n    <l6>1</l6>\n</lt2>\n<lt2 xmlns=\"urn:tests:d\">\n    <k>val2</k>\n    <cont>\n        <l2>2</l2>\n    </cont>\n    <l4>1</l4>\n    <l5>1</l5>\n</lt2>\n<lt2 xmlns=\"urn:tests:d\">\n    <k>val3</k>\n    <cont>\n        <l2>3</l2>\n    </cont>\n    <l4>1</l4>\n    <l5>3</l5>\n    <l6>3</l6>\n</lt2>\n<lt2 xmlns=\"urn:tests:d\">\n    <k>val4</k>\n    <cont>\n        <l2>4</l2>\n    </cont>\n    <l4>1</l4>\n    <l6>1</l6>\n</lt2>\n<lt2 xmlns=\"urn:tests:d\">\n    <k>val5</k>\n    <cont>\n        <l2>5</l2>\n    </cont>\n    <l4>1</l4>\n    <l5>3</l5>\n    <l6>3</l6>\n</lt2>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/unique-nested-05.json
+    assert:
+      verdict: invalid
+      diagnostics: [{apptag: "data-not-unique"}]
+      rfc: ["RFC7950#7.8.3", "RFC7950#7.8.2"]
+      deviation: null

@@ -1,0 +1,15 @@
+fixtures:
+  - id: anyd/anydata-mandatory-state
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.10"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "anyd-anydata-mandatory-state"}]
+    golden: golden/anyd-anydata-mandatory-state.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.10"]
+      deviation: null

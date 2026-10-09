@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-int/int8-schema-yang-04
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:158
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}]
+    golden: golden/int8-schema-yang-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null

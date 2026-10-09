@@ -1,0 +1,13 @@
+fixtures:
+# BEGIN ut-identity (hand-converted from libyang tests/utests/schema/test_tree_schema_compile.c and test_schema.c test_identity, reviewed)
+  - id: ut-identity/compile-01
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1351 (identity base in a non-implemented module; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+    areas: [schema]
+    request: {"op": "schema", "searchdirs": ["a.1", "b.1"], "modules": [{"name": "b"}]}
+    golden: golden/compile-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10"]
+      deviation: null

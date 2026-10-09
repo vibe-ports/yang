@@ -1,0 +1,16 @@
+fixtures:
+  # libyang: Key is disabled (key removed by if-feature, feature off)
+  - id: list/key-iffeature-disabled
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.8.2", "RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "list-key-iffeature"}]
+    golden: golden/list-key-iffeature-disabled.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.8.2"]
+      deviation: null

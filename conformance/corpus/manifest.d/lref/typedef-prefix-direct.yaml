@@ -1,0 +1,15 @@
+fixtures:
+  - id: lref/typedef-prefix-direct
+    dir: ctypes
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9.2", "RFC7950#6.4.1"]
+    areas: [schema, types]
+    request:
+      op: schema
+      searchdirs: [lref-direct]
+      modules: [{name: la}, {name: lb}]
+    golden: golden/lref-typedef-prefix-direct.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.9.2"]
+      deviation: null

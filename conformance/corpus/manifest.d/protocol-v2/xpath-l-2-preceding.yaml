@@ -1,0 +1,16 @@
+fixtures:
+  - id: protocol-v2/xpath-l-2-preceding
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["XPath1.0#2.2", "XPath1.0#2.4"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "l[2]/preceding::*"
+    golden: golden/xpath-l-2-preceding.json

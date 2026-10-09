@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-compile-types/type-enum-01
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_enum:1025
+    rfc: ["RFC7950#9.6.4"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.3]
+      modules: [{name: "a"}]
+    golden: golden/type-enum-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.6.4"]
+      deviation: null

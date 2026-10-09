@@ -1,0 +1,16 @@
+fixtures:
+  - id: protocol-v2/xpath-union-enum-value-en
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#10.4.1", "RFC7950#9.12"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2}, {name: pv2-xp}]
+      format: json
+      data_type: get
+      data_file: data/xpath-union.json
+      context_path: /pv2-xp:xp
+      xpath: "enum-value(en)"
+    golden: golden/xpath-union-enum-value-en.json

@@ -1,0 +1,17 @@
+fixtures:
+  # a disabled node is still compiled, so its type is resolved
+  - id: iff/disabled-leaf-bad-type
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "iff-disabled-leaf-bad-type"}]
+    golden: golden/iff-disabled-leaf-bad-type.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.20.2"]
+      diagnostics: [{"vecode_name": "LYVE_REFERENCE"}]
+      deviation: null

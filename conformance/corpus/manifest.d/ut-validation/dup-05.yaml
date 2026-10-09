@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-validation/dup-05
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_dup:808
+    rfc: ["RFC7950#7.8.2", "RFC7950#7.9"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [e.1]
+      modules: [{name: "e"}]
+      format: "xml"
+      data_type: "data"
+      data: "<cont xmlns=\"urn:tests:e\"></cont><cont xmlns=\"urn:tests:e\"/>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/dup-05.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.8.2", "RFC7950#7.9"]
+      deviation: null

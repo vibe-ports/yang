@@ -1,0 +1,18 @@
+fixtures:
+  - id: protocol-v2/xpath-vars-undefined
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["XPath1.0#3.1"]
+    areas: [xpath]
+    # a name longer than every variable is not defined
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "$abcd"
+      vars: {"abc": "1 + 2", "s": "'x'", "bad": "1 +", "und": "$nope", "lx": "'"}
+    golden: golden/xpath-vars-undefined.json

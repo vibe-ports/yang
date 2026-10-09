@@ -1,0 +1,16 @@
+fixtures:
+  # values are assigned before disabled items are dropped: b=1, c=2
+  - id: enum/disabled-value-auto-assignment-kept
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.6.4.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "enum-disabled-value-auto-assignment-kept"}]
+    golden: golden/enum-disabled-value-auto-assignment-kept.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#9.6.4.2"]
+      deviation: null

@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-ident-instid/instanceid-08
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:130
+    rfc: ["RFC7950#9.13"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid/mod.1, instanceid/defs.1]
+      modules: [{name: "mod"}, {name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<list2 xmlns=\"urn:tests:defs\"><id>defs:xxx</id><id2>x</id2></list2><list2 xmlns=\"urn:tests:defs\"><id>a:xxx</id><id2>y</id2></list2><a:l1 xmlns=\"urn:tests:defs\" xmlns:a=\"urn:tests:defs\">/a:list2[a:id='a:xxx'][a:id2='y']/a:id2</a:l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-08.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.13"]
+      deviation: null

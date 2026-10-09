@@ -1,0 +1,12 @@
+fixtures:
+  - id: ut-validation-ops/rpc-01
+    dir: ut-validation-ops
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_rpc:1444 (length violation in rpc input)
+    rfc: ["RFC7950#7.14", "RFC7950#9.4.4"]
+    areas: [validation]
+    request: {"op": "data", "searchdirs": ["val-str.1"], "modules": [{"name": "val-str"}], "format": "xml", "data_type": "rpc", "data": "<modify-user-password xmlns=\"urn:vstr\">\n   <old-password>12345</old-password>\n   <new-password>123</new-password>\n</modify-user-password>"}
+    golden: golden/rpc-01.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.14", "RFC7950#9.4.4"]
+      deviation: null

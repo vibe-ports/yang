@@ -1,0 +1,17 @@
+fixtures:
+  # libyang rejects circular when at compile time (design 03 rule 5)
+  - id: when/cycle
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "when-cycle"}]
+    golden: golden/when-cycle.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.21.5"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null

@@ -1,0 +1,15 @@
+fixtures:
+  - id: dev/not-supported-subtree
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # a not-supported container whose child is deviated too
+    rfc: ["RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{name: dev-ns-subtree}]
+    golden: golden/dev-not-supported-subtree.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3.2"]
+      deviation: null

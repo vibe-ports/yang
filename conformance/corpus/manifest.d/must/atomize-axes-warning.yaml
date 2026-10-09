@@ -1,0 +1,13 @@
+fixtures:
+  # libyang schema-mode XPath walk (lyxp_atomize): axes, choice/case, input/output,
+  # deref(), skipped path rests, observed through the node-not-found warnings
+  - id: must/atomize-axes-warning
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.3", "XPath1.0#2.2"]
+    areas: ["schema", "xpath"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "must-atomize-axes"}]
+    golden: golden/must-atomize-axes-warning.json

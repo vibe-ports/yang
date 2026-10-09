@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-parser/xml-anydata-strict-validation-03
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_anydata_strict_validation:195
+    rfc: ["RFC7950#7.10"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<any xmlns=\"urn:tests:a\">\n  <foo>default-val</foo>\n</any>\n"
+      parse_only: false
+      parse_options: ["anydata_strict"]
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-anydata-strict-validation-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.10"]
+      deviation: null

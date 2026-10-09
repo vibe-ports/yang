@@ -1,0 +1,23 @@
+fixtures:
+  - id: m1/valid-config-xml
+    dir: m1
+    source: {url: "https://github.com/YangModels/yang (see m1/SOURCE.md) + hand-written m1-ext (this repo)", commit: 0e28ed86b0a9070b7f15fd06ba4fa501723fac84, license: "BSD-3-Clause AND BSD-2-Clause"}
+    rfc: ["RFC7950#7.5", "RFC7951#4", "RFC7950#9.9"]
+    areas: [validation, codecs, types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules:
+        - {name: ietf-interfaces, features: [arbitrary-names, pre-provisioning, if-mib]}
+        - {name: iana-if-type}
+        - {name: ietf-ip, features: [ipv4-non-contiguous-netmasks]}
+        - {name: m1-ext, features: [fast-path]}
+      format: xml
+      data_type: config
+      data_file: data/valid-config.xml
+      with_defaults: explicit
+    golden: golden/valid-config-xml.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.5"]
+      deviation: null

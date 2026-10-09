@@ -1,0 +1,11 @@
+fixtures:
+  - id: uses/augment-empty-nodeid
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#6.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "uses-augment-empty-nodeid"}]
+    golden: golden/uses-augment-empty-nodeid.json

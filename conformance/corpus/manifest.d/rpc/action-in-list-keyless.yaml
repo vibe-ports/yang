@@ -1,0 +1,12 @@
+fixtures:
+  # observed only: RFC 7950 7.15 forbids an action in a list without a key, libyang accepts (candidate deviation, no assert)
+  - id: rpc/action-in-list-keyless
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.15"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "rpc-action-in-list-keyless"}]
+    golden: golden/rpc-action-in-list-keyless.json

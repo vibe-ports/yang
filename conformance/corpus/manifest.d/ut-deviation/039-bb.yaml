@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-deviation/039-bb
+    dir: ut-deviation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_deviation:3541 (expected LY_EVALID)
+    rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [a.1, b.1, bb.1]
+      modules: [{name: b}, {name: bb}]
+    golden: golden/039-bb.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.20.3", "RFC7950#7.20.3.2"]
+      deviation: null

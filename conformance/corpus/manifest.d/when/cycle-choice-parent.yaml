@@ -1,0 +1,12 @@
+fixtures:
+  # observed only: x.when reads a, whose choice parent when reads x; RFC 7950 7.21.5 makes this a cycle, libyang reports none (candidate deviation, no assert)
+  - id: when/cycle-choice-parent
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "when-cycle-choice-parent"}]
+    golden: golden/when-cycle-choice-parent.json

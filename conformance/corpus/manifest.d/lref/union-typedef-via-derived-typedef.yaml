@@ -1,0 +1,11 @@
+fixtures:
+  - id: lref/union-typedef-via-derived-typedef
+    dir: ctypes
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang shares the compiled union of an unchanged derived typedef; no RFC counterpart
+    areas: [schema, types]
+    request:
+      op: schema
+      searchdirs: [lref-via-derived]
+      modules: [{name: lc}, {name: ld}]
+    golden: golden/lref-union-typedef-via-derived-typedef.json

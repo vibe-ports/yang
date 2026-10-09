@@ -1,0 +1,11 @@
+fixtures:
+  - id: load/symlink-file
+    dir: load
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang search-directory walk takes a symlinked file; no RFC rule
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [symlink]
+      modules: [{name: sf}]
+    golden: golden/symlink-file.json

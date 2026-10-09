@@ -1,0 +1,14 @@
+fixtures:
+  - id: protocol-v2/anydata-xml-ns-a
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.10"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:yang:conformance:pv2"><mode>on</mode><any><foo xmlns="urn:a">1</foo></any></c>'
+    golden: golden/anydata-xml-ns-a.json

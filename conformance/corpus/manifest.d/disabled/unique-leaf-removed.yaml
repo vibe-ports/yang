@@ -1,0 +1,16 @@
+fixtures:
+  # unique statements lose disabled leaves in step j (SC:1245)
+  - id: disabled/unique-leaf-removed
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.8.3", "RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "disabled-unique-leaf-removed"}]
+    golden: golden/disabled-unique-leaf-removed.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.8.3", "RFC7950#7.20.2"]
+      deviation: null

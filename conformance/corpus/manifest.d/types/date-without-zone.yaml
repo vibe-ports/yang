@@ -1,0 +1,16 @@
+fixtures:
+  # #68/#69 date-without-zone: the pattern allows no zone, but libyang's date store appends the
+  # date to "T00:00:00" and ly_time_str2time then requires a zone (observed only)
+  - id: types/date-without-zone
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty3}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty3"><d>2005-05-31</d></c>'
+    golden: golden/date-without-zone.json

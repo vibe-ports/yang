@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/print-prefixes-json
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7951#6.8", "RFC7951#6.11"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty2}, {name: ty4}]
+      format: json
+      data_type: config
+      data: '{"ty4:c":{"ext":"ty2:der","loc":"own","ii":"/ty4:c/l[k=''ty2:der'']/v","l":[{"k":"ty2:der","v":"1"}],"ll":["ty2:der","ty4:own"],"un":"ty2:der","lr":"ty2:der"}}'
+    golden: golden/print-prefixes-json.json

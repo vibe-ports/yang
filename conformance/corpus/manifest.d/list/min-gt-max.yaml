@@ -1,0 +1,16 @@
+fixtures:
+  - id: list/min-gt-max
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.7.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "list-min-gt-max"}]
+    golden: golden/list-min-gt-max.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.7.5"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null

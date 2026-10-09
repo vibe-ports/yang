@@ -1,0 +1,15 @@
+fixtures:
+  - id: basic/diff
+    dir: basic
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang diff format (yang:operation metadata), no RFC
+    areas: [diff]
+    request:
+      op: diff
+      searchdirs: [schemas]
+      modules: [{name: basic, features: [jumbo]}]
+      format: json
+      data_type: config
+      first_file: data/valid.json
+      second_file: data/valid2.json
+    golden: golden/diff.json

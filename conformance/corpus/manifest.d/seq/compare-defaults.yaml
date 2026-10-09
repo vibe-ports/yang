@@ -1,0 +1,19 @@
+fixtures:
+# BEGIN PoC compare options (#135)
+  - id: seq/compare-defaults
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # LYD_COMPARE_DEFAULTS: an implicit default leaf against an explicit one with its value
+    rfc: []   # libyang API: lyd_compare_single
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: parse, format: json, data_type: config, data: '{"pv2-edit:c": {"a": "x"}}'}
+        - {do: compare, format: json, data_type: config, data: '{"pv2-edit:c": {"a": "x", "np": {"d": 5}}}', first: "/pv2-edit:c/np/d", second: "/pv2-edit:c/np/d", options: []}
+        - {do: compare, format: json, data_type: config, data: '{"pv2-edit:c": {"a": "x", "np": {"d": 5}}}', first: "/pv2-edit:c/np/d", second: "/pv2-edit:c/np/d", options: [defaults]}
+        - {do: compare, format: json, data_type: config, data: '{"pv2-edit:c": {"a": "x", "np": {"d": 5}}}', first: "/pv2-edit:c/np", second: "/pv2-edit:c/np", options: [defaults]}
+        - {do: compare, format: json, data_type: config, data: '{"pv2-edit:c": {"a": "x", "np": {"d": 5}}}', first: "/pv2-edit:c", second: "/pv2-edit:c", options: [full_recursion]}
+        - {do: compare, format: json, data_type: config, data: '{"pv2-edit:c": {"a": "x", "np": {"d": 5}}}', first: "/pv2-edit:c", second: "/pv2-edit:c", options: [full_recursion, defaults]}
+    golden: golden/seq-compare-defaults.json

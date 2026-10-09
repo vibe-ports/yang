@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-list/json-07
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_json:1229
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7951#5.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [list/T0.2, list/T1.2]
+      modules: [{name: "T0"}, {name: "T1"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T1:user\": [   {\"uid\":0, \"name\":\"Jan Kuba\", \"group\":\"User\"},   {\"uid\":0, \"name\":\"Jan Kuba\", \"group\":\"Admin\"}]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-07.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7951#5.4"]
+      deviation: null

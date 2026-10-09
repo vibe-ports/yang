@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-validation/must-03
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_must:1207
+    rfc: ["RFC7950#7.5.3"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [i.1]
+      modules: [{name: "i"}]
+      format: "xml"
+      data_type: "data"
+      data: "<cont xmlns=\"urn:tests:i\">\n  <l>right</l>\n  <l2>val</l2>\n</cont>\n"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/must-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.5.3"]
+      deviation: null

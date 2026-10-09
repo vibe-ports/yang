@@ -1,0 +1,15 @@
+fixtures:
+  - id: types/compile-errors
+    dir: ctypes
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.2.4", "RFC7950#9.2.5", "RFC7950#9.3.4", "RFC7950#9.4.4", "RFC7950#9.4.5", "RFC7950#9.6.4", "RFC7950#9.7.4", "RFC7950#9.9.2", "RFC7950#9.9.3", "RFC7950#9.10.2", "RFC7950#9.11", "RFC7950#9.12", "RFC7950#7.3.4", "RFC7950#7.21.2"]
+    areas: [schema, types]
+    request:
+      op: schema
+      searchdirs: [errors]
+      modules: [{name: e01}, {name: e02}, {name: e03}, {name: e04}, {name: e05}, {name: e06}, {name: e07}, {name: e08}, {name: e09}, {name: e10}, {name: e11}, {name: e12}, {name: e13}, {name: e14}, {name: e15}, {name: e16}, {name: e17}, {name: e18}, {name: e19}, {name: e20}, {name: e21}, {name: e22}]
+    golden: golden/compile-errors.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2.4"]
+      deviation: null

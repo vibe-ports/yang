@@ -1,0 +1,15 @@
+fixtures:
+  - id: dflt/choice-default-case-leaf-default
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.9.3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-choice-default-case-leaf-default"}]
+    golden: golden/dflt-choice-default-case-leaf-default.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.9.3"]
+      deviation: null

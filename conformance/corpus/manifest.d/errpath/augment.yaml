@@ -1,0 +1,12 @@
+fixtures:
+  # error path segment {augment='...'} with a leaf-local error (unknown type)
+  - id: errpath/augment
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # error path segment {augment='...'} with a leaf-local error (unknown type)
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "aug-base"}, {"name": "errpath-augment"}]
+    golden: golden/errpath-augment.json

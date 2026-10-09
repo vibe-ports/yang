@@ -1,0 +1,12 @@
+fixtures:
+  # libyang schema-mode XPath warning, literal does not fit the node type
+  - id: must/value-not-fit-warning
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "must-value-nofit"}]
+    golden: golden/must-value-not-fit-warning.json

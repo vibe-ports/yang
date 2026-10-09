@@ -1,0 +1,16 @@
+fixtures:
+  - id: print/opaque-attrs-json
+    dir: print
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang LYD_PARSE_OPAQ: opaque nodes keep their JSON metadata as attributes; no RFC mode
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pj}, {name: pk}]
+      format: json
+      data_type: config
+      parse_only: true
+      unknown: opaque
+      data_file: data/opaque-attrs.json
+    golden: golden/opaque-attrs-json.json

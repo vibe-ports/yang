@@ -1,0 +1,15 @@
+fixtures:
+  - id: aug/action-into-container
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.17", "RFC7950#7.15"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "aug-action-into-container"}]
+    golden: golden/aug-action-into-container.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.17", "RFC7950#7.15"]
+      deviation: null

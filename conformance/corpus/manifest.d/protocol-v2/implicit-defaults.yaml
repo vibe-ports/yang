@@ -1,0 +1,19 @@
+fixtures:
+  - id: protocol-v2/implicit-defaults
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.6.1", "RFC7950#7.7.2", "RFC7950#7.9.3"]
+    areas: [defaults]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      format: json
+      data_type: config
+      data_file: data/valid.json
+      with_defaults: explicit
+    golden: golden/implicit-defaults.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.6.1"]
+      deviation: null

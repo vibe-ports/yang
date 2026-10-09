@@ -1,0 +1,12 @@
+fixtures:
+  - id: load/ext-instance-resolution
+    dir: load
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.19", "RFC7950#6.3.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [ext]
+      modules: [{name: xe1}, {name: xe2}, {name: xe3}, {name: xe4}, {name: xe5}, {name: xe6}, {name: xe7},
+        {name: xe8}]
+    golden: golden/ext-instance-resolution.json

@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/dt-minus-half-hour
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC6991#3"]   # libyang applies "-00:30" as +00:30, mirrored; see D-0026
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty3}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty3"><dt>2005-05-25T12:00:00-00:30</dt></c>'
+    golden: golden/dt-minus-half-hour.json

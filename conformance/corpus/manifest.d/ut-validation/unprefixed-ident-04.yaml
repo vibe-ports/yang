@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-validation/unprefixed-ident-04
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_unprefixed_ident:230
+    rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [a.4]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<a xmlns=\"urn:tests:a\">d3</a><b xmlns=\"urn:tests:a\">b-val</b><c xmlns=\"urn:tests:a\">c-val</c>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/unprefixed-ident-04.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.21.5", "RFC7950#7.5.3"]
+      deviation: null

@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-compile-types/type-identityref-07
+    dir: ut-compile-types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_type_identityref:1687
+    rfc: ["RFC7950#9.10.2"]
+    areas: [schema]
+    request:
+      op: "schema"
+      searchdirs: [a.6, b.5, ee.5]
+      modules: [{name: "a"}, {name: "b"}, {name: "ee"}]
+    golden: golden/type-identityref-07.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.10.2"]
+      deviation: null

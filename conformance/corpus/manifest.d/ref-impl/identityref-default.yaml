@@ -1,0 +1,19 @@
+fixtures:
+  # LY_CTX_REF_IMPLEMENTED (issue #147): defaults, whens and musts implement the modules they
+  # reference; without the option the same modules stay import-only
+  # an identityref default naming an import-only module
+  - id: ref-impl/identityref-default
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#5.6.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ref-impl-ident"}]
+      context_options: ["ref_implemented"]
+    golden: golden/ref-impl-identityref-default.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#5.6.5"]
+      deviation: null

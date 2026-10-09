@@ -1,0 +1,19 @@
+fixtures:
+# BEGIN protocol-v2 deref-einval (hand-written, issue 200: xpath_deref LY_EINVAL stops validation)
+  - id: protocol-v2/deref-einval-leafref
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # a dangling leafref: deref() LOGERR LY_EINVAL stops multi-error validation before the false must of z
+    rfc: ["RFC7950#10.3.1", "RFC7950#7.5.3"]
+    areas: [xpath, validation]
+    request:
+      op: "data"
+      searchdirs: [schemas]
+      modules: [{name: "pv2-deref"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"pv2-deref:c\": {\"lr\": \"nope\", \"z\": \"x\"}}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present", "multi_error"]
+      unknown: "skip"
+    golden: golden/deref-einval-leafref.json

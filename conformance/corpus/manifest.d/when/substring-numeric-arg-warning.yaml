@@ -1,0 +1,11 @@
+fixtures:
+  - id: when/substring-numeric-arg-warning
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.5", "RFC7950#10.3"]
+    areas: ["schema", "xpath"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "when-substring-numeric-arg"}]
+    golden: golden/when-substring-numeric-arg-warning.json

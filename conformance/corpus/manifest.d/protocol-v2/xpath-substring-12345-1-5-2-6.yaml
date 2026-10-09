@@ -1,0 +1,16 @@
+fixtures:
+  - id: protocol-v2/xpath-substring-12345-1-5-2-6
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["XPath1.0#4.2", "XPath1.0#5"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}]
+      format: json
+      data_type: get
+      data_file: data/xpath.json
+      context_path: /pv2:c
+      xpath: "substring('12345', 1.5, 2.6)"
+    golden: golden/xpath-substring-12345-1-5-2-6.json

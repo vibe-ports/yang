@@ -1,0 +1,16 @@
+fixtures:
+  # if-feature references are not status-checked by libyang
+  - id: status/feature-deprecated-ref
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "status-feature-deprecated-ref"}]
+    golden: golden/status-feature-deprecated-ref.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.21.2"]
+      deviation: null

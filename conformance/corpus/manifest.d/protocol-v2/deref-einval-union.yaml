@@ -1,0 +1,18 @@
+fixtures:
+  - id: protocol-v2/deref-einval-union
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # a union (instance-identifier, leafref) resolving through neither member, in a when: LY_EINVAL, validation stops
+    rfc: ["RFC7950#10.3.1", "RFC7950#7.5.3"]
+    areas: [xpath, validation]
+    request:
+      op: "data"
+      searchdirs: [schemas]
+      modules: [{name: "pv2-deref"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"pv2-deref:c\": {\"u\": \"/pv2-deref:c/t[name='nope']\", \"w\": \"x\", \"z\": \"x\"}}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present", "multi_error"]
+      unknown: "skip"
+    golden: golden/deref-einval-union.json

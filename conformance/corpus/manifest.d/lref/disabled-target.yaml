@@ -1,0 +1,17 @@
+fixtures:
+  # the first error is Not found node target; the intent-bearing 'cannot be referenced because it is disabled' is the 2nd diagnostic
+  - id: lref/disabled-target
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9", "RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-disabled-target"}]
+    golden: golden/lref-disabled-target.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9", "RFC7950#7.20.2"]
+      diagnostics: [{"vecode_name": "LYVE_XPATH"}]
+      deviation: null

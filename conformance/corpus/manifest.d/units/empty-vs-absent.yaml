@@ -1,0 +1,16 @@
+fixtures:
+# BEGIN units (absent vs empty units, issue #9)
+  - id: units/empty-vs-absent
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # leaf with units "", without units, inheriting units "" from a typedef, overriding a typedef's units with ""; leaf-list with units ""
+    rfc: ["RFC7950#7.3.3", "RFC7950#7.6.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "units-empty"}]
+    golden: golden/units-empty.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.3.3"]
+      deviation: null

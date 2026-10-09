@@ -1,0 +1,16 @@
+fixtures:
+  # augment of a node added by a later augment statement
+  - id: aug/of-augment
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.17"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "aug-base"}, {"name": "aug-of-augment"}]
+    golden: golden/aug-of-augment.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.17"]
+      deviation: null

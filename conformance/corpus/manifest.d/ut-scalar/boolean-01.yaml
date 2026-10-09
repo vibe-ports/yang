@@ -1,0 +1,16 @@
+fixtures:
+# BEGIN ut-scalar (generated from libyang tests/utests/types/{boolean,decimal64,empty,binary}.c, reviewed)
+  - id: ut-scalar/boolean-01
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/boolean.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:72
+    rfc: ["RFC7950#9.5"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [boolean/defs.1]
+      modules: [{name: "defs"}]
+    golden: golden/boolean-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.5"]
+      deviation: null

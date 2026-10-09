@@ -1,0 +1,16 @@
+fixtures:
+  - id: types/print-opaque-xml
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7951#4", "RFC7950#7.5.2"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty2}, {name: ty4}]
+      format: xml
+      data_type: data
+      unknown: opaque
+      parse_only: true
+      data: '<c xmlns="urn:vibe-ports:ty4"><loc>own</loc><unk>hello</unk><unk2><a>b</a></unk2><x xmlns="urn:other">v &amp; w</x></c>'
+    golden: golden/print-opaque-xml.json

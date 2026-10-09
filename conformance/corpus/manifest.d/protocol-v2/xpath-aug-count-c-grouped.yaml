@@ -1,0 +1,15 @@
+fixtures:
+  - id: protocol-v2/xpath-aug-count-c-grouped
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7951#6.4", "RFC7950#6.4.1"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2, features: [extra]}, {name: pv2-aug}, {name: pv2-xp}]
+      format: json
+      data_type: get
+      data_file: data/xpath-aug.json
+      xpath: "count(/c/grouped)"
+    golden: golden/xpath-aug-count-c-grouped.json

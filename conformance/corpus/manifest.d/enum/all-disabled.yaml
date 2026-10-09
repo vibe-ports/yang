@@ -1,0 +1,16 @@
+fixtures:
+  - id: enum/all-disabled
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.6.4"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "enum-all-disabled"}]
+    golden: golden/enum-all-disabled.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.6.4"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null

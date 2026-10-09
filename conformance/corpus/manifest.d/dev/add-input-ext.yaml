@@ -1,0 +1,16 @@
+fixtures:
+  - id: dev/add-input-ext
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # deviate add of an extension instance to an rpc input: libyang's copy of the input has no children
+    rfc: ["RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{name: dev-add-input-ext}, {name: dev-amend-base}]
+    golden: golden/dev-add-input-ext.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3.2"]
+      deviation: "D-0080"
+      waive: [schema_tree, compiled]

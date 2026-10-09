@@ -1,0 +1,18 @@
+fixtures:
+  - id: protocol-v2/links-free-leafref
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9"]
+    areas: [types, validation]
+    # freeing a leafref that is also a target (r, the target of v) clears both directions
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-links}]
+      context_options: [leafref_linking]
+      steps:
+        - {do: parse, format: json, data_type: config, data_file: data/links.json}
+        - {do: link}
+        - {do: edit, delete: /pv2-links:c/r}
+        - {do: links}
+    golden: golden/links-free-leafref.json

@@ -1,0 +1,12 @@
+fixtures:
+  # error path segment {refine='x'}
+  - id: errpath/refine
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # error path segment {refine='x'}
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "errpath-refine"}]
+    golden: golden/errpath-refine.json

@@ -1,0 +1,12 @@
+fixtures:
+  # error path segment {submodule='s'}/{identity='i'}
+  - id: errpath/submodule-identity
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # error path segment {submodule='s'}/{identity='i'}
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "errpath-submodule-identity"}]
+    golden: golden/errpath-submodule-identity.json

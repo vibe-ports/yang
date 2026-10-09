@@ -1,0 +1,15 @@
+fixtures:
+# BEGIN types xpath1.0 printing (#10)
+  - id: types/xpath10-xml-prefixes
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # XML input: canonical with module names, XML output re-prefixed
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty7}, {name: ty6}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty7"><xp xmlns:a="urn:vibe-ports:ty6" xmlns:b="urn:vibe-ports:ty7">/a:c/a:l[a:k = /b:c/b:k]/a:v | count(/a:c/ll) + 1</xp><xpl xmlns:t="urn:vibe-ports:ty7">/t:c/t:k</xpl><xpl>/c/k</xpl><k>x</k></c>'
+    golden: golden/xpath10-xml-prefixes.json

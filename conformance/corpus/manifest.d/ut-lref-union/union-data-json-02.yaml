@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-lref-union/union-data-json-02
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/union.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:129
+    rfc: ["RFC7950#9.12", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [union/defs.2]
+      modules: [{name: "defs"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"defs:un2\":\"str\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "reject"
+    golden: golden/union-data-json-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.12", "RFC7951#6.1"]
+      deviation: null

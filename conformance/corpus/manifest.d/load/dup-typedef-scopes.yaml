@@ -1,0 +1,12 @@
+fixtures:
+  - id: load/dup-typedef-scopes
+    dir: load
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#6.2.1", "RFC7950#7.3", "RFC7950#7.12"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [dup]
+      modules: [{name: d1}, {name: d2}, {name: d3}, {name: d4}, {name: d5}, {name: d6}, {name: d7}, {name: d8},
+        {name: d9}, {name: d10}, {name: d11}]
+    golden: golden/dup-typedef-scopes.json

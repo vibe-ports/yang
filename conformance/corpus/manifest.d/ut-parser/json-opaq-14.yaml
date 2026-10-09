@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-parser/json-opaq-14
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_opaq:759
+    rfc: []
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "data"
+      data: "{\n  \"ietf-netconf-nmda:get-data\": {\n    \"data\": {\n      \"ietf-keystore:keystore\": {\n        \"asymmetric-keys\": {\n          \"asymmetric-key\": [\n            {\n              \"name\": \"genkey\",\n              \"algorithm\": \"rsa2048\"\n            }\n          ]\n        }\n      },\n      \"ietf-netconf-server:netconf-server\": {\n        \"listen\": {\n          \"idle-timeout\": 3600,\n          \"endpoint\": [\n            {\n              \"name\": \"default-ssh\",\n              \"ssh\": {\n                \"tcp-server-parameters\": {\n                  \"local-address\": \"0.0.0.0\",\n                  \"local-port\": 830\n                },\n                \"ssh-server-parameters\": {\n                  \"server-identity\": {\n                    \"host-key\": [\n                      {\n                        \"name\": \"default-key\",\n                        \"public-key\": {\n                          \"keystore-reference\": \"genkey\"\n                        }\n                      }\n                    ]\n                  },\n                  \"client-authentication\": {\n                    \"supported-authentication-methods\": {\n                      \"publickey\": [null],\n                      \"passsword\": [null],\n                      \"other\": [\n                        \"interactive\",\n                        \"gssapi\"\n                      ]\n                    }\n                  }\n                }\n              }\n            }\n          ]\n        }\n      }\n    }\n  }\n}\n"
+      parse_only: true
+      parse_options: []
+      validate_options: []
+      unknown: "opaque"
+    golden: golden/json-opaq-14.json
+    assert:
+      verdict: valid
+      rfc: []
+      deviation: null

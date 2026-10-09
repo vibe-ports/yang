@@ -1,0 +1,21 @@
+fixtures:
+  - id: basic/mandatory-missing
+    dir: basic
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.6.5", "RFC7950#7.5.1"]
+    areas: [validation]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: basic, features: [jumbo]}]
+      format: json
+      data_type: config
+      data_file: data/mandatory.json
+      with_defaults: explicit
+    golden: golden/mandatory-missing.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.6.5"]
+      diagnostics:
+        - {vecode_name: LYVE_DATA, data_path: /basic:sys/user}
+      deviation: null

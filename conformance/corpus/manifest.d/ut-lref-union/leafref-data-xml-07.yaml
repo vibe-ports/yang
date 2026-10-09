@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-lref-union/leafref-data-xml-07
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:118
+    rfc: ["RFC7950#9.9"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [leafref/defs.1, leafref/leafrefs.1, leafref/simple.1]
+      modules: [{name: "defs"}, {name: "leafrefs"}, {name: "simple"}]
+    golden: golden/leafref-data-xml-07.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.9"]
+      deviation: null

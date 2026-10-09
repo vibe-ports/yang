@@ -1,0 +1,16 @@
+fixtures:
+  - id: ut-lref-union/leafref-xpath-invalid-schema-01
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_xpath_invalid_schema:331 (hand-written: context options set by C code)
+    rfc: ["RFC7950#9.9", "RFC7950#10.3.1"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [leafref/xp_test.3]
+      modules: [{name: "xp_test"}]
+      context_options: ["leafref_extended"]
+    golden: golden/leafref-xpath-invalid-schema-01.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.9", "RFC7950#10.3.1"]
+      deviation: null

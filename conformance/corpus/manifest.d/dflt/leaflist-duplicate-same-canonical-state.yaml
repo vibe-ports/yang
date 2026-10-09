@@ -1,0 +1,15 @@
+fixtures:
+  - id: dflt/leaflist-duplicate-same-canonical-state
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.7.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-leaflist-duplicate-same-canonical-state"}]
+    golden: golden/dflt-leaflist-duplicate-same-canonical-state.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.7.2"]
+      deviation: null

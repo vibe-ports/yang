@@ -1,0 +1,12 @@
+fixtures:
+  # error path segment {ext-inst='...'}
+  - id: errpath/ext-inst
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # error path segment {ext-inst='...'}
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "errpath-ext-inst"}]
+    golden: golden/errpath-ext-inst.json

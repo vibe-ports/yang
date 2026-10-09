@@ -1,0 +1,15 @@
+fixtures:
+  - id: dev/replace-ext-arg
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # deviate replace of an extension instance by one with the same argument
+    rfc: ["RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{name: dev-replace-ext-arg}]
+    golden: golden/dev-replace-ext-arg.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3.2"]
+      deviation: null

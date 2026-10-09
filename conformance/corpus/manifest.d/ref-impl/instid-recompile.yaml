@@ -1,0 +1,14 @@
+fixtures:
+  # an instance-identifier default whose module, once implemented, augments a compiled module:
+  # the LY_ERECOMPILE is turned into the store's error, the default is invalid
+  - id: ref-impl/instid-recompile
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#5.6.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ref-impl-rc-a"}, {"name": "ref-impl-rc-bi"}]
+      context_options: ["ref_implemented"]
+    golden: golden/ref-impl-instid-recompile.json

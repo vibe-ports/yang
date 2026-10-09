@@ -1,0 +1,16 @@
+fixtures:
+  - id: print/empty-leaf-list
+    dir: print
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang LYD_PRINT_EMPTY_LEAF_LIST: lists and leaf-lists without instances as [] (JSON only)
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pj}, {name: pk}]
+      format: json
+      data_type: config
+      parse_only: true
+      data_file: data/empty-leaf-list.json
+      print_options: [empty_leaf_list]
+    golden: golden/empty-leaf-list.json

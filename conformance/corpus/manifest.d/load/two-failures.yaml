@@ -1,0 +1,11 @@
+fixtures:
+  - id: load/two-failures
+    dir: load
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.9.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [two-failures]
+      modules: [{name: tb}, {name: tc}]
+    golden: golden/two-failures.json

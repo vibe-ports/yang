@@ -1,0 +1,12 @@
+fixtures:
+  - id: xsdre-blocks/cyrillic-supplement-u0500
+    dir: xsdre-blocks
+    source: {url: "hand-written (this repo), see issue 177", commit: null, license: BSD-3-Clause}   # \p{IsCyrillicSupplement} against U+0500 (measures libyang v5.8.6 block handling, issue 177 step 1)
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request: {"op": "data", "searchdirs": ["blk3"], "modules": [{"name": "blk3"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<l xmlns=\"urn:tests:blk3\">&#x500;</l>"}
+    golden: golden/cyrillic-supplement-u0500.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: "D-0006"

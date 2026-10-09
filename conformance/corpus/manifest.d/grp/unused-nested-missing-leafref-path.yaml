@@ -1,0 +1,17 @@
+fixtures:
+  # a grouping declared directly in a top-level data node is validated even when unused (design 06 P4)
+  - id: grp/unused-nested-missing-leafref-path
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.12"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "grp-unused-nested-missing-leafref-path"}]
+    golden: golden/grp-unused-nested-missing-leafref-path.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.12"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null

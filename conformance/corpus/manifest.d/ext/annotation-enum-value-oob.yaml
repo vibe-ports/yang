@@ -1,0 +1,15 @@
+fixtures:
+  - id: ext/annotation-enum-value-oob
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7952#3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ext-annotation-enum-value-oob"}]
+    golden: golden/ext-annotation-enum-value-oob.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7952#3"]
+      deviation: null

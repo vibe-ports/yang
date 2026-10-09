@@ -1,0 +1,11 @@
+fixtures:
+  - id: load/imported-rev-binding
+    dir: load
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.1.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [imported-rev]
+      modules: [{name: ia}, {name: r, revision: "2020-01-01"}, {name: ib}, {name: r}, {name: rp}]
+    golden: golden/imported-rev-binding.json

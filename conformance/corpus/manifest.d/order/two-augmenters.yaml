@@ -1,0 +1,12 @@
+fixtures:
+  # VERIFIED: children of augmenting modules are grouped per module and sorted by module name (SCN:2350-2366), modules loaded in reverse name order
+  - id: order/two-augmenters
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.17"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ord-base"}, {"name": "ord-z"}, {"name": "ord-a"}]
+    golden: golden/order-two-augmenters.json

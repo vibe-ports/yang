@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/bits-duplicate
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.7.4"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty"><bt>ten two ten</bt></c>'
+    golden: golden/bits-duplicate.json

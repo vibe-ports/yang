@@ -1,0 +1,12 @@
+fixtures:
+  - id: ut-identity/compile-32
+    dir: ut-identity
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_identity:1619 (; shared C context rebuilt as one request)
+    rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+    areas: [schema, validation]
+    request: {"op": "data", "searchdirs": ["asub.1", "a.5", "b.9"], "modules": [{"name": "a", "features": ["f2"]}, {"name": "b"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<lf xmlns=\"urn:b\" xmlns:ids=\"urn:a\">ids:id1</lf>"}
+    golden: golden/compile-32.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.18", "RFC7950#9.10.2"]
+      deviation: null

@@ -1,0 +1,16 @@
+fixtures:
+  # data when evaluation order (design 03 rule 5): libyang queue order, not a fixpoint
+  - id: when/order-b-after-a
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.5"]
+    areas: ["validation", "defaults"]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{"name": "when-order-b-after-a"}]
+      steps:
+        - {"do": "parse", "format": "json", "data_type": "config", "parse_only": true, "data_file": "data/when-order-b-after-a.json"}
+        - {"do": "validate", "data_type": "config"}
+        - {"do": "dump", "with_defaults": "all"}
+    golden: golden/when-order-b-after-a.json

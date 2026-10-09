@@ -1,0 +1,15 @@
+fixtures:
+  - id: m1/schema-tree-no-features
+    dir: m1
+    source: {url: "https://github.com/YangModels/yang (see m1/SOURCE.md) + hand-written m1-ext (this repo)", commit: 0e28ed86b0a9070b7f15fd06ba4fa501723fac84, license: "BSD-3-Clause AND BSD-2-Clause"}
+    rfc: ["RFC7950#7.20.2", "RFC7950#7.20"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules:
+        - {name: ietf-interfaces, features: [arbitrary-names, pre-provisioning, if-mib]}
+        - {name: iana-if-type}
+        - {name: ietf-ip, features: [ipv4-non-contiguous-netmasks]}
+        - {name: m1-ext}
+    golden: golden/schema-tree-no-features.json

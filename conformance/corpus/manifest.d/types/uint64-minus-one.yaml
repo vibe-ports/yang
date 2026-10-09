@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/uint64-minus-one
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty"><u64>-1</u64></c>'
+    golden: golden/uint64-minus-one.json

@@ -1,0 +1,16 @@
+fixtures:
+  - id: refine/target-missing
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.13.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "refine-target-missing"}]
+    golden: golden/refine-target-missing.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.13.2"]
+      diagnostics: [{"vecode_name": "LYVE_REFERENCE"}]
+      deviation: null

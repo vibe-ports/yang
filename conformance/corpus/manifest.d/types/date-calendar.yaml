@@ -1,0 +1,15 @@
+fixtures:
+  # #68/#69 date-calendar: Feb 30 matches the pattern; timegm moves it to Mar 2
+  - id: types/date-calendar
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty3}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty3"><d>2005-02-30Z</d></c>'
+    golden: golden/date-calendar.json

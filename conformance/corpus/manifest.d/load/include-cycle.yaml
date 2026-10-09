@@ -1,0 +1,11 @@
+fixtures:
+  - id: load/include-cycle
+    dir: load
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang accepts a YANG 1.0 include cycle between submodules; no RFC rule on cycles
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [include-cycle]
+      modules: [{name: im}]
+    golden: golden/include-cycle.json

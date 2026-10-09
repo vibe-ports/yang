@@ -1,0 +1,12 @@
+fixtures:
+  # error path segment {uses='g'}
+  - id: errpath/uses
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # error path segment {uses='g'}
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "errpath-uses"}]
+    golden: golden/errpath-uses.json

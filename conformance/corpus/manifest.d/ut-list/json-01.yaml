@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-list/json-01
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_json:1128
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.2]
+      modules: [{name: "T0"}]
+    golden: golden/json-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3"]
+      deviation: null

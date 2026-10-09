@@ -1,0 +1,16 @@
+fixtures:
+  # the leaf default replaces the typedef default (SCN:2807)
+  - id: dflt/typedef-invalid-unused-ok
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.3.4"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "dflt-typedef-invalid-unused-ok"}]
+    golden: golden/dflt-typedef-invalid-unused-ok.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.3.4"]
+      deviation: null

@@ -1,0 +1,19 @@
+fixtures:
+  - id: protocol-v2/sequence-edits
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # oracle sequence mechanics (merge_file, delete, implicit_diff null, stop at a refused key delete)
+    areas: [validation, diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      steps:
+        - {do: parse, format: json, data_type: config, parse_only: true, data_file: data/valid.json}
+        - {do: edit, merge_file: data/merge.json}
+        - {do: edit, delete: "/pv2:c/l[k='a']"}
+        - {do: validate, data_type: config}
+        - {do: validate, data_type: config}
+        - {do: edit, delete: "/pv2:c/l[k='b']/k"}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/sequence-edits.json

@@ -1,0 +1,24 @@
+fixtures:
+  # Bad value on a list KEY: libyang reports the type error plus a cascade ('missing key') with detached
+  # data_paths (/ietf-ip:address/ip). Observed quirk, kept for the Go engine; see invalid-ipv4-address for the clean case.
+  - id: m1/invalid-key-value-type-json
+    dir: m1
+    source: {url: "https://github.com/YangModels/yang (see m1/SOURCE.md) + hand-written m1-ext (this repo)", commit: 0e28ed86b0a9070b7f15fd06ba4fa501723fac84, license: "BSD-3-Clause AND BSD-2-Clause"}
+    rfc: ["RFC9911#4"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules:
+        - {name: ietf-interfaces, features: [arbitrary-names, pre-provisioning, if-mib]}
+        - {name: iana-if-type}
+        - {name: ietf-ip, features: [ipv4-non-contiguous-netmasks]}
+        - {name: m1-ext, features: [fast-path]}
+      format: json
+      data_type: config
+      data_file: data/invalid-key-value-type.json
+      with_defaults: explicit
+    golden: golden/invalid-key-value-type-json.json
+    assert:
+      verdict: invalid
+      deviation: null

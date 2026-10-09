@@ -1,0 +1,15 @@
+fixtures:
+  - id: lref/union-typedef-direct
+    dir: ctypes
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9.2", "RFC7950#9.12", "RFC7950#6.4.1"]
+    areas: [schema, types]
+    request:
+      op: schema
+      searchdirs: [lref-union-direct]
+      modules: [{name: ua}, {name: ub}]
+    golden: golden/lref-union-typedef-direct.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.9.2"]
+      deviation: null

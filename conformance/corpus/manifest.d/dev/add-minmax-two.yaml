@@ -1,0 +1,15 @@
+fixtures:
+  - id: dev/add-minmax-two
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # two deviations adding min/max-elements to one leaf-list: the second overwrites the first (only the node's own statement makes them exist)
+    rfc: ["RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{name: dev-minmax-two}, {name: dev-minmax-base}]
+    golden: golden/dev-add-minmax-two.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3.2"]
+      deviation: null

@@ -1,0 +1,17 @@
+fixtures:
+  # an explicit value deleted by when, then the default recreated: replace with orig-value
+  - id: seq/diff-explicit-default
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang lyd_validate_all diff (yang:operation metadata): no RFC behaviour
+    areas: [validation, diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-diff}]
+      steps:
+        - {do: parse, format: json, data_type: config, parse_only: true, data: '{"pv2-diff:c": {"mode": "on", "wc": {"y": "b", "z": 9}}}'}
+        - {do: validate, data_type: config}
+        - {do: edit, set: {path: "/pv2-diff:c/mode", value: "off"}}
+        - {do: validate, data_type: config}
+    golden: golden/seq-diff-explicit-default.json

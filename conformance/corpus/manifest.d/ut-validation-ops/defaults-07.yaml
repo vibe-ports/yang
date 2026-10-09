@@ -1,0 +1,12 @@
+fixtures:
+  - id: ut-validation-ops/defaults-07
+    dir: ut-validation-ops
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_defaults:1110 (when enabled node: leaf dd default becomes present)
+    rfc: ["RFC7950#7.6.1", "RFC7950#7.21.5", "RFC6243#3"]
+    areas: [validation]
+    request: {"op": "sequence", "searchdirs": ["f.1", "../ietf"], "modules": [{"name": "f"}, {"name": "ietf-netconf-with-defaults"}], "steps": [{"do": "parse", "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<d xmlns=\"urn:tests:f\">666</d><cont xmlns=\"urn:tests:f\"><d>666</d></cont>"}, {"do": "dump", "with_defaults": "all"}]}
+    golden: golden/defaults-07.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.6.1", "RFC7950#7.21.5", "RFC6243#3"]
+      deviation: null

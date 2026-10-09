@@ -1,0 +1,21 @@
+fixtures:
+  - id: basic/must-apptag
+    dir: basic
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.3", "RFC7950#7.5.4.2"]
+    areas: [validation]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: basic, features: [jumbo]}]
+      format: json
+      data_type: config
+      data_file: data/must.json
+      with_defaults: explicit
+    golden: golden/must-apptag.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.5.4.2"]
+      diagnostics:
+        - {vecode_name: LYVE_DATA, data_path: /basic:sys/max, apptag: max-below-min}
+      deviation: null

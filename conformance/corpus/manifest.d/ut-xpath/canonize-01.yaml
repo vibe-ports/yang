@@ -1,0 +1,20 @@
+fixtures:
+  - id: ut-xpath/canonize-01
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_canonize:634 (expected 1 node(s))
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<foo2 xmlns=\"urn:tests:a\">50</foo2><foo3 xmlns=\"urn:tests:a\" xmlns:a=\"urn:tests:a\">a:id_b</foo3><foo4 xmlns=\"urn:tests:a\">250.5</foo4>"
+      xpath: "/a:foo2[.='050']"
+    golden: golden/canonize-01.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null

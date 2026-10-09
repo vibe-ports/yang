@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-compare/keyless-list
+    dir: ut-compare
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_tree_data.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_compare:99
+    rfc: []   # libyang API: lyd_compare_single
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: a}]
+      steps:
+        - {do: parse, format: xml, data_type: data, validate_options: [present], data: '<l2 xmlns="urn:tests:a"><c><x>a</x></c></l2><l2 xmlns="urn:tests:a"><c><x>b</x></c></l2>'}
+        - {do: compare, format: xml, data_type: data, validate_options: [present], data: '<l2 xmlns="urn:tests:a"><c><x>b</x></c></l2>', first: "/a:l2[1]", second: "/a:l2[1]", options: [full_recursion]}
+        - {do: compare, format: xml, data_type: data, validate_options: [present], data: '<l2 xmlns="urn:tests:a"><c><x>b</x></c></l2>', first: "/a:l2[2]", second: "/a:l2[1]", options: []}
+    golden: golden/keyless-list.json

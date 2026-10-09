@@ -1,0 +1,17 @@
+fixtures:
+  # default on leaf-list is YANG 1.1 only
+  - id: node/leaflist-default-10
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.7.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "node-leaflist-default-10"}]
+    golden: golden/node-leaflist-default-10.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.7.2"]
+      diagnostics: [{"vecode_name": "LYVE_SYNTAX_YANG"}]
+      deviation: null

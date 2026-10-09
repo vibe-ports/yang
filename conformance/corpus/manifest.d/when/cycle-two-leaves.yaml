@@ -1,0 +1,17 @@
+fixtures:
+  # cycle-by-name check; compare when/cycle
+  - id: when/cycle-two-leaves
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.5"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "when-cycle-two-leaves"}]
+    golden: golden/when-cycle-two-leaves.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.21.5"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null

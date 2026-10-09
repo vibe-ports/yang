@@ -1,0 +1,12 @@
+fixtures:
+  # libyang checks only the first if-feature of an enabled feature (D-0036)
+  - id: load/feature-first-iffeature-only
+    dir: load
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # RFC 7950 §7.20.2 requires all if-features; libyang checks the first (D-0036)
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [features]
+      modules: [{"name": "fb", "features": ["a", "b"]}]
+    golden: golden/feature-first-iffeature-only.json

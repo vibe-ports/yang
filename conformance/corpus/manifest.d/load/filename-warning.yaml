@@ -1,0 +1,11 @@
+fixtures:
+  - id: load/filename-warning
+    dir: load
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#5.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [filename]
+      modules: [{name: fw}, {name: fn}, {name: ro}]
+    golden: golden/filename-warning.json

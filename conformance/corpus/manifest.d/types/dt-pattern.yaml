@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/dt-pattern
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty3}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty3"><dt>2023-16-15T20:13:01+01:00</dt></c>'
+    golden: golden/dt-pattern.json

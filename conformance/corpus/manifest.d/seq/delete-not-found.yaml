@@ -1,0 +1,14 @@
+fixtures:
+  - id: seq/delete-not-found
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: edit, set: {path: "/pv2-edit:c/a", value: "x"}}
+        - {do: edit, delete: "/pv2-edit:c/l[k='a']/v"}
+    golden: golden/seq-delete-not-found.json

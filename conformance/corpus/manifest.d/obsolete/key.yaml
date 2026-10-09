@@ -1,0 +1,17 @@
+fixtures:
+  # VERIFIED: the status check (SCN:3310) rejects an obsolete key of a current list before step j; design expected 'Key is disabled'
+  - id: obsolete/key
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.2", "RFC7950#7.8.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "obsolete-key"}]
+    golden: golden/obsolete-key.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.21.2"]
+      diagnostics: [{"vecode_name": "LYVE_REFERENCE"}]
+      deviation: null

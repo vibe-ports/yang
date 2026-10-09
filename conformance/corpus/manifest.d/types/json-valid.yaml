@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/json-valid
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7951#6.1", "RFC7951#6.9"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: json
+      data_type: config
+      data: '{"ty:c":{"i8":5,"i64":"-9223372036854775808","u64":"18446744073709551615","d18":"-9.223372036854775808","b":true,"e":[null],"en":"black","bt":"ten two","bin":"YQ=="}}'
+    golden: golden/json-valid.json

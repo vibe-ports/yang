@@ -1,0 +1,16 @@
+fixtures:
+  # refine default is interpreted in the refining module's prefix scope (design 06 2.6)
+  - id: refine/default-prefix-of-refining-module
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.13.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "refine-default-prefix-of-refining-module"}]
+    golden: golden/refine-default-prefix-of-refining-module.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.13.2"]
+      deviation: null

@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-ident-instid/instanceid-keys-04
+    dir: ut-ident-instid
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid_keys.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:61 (libyang-specific type yang:instance-identifier-keys, no RFC counterpart; the engine reports it unsupported, U-0010)
+    rfc: []
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [instanceid_keys/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:defs\">[this is not a valid xpath]</l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/instanceid-keys-04.json
+    assert:
+      verdict: invalid
+      rfc: []
+      deviation: null

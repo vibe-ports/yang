@@ -1,0 +1,11 @@
+fixtures:
+  - id: ident/cycle
+    dir: load
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.18.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [ident]
+      modules: [{"name": "ic1"}, {"name": "ic2"}, {"name": "ic3"}]
+    golden: golden/ident-cycle.json

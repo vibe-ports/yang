@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-restriction/pattern-schema-yang-02
+    dir: ut-restriction
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/restriction/test_pattern.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:116
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [test_pattern/T0.1, test_pattern/T1.1]
+      modules: [{name: "T0"}, {name: "T1"}]
+    golden: golden/pattern-schema-yang-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: null

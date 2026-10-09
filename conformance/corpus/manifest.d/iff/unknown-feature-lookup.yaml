@@ -1,0 +1,11 @@
+fixtures:
+  - id: iff/unknown-feature-lookup
+    dir: load
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.20.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [iff]
+      modules: [{"name": "fu1"}, {"name": "fu2"}, {"name": "fu3"}, {"name": "fu4"}, {"name": "fu5"}]
+    golden: golden/iff-unknown-feature.json

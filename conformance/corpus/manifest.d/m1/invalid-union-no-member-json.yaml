@@ -1,0 +1,25 @@
+fixtures:
+  - id: m1/invalid-union-no-member-json
+    dir: m1
+    source: {url: "https://github.com/YangModels/yang (see m1/SOURCE.md) + hand-written m1-ext (this repo)", commit: 0e28ed86b0a9070b7f15fd06ba4fa501723fac84, license: "BSD-3-Clause AND BSD-2-Clause"}
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules:
+        - {name: ietf-interfaces, features: [arbitrary-names, pre-provisioning, if-mib]}
+        - {name: iana-if-type}
+        - {name: ietf-ip, features: [ipv4-non-contiguous-netmasks]}
+        - {name: m1-ext, features: [fast-path]}
+      format: json
+      data_type: config
+      data_file: data/invalid-union-no-member.json
+      with_defaults: explicit
+    golden: golden/invalid-union-no-member-json.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.12"]
+      diagnostics:
+        - {vecode_name: LYVE_DATA, data_path: "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1/weight"}
+      deviation: null

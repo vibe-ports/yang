@@ -1,0 +1,16 @@
+fixtures:
+  - id: list/key-state-leaf-in-config-list
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.8.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "list-key-state-leaf-in-config-list"}]
+    golden: golden/list-key-state-leaf-in-config-list.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#7.8.2"]
+      diagnostics: [{"vecode_name": "LYVE_SEMANTICS"}]
+      deviation: null

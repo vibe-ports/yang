@@ -1,0 +1,15 @@
+fixtures:
+  # ---- types: built-in type edge cases (internal/types, M1-4); messages checked in Go tests ----
+  - id: types/int-bounds-before-garbage
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.2.1"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty"><i8>300 x</i8></c>'
+    golden: golden/int-bounds-before-garbage.json

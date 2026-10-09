@@ -1,0 +1,18 @@
+fixtures:
+  - id: types/typedef-cycle
+    dir: ctypes
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.3"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [cycle]
+      modules: [{name: tc}, {name: tc2}, {name: tc3}]
+    golden: golden/typedef-cycle.json
+    assert:
+      verdict: invalid
+      diagnostics:
+        - {vecode_name: LYVE_REFERENCE, schema_path: /tc:l}
+        - {vecode_name: LYVE_REFERENCE, schema_path: /tc2:c/l}
+        - {vecode_name: LYVE_REFERENCE, schema_path: /tc3:l}
+      deviation: null

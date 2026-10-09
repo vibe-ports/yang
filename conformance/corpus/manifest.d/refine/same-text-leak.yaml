@@ -1,0 +1,12 @@
+fixtures:
+  # VERIFY-by-golden: same as refine/same-text with container k before leaf x; libyang merges refines by text and ignores the context node, so the inner refine reaches the outer /c/x and is lost for /c/k/x (D-0048)
+  - id: refine/same-text-leak
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.13.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "refine-same-text-leak"}]
+    golden: golden/refine-same-text-leak.json

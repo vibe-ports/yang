@@ -1,0 +1,12 @@
+fixtures:
+  # control for order/two-augmenters: same modules loaded in name order, same result expected
+  - id: order/two-augmenters-sorted-load
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.17"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ord-base"}, {"name": "ord-a"}, {"name": "ord-z"}]
+    golden: golden/order-two-augmenters-sorted-load.json

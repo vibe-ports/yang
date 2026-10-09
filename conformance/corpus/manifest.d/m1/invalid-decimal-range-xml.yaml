@@ -1,0 +1,25 @@
+fixtures:
+  - id: m1/invalid-decimal-range-xml
+    dir: m1
+    source: {url: "https://github.com/YangModels/yang (see m1/SOURCE.md) + hand-written m1-ext (this repo)", commit: 0e28ed86b0a9070b7f15fd06ba4fa501723fac84, license: "BSD-3-Clause AND BSD-2-Clause"}
+    rfc: ["RFC7950#9.2.4", "RFC7950#9.3.3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules:
+        - {name: ietf-interfaces, features: [arbitrary-names, pre-provisioning, if-mib]}
+        - {name: iana-if-type}
+        - {name: ietf-ip, features: [ipv4-non-contiguous-netmasks]}
+        - {name: m1-ext, features: [fast-path]}
+      format: xml
+      data_type: config
+      data_file: data/invalid-decimal-range.xml
+      with_defaults: explicit
+    golden: golden/invalid-decimal-range-xml.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.3.4"]
+      diagnostics:
+        - {vecode_name: LYVE_DATA, data_path: "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1/gain"}
+      deviation: null

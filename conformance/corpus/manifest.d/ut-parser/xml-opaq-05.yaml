@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-parser/xml-opaq-05
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_opaq:403
+    rfc: []
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:a\">\n  <a>val_a</a>\n  <b>val_b</b>\n  <d>val_d</d>\n</l1>\n"
+      parse_only: true
+      parse_options: []
+      validate_options: []
+      unknown: "opaque"
+    golden: golden/xml-opaq-05.json
+    assert:
+      verdict: valid
+      rfc: []
+      deviation: null

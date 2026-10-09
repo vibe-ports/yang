@@ -1,0 +1,17 @@
+fixtures:
+  # path-arg (RFC 7950 9.9.2 ABNF) has no deref(); rejected in the parse phase
+  - id: lref/deref-path
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "lref-deref-path"}]
+    golden: golden/lref-deref-path.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9.2"]
+      diagnostics: [{"vecode_name": "LYVE_XPATH"}]
+      deviation: null

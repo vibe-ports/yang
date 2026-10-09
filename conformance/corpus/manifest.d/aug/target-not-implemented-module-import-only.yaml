@@ -1,0 +1,16 @@
+fixtures:
+  # augmenting an import-only module implements it (lys_implement)
+  - id: aug/target-not-implemented-module-import-only
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.17"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "aug-target-not-implemented-module-import-only"}]
+    golden: golden/aug-target-not-implemented-module-import-only.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.17"]
+      deviation: null

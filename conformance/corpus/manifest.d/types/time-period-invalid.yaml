@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/time-period-invalid
+    dir: types
+    source: {url: "https://github.com/CESNET/libnetconf2/blob/2add91c6f2e5864463922aa27293f8956ee9cbbe/modules/libnetconf2-netconf-server@2026-04-17.yang", commit: 2add91c6f2e5864463922aa27293f8956ee9cbbe, license: BSD-3-Clause}   # the pattern still applies (lyplg_type_store_string validates)
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty5}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty5"><tp>13m</tp></c>'
+    golden: golden/time-period-invalid.json

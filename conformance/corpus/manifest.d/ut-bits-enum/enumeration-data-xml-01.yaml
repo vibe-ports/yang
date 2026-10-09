@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-bits-enum/enumeration-data-xml-01
+    dir: ut-bits-enum
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/enumeration.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:70
+    rfc: ["RFC7950#9.6", "RFC7950#9.6.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [enumeration/defs.1]
+      modules: [{name: "defs"}]
+    golden: golden/enumeration-data-xml-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.6", "RFC7950#9.6.4"]
+      deviation: null

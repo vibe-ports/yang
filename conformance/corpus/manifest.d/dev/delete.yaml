@@ -1,0 +1,16 @@
+fixtures:
+# BEGIN dev #28 (hand-written, deviations: track A of M2)
+  - id: dev/delete
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # deviate delete: units, one of two musts, one of two instances of an extension (by argument), one of two uniques, a middle leaf-list default, a choice default
+    rfc: ["RFC7950#7.20.3.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{name: dev-delete}]
+    golden: golden/dev-delete.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.20.3.2"]
+      deviation: null

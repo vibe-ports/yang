@@ -1,0 +1,17 @@
+fixtures:
+  - id: protocol-v2/meta-instid-validate
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7952#5.2", "RFC7950#9.13"]
+    areas: [validation]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-fz}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {do: parse, format: json, data_type: config, parse_only: true, data: '{"pv2-fz:c": {"s": "x", "@s": {"pv2-fz:ref": "/pv2-fz:c/s"}}}'}
+        - {do: validate, data_type: config}
+        - {do: parse, format: json, data_type: config, parse_only: true, data: '{"pv2-fz:c": {"s": "x", "@s": {"pv2-fz:ref": "/pv2-fz:c/w"}}}'}
+        - {do: validate, data_type: config}
+    golden: golden/meta-instid-validate.json

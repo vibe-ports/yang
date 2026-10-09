@@ -1,0 +1,12 @@
+fixtures:
+  - id: xsdre-blocks/neg-escape-schema
+    dir: xsdre-blocks
+    source: {url: "hand-written (this repo), see issue 177", commit: null, license: BSD-3-Clause}   # schema \P{IsBasicLatin} (measures libyang v5.8.6 block handling, issue 177 step 1)
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request: {"op": "schema", "searchdirs": ["blk5"], "modules": [{"name": "blk5"}]}
+    golden: golden/neg-escape-schema.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: "D-0005"

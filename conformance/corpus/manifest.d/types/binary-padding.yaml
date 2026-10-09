@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/binary-padding
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.8.2"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty"><bin>Y===</bin></c>'
+    golden: golden/binary-padding.json

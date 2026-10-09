@@ -1,0 +1,18 @@
+fixtures:
+  - id: seq/merge-basic
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # lyd_merge_siblings: values replaced, missing instances added with New
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: edit, set: {path: "/pv2-edit:c/a", value: "x"}}
+        - {do: edit, set: {path: "/pv2-edit:c/l[k='a']/v", value: "1"}}
+        - {do: edit, set: {path: "/pv2-edit:c/ll", value: "b"}}
+        - {do: edit, set: {path: "/pv2-edit:c/st/x", value: "1"}}
+        - {do: edit, merge_file: data/edit-merge.json, format: json, data_type: data}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/seq-merge-basic.json

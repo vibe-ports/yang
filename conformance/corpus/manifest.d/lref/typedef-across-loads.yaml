@@ -1,0 +1,11 @@
+fixtures:
+  - id: lref/typedef-across-loads
+    dir: ctypes
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang typedef cache lifetime across loads; no RFC counterpart
+    areas: [schema, types]
+    request:
+      op: schema
+      searchdirs: [lref-across]
+      modules: [{name: le}, {name: lf}]
+    golden: golden/lref-typedef-across-loads.json

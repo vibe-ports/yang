@@ -1,0 +1,29 @@
+fixtures:
+  # End state (RFC7950#8.3.2, #7.21.5): boost auto-deleted once rate=50 makes its when false; deleting rate
+  # re-creates the default 100 (implicit diff op create); shared-weight stays the default-case default.
+  - id: m1/sequence-when-auto-delete
+    dir: m1
+    source: {url: "https://github.com/YangModels/yang (see m1/SOURCE.md) + hand-written m1-ext (this repo)", commit: 0e28ed86b0a9070b7f15fd06ba4fa501723fac84, license: "BSD-3-Clause AND BSD-2-Clause"}
+    rfc: ["RFC7950#7.21.5", "RFC7950#7.6.1", "RFC7950#7.9.3", "RFC7950#8.3.2"]
+    areas: [validation, defaults]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules:
+        - {name: ietf-interfaces, features: [arbitrary-names, pre-provisioning, if-mib]}
+        - {name: iana-if-type}
+        - {name: ietf-ip, features: [ipv4-non-contiguous-netmasks]}
+        - {name: m1-ext, features: [fast-path]}
+      steps:
+        - {do: parse, format: json, data_type: config, data_file: data/seq-start.json}
+        - {do: validate, data_type: config}
+        - {do: edit, set: {path: "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1/rate", value: "50"}}
+        - {do: validate, data_type: config}
+        - {do: edit, delete: "/ietf-interfaces:interfaces/interface[name='eth0']/m1-ext:m1/rate"}
+        - {do: validate, data_type: config}
+        - {do: dump, with_defaults: all}
+    golden: golden/sequence-when-auto-delete.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.21.5"]
+      deviation: null

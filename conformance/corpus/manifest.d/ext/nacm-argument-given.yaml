@@ -1,0 +1,12 @@
+fixtures:
+  # observed only: the nacm plugin ignores an argument (RFC 7950 7.19 allows none), no assert
+  - id: ext/nacm-argument-given
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC8341#3.4.3"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ext-nacm-argument-given"}]
+    golden: golden/ext-nacm-argument-given.json

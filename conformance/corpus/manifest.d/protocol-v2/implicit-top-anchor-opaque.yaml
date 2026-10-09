@@ -1,0 +1,16 @@
+fixtures:
+  - id: protocol-v2/implicit-top-anchor-opaque
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.7", "RFC7950#8.1"]
+    areas: [defaults]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2-ma}, {name: pv2-mb}]
+      format: xml
+      data_type: config
+      unknown: opaque
+      data: '<x xmlns="urn:vibe-ports:yang:conformance:pv2-ma">1</x><c xmlns="urn:vibe-ports:yang:conformance:pv2-mb"><v>1</v></c><zz xmlns="urn:vibe-ports:yang:conformance:pv2-mb">1</zz>'
+      with_defaults: all
+    golden: golden/implicit-top-anchor-opaque.json

@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/union-json-string
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7951#6.10"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty2}]
+      format: json
+      data_type: config
+      data: '{"ty2:c":{"un2":"5"}}'
+    golden: golden/union-json-string.json

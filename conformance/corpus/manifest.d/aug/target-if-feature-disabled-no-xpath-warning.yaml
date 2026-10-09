@@ -1,0 +1,16 @@
+fixtures:
+  # libyang emits no xpath warning (checked in utest)
+  - id: aug/target-if-feature-disabled-no-xpath-warning
+    dir: compile
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_tree_schema_compile.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.17"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "aug-target-if-feature-disabled-no-xpath-warning-h1"}, {"name": "aug-target-if-feature-disabled-no-xpath-warning"}]
+    golden: golden/aug-target-if-feature-disabled-no-xpath-warning.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.17"]
+      deviation: null

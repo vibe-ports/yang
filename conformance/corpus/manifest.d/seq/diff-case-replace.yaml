@@ -1,0 +1,17 @@
+fixtures:
+  # a new case deletes the default one: c1a delete, its created default merged away
+  - id: seq/diff-case-replace
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang lyd_validate_all diff (yang:operation metadata): no RFC behaviour
+    areas: [validation, diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-diff}]
+      steps:
+        - {do: parse, format: json, data_type: config, parse_only: true, data: '{"pv2-diff:c": {"mode": "off"}}'}
+        - {do: validate, data_type: config}
+        - {do: edit, set: {path: "/pv2-diff:c/c2a", value: "x"}}
+        - {do: validate, data_type: config}
+    golden: golden/seq-diff-case-replace.json

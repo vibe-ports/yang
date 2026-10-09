@@ -1,0 +1,15 @@
+fixtures:
+  # ---- types: derived types (identityref, instance-identifier, leafref, union; M1-4) ----
+  - id: types/ident-not-derived
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.10.2"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty2}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty2"><id xmlns:x="urn:vibe-ports:ty2">x:other</id></c>'
+    golden: golden/ident-not-derived.json

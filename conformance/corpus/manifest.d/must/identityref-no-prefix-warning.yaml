@@ -1,0 +1,11 @@
+fixtures:
+  - id: must/identityref-no-prefix-warning
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.3", "RFC7950#9.10"]
+    areas: ["schema", "xpath"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "must-identityref-no-prefix"}]
+    golden: golden/must-identityref-no-prefix-warning.json

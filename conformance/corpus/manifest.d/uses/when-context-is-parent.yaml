@@ -1,0 +1,15 @@
+fixtures:
+  - id: uses/when-context-is-parent
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.13"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "uses-when-context-is-parent"}]
+    golden: golden/uses-when-context-is-parent.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.13"]
+      deviation: null

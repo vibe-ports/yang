@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-compare/leaf-list
+    dir: ut-compare
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_tree_data.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_compare:108
+    rfc: []   # libyang API: lyd_compare_single
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: a}]
+      steps:
+        - {do: parse, format: xml, data_type: data, validate_options: [present], data: '<ll xmlns="urn:tests:a">a</ll><ll xmlns="urn:tests:a">b</ll>'}
+        - {do: compare, format: xml, data_type: data, validate_options: [present], data: '<ll xmlns="urn:tests:a">b</ll>', first: "/a:ll[.='a']", second: "/a:ll[.='b']", options: []}
+        - {do: compare, format: xml, data_type: data, validate_options: [present], data: '<ll xmlns="urn:tests:a">b</ll>', first: "/a:ll[.='b']", second: "/a:ll[.='b']", options: []}
+    golden: golden/leaf-list.json

@@ -1,0 +1,16 @@
+fixtures:
+  - id: print/subtree-augment
+    dir: print
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7951#4"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pj}, {name: pk}]
+      format: json
+      data_type: config
+      parse_only: true
+      data_file: data/subtree.json
+      print_subtree: /pj:c/pk:ext
+    golden: golden/subtree-augment.json

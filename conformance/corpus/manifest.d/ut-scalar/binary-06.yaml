@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-scalar/binary-06
+    dir: ut-scalar
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/binary.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_plugin_store:130 (the LY_VALUE_XML store step, replayed as a data parse)
+    rfc: ["RFC7950#9.8", "RFC4648#4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [binary/a.1]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l xmlns=\"urn:tests:a\">MIIEAzCCAuugAwIBAgIURc4sipHvJSlNrQIhRhZilBvV4RowDQYJKoZIhvcNAQEL\nBQAwgZAxCzAJBgNVBAYTAkNaMRYwFAYDVQQIDA1Tb3V0aCBNb3JhdmlhMQ0wCwYD\nVQQHDARCcm5vMRgwFgYDVQQKDA9DRVNORVQgei5zLnAuby4xDDAKBgNVBAsMA1RN\nQzETMBEGA1UEAwwKZXhhbXBsZSBDQTEdMBsGCSqGSIb3DQEJARYOY2FAZXhhbXBs\nZS5vcmcwHhcNMjEwOTAzMTAyMTAxWhcNMzEwOTAxMTAyMTAxWjCBkDELMAkGA1UE\nBhMCQ1oxFjAUBgNVBAgMDVNvdXRoIE1vcmF2aWExDTALBgNVBAcMBEJybm8xGDAW\nBgNVBAoMD0NFU05FVCB6LnMucC5vLjEMMAoGA1UECwwDVE1DMRMwEQYDVQQDDApl\neGFtcGxlIENBMR0wGwYJKoZIhvcNAQkBFg5jYUBleGFtcGxlLm9yZzCCASIwDQYJ\nKoZIhvcNAQEBBQADggEPADCCAQoCggEBAN4Ld3JDDocyy9KXNJhEUPeZpQW3UdUN\nXloeh5n/bxasgThkBuQ7oF/nKyVUe517U1CJA993ZIc0jhIWThAnqXkz70DX5EZ7\nancPd01MidA6T8k1RYYJWr+vyIRYYBYzK7LSnU6wMWqPTgzZB+KMWwb065ooLEB5\nXwqAeTIMPLRqM1Galewl4ZSuRJnrXxRjfF3AWNyC9dZw6wIg8cppvoLdBGQiFJQf\n9SgiVy+HyedAytFEixqKAAIgQUJwhCgbEd6jGFbeaL8HT4MFp1VmaaUBQMkZj/Gn\nKBwCk5BEMu76EN1pzHc4Dd6DabQNGCnsqOPe31yhQGmNFy9R6zNnWZMCAwEAAaNT\nMFEwHQYDVR0OBBYEFM7w/pO8vk5oowvWPoCKo0RW/JcnMB8GA1UdIwQYMBaAFM7w\n/pO8vk5oowvWPoCKo0RW/JcnMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQEL\nBQADggEBAG/xfYuRKnCyiwYC/K7kAjHmCNnLCr1mx8P1ECsSJPme3OThDTNeGf8i\nN2952tGmMFDa+DaAwPc6Gt3cWTb/NYMTLWlt2yj5rJAcLXxIU0SMafBf+F7E/R8A\nb/HDDjs0pQaJ0EJhQJVkMdfj3Wq9l0dJT5iEBUrUQflDufiMdEJEIGKZh86MgzEL\nbcn1QX8dlLc91M2OifWStqLzXPicG+jjuoPUceC0flMQDb2qx03sxvJKfYfS5ArA\nCqvdWyXLoP7DI9THJrMI/vBHJKpl4Wtmsh2OLn9VHauFMzPSGke5GwjXCpbXGepj\n9qWN8Gd/FWgSDH2OBvZ6aHdB1pPjN9k=</l>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/binary-06.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.8", "RFC4648#4"]
+      deviation: null

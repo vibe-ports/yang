@@ -1,0 +1,15 @@
+fixtures:
+  - id: types/union-nested-index
+    dir: ctypes
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.12", "RFC7950#9.9"]
+    areas: [schema, types]
+    request:
+      op: schema
+      searchdirs: [union-nested]
+      modules: [{name: un}]
+    golden: golden/union-nested-index.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.12"]
+      deviation: null

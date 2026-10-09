@@ -1,0 +1,13 @@
+fixtures:
+  - id: seq/new-path-bad-path
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: edit, set: {path: "/pv2-edit:c/nope", value: "1"}}
+    golden: golden/seq-new-path-bad-path.json

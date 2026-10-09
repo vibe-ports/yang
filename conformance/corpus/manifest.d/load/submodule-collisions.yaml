@@ -1,0 +1,11 @@
+fixtures:
+  - id: load/submodule-collisions
+    dir: load
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.1.6", "RFC7950#7.2.2", "RFC7950#5.1"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [subcol]
+      modules: [{name: ma}, {name: mb}, {name: mc}, {name: md}]
+    golden: golden/submodule-collisions.json

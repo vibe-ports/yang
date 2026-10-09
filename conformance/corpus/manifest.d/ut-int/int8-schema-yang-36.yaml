@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-int/int8-schema-yang-36
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:601
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1, int8/T0.1, int8/T1.1, int8/T2.1, int8/T3.1, int8/T4.1, int8/T5.1, int8/T6.1, int8/TS0.1, int8/TS1.1, int8/TS2.1, int8/TS3.1, int8/TS4.1, int8/DF0.1, int8/DF1.1, int8/DF_HEX0.1, int8/DF_HEX1.1, int8/DF_HEXI0.1, int8/DF_OCT0.1, int8/DF_OCT1.1]
+      modules: [{name: "defs"}, {name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T3"}, {name: "T4"}, {name: "T5"}, {name: "T6"}, {name: "TS0"}, {name: "TS1"}, {name: "TS2"}, {name: "TS3"}, {name: "TS4"}, {name: "DF0"}, {name: "DF1"}, {name: "DF_HEX0"}, {name: "DF_HEX1"}, {name: "DF_HEXI0"}, {name: "DF_OCT0"}, {name: "DF_OCT1"}]
+    golden: golden/int8-schema-yang-36.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null

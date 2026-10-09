@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-parser/xml-leaf-04
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_leaf:120
+    rfc: ["RFC7950#7.6"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<l1 xmlns=\"urn:tests:a\"><a>val-a</a><b>val-b</b><c>1</c><cont><e>0</e></cont></l1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "reject"
+    golden: golden/xml-leaf-04.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.6"]
+      deviation: null

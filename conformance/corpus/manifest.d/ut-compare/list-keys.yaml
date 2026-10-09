@@ -1,0 +1,17 @@
+fixtures:
+# BEGIN ut-compare (libyang tests/utests/data/test_tree_data.c test_compare, imported by hand; PoC #135)
+  - id: ut-compare/list-keys
+    dir: ut-compare
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_tree_data.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_compare:89
+    rfc: []   # libyang API: lyd_compare_single
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: a}]
+      steps:
+        - {do: parse, format: xml, data_type: data, validate_options: [present], data: '<l1 xmlns="urn:tests:a"><a>a</a><b>b</b><c>x</c></l1>'}
+        - {do: compare, format: xml, data_type: data, validate_options: [present], data: '<l1 xmlns="urn:tests:a"><a>a</a><b>b</b><c>y</c></l1>', first: "/a:l1[a='a'][b='b']", second: "/a:l1[a='a'][b='b']", options: []}
+        - {do: compare, format: xml, data_type: data, validate_options: [present], data: '<l1 xmlns="urn:tests:a"><a>a</a><b>b</b><c>y</c></l1>', first: "/a:l1[a='a'][b='b']", second: "/a:l1[a='a'][b='b']", options: [full_recursion]}
+        - {do: compare, format: xml, data_type: data, validate_options: [present], data: '<l1 xmlns="urn:tests:a"><a>a</a><b>b</b><c>y</c></l1>', first: "/a:l1[a='a'][b='b']/a", second: "/a:l1[a='a'][b='b']", options: []}
+    golden: golden/list-keys.json

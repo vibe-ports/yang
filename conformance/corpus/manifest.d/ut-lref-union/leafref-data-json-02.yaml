@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-lref-union/leafref-data-json-02
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/leafref.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:189
+    rfc: ["RFC7950#9.9", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [leafref/simple.1]
+      modules: [{name: "simple"}]
+      format: "json"
+      data_type: "data"
+      data: "{  \"simple:l1\":\"\\\"*\\\"'\",  \"simple:target\":\"\\\"*\\\"'\"}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/leafref-data-json-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.9", "RFC7951#6.1"]
+      deviation: null

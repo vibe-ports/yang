@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-validation/must-01
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_must:1199
+    rfc: ["RFC7950#7.5.3"]
+    areas: [validation]
+    request:
+      op: "schema"
+      searchdirs: [i.1]
+      modules: [{name: "i"}]
+    golden: golden/must-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.5.3"]
+      deviation: null

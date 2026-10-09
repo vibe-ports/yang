@@ -1,0 +1,16 @@
+fixtures:
+  - id: ut-schema-load/test_accessible_tree-2
+    dir: ut-schema-load
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/schema/test_schema.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_accessible_tree:680
+    rfc: ["RFC7950#9.9", "RFC7950#7.5.3", "RFC7950#7.21.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [test_accessible_tree-2]
+      modules: [{"name": "b"}]
+    golden: golden/test_accessible_tree-2.json
+    assert:
+      verdict: "invalid"
+      rfc: ["RFC7950#9.9"]
+      diagnostics: [{"vecode_name": "LYVE_REFERENCE"}]
+      deviation: null

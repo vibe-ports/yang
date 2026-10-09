@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-int/int8-data-json-23
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_json:1239
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [int8/defs.2, int8/T0.2]
+      modules: [{name: "defs"}, {name: "T0"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T0:port\":128}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/int8-data-json-23.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4", "RFC7950#9.2.1", "RFC7951#6.1"]
+      deviation: null

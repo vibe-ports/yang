@@ -1,0 +1,12 @@
+fixtures:
+  # observed only: the default case is disabled (does not exist under RFC 7950 7.20.2) yet libyang accepts it (candidate deviation, no assert)
+  - id: disabled/choice-default-case-disabled
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.9.3", "RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "disabled-choice-default-case-disabled"}]
+    golden: golden/disabled-choice-default-case-disabled.json

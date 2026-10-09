@@ -1,0 +1,15 @@
+fixtures:
+  # #68/#69 time-invalid: the pattern rejects hour 24
+  - id: types/time-invalid
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty3}]
+      format: xml
+      data_type: config
+      data: '<c xmlns="urn:vibe-ports:ty3"><t>24:00:00</t></c>'
+    golden: golden/time-invalid.json

@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-list/json-11
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_json:1329
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5", "RFC7951#5.4"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [list/T0.2, list/T1.2, list/T2.2]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}]
+      format: "json"
+      data_type: "data"
+      data: "{\"T2:user\": [   {\"uid\":0, \"name\":\"Jan Kuba\", \"group\":\"User\"},   {\"uid\":1, \"name\":\"Anton\u00edn Kuba\", \"group\":\"User\"},   {\"uid\":2, \"name\":\"Anton\u00edn Kuba\", \"group\":\"User\"},   {\"uid\":3, \"name\":\"Anton\u00edn Kuba\", \"group\":\"User\"},   {\"uid\":4, \"name\":\"Tom\u00e1\u0161 Nov\u00e1k\", \"group\":\"Admin\"}]}"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/json-11.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5", "RFC7951#5.4"]
+      deviation: null

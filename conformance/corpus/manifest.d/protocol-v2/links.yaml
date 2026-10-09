@@ -1,0 +1,21 @@
+fixtures:
+  # ---- protocol-v2: leafref links (LY_CTX_LEAFREF_LINKING, sequence steps link / links); Go side: data TestLeafrefLinks ----
+  - id: protocol-v2/links
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9"]
+    areas: [types, validation]
+    # lyd_leafref_link_node_tree links every resolved leafref value; union members with the selected value; no auto-linking by validation
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-links}]
+      context_options: [leafref_linking]
+      steps:
+        - {do: parse, format: json, data_type: config, data_file: data/links.json}
+        - {do: links}
+        - {do: link}
+        - {do: links}
+        - {do: link}
+        - {do: links}
+    golden: golden/links.json

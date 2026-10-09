@@ -1,0 +1,15 @@
+fixtures:
+  - id: node/list-min-max-elements
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.8.5", "RFC7950#7.8.6"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "node-list-min-max-elements"}]
+    golden: golden/node-list-min-max-elements.json
+    assert:
+      verdict: "valid"
+      rfc: ["RFC7950#7.8.5", "RFC7950#7.8.6"]
+      deviation: null

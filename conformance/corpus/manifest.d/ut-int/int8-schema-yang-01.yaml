@@ -1,0 +1,16 @@
+fixtures:
+# BEGIN ut-int (generated from libyang tests/utests/types/{int,uint}*.c by conformance/tools/extract-utests, reviewed)
+  - id: ut-int/int8-schema-yang-01
+    dir: ut-int
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/int8.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_schema_yang:111
+    rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [int8/defs.1]
+      modules: [{name: "defs"}]
+    golden: golden/int8-schema-yang-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.2", "RFC7950#9.2.4"]
+      deviation: null

@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-parser/xml-anyxml-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_anyxml:231
+    rfc: ["RFC7950#7.11"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "data"
+      data: "<anyx xmlns=\"urn:tests:a\">\n  <element1>\n    <element2 x:attr2=\"test\" xmlns:x=\"urn:x\">data</element2>\n  </element1>\n  <element1a/>\n</anyx>\n"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "skip"
+    golden: golden/xml-anyxml-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.11"]
+      deviation: null

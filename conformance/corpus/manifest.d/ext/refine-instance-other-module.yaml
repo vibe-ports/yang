@@ -1,0 +1,12 @@
+fixtures:
+  # a refine's extension instance goes to its target, with the prefixes of the refine's module
+  - id: ext/refine-instance-other-module
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.19", "RFC7950#7.13.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "ext-rfn-a"}]
+    golden: golden/ext-refine-instance-other-module.json

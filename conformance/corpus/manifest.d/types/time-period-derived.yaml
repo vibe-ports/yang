@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/time-period-derived
+    dir: types
+    source: {url: "https://github.com/CESNET/libnetconf2/blob/2add91c6f2e5864463922aa27293f8956ee9cbbe/modules/libnetconf2-netconf-server@2026-04-17.yang", commit: 2add91c6f2e5864463922aa27293f8956ee9cbbe, license: BSD-3-Clause}   # typedefs derived from time-period keep its sort
+    rfc: ["RFC7950#7.3", "RFC7950#7.7.7"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ty5}]
+      format: json
+      data_type: config
+      data: '{"ty5:c": {"tp": "5d", "mpl": ["1h", "1d", "1m", "1w", "10h"], "sp": "9m"}}'
+    golden: golden/time-period-derived.json

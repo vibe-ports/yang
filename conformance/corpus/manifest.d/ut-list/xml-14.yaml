@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-list/xml-14
+    dir: ut-list
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/node/list.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_xml:1102
+    rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+    areas: [types]
+    request:
+      op: "schema"
+      searchdirs: [list/T0.2, list/T1.2, list/T2.2, list/T_EMPTY_LIST.1]
+      modules: [{name: "T0"}, {name: "T1"}, {name: "T2"}, {name: "T_EMPTY_LIST"}]
+    golden: golden/xml-14.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.8", "RFC7950#7.8.2", "RFC7950#7.8.3", "RFC7950#7.8.5"]
+      deviation: null

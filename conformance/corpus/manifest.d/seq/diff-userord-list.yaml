@@ -1,0 +1,15 @@
+fixtures:
+  # defaults inside user-ordered list instances: the instances are none parents with their keys
+  - id: seq/diff-userord-list
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang lyd_validate_all diff (yang:operation metadata): no RFC behaviour
+    areas: [validation, diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-diff}]
+      steps:
+        - {do: parse, format: json, data_type: config, parse_only: true, data: '{"pv2-diff:c": {"mode": "off", "ol": [{"k": "x"}, {"k": "y"}]}}'}
+        - {do: validate, data_type: config}
+    golden: golden/seq-diff-userord-list.json

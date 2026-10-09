@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-lref-union/union-data-xml-05
+    dir: ut-lref-union
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/union.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:91
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: "data"
+      searchdirs: [union/defs.1]
+      modules: [{name: "defs"}]
+      format: "xml"
+      data_type: "data"
+      data: "<int8 xmlns=\"urn:tests:defs\">10</int8><un1 xmlns=\"urn:tests:defs\" xmlns:x=\"urn:tests:defs\">x:ident55</un1>"
+      parse_only: false
+      parse_options: []
+      validate_options: ["present"]
+      unknown: "reject"
+    golden: golden/union-data-xml-05.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.12"]
+      deviation: null

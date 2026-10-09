@@ -1,0 +1,11 @@
+fixtures:
+  - id: load/wrong-revision-file
+    dir: load
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#5.2"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [wrong-rev]
+      modules: [{name: wr, revision: "2020-01-01"}]
+    golden: golden/wrong-revision-file.json

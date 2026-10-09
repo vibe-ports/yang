@@ -1,0 +1,17 @@
+fixtures:
+  # ---- protocol-v2: oracle v2 dumps (typed tree, schema_tree, sequence, unknown policy) ----
+  - id: protocol-v2/when-auto-delete
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.5", "RFC7950#8.2"]
+    areas: [validation]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      steps:
+        - {do: parse, format: json, data_type: config, data_file: data/valid.json}
+        - {do: edit, set: {path: /pv2:c/mode, value: "off"}}
+        - {do: validate, data_type: config}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/when-auto-delete.json

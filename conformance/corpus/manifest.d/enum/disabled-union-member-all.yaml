@@ -1,0 +1,12 @@
+fixtures:
+  # observed only: libyang rejects an all-disabled enumeration on a leaf (enum/all-disabled) but accepts it as a union member; RFC 7950 9.6 needs one enum (candidate deviation, no assert)
+  - id: enum/disabled-union-member-all
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.6.4"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "enum-disabled-union-member-all"}]
+    golden: golden/enum-disabled-union-member-all.json

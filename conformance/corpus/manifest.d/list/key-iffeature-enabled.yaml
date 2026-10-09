@@ -1,0 +1,12 @@
+fixtures:
+  # VERIFIED: with the feature on the key is kept and the module is accepted (companion of key-iffeature-disabled; RFC 7950 s7.8.2 only says a key must not be if-feature'd, so libyang accepting is D-0049)
+  - id: list/key-iffeature-enabled
+    dir: compile
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.8.2", "RFC7950#7.20.2"]
+    areas: ["schema"]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{"name": "list-key-iffeature", "features": ["f"]}]
+    golden: golden/list-key-iffeature-enabled.json

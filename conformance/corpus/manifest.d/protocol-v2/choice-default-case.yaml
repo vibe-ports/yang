@@ -1,0 +1,20 @@
+fixtures:
+  - id: protocol-v2/choice-default-case
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.9.3", "RFC7950#7.9.1"]
+    areas: [defaults, validation]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      steps:
+        - {do: validate, data_type: config}
+        - {do: edit, merge: '{"pv2:c": {"s": "picked"}}', data_type: config}
+        - {do: validate, data_type: config}
+        - {do: dump, with_defaults: all}
+    golden: golden/choice-default-case.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.9.3"]
+      deviation: null

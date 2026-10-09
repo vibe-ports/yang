@@ -1,0 +1,17 @@
+fixtures:
+# BEGIN protocol-v2 D-0055 D-0058
+  - id: protocol-v2/dummy-when-unresolved
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # D-0055: the when of absent mandatory m, not(../w), reads w, whose false when only warned (operational) and stays unresolved: the dummy-when evaluation is incomplete, under multi-error the when is ignored and m is reported (if evaluated, the when would be false and the check skipped)
+    rfc: ["RFC7950#7.21.5", "RFC7950#7.6.5"]
+    areas: [validation]
+    request:
+      op: "data"
+      searchdirs: [schemas]
+      context_options: ["no_yanglibrary"]
+      modules: [{name: "pv2-dummy"}]
+      format: "json"
+      data_type: "data-operational"
+      data: "{\"pv2-dummy:c\": {\"sel\": \"off\", \"w\": \"x\"}}"
+      unknown: "reject"
+    golden: golden/dummy-when-unresolved.json

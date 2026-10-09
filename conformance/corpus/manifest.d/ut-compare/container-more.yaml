@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-compare/container-more
+    dir: ut-compare
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_tree_data.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_compare:128
+    rfc: []   # libyang API: lyd_compare_single
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: a}]
+      steps:
+        - {do: parse, format: xml, data_type: data, validate_options: [present], data: '<c xmlns="urn:tests:a"><x>x</x></c>'}
+        - {do: compare, format: xml, data_type: data, validate_options: [present], data: '<c xmlns="urn:tests:a"><x>x</x><x>y</x></c>', first: "/a:c", second: "/a:c", options: []}
+        - {do: compare, format: xml, data_type: data, validate_options: [present], data: '<c xmlns="urn:tests:a"><x>x</x><x>y</x></c>', first: "/a:c", second: "/a:c", options: [full_recursion]}
+    golden: golden/container-more.json
