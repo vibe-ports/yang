@@ -24,7 +24,7 @@ func TestFindXPath(t *testing.T) {
 	vars := []xpath.Var{{Name: "min", Value: "3"}, {Name: "bad", Value: "1 +"}, {Name: "lx", Value: "'"}}
 
 	l := &logger{set: f.set}
-	got, err := tr.findXPath(l, nil, "/b:c/ll[. > $min]", vars)
+	got, err := findXPath(tr, l, nil, "/b:c/ll[. > $min]", vars)
 	if err != nil || len(got) != 2 || got[0].value.Canonical() != "5" || got[1].value.Canonical() != "9" {
 		t.Fatalf("query: %v %v %v", names(func(y func(*Node) bool) {
 			for _, n := range got {
@@ -32,7 +32,7 @@ func TestFindXPath(t *testing.T) {
 			}
 		}), err, codes(l.diags))
 	}
-	if got, err := tr.findXPath(l, c, "ll", nil); err != nil || len(got) != 3 {
+	if got, err := findXPath(tr, l, c, "ll", nil); err != nil || len(got) != 3 {
 		t.Fatalf("relative: %d %v", len(got), err)
 	}
 
@@ -51,7 +51,7 @@ func TestFindXPath(t *testing.T) {
 		{c, "/zz:c", `LY_EVALID LYVE_XPATH /b:c: Unknown/non-implemented module "zz".`},
 	} {
 		l := &logger{set: f.set}
-		if _, err := tr.findXPath(l, tc.ctx, tc.src, vars); err == nil || len(l.diags) != 1 || codes(l.diags)[0] != tc.want {
+		if _, err := findXPath(tr, l, tc.ctx, tc.src, vars); err == nil || len(l.diags) != 1 || codes(l.diags)[0] != tc.want {
 			t.Errorf("%s: %v %v", tc.src, err, codes(l.diags))
 		}
 	}
@@ -80,8 +80,14 @@ func TestFindXPath(t *testing.T) {
 	bad := newTree(f.set)
 	bad.insert(nil, f.term(t, f.ll, "1"), insertDefault)
 	l = &logger{set: f.set}
-	if _, err := bad.findXPath(l, nil, "/b:c", nil); err == nil ||
+	if _, err := findXPath(bad, l, nil, "/b:c", nil); err == nil ||
 		codes(l.diags)[0] != `LY_EINVAL LYVE_SUCCESS : Data node "ll" has no parent but is not instance of a top-level schema node.` {
 		t.Errorf("tree check: %v %v", err, codes(l.diags))
 	}
+}
+
+// findXPath is FindXPath over the internal twin, so the tests see the logger.
+func findXPath(t *Tree, l *logger, ctxNode *Node, src string, vars []xpath.Var) ([]*Node, error) {
+	r, err := t.evalXPath4(l, ctxNode, src, vars, true, xpath.NodeSet)
+	return nodesOf(r), err
 }

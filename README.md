@@ -25,7 +25,7 @@ usable and measured; operations and anydata payloads are not done yet.
 | Validation: types, leafref, instance-identifier, mandatory, min/max-elements, unique, must, when (with auto-delete), choice/case, NMDA operational mode | supported | libyang's diagnostics: LY_ERR / LY_VECODE names, data path, error-app-tag |
 | Defaults and with-defaults printing (RFC 6243: explicit, trim, report-all, report-all-tagged) | supported | |
 | RFC 7952 metadata | partial | parsed, validated and printed; `Node.Meta`, `Node.FindMeta`, `Tree.NewMeta`, `Meta.Value`, `Meta.Remove`; other metadata helpers are not public (#115) |
-| XPath 1.0 + YANG functions | partial | used by must/when/leafref; no public XPath query API yet |
+| XPath 1.0 + YANG functions | partial | must/when/leafref and the query API (`Tree.FindXPath`, `EvalXPath`, `EvalXPathAs`: JSON-format expressions); no schema atom queries yet |
 | Tree edits: `NewTree`, `NewPath`, `Merge`, `Remove`, `Find` | partial | absolute paths, merge without options |
 | Node comparison: `Node.Equal` (lyd_compare_single) | partial | full-recursion, defaults and opaque options; nodes of two contexts compared by names and canonical values |
 | Schema helpers: `SchemaNode.IsKey`, `IsDupInstList`, `DefaultSet`, `UserOrdered`; `Node.ChildrenNoKeys` | supported | |

@@ -296,6 +296,45 @@ the utests fixtures, #198); `LYD_PARSE_ORDERED`, `WHEN_TRUE`, `LYD_VALIDATE_NOT_
 internally where the port needs them and are exported later, when a fixture or user asks. The PRs and their tests call
 the internal twins (`parse`/`validate` over `*schema.Set`, §0.4) with hand-built sets; D12 wraps them.
 
+**XPath queries** (M3, #81). One option struct and one result struct for the seven C entry points:
+```go
+type XPathType uint8 // XPathNodeSet, XPathString, XPathNumber, XPathBoolean (LY_XPATH_TYPE); String() = "node-set", ...
+type XPathVar struct{ Name, Value string }  // struct lyxp_var: Value is an expression
+type XPathOptions struct {
+    Node *Node       // context node and current(); nil = the document root
+    Vars []XPathVar  // a slice, not a map: lyxp_vars_find takes the first name with the referenced prefix
+}
+type XPathResult struct { Type XPathType; Nodes []*Node; String string; Number float64; Boolean bool }
+func (t *Tree) FindXPath(expr string, o XPathOptions) ([]*Node, []yang.Diagnostic, error)                   // lyd_find_xpath, _xpath2, _xpath3
+func (t *Tree) EvalXPath(expr string, o XPathOptions) (XPathResult, []yang.Diagnostic, error)               // lyd_eval_xpath4, ret_type form: no cast
+func (t *Tree) EvalXPathAs(expr string, typ XPathType, o XPathOptions) (XPathResult, []yang.Diagnostic, error) // lyd_eval_xpath4, one output: cast;
+                                                                                          // lyd_eval_xpath, _xpath2, _xpath3 = XPathBoolean
+```
+Expressions are JSON format only (`LY_VALUE_JSON`, prefixes are module names), the format of
+every query of the conformance corpus; XML-namespace prefixes are added when a user asks.
+`cur_mod` is not exported: in JSON format it only names the module of an unprefixed
+`derived-from()` identity when there is no current node. `Number` is the `long double` result
+narrowed to `float64`, as lyoracle prints it (D-0010); NaN and ±Inf are math's. Errors as for
+`Parse`: the diagnostics of the call are returned also on success (libyang logs internal errors,
+LY_EINT `Internal error (xpath.c:1348).`, on some successful evaluations and goes on), and a
+failed query is a `*ValidationError` with libyang's diagnostics (a context node outside the tree and
+an unknown result type are LY_EINVAL argument refusals, #160), or an error wrapping
+`yang.ErrBudget` (10 000 000 steps per query, `xpath.DefaultMaxSteps`). No `context.Context`, as
+`Find` and `NewPath`: the step budget bounds a query; `FindXPathContext` and friends can be added
+later without breaking anything. Methods of `Tree` rather than `Node`: the tree is the accessible
+tree. Not safe for concurrent use, even read-only (the package rule).
+
+Planned for the other M3 items (signatures fixed here, implemented there), in the same
+options-struct style:
+- #85, package `yang`: `func (s *Schema) FindXPathAtoms(node *SchemaNode, expr string, o AtomOptions) ([]*SchemaNode, error)`
+  (lys_find_xpath_atoms) and `func (s *Schema) FindPathAtoms(node *SchemaNode, path string, o AtomOptions) ([]*SchemaNode, error)`
+  (lys_find_path_atoms, which reads only `o.Output`), with `AtomOptions{Schema, Output, NoMatchError bool}` =
+  LYS_FIND_XP_SCHEMA, LYS_FIND_XP_OUTPUT, LYS_FIND_NO_MATCH_ERROR; `node` nil = the document root.
+  `lys_find_expr_atoms` takes a compiled expression and stays internal.
+- #87: `func (t *Tree) TrimXPath(expr string, o XPathOptions) error` is public (lyd_trim_xpath: the
+  context node is always the first top-level sibling, so a non-nil `o.Node` is an LY_EINVAL
+  `*ValidationError`; `o.Vars` as for the queries).
+
 **Diagnostics** (PLAN §2): reuse `yang.Diagnostic` as shipped (`Warning bool; Err, Code string`
 — LY_ERR and LY_VECODE names — plus the path/line/message fields; this stream adds `DataPath` and
 `AppTag` to it, additive) and the single `yang.ErrBudget` (lead default, maintainer may revisit);

@@ -12,6 +12,10 @@
 // min/max-elements, unique). Tree.Validate runs the same checks over a whole tree, and
 // Tree.ValidateDiff also returns the implicit diff (the nodes the validation added or removed).
 //
+// Tree.FindXPath, Tree.EvalXPath and Tree.EvalXPathAs query a tree with XPath 1.0 and the YANG
+// function library (RFC 7950 §10), as lyd_find_xpath and lyd_eval_xpath4: JSON-format expressions,
+// an optional context node and variables, typed results.
+//
 // Diagnostics are yang.Diagnostic values in libyang's log order, with libyang's LY_ERR and
 // LY_VECODE names, data path, schema path and error-app-tag. A failed call returns a
 // *ValidationError holding them (RC is the call's LY_ERR name), or an error wrapping
