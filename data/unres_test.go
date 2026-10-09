@@ -331,6 +331,7 @@ func TestWhenQueueWork(t *testing.T) {
 		args = append(args, f.t, fmt.Sprint(i), f.r, fmt.Sprint(i))
 	}
 	vc, _, _ = f.build(t, ValidateOptions{}, args...)
+	vc.t.work.visits = true
 	w0 := int(vc.t.work.Load())
 	if err := vc.unres(); err != nil {
 		t.Fatal(err, diagCodes(vc.log.diags))
@@ -538,6 +539,7 @@ func TestUnresWork(t *testing.T) {
 			}
 		}
 		vc.t.work.Store(0)
+		vc.t.work.visits = true
 		_ = vc.unres()
 		if vc.posBuilds > 2 || vc.nodeTypes.scans > 2*n || int(vc.t.work.Load()) > 4*n || vc.nodeWhen.len() != 0 {
 			t.Fatalf("whenTrue %v: %d position maps, %d queue scans, %d unlink steps, %d queued",

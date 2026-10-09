@@ -354,7 +354,7 @@ func TestParseJSONLinear(t *testing.T) {
 				o := parseOpts{ParseOptions: ParseOptions{Unknown: tc.unknown, ParseOnly: true}}
 				in := `{"pj:c": {` + tc.in(n) + `}}`
 				if _, diags, err := parseWith(context.Background(), strings.NewReader(in), set, o, parseJSON,
-					func(l *lydCtx) { lc = l }); err != nil {
+					func(l *lydCtx) { lc = l; l.tree.work.visits = true }); err != nil {
 					t.Fatalf("%v %v", err, diags)
 				}
 				return int(lc.tree.work.Load())

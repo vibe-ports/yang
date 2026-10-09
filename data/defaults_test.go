@@ -294,6 +294,7 @@ func TestDuplicateWork(t *testing.T) {
 			x.flags = FlagNew
 		}
 		tr.work.Store(0)
+		tr.work.visits = true
 		if err := vc.validateNew(parent, nil, mod); err != nil {
 			t.Fatal(err)
 		}
@@ -351,6 +352,7 @@ func TestAutodelWork(t *testing.T) {
 	}
 	tr.insert(top, f.term(t, f.ll, fmt.Sprint(n), FlagNew), insertDefault)
 	tr.work.Store(0)
+	tr.work.visits = true
 	if err := vc.validateNew(top, nil, nil); err != nil {
 		t.Fatal(err)
 	}

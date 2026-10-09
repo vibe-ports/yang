@@ -331,6 +331,7 @@ func TestMergeWork(t *testing.T) {
 	const n = 4000
 	tr, src := build(n), build(n)
 	tr.work.Store(0)
+	tr.work.visits = true
 	if err := tr.Merge(src); err != nil {
 		t.Fatal(err)
 	}

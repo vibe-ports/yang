@@ -26,8 +26,12 @@
 // any error.
 //
 // A Schema may be shared by any number of goroutines. Read-only calls on a Tree may run
-// concurrently: Find, FindXPath, EvalXPath, EvalXPathAs, the Node accessors and iterators,
-// metadata lookups and printing. Anything that modifies a tree (NewPath, NewMeta, Remove, Validate,
-// diff application, …) needs exclusive access: no other call on that tree, read or write, at the
-// same time.
+// concurrently: Find, FindXPath, EvalXPath, EvalXPathAs, the Node accessors and iterators
+// (Children, ChildrenNoKeys, All, Meta, …), FindMeta, Equal, printing, and Diff, DiffSiblings,
+// DiffTree and ReverseDiff, which only read their arguments and build new trees. A tree passed as
+// a read-only argument is read the same way: the source of Merge, the diff given to ApplyDiff,
+// MergeDiff or MergeDiffTree (its src subtree). Every call that changes a tree is a mutation and
+// needs exclusive access to that tree, with no other call on it, read or write, at the same time:
+// NewPath, NewMeta, Remove, Validate, ValidateDiff, TrimXPath, and Merge, ApplyDiff, MergeDiff and
+// MergeDiffTree into it.
 package data

@@ -76,9 +76,15 @@ type Tree struct {
 	// order); lookups only read the tree otherwise, so the cache has its own lock.
 	rankMu sync.Mutex
 	rank   map[*schema.Node]int
-	// work counts comparisons made by insertions and sibling visits (tests count work, not time).
-	// ponytail: one shared atomic, contended by concurrent readers; per-call counters if that shows.
-	work atomic.Int64
+	work   workCounter
+}
+
+// workCounter counts the work of a tree for tests (work, not time): comparisons made by
+// insertions and, when visits is set, sibling visits. Reads of a tree count nothing unless a test
+// sets visits, so concurrent readers do not contend on it (#186).
+type workCounter struct {
+	atomic.Int64
+	visits bool // count sibling visits too (tests only; set before the calls it measures)
 }
 
 // newTree returns an empty tree over the compiled schema s (the public constructor over a

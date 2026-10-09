@@ -264,6 +264,7 @@ func TestUniqueWork(t *testing.T) {
 		tr.insert(nil, li, insertDefault)
 	}
 	tr.work.Store(0)
+	tr.work.visits = true
 	diags, _ := tr.validateAll(context.Background(), ValidateOptions{MultiError: true}, Budget{}, nil)
 	if len(diags) != 1 || int(tr.work.Load()) > 8*n {
 		t.Fatalf("%d diagnostics, %d steps", len(diags), int(tr.work.Load()))
@@ -294,6 +295,7 @@ func TestUniqueMissingDefault(t *testing.T) {
 		tr := newTree(b.set)
 		fill(tr, n)
 		tr.work.Store(0)
+		tr.work.visits = true
 		diags, err := tr.validateAll(context.Background(), ValidateOptions{NoDefaults: true}, Budget{}, nil)
 		return int(tr.work.Load()), diags, err
 	}
@@ -307,6 +309,7 @@ func TestUniqueMissingDefault(t *testing.T) {
 	tr := newTree(b.set)
 	fill(tr, 3000)
 	tr.work.Store(0)
+	tr.work.visits = true
 	_, err = tr.validateAll(context.Background(), ValidateOptions{NoDefaults: true}, Budget{MaxXPathSteps: 1000}, nil)
 	if !errors.Is(err, yang.ErrBudget) || int(tr.work.Load()) > 1001+3000*2 {
 		t.Fatalf("%v, %d steps", err, int(tr.work.Load()))

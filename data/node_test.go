@@ -164,6 +164,7 @@ func TestInsertWork(t *testing.T) {
 		c := newInner(f.c)
 		tr.insert(nil, c, insertDefault)
 		tr.work.Store(0)
+		tr.work.visits = true
 		for i := range n {
 			v := i + 1
 			if reversed {
@@ -530,6 +531,7 @@ func TestConcurrentReads(t *testing.T) {
 func TestBulkWork(t *testing.T) {
 	f := newFixture()
 	tr := newTree(f.set)
+	tr.work.visits = true
 	c := newInner(f.c)
 	tr.insert(nil, c, insertDefault)
 	const n = 20000
@@ -544,6 +546,7 @@ func TestBulkWork(t *testing.T) {
 		t.Fatalf("alternating inserts: %d comparisons", int(tr.work.Load()))
 	}
 	tr.work.Store(0)
+	tr.work.visits = true
 	if err := tr.unlinkAll(all); err != nil {
 		t.Fatal(err)
 	}

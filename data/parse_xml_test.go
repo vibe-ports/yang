@@ -337,7 +337,7 @@ func TestParseXMLLinear(t *testing.T) {
 				var lc *lydCtx
 				o := parseOpts{ParseOptions: ParseOptions{Unknown: tc.unknown, ParseOnly: true}}
 				if _, diags, err := parseWith(context.Background(), strings.NewReader(tc.in(n)), set, o, parseXML,
-					func(l *lydCtx) { lc = l }); err != nil {
+					func(l *lydCtx) { lc = l; l.tree.work.visits = true }); err != nil {
 					t.Fatalf("%v %v", err, diags)
 				}
 				return int(lc.tree.work.Load())
