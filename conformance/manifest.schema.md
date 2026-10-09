@@ -1,12 +1,42 @@
-# Conformance fixture manifest (`corpus/manifest.yaml`)
+# Conformance fixture manifest (`corpus/manifest.yaml` + `corpus/manifest.d/`)
 
-YAML, one file for the whole corpus. Top level:
+YAML. `corpus/manifest.yaml` holds the version and the oracle the goldens came from (the libyang
+pin, kept in step by `libyang-sync`); every fixture is a file of its own under
+`corpus/manifest.d/`:
 
 ```yaml
+# corpus/manifest.yaml
 version: 2
 oracle: {libyang: v5.8.6, libyang_commit: <sha>}   # build the goldens came from
-fixtures: [<fixture>, ...]
+fixtures:                                         # inline fixtures: transitional, see below
 ```
+
+```yaml
+# corpus/manifest.d/<set>/<name>.yaml — the fixture with id <set>/<name>
+fixtures:
+  - id: <set>/<name>
+    dir: <set>
+    ...
+```
+
+Fragments (fixed layout, no settings):
+- one file per fixture, `manifest.d/<set>/<name>.yaml` for id `<set>/<name>`: a `fixtures:`
+  sequence of exactly one fixture, block style with `id` as its first key (`scripts/check-registries`
+  reads the `- id:` line). Nothing lists the files: the loader walks `manifest.d/`;
+- each fragment is parsed on its own, so it cannot use another file's YAML anchors: write the
+  `source` out in full (`{url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}`);
+- paths inside a fragment (`dir`, and through it `golden` and request inputs) stay relative to
+  `corpus/`, not to the fragment;
+- fixtures load in the order inline entries, then fragments by path; ids are unique across both.
+  An empty or malformed fragment, a fragment with other than one fixture, an id that does not
+  match the path, a file that is not `.yaml` or a duplicate id fails `go test` (and the first
+  ones, cheaply, `scripts/check-registries`).
+
+Inline `fixtures:` entries in `manifest.yaml` are transitional: they still load and merge with
+the fragments, so PRs opened before the split keep working. `scripts/manifest-fragment-pr
+<base> <head>` converts the entries a PR appended into fragments; `scripts/manifest-split` moves
+every inline entry and proves the decoded fixture set unchanged (`-check`: prove only). New
+fixtures go into fragments.
 
 ## Fixture
 

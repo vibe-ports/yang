@@ -3,7 +3,6 @@
 package compile
 
 import (
-	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -243,21 +242,15 @@ type manifestEntry struct {
 	skip            string              // why the request is outside this harness
 }
 
-// compileManifest reads the request of every fixture in dir compile from manifest.yaml (a line
-// scan: the root module has no YAML dependency).
+// compileManifest reads the request of every fixture in dir compile from manifest.yaml and its
+// fragments (a line scan: the root module has no YAML dependency).
 func compileManifest(t *testing.T) map[string]manifestEntry {
 	t.Helper()
-	f, err := os.Open(filepath.Join(corpus, "manifest.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer f.Close() //nolint:errcheck // read-only
 	out := map[string]manifestEntry{}
 	var cur manifestEntry
 	inCompile := false
-	sc := bufio.NewScanner(f)
-	for sc.Scan() {
-		l := strings.TrimSpace(sc.Text())
+	for _, l := range manifestLines(t) {
+		l = strings.TrimSpace(l)
 		switch {
 		case strings.HasPrefix(l, "- id:"):
 			cur, inCompile = manifestEntry{}, false

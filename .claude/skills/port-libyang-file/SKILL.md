@@ -10,8 +10,8 @@ description: Port one libyang C source file (or one function group) to Go in thi
    or ≈500 Go lines; split otherwise.
 2. **Read the C.** libyang v5.8.6 sources (clone the tag outside the repo). List the functions,
    their callers and the behaviour they encode (error codes, messages' vecode, flags).
-3. **Fixtures first.** For each behaviour add fixtures (valid + invalid) to
-   `conformance/corpus/manifest.yaml`, then `./dev make oracle-golden` and inspect the goldens.
+3. **Fixtures first.** For each behaviour add fixtures (valid + invalid), one file each:
+   `conformance/corpus/manifest.d/<set>/<name>.yaml`, then `./dev make oracle-golden` and inspect the goldens.
 4. **Write Go.** Header per AGENTS.md; idiomatic Go per PLAN §2; internal unless the API needs it.
    Table tests next to the code; a `Fuzz*` target for every parser-like function.
 5. **Compare.** Run the Go implementation on the new fixtures against the goldens. Differences are

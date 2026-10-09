@@ -1,23 +1,28 @@
 #!/bin/sh
 # Fail on rows duplicated by the union merge driver (an edited row shows up twice):
 #   conformance/deviations.md         duplicate D-/U- ids
-#   conformance/corpus/manifest.yaml  duplicate fixture ids
 #   docs/port-map.md                  same (file, C function, Go symbol) in two rows
+# and on fixture ids that are not unique across conformance/corpus/manifest.yaml (inline
+# entries, transitional) and its fragments conformance/corpus/manifest.d/<set>/<name>.yaml (one
+# block-style fixture each, `- id:` first, the id equal to the path; empty or malformed fragments
+# fail; the Go loader checks the full format).
 # Usage: scripts/check-registries [root]   (root defaults to the repo root)
 root=${1:-$(cd "$(dirname "$0")/.." && pwd)}
 rc=0
+# report <label> <where> <keys, one per line>
+report() {
+  [ -n "$3" ] || { echo "check-registries: no $1 found in $2 (format changed?)" >&2; rc=1; return; }
+  d=$(echo "$3" | sort | uniq -d)
+  [ -z "$d" ] || { echo "check-registries: duplicate $1 in $2 (union merge of an edited row? remove the stale copy):" >&2; echo "$d" | sed 's/^/  /' >&2; rc=1; }
+}
 # dups <label> <file> <awk program printing one key per line>
 dups() {
   [ -f "$2" ] || { echo "check-registries: missing $2" >&2; rc=1; return; }
   k=$(awk "$3" "$2") || { echo "check-registries: awk failed on $2" >&2; rc=1; return; }
-  [ -n "$k" ] || { echo "check-registries: no $1 found in $2 (format changed?)" >&2; rc=1; return; }
-  d=$(echo "$k" | sort | uniq -d)
-  [ -z "$d" ] || { echo "check-registries: duplicate $1 in $2 (union merge of an edited row? remove the stale copy):" >&2; echo "$d" | sed 's/^/  /' >&2; rc=1; }
+  report "$1" "$2" "$k"
 }
 dups 'deviation ids' "$root/conformance/deviations.md" '
   /^\| *[DU]-[0-9]+/ { sub(/^\| */, ""); sub(/[ (|].*/, ""); print }'
-dups 'fixture ids' "$root/conformance/corpus/manifest.yaml" '
-  /^ *- id:/ { sub(/^ *- id: */, ""); sub(/ +#.*/, ""); gsub(/^["\047]|["\047] *$/, ""); print }'
 dups '(C function, Go symbol) pairs' "$root/docs/port-map.md" '
   function trim(x) { gsub(/^ +| +$/, "", x); return x }
   /^\|/ {
@@ -25,4 +30,28 @@ dups '(C function, Go symbol) pairs' "$root/docs/port-map.md" '
     if (n < 5 || f ~ /^:?-+:?$/ || f == "libyang file") next
     m = split(c[3], fn, ","); k = split(c[4], go, ",")
     for (i = 1; i <= m; i++) for (j = 1; j <= k; j++) if (trim(fn[i]) != "") print f " " trim(fn[i]) " -> " trim(go[j]) }'
+
+man=$root/conformance/corpus/manifest.yaml frag=$root/conformance/corpus/manifest.d
+ids='function id(l) { sub(/^ *- id: */, "", l); sub(/ +#.*/, "", l); gsub(/^["\047]|["\047] *$/, "", l); return l }'
+if [ ! -f "$man" ]; then
+  echo "check-registries: missing $man" >&2; rc=1
+else
+  k=$(awk "$ids"' /^ *- id:/ { print id($0) }' "$man") || { echo "check-registries: awk failed on $man" >&2; rc=1; }
+  if [ -d "$frag" ]; then
+    bad=$(find "$frag" ! -type d ! \( -type f -name '*.yaml' \))
+    [ -z "$bad" ] || { echo "check-registries: not a .yaml fragment:" >&2; echo "$bad" | sed 's/^/  /' >&2; rc=1; }
+    k=$k$(printf '\n'; find "$frag" -type f -name '*.yaml' -exec awk -v dir="$frag/" "$ids"'
+      BEGIN { for (i = 1; i < ARGC; i++) { n[ARGV[i]] = 0; h[ARGV[i]] = 0 } }
+      /^fixtures:/ { h[FILENAME]++ }
+      /^ *- id:/ {
+        n[FILENAME]++; v = id($0); print v
+        want = substr(FILENAME, length(dir) + 1); sub(/\.yaml$/, "", want)
+        if (v != want) { printf "check-registries: %s: id %s does not match the path\n", FILENAME, v > "/dev/stderr"; bad = 1 } }
+      END {
+        for (f in n) if (n[f] != 1 || h[f] != 1) {
+          printf "check-registries: %s: %d fixtures, want one `fixtures:` sequence of one fixture (empty or malformed fragment?)\n", f, n[f] > "/dev/stderr"; bad = 1 }
+        exit bad }' {} +) || rc=1
+  fi
+  report 'fixture ids' "$man and $frag" "$(echo "$k" | sed '/^$/d')"
+fi
 exit $rc

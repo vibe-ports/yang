@@ -141,7 +141,7 @@ check finds no instance. Schema traversal is shown in the [`yang` package exampl
 - **Oracle.** A small test-only C program ([conformance/oracle](conformance/oracle)) linked
   against libyang v5.8.6 built from a pinned commit inside the dev container. It is the only C in
   the repository and lives in a separate Go module (`conformance/`), so library users never pull it.
-- **Goldens.** Each fixture in [conformance/corpus/manifest.yaml](conformance/corpus/manifest.yaml)
+- **Goldens.** Each corpus fixture ([format](conformance/manifest.schema.md))
   (libyang's own tests, RFC examples, public models, hand-written edge cases) is a request to the
   oracle; its response is committed as a golden file. CI checks that the oracle still produces
   every golden (`make oracle-check`), and the Go packages' oracle tests must not skip.

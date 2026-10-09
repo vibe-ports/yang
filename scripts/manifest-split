@@ -1,0 +1,10 @@
+#!/bin/sh
+# Move every inline fixture of conformance/corpus/manifest.yaml into its own fragment file
+# conformance/corpus/manifest.d/<set>/<name>.yaml (conformance/cmd/manifest-split), proving that
+# the decoded fixture set (ids, records, resolved golden and input paths) is unchanged and that a
+# second run changes nothing. Deterministic: the same manifest gives the same files.
+#   ./dev scripts/manifest-split          split, write the files
+#   ./dev scripts/manifest-split -check   prove the split, write nothing
+set -eu
+cd "$(dirname "$0")/../conformance"
+exec go run ./cmd/manifest-split "$@"

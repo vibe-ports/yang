@@ -5,6 +5,7 @@ package compile
 import (
 	"encoding/json"
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -209,14 +210,10 @@ type manifestModule struct {
 // JSON flow style (the conformance module's YAML reader is not imported here).
 func manifestModules(t *testing.T) map[string][]manifestModule {
 	t.Helper()
-	b, err := os.ReadFile(filepath.Join(corpus, "manifest.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
 	out := map[string][]manifestModule{}
 	var dir string
 	var mods []manifestModule
-	for _, l := range strings.Split(string(b), "\n") {
+	for _, l := range manifestLines(t) {
 		l = strings.TrimSpace(l)
 		switch {
 		case strings.HasPrefix(l, "- id:"):
@@ -232,6 +229,29 @@ func manifestModules(t *testing.T) map[string][]manifestModule {
 		}
 	}
 	return out
+}
+
+// manifestLines is manifest.yaml followed by every fixture fragment under manifest.d, in path
+// order (a fragment is a `fixtures:` sequence of one fixture in the same text format).
+func manifestLines(t *testing.T) []string {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join(corpus, "manifest.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(string(b), "\n")
+	err = filepath.WalkDir(filepath.Join(corpus, "manifest.d"), func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		b, err := os.ReadFile(p) //nolint:gosec // corpus path
+		lines = append(lines, strings.Split(string(b), "\n")...)
+		return err
+	})
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		t.Fatal(err)
+	}
+	return lines
 }
 
 func js(v any) string {

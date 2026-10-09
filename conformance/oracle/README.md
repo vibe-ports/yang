@@ -12,6 +12,8 @@ Authoritative (dev container, repo root; builds lyoracle against /opt/libyang):
 ./dev make oracle-check     # compare with committed goldens
 ./dev make oracle-golden    # regenerate goldens
 # = cd conformance && go run ./cmd/golden [-check] -require-protocol [-run REGEX] [-oracle PATH]
+# requests: the fixtures' `request` (conformance/corpus/manifest.d/<set>/<name>.yaml, one file per
+# fixture, format conformance/manifest.schema.md); -run matches fixture ids
 # one ad-hoc request (./dev passes stdin through):
 echo '{"op":"schema","base_dir":"basic","searchdirs":["schemas"],"modules":[{"name":"basic"}]}' \
   | ./dev sh -c 'cd conformance/corpus && ../oracle/lyoracle-$(uname -m)'

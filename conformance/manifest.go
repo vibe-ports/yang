@@ -8,6 +8,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
+	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -20,11 +23,15 @@ import (
 // Areas is the allowed set of fixture areas.
 var Areas = []string{"schema", "types", "xpath", "validation", "defaults", "codecs", "diff", "operations", "nmda"}
 
-// Manifest is corpus/manifest.yaml (format: manifest.schema.md).
+// FragmentDir holds one file per fixture, <set>/<name>.yaml for fixture id <set>/<name>, next to
+// manifest.yaml (format: manifest.schema.md).
+const FragmentDir = "manifest.d"
+
+// Manifest is corpus/manifest.yaml plus the fixtures of its fragments (format: manifest.schema.md).
 type Manifest struct {
 	Version  int       `yaml:"version"`
 	Oracle   Oracle    `yaml:"oracle"`
-	Fixtures []Fixture `yaml:"fixtures"`
+	Fixtures []Fixture `yaml:"fixtures"` // inline ones (transitional), then the fragments' by path
 
 	corpus string // directory holding manifest.yaml
 }
@@ -107,10 +114,19 @@ var verdicts = []string{"valid", "invalid", "data-error", "schema-error", "opera
 
 var deviationRow = regexp.MustCompile(`(?m)^\|\s*(D-\d+)\b`)
 
-// LoadManifest parses and validates path (version, unique ids, required fields, areas, deviation
-// ids from ../deviations.md). File existence is checked separately by CheckFiles.
+// LoadManifest parses and validates path and the fragments under FragmentDir next to it (version,
+// unique ids, required fields, areas, deviation ids from ../deviations.md). File existence is
+// checked separately by CheckFiles.
 func LoadManifest(path string) (*Manifest, error) {
-	b, err := os.ReadFile(path) //nolint:gosec // dev tool, caller-chosen path
+	dir := filepath.Dir(path)
+	return LoadManifestFS(os.DirFS(dir), filepath.Base(path), dir)
+}
+
+// LoadManifestFS is LoadManifest reading manifest name and FragmentDir from fsys; corpus is the
+// directory fixture paths resolve against.
+func LoadManifestFS(fsys fs.FS, name, corpus string) (*Manifest, error) {
+	path := filepath.Join(corpus, name)
+	b, err := fs.ReadFile(fsys, name)
 	if err != nil {
 		return nil, err
 	}
@@ -120,11 +136,77 @@ func LoadManifest(path string) (*Manifest, error) {
 	if err := dec.Decode(&m); err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
-	m.corpus = filepath.Dir(path)
+	m.corpus = corpus
+	frags, err := loadFragments(fsys)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", filepath.Join(corpus, FragmentDir), err)
+	}
+	m.Fixtures = append(m.Fixtures, frags...)
 	if err := m.validate(); err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 	return &m, nil
+}
+
+// loadFragments reads every file under FragmentDir (absent: none), in path order.
+func loadFragments(fsys fs.FS) ([]Fixture, error) {
+	var out []Fixture
+	var errs []error
+	err := fs.WalkDir(fsys, FragmentDir, func(p string, d fs.DirEntry, err error) error {
+		switch {
+		case err != nil && p == FragmentDir && errors.Is(err, fs.ErrNotExist):
+			return fs.SkipAll
+		case err != nil:
+			return err
+		case d.IsDir():
+			return nil
+		case !d.Type().IsRegular():
+			errs = append(errs, fmt.Errorf("%s: not a regular file", p))
+			return nil
+		}
+		b, err := fs.ReadFile(fsys, p)
+		if err != nil {
+			return err
+		}
+		f, err := ParseFragment(strings.TrimPrefix(p, FragmentDir+"/"), b)
+		if err != nil {
+			errs = append(errs, err)
+			return nil
+		}
+		out = append(out, f)
+		return nil
+	})
+	return out, errors.Join(append(errs, err)...)
+}
+
+// ParseFragment decodes fragment rel (path under FragmentDir): a `fixtures:` sequence of exactly
+// one fixture whose id is rel without ".yaml".
+func ParseFragment(rel string, b []byte) (Fixture, error) {
+	id, ok := strings.CutSuffix(rel, ".yaml")
+	if !ok {
+		return Fixture{}, fmt.Errorf("%s: not a .yaml file", rel)
+	}
+	var fr struct {
+		Fixtures []Fixture `yaml:"fixtures"`
+	}
+	dec := yaml.NewDecoder(bytes.NewReader(b))
+	dec.KnownFields(true)
+	if err := dec.Decode(&fr); err != nil {
+		if errors.Is(err, io.EOF) {
+			return Fixture{}, fmt.Errorf("%s: empty fragment", rel)
+		}
+		return Fixture{}, fmt.Errorf("%s: %w", rel, err)
+	}
+	if err := dec.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		return Fixture{}, fmt.Errorf("%s: more than one YAML document", rel)
+	}
+	if len(fr.Fixtures) != 1 {
+		return Fixture{}, fmt.Errorf("%s: %d fixtures, want exactly one", rel, len(fr.Fixtures))
+	}
+	if f := fr.Fixtures[0]; f.ID != id {
+		return Fixture{}, fmt.Errorf("%s: id %q does not match the file path (want %q)", rel, f.ID, id)
+	}
+	return fr.Fixtures[0], nil
 }
 
 func (m *Manifest) validate() error {
@@ -214,30 +296,42 @@ func (m *Manifest) CheckFiles(goldens bool) error {
 	var errs []error
 	exists := func(p string) error { _, err := os.Stat(p); return err }
 	for _, f := range m.Fixtures {
-		base := filepath.Join(m.corpus, f.Dir)
 		if goldens {
 			if err := exists(m.GoldenPath(f)); err != nil {
 				errs = append(errs, fmt.Errorf("%s: golden: %w", f.ID, err))
 			}
 		}
-		for k, v := range f.Request {
-			var paths []string
-			switch {
-			case k == "searchdirs":
-				if l, ok := v.([]any); ok {
-					for _, e := range l {
-						paths = append(paths, fmt.Sprint(e))
-					}
-				}
-			case strings.HasSuffix(k, "_file"):
-				paths = append(paths, fmt.Sprint(v))
-			}
-			for _, p := range paths {
-				if err := exists(filepath.Join(base, p)); err != nil {
-					errs = append(errs, fmt.Errorf("%s: request.%s: %w", f.ID, k, err))
-				}
+		for _, in := range m.Inputs(f) {
+			if err := exists(in.Path); err != nil {
+				errs = append(errs, fmt.Errorf("%s: request.%s: %w", f.ID, in.Key, err))
 			}
 		}
 	}
 	return errors.Join(errs...)
+}
+
+// Input is a file or directory a fixture's request names.
+type Input struct {
+	Key  string // request key
+	Path string // resolved like GoldenPath
+}
+
+// Inputs lists the request inputs of f (`*_file` keys, `searchdirs`), sorted by key.
+func (m *Manifest) Inputs(f Fixture) []Input {
+	var out []Input
+	base := filepath.Join(m.corpus, f.Dir)
+	for _, k := range slices.Sorted(maps.Keys(f.Request)) {
+		v := f.Request[k]
+		switch {
+		case k == "searchdirs":
+			if l, ok := v.([]any); ok {
+				for _, e := range l {
+					out = append(out, Input{k, filepath.Join(base, fmt.Sprint(e))})
+				}
+			}
+		case strings.HasSuffix(k, "_file"):
+			out = append(out, Input{k, filepath.Join(base, fmt.Sprint(v))})
+		}
+	}
+	return out
 }

@@ -1,0 +1,23 @@
+#!/bin/sh
+# Convert the fixtures a PR appended to conformance/corpus/manifest.yaml into fragment files
+# conformance/corpus/manifest.d/<set>/<name>.yaml and restore manifest.yaml to its content at the
+# merge base of <base> and <head>: the PR then no longer touches manifest.yaml. Fails when the PR
+# changed manifest.yaml other than by appending (convert that by hand). Check out <head> with a
+# clean conformance/corpus first and run it before rebasing over the split. Then squash, so that
+# no commit of the PR touches manifest.yaml (an earlier commit that appended to it would conflict
+# with the split on rebase), and rebase:
+#   ./dev scripts/manifest-fragment-pr origin/main HEAD
+#   git add -A conformance/corpus && git reset --soft "$(git merge-base origin/main HEAD)" && git commit
+#   git rebase origin/main
+set -eu
+[ $# -eq 2 ] || { echo "usage: scripts/manifest-fragment-pr <base> <head>" >&2; exit 2; }
+cd "$(dirname "$0")/.."
+m=conformance/corpus/manifest.yaml
+head=$(git rev-parse --verify "$2^{commit}")
+[ "$(git rev-parse HEAD)" = "$head" ] || { echo "manifest-fragment-pr: check out $2 first" >&2; exit 1; }
+[ -z "$(git status --porcelain -- conformance/corpus)" ] || { echo "manifest-fragment-pr: conformance/corpus has uncommitted changes" >&2; exit 1; }
+mb=$(git merge-base "$1" "$head")
+tmp=$(mktemp); trap 'rm -f "$tmp"' EXIT
+git show "$mb:$m" >"$tmp"
+(cd conformance && go run ./cmd/manifest-split -since "$tmp")
+echo "manifest-fragment-pr: now squash onto $mb (no commit may touch $m) and rebase onto $1"

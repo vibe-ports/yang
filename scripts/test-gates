@@ -628,6 +628,7 @@ rg=$t/rg; mkdir -p "$rg/conformance/corpus" "$rg/docs"
 rgreset() {
   printf '| D-0001 | a |\n| U-0001 | b |\n' >"$rg/conformance/deviations.md"
   printf 'fixtures:\n  - id: a/x\n  - id: a/y\n' >"$rg/conformance/corpus/manifest.yaml"
+  rm -rf "$rg/conformance/corpus/manifest.d"
   printf '| libyang file | C function | Go symbol |\n|---|---|---|\n| src/x.c | f, g | p.F |\n| src/x.c | f | q.F |\n' >"$rg/docs/port-map.md"
 }
 rgreset
@@ -651,6 +652,33 @@ rgreset; printf '  - id: "a/x"\n' >>"$rg/conformance/corpus/manifest.yaml"
 expect 1 "registries: duplicate quoted fixture id" 'a/x' "$src/check-registries" "$rg"
 rgreset; : >"$rg/conformance/deviations.md"
 expect 1 "registries: empty registry fails" 'no deviation ids found' "$src/check-registries" "$rg"
+# fixture fragments: conformance/corpus/manifest.d/<set>/<name>.yaml, one fixture each
+fd=$rg/conformance/corpus/manifest.d
+frag() { mkdir -p "$fd/$(dirname "$1")"; printf "$2" >"$fd/$1"; }
+rgreset; frag b/f.yaml 'fixtures:\n  - id: b/f\n'; frag b/g.yaml '# c\nfixtures:\n  # lead\n  - id: "b/g" # t\n    dir: b\n'
+expect 0 "registries: fragments next to inline fixtures" - "$src/check-registries" "$rg"
+printf 'fixtures:\n' >"$rg/conformance/corpus/manifest.yaml"
+expect 0 "registries: fragments only" - "$src/check-registries" "$rg"
+rm -rf "$fd"
+expect 1 "registries: no inline fixtures, no fragments" 'no fixture ids found' "$src/check-registries" "$rg"
+rgreset; frag a/x.yaml 'fixtures:\n  - id: a/x\n'
+expect 1 "registries: fragment duplicates an inline fixture" 'duplicate fixture ids' "$src/check-registries" "$rg"
+has "registries: names the duplicate fixture" '^  a/x$' "$t/err"
+rgreset; frag b/f.yaml 'fixtures:\n  - id: b/f\n'; frag c/f.yaml 'fixtures:\n  - id: b/f\n'
+expect 1 "registries: duplicate across fragments" 'duplicate fixture ids' "$src/check-registries" "$rg"
+has "registries: fragment id must be its path" 'c/f.yaml: id b/f does not match the path' "$t/err"
+rgreset; frag b/f.yaml ''
+expect 1 "registries: empty fragment" 'b/f.yaml: 0 fixtures.*empty or malformed' "$src/check-registries" "$rg"
+rgreset; frag b/f.yaml '  - id: b/f\n'
+expect 1 "registries: fragment without fixtures:" 'b/f.yaml: 1 fixtures.*malformed' "$src/check-registries" "$rg"
+rgreset; frag b/f.yaml 'fixtures:\n  - id: b/f\n  - id: b/g\n'
+expect 1 "registries: two fixtures in a fragment" 'b/f.yaml: 2 fixtures' "$src/check-registries" "$rg"
+rgreset; frag b/f.yml 'fixtures:\n  - id: b/f\n'
+expect 1 "registries: fragment that is not .yaml" 'not a .yaml fragment' "$src/check-registries" "$rg"
+rgreset; rm "$rg/conformance/corpus/manifest.yaml"
+expect 1 "registries: missing manifest.yaml" 'missing .*manifest\.yaml' "$src/check-registries" "$rg"
+rgreset; rm "$rg/docs/port-map.md"
+expect 1 "registries: missing port-map" 'missing .*port-map\.md' "$src/check-registries" "$rg"
 rgreset
 
 echo; (( fails == 0 )) && echo "all gate tests passed" || { echo "$fails gate test(s) failed"; exit 1; }

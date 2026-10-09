@@ -13,7 +13,7 @@ import (
 // LY_ERR / LYVE code and message of errors. Where they are logged is data's part (TestFindXPath).
 func TestVarsGoldens(t *testing.T) {
 	vars := map[string]string{"abc": "1 + 2", "s": "'x'", "bad": "1 +", "und": "$nope", "lx": "'"}
-	cases := map[string]string{ // fixture id suffix → expression (conformance/corpus/manifest.yaml)
+	cases := map[string]string{ // fixture id suffix → expression (conformance/corpus/manifest.d)
 		"value":                  "$abc * 2",
 		"prefix-match":           "$ab",
 		"in-predicate":           "ll[. = $s]",

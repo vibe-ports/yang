@@ -127,7 +127,7 @@ func loadSteps(t *testing.T, name string) []goldenStep {
 	return g.Steps
 }
 
-// editStep is one set or delete step of a seq/* fixture (as in manifest.yaml).
+// editStep is one set or delete step of a seq/* fixture (as in the corpus manifest).
 type editStep struct{ set, value, del string }
 
 // apply runs a step the way the oracle's step_edit does; it returns the rc name libyang reports

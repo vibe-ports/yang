@@ -1,5 +1,5 @@
-# Append-only registries: concurrent PRs append rows/fixtures at the end.
+# Append-only registries: concurrent PRs append rows at the end. (Fixtures are one file each,
+# conformance/corpus/manifest.d/, and need no merge driver.)
 # The union driver keeps both sides; reviewers still check the result.
-conformance/corpus/manifest.yaml merge=union
 docs/port-map.md merge=union
 conformance/deviations.md merge=union

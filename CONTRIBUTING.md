@@ -48,7 +48,8 @@ DEV_PLATFORM=linux/amd64 ./dev make oracle-golden   # only ever generate goldens
    ignored. You don't need to claim anything; say on the issue what you are doing.
 2. Branch in your fork from `main`: `feat/…`, `fix/…`, `port/<file>`.
 3. For ported code: provenance header, `docs/port-map.md` row, oracle fixtures
-   (`conformance/AGENTS.md`), deviations recorded in `conformance/deviations.md`. The checklist
+   (`conformance/AGENTS.md`; one file per fixture, `conformance/corpus/manifest.d/<set>/<name>.yaml`),
+   deviations recorded in `conformance/deviations.md`. The checklist
    in `.claude/skills/port-libyang-file/SKILL.md` lists the steps; it is plain text and needs
    no AI tool.
 4. `./dev make ci` must be green (`DEV_PLATFORM=linux/amd64` when oracle results change, see Setup).
@@ -59,7 +60,8 @@ DEV_PLATFORM=linux/amd64 ./dev make oracle-golden   # only ever generate goldens
 ## Using an AI coding agent
 
 Agents follow [AGENTS.md](AGENTS.md), the same rules as humans: provenance headers, port-map rows,
-oracle fixtures as proof, the deviations registry, append-only manifest, no AI trailers.
+oracle fixtures as proof (one file per fixture under `conformance/corpus/manifest.d/`), the
+deviations registry, no AI trailers.
 
 - Start from issues labelled `good first issue` or `help wanted`. Most task issues name the
   libyang functions to port and the fixtures that prove it.

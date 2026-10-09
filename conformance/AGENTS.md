@@ -6,7 +6,8 @@
   `go run ./cmd/golden [-check] [-run REGEX] [-oracle PATH]` (from `conformance/`) generates/compares
   goldens; `go test ./...` validates the manifest and asserts; `go run ./cmd/report` prints the
   per-area Markdown report. Root module code must never import it.
-- A fixture = entry in `corpus/manifest.yaml` (format: `manifest.schema.md`) + inputs under
+- A fixture = its own file `corpus/manifest.d/<set>/<name>.yaml` (format: `manifest.schema.md`;
+  `corpus/manifest.yaml` keeps only the version and oracle pin) + inputs under
   `corpus/<set>/` + golden output under `corpus/<set>/golden/`. Fixtures carry `areas` and, where the RFC is clear, an `assert` block (normative; a contradiction
   with the golden must name a `deviations.md` id). Every fixture carries its source
   URL/commit, license and RFC section tags.
