@@ -117,9 +117,10 @@ type SchemaNode interface {
 	// with that name, as lys_getnext; for an RPC/action from its input or
 	// output, nil when both have one. nil if none.
 	Child(module, name string) SchemaNode
-	// Canonical returns the canonical form of lexical for this node's type,
+	// Canonical returns the canonical form of lexical for this node's type, its prefixes
+	// written in the expression's pc (set_comp_canonize: set->format, set->prefix_data),
 	// ok=false if the value is invalid or needs no canonization.
-	Canonical(lexical string) (canon string, ok bool)
+	Canonical(lexical string, pc NamespaceCtx) (canon string, ok bool)
 
 	// Parent is lysc_node.parent (choice, case, input and output included); nil at the top level.
 	Parent() SchemaNode

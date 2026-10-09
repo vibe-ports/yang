@@ -138,7 +138,7 @@ func (s *tschema) add(c *tschema) *tschema {
 }
 
 func (s *tschema) Namespace() string { return "urn:vibe-ports:yang:conformance:pv2" }
-func (s *tschema) Canonical(v string) (string, bool) {
+func (s *tschema) Canonical(v string, _ NamespaceCtx) (string, bool) {
 	if s.canon == nil {
 		return "", false
 	}

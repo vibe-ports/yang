@@ -1,0 +1,24 @@
+module pv2-ca {
+  yang-version 1.1;
+  namespace "urn:pv2-ca";
+  prefix ca;
+
+  import pv2-cb { prefix b; }
+
+  identity local-id { base b:base-id; }
+
+  container c {
+    leaf id { type identityref { base b:base-id; } }
+    leaf lid { type identityref { base b:base-id; } }
+    leaf ii { type instance-identifier { require-instance false; } }
+    leaf u { type union { type int8; type string; } }
+    leaf m-imp { type string; must "../id = 'b:one'"; }
+    leaf m-mod { type string; must "../id = 'pv2-cb:one'"; }
+    leaf m-own { type string; must "../id = 'cbx:one'"; }
+    leaf m-loc { type string; must "../lid = 'local-id'"; }
+    leaf m-locp { type string; must "../lid = 'ca:local-id'"; }
+    leaf m-ii { type string; must "../ii = '/b:x/b:y'"; }
+    leaf m-iimod { type string; must "../ii = '/pv2-cb:x/y'"; }
+    leaf m-u { type string; must "../u = '+5'"; }
+  }
+}

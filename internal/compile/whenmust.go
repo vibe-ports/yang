@@ -449,7 +449,7 @@ func (s snode) Child(module, name string) xpath.SchemaNode {
 }
 
 // Canonical is not needed over the schema (Atomize compares no values).
-func (s snode) Canonical(string) (string, bool) { return "", false }
+func (s snode) Canonical(string, xpath.NamespaceCtx) (string, bool) { return "", false }
 
 // Type is the leaf's type, nil for other nodes.
 func (s snode) Type() xpath.SchemaType {

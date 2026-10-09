@@ -1,0 +1,19 @@
+module pv2-cg {
+  yang-version 1.1;
+  namespace "urn:pv2-cg";
+  prefix g;
+
+  description
+    "Hand-written (issue #90): a grouping whose must and when compare an
+     identityref with an unprefixed literal, which resolves to the module the
+     expression is written in (this one), not to the module using the grouping.";
+
+  identity base;
+  identity gid { base base; }
+
+  grouping grp {
+    leaf id { type identityref { base base; } }
+    leaf m { type string; must "../id = 'gid'"; }
+    leaf w { type string; when "../id = 'gid'"; }
+  }
+}

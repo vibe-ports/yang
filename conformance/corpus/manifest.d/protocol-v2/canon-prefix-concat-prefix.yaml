@@ -1,0 +1,17 @@
+fixtures:
+  - id: protocol-v2/canon-prefix-concat-prefix
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # an import prefix that is not written in the expression (built by concat) is not resolved (issue #90, ly_store_prefix_data)
+    rfc: ["RFC7950#7.5.3", "RFC7950#7.21.5", "RFC7950#9.10.3"]
+    areas: [xpath, validation]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2-cm}, {name: pv2-cg}, {name: pv2-cb}]
+      format: json
+      data_type: config
+      data: "{\"pv2-cm:c\": {\"id2\": \"pv2-cb:one\", \"mc\": \"a\"}}"
+    golden: golden/canon-prefix-concat-prefix.json
+    assert:
+      verdict: invalid
+      deviation: null

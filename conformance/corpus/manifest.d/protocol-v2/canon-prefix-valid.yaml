@@ -1,0 +1,17 @@
+fixtures:
+  - id: protocol-v2/canon-prefix-valid
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # musts comparing an identityref, instance-identifier and union leaf with literals in import-prefix, module-name and unprefixed form (set_comp_canonize with LY_VALUE_SCHEMA_RESOLVED prefixes) (issue #90)
+    rfc: ["RFC7950#7.5.3", "RFC7950#9.10.3", "RFC7950#9.13.2"]
+    areas: [xpath, validation]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2-ca}, {name: pv2-cb}]
+      format: json
+      data_type: config
+      data: "{\"pv2-ca:c\": {\"id\": \"pv2-cb:one\", \"lid\": \"pv2-ca:local-id\", \"ii\": \"/pv2-cb:x/y\", \"u\": 5, \"m-imp\": \"a\", \"m-mod\": \"a\", \"m-loc\": \"a\", \"m-locp\": \"a\", \"m-ii\": \"a\", \"m-iimod\": \"a\", \"m-u\": \"a\"}}"
+    golden: golden/canon-prefix-valid.json
+    assert:
+      verdict: valid
+      deviation: null

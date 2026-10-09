@@ -215,14 +215,20 @@ func (x xs) Child(module, name string) xpath.SchemaNode {
 }
 
 // Canonical is set_comp_canonize with the schema node's type: built-in string, boolean and
-// enumeration need nothing; an invalid value is left as it is. Values with prefixes are read in
-// JSON form (module names), not the expression's prefixes (VERIFY(xpath/canon-prefix)).
-func (x xs) Canonical(lex string) (string, bool) {
+// enumeration need nothing; an invalid value is left as it is. The value's prefixes are the
+// expression's: module names in a JSON expression (a query, pc.Default() ""), the module's own and
+// import prefixes in a schema one (must, when, leafref path: LY_VALUE_SCHEMA_RESOLVED, an
+// unprefixed name in the expression's module).
+func (x xs) Canonical(lex string, pc xpath.NamespaceCtx) (string, bool) {
 	t := x.s.Type
 	if t == nil || types.Plugin(t) == nil && (t.Base == schema.String || t.Base == schema.Bool || t.Base == schema.Enumeration) {
 		return "", false
 	}
-	v, d := types.Store(t, lex, types.FormatJSON, types.HintData, types.ModuleNames{Set: x.set}, x.s)
+	f, p := types.FormatJSON, types.PrefixCtx(types.ModuleNames{Set: x.set})
+	if pc != nil && pc.Default() != "" {
+		f, p = types.FormatSchemaResolved, nsPrefixes{x.set, pc}
+	}
+	v, d := types.Store(t, lex, f, types.HintData, p, x.s)
 	if d != nil {
 		return "", false
 	}
@@ -296,8 +302,8 @@ func (p nsPrefixes) Resolve(prefix string) *schema.Module {
 	if p.ns == nil {
 		return nil
 	}
-	name, ok := p.ns.Resolve(prefix)
-	if prefix == "" {
+	name, ok := p.ns.Resolve(prefix) // "": the expression's own module where it has one
+	if prefix == "" && !ok {
 		name, ok = p.ns.Default(), true
 	}
 	if !ok {

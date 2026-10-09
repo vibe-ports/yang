@@ -607,7 +607,7 @@ func (ev *evaluator) hashChild(set value, sn SchemaNode, name string, preds []as
 	if ev.ec.Root == RootConfig && !sn.Config() || ev.op != nil && isOp(sn) && sn != ev.op {
 		return nodesV(nil), 0, nil
 	}
-	vals, used, lookup := lookupValues(sn, preds)
+	vals, used, lookup := lookupValues(sn, preds, ev.ns)
 	lookupOf := func(it item) ChildLookup {
 		switch it.t {
 		case itRoot:
@@ -703,7 +703,7 @@ func nodeItems(ns []Node) []item {
 // leaf or any node is looked up without values. Each literal is canonized by
 // the key's (leaf-list's) type as the scan's comparison does (set_comp_canonize:
 // kept as written when that fails).
-func lookupValues(sn SchemaNode, preds []ast) (vals []string, used int, ok bool) {
+func lookupValues(sn SchemaNode, preds []ast, ns NamespaceCtx) (vals []string, used int, ok bool) {
 	keys := sn.Keys()
 	n := len(keys)
 	switch sn.Kind() {
@@ -734,7 +734,7 @@ func lookupValues(sn SchemaNode, preds []ast) (vals []string, used int, ok bool)
 				return nil, 0, false
 			}
 		}
-		if cv, ok := ts.Canonical(v); ok {
+		if cv, ok := ts.Canonical(v, ns); ok {
 			v = cv
 		}
 		vals = append(vals, v)
@@ -1275,7 +1275,7 @@ func (ev *evaluator) compareItem(it item, other *value, op string, switched bool
 	}
 	// set_comp_canonize; libyang canonizes the other operand in place
 	if other.t == vStr && it.t == itElem && isTerm(it.n) {
-		if c, ok := it.n.Schema().Canonical(other.s); ok {
+		if c, ok := it.n.Schema().Canonical(other.s, ev.ns); ok {
 			other.s = c
 		}
 	}

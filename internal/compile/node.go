@@ -648,14 +648,18 @@ func nsCtx(pm *pmod) schema.NSCtx {
 	return ns
 }
 
-// xpathNS adapts a schema.NSCtx to xpath.NamespaceCtx; unprefixed names are def.
+// xpathNS adapts a schema.NSCtx to xpath.NamespaceCtx; unprefixed names are def. Resolve is the
+// expression's prefix data as ly_store_prefix_data builds it (LY_VALUE_SCHEMA_RESOLVED): only the
+// prefixes that occur in the source text (used), and "" for the module the expression is written
+// in, which values without a prefix (an identity in a literal) resolve to.
 type xpathNS struct {
-	ctx schema.NSCtx
-	def string
+	ctx  schema.NSCtx
+	def  string
+	used []string // valuePrefixes of the source
 }
 
 func (x xpathNS) Resolve(prefix string) (string, bool) {
-	if m := x.ctx[prefix]; m != nil && prefix != "" {
+	if m := x.ctx[prefix]; m != nil && (prefix == "" || slices.Contains(x.used, prefix)) {
 		return m.Name, true
 	}
 	return "", false
@@ -678,7 +682,7 @@ func (x xpathNS) Default() string { return x.def }
 
 // xpathCompile is lyxp_expr_parse with its error logged at the current path.
 func (w *nodeCtx) xpathCompile(src string, ns schema.NSCtx) (*xpath.Expr, error) {
-	e, err := xpath.Compile(src, xpathNS{ns, w.cur.Name})
+	e, err := xpath.Compile(src, xpathNS{ns, w.cur.Name, valuePrefixes(src)})
 	if err != nil {
 		var xe *xpath.Error
 		if !errors.As(err, &xe) {

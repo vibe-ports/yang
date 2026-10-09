@@ -1,0 +1,12 @@
+module pv2-cb {
+  yang-version 1.1;
+  namespace "urn:pv2-cb";
+  prefix cbx;
+
+  identity base-id;
+  identity one { base base-id; }
+
+  container x {
+    leaf y { type string; }
+  }
+}

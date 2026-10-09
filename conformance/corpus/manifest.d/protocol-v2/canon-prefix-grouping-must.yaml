@@ -1,0 +1,17 @@
+fixtures:
+  - id: protocol-v2/canon-prefix-grouping-must
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # an unprefixed identity literal in a grouping's must is the grouping module's (issue #90, ly_store_prefix_data)
+    rfc: ["RFC7950#7.5.3", "RFC7950#7.21.5", "RFC7950#9.10.3"]
+    areas: [xpath, validation]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2-cm}, {name: pv2-cg}, {name: pv2-cb}]
+      format: json
+      data_type: config
+      data: "{\"pv2-cm:c\": {\"id\": \"pv2-cg:gid\", \"m\": \"a\"}}"
+    golden: golden/canon-prefix-grouping-must.json
+    assert:
+      verdict: valid
+      deviation: null
