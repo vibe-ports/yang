@@ -17,6 +17,19 @@ import (
 // swapped, replaced values and defaults back to their originals, user-ordered moves back to
 // their original anchors, metadata operations reversed). A nil t gives nil. Errors are a
 // *ValidationError with libyang's diagnostics.
+//
+// Limitation inherited from libyang (mirrored on purpose, not a port bug): a diff that deletes a
+// subtree holding user-ordered list or leaf-list instances below its top node cannot be reversed.
+// lyd_diff_reverse_siblings_r turns the deleted node into a create and gives each of its non-key
+// children an explicit delete, so every user-ordered instance below it is reversed as a delete of
+// its own and needs its anchor (orig-value for a leaf-list, orig-key for a list, orig-position for
+// a key-less list or state leaf-list) renamed to value, key or position. Diff records that anchor
+// only on the top node of a deleted subtree, so the reverse fails with LY_EINVAL
+// `Failed to find metadata "orig-value" for node "/ex:c/ll[.='1']".` (orig-key or orig-position
+// likewise). The top deleted node itself and created subtrees carry their anchors and reverse
+// fine. Workaround: build the reverse as Diff(new, old, DiffOptions{Defaults: true}) from the two
+// trees. Without Defaults, a non-presence container that exists in new only as a default node is
+// created again, and applying that diff adds a second instance of it, as in libyang.
 func (t *Tree) ReverseDiff() (*Tree, error) {
 	if t == nil || t.top.len() == 0 {
 		return nil, nil

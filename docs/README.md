@@ -8,6 +8,7 @@ agent: [AGENTS.md](../AGENTS.md). Reporting a vulnerability: [SECURITY.md](../SE
 
 | Document | What it is |
 |---|---|
+| [migrating-from-libyang.md](migrating-from-libyang.md) | For Go services replacing a cgo libyang binding: libyang C calls → Go API, inherited libyang limitations, porting your own helpers |
 | [port-map.md](port-map.md) | Registry: every libyang v5.8.6 function → its Go symbol and status |
 | [../conformance/deviations.md](../conformance/deviations.md) | Registry: intentional differences from libyang (D-ids) and unsupported features (U-ids) |
 | [../conformance/AGENTS.md](../conformance/AGENTS.md) | How oracle fixtures and goldens are written |

@@ -10,27 +10,30 @@ function is traceable to its C source, and agreement is measured on a fixture co
 
 ## Status
 
-Pre-release (v0). The schema side and datastore data are usable and measured; operations, anydata
-payloads and diff/merge are not done yet.
+Pre-release (v0). The schema side, datastore data and diffs (generate, apply, merge, reverse) are
+usable and measured; operations and anydata payloads are not done yet.
 
 | Area | Status | Notes |
 |---|---|---|
 | YANG 1.0 / 1.1 parser (modules, submodules, import/include with revision-date) | supported | YANG text only |
 | Schema compilation: typedef chains, grouping/uses/refine, augment, choice/case, if-feature, identities, status, must/when/leafref XPath checks | supported | |
 | Built-in types, unions, decimal64, `ietf-yang-types` / `ietf-inet-types` canonical forms | supported | |
-| `pattern` (XSD regular expressions) | supported | compiled to RE2 through an XSD-regex compiler; intentional differences D-0002…D-0008 |
+| `pattern` (XSD regular expressions) | supported | compiled to RE2 through an XSD-regex compiler; intentional differences D-0002…D-0008; a libyang-compatible PCRE2 mode (`Options.PatternCompat`) is pending #148 |
 | Extension instances | partial | metadata (RFC 7952), NACM, `yang-data` and `structure`/`augment-structure` (schema side) are compiled; schema-mount and OpenConfig `regexp-posix` make `Load` fail (U-0024, U-0025); data in yang-data/structure trees is not parsed (U-0060) |
 | `deviation` statements | supported | not-supported, add, delete, replace; a deviated rpc/action input or output keeps its children, which libyang drops (D-0080) or crashes on when a must is added (D-0090) |
 | Datastore data: JSON (RFC 7951) and XML parse, print, unknown-node policy (reject / skip / opaque) | supported | |
 | Validation: types, leafref, instance-identifier, mandatory, min/max-elements, unique, must, when (with auto-delete), choice/case, NMDA operational mode | supported | libyang's diagnostics: LY_ERR / LY_VECODE names, data path, error-app-tag |
 | Defaults and with-defaults printing (RFC 6243: explicit, trim, report-all, report-all-tagged) | supported | |
-| RFC 7952 metadata | partial | parsed, validated and printed; no public accessor yet |
+| RFC 7952 metadata | partial | parsed, validated and printed; `Node.Meta`, `Node.FindMeta`, `Tree.NewMeta`, `Meta.Value`, `Meta.Remove`; other metadata helpers are not public (#115) |
 | XPath 1.0 + YANG functions | partial | used by must/when/leafref; no public XPath query API yet |
 | Tree edits: `NewTree`, `NewPath`, `Merge`, `Remove`, `Find` | partial | absolute paths, merge without options |
+| Node comparison: `Node.Equal` (lyd_compare_single) | partial | full-recursion, defaults and opaque options; nodes of two contexts compared by names and canonical values |
+| Schema helpers: `SchemaNode.IsKey`, `IsDupInstList`, `DefaultSet`, `UserOrdered`; `Node.ChildrenNoKeys` | supported | |
 | Validation diff (`Tree.ValidateDiff`) | partial | the implicit diff of a validation only |
 | anydata / anyxml instances | **unsupported** | the schema nodes compile, data instances fail with `ErrUnsupported` (U-0043) |
 | RPC / action / notification data and replies, external operational tree | **unsupported** | planned |
-| Full diff, merge options, apply-diff, NETCONF edit-config | **unsupported** | planned |
+| Diff, apply, merge of diffs, reverse: `data.Diff`, `DiffSiblings`, `DiffTree`, `Tree.ApplyDiff`, `MergeDiff`, `MergeDiffTree`, `ReverseDiff` | supported | anydata values in diffs come with M5 (U-0043); libyang's limits with user-ordered entries are mirrored ([migrating-from-libyang.md](docs/migrating-from-libyang.md#inherited-libyang-limitations)) |
+| `lyd_merge` options, NETCONF edit-config (`ApplyEdit`) | **unsupported** | planned (#127, #117) |
 | yang-library build and ingest | **unsupported** | planned; the `ietf-yang-library` module itself is loaded |
 | Command-line tool (yanglint) | **unsupported** | there is no CLI yet |
 | YIN, LYB, schema mount (RFC 8528), tree / YANG printers | **unsupported** | out of v1 scope |
@@ -166,7 +169,7 @@ summary, and `make compat-report` reproduces it locally:
 
 | | agree | agree (skipped fields) | differ | deviation | unsupported |
 |---|--:|--:|--:|--:|--:|
-| fixtures (2 090) | 667 | 1180 | 0 | 18 | 225 |
+| fixtures (2 094) | 670 | 1181 | 0 | 18 | 225 |
 
 Of the 225 unsupported fixtures, 146 are `xpath` fixtures, an operation the report engine does
 not run yet (the XPath evaluator is compared with the oracle by its own tests in
@@ -183,11 +186,13 @@ patterns and the compile budgets).
 | Package | |
 |---|---|
 | [`yang`](doc.go) | `Context`: load and compile modules from `fs.FS`; `Schema` snapshot and read-only handles |
-| [`data`](data/doc.go) | data trees: JSON/XML parse and print, validation, defaults, edits |
+| [`data`](data/doc.go) | data trees: JSON/XML parse and print, validation, defaults, edits, metadata, diffs |
 | `internal/…` | parser, compiler, types, XPath, XSD regex — not importable |
 | [`conformance`](conformance) | separate module: oracle, corpus, goldens, report |
 
 Documentation index: [docs/README.md](docs/README.md). Design notes: [docs/design](docs/design).
+Replacing a cgo libyang binding: [docs/migrating-from-libyang.md](docs/migrating-from-libyang.md)
+(libyang call → Go API, inherited limitations).
 Plan and milestones: [PLAN.md](PLAN.md).
 Machine-readable summary for LLMs and agents: [llms.txt](llms.txt).
 

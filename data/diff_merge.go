@@ -34,6 +34,24 @@ type MergeDiffOptions struct {
 // replace then replace one replace, user-ordered moves fold into one move), nodes left without a
 // change are removed, and src is not changed. A nil src merges nothing. Errors are a
 // *ValidationError with libyang's diagnostics; t may be partly merged then.
+//
+// Limitations inherited from libyang (mirrored on purpose, not port bugs): merging diffs that
+// create, delete or move user-ordered list or leaf-list instances is lossy.
+//   - The merged diff can name an anchor instance that no longer exists. A create in t followed
+//     by a delete in src cancels out and the instance leaves the diff, but a later instance whose
+//     yang:value, yang:key or yang:position anchor names it keeps that anchor. Applying the merged
+//     diff then fails with LY_EINVAL `Node "ll" instance to insert next to not found.`
+//     (leaf-list [x] -> [y z] -> [w z]: z keeps yang:value="y"). Other sequences fail in apply
+//     with LY_EINVAL from the sibling check of lyd_insert_before ([w x] -> [w] -> [x]).
+//   - The merge itself fails when t deletes a user-ordered instance inside a deleted subtree (such
+//     instances carry no orig-value, orig-key or orig-position) and src creates it again:
+//     lyd_diff_merge_create returns LY_EINVAL with `Failed to find metadata "yang:orig-value" for
+//     node "/ex:c/ll[.='w']".` and `Merging operation "create" failed.` (leaf-list [w] -> [] ->
+//     [w], where the first diff deletes the container holding it).
+//
+// Workaround: keep the original tree and diff it against the final one instead of merging the
+// intermediate diffs: Diff(first, last, DiffOptions{Defaults: true}), with Defaults for the reason
+// given at ReverseDiff.
 func (t *Tree) MergeDiff(src *Tree, o MergeDiffOptions) error {
 	lg := &logger{set: t.set}
 	if src == nil {
@@ -50,7 +68,8 @@ func (t *Tree) MergeDiff(src *Tree, o MergeDiffOptions) error {
 
 // MergeDiffTree is lyd_diff_merge_tree: the subtree src of a source diff merged into the diff t
 // under parent, a node of t (nil: the top level of t; another tree's node is LY_EINVAL); see
-// MergeDiff. A nil src merges nothing.
+// MergeDiff, whose limitations for user-ordered instances apply here too. A nil src merges
+// nothing.
 func (t *Tree) MergeDiffTree(parent, src *Node, o MergeDiffOptions) error {
 	lg := &logger{set: t.set}
 	if src == nil {

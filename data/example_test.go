@@ -4,6 +4,7 @@ package data_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -202,4 +203,128 @@ func ExampleTree_ApplyDiff() {
 	//     "a": "x"
 	//   }
 	// }
+}
+
+// limitsParser parses JSON data of a module with user-ordered entries for the examples of the
+// libyang limitations of ReverseDiff and MergeDiff.
+func limitsParser() func(string) *data.Tree {
+	models := fstest.MapFS{"ex.yang": {Data: []byte(`module ex {
+  namespace "urn:ex";
+  prefix ex;
+  container c {
+    leaf a { type string; }
+    leaf-list ll { type string; ordered-by user; }
+    list l {
+      key k;
+      leaf k { type string; }
+      leaf-list inner { type string; ordered-by user; }
+    }
+  }
+}`)}}
+	ctx, _, err := yang.NewContext(yang.Options{NoYangLibrary: true}, models)
+	if err != nil {
+		panic(err)
+	}
+	if _, err := ctx.Load("ex", "", nil); err != nil {
+		panic(err)
+	}
+	return func(in string) *data.Tree {
+		t, _, err := data.Parse(context.Background(), strings.NewReader(in), data.FormatJSON, ctx.Schema(),
+			data.ParseOptions{})
+		if err != nil {
+			panic(err)
+		}
+		return t
+	}
+}
+
+// printErr prints the return code and the messages of a *data.ValidationError.
+func printErr(err error) {
+	var ve *data.ValidationError
+	if !errors.As(err, &ve) {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(ve.RC())
+	for _, d := range ve.Diags {
+		fmt.Println(" ", d.Msg)
+	}
+}
+
+// ReverseDiff mirrors a libyang limitation: a diff that deletes a subtree with user-ordered
+// instances below its top node has no anchors to reverse them with. Diff(new, old) with Defaults
+// builds the reverse instead.
+func ExampleTree_ReverseDiff() {
+	parse := limitsParser()
+	old, cur := parse(`{"ex:c": {"a": "x", "l": [{"k": "k1", "inner": ["1"]}]}}`), parse(`{"ex:c": {"a": "x"}}`)
+	d, err := data.Diff(old, cur, data.DiffOptions{}) // deletes l[k='k1'] with inner 1 inside
+	if err != nil {
+		panic(err)
+	}
+	_, err = d.ReverseDiff()
+	printErr(err)
+
+	back, err := data.Diff(cur, old, data.DiffOptions{Defaults: true})
+	if err != nil {
+		panic(err)
+	}
+	if err := cur.ApplyDiff(back, data.ApplyDiffOptions{}); err != nil {
+		panic(err)
+	}
+	n, err := cur.Find("/ex:c/l[k='k1']/inner[.='1']")
+	if err != nil || n == nil {
+		panic("not restored")
+	}
+	fmt.Println("restored:", n.Path())
+	// Output:
+	// LY_EINVAL
+	//   Failed to find metadata "orig-value" for node "/ex:c/l[k='k1']/inner[.='1']".
+	// restored: /ex:c/l[k='k1']/inner[.='1']
+}
+
+// MergeDiff mirrors a libyang limitation: merging diffs of user-ordered entries can fail, or
+// produce a diff whose anchors no longer exist. Diff(first, last) with Defaults gives the combined
+// diff instead.
+func ExampleTree_MergeDiff() {
+	parse := limitsParser()
+	diff := func(a, b *data.Tree) *data.Tree {
+		d, err := data.Diff(a, b, data.DiffOptions{})
+		if err != nil {
+			panic(err)
+		}
+		return d
+	}
+
+	// [x] -> [y z] -> [w z]: y is created, then deleted, so it leaves the merged diff, but z keeps
+	// its yang:value="y" anchor.
+	first := `{"ex:c": {"a": "v", "ll": ["x"]}}`
+	a, b, c := parse(first), parse(`{"ex:c": {"a": "v", "ll": ["y", "z"]}}`), parse(`{"ex:c": {"a": "v", "ll": ["w", "z"]}}`)
+	d := diff(a, b)
+	if err := d.MergeDiff(diff(b, c), data.MergeDiffOptions{}); err != nil {
+		panic(err)
+	}
+	printErr(a.ApplyDiff(d, data.ApplyDiffOptions{}))
+
+	// The workaround: one diff from the original tree to the final one.
+	a = parse(first)
+	whole, err := data.Diff(a, c, data.DiffOptions{Defaults: true})
+	if err != nil {
+		panic(err)
+	}
+	if err := a.ApplyDiff(whole, data.ApplyDiffOptions{}); err != nil {
+		panic(err)
+	}
+	fmt.Println("a = c:", diff(a, c) == nil)
+
+	// [w] -> [] -> [w]: the first diff deletes c with w inside, without an anchor, so the merge
+	// cannot turn the delete and the create of w into a move.
+	a, b = parse(`{"ex:c": {"ll": ["w"]}}`), parse(`{"ex:c": {}}`)
+	printErr(diff(a, b).MergeDiff(diff(b, a), data.MergeDiffOptions{}))
+	// Output:
+	// LY_EINVAL
+	//   Node "ll" instance to insert next to not found.
+	// a = c: true
+	// LY_EINVAL
+	//   Failed to find metadata "yang:orig-value" for node "/ex:c/ll[.='w']".
+	//   Merging operation "create" failed.
 }

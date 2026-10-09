@@ -6,7 +6,7 @@ Behaviour is ported from libyang (CESNET, BSD-3-Clause); API is idiomatic Go, no
 
 Status: current v1 scope, architecture and roadmap (rev 1 of 2026-09-30, kept current). Reference:
 libyang v5.8.6 (tag, 2026-06-22). M1, the vertical slice (design 05) on the compiler and
-data tree (designs 06, 07), closed 2026-10-08; next is M2 (§4). History lives in [docs/archive/](docs/archive/): the 2026-09-30 survey of
+data tree (designs 06, 07), closed 2026-10-08; M2, schema breadth, closed 2026-10-09; next is M3 (§4). History lives in [docs/archive/](docs/archive/): the 2026-09-30 survey of
 other Go YANG projects and the M0 gate decisions (former §0), and the plan review logs (former
 §10, §11). Work distribution between agents and models (former §2d):
 [docs/maintainers/agent-workflow.md](docs/maintainers/agent-workflow.md). Section numbers are kept

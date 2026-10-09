@@ -15,7 +15,7 @@
 
 ## Status
 
-- [README status table](https://github.com/vibe-ports/yang/blob/main/README.md#status): what is supported, partial and unsupported (for example `deviation` statements, anydata, RPC/action/notification data, full diff and yang-library are unsupported today). Read it before assuming a libyang feature exists.
+- [README status table](https://github.com/vibe-ports/yang/blob/main/README.md#status): what is supported, partial and unsupported (for example anydata/anyxml instances, RPC/action/notification data, `lyd_merge` options, NETCONF edit-config and yang-library are unsupported today; `deviation` statements and diff/apply/merge/reverse of diffs are supported). Read it before assuming a libyang feature exists.
 
 ## Behaviour differences
 
@@ -26,6 +26,7 @@
 - [API reference: yang](https://pkg.go.dev/github.com/vibe-ports/yang): contexts, schema snapshots and handles
 - [API reference: data](https://pkg.go.dev/github.com/vibe-ports/yang/data): parse, validate, print, edit
 - [README](https://github.com/vibe-ports/yang/blob/main/README.md): status, install, runnable example with output
+- [Migrating from libyang](https://github.com/vibe-ports/yang/blob/main/docs/migrating-from-libyang.md): libyang C calls mapped to the Go API, inherited libyang limitations, for services replacing a cgo binding
 - [Compatibility report](https://github.com/vibe-ports/yang/blob/main/README.md#how-compatibility-is-measured): how agreement with libyang is measured, current numbers
 - [Documentation index](https://github.com/vibe-ports/yang/blob/main/docs/README.md): designs, decisions, registries
 - [CONTRIBUTING](https://github.com/vibe-ports/yang/blob/main/CONTRIBUTING.md): setup, workflow, using an AI coding agent
