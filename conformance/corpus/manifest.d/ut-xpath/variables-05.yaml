@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-xpath/variables-05
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_variables:829 (expected first node a1)
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\">\n    <a>a1</a>\n    <b>b1</b>\n    <c>c1</c>\n</l1><l1 xmlns=\"urn:tests:a\">\n    <a>a2</a>\n    <b>b2</b>\n    <c>c2</c>\n</l1>"
+      context_path: "/a:l1[1]"
+      xpath: "/l1[$var[../a = 'a1']]/a"
+      vars: {"var": "c"}
+    golden: golden/variables-05.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null

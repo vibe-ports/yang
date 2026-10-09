@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-xpath/variables-14
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_variables:949 (expected LY_ENOTFOUND)
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<foo xmlns=\"urn:tests:a\">mstr</foo>"
+      context_path: "/a:foo"
+      xpath: "/foo[text() = $var55]"
+      vars: {"var1": "\"mstr\""}
+    golden: golden/variables-14.json
+    assert:
+      verdict: invalid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null
