@@ -1,0 +1,15 @@
+module ty9nx {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:ty9nx";
+  prefix nx;
+
+  import ietf-netconf-acm { prefix nacm; }
+  import ty9x { prefix t; }
+
+  description "node-instance-identifier default referencing an import-only module (#60).";
+
+  leaf p {
+    type nacm:node-instance-identifier;
+    default "/t:cx/t:lx";
+  }
+}

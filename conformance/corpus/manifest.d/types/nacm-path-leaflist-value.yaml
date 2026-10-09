@@ -1,0 +1,14 @@
+fixtures:
+  - id: types/nacm-path-leaflist-value
+    dir: types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/modules/yang/ietf-netconf-acm@2018-02-14.yang", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-2-Clause}   # leaf-list predicate value fails the leaf-list type (uint8); ty6.yang and data hand-written
+    rfc: ["RFC8341#3.5.2"]
+    areas: [types]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ietf-netconf-acm}, {name: ty6}]
+      format: xml
+      data_type: config
+      data: '<nacm xmlns="urn:ietf:params:xml:ns:yang:ietf-netconf-acm"><rule-list><name>r</name><rule><name>a</name><module-name>*</module-name><access-operations>*</access-operations><action>permit</action><path xmlns:t="urn:vibe-ports:ty6">/t:c/t:nl[.="x"]</path></rule></rule-list></nacm>'
+    golden: golden/nacm-path-leaflist-value.json

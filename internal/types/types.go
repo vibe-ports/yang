@@ -130,6 +130,8 @@ type Diag struct {
 	// located at the value's schema node, no data path): node-instance-identifier does not spend
 	// the path parser's or compiler's error as instance-identifier does.
 	Logged *Diag
+	// At is the schema node a Logged error is located at (nil: the value's schema node).
+	At *schema.Node
 }
 
 func (d *Diag) Error() string { return d.Msg }
@@ -190,6 +192,9 @@ type storeArgs struct {
 	// (instance-identifier details) are missing.
 	quiet bool
 	impl  Implementer // LYPLG_TYPE_STORE_IMPLEMENT
+	// keyErr is the error item of the last path predicate value that failed to store, which
+	// lyd_value_validate3 logs at the key or leaf-list node (ly_path_compile_predicate).
+	keyErr *Diag
 }
 
 func store(t *schema.Type, lex string, f Format, h Hints, pc PrefixCtx, ctx *schema.Node, only bool) (Value, *Diag) {

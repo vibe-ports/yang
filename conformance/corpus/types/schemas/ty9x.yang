@@ -1,0 +1,16 @@
+module ty9x {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:ty9x";
+  prefix x;
+
+  import ty9a { prefix a; }
+
+  description "Import-only target of a node-instance-identifier default; implementing it augments ty9a (#60).";
+
+  augment "/a:top" {
+    leaf ax { type string; }
+  }
+  container cx {
+    leaf lx { type string; }
+  }
+}

@@ -1,0 +1,9 @@
+module ty9a {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:ty9a";
+  prefix a;
+
+  description "Compiled module that ty9x augments (#60).";
+
+  container top;
+}

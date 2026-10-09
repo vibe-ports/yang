@@ -368,7 +368,13 @@ func compilePredicate(a *storeArgs, node *schema.Node, e *lyxp.Expr, i int) ([]P
 func storeKey(a *storeArgs, node *schema.Node, lex string) (Value, *Diag) {
 	b := *a
 	b.t, b.lex, b.h, b.ctx, b.only = node.Type, lex, HintData, node, false
-	return storeArgsDispatch(&b)
+	v, d := storeArgsDispatch(&b)
+	if d != nil {
+		k := *d
+		k.At = node
+		a.keyErr = &k
+	}
+	return v, d
 }
 
 // checkPathStatus ports lyplg_type_lypath_check_status.

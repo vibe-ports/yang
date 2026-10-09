@@ -33,7 +33,7 @@ func storeNodeInstanceID(a *storeArgs) (Value, *Diag) {
 		return Value{}, nodeIDErr(a, msg, "syntax")
 	}
 	if !implementPrefixes(a, e) {
-		return Value{}, errf("Failed to implement a module referenced by node-instance-identifier \"%s\".", a.lex)
+		return Value{}, &Diag{Code: CodeData} // no error item: lys_compile_expr_implement's rc alone
 	}
 	p, msg, _ := pathCompileAt(a, e, nil, a.ctx != nil && a.ctx.InOutput(), true)
 	if msg != "" {
@@ -47,11 +47,15 @@ func storeNodeInstanceID(a *storeArgs) (Value, *Diag) {
 }
 
 // nodeIDErr is the plugin's error item after the path error msg, which ly_path_parse /
-// ly_path_compile logged (LYVE_XPATH) and the plugin leaves in the context log; inside a union
-// nothing is logged.
+// ly_path_compile logged (LYVE_XPATH, or the predicate value's own error item) and the plugin
+// leaves in the context log; inside a union nothing is logged.
 func nodeIDErr(a *storeArgs, msg, kind string) *Diag {
 	d := errf("Invalid node-instance-identifier \"%s\" value - %s error.", a.lex, kind)
-	if !a.quiet {
+	switch {
+	case a.quiet:
+	case a.keyErr != nil: // a predicate value: its own error item, not LYVE_XPATH
+		d.Logged = a.keyErr
+	default:
 		d.Logged = &Diag{Code: "LYVE_XPATH", Msg: msg}
 	}
 	return d

@@ -12,5 +12,10 @@ module ty6 {
       leaf v { type string; }
     }
     leaf-list ll { type string; }
+    list n {
+      key "id";
+      leaf id { type uint8; }
+    }
+    leaf-list nl { type uint8; }
   }
 }

@@ -1,0 +1,12 @@
+fixtures:
+  - id: types/nacm-path-default-implement-fail
+    dir: types
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/modules/yang/ietf-netconf-acm@2018-02-14.yang", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-2-Clause}   # ref_implemented node-instance-identifier default whose module fails to compile when implemented; ty9*.yang hand-written
+    rfc: ["RFC8341#3.5.2"]
+    areas: [types, schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules: [{name: ty9nb}]
+      context_options: ["ref_implemented"]
+    golden: golden/nacm-path-default-implement-fail.json

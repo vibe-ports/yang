@@ -318,15 +318,16 @@ func (c *Context) unresDflts(n *schema.Node) error {
 		if c.opts.RefImplemented { // LYPLG_TYPE_STORE_IMPLEMENT
 			_, diag = types.StoreImplement(n.Type, d.Lex, types.FormatSchema, types.HintSchema, d.NS, n,
 				func(m *schema.Module, importFeatures bool) error {
-					err := c.implementRef(m, importFeatures)
-					// identityref: lyplg_type_make_implemented's rc is the store's; an
-					// instance-identifier makes it LY_EVALID (lyplg_type_lypath_new), except for
-					// what the port cannot do (ErrUnsupported) or must stop (ErrBudget)
-					if !importFeatures || errors.Is(err, ErrUnsupported) || errors.Is(err, ErrBudget) {
-						implErr = err
-					}
-					return err
+					implErr = c.implementRef(m, importFeatures)
+					return implErr
 				})
+			// identityref (lyplg_type_make_implemented) and node-instance-identifier return the
+			// implement rc as the store's, with no error item; an instance-identifier makes it
+			// LY_EVALID with an item (lyplg_type_lypath_new), except for what the port cannot do
+			// (ErrUnsupported) or must stop (ErrBudget)
+			if diag == nil || diag.Msg != "" && !errors.Is(implErr, ErrUnsupported) && !errors.Is(implErr, ErrBudget) {
+				implErr = nil
+			}
 		} else {
 			_, diag = types.Store(n.Type, d.Lex, types.FormatSchema, types.HintSchema, d.NS, n)
 		}

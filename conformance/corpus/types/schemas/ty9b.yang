@@ -1,0 +1,11 @@
+module ty9b {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:ty9b";
+  prefix b;
+
+  description "Import-only target of a node-instance-identifier default; it fails to compile (#60).";
+
+  container cb {
+    leaf lb { type b:undefined; }
+  }
+}
