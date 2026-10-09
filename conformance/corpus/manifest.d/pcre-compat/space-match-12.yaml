@@ -1,0 +1,11 @@
+fixtures:
+  - id: pcre-compat/space-match-12
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific (pattern_compat, D-0031): \s is Z, \h, \v (PCRE2_UCP)
+    rfc: []
+    areas: [types]
+    request: {"op": "data", "context_options": ["pattern_compat"], "searchdirs": ["schemas"], "modules": [{"name": "pcx"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<space xmlns=\"urn:tests:pcx\">&#xA0;</space>"}
+    golden: golden/space-match-12.json
+    assert:
+      verdict: valid
+      deviation: null

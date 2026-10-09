@@ -57,7 +57,7 @@ Produce goldens and `internal/xpath/testdata/oracle-pv2.jsonl` with
 | `base_dir` | optional; `chdir` before anything, all relative paths resolve from it |
 | `searchdirs` | module search dirs. libyang's installed module dir is always searched first (it holds the internal modules); CWD is never searched |
 | `modules` | ordered list `{name, revision?, features?}` to **implement**; `features`: omitted = none enabled, `["*"]` = all, else list |
-| `context_options` | optional list: `all_implemented`, `ref_implemented`, `no_yanglibrary`, `enable_imp_features`, `compile_obsolete`, `leafref_extended`, `leafref_linking`, `builtin_plugins_only` |
+| `context_options` | optional list: `all_implemented`, `ref_implemented`, `no_yanglibrary`, `enable_imp_features`, `compile_obsolete`, `leafref_extended`, `leafref_linking`, `builtin_plugins_only`, `pattern_compat` (no libyang flag: libyang always compiles patterns with PCRE2; it tells the Go engine to set `Options.PatternCompat`, D-0031) |
 
 Any input `X` can be given inline (`"X": "<text>"`) or as a file (`"X_file": "path"`).
 

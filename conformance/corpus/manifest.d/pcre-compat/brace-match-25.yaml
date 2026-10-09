@@ -1,0 +1,11 @@
+fixtures:
+  - id: pcre-compat/brace-match-25
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific (pattern_compat, D-0031): } is a literal
+    rfc: []
+    areas: [types]
+    request: {"op": "data", "context_options": ["pattern_compat"], "searchdirs": ["schemas"], "modules": [{"name": "pcx"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<brace xmlns=\"urn:tests:pcx\">y}</brace>"}
+    golden: golden/brace-match-25.json
+    assert:
+      verdict: valid
+      deviation: null

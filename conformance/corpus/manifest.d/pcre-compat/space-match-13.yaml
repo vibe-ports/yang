@@ -1,0 +1,11 @@
+fixtures:
+  - id: pcre-compat/space-match-13
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific (pattern_compat, D-0031): U+180E is in PCRE2's \h list
+    rfc: []
+    areas: [types]
+    request: {"op": "data", "context_options": ["pattern_compat"], "searchdirs": ["schemas"], "modules": [{"name": "pcx"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<space xmlns=\"urn:tests:pcx\">&#x180E;</space>"}
+    golden: golden/space-match-13.json
+    assert:
+      verdict: valid
+      deviation: null

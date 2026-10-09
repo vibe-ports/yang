@@ -1,0 +1,11 @@
+fixtures:
+  - id: pcre-compat/sub-match-28
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific (pattern_compat, D-0031): [a-z-[aeiou] then a literal ]: XSD subtraction is not supported (D-0002)
+    rfc: []
+    areas: [types]
+    request: {"op": "data", "context_options": ["pattern_compat"], "searchdirs": ["schemas"], "modules": [{"name": "pcx"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<sub xmlns=\"urn:tests:pcx\">b]</sub>"}
+    golden: golden/sub-match-28.json
+    assert:
+      verdict: valid
+      deviation: null

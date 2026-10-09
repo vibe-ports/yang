@@ -1,0 +1,23 @@
+module pcx {
+  yang-version 1.1;
+  namespace "urn:tests:pcx";
+  prefix pcx;
+  description
+    "Patterns libyang compiles with PCRE2 (D-0031).";
+  leaf hex { type string { pattern '[\x20-\x7E]+'; } }
+  leaf hexb { type string { pattern '\x{41}\x42'; } }
+  leaf caret { type string { pattern '[a-z\^]+'; } }
+  leaf esccaret { type string { pattern '\^a'; } }
+  leaf dollar { type string { pattern 'a\$'; } }
+  leaf dig { type string { pattern '\d+'; } }
+  leaf word { type string { pattern '\w+'; } }
+  leaf space { type string { pattern '\s'; } }
+  leaf dot { type string { pattern '.'; } }
+  leaf prop { type string { pattern '\p{L}\pN'; } }
+  leaf posix { type string { pattern '[[:alpha:]]+'; } }
+  leaf ncg { type string { pattern '(?:ab)+?c'; } }
+  leaf upto { type string { pattern 'a{,3}'; } }
+  leaf brace { type string { pattern 'x{|y}'; } }
+  leaf block { type string { pattern '\p{IsGreekExtended}'; } }
+  leaf sub { type string { pattern '[a-z-[aeiou]]'; } }
+}

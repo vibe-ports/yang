@@ -1,0 +1,12 @@
+fixtures:
+  - id: pcre-compat/block-nomatch-27
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific (pattern_compat, D-0031): U+1F00 is not in the Greek block range
+    rfc: []
+    areas: [types]
+    request: {"op": "data", "context_options": ["pattern_compat"], "searchdirs": ["schemas"], "modules": [{"name": "pcx"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<block xmlns=\"urn:tests:pcx\">&#x1F00;</block>"}
+    golden: golden/block-nomatch-27.json
+    assert:
+      verdict: invalid
+      diagnostics: [{vecode_name: LYVE_DATA, schema_path: /pcx:block, msg: "Unsatisfied pattern - \"\u1f00\" does not match \"\\p{IsGreekExtended}\"."}]
+      deviation: null

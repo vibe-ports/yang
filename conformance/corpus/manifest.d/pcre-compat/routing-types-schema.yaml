@@ -1,0 +1,11 @@
+fixtures:
+  - id: pcre-compat/routing-types-schema
+    dir: pcre-compat
+    source: {url: "https://github.com/YangModels/yang/blob/b5465a86cd2457352dcd18a42043e40f0bab65ab/standard/ietf/RFC/ietf-routing-types%402017-12-04.yang + hand-written prt (this repo)", commit: b5465a86cd2457352dcd18a42043e40f0bab65ab, license: "BSD-2-Clause AND BSD-3-Clause"}   # ietf-routing-types (RFC 8294), 16 pattern statements, through prt
+    rfc: ["RFC8294#3"]
+    areas: [types]
+    request: {"op": "schema", "context_options": ["pattern_compat"], "searchdirs": ["public"], "modules": [{"name": "prt"}]}
+    golden: golden/routing-types-schema.json
+    assert:
+      verdict: valid
+      deviation: null

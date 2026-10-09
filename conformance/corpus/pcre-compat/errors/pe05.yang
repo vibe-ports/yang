@@ -1,0 +1,6 @@
+module pe05 {
+  yang-version 1.1;
+  namespace "urn:tests:pe05";
+  prefix pe05;
+  leaf l { type string { pattern '\x{41'; } }
+}

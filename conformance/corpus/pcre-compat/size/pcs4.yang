@@ -1,0 +1,7 @@
+module pcs4 {
+  yang-version 1.1;
+  namespace "urn:tests:pcs4";
+  prefix pcs4;
+  description "\\P{Any} outside a class compiles to an empty 32-byte class: 66 007 bytes.";
+  leaf l { type string { pattern '(?:\P{Any}\P{Any}){1000}'; } }
+}

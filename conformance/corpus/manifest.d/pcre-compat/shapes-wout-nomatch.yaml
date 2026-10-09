@@ -1,0 +1,12 @@
+fixtures:
+  - id: pcre-compat/shapes-wout-nomatch
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific (pattern_compat, D-0031): \w outside a class with non-ASCII letters
+    rfc: []
+    areas: [types]
+    request: {"op": "data", "context_options": ["pattern_compat"], "searchdirs": ["schemas"], "modules": [{"name": "pcr"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<wout xmlns=\"urn:tests:pcr\">&#x20AC;</wout>"}
+    golden: golden/shapes-wout-nomatch.json
+    assert:
+      verdict: invalid
+      diagnostics: [{vecode_name: LYVE_DATA, schema_path: /pcr:wout, msg: "Unsatisfied pattern - \"\u20ac\" does not match \"\\w+\"."}]
+      deviation: null

@@ -3,6 +3,7 @@
 package yang_test
 
 import (
+	"errors"
 	"testing"
 	"testing/fstest"
 
@@ -51,5 +52,34 @@ func TestContextLoadFeatures(t *testing.T) {
 	}
 	if diags, err := ctx.Load("f", "", []string{"*"}); err != nil {
 		t.Errorf("all: %v %+v", err, diags)
+	}
+}
+
+func TestContextPatternCompat(t *testing.T) {
+	dir := fstest.MapFS{
+		"h.yang": {Data: []byte(`module h { namespace urn:h; prefix h; leaf l { type string { pattern '[\x20-\x7E]+'; } } }`)},
+		"b.yang": {Data: []byte(`module b { namespace urn:b; prefix b; leaf l { type string { pattern '\bx'; } } }`)},
+		"r.yang": {Data: []byte(`module r { namespace urn:r; prefix r; leaf l { type string { pattern 'a{1001}'; } } }`)},
+	}
+	strict, _, err := yang.NewContext(yang.Options{}, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := strict.Load("h", "", nil); err == nil {
+		t.Error(`strict XSD accepted \x20`)
+	}
+	// a pattern xsdre cannot translate (U-0001) is ErrUnsupported, not an LY_EVALID diagnostic
+	if diags, err := strict.Load("r", "", nil); !errors.Is(err, yang.ErrUnsupported) {
+		t.Errorf("strict a{1001}: %v %+v, want ErrUnsupported", err, diags)
+	}
+	ctx, _, err := yang.NewContext(yang.Options{PatternCompat: true}, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diags, err := ctx.Load("h", "", nil); err != nil {
+		t.Errorf("h: %v %+v", err, diags)
+	}
+	if _, err := ctx.Load("b", "", nil); !errors.Is(err, yang.ErrUnsupported) {
+		t.Errorf(`\b: %v, want ErrUnsupported`, err)
 	}
 }

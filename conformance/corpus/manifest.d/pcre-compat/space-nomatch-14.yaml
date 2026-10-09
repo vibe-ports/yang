@@ -1,0 +1,12 @@
+fixtures:
+  - id: pcre-compat/space-nomatch-14
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific (pattern_compat, D-0031): U+200B is Cf
+    rfc: []
+    areas: [types]
+    request: {"op": "data", "context_options": ["pattern_compat"], "searchdirs": ["schemas"], "modules": [{"name": "pcx"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<space xmlns=\"urn:tests:pcx\">&#x200B;</space>"}
+    golden: golden/space-nomatch-14.json
+    assert:
+      verdict: invalid
+      diagnostics: [{vecode_name: LYVE_DATA, schema_path: /pcx:space, msg: "Unsatisfied pattern - \"\u200b\" does not match \"\\s\"."}]
+      deviation: null

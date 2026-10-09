@@ -1,0 +1,16 @@
+module prt {
+  yang-version 1.1;
+  namespace "urn:tests:prt";
+  prefix prt;
+  import ietf-routing-types { prefix rt; }
+  description "Uses every pattern-restricted typedef of ietf-routing-types (RFC 8294).";
+  leaf rt { type rt:route-target; }
+  leaf rt6 { type rt:ipv6-route-target; }
+  leaf rd { type rt:route-distinguisher; }
+  leaf ro { type rt:route-origin; }
+  leaf ro6 { type rt:ipv6-route-origin; }
+  leaf mc4 { type rt:ipv4-multicast-group-address; }
+  leaf mc6 { type rt:ipv6-multicast-group-address; }
+  leaf mc { type rt:ip-multicast-group-address; }
+  leaf bw { type rt:bandwidth-ieee-float32; }
+}

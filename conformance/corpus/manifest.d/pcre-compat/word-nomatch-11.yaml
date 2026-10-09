@@ -1,0 +1,12 @@
+fixtures:
+  - id: pcre-compat/word-nomatch-11
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific (pattern_compat, D-0031): the euro sign is Sc
+    rfc: []
+    areas: [types]
+    request: {"op": "data", "context_options": ["pattern_compat"], "searchdirs": ["schemas"], "modules": [{"name": "pcx"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<word xmlns=\"urn:tests:pcx\">&#x20AC;</word>"}
+    golden: golden/word-nomatch-11.json
+    assert:
+      verdict: invalid
+      diagnostics: [{vecode_name: LYVE_DATA, schema_path: /pcx:word, msg: "Unsatisfied pattern - \"\u20ac\" does not match \"\\w+\"."}]
+      deviation: null

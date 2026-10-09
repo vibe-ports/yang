@@ -1,0 +1,11 @@
+fixtures:
+  - id: pcre-compat/dig-match-08
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific (pattern_compat, D-0031): \d is \p{Nd} (PCRE2_UCP): Arabic-Indic digits
+    rfc: []
+    areas: [types]
+    request: {"op": "data", "context_options": ["pattern_compat"], "searchdirs": ["schemas"], "modules": [{"name": "pcx"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<dig xmlns=\"urn:tests:pcx\">&#x663;&#x664;</dig>"}
+    golden: golden/dig-match-08.json
+    assert:
+      verdict: valid
+      deviation: null

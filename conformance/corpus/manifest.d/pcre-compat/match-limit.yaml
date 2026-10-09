@@ -1,0 +1,12 @@
+fixtures:
+  - id: pcre-compat/match-limit
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang's pcre2_match stops at the default match limit on (||a){0,40}b|.* against "y" (LY_ESYS "match limit exceeded"); RE2 matches it through .* (D-0033)
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request: {"op": "data", "context_options": ["pattern_compat"], "searchdirs": ["match"], "modules": [{"name": "pcm"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<l xmlns=\"urn:tests:pcm\">y</l>"}
+    golden: golden/match-limit.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: "D-0033"

@@ -1,0 +1,12 @@
+fixtures:
+  - id: pcre-compat/dollar-nomatch-07
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific (pattern_compat, D-0031): \$ never matches a dollar sign
+    rfc: []
+    areas: [types]
+    request: {"op": "data", "context_options": ["pattern_compat"], "searchdirs": ["schemas"], "modules": [{"name": "pcx"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<dollar xmlns=\"urn:tests:pcx\">a$</dollar>"}
+    golden: golden/dollar-nomatch-07.json
+    assert:
+      verdict: invalid
+      diagnostics: [{vecode_name: LYVE_DATA, schema_path: /pcx:dollar, msg: "Unsatisfied pattern - \"a$\" does not match \"a\\$\"."}]
+      deviation: null

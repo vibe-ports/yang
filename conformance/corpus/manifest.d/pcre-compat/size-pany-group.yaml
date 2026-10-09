@@ -1,0 +1,12 @@
+fixtures:
+  - id: pcre-compat/size-pany-group
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific (pattern_compat, D-0031): \P{Any} outside a class is an empty 32-byte OP_CLASS: (?:\P{Any}\P{Any}){1000} is 66 007 bytes, rejected
+    rfc: []
+    areas: [types]
+    request: {"op": "schema", "context_options": ["pattern_compat"], "searchdirs": ["size"], "modules": [{"name": "pcs4"}]}
+    golden: golden/size-pany-group.json
+    assert:
+      verdict: invalid
+      diagnostics: [{schema_path: /pcs4:l, msg: "Regular expression \"(?:\\P{Any}\\P{Any}){1000}\" is not valid (\"\": regular expression is too large)."}]
+      deviation: null

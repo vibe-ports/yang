@@ -1,0 +1,265 @@
+{
+  "context_diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "compiled": "module pcr {\n  namespace \"urn:tests:pcr\";\n  prefix pcr;\n\n  description\n    \"Common pattern shapes that rely on libyang's PCRE2 syntax.\";\n\n  leaf hexr {\n    type string {\n      pattern \"[\\\\x20-\\\\x7F]*\";\n    }\n    config true;\n    status current;\n  }\n  leaf punct {\n    type string {\n      pattern \"[a-zA-Z0-9\\\\-_\\\\/\\\\.\\\\%\\\\!\\\\?\\\\:]*\";\n    }\n    config true;\n    status current;\n  }\n  leaf caretr {\n    type string {\n      pattern \"[a-z0-9\\\\-\\\\^]*\";\n    }\n    config true;\n    status current;\n  }\n  leaf dcls {\n    type string {\n      pattern \"[\\\\d]+\";\n    }\n    config true;\n    status current;\n  }\n  leaf wcls {\n    type string {\n      pattern \"[\\\\w]+\";\n    }\n    config true;\n    status current;\n  }\n  leaf dout {\n    type string {\n      pattern \"\\\\d+\";\n    }\n    config true;\n    status current;\n  }\n  leaf wout {\n    type string {\n      pattern \"\\\\w+\";\n    }\n    config true;\n    status current;\n  }\n}\n",
+      "diagnostics": [],
+      "features": [],
+      "identities": [],
+      "name": "pcr",
+      "revision": null,
+      "schema_tree": [
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pcr",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/pcr:hexr",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[\\x20-\\x7F]*",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pcr",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/pcr:punct",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[a-zA-Z0-9\\-_\\/\\.\\%\\!\\?\\:]*",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pcr",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/pcr:caretr",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[a-z0-9\\-\\^]*",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pcr",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/pcr:dcls",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[\\d]+",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pcr",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/pcr:wcls",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "[\\w]+",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pcr",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/pcr:dout",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "\\d+",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        },
+        {
+          "config": true,
+          "defaults": null,
+          "extensions": null,
+          "keys": null,
+          "mandatory": false,
+          "max_elements": null,
+          "min_elements": null,
+          "module": "pcr",
+          "musts": null,
+          "nodetype": "leaf",
+          "ordered_by": null,
+          "path": "/pcr:wout",
+          "presence": null,
+          "status": "current",
+          "type": {
+            "base": "string",
+            "bases": null,
+            "bits": null,
+            "enums": null,
+            "fraction_digits": null,
+            "leafref": null,
+            "length": null,
+            "patterns": [
+              {
+                "expr": "\\w+",
+                "invert": false
+              }
+            ],
+            "range": null,
+            "typedefs": null,
+            "union": null
+          },
+          "when": null
+        }
+      ]
+    }
+  ],
+  "op": "schema",
+  "protocol": 2,
+  "verdict": "valid"
+}

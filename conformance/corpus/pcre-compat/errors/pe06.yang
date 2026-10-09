@@ -1,0 +1,6 @@
+module pe06 {
+  yang-version 1.1;
+  namespace "urn:tests:pe06";
+  prefix pe06;
+  leaf l { type string { pattern '\p{IsFoo}'; } }
+}

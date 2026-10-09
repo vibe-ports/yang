@@ -1,0 +1,12 @@
+fixtures:
+# BEGIN pcre-compat (issue 73: Options.PatternCompat, libyang's PCRE2 pattern semantics, D-0031)
+  - id: pcre-compat/schema
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific: PCRE2 pattern syntax with pattern_compat (D-0031)
+    rfc: []
+    areas: [types]
+    request: {"op": "schema", "context_options": ["pattern_compat"], "searchdirs": ["schemas"], "modules": [{"name": "pcx"}]}
+    golden: golden/schema.json
+    assert:
+      verdict: valid
+      deviation: null

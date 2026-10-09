@@ -1,0 +1,11 @@
+fixtures:
+  - id: pcre-compat/size-limit-under
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific (pattern_compat, D-0031): 32764 literals: 65535 compiled bytes counting OP_END, accepted
+    rfc: []
+    areas: [types]
+    request: {"op": "schema", "context_options": ["pattern_compat"], "searchdirs": ["size"], "modules": [{"name": "pcs3"}]}
+    golden: golden/size-limit-under.json
+    assert:
+      verdict: valid
+      deviation: null

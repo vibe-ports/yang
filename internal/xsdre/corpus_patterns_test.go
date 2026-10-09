@@ -22,6 +22,10 @@ var corpusPatternDeviations = map[string]string{
 	`\p{IsBasicLatinBogus}`: "D-0006", // libyang's block-name prefix match resolves it to BasicLatin
 }
 
+// compatSets are the corpus sets whose fixtures run with context option pattern_compat
+// (Options.PatternCompat): their patterns must compile with CompileCompat, not Compile.
+var compatSets = map[string]bool{"pcre-compat": true}
+
 // TestCorpusPatterns is the pattern completeness scan of ADR 0003 (#40): every pattern libyang
 // accepted somewhere in the conformance corpus must compile, or be a recorded deviation
 // (D-0002…D-0008, U-0001). libyang accepted a pattern when it is in a golden's compiled type
@@ -31,6 +35,7 @@ func TestCorpusPatterns(t *testing.T) {
 	root := filepath.Join("..", "..", "conformance", "corpus")
 	fsys := os.DirFS(root)
 	pats := map[string]string{}           // accepted pattern -> where it was seen
+	strict := map[string]bool{}           // accepted pattern seen in a set without pattern_compat
 	accepted := map[string]bool{}         // "<set>/<module>" accepted in some golden
 	files := map[string]map[string]bool{} // "<set>/<module>" -> its .yang files' patterns
 	var yangFiles, unparsed int
@@ -49,7 +54,7 @@ func TestCorpusPatterns(t *testing.T) {
 			if json.Unmarshal(b, &v) != nil {
 				return nil // not a response
 			}
-			collectPatterns(v, func(p string) { pats[p] = rel })
+			collectPatterns(v, func(p string) { pats[p], strict[p] = rel, strict[p] || !compatSets[set] })
 			for _, m := range asList(v["modules"]) {
 				if m, ok := m.(map[string]any); ok && m["accepted"] == true {
 					accepted[set+"/"+m["name"].(string)] = true
@@ -95,6 +100,7 @@ func TestCorpusPatterns(t *testing.T) {
 				if _, ok := pats[p]; !ok {
 					pats[p] = key
 				}
+				strict[p] = strict[p] || !compatSets[strings.SplitN(key, "/", 2)[0]]
 			}
 		}
 	}
@@ -103,7 +109,11 @@ func TestCorpusPatterns(t *testing.T) {
 	}
 	var refused int
 	for _, p := range slices.Sorted(maps.Keys(pats)) {
-		_, err := Compile(p)
+		compile := Compile
+		if !strict[p] {
+			compile = CompileCompat
+		}
+		_, err := compile(p)
 		dev, listed := corpusPatternDeviations[p]
 		switch {
 		case err == nil && listed:

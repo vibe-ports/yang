@@ -1,0 +1,45 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pcr",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"pcr:punct\": \"a/b.c%d!e?f:g-h_1\"\n}\n",
+    "xml": "<punct xmlns=\"urn:tests:pcr\">a/b.c%d!e?f:g-h_1</punct>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pcr:punct",
+      "schema": "/pcr:punct",
+      "value": {
+        "canonical": "a/b.c%d!e?f:g-h_1",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

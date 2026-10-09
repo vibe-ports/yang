@@ -1,0 +1,12 @@
+fixtures:
+  - id: pcre-compat/esccaret-nomatch-05
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific (pattern_compat, D-0031): libyang turns \^ into \\^: a backslash then a start assertion, never matches
+    rfc: []
+    areas: [types]
+    request: {"op": "data", "context_options": ["pattern_compat"], "searchdirs": ["schemas"], "modules": [{"name": "pcx"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<esccaret xmlns=\"urn:tests:pcx\">^a</esccaret>"}
+    golden: golden/esccaret-nomatch-05.json
+    assert:
+      verdict: invalid
+      diagnostics: [{vecode_name: LYVE_DATA, schema_path: /pcx:esccaret, msg: "Unsatisfied pattern - \"^a\" does not match \"\\^a\"."}]
+      deviation: null

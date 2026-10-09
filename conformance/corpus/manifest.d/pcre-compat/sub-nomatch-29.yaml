@@ -1,0 +1,12 @@
+fixtures:
+  - id: pcre-compat/sub-nomatch-29
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific (pattern_compat, D-0031): the ] is required
+    rfc: []
+    areas: [types]
+    request: {"op": "data", "context_options": ["pattern_compat"], "searchdirs": ["schemas"], "modules": [{"name": "pcx"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<sub xmlns=\"urn:tests:pcx\">b</sub>"}
+    golden: golden/sub-nomatch-29.json
+    assert:
+      verdict: invalid
+      diagnostics: [{vecode_name: LYVE_DATA, schema_path: /pcx:sub, msg: "Unsatisfied pattern - \"b\" does not match \"[a-z-[aeiou]]\"."}]
+      deviation: null

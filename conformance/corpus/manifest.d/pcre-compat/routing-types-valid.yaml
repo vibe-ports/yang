@@ -1,0 +1,11 @@
+fixtures:
+  - id: pcre-compat/routing-types-valid
+    dir: pcre-compat
+    source: {url: "https://github.com/YangModels/yang/blob/b5465a86cd2457352dcd18a42043e40f0bab65ab/standard/ietf/RFC/ietf-routing-types%402017-12-04.yang + hand-written prt (this repo)", commit: b5465a86cd2457352dcd18a42043e40f0bab65ab, license: "BSD-2-Clause AND BSD-3-Clause"}   # ietf-routing-types values with pattern_compat
+    rfc: ["RFC8294#3"]
+    areas: [types]
+    request: {"op": "data", "context_options": ["pattern_compat"], "searchdirs": ["public"], "modules": [{"name": "prt"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<rt xmlns=\"urn:tests:prt\">0:65000:100</rt><rt6 xmlns=\"urn:tests:prt\">2001:db8::1:100</rt6><rd xmlns=\"urn:tests:prt\">1:192.0.2.1:7</rd><ro xmlns=\"urn:tests:prt\">2:4200000000:1</ro><ro6 xmlns=\"urn:tests:prt\">2001:db8::2:65535</ro6><mc4 xmlns=\"urn:tests:prt\">239.1.2.3</mc4><mc6 xmlns=\"urn:tests:prt\">ff02::1</mc6><mc xmlns=\"urn:tests:prt\">224.0.0.1</mc><bw xmlns=\"urn:tests:prt\">0x1.8p+10</bw>"}
+    golden: golden/routing-types-valid.json
+    assert:
+      verdict: valid
+      deviation: null

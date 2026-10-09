@@ -91,7 +91,8 @@ func (c *Context) newNodeCtx(m *Module, out *schema.Module) *nodeCtx {
 		c.usedGrp = map[*parser.Node]bool{}
 	}
 	w := &nodeCtx{c: c, cur: out, pm: &m.pmod, fl: map[*schema.Node]int{},
-		tc:      &typeCtx{cur: out, pmod: &m.pmod, parsed: parsed, cache: c.typeCache, budget: c.opts.Budget, types: c.types},
+		tc: &typeCtx{cur: out, pmod: &m.pmod, parsed: parsed, cache: c.typeCache, budget: c.opts.Budget, types: c.types,
+			compat: c.opts.PatternCompat},
 		pparent: map[*parser.Node]*parser.Node{}, indexed: map[*pmod]bool{}, from: map[any]*pmod{},
 		rfnExts: map[*parser.Node][]stmtIn{}, mustLocal: map[*schema.Must]*pmod{},
 		pendingOf: map[*parser.Node]int{}, groupings: map[*parser.Node]bool{}, grpIdx: map[*parser.Node]map[string]*parser.Node{}}

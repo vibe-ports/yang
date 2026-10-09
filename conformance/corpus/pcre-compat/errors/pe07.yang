@@ -1,0 +1,6 @@
+module pe07 {
+  yang-version 1.1;
+  namespace "urn:tests:pe07";
+  prefix pe07;
+  leaf l { type string { pattern '[\d-z]'; } }
+}

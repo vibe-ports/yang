@@ -1,0 +1,11 @@
+fixtures:
+  - id: pcre-compat/block-match-26
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific (pattern_compat, D-0031): libyang prefix-matches IsGreekExtended to Greek (D-0006)
+    rfc: []
+    areas: [types]
+    request: {"op": "data", "context_options": ["pattern_compat"], "searchdirs": ["schemas"], "modules": [{"name": "pcx"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<block xmlns=\"urn:tests:pcx\">&#x3B1;</block>"}
+    golden: golden/block-match-26.json
+    assert:
+      verdict: valid
+      deviation: null

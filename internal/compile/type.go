@@ -7,6 +7,8 @@
 package compile
 
 import (
+	"errors"
+	"fmt"
 	"math"
 	"strings"
 	"unicode/utf8"
@@ -15,6 +17,7 @@ import (
 	"github.com/vibe-ports/yang/internal/parser"
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
+	"github.com/vibe-ports/yang/internal/xsdre"
 )
 
 // Restriction substatement flags of a parsed type (libyang LYS_SET_*).
@@ -372,7 +375,10 @@ func (c *typeCtx) newType(sc *scope, st schema.Status, name string, tp *parser.T
 		}
 		for _, p := range tp.Patterns {
 			cp := &schema.Pattern{Expr: p.Arg, Invert: p.Invert, Msg: p.ErrorMessage, AppTag: p.ErrorAppTag}
-			if perr := types.CompilePattern(cp); perr != nil {
+			if perr := types.CompilePattern(cp, c.compat); perr != nil {
+				if errors.Is(perr, xsdre.ErrUnsupported) {
+					return nil, fmt.Errorf("%w: pattern %q: %w", ErrUnsupported, p.Arg, perr)
+				}
 				// libyang logs the PCRE2 message without a validation code (LYVE_SUCCESS)
 				return nil, &vErr{Err: "LY_EVALID", Code: ly.Success,
 					Msg: "Regular expression \"" + p.Arg + "\" is not valid (" + perr.Error() + ")."}

@@ -1,0 +1,12 @@
+fixtures:
+  - id: pcre-compat/dig-nomatch-09
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific (pattern_compat, D-0031): superscript two is No, not Nd
+    rfc: []
+    areas: [types]
+    request: {"op": "data", "context_options": ["pattern_compat"], "searchdirs": ["schemas"], "modules": [{"name": "pcx"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<dig xmlns=\"urn:tests:pcx\">&#xB2;</dig>"}
+    golden: golden/dig-nomatch-09.json
+    assert:
+      verdict: invalid
+      diagnostics: [{vecode_name: LYVE_DATA, schema_path: /pcx:dig, msg: "Unsatisfied pattern - \"\u00b2\" does not match \"\\d+\"."}]
+      deviation: null

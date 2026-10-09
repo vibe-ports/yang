@@ -40,6 +40,13 @@ type Options struct {
 	// other modules with their own handler store as their base type, with only its
 	// restrictions and canonical form.
 	BuiltinPluginsOnly bool
+	// PatternCompat compiles YANG pattern statements as libyang v5.8.6 does, through its
+	// XSD-to-PCRE2 rewriting (lys_compile_type_patterns, ly_pat_compile_xmlschema): PCRE-only
+	// syntax such as \x20 escapes, (?:…), a{,3} and lazy quantifiers is accepted, \d, \w, \s
+	// and '.' have PCRE2's Unicode meanings, and invalid patterns get libyang's messages. A PCRE2
+	// construct with no RE2 equivalent (\b, lookaround, backreferences, …) fails with
+	// ErrUnsupported. Without it patterns are strict XSD regular expressions (RFC 7950 §9.4.5).
+	PatternCompat bool
 	// Loader supplies modules and submodules not found otherwise (libyang's
 	// import callback): the YANG text of module@revision, or of its submodule
 	// when submodule is not empty; ok false when it has none. It is called
@@ -100,7 +107,7 @@ func NewContext(opts Options, dirs ...fs.FS) (*Context, []Diagnostic, error) {
 		NoYangLibrary: opts.NoYangLibrary, DisableSearchdirs: opts.DisableSearchdirs,
 		PreferSearchdirs: opts.PreferSearchdirs, EnableImportFeatures: opts.EnableImportFeatures, CompileObsolete: opts.CompileObsolete,
 		RefImplemented: opts.RefImplemented, LeafrefExtended: opts.LeafrefExtended,
-		BuiltinPluginsOnly: opts.BuiltinPluginsOnly, Loader: opts.Loader, MaxSearchDirs: opts.MaxSearchDirs,
+		BuiltinPluginsOnly: opts.BuiltinPluginsOnly, PatternCompat: opts.PatternCompat, Loader: opts.Loader, MaxSearchDirs: opts.MaxSearchDirs,
 		Parse: parser.Budget(opts.ParseBudget)}, dirs...)
 	if err != nil {
 		return nil, convert(diags), err

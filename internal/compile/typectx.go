@@ -54,7 +54,8 @@ type typeCtx struct {
 	// nil means no if-feature may occur.
 	iff    func(pm *pmod, ifs []*parser.IfFeature) (bool, error)
 	budget Budget
-	types  int // compiled types plus union member slots in this Load (Budget.MaxTypes)
+	types  int  // compiled types plus union member slots in this Load (Budget.MaxTypes)
+	compat bool // Options.PatternCompat
 	// extTpdfs are the typedefs of the extension instance being compiled (ctx->ext, through
 	// lyplg_ext_parsed_get_storage)
 	extTpdfs []*parser.Node

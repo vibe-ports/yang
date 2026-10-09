@@ -1,0 +1,11 @@
+fixtures:
+  - id: pcre-compat/shapes-caretr-match
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific (pattern_compat, D-0031): a class ending in \^: a literal caret
+    rfc: []
+    areas: [types]
+    request: {"op": "data", "context_options": ["pattern_compat"], "searchdirs": ["schemas"], "modules": [{"name": "pcr"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<caretr xmlns=\"urn:tests:pcr\">ab^c-1</caretr>"}
+    golden: golden/shapes-caretr-match.json
+    assert:
+      verdict: valid
+      deviation: null

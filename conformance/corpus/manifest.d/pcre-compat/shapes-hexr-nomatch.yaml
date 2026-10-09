@@ -1,0 +1,12 @@
+fixtures:
+  - id: pcre-compat/shapes-hexr-nomatch
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific (pattern_compat, D-0031): \x hex escape range
+    rfc: []
+    areas: [types]
+    request: {"op": "data", "context_options": ["pattern_compat"], "searchdirs": ["schemas"], "modules": [{"name": "pcr"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<hexr xmlns=\"urn:tests:pcr\">&#xE9;</hexr>"}
+    golden: golden/shapes-hexr-nomatch.json
+    assert:
+      verdict: invalid
+      diagnostics: [{vecode_name: LYVE_DATA, schema_path: /pcr:hexr, msg: "Unsatisfied pattern - \"\u00e9\" does not match \"[\\x20-\\x7F]*\"."}]
+      deviation: null

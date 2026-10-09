@@ -1,0 +1,11 @@
+fixtures:
+  - id: pcre-compat/shapes-schema
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific (pattern_compat, D-0031): common PCRE2 pattern shapes load
+    rfc: []
+    areas: [types]
+    request: {"op": "schema", "context_options": ["pattern_compat"], "searchdirs": ["schemas"], "modules": [{"name": "pcr"}]}
+    golden: golden/shapes-schema.json
+    assert:
+      verdict: valid
+      deviation: null

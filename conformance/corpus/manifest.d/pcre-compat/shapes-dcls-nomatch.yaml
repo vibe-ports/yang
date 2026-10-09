@@ -1,0 +1,12 @@
+fixtures:
+  - id: pcre-compat/shapes-dcls-nomatch
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific (pattern_compat, D-0031): \d in a class: Unicode Nd under PCRE2_UCP
+    rfc: []
+    areas: [types]
+    request: {"op": "data", "context_options": ["pattern_compat"], "searchdirs": ["schemas"], "modules": [{"name": "pcr"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<dcls xmlns=\"urn:tests:pcr\">&#xB2;</dcls>"}
+    golden: golden/shapes-dcls-nomatch.json
+    assert:
+      verdict: invalid
+      diagnostics: [{vecode_name: LYVE_DATA, schema_path: /pcr:dcls, msg: "Unsatisfied pattern - \"\u00b2\" does not match \"[\\d]+\"."}]
+      deviation: null

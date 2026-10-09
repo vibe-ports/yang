@@ -1,0 +1,205 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "prt",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"prt:rt\": \"0:65000:100\",\n  \"prt:rt6\": \"2001:db8::1:100\",\n  \"prt:rd\": \"1:192.0.2.1:7\",\n  \"prt:ro\": \"2:4200000000:1\",\n  \"prt:ro6\": \"2001:db8::2:65535\",\n  \"prt:mc4\": \"239.1.2.3\",\n  \"prt:mc6\": \"ff02::1\",\n  \"prt:mc\": \"224.0.0.1\",\n  \"prt:bw\": \"0x1.8p+10\"\n}\n",
+    "xml": "<rt xmlns=\"urn:tests:prt\">0:65000:100</rt>\n<rt6 xmlns=\"urn:tests:prt\">2001:db8::1:100</rt6>\n<rd xmlns=\"urn:tests:prt\">1:192.0.2.1:7</rd>\n<ro xmlns=\"urn:tests:prt\">2:4200000000:1</ro>\n<ro6 xmlns=\"urn:tests:prt\">2001:db8::2:65535</ro6>\n<mc4 xmlns=\"urn:tests:prt\">239.1.2.3</mc4>\n<mc6 xmlns=\"urn:tests:prt\">ff02::1</mc6>\n<mc xmlns=\"urn:tests:prt\">224.0.0.1</mc>\n<bw xmlns=\"urn:tests:prt\">0x1.8p+10</bw>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/prt:rt",
+      "schema": "/prt:rt",
+      "value": {
+        "canonical": "0:65000:100",
+        "type": "string",
+        "typedef": "route-target",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/prt:rt6",
+      "schema": "/prt:rt6",
+      "value": {
+        "canonical": "2001:db8::1:100",
+        "type": "string",
+        "typedef": "ipv6-route-target",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/prt:rd",
+      "schema": "/prt:rd",
+      "value": {
+        "canonical": "1:192.0.2.1:7",
+        "type": "string",
+        "typedef": "route-distinguisher",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/prt:ro",
+      "schema": "/prt:ro",
+      "value": {
+        "canonical": "2:4200000000:1",
+        "type": "string",
+        "typedef": "route-origin",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/prt:ro6",
+      "schema": "/prt:ro6",
+      "value": {
+        "canonical": "2001:db8::2:65535",
+        "type": "string",
+        "typedef": "ipv6-route-origin",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/prt:mc4",
+      "schema": "/prt:mc4",
+      "value": {
+        "canonical": "239.1.2.3",
+        "type": "string",
+        "typedef": "ipv4-multicast-group-address",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/prt:mc6",
+      "schema": "/prt:mc6",
+      "value": {
+        "canonical": "ff02::1",
+        "type": "string",
+        "typedef": "ipv6-multicast-group-address",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/prt:mc",
+      "schema": "/prt:mc",
+      "value": {
+        "canonical": "224.0.0.1",
+        "type": "union",
+        "typedef": "ip-multicast-group-address",
+        "union_member": {
+          "index": 0,
+          "realtype": {
+            "type": "string",
+            "typedef": "ipv4-multicast-group-address"
+          },
+          "type": "string",
+          "typedef": "ipv4-multicast-group-address"
+        }
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/prt:bw",
+      "schema": "/prt:bw",
+      "value": {
+        "canonical": "0x1.8p+10",
+        "type": "string",
+        "typedef": "bandwidth-ieee-float32",
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

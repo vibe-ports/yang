@@ -57,6 +57,9 @@ type Options struct {
 	// BuiltinPluginsOnly disables the type plugins of non-built-in typedefs
 	// (LY_CTX_BUILTIN_PLUGINS_ONLY): every module gets schema.Module.BuiltinPluginsOnly.
 	BuiltinPluginsOnly bool
+	// PatternCompat compiles pattern statements as libyang's PCRE2 back end does
+	// (xsdre.CompileCompat, D-0031) instead of as strict XSD regular expressions.
+	PatternCompat bool
 }
 
 // Level is a diagnostic's log level.
@@ -219,7 +222,8 @@ func NewContext(opts Options, dirs ...fs.FS) (*Context, []Diagnostic, error) {
 		opts.Parse.MaxBytes = 64 << 20 // the parser's default
 	}
 	c := &Context{opts: Options{AllImplemented: opts.AllImplemented, EnableImportFeatures: opts.EnableImportFeatures,
-		MaxSearchDirs: opts.MaxSearchDirs, Parse: opts.Parse, BuiltinPluginsOnly: opts.BuiltinPluginsOnly},
+		MaxSearchDirs: opts.MaxSearchDirs, Parse: opts.Parse, BuiltinPluginsOnly: opts.BuiltinPluginsOnly,
+		PatternCompat: opts.PatternCompat},
 		dirs: []fs.FS{models.Libyang}, phase: "parse", typeCache: newTypeCache()}
 	n := len(internalModules)
 	if opts.NoYangLibrary {

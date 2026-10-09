@@ -1,0 +1,13 @@
+module pcr {
+  yang-version 1.1;
+  namespace "urn:tests:pcr";
+  prefix pcr;
+  description "Common pattern shapes that rely on libyang's PCRE2 syntax.";
+  leaf hexr { type string { pattern '[\x20-\x7F]*'; } }
+  leaf punct { type string { pattern '[a-zA-Z0-9\-_\/\.\%\!\?\:]*'; } }
+  leaf caretr { type string { pattern '[a-z0-9\-\^]*'; } }
+  leaf dcls { type string { pattern '[\d]+'; } }
+  leaf wcls { type string { pattern '[\w]+'; } }
+  leaf dout { type string { pattern '\d+'; } }
+  leaf wout { type string { pattern '\w+'; } }
+}

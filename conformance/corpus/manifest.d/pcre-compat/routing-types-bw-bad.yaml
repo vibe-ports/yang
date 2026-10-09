@@ -1,0 +1,12 @@
+fixtures:
+  - id: pcre-compat/routing-types-bw-bad
+    dir: pcre-compat
+    source: {url: "https://github.com/YangModels/yang/blob/b5465a86cd2457352dcd18a42043e40f0bab65ab/standard/ietf/RFC/ietf-routing-types%402017-12-04.yang + hand-written prt (this repo)", commit: b5465a86cd2457352dcd18a42043e40f0bab65ab, license: "BSD-2-Clause AND BSD-3-Clause"}   # ietf-routing-types values with pattern_compat
+    rfc: ["RFC8294#3"]
+    areas: [types]
+    request: {"op": "data", "context_options": ["pattern_compat"], "searchdirs": ["public"], "modules": [{"name": "prt"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<bw xmlns=\"urn:tests:prt\">1.5e10</bw>"}
+    golden: golden/routing-types-bw-bad.json
+    assert:
+      verdict: invalid
+      diagnostics: [{vecode_name: LYVE_DATA, schema_path: /prt:bw}]
+      deviation: null

@@ -1,0 +1,7 @@
+module pcs1 {
+  yang-version 1.1;
+  namespace "urn:tests:pcs1";
+  prefix pcs1;
+  description "PCRE2 compiles a case-pair class such as [Aa] as one caseless character.";
+  leaf l { type string { pattern '(?:[Aa][Bb]){1000}'; } }
+}

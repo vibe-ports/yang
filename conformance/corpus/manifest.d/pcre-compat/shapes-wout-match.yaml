@@ -1,0 +1,11 @@
+fixtures:
+  - id: pcre-compat/shapes-wout-match
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific (pattern_compat, D-0031): \w outside a class with non-ASCII letters
+    rfc: []
+    areas: [types]
+    request: {"op": "data", "context_options": ["pattern_compat"], "searchdirs": ["schemas"], "modules": [{"name": "pcr"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<wout xmlns=\"urn:tests:pcr\">&#x436;&#xE9;</wout>"}
+    golden: golden/shapes-wout-match.json
+    assert:
+      verdict: valid
+      deviation: null

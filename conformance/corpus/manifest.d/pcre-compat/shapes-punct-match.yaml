@@ -1,0 +1,11 @@
+fixtures:
+  - id: pcre-compat/shapes-punct-match
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific (pattern_compat, D-0031): escaped punctuation \/ \% \! \? \: in a class (strict XSD: unknown escape)
+    rfc: []
+    areas: [types]
+    request: {"op": "data", "context_options": ["pattern_compat"], "searchdirs": ["schemas"], "modules": [{"name": "pcr"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<punct xmlns=\"urn:tests:pcr\">a/b.c%d!e?f:g-h_1</punct>"}
+    golden: golden/shapes-punct-match.json
+    assert:
+      verdict: valid
+      deviation: null

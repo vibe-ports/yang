@@ -1,0 +1,12 @@
+fixtures:
+  - id: pcre-compat/posix-nomatch-19
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific (pattern_compat, D-0031): 1 is not alpha
+    rfc: []
+    areas: [types]
+    request: {"op": "data", "context_options": ["pattern_compat"], "searchdirs": ["schemas"], "modules": [{"name": "pcx"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<posix xmlns=\"urn:tests:pcx\">a1</posix>"}
+    golden: golden/posix-nomatch-19.json
+    assert:
+      verdict: invalid
+      diagnostics: [{vecode_name: LYVE_DATA, schema_path: /pcx:posix, msg: "Unsatisfied pattern - \"a1\" does not match \"[[:alpha:]]+\"."}]
+      deviation: null

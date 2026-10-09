@@ -1,0 +1,12 @@
+fixtures:
+  - id: pcre-compat/shapes-dout-nomatch
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific (pattern_compat, D-0031): \d outside a class with non-ASCII digits
+    rfc: []
+    areas: [types]
+    request: {"op": "data", "context_options": ["pattern_compat"], "searchdirs": ["schemas"], "modules": [{"name": "pcr"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<dout xmlns=\"urn:tests:pcr\">&#xB2;</dout>"}
+    golden: golden/shapes-dout-nomatch.json
+    assert:
+      verdict: invalid
+      diagnostics: [{vecode_name: LYVE_DATA, schema_path: /pcr:dout, msg: "Unsatisfied pattern - \"\u00b2\" does not match \"\\d+\"."}]
+      deviation: null

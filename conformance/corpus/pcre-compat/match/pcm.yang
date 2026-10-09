@@ -1,0 +1,7 @@
+module pcm {
+  yang-version 1.1;
+  namespace "urn:tests:pcm";
+  prefix pcm;
+  description "A pattern whose PCRE2 match backtracks past the default match limit.";
+  leaf l { type string { pattern '(||a){0,40}b|.*'; } }
+}

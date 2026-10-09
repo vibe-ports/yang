@@ -1,0 +1,11 @@
+fixtures:
+  - id: pcre-compat/upto-match-22
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific (pattern_compat, D-0031): a{,3} is {0,3} since PCRE2 10.43
+    rfc: []
+    areas: [types]
+    request: {"op": "data", "context_options": ["pattern_compat"], "searchdirs": ["schemas"], "modules": [{"name": "pcx"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<upto xmlns=\"urn:tests:pcx\">aaa</upto>"}
+    golden: golden/upto-match-22.json
+    assert:
+      verdict: valid
+      deviation: null

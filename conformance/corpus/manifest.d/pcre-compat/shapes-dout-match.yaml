@@ -1,0 +1,11 @@
+fixtures:
+  - id: pcre-compat/shapes-dout-match
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific (pattern_compat, D-0031): \d outside a class with non-ASCII digits
+    rfc: []
+    areas: [types]
+    request: {"op": "data", "context_options": ["pattern_compat"], "searchdirs": ["schemas"], "modules": [{"name": "pcr"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<dout xmlns=\"urn:tests:pcr\">&#x663;&#x664;</dout>"}
+    golden: golden/shapes-dout-match.json
+    assert:
+      verdict: valid
+      deviation: null

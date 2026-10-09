@@ -1,0 +1,6 @@
+module pe12 {
+  yang-version 1.1;
+  namespace "urn:tests:pe12";
+  prefix pe12;
+  leaf l { type string { pattern '[\x7F-\x20]'; } }
+}

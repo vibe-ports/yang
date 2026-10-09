@@ -1,0 +1,6 @@
+module pe02 {
+  yang-version 1.1;
+  namespace "urn:tests:pe02";
+  prefix pe02;
+  leaf l { type string { pattern '*a'; } }
+}

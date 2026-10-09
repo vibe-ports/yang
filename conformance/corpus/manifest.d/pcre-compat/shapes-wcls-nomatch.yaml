@@ -1,0 +1,12 @@
+fixtures:
+  - id: pcre-compat/shapes-wcls-nomatch
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific (pattern_compat, D-0031): \w in a class: Unicode L, N, Mn, Pc under PCRE2_UCP
+    rfc: []
+    areas: [types]
+    request: {"op": "data", "context_options": ["pattern_compat"], "searchdirs": ["schemas"], "modules": [{"name": "pcr"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<wcls xmlns=\"urn:tests:pcr\">a-b</wcls>"}
+    golden: golden/shapes-wcls-nomatch.json
+    assert:
+      verdict: invalid
+      diagnostics: [{vecode_name: LYVE_DATA, schema_path: /pcr:wcls, msg: "Unsatisfied pattern - \"a-b\" does not match \"[\\w]+\"."}]
+      deviation: null

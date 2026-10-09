@@ -1,0 +1,12 @@
+fixtures:
+  - id: pcre-compat/caret-nomatch-04
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 73", commit: null, license: BSD-3-Clause}   # libyang-specific (pattern_compat, D-0031): upper case is outside [a-z\^]
+    rfc: []
+    areas: [types]
+    request: {"op": "data", "context_options": ["pattern_compat"], "searchdirs": ["schemas"], "modules": [{"name": "pcx"}], "format": "xml", "data_type": "data", "validate_options": ["present"], "data": "<caret xmlns=\"urn:tests:pcx\">A</caret>"}
+    golden: golden/caret-nomatch-04.json
+    assert:
+      verdict: invalid
+      diagnostics: [{vecode_name: LYVE_DATA, schema_path: /pcx:caret, msg: "Unsatisfied pattern - \"A\" does not match \"[a-z\\^]+\"."}]
+      deviation: null

@@ -60,6 +60,7 @@ var ctxOptions = map[string]func(*yang.Options){
 	"ref_implemented":      func(o *yang.Options) { o.RefImplemented = true },
 	"leafref_extended":     func(o *yang.Options) { o.LeafrefExtended = true },
 	"builtin_plugins_only": func(o *yang.Options) { o.BuiltinPluginsOnly = true },
+	"pattern_compat":       func(o *yang.Options) { o.PatternCompat = true },
 }
 
 // ctxUnsupported are the oracle's context_options this engine refuses, with the reason.

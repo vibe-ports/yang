@@ -60,9 +60,14 @@ func checkChars(s string) *Diag {
 }
 
 // CompilePattern compiles p and records the program in p.Compiled; compile calls it once per
-// pattern so that stores never recompile.
-func CompilePattern(p *schema.Pattern) error {
-	re, err := xsdre.Compile(p.Expr)
+// pattern so that stores never recompile. compat selects libyang's PCRE2 semantics
+// (xsdre.CompileCompat, D-0031) over strict XSD.
+func CompilePattern(p *schema.Pattern, compat bool) error {
+	compileRE := xsdre.Compile
+	if compat {
+		compileRE = xsdre.CompileCompat
+	}
+	re, err := compileRE(p.Expr)
 	if err != nil {
 		return err
 	}

@@ -41,6 +41,9 @@ static const struct flag ctx_flags[] = {
     {"leafref_extended", LY_CTX_LEAFREF_EXTENDED},
     {"leafref_linking", LY_CTX_LEAFREF_LINKING},
     {"builtin_plugins_only", LY_CTX_BUILTIN_PLUGINS_ONLY},
+    /* no libyang flag: libyang always compiles patterns with PCRE2; the Go engine sets
+     * Options.PatternCompat (D-0031) */
+    {"pattern_compat", 0},
     {NULL, 0}
 };
 

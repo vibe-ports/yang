@@ -1,0 +1,6 @@
+module pe09 {
+  yang-version 1.1;
+  namespace "urn:tests:pe09";
+  prefix pe09;
+  leaf l { type string { pattern '\P{IsGreek}'; } }
+}

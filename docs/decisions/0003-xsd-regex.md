@@ -1,6 +1,7 @@
 # 0003 — XSD regular expressions (YANG `pattern`) on Go RE2
 
-Status: accepted (M0 prototype), 2026-09-30. Code: `internal/xsdre`. Addresses review item 1.
+Status: accepted (M0 prototype), 2026-09-30; opt-in PCRE compatibility mode added 2026-10-09 (#73).
+Code: `internal/xsdre`. Addresses review item 1.
 
 ## Context
 
@@ -148,6 +149,41 @@ Two scans:
   - Every corpus pattern libyang accepts compiles, apart from the D-0006 case above.
   - Every pattern in the 512 IETF and IANA modules compiles.
 - A PCRE-compatibility mode remains possible: an opt-in Context option, never the default. It is
-  recorded as future work in #73 and is out of scope for M2.
+  recorded as future work in #73 and is out of scope for M2. It was later implemented as
+  `Options.PatternCompat` (#73, next section).
 - D-0008 stays a recorded deviation.
 - openconfig is out of v1 (U-0025), so this scan did not cover it.
+
+## PCRE compatibility mode (opt-in, #73)
+
+Strict XSD stays the default. `yang.Options.PatternCompat` (compile.Options.PatternCompat) compiles
+every `pattern` statement with `xsdre.CompileCompat`, which reproduces libyang instead (D-0031):
+
+1. **libyang's rewriting, ported** (`ly_pat_compile_xmlschema`,
+   `ly_pat_compile_xmlschema_chblocks_xmlschema2perl`): `^` and `$` outside brackets get a
+   backslash (so an escaped `\^` becomes `\\^`, a backslash then a start assertion that never
+   matches, and `\$` matches a backslash at the end), a `]` with no open bracket is "character
+   group doesn't begin with '['", and `\p{IsX}` is replaced from libyang's 84-block table by
+   prefix match.
+2. **PCRE2 10.46's parser, ported** for the resulting pattern (`parse_regex`, `check_escape`,
+   `get_ucp`, `read_repeat_counts`, `check_posix_syntax`), with libyang's options `UTF`, `UCP`,
+   `DOLLAR_ENDONLY`, `NO_AUTO_CAPTURE` and both anchors. Errors carry PCRE2's message and offset,
+   printed as libyang does: `Regular expression "<pattern>" is not valid ("<rest>": <message>).`
+3. **Semantics** under `PCRE2_UCP`: `\d` = Nd, `\w` = L ∪ N ∪ Mn ∪ Pc, `\s` = Z ∪ `\h` ∪ `\v`,
+   `\h`, `\v`, `\N`, `.` = anything but LF, `\p`/`\P` general categories with Unicode loose
+   matching, `[:alpha:]`-style POSIX classes as their UCP substitutes, `\xhh`, `\x{h…}`, octal,
+   `{,m}` and blanks inside quantifiers, lazy quantifiers (a full anchored match does not depend on
+   laziness), `(?:…)`. The result is the same AST as the XSD parser's, emitted to RE2 the same way.
+4. **Never approximated**: what RE2 cannot express (Unicode `\b`, lookaround, backreferences other
+   than the always-failing ones, possessive quantifiers, …) and what is not translated (scripts,
+   binary properties, `\Q…\E`, …) is `ErrUnsupported` (U-0011). Every group is non-capturing, so a
+   back reference is PCRE2's "reference to non-existent subpattern". PCRE2's compiled-size limit (64 KiB,
+   "regular expression is too large") is checked from lower and upper bounds of its compiled
+   length; a pattern between the bounds is ErrUnsupported.
+
+Proof: `TestOracleCompat` (build tag `oracle`, run by `make test-oracle`) compiles every pattern of
+the xsdre tests and a compat set through `CompileCompat` and yanglint: verdict, message and match
+verdicts must all agree; the conformance set `pcre-compat/*` (`context_options: [pattern_compat]`)
+covers each construct, the error messages (asserted) and ietf-routing-types (RFC 8294). Unicode
+tables are Go's, PCRE2 10.46 uses Unicode 16.0.0 (D-0032). PCRE2's match limit has no RE2 counterpart: a
+value libyang fails with "match limit exceeded" is matched (D-0033). XPath `re-match()` stays strict XSD.
