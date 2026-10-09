@@ -41,6 +41,10 @@ type value struct {
 	f         ld
 	s         string
 	pos, size int // context position and size, set inside predicates
+	// nonChild is lyxp_set.non_child_axis: a step on a non-child axis matched nodes of this set or
+	// of a set it was derived from (set_init copies it, only moveto_root clears it), so moveto
+	// sorts its result even on the child and self axes.
+	nonChild bool
 }
 
 var typeNames = [...]string{"node set", "boolean", "number", "string"} // print_set_type
@@ -138,17 +142,26 @@ func (ev *evaluator) eval(a ast, ctx value) (value, error) {
 	return v, err
 }
 
+// eval1 keeps lyxp_set.non_child_axis as libyang does: literals, numbers and function results are
+// written into the context set (its flag), a unary minus into its operand's set, a chain into its
+// first operand's set (a union of an empty first operand takes the second's).
 func (ev *evaluator) eval1(a ast, ctx value) (value, error) {
 	switch a := a.(type) {
 	case chainExpr:
 		return ev.chain(a, ctx)
 	case negExpr:
 		v, err := ev.eval(a.x, ctx)
-		return numV(ldNeg(ev.toNum(v))), err
+		r := numV(ldNeg(ev.toNum(v)))
+		r.nonChild = v.nonChild
+		return r, err
 	case litExpr:
-		return strV(string(a)), nil
+		r := strV(string(a))
+		r.nonChild = ctx.nonChild
+		return r, nil
 	case numExpr:
-		return numV(a.v), nil
+		r := numV(a.v)
+		r.nonChild = ctx.nonChild
+		return r, nil
 	case varExpr:
 		root, err := ev.variable(string(a))
 		if err != nil {
@@ -165,7 +178,9 @@ func (ev *evaluator) eval1(a ast, ctx value) (value, error) {
 				return value{}, err
 			}
 		}
-		return funcImpls[a.name](ev, args, ctx)
+		r, err := funcImpls[a.name](ev, args, ctx)
+		r.nonChild = ctx.nonChild
+		return r, err
 	case pathExpr:
 		return ev.path(a, ctx)
 	}
@@ -261,6 +276,7 @@ func (ev *evaluator) chain(a chainExpr, ctx value) (value, error) {
 		return value{}, err
 	}
 	logic := a.ops[0] == "or" || a.ops[0] == "and"
+	nonChild := acc.nonChild // the first operand's set holds the result
 	if logic {
 		acc = boolV(ev.toBool(acc))
 	}
@@ -285,6 +301,9 @@ func (ev *evaluator) chain(a chainExpr, ctx value) (value, error) {
 			if acc.t != vNodes || r.t != vNodes {
 				return value{}, xpErr("Cannot apply XPath operation union on %s and %s.", typeNames[acc.t], typeNames[r.t])
 			}
+			if len(acc.nodes) == 0 && union == nil {
+				nonChild = r.nonChild // moveto_union copies set2 into an empty set1
+			}
 			if union == nil {
 				union = slices.Clone(acc.nodes)
 			}
@@ -299,6 +318,7 @@ func (ev *evaluator) chain(a chainExpr, ctx value) (value, error) {
 	if union != nil {
 		acc = nodesV(ev.sortUnique(union))
 	}
+	acc.nonChild = nonChild
 	return acc, nil
 }
 
@@ -326,6 +346,12 @@ func (ev *evaluator) path(a pathExpr, ctx value) (value, error) {
 }
 
 func (ev *evaluator) step(set value, s step) (value, error) {
+	v, err := ev.step1(set, s)
+	v.nonChild = v.nonChild || set.nonChild
+	return v, err
+}
+
+func (ev *evaluator) step1(set value, s step) (value, error) {
 	var err error
 	preds := s.preds // what hashChild's lookup consumed is not evaluated again
 	switch s.test {
@@ -762,10 +788,13 @@ func (ev *evaluator) moveto(set value, axis string, nt nameTest) (value, error) 
 			return value{}, err
 		}
 	}
-	if axis != "child" && axis != "self" { // libyang sorts only after the other axes
+	nonChild := set.nonChild || axis != "child" && axis != "self" && len(out) > 0
+	if nonChild { // libyang sorts after the other axes and on any set that saw one (set_sort)
 		out = ev.sortUnique(out)
 	}
-	return nodesV(out), nil
+	v := nodesV(out)
+	v.nonChild = nonChild
+	return v, nil
 }
 
 // allDescChild is moveto_node_alldesc_child ('//' NameTest).
@@ -980,7 +1009,7 @@ func (ev *evaluator) predicates(set value, preds []ast, axis string) (value, err
 				return value{}, err
 			}
 			if !ev.toBool(r) {
-				set = nodesV(nil)
+				set = value{t: vNodes, nonChild: set.nonChild}
 			}
 			continue
 		}
@@ -997,7 +1026,7 @@ func (ev *evaluator) predicates(set value, preds []ast, axis string) (value, err
 			if reverse {
 				pos = len(set.nodes) - i
 			}
-			r, err := ev.eval(pr, value{t: vNodes, nodes: []item{it}, pos: pos, size: len(set.nodes)})
+			r, err := ev.eval(pr, value{t: vNodes, nodes: []item{it}, pos: pos, size: len(set.nodes), nonChild: set.nonChild})
 			if err != nil {
 				return value{}, err
 			}
@@ -1008,7 +1037,7 @@ func (ev *evaluator) predicates(set value, preds []ast, axis string) (value, err
 				keep = append(keep, it)
 			}
 		}
-		set = value{t: vNodes, nodes: keep, pos: set.pos, size: set.size}
+		set = value{t: vNodes, nodes: keep, pos: set.pos, size: set.size, nonChild: set.nonChild}
 	}
 	return set, nil
 }
