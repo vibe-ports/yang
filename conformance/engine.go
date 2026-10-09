@@ -67,11 +67,11 @@ var ctxOptions = map[string]func(*yang.Options){
 var ctxUnsupported = map[string]string{}
 
 // Run implements Engine for ops "schema" (lyoracle.c op_schema/build_ctx/dump_schema), "data"
-// (op_data, datastore data types), "diff" (op_diff) and "sequence" (op_sequence over the public
-// data API).
+// (op_data, datastore data types), "diff" (op_diff), "xpath" (op_xpath) and "sequence"
+// (op_sequence over the public data API).
 func (Yang) Run(r Request) (Response, error) {
 	op, _ := r.Params["op"].(string)
-	if op != "schema" && op != "data" && op != "sequence" && op != "diff" {
+	if op != "schema" && op != "data" && op != "sequence" && op != "diff" && op != "xpath" {
 		return nil, ErrUnsupported
 	}
 	ctx, resp, mods, verdict, err := buildContext(r)
@@ -85,7 +85,7 @@ func (Yang) Run(r Request) (Response, error) {
 			return nil, fmt.Errorf("%w: %s request with a rejected module", ErrUnsupported, op)
 		}
 		run := map[string]func(Request, *yang.Schema, map[string]any) error{"data": runData, "sequence": runSequence,
-			"diff": runDiff}[op]
+			"diff": runDiff, "xpath": runXPath}[op]
 		if err := run(r, ctx.Schema(), resp); err != nil {
 			return nil, err
 		}

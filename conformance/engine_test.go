@@ -9,7 +9,7 @@ import (
 
 // agreeFloor is the number of fixtures that agree (with or without skipped fields) on main; a
 // change that lowers it is a regression.
-const agreeFloor = 1905
+const agreeFloor = 2054
 
 // TestYangEngineSchema runs every fixture through package yang and logs the tally. No fixture may
 // differ: a disagreement is either fixed or recorded as a deviation (deviations.md) or as

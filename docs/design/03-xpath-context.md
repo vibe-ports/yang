@@ -113,6 +113,6 @@ What the slice changed, and why:
 - **Numbers are libyang's `long double`**, emulated as 80-bit x87 (D-0010), with its integer
   conversions pinned to amd64 (D-0011); libyang's other XPath quirks are mirrored and listed in
   deviations.md, its crashes answered (D-0012, D-0063).
-- **Open:** the report engine does not run `sequence` (the `when/order-*` and
-  `m1/sequence-when-auto-delete` goldens) or `xpath` requests yet; the queue is covered by `data` unit
-  tests and the protocol-v2 `seq-diff-*` goldens replayed in `data/diff_test.go`, the evaluator by `internal/xpath`'s oracle replay.
+- **Closed in M3:** the report engine runs `sequence` and `xpath` requests; `xpath` goes through
+  the public query API (`data.Tree.EvalXPath`, design 07 §2), so the op xpath goldens test the
+  evaluator end to end next to `internal/xpath`'s oracle replay.
