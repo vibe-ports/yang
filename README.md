@@ -25,7 +25,7 @@ usable and measured; operations and anydata payloads are not done yet.
 | Validation: types, leafref, instance-identifier, mandatory, min/max-elements, unique, must, when (with auto-delete), choice/case, NMDA operational mode | supported | libyang's diagnostics: LY_ERR / LY_VECODE names, data path, error-app-tag |
 | Defaults and with-defaults printing (RFC 6243: explicit, trim, report-all, report-all-tagged) | supported | |
 | RFC 7952 metadata | partial | parsed, validated and printed; `Node.Meta`, `Node.FindMeta`, `Tree.NewMeta`, `Meta.Value`, `Meta.Remove`; other metadata helpers are not public (#115) |
-| XPath 1.0 + YANG functions | partial | must/when/leafref and the query API (`Tree.FindXPath`, `EvalXPath`, `EvalXPathAs`: JSON-format expressions); no schema atom queries yet |
+| XPath 1.0 + YANG functions | supported | must/when/leafref; data queries `Tree.FindXPath`, `EvalXPath`, `EvalXPathAs` and `Tree.TrimXPath` (JSON-format expressions, variables); schema atoms `Schema.FindXPathAtoms`, `FindPathAtoms`. every xpath, atoms and trim fixture agrees with libyang or is a recorded deviation; the one unsupported fixture queries anydata data (U-0043) |
 | Tree edits: `NewTree`, `NewPath`, `Merge`, `Remove`, `Find` | partial | absolute paths, merge without options |
 | Node comparison: `Node.Equal` (lyd_compare_single) | partial | full-recursion, defaults and opaque options; nodes of two contexts compared by names and canonical values |
 | Schema helpers: `SchemaNode.IsKey`, `IsDupInstList`, `DefaultSet`, `UserOrdered`; `Node.ChildrenNoKeys` | supported | |
@@ -164,22 +164,22 @@ check finds no instance. Schema traversal is shown in the [`yang` package exampl
   may differ on purpose. Each case is listed with its RFC reference and fixture in
   [conformance/deviations.md](conformance/deviations.md); an unlisted difference is a bug.
 
-Report as of 2026-10-09 (M2 exit, #43). Every CI run prints the current report in its job
+Report as of 2026-10-09 (M3 exit, #91). Every CI run prints the current report in its job
 summary, and `make compat-report` reproduces it locally:
 
 | | agree | agree (skipped fields) | differ | deviation | unsupported |
 |---|--:|--:|--:|--:|--:|
-| fixtures (2 094) | 670 | 1181 | 0 | 18 | 225 |
+| fixtures (2 357) | 1012 | 1244 | 0 | 21 | 80 |
 
-Of the 225 unsupported fixtures, 146 are `xpath` fixtures, an operation the report engine does
-not run yet (the XPath evaluator is compared with the oracle by its own tests in
-`internal/xpath`). 19 `sequence` fixtures (edit and revalidate a retained tree) use steps package
-`data` has no public API for (duplication, leafref links, `lyd_new_term` inserts) or contain
-anydata. 54 `data` fixtures are inputs the port refuses, mainly anydata/anyxml instances (U-0043),
-the operational datastore and RPC/notification/reply data. Only 6 `schema` fixtures are
-unsupported, all for schema mount (U-0024); a conformance test in `make ci` fails when a schema
-fixture is unsupported for any reason outside the v1 limits (YIN, schema mount, OpenConfig POSIX
-patterns and the compile budgets).
+Of the 80 unsupported fixtures, 19 are `sequence` fixtures (edit and revalidate a retained tree)
+that use steps package `data` has no public API for (duplication, leafref links, `lyd_new_term`
+inserts) or that contain anydata. 54 `data` fixtures are inputs the port refuses, mainly
+anydata/anyxml instances (U-0043), the operational datastore and RPC/notification/reply data.
+6 `schema` fixtures are unsupported, all for schema mount (U-0024), and 1 `xpath` fixture is
+unsupported because it queries an anydata instance (U-0043). Two conformance tests in `make ci`
+enforce the milestone exits. One fails when a schema fixture is unsupported for any reason outside
+the v1 limits (YIN, schema mount, OpenConfig POSIX patterns and the compile budgets). The other
+fails when an xpath, atoms or trim fixture differs, or is unsupported without a listed deviation.
 
 ## Packages
 

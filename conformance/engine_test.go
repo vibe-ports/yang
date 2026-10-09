@@ -4,12 +4,13 @@ package conformance
 
 import (
 	"regexp"
+	"strings"
 	"testing"
 )
 
 // agreeFloor is the number of fixtures that agree (with or without skipped fields) on main; a
 // change that lowers it is a regression.
-const agreeFloor = 2054
+const agreeFloor = 2256
 
 // TestYangEngineSchema runs every fixture through package yang and logs the tally. No fixture may
 // differ: a disagreement is either fixed or recorded as a deviation (deviations.md) or as
@@ -40,6 +41,69 @@ func TestYangEngineSchema(t *testing.T) {
 			t.Errorf("unsupported schema fixture %s outside the v1 limits: %s", r.ID, r.Detail)
 		}
 	}
+}
+
+// TestYangEngineXPath is the M3 exit gate (#91): no op xpath or op atoms fixture, nor a
+// sequence with a trim step (lyd_trim_xpath), may differ, and none may be unsupported unless
+// xpathUnsupported lists it with the deviations.md entry its reason names.
+func TestYangEngineXPath(t *testing.T) {
+	m := load(t)
+	rep, err := m.Compare(Yang{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := map[string]int{}
+	for i, r := range rep.Results {
+		kind := xpathKind(m.Fixtures[i].Request)
+		if kind == "" {
+			continue
+		}
+		n[kind]++
+		switch {
+		case r.Status == Differ:
+			t.Errorf("differ %s: %s", r.ID, r.Detail)
+		case r.Status == Unsupported && !xpathAllowed(r.ID, r.Detail):
+			t.Errorf("unsupported xpath fixture %s without a listed deviation: %s", r.ID, r.Detail)
+		}
+	}
+	t.Logf("gated fixtures: %v", n)
+	for kind, floor := range xpathFloors {
+		if n[kind] < floor {
+			t.Errorf("%d %s fixtures gated, fewer than %d: the selection lost fixtures", n[kind], kind, floor)
+		}
+	}
+}
+
+// xpathFloors are the gated fixtures of each kind at the M3 exit; fewer means the selection or
+// the corpus lost some, which would let the gate pass on nothing.
+var xpathFloors = map[string]int{"xpath": 268, "atoms": 44, "trim": 30}
+
+// xpathKind is the M3 gate kind of a request: "xpath", "atoms", "trim" (a sequence with a trim
+// step) or "" for a fixture outside the gate.
+func xpathKind(req map[string]any) string {
+	switch op, _ := req["op"].(string); op {
+	case "xpath", "atoms":
+		return op
+	case "sequence":
+		for _, st := range list(req["steps"]) {
+			if s, ok := st.(map[string]any); ok && s["do"] == "trim" {
+				return "trim"
+			}
+		}
+	}
+	return ""
+}
+
+// xpathUnsupported are the xpath fixtures that may stay unsupported after M3, each with the
+// deviations.md id its reason must name.
+var xpathUnsupported = map[string]string{
+	"ut-xpath/anydata-01": "U-0043", // anydata/anyxml data instances (M5)
+}
+
+// xpathAllowed reports whether fixture id may be unsupported with this reason.
+func xpathAllowed(id, reason string) bool {
+	u, ok := xpathUnsupported[id]
+	return ok && strings.Contains(reason, u)
 }
 
 // schemaLimits are the reasons an op schema fixture may be unsupported after M2 (issue #43): the
@@ -111,6 +175,21 @@ func TestPathPrefixes(t *testing.T) {
 	want := []string{`/m:c/l[k='a/b'][n="x]y"]`, `/m:c`}
 	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
 		t.Errorf("%q, want %q", got, want)
+	}
+}
+
+// TestXPathGateSelection: the M3 gate takes xpath, atoms and trim sequences, and allows only the
+// listed unsupported fixture with its deviation.
+func TestXPathGateSelection(t *testing.T) {
+	trim := map[string]any{"op": "sequence", "steps": []any{map[string]any{"do": "parse"}, map[string]any{"do": "trim"}}}
+	other := map[string]any{"op": "sequence", "steps": []any{map[string]any{"do": "parse"}}}
+	if xpathKind(map[string]any{"op": "xpath"}) != "xpath" || xpathKind(map[string]any{"op": "atoms"}) != "atoms" ||
+		xpathKind(trim) != "trim" || xpathKind(other) != "" || xpathKind(map[string]any{"op": "data"}) != "" {
+		t.Error("gate selection")
+	}
+	if !xpathAllowed("ut-xpath/anydata-01", "not supported: anydata (deviations.md U-0043)") ||
+		xpathAllowed("ut-xpath/anydata-01", "some other reason") || xpathAllowed("ut-xpath/axes-01", "U-0043") {
+		t.Error("allowlist")
 	}
 }
 
