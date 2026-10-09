@@ -86,6 +86,14 @@ func TestSince(t *testing.T) {
 	}
 }
 
+// A YAML value JSON cannot encode (.inf) is an error, not a panic.
+func TestDigestInf(t *testing.T) {
+	dir, _ := setup(t, strings.Replace(base, "request: {op: x}", "request: {op: schema, extra: .inf}", 1))
+	if err := do(dir, "", true); err == nil || !strings.Contains(err.Error(), "a/x: json: unsupported value: +Inf") {
+		t.Errorf("got %v", err)
+	}
+}
+
 func TestSinceRejects(t *testing.T) {
 	dir, baseFile := setup(t, strings.Replace(base, "g.json", "h.json", 1)+appended)
 	if err := do(dir, baseFile, false); err == nil || !strings.Contains(err.Error(), "plus appended lines") {

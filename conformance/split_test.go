@@ -180,8 +180,12 @@ func TestSplitManifest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := SameFixtures(before, am); err != nil || before.Digest() != am.Digest() {
-		t.Error(err)
+	da, err := before.Digest()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if db, err := am.Digest(); err != nil || da != db {
+		t.Error(SameFixtures(before, am), err)
 	}
 	am.Fixtures[0].Golden = "other.json"
 	if err := SameFixtures(before, am); err == nil || !strings.Contains(err.Error(), "a/x: differs") {

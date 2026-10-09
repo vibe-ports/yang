@@ -79,8 +79,12 @@ func do(corpus, since string, check bool) error {
 			return errors.New("not idempotent: a second split changes the result")
 		}
 	}
+	digest, err := before.Digest()
+	if err != nil {
+		return err
+	}
 	fmt.Printf("manifest-split: %d fixtures, %d moved to %s; decoded set identical (digest %s)\n",
-		len(before.Fixtures), len(frags), conformance.FragmentDir, before.Digest())
+		len(before.Fixtures), len(frags), conformance.FragmentDir, digest)
 	if check {
 		return nil
 	}

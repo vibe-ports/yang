@@ -253,8 +253,9 @@ func byID(m *Manifest) map[string]Fixture {
 }
 
 // Digest is a sha256 over the decoded fixtures sorted by id (record, resolved golden and input
-// paths relative to the corpus): equal digests, equal fixture sets.
-func (m *Manifest) Digest() string {
+// paths relative to the corpus): equal digests, equal fixture sets. A value JSON cannot encode
+// (YAML .inf, .nan) is an error.
+func (m *Manifest) Digest() (string, error) {
 	fx := slices.Clone(m.Fixtures)
 	slices.SortFunc(fx, func(a, b Fixture) int { return strings.Compare(a.ID, b.ID) })
 	h := sha256.New()
@@ -266,8 +267,8 @@ func (m *Manifest) Digest() string {
 			in = append(in, i.Key+"="+rel(i.Path))
 		}
 		if err := enc.Encode([]any{f, f.Source.commitSet, rel(m.GoldenPath(f)), in}); err != nil {
-			panic(err) // fixtures are decoded YAML: always encodable
+			return "", fmt.Errorf("%s: %w", f.ID, err)
 		}
 	}
-	return fmt.Sprintf("%x", h.Sum(nil))
+	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }
