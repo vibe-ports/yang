@@ -243,7 +243,7 @@ func (lc *lydCtx) isEValid(err error) bool {
 		return false
 	}
 	for i := len(lc.log.diags) - 1; i >= 0; i-- {
-		if d := lc.log.diags[i]; !d.Warning {
+		if d := lc.log.diags[i]; failing(d) {
 			return d.Err == "LY_EVALID"
 		}
 	}

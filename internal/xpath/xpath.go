@@ -104,6 +104,20 @@ type FirstLookup interface {
 	FirstChild(sn SchemaNode) (n Node, ok bool)
 }
 
+// MetaNode is an optional interface of a Node: its RFC 7952 metadata (lyd_node.meta), which
+// the attribute axis and lang() read. A Node without it has no metadata.
+type MetaNode interface {
+	Meta() []Meta // in the node's metadata order
+}
+
+// Meta is one metadata instance (struct lyd_meta).
+type Meta struct {
+	Module    string // module name of the annotation
+	Namespace string // that module's namespace URI
+	Name      string
+	Value     Value // the stored value
+}
+
 // SchemaNode is what the evaluator needs from a data node's schema node and
 // Atomize from the compiled schema (lysc_node). Implementations must be
 // comparable: all instances of one schema node return the same (==) SchemaNode.
@@ -284,6 +298,9 @@ type Result struct {
 	// Steps is the budget the evaluation consumed (also set on error), for
 	// callers that keep a cumulative budget across evaluations.
 	Steps int64
+	// InternalErrors counts the internal errors libyang logs and goes on after (LOGINT in
+	// set_insert_node, "Internal error (xpath.c:1348)."; also set on error).
+	InternalErrors int
 }
 
 // Error is an XPath error with libyang's LY_ERR / LYVE codes.
@@ -403,17 +420,21 @@ func (e *Expr) eval(ec EvalContext, cast bool, to ResultType) (Result, error) {
 	}
 	used := int64(ev.budget) - int64(max(ev.steps, 0))
 	if err != nil {
-		return Result{Steps: used}, err
+		return Result{Steps: used, InternalErrors: ev.intErrs}, err
 	}
+	r := Result{Steps: used, InternalErrors: ev.intErrs}
 	switch v.t {
 	case vBool:
-		return Result{Type: Boolean, Bool: v.b, Steps: used}, nil
+		r.Type, r.Bool = Boolean, v.b
+		return r, nil
 	case vNum:
-		return Result{Type: Number, Num: v.f.float(), Steps: used}, nil
+		r.Type, r.Num = Number, v.f.float()
+		return r, nil
 	case vStr:
-		return Result{Type: String, Str: v.s, Steps: used}, nil
+		r.Type, r.Str = String, v.s
+		return r, nil
 	}
-	r := Result{Type: NodeSet, Steps: used}
+	r.Type = NodeSet
 	for _, it := range v.nodes {
 		if it.t == itElem {
 			r.Nodes = append(r.Nodes, it.n)

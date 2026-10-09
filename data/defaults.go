@@ -120,7 +120,7 @@ func (vc *valCtx) stop(err error) bool {
 		return true // not a logged LY_EVALID (budget, cancellation, internal)
 	}
 	for i := len(vc.log.diags) - 1; i >= 0; i-- {
-		if d := vc.log.diags[i]; !d.Warning {
+		if d := vc.log.diags[i]; failing(d) {
 			return d.Err != "LY_EVALID"
 		}
 	}

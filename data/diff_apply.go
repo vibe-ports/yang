@@ -297,7 +297,7 @@ func findMetaVal(n *Node, name, val string) *meta { return findMetaNamed(n, "yan
 // loggedErr is the first error item a helper logged into lg, as an *opError.
 func loggedErr(lg *logger, err error) error {
 	for _, d := range lg.diags {
-		if !d.Warning {
+		if failing(d) {
 			return &opError{d.Err, d.Msg}
 		}
 	}

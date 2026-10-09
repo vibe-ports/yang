@@ -73,6 +73,7 @@ Plan and rationale: `PLAN.md`. Decisions: `docs/decisions/`. Designs: `docs/desi
 | data / validation (M1-6) | D-0050…D-0069 | U-0040…U-0059 |
 | extensions (M2 track B) | D-0071…D-0079 | U-0060…U-0061 |
 | deviations (M2 track A) | D-0090…D-0099 | U-0090…U-0094 |
+| M3 xpath | D-0100…D-0109 | U-0100…U-0104 |
 
 ## Workflow
 Claude/porter implement, codex writes independent fixtures in parallel, astra reviews every PR

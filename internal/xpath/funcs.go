@@ -56,18 +56,10 @@ func argType(n int, v value, sig string) error {
 	return xpErr("Wrong type of argument #%d (%s) for the XPath function %s.", n, typeNames[v.t], sig)
 }
 
-// first returns the first element node of a node-set argument (libyang reads nodes[0]).
-func first(v value) Node {
-	if len(v.nodes) > 0 && v.nodes[0].t == itElem {
-		return v.nodes[0].n
-	}
-	return nil
-}
-
 // firstTerm is the node bit-is-set/enum-value/deref read: nodes[0].node, which
-// for a text() item is its leaf (D-0012: libyang crashes on the root).
+// for a text() item is its leaf (D-0012: libyang crashes on the root and reads metadata as a node).
 func firstTerm(v value) Node {
-	if len(v.nodes) > 0 && v.nodes[0].t != itRoot && isTerm(v.nodes[0].n) {
+	if len(v.nodes) > 0 && (v.nodes[0].t == itElem || v.nodes[0].t == itText) && isTerm(v.nodes[0].n) {
 		return v.nodes[0].n
 	}
 	return nil
@@ -138,7 +130,7 @@ func fnDeref(ev *evaluator, a []value, _ value) (value, error) {
 	}
 	out := make([]item, len(targets))
 	for i, t := range targets {
-		out[i] = item{t, itElem}
+		out[i] = item{n: t, t: itElem}
 	}
 	return nodesV(out), nil // in target order: libyang (Release build) does not sort
 }
@@ -175,10 +167,16 @@ func derived(ev *evaluator, a []value, orSelf bool) (value, error) {
 		return value{}, xpErr("Identity \"%s\" not found in module \"%s\".", id.Name, id.Module)
 	}
 	for _, it := range a[0].nodes {
-		if it.t != itElem || !isTerm(it.n) {
+		var v Value
+		switch {
+		case it.t == itMeta:
+			v = orNoValue(it.meta().Value)
+		case it.t == itElem && isTerm(it.n):
+			v = valueOf(it.n)
+		default:
 			continue
 		}
-		mod, name, ok := valueOf(it.n).Identity()
+		mod, name, ok := v.Identity()
 		if v := (Ident{mod, name}); ok && (orSelf && v == id || ev.ec.Schema.IsDerived(id, v)) {
 			return boolV(true), nil
 		}
@@ -212,10 +210,36 @@ func fnFloor(ev *evaluator, a []value, set value) (value, error) {
 	return numV(ldInt(ctrunc(f))), nil
 }
 
-// fnLang: xml:lang is metadata, which Node does not expose, so never true.
-func fnLang(_ *evaluator, _ []value, set value) (value, error) {
+// fnLang is xpath_lang: the xml:lang metadata of the first context node (of a metadata item:
+// its element) or its nearest ancestor that has one, compared ASCII case-insensitively with the
+// argument, which may also be followed by '-' and a suffix in the value.
+func fnLang(ev *evaluator, a []value, set value) (value, error) {
+	want := ev.toString(a[0])
 	if set.t != vNodes {
 		return value{}, xpErr("Invalid context type %s in lang(string).", typeNames[set.t])
+	}
+	if len(set.nodes) == 0 || set.nodes[0].t == itRoot {
+		return boolV(false), nil
+	}
+	for n := set.nodes[0].n; n != nil; n = n.Parent() {
+		for _, m := range metaOf(n) {
+			if m.Name != "lang" || m.Module != "xml" {
+				continue
+			}
+			val := orNoValue(m.Value).String()
+			lower := func(c byte) byte { // C tolower: ASCII only
+				if c >= 'A' && c <= 'Z' {
+					return c + 'a' - 'A'
+				}
+				return c
+			}
+			for i := range len(want) {
+				if i >= len(val) || lower(want[i]) != lower(val[i]) {
+					return boolV(false), nil
+				}
+			}
+			return boolV(len(val) == len(want) || val[len(want)] == '-'), nil
+		}
 	}
 	return boolV(false), nil
 }
@@ -240,42 +264,57 @@ func fnPosition(_ *evaluator, _ []value, set value) (value, error) {
 	return intV(set.pos), nil
 }
 
-// nameArg picks the node of local-name/name/namespace-uri: ok=false → "".
-func nameArg(a []value, set value, sig string) (Node, bool, error) {
+// nameArg picks the first item of local-name/name/namespace-uri, an element or metadata
+// (libyang reads nodes[0]): ok=false → "".
+func nameArg(a []value, set value, sig string) (item, bool, error) {
 	v := set
 	if len(a) > 0 {
 		if v = a[0]; v.t != vNodes {
-			return nil, false, argType(1, v, sig)
+			return item{}, false, argType(1, v, sig)
 		}
 	} else if v.t != vNodes {
-		return nil, false, xpErr("Invalid context type %s in %s.", typeNames[v.t], sig)
+		return item{}, false, xpErr("Invalid context type %s in %s.", typeNames[v.t], sig)
 	}
-	n := first(v)
-	return n, n != nil, nil
+	if len(v.nodes) == 0 || v.nodes[0].t != itElem && v.nodes[0].t != itMeta {
+		return item{}, false, nil
+	}
+	return v.nodes[0], true, nil
 }
 
 func fnLocalName(_ *evaluator, a []value, set value) (value, error) {
-	n, ok, err := nameArg(a, set, "local-name(node-set?)")
-	if !ok {
+	it, ok, err := nameArg(a, set, "local-name(node-set?)")
+	switch {
+	case !ok:
 		return strV(""), err
+	case it.t == itMeta:
+		return strV(it.meta().Name), nil
 	}
-	return strV(n.Name()), nil
+	return strV(it.n.Name()), nil
 }
 
 func fnName(ev *evaluator, a []value, set value) (value, error) {
-	n, ok, err := nameArg(a, set, "name(node-set?)")
-	if !ok {
+	it, ok, err := nameArg(a, set, "name(node-set?)")
+	switch {
+	case !ok:
 		return strV(""), err
+	case it.t == itMeta:
+		m := it.meta()
+		return strV(ev.ns.Prefix(m.Module) + ":" + m.Name), nil
 	}
-	return strV(ev.ns.Prefix(n.Module()) + ":" + n.Name()), nil
+	return strV(ev.ns.Prefix(it.n.Module()) + ":" + it.n.Name()), nil
 }
 
 func fnNamespaceURI(_ *evaluator, a []value, set value) (value, error) {
-	n, ok, err := nameArg(a, set, "namespace-uri(node-set?)")
-	if !ok || n.Schema() == nil {
+	it, ok, err := nameArg(a, set, "namespace-uri(node-set?)")
+	switch {
+	case !ok:
 		return strV(""), err
+	case it.t == itMeta:
+		return strV(it.meta().Namespace), nil
+	case it.n.Schema() == nil:
+		return strV(""), nil
 	}
-	return strV(n.Schema().Namespace()), nil
+	return strV(it.n.Schema().Namespace()), nil
 }
 
 func strArg(ev *evaluator, a []value, set value) string {
@@ -456,8 +495,10 @@ func (noValue) Identity() (string, string, bool) { return "", "", false }
 func (noValue) Enum() (int, bool)                { return 0, false }
 func (noValue) Bits() ([]string, bool)           { return nil, false }
 
-func valueOf(n Node) Value {
-	if v := n.Value(); v != nil {
+func valueOf(n Node) Value { return orNoValue(n.Value()) }
+
+func orNoValue(v Value) Value {
+	if v != nil {
 		return v
 	}
 	return noValue{}

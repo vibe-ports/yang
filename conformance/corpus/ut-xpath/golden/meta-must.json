@@ -1,0 +1,86 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [
+    {
+      "apptag": null,
+      "code": {
+        "err": 6,
+        "name": "LY_EINT"
+      },
+      "data_path": null,
+      "level": "error",
+      "line": 0,
+      "msg": "Internal error (/src/libyang/src/xpath.c:1348).",
+      "phase": "data",
+      "schema_path": null,
+      "vecode": 0,
+      "vecode_name": "LYVE_SUCCESS"
+    }
+  ],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "mm",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"mm:c\": {\n    \"x\": \"v\",\n    \"@x\": {\n      \"yang:operation\": \"none\",\n      \"yang:value\": \"k\"\n    }\n  }\n}\n",
+    "xml": "<c xmlns=\"urn:tests:mm\">\n  <x xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\" yang:value=\"k\">v</x>\n</c>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/mm:c",
+      "schema": "/mm:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [
+        {
+          "module": "yang",
+          "name": "operation",
+          "value": "none"
+        },
+        {
+          "module": "yang",
+          "name": "value",
+          "value": "k"
+        }
+      ],
+      "opaque": null,
+      "path": "/mm:c/x",
+      "schema": "/mm:c/x",
+      "value": {
+        "canonical": "v",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

@@ -1,0 +1,18 @@
+fixtures:
+  - id: ut-xpath/meta-rc2
+    dir: ut-xpath
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # a must failure, then a must whose attribute step logs libyang's internal error: the return code stays LY_EVALID
+    rfc: ["RFC7950#7.5.3", "RFC7952#5.1"]
+    areas: [xpath, validation]
+    request:
+      op: data
+      searchdirs: [meta.1]
+      modules: [{name: mz}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: '<c xmlns="urn:probe:mz" xmlns:yang="urn:ietf:params:xml:ns:yang:1"><y>1</y><x yang:operation="none" yang:value="k">v</x></c>'
+    golden: golden/meta-rc2.json
+    assert:
+      verdict: invalid
+      deviation: null

@@ -16,11 +16,26 @@ const (
 	itElem itemType = iota // LYXP_NODE_ELEM
 	itText                 // LYXP_NODE_TEXT: the text of a leaf / leaf-list (same Node)
 	itRoot                 // LYXP_NODE_ROOT / LYXP_NODE_ROOT_CONFIG
+	itMeta                 // LYXP_NODE_META: metadata m of the element n
 )
 
 type item struct {
 	n Node // nil for itRoot
 	t itemType
+	m int // itMeta: index in n's Meta()
+	// pos is lyxp_set_node.pos: the element whose document position libyang stored for the item
+	// (nil: none yet, set_assign_pos takes the item's own). It goes stale in attr.
+	pos Node
+}
+
+// meta is the metadata of an itMeta item.
+func (it item) meta() Meta { return metaOf(it.n)[it.m] }
+
+func metaOf(n Node) []Meta {
+	if m, ok := n.(MetaNode); ok {
+		return m.Meta()
+	}
+	return nil
 }
 
 type valType uint8
@@ -77,6 +92,7 @@ type evaluator struct {
 	parses  int              // long number texts actually parsed (tests)
 	vars    int              // variable references being evaluated, nested
 	varASTs map[int]varAST   // parsed variable values, by index in ec.Vars
+	intErrs int              // Result.InternalErrors
 }
 
 func newEvaluator(e *Expr, ec *EvalContext) *evaluator {
@@ -113,7 +129,7 @@ func (ev *evaluator) start() value {
 	if ev.ec.Node == nil {
 		return nodesV([]item{{t: itRoot}})
 	}
-	return nodesV([]item{{ev.ec.Node, itElem}})
+	return nodesV([]item{{n: ev.ec.Node, t: itElem}})
 }
 
 // tick charges one step of the budget and polls cancellation; the error sticks.
@@ -279,7 +295,6 @@ func (ev *evaluator) chain(a chainExpr, ctx value) (value, error) {
 	if logic {
 		acc = boolV(ev.toBool(acc))
 	}
-	var union []item
 	for i, op := range a.ops {
 		if logic && acc.b == (op == "or") { // lazy evaluation
 			for _, rest := range a.args[i+1:] {
@@ -300,22 +315,15 @@ func (ev *evaluator) chain(a chainExpr, ctx value) (value, error) {
 			if acc.t != vNodes || r.t != vNodes {
 				return value{}, xpErr("Cannot apply XPath operation union on %s and %s.", typeNames[acc.t], typeNames[r.t])
 			}
-			if len(acc.nodes) == 0 && union == nil {
-				nonChild = r.nonChild // moveto_union copies set2 into an empty set1
+			if len(acc.nodes) == 0 && len(r.nodes) > 0 {
+				nonChild = r.nonChild // set2 copied into the empty set1, flag included
 			}
-			if union == nil {
-				union = slices.Clone(acc.nodes)
-			}
-			union = append(union, r.nodes...)
-			acc = value{t: vNodes, nodes: union} // sorted once below
+			acc = nodesV(ev.union(acc.nodes, r.nodes))
 		case "=", "!=", "<", "<=", ">", ">=":
 			acc = boolV(ev.compare(acc, r, op))
 		default:
 			acc = numV(ldOp(op, ev.toNum(acc), ev.toNum(r)))
 		}
-	}
-	if union != nil {
-		acc = nodesV(ev.sortUnique(union))
 	}
 	acc.nonChild = nonChild
 	return acc, nil
@@ -394,7 +402,7 @@ func (ev *evaluator) step1(set value, s step) (value, error) {
 		case set.t != vNodes:
 			return value{}, xpErr("Cannot apply XPath operation path operator on %s.", typeNames[set.t])
 		case s.axis == "attribute":
-			set = nodesV(nil) // U-0002: Node has no metadata, so attributes never match
+			set, err = ev.attr(set, nt, s.allDesc)
 		case s.allDesc && s.axis == "child":
 			set, err = ev.allDescChild(set, nt)
 		default:
@@ -410,6 +418,59 @@ func (ev *evaluator) step1(set value, s step) (value, error) {
 		}
 	}
 	return ev.predicates(set, preds, s.axis)
+}
+
+// attr is moveto_attr ('@' NameTest) and, for allDesc, moveto_attr_alldesc ('//@' NameTest:
+// the context nodes and all their descendants): every element is replaced by its metadata that
+// match nt, in metadata order, and every other item is removed.
+//
+// libyang replaces in place, and after the first match its index already points past it, so the
+// second match is inserted one place too far, after the next item, which is then never looked at:
+// it stays in the set as it is (an element is not replaced by its metadata), and the last match is
+// removed as a non-element when the loop goes on there. After the last item the insert index is
+// past the end: libyang logs an internal error (Result.InternalErrors) and appends. The result is
+// built here in one pass instead of by inserts and removals.
+func (ev *evaluator) attr(set value, nt nameTest, allDesc bool) (value, error) {
+	nodes := set.nodes
+	if allDesc {
+		desc, err := ev.allDescChild(set, nameTest{})
+		if err != nil {
+			return value{}, err
+		}
+		nodes = ev.union(nodes, desc.nodes)
+	}
+	var out []item
+	for p := 0; p < len(nodes); p++ {
+		if err := ev.tick(); err != nil {
+			return value{}, err
+		}
+		if nodes[p].t != itElem {
+			continue
+		}
+		var ms []item
+		for j, m := range metaOf(nodes[p].n) {
+			if err := ev.tick(); err != nil {
+				return value{}, err
+			}
+			if (nt.mod == "" || m.Module == nt.mod) && (nt.name == "" || m.Name == nt.name) {
+				ms = append(ms, item{n: nodes[p].n, t: itMeta, m: j, pos: nodes[p].pos})
+			}
+		}
+		switch {
+		case len(ms) <= 1:
+			out = append(out, ms...)
+		case p+1 < len(nodes):
+			for i := range ms[1:] { // inserted with the pos of the item after the element
+				ms[1+i].pos = nodes[p+1].pos
+			}
+			out = append(append(out, ms[0], nodes[p+1]), ms[1:len(ms)-1]...)
+			p++
+		default: // the pos libyang reads past the end is taken as the element's own
+			ev.intErrs += len(ms) - 1
+			out = append(out, ms...)
+		}
+	}
+	return nodesV(out), nil
 }
 
 // nameTest selects nodes; any matches every node incl. the root.
@@ -962,7 +1023,7 @@ func (ev *evaluator) axis(it item, axis string, yield func(item) error) error {
 	}
 	parent := func(x item) (item, bool) {
 		switch {
-		case x.t == itText:
+		case x.t == itText || x.t == itMeta:
 			return item{n: x.n, t: itElem}, true
 		case x.t == itElem && x.n.Parent() != nil:
 			return item{n: x.n.Parent(), t: itElem}, true
@@ -1096,7 +1157,7 @@ func (ev *evaluator) predicates(set value, preds []ast, axis string) (value, err
 }
 
 // key is the document-order key of an item: its sibling indexes from the top
-// level (root: empty, so first; text: right after its element).
+// level (root: empty, so first; metadata, then text: right after its element).
 func (ev *evaluator) key(it item) []int {
 	if it.t == itRoot {
 		return nil
@@ -1113,10 +1174,67 @@ func (ev *evaluator) key(it item) []int {
 		}
 		ev.keys[it.n] = k
 	}
-	if it.t == itText {
+	switch it.t {
+	case itText:
 		return append(slices.Clip(k), -1)
+	case itMeta: // after its element, before its text (set_sort_compare, get_meta_pos)
+		return append(slices.Clip(k), -2, it.m)
 	}
 	return k
+}
+
+// union is moveto_union of two node sets: an empty set2 leaves set1 as it is, an empty set1 takes
+// set2, and only two non-empty sets are merged (set_sorted_merge, which stores positions).
+func (ev *evaluator) union(set1, set2 []item) []item {
+	switch {
+	case len(set2) == 0:
+		return set1
+	case len(set1) == 0:
+		return set2
+	}
+	return ev.sortedMerge(set1, set2)
+}
+
+// sortedMerge is set_sorted_merge (moveto_union of two non-empty node sets): src merged into trg
+// assuming both are in document order, which libyang does not check (its set_sort calls are in
+// asserts, compiled out): runs of src items that go before the current trg item are inserted
+// there, equal items are kept once. An unsorted set (a multi-match attribute step, see attr)
+// stays as unsorted as libyang leaves it.
+func (ev *evaluator) sortedMerge(trg, src []item) []item {
+	out, src := slices.Clone(trg), slices.Clone(src)
+	ev.assignPos(out)
+	ev.assignPos(src)
+	cmp := ev.sortCompare
+	i, j, count, dup := 0, 0, 0, 0
+	flush := func() { // copy_nodes: the block src[i-count:i] replaces the dup trg items before j
+		ev.charge(len(out) / 64) // the memmove of the rest of trg
+		out = slices.Concat(out[:j-dup], src[i-count:i], out[j:])
+		j += count - dup
+		count, dup = 0, 0
+	}
+	for i < len(src) && j < len(out) {
+		if ev.tick() != nil {
+			return out
+		}
+		switch c := cmp(src[i], out[j]); {
+		case c == 0 && count == 0:
+			i, j = i+1, j+1
+		case c == 0:
+			count, dup, i, j = count+1, dup+1, i+1, j+1
+		case c < 0:
+			count, i = count+1, i+1
+		case count > 0:
+			flush()
+		default:
+			j++
+		}
+	}
+	if i < len(src) || count > 0 {
+		count += len(src) - i
+		i = len(src)
+		flush()
+	}
+	return out
 }
 
 // sortUnique is set_sort + duplicate removal.
@@ -1124,15 +1242,50 @@ func (ev *evaluator) sortUnique(items []item) []item {
 	if len(items) < 2 {
 		return items
 	}
-	keys := make(map[item][]int, len(items))
-	for _, it := range items {
-		if ev.tick() != nil {
-			return items
+	ev.assignPos(items)
+	slices.SortStableFunc(items, ev.sortCompare)
+	return slices.CompactFunc(items, func(a, b item) bool { return a.n == b.n && a.t == b.t && a.m == b.m })
+}
+
+// assignPos is set_assign_pos: every item without a stored position gets its own (roots keep none).
+func (ev *evaluator) assignPos(items []item) {
+	for i := range items {
+		if items[i].pos == nil && items[i].t != itRoot {
+			items[i].pos = items[i].n
 		}
-		keys[it] = ev.key(it)
 	}
-	slices.SortStableFunc(items, func(a, b item) int { return slices.Compare(keys[a], keys[b]) })
-	return slices.Compact(items)
+}
+
+// sortCompare is set_sort_compare: by the stored position (its element's document order), then
+// at an equal position an element before its text, metadata by get_meta_pos, an element before
+// anything else and text or metadata after an element. A stale position (attr) puts metadata at
+// another element's position, where these rules compare them with that element's items.
+func (ev *evaluator) sortCompare(a, b item) int {
+	pk := func(it item) []int {
+		if it.t == itRoot {
+			return nil
+		}
+		return ev.key(item{n: it.pos, t: itElem})
+	}
+	if c := slices.Compare(pk(a), pk(b)); c != 0 {
+		return c
+	}
+	same := a.n == b.n && (a.t != itMeta || b.t != itMeta || a.m == b.m)
+	switch {
+	case same && a.t != b.t && a.t != itMeta && b.t != itMeta: // element and its text
+		if a.t == itElem {
+			return -1
+		}
+		return 1
+	case same && a.t == b.t:
+		return 0
+	case a.t == itElem:
+		return -1
+	case a.t == itText && (b.t == itElem || b.t == itMeta), a.t == itMeta && b.t == itElem,
+		a.t == itMeta && b.t == itMeta && a.m > b.m:
+		return 1
+	}
+	return -1
 }
 
 // ---- casts (lyxp_set_cast) ----
@@ -1215,9 +1368,12 @@ func (ev *evaluator) toString(v value) string {
 	return ev.stringValue(v.nodes[0])
 }
 
-// stringValue is cast_string_elem: libyang's own string-value, an indented dump
-// of the subtree's term values.
+// stringValue is cast_node_set_to_string of one item: a metadata value, else cast_string_elem,
+// libyang's own string-value, an indented dump of the subtree's term values.
 func (ev *evaluator) stringValue(it item) string {
+	if it.t == itMeta {
+		return orNoValue(it.meta().Value).String()
+	}
 	var b strings.Builder
 	var rec func(n Node, indent int)
 	rec = func(n Node, indent int) {
@@ -1320,7 +1476,9 @@ func (ev *evaluator) compareItem(it item, other *value, op string, switched bool
 	default:
 		tmp = strV(ev.toString(one))
 	}
-	// set_comp_canonize; libyang canonizes the other operand in place
+	// set_comp_canonize; libyang canonizes the other operand in place. For metadata it validates
+	// with the metadata's next pointer as the schema node (a lyd_meta read as a lyd_node): an
+	// error for the last metadata, undefined otherwise, so metadata are never canonized here.
 	if other.t == vStr && it.t == itElem && isTerm(it.n) {
 		if c, ok := it.n.Schema().Canonical(other.s, ev.ns); ok {
 			other.s = c

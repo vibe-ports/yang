@@ -1,0 +1,20 @@
+fixtures:
+  - id: ut-xpath/meta-68
+    dir: ut-xpath
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # a union with an unsorted attribute-step result: set_sorted_merge keeps the order (mirrored, eval.go sortedMerge); data after test_xpath.c test_axes
+    rfc: ["XPath1.0#2.2", "XPath1.0#5.3", "RFC7952#5.1"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1, meta.1, ../ietf]
+      modules: [{name: a}, {name: xml}, {name: ietf-origin}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: "<l1 xmlns=\"urn:tests:a\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" xmlns:xml=\"http://www.w3.org/XML/1998/namespace\" xmlns:or=\"urn:ietf:params:xml:ns:yang:ietf-origin\" xml:lang=\"en-US\">\n  <a yang:operation=\"none\" yang:key=\"[no-key='no-value']\" yang:value=\"v\">a1</a>\n  <b or:origin=\"or:learned\" xml:lang=\"de\">b1</b>\n  <c yang:operation=\"replace\">c1</c>\n</l1>\n<c xmlns=\"urn:tests:a\" xmlns:xml=\"http://www.w3.org/XML/1998/namespace\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\"><x xml:lang=\"EN\" yang:operation=\"delete\">val</x></c>\n<foo xmlns=\"urn:tests:a\">f</foo>\n"
+      xpath: "concat(name((//l1/a/@* | //l1/*/@*)[2]), ' ', name((//l1/a/@* | //l1/*/@*)[3]))"
+    golden: golden/meta-68.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2.2", "XPath1.0#5.3", "RFC7952#5.1"]
+      deviation: null

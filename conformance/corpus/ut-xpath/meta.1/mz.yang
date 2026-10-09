@@ -1,0 +1,15 @@
+module mz {
+    yang-version 1.1;
+    namespace "urn:probe:mz";
+    prefix mz;
+    container c {
+        leaf y {
+            type string;
+            must "false()";
+        }
+        leaf x {
+            type string;
+            must "count(@*) >= 0";
+        }
+    }
+}

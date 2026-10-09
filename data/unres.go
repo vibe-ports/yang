@@ -59,6 +59,9 @@ func (vc *valCtx) eval(e *xpath.Expr, ctx *Node, root xpath.RootKind, ignoreWhen
 	r, err := e.EvalTo(xpath.EvalContext{Ctx: b.ctx, Node: wrap(vc.t.set, ctx), Tree: vc.topNodes(), Root: root,
 		IgnoreWhen: ignoreWhen, Schema: info{vc.t.set}, Deref: vc.deref, MaxSteps: int(per), Vars: vc.vars}, vc.to)
 	b.steps += r.Steps
+	for range r.InternalErrors { // LOGINT, logged and gone past as libyang
+		_ = vc.log.logErr("LY_EINT", msgXPathInt)
+	}
 	switch {
 	case errors.Is(err, xpath.ErrBudget):
 		// the cumulative budget, or the per-evaluation cap xpath.DefaultMaxSteps (U-0042)

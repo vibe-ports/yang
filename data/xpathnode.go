@@ -108,6 +108,18 @@ func (x xn) Value() xpath.Value {
 	return xval{x.n.value, x.n.schema}
 }
 
+// Meta is the node's metadata (lyd_node.meta) for the attribute axis and lang().
+func (x xn) Meta() []xpath.Meta {
+	if len(x.n.meta) == 0 {
+		return nil
+	}
+	out := make([]xpath.Meta, len(x.n.meta))
+	for i, m := range x.n.meta {
+		out[i] = xpath.Meta{Module: m.mod.Name, Namespace: m.mod.Namespace, Name: m.name, Value: xval{m.value, nil}}
+	}
+	return out
+}
+
 // When is the when state the evaluator reads (xpath.c moveto checks): false when flagged
 // WhenFalse; unresolved when the node or a choice/case ancestor has a when and the node was not
 // evaluated true yet; else true.
@@ -121,7 +133,7 @@ func (x xn) When() xpath.WhenState {
 	return xpath.WhenTrue
 }
 
-// xval adapts a stored value to xpath.Value.
+// xval adapts a stored value to xpath.Value; s is the term node's schema node, nil for metadata.
 type xval struct {
 	v types.Value
 	s *schema.Node
@@ -148,7 +160,7 @@ func (v xval) Identity() (string, string, bool) {
 
 // Enum: libyang checks the leaf's schema type, so an enum union member does not count.
 func (v xval) Enum() (int, bool) {
-	if v.s.Type == nil || v.s.Type.Base != schema.Enumeration || v.v.Enum() == nil {
+	if v.s == nil || v.s.Type == nil || v.s.Type.Base != schema.Enumeration || v.v.Enum() == nil {
 		return 0, false
 	}
 	return int(v.v.Enum().Value), true

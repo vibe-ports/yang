@@ -1,0 +1,16 @@
+module xml {
+    yang-version 1.1;
+    namespace "http://www.w3.org/XML/1998/namespace";
+    prefix xml;
+
+    import ietf-yang-metadata {
+        prefix md;
+    }
+
+    description
+        "The xml:lang attribute (XML 1.0 section 2.12) as an RFC 7952 annotation, for lang().";
+
+    md:annotation lang {
+        type string;
+    }
+}

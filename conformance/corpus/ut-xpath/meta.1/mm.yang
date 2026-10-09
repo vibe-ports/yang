@@ -1,0 +1,15 @@
+module mm {
+    yang-version 1.1;
+    namespace "urn:tests:mm";
+    prefix mm;
+
+    container c {
+        leaf x {
+            type string;
+            must "count(@*) >= 0";
+        }
+        leaf-list ll {
+            type string;
+        }
+    }
+}

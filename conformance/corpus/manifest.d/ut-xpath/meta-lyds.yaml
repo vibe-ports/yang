@@ -1,0 +1,21 @@
+fixtures:
+  - id: ut-xpath/meta-lyds
+    dir: ut-xpath
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # libyang's internal yang:lyds_tree metadata on a system-ordered leaf-list run (D-0100)
+    rfc: ["RFC7952#3", "XPath1.0#2.2"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [meta.1]
+      modules: [{name: mm}]
+      format: xml
+      data_type: data
+      validate_options: ["present"]
+      data: '<c xmlns="urn:tests:mm"><ll>a</ll><ll>b</ll></c>'
+      xpath: "concat(count(//@*), ' ', name(//@*))"
+    golden: golden/meta-lyds.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7952#3"]
+      deviation: D-0100
+      waive: [result]
