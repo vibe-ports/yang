@@ -807,3 +807,9 @@
 {"set": "hash", "cp": "/pv2:c", "x": "count(l[k = concat(\"a'\", '\"') != 'zz'])"}
 {"set": "opq", "cp": "/pv2:c", "x": "count(l[k = 'zz' != 'q'])"}
 {"set": "opq", "cp": "/pv2:c", "x": "count(l[k = 'a' != 'q'])"}
+{"set": "opq", "cp": "/pv2:c", "x": "count(l)"}
+{"set": "opq", "cp": "/pv2:c", "x": "count(l[k = 'zz'])"}
+{"set": "opq", "cp": "/pv2:c", "x": "count(//l)"}
+{"set": "opq", "cp": "/pv2:c", "x": "count(pv2:l)"}
+{"set": "opq", "cp": "/pv2:c", "x": "count(*)"}
+{"set": "opq", "cp": "/pv2:c", "x": "name(l[2])"}

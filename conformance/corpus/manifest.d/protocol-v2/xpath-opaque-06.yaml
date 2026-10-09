@@ -1,0 +1,18 @@
+fixtures:
+  - id: protocol-v2/xpath-opaque-06
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # opaque nodes (values that do not fit int8, parse-only) under name tests and as values (issue #182, lyd_node_schema, lyd_get_value)
+    rfc: ["XPath1.0#2.3", "XPath1.0#5.2"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2-op}]
+      format: json
+      data_type: get
+      parse_only: true
+      unknown: opaque
+      data_file: data/xpath-opq-data.json
+      context_path: /pv2-op:c
+      xpath: "string(x)"
+    golden: golden/xpath-opaque-06.json

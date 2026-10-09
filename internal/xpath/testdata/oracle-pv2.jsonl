@@ -808,3 +808,9 @@
 {"set":"hash","cp":"/pv2:c","x":"count(l[k = concat(\"a'\", '\"') != 'zz'])","result":{"type":"number","value":2}}
 {"set":"opq","cp":"/pv2:c","x":"count(l[k = 'zz' != 'q'])","result":{"type":"number","value":1}}
 {"set":"opq","cp":"/pv2:c","x":"count(l[k = 'a' != 'q'])","result":{"type":"number","value":1}}
+{"set":"opq","cp":"/pv2:c","x":"count(l)","result":{"type":"number","value":2}}
+{"set":"opq","cp":"/pv2:c","x":"count(l[k = 'zz'])","result":{"type":"number","value":1}}
+{"set":"opq","cp":"/pv2:c","x":"count(//l)","result":{"type":"number","value":2}}
+{"set":"opq","cp":"/pv2:c","x":"count(pv2:l)","result":{"type":"number","value":2}}
+{"set":"opq","cp":"/pv2:c","x":"count(*)","result":{"type":"number","value":2}}
+{"set":"opq","cp":"/pv2:c","x":"name(l[2])","result":{"type":"string","value":"pv2:l"}}

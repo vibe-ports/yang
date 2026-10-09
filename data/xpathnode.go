@@ -90,6 +90,15 @@ func (x xn) FirstChild(sn xpath.SchemaNode) (xpath.Node, bool) {
 	return nil, false
 }
 
+// OpaqueSchema is lyd_node_schema of an opaque node, for the name tests of the evaluator.
+func (x xn) OpaqueSchema() (xpath.SchemaNode, bool) {
+	sn := nodeSchema(x.set, x.n)
+	if sn == nil {
+		return nil, false
+	}
+	return xs{sn, x.set}, hasWhen(sn)
+}
+
 func (x xn) Name() string { return x.n.Name() }
 
 func (x xn) Module() string {
@@ -102,6 +111,9 @@ func (x xn) Module() string {
 func (x xn) Schema() xpath.SchemaNode { return wrapSchema(x.set, x.n.schema) }
 
 func (x xn) Value() xpath.Value {
+	if x.n.opaq != nil {
+		return opqVal(x.n.opaq.Value) // lyd_get_value of an opaque node: its text
+	}
 	if !x.n.isTerm() {
 		return nil
 	}
@@ -119,6 +131,14 @@ func (x xn) Meta() []xpath.Meta {
 	}
 	return out
 }
+
+// opqVal is the value of an opaque node: text only, no typed value behind it.
+type opqVal string
+
+func (v opqVal) String() string                 { return string(v) }
+func (opqVal) Identity() (string, string, bool) { return "", "", false }
+func (opqVal) Enum() (int, bool)                { return 0, false }
+func (opqVal) Bits() ([]string, bool)           { return nil, false }
 
 // When is the when state the evaluator reads (xpath.c moveto checks): false when flagged
 // WhenFalse; unresolved when the node or a choice/case ancestor has a when and the node was not

@@ -845,8 +845,19 @@ func (ev *evaluator) check(it item, nt nameTest) (match, skip bool, err error) {
 	if it.t != itElem {
 		return false, false, nil
 	}
-	sn := it.n.Schema()
-	if sn == nil || (nt.mod != "" && it.n.Module() != nt.mod) {
+	// lyd_node_schema: an opaque node is checked as an instance of the schema node its name
+	// has, but has no when flags (an unresolved when when its schema node has one)
+	sn, mod, opqWhen := it.n.Schema(), it.n.Module(), false
+	if sn == nil {
+		if o, ok := it.n.(OpaqueSchema); ok {
+			sn, opqWhen = o.OpaqueSchema()
+		}
+		if sn == nil {
+			return false, false, nil
+		}
+		mod = sn.Module()
+	}
+	if nt.mod != "" && mod != nt.mod {
 		return false, false, nil
 	}
 	if ev.ec.Root == RootConfig && !sn.Config() || ev.op != nil && isOp(sn) && sn != ev.op {
@@ -856,7 +867,11 @@ func (ev *evaluator) check(it item, nt nameTest) (match, skip bool, err error) {
 		return false, false, nil
 	}
 	isCur := ev.cur.t == itElem && it.n == ev.cur.n
-	switch it.n.When() {
+	w := it.n.When()
+	if opqWhen {
+		w = WhenUnresolved
+	}
+	switch w {
 	case WhenUnresolved:
 		if !ev.ec.IgnoreWhen && !isCur {
 			return false, false, ErrIncomplete

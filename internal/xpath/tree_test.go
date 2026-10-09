@@ -66,6 +66,14 @@ func (n *tnode) Value() Value {
 }
 func (n *tnode) When() WhenState { return n.when }
 
+// OpaqueSchema is lyd_node_schema of an opaque test node: its name under its parent's schema node.
+func (n *tnode) OpaqueSchema() (SchemaNode, bool) {
+	if n.parent == nil || n.parent.sch == nil {
+		return nil, false
+	}
+	return n.parent.sch.Child(n.mod, n.name), false
+}
+
 func (s *tschema) Kind() Kind     { return s.kind }
 func (s *tschema) Module() string { return s.mod }
 func (s *tschema) Keys() []string { return s.keys }

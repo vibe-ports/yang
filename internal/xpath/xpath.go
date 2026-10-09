@@ -98,6 +98,14 @@ type ChildLookup interface {
 	LookupChild(sn SchemaNode, vals []string) (nodes []Node, ok bool)
 }
 
+// OpaqueSchema is an optional interface of an opaque Node (Schema() nil): lyd_node_schema, the
+// schema node its module and name have under its parents (nil if none), and whether that node
+// has a when, which an opaque node never has evaluated. Without it opaque nodes never match a
+// name test.
+type OpaqueSchema interface {
+	OpaqueSchema() (sn SchemaNode, hasWhen bool)
+}
+
 // FirstLookup is an optional interface of a Node: its first child instance of sn found through
 // an index (lyd_find_sibling_schema), nil if it has none. ok=false declines: the evaluator scans.
 type FirstLookup interface {

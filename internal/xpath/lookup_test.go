@@ -130,6 +130,8 @@ func (w *wnode) Schema() SchemaNode { return w.t.Schema() }
 func (w *wnode) Value() Value       { return w.t.Value() }
 func (w *wnode) When() WhenState    { return w.t.When() }
 
+func (w *wnode) OpaqueSchema() (SchemaNode, bool) { return w.t.OpaqueSchema() }
+
 func unwrap(n Node) *tnode {
 	if l, ok := n.(lnode); ok {
 		return l.t
@@ -221,7 +223,7 @@ func TestChildLookupContract(t *testing.T) {
 		{"/a:c/l[k='a'][j='01']/v", []string{"x"}, false, false}, // canonized literal
 		{"/a:c/n[.='002']", []string{"2"}, false, true},          // leaf-lists are never hashed
 		{"/a:c/l/ll[.='1']", []string{"1"}, false, true},         // opaque ll=2 filtered out
-		{"/a:c/l/ll[.='2']", nil, false, true},                   // '.' never selects an opaque node
+		{"/a:c/l/ll[.='2']", []string{"2"}, false, true},         // the opaque ll is an ll (lyd_node_schema)
 		{"/a:c/l[k='a'][j='1']/v[.='zz']", nil, false, false},    // a leaf: nothing consumed
 		{"/a:c/l/v", []string{"x", "y"}, true, false},            // per context node: the others still look up
 		{"/a:c/l/ll[.='1']", []string{"1"}, true, true},

@@ -1,0 +1,16 @@
+module pv2-op {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-op";
+  prefix op;
+
+  description
+    "Hand-written (issue #182): values that do not fit their int8 types, kept
+     as opaque nodes by a parse-only parse, under XPath name tests.";
+
+  container c {
+    leaf mode { type string; }
+    leaf x { when "../mode = 'on'"; type int8; }
+    leaf-list ll { type int8; }
+    list l { key k; leaf k { type int8; } leaf v { type string; } }
+  }
+}
