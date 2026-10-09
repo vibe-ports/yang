@@ -270,6 +270,9 @@ func (t *Tree) NewPath(path, value string, o NewPathOptions) (*Node, error) // o
 func (t *Tree) Find(path string) (*Node, error)
 func (n *Node) Remove() error
 func (t *Tree) Merge(src *Tree) error
+func Diff(first, second *Tree, o DiffOptions) (*Tree, error)          // lyd_diff_siblings of the top levels; DiffOptions{Defaults, Meta bool}
+func DiffSiblings(first, second *Node, o DiffOptions) (*Tree, error)  // lyd_diff_siblings
+func DiffTree(first, second *Node, o DiffOptions) (*Tree, error)      // lyd_diff_tree
 func (t *Tree) Top() iter.Seq[*Node]   // + Node: Schema(), Value(), Name(), Children(), All() (pre-order), Parent(), Path(), Flags()
 func (e *ValidationError) RC() string // the call's LY_ERR name (LY_EVALID, LY_EINVAL, LY_ENOTFOUND, ...): that of the last error logged
 ```

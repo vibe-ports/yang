@@ -4,7 +4,8 @@
 // lyd_diff_del_meta, lyd_diff_insert_sibling, lyd_diff_change_op, lyd_diff_find_match,
 // lyd_diff_merge_all, lyd_diff_merge_module, lyd_diff_merge_r, lyd_diff_merge_create,
 // lyd_diff_merge_delete, lyd_diff_merge_none, lyd_diff_is_redundant, lyd_diff_is_redundant_meta),
-// the subset the implicit diff of the validation needs (BSD-3-Clause, © CESNET).
+// the subset the implicit diff of the validation needs; lyd_diff_add and lyd_diff_dup in full, the
+// diff generation shares them (BSD-3-Clause, © CESNET).
 
 package data
 
@@ -71,27 +72,27 @@ func prevInst(n *Node) *Node {
 // valDiffAdd is lyd_val_diff_add: n created or deleted by the validation added to the diff t, the
 // anchor of a created user-ordered instance (yang:key, yang:value or yang:position) included.
 func (t *Tree) valDiffAdd(n *Node, op diffOp) error {
-	var key, value, position *string
+	var a diffAttrs
 	str := func(s string) *string { return &s }
 	if op == diffCreate && isUserOrdered(n.schema) {
 		switch prev := prevInst(n); {
 		case isDupInstList(n.schema):
-			position = str("")
+			a.position = str("")
 			if pos := listPos(n); pos > 1 {
-				position = str(strconv.Itoa(pos - 1))
+				a.position = str(strconv.Itoa(pos - 1))
 			}
 		case n.schema.Kind == schema.List && prev != nil:
-			key = str(listPredicate(prev))
+			a.key = str(listPredicate(prev))
 		case n.schema.Kind == schema.List:
-			key = str("")
+			a.key = str("")
 		case prev != nil:
-			value = str(prev.value.Canonical())
+			a.value = str(prev.value.Canonical())
 		default:
-			value = str("")
+			a.value = str("")
 		}
 	}
 	src := newTree(t.set)
-	if err := src.diffAdd(n, op, key, value, position); err != nil {
+	if _, err := src.diffAdd(n, op, a); err != nil {
 		return err
 	}
 	return t.diffMergeAll(src)
@@ -163,19 +164,27 @@ func (t *Tree) diffChangeOp(n *Node, op diffOp) error {
 	return t.yangMeta(n, "operation", op.String())
 }
 
-// diffDup is lyd_diff_dup without a diff parent: n with its subtree, and its parents (with their
-// keys, the topmost with the operation none), inserted at the top of t.
-func (t *Tree) diffDup(n *Node) (*Node, error) {
-	opts := dupNoMeta | dupWithFlags | dupRecursive // a replace never comes from the validation
+// diffDup is lyd_diff_dup: n (with its subtree, except for the move of a configuration
+// user-ordered instance) and its parents up to the schema child of parent, connected to parent
+// or, without one, at the top of t; the topmost duplicated parent gets the operation none.
+func (t *Tree) diffDup(n *Node, op diffOp, parent *Node) (*Node, error) {
+	opts := dupNoMeta | dupWithFlags
 	if isUserOrdered(n.schema) {
 		opts |= dupNoLyds
+	}
+	if op != diffReplace || !isUserOrdered(n.schema) || !n.schema.Config {
+		opts |= dupRecursive // a move applies to the user-ordered instance only, no descendants
 	}
 	dup, err := t.dupR(n, nil, false, insertDefault, opts)
 	if err != nil {
 		return nil, err
 	}
+	var sparent *schema.Node
+	if parent != nil {
+		sparent = parent.schema
+	}
 	top, orig := dup, n
-	for top.schema.DataParent() != nil {
+	for top.schema.DataParent() != nil && !compareSchemaEqual(top.schema.DataParent(), sparent, false) {
 		orig = orig.parent
 		d, err := t.dupR(orig, nil, false, insertDefault, dupNoMeta|dupWithFlags)
 		if err != nil {
@@ -184,7 +193,11 @@ func (t *Tree) diffDup(n *Node) (*Node, error) {
 		t.insert(d, top, insertDefault)
 		top = d
 	}
-	t.insert(nil, top, insertLastBySchema) // lyd_diff_insert_sibling
+	if parent != nil {
+		t.insert(parent, top, insertDefault)
+	} else {
+		t.insert(nil, top, insertLastBySchema) // lyd_diff_insert_sibling
+	}
 	if top != dup {
 		if err := t.yangMeta(top, "operation", diffNone.String()); err != nil {
 			return nil, err
@@ -193,24 +206,73 @@ func (t *Tree) diffDup(n *Node) (*Node, error) {
 	return dup, nil
 }
 
-// diffAdd is lyd_diff_add into the empty diff t (as lyd_val_diff_add calls it): the copy of n
-// with the operation op, the nested user-ordered instances of a created subtree with their
-// anchors, and n's own anchor.
-func (t *Tree) diffAdd(n *Node, op diffOp, key, value, position *string) error {
-	dup, err := t.diffDup(n)
-	if err != nil {
-		return err
+// diffAttrs are the optional metadata lyd_diff_add puts on a diff node, nil when absent.
+type diffAttrs struct {
+	origDefault, origValue, key, value, position, origKey, origPosition *string
+}
+
+// diffAdd is lyd_diff_add: the copy of n with the operation op and the metadata a added to the
+// diff t under the deepest of n's parents t already has (a parent already in t that is n itself
+// takes the operation, its children keep theirs, none by default); a created subtree gets the
+// anchors of its nested user-ordered instances. It returns the diff node.
+func (t *Tree) diffAdd(n *Node, op diffOp, a diffAttrs) (*Node, error) {
+	sib := &t.top
+	var diffParent, match, parent *Node
+	for {
+		parent = n
+		for parent.parent != nil && (diffParent == nil || parent.parent.schema != diffParent.schema) {
+			parent = parent.parent
+		}
+		if isDupInstList(parent.schema) {
+			match = nil // never found: the instances cannot be told apart
+			break
+		}
+		if match = t.findFirst(sib, parent); match == nil {
+			break
+		}
+		diffParent = match
+		sib = &match.kids
+		if parent == n {
+			break
+		}
+	}
+	var dup *Node
+	if match != nil && parent == n {
+		// an operation is already on a descendant
+		if isUserOrdered(diffParent.schema) {
+			// moved to the end of its instances, where it is expected
+			if last := lastInst(diffParent); last != diffParent {
+				if err := t.insertAfter(last, diffParent); err != nil {
+					return nil, err
+				}
+			}
+		}
+		delYangMeta(diffParent, "operation")
+		for _, c := range diffParent.kids.nodes() {
+			if c.isKey() || findYangMeta(c, "operation") >= 0 {
+				continue
+			}
+			if err := t.yangMeta(c, "operation", diffNone.String()); err != nil {
+				return nil, err
+			}
+		}
+		dup = diffParent
+	} else {
+		var err error
+		if dup, err = t.diffDup(n, op, diffParent); err != nil {
+			return nil, err
+		}
 	}
 	if cur, found := diffGetOp(dup); !found || cur != op {
 		if err := t.yangMeta(dup, "operation", op.String()); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	if op == diffCreate {
 		for e := range dup.All() {
 			if e != dup && isUserOrdered(e.schema) {
 				if err := t.diffCreateNestedUserord(e); err != nil {
-					return err
+					return nil, err
 				}
 			}
 		}
@@ -218,14 +280,15 @@ func (t *Tree) diffAdd(n *Node, op diffOp, key, value, position *string) error {
 	for _, m := range []struct {
 		name string
 		val  *string
-	}{{"key", key}, {"value", value}, {"position", position}} {
+	}{{"orig-default", a.origDefault}, {"orig-value", a.origValue}, {"key", a.key}, {"value", a.value},
+		{"position", a.position}, {"orig-key", a.origKey}, {"orig-position", a.origPosition}} {
 		if m.val != nil {
 			if err := t.yangMeta(dup, m.name, *m.val); err != nil {
-				return err
+				return nil, err
 			}
 		}
 	}
-	return nil
+	return dup, nil
 }
 
 // diffCreateNestedUserord is lyd_diff_add_create_nested_userord: the anchor metadata of a
@@ -264,20 +327,10 @@ func (t *Tree) diffMergeAll(src *Tree) error {
 	return nil
 }
 
-// diffFindMatch is lyd_diff_find_match with defaults: the instance of target among the children
-// of parent (nil: the top of t), the next equal one on every call for duplicate instances.
+// diffFindMatch is lyd_diff_find_match with defaults among the children of parent (nil: the top
+// of t).
 func (t *Tree) diffFindMatch(parent, target *Node, cache *dupCache) *Node {
-	sib := t.childrenOf(parent)
-	var m *Node
-	switch {
-	case target.schema == nil:
-		m = opaqNext(sib, target.Name())
-	case target.schema.Kind == schema.List || target.schema.Kind == schema.LeafList:
-		m = t.findFirst(sib, target)
-	default:
-		m = t.findSchema(sib, target.schema)
-	}
-	return t.dupInstNext(m, cache)
+	return t.findMatch(t.childrenOf(parent), target, true, cache)
 }
 
 // diffMergeR is lyd_diff_merge_r for the operations of an implicit diff (create, delete, none):

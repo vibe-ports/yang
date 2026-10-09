@@ -21,6 +21,8 @@ var seqKeys = map[string]map[string]bool{
 	"dump": set("do", "with_defaults"),
 	"compare": set("do", "format", "data_type", "data", "data_file", "unknown", "parse_only", "parse_options",
 		"validate_options", "first", "second", "options"),
+	"diff": set("do", "format", "data_type", "data", "data_file", "unknown", "parse_only", "parse_options",
+		"validate_options", "node", "data_node", "single", "options"),
 }
 
 var seqRequestKeys = set("op", "base_dir", "searchdirs", "modules", "context_options", "steps")
@@ -72,7 +74,7 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any) error {
 		}
 		steps = append(steps, st)
 	}
-	var tree *data.Tree
+	var tree, diff *data.Tree // the retained tree and the diff register
 	out := []any{}
 	rc, failed := "LY_SUCCESS", any(nil)
 	for i, st := range steps {
@@ -98,6 +100,9 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any) error {
 		case "compare":
 			phase = "parse"
 			diags, err = stepCompare(r, s, st, tree, so)
+		case "diff":
+			phase = "" // the diagnostics carry theirs
+			diags, err = stepDiff(r, s, st, tree, &diff)
 		case "dump":
 			wd, werr := wdOf(st)
 			if werr != nil {
@@ -123,6 +128,11 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any) error {
 		so["typed"] = []any{}
 		if tree != nil {
 			so["typed"] = typedJSON(tree)
+		}
+		if strings.HasPrefix(what, "diff") {
+			if err := diffOut(diff, so); err != nil {
+				return err
+			}
 		}
 		if rc != "LY_SUCCESS" {
 			failed = i

@@ -35,11 +35,22 @@ func (Yang) SkippedFields(op string) []string {
 	switch op {
 	case "schema":
 		return []string{"compiled", "ext_trees"}
-	case "data", "sequence":
-		return []string{"typed.value.type", "typed.value.typedef", "typed.value.union_member", "typed.value.hints",
-			"typed.meta", "typed.any", "typed.opaque"}
+	case "data", "diff":
+		return typedSkipped("typed")
+	case "sequence":
+		return append(typedSkipped("typed"), typedSkipped("diff_typed")...)
 	}
 	return nil
+}
+
+// typedSkipped are the fields of a typed dump (in the response field f) the engine does not
+// produce: see SkippedFields.
+func typedSkipped(f string) []string {
+	var out []string
+	for _, k := range []string{"value.type", "value.typedef", "value.union_member", "value.hints", "meta", "any", "opaque"} {
+		out = append(out, f+"."+k)
+	}
+	return out
 }
 
 // ctxOptions are the oracle's context_options this engine supports.
@@ -57,10 +68,11 @@ var ctxOptions = map[string]func(*yang.Options){
 var ctxUnsupported = map[string]string{}
 
 // Run implements Engine for ops "schema" (lyoracle.c op_schema/build_ctx/dump_schema), "data"
-// (op_data, datastore data types) and "sequence" (op_sequence over the public data API).
+// (op_data, datastore data types), "diff" (op_diff) and "sequence" (op_sequence over the public
+// data API).
 func (Yang) Run(r Request) (Response, error) {
 	op, _ := r.Params["op"].(string)
-	if op != "schema" && op != "data" && op != "sequence" {
+	if op != "schema" && op != "data" && op != "sequence" && op != "diff" {
 		return nil, ErrUnsupported
 	}
 	ctx, resp, mods, verdict, err := buildContext(r)
@@ -69,14 +81,12 @@ func (Yang) Run(r Request) (Response, error) {
 	}
 	resp["op"] = op
 	resp["modules"] = mods
-	if op == "data" || op == "sequence" {
+	if op != "schema" {
 		if verdict != "valid" {
 			return nil, fmt.Errorf("%w: %s request with a rejected module", ErrUnsupported, op)
 		}
-		run := runData
-		if op == "sequence" {
-			run = runSequence
-		}
+		run := map[string]func(Request, *yang.Schema, map[string]any) error{"data": runData, "sequence": runSequence,
+			"diff": runDiff}[op]
 		if err := run(r, ctx.Schema(), resp); err != nil {
 			return nil, err
 		}

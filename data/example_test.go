@@ -72,3 +72,44 @@ func Example() {
 	// LYVE_DATA /example:system Mandatory node "hostname" instance does not exist.
 	// LYVE_DATA /example:system/server[name='ntp']/port port 0 is reserved
 }
+
+// Diff: the changes between two trees as a tree annotated with yang:operation.
+func ExampleDiff() {
+	models := fstest.MapFS{"ex.yang": {Data: []byte(`module ex {
+  namespace "urn:ex";
+  prefix ex;
+  container c {
+    leaf a { type string; }
+    leaf-list ll { type string; ordered-by user; }
+  }
+}`)}}
+	ctx, _, err := yang.NewContext(yang.Options{NoYangLibrary: true}, models)
+	if err != nil {
+		panic(err)
+	}
+	if _, err := ctx.Load("ex", "", nil); err != nil {
+		panic(err)
+	}
+	parse := func(in string) *data.Tree {
+		t, _, err := data.Parse(context.Background(), strings.NewReader(in), data.FormatJSON, ctx.Schema(),
+			data.ParseOptions{})
+		if err != nil {
+			panic(err)
+		}
+		return t
+	}
+	first := parse(`{"ex:c": {"a": "x", "ll": ["1", "2"]}}`)
+	second := parse(`{"ex:c": {"a": "y", "ll": ["2", "1"]}}`)
+	diff, err := data.Diff(first, second, data.DiffOptions{})
+	if err != nil {
+		panic(err)
+	}
+	if err := diff.PrintXML(os.Stdout, data.PrintOptions{WithDefaults: data.WDAll}); err != nil {
+		panic(err)
+	}
+	// Output:
+	// <c xmlns="urn:ex" xmlns:yang="urn:ietf:params:xml:ns:yang:1" yang:operation="none">
+	//   <a yang:operation="replace" yang:orig-default="false" yang:orig-value="x">y</a>
+	//   <ll yang:operation="replace" yang:orig-default="false" yang:orig-value="1" yang:value="">2</ll>
+	// </c>
+}

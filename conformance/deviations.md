@@ -52,7 +52,7 @@ questionable. Format: id · area · libyang behaviour · ours · RFC reference �
 | D-0014 | xpath: schema node-not-found warning for `*` | `eval_name_test_scnode_no_match_msg` prints a NULL name with `%.*s` and a precision `(ncname - expr) + 0` computed from a NULL pointer (UB); on the oracle hosts it is negative or larger than the string, so printf prints the whole expression | `Schema node "" … in expr "<whole expression>" …` pinned | C11 §7.21.6.1 (UB) | compile/must-atomize-axes-warning |
 | D-0015 | xpath: schema-mode operand type comparison (`warn_is_equal_type`) | for `=` / `!=` between two non-numeric leaves, libyang walks the flattened union members of both types, resuming after the previous member found by pointer identity; a union that repeats one type object (`union { type t; type t; }`) with no common base type makes the walk cycle forever (compile never returns) | the members are compared by index: the same warning decision whenever libyang terminates, and a warning where it hangs | RFC 7950 §7.5.3 (warnings only; no verdict) | none (the oracle hangs); Go test `TestEqualTypeRepeated` |
 
-## libyang crash cases (D-0012)
+## libyang crash cases (D-0012; the diff API rows: no id, no verdict to compare)
 
 | Input | libyang v5.8.6 | Ours |
 |---|---|---|
@@ -60,6 +60,7 @@ questionable. Format: id · area · libyang behaviour · ours · RFC reference �
 | `derived-from(x, 'id')` with an unprefixed identity, JSON format, `current()` = root and no current module | NULL module dereference | `Identity "id" not found in module "".` |
 | `string()` of an anydata/anyxml with empty content (`string(any)`, `string(.)`) | `strlen(NULL)` after `strtok_r` (oracle: crash) | `""` / `"\n"` |
 | `string()` of a subtree containing an action node | `LOGINT` (internal error) in `cast_string_recursive` (from the source; lyoracle cannot load an action without its operational parent) | the action is dumped like a container (TestActionStringValue) |
+| `lyd_diff_siblings` / `lyd_diff_tree` of a list key node | `assert(!(schema->flags & LYS_KEY))` in `lyd_diff_siblings_r` (abort in a debug build, undefined otherwise) | LY_EINVAL `Invalid argument a list key "…" (lyd_diff()).` (data/TestDiffKeyRefused) |
 
 ## Known libyang behaviour (mirrored)
 
