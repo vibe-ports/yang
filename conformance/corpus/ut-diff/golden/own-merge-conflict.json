@@ -1,0 +1,167 @@
+{
+  "context_diagnostics": [],
+  "failed_step": 1,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "defaults",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "dm2",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 3,
+    "name": "LY_EINVAL"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"dm2:c\": {\n    \"@\": {\n      \"yang:operation\": \"create\"\n    },\n    \"a\": \"x\"\n  }\n}\n",
+        "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:dm2\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">\n  <a>x</a>\n</c>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            }
+          ],
+          "opaque": null,
+          "path": "/dm2:c",
+          "schema": "/dm2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c/a",
+          "schema": "/dm2:c/a",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff_parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": []
+    },
+    {
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 3,
+            "name": "LY_EINVAL"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Unable to merge operation \"create\" with \"create\" for node \"/dm2:c\".",
+          "phase": "diff",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 12,
+            "name": "LY_EOTHER"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Merging operation \"create\" failed.",
+          "phase": "diff",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "diff": {
+        "json": "{\n  \"dm2:c\": {\n    \"@\": {\n      \"yang:operation\": \"create\"\n    },\n    \"a\": \"x\"\n  }\n}\n",
+        "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:dm2\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">\n  <a>x</a>\n</c>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            }
+          ],
+          "opaque": null,
+          "path": "/dm2:c",
+          "schema": "/dm2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c/a",
+          "schema": "/dm2:c/a",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff_merge",
+      "rc": {
+        "err": 3,
+        "name": "LY_EINVAL"
+      },
+      "typed": []
+    }
+  ],
+  "verdict": "invalid"
+}

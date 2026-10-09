@@ -1,0 +1,422 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "defaults",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"defaults:df\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"person\": [\n      {\n        \"@\": {\n          \"yang:operation\": \"delete\",\n          \"yang:orig-key\": \"[name='alice'][surname='chalice']\"\n        },\n        \"name\": \"roland\",\n        \"surname\": \"doland\"\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"replace\",\n          \"yang:orig-key\": [null],\n          \"yang:key\": \"[name='bob'][surname='drop']\"\n        },\n        \"name\": \"jake\",\n        \"surname\": \"fake\"\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"replace\",\n          \"yang:orig-key\": \"[name='jake'][surname='fake']\",\n          \"yang:key\": \"[name='alice'][surname='chalice']\"\n        },\n        \"name\": \"bob\",\n        \"surname\": \"drop\"\n      }\n    ]\n  }\n}\n",
+        "xml": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <person yang:operation=\"delete\" yang:orig-key=\"[name='alice'][surname='chalice']\">\n    <name>roland</name>\n    <surname>doland</surname>\n  </person>\n  <person yang:operation=\"replace\" yang:orig-key=\"\" yang:key=\"[name='bob'][surname='drop']\">\n    <name>jake</name>\n    <surname>fake</surname>\n  </person>\n  <person yang:operation=\"replace\" yang:orig-key=\"[name='jake'][surname='fake']\" yang:key=\"[name='alice'][surname='chalice']\">\n    <name>bob</name>\n    <surname>drop</surname>\n  </person>\n</df>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            },
+            {
+              "module": "yang",
+              "name": "orig-key",
+              "value": "[name='alice'][surname='chalice']"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/person[name='roland'][surname='doland']",
+          "schema": "/defaults:df/person",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/person[name='roland'][surname='doland']/name",
+          "schema": "/defaults:df/person/name",
+          "value": {
+            "canonical": "roland",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/person[name='roland'][surname='doland']/surname",
+          "schema": "/defaults:df/person/surname",
+          "value": {
+            "canonical": "doland",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "replace"
+            },
+            {
+              "module": "yang",
+              "name": "orig-key",
+              "value": ""
+            },
+            {
+              "module": "yang",
+              "name": "key",
+              "value": "[name='bob'][surname='drop']"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/person[name='jake'][surname='fake']",
+          "schema": "/defaults:df/person",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/person[name='jake'][surname='fake']/name",
+          "schema": "/defaults:df/person/name",
+          "value": {
+            "canonical": "jake",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/person[name='jake'][surname='fake']/surname",
+          "schema": "/defaults:df/person/surname",
+          "value": {
+            "canonical": "fake",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "replace"
+            },
+            {
+              "module": "yang",
+              "name": "orig-key",
+              "value": "[name='jake'][surname='fake']"
+            },
+            {
+              "module": "yang",
+              "name": "key",
+              "value": "[name='alice'][surname='chalice']"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/person[name='bob'][surname='drop']",
+          "schema": "/defaults:df/person",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/person[name='bob'][surname='drop']/name",
+          "schema": "/defaults:df/person/name",
+          "value": {
+            "canonical": "bob",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/person[name='bob'][surname='drop']/surname",
+          "schema": "/defaults:df/person/surname",
+          "value": {
+            "canonical": "drop",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff_parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": []
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"defaults:df\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"person\": [\n      {\n        \"@\": {\n          \"yang:operation\": \"delete\",\n          \"yang:orig-key\": \"[name='alice'][surname='chalice']\"\n        },\n        \"name\": \"roland\",\n        \"surname\": \"doland\"\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"replace\",\n          \"yang:orig-key\": [null],\n          \"yang:key\": \"[name='bob'][surname='drop']\"\n        },\n        \"name\": \"jake\",\n        \"surname\": \"fake\"\n      }\n    ]\n  }\n}\n",
+        "xml": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <person yang:operation=\"delete\" yang:orig-key=\"[name='alice'][surname='chalice']\">\n    <name>roland</name>\n    <surname>doland</surname>\n  </person>\n  <person yang:operation=\"replace\" yang:orig-key=\"\" yang:key=\"[name='bob'][surname='drop']\">\n    <name>jake</name>\n    <surname>fake</surname>\n  </person>\n</df>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            },
+            {
+              "module": "yang",
+              "name": "orig-key",
+              "value": "[name='alice'][surname='chalice']"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/person[name='roland'][surname='doland']",
+          "schema": "/defaults:df/person",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/person[name='roland'][surname='doland']/name",
+          "schema": "/defaults:df/person/name",
+          "value": {
+            "canonical": "roland",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/person[name='roland'][surname='doland']/surname",
+          "schema": "/defaults:df/person/surname",
+          "value": {
+            "canonical": "doland",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "replace"
+            },
+            {
+              "module": "yang",
+              "name": "orig-key",
+              "value": ""
+            },
+            {
+              "module": "yang",
+              "name": "key",
+              "value": "[name='bob'][surname='drop']"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/person[name='jake'][surname='fake']",
+          "schema": "/defaults:df/person",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/person[name='jake'][surname='fake']/name",
+          "schema": "/defaults:df/person/name",
+          "value": {
+            "canonical": "jake",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/person[name='jake'][surname='fake']/surname",
+          "schema": "/defaults:df/person/surname",
+          "value": {
+            "canonical": "fake",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff_merge",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": []
+    }
+  ],
+  "verdict": "valid"
+}

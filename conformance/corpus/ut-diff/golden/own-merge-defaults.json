@@ -1,0 +1,1397 @@
+{
+  "context_diagnostics": [],
+  "failed_step": 4,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "defaults",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "dm2",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 3,
+    "name": "LY_EINVAL"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "validate",
+      "implicit_diff": "{\n  \"defaults:df\": {\n    \"@\": {\n      \"yang:operation\": \"create\"\n    },\n    \"foo\": 42,\n    \"@foo\": {\n      \"yang:operation\": \"create\"\n    },\n    \"llist\": [\n      42\n    ],\n    \"@llist\": [\n      {\n        \"yang:value\": \"\",\n        \"yang:operation\": \"create\"\n      }\n    ],\n    \"dllist\": [\n      1,\n      2,\n      3\n    ],\n    \"@dllist\": [\n      {\n        \"yang:operation\": \"create\"\n      },\n      {\n        \"yang:operation\": \"create\"\n      },\n      {\n        \"yang:operation\": \"create\"\n      }\n    ],\n    \"b1_1\": 42,\n    \"@b1_1\": {\n      \"yang:operation\": \"create\"\n    }\n  },\n  \"defaults:hidden\": {\n    \"@\": {\n      \"yang:operation\": \"create\"\n    },\n    \"foo\": 42,\n    \"@foo\": {\n      \"yang:operation\": \"create\"\n    },\n    \"baz\": 42,\n    \"@baz\": {\n      \"yang:operation\": \"create\"\n    }\n  },\n  \"dm2:c\": {\n    \"@\": {\n      \"yang:operation\": \"create\"\n    },\n    \"d\": 3,\n    \"@d\": {\n      \"yang:operation\": \"create\"\n    }\n  }\n}\n",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/foo",
+          "schema": "/defaults:df/foo",
+          "value": {
+            "canonical": "42",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='42']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "42",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/dllist[.='1']",
+          "schema": "/defaults:df/dllist",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/dllist[.='2']",
+          "schema": "/defaults:df/dllist",
+          "value": {
+            "canonical": "2",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/dllist[.='3']",
+          "schema": "/defaults:df/dllist",
+          "value": {
+            "canonical": "3",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/b1_1",
+          "schema": "/defaults:df/select2/s2b/s2b/b1/b1_1",
+          "value": {
+            "canonical": "42",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:hidden",
+          "schema": "/defaults:hidden",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:hidden/foo",
+          "schema": "/defaults:hidden/foo",
+          "value": {
+            "canonical": "42",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:hidden/baz",
+          "schema": "/defaults:hidden/baz",
+          "value": {
+            "canonical": "42",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c",
+          "schema": "/dm2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c/d",
+          "schema": "/dm2:c/d",
+          "value": {
+            "canonical": "3",
+            "type": "int8",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"dm2:c\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"d\": 3,\n    \"@d\": {\n      \"yang:orig-default\": true\n    }\n  }\n}\n",
+        "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:dm2\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <d yang:orig-default=\"true\">3</d>\n</c>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/dm2:c",
+          "schema": "/dm2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "orig-default",
+              "value": "true"
+            }
+          ],
+          "opaque": null,
+          "path": "/dm2:c/d",
+          "schema": "/dm2:c/d",
+          "value": {
+            "canonical": "3",
+            "type": "int8",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/foo",
+          "schema": "/defaults:df/foo",
+          "value": {
+            "canonical": "42",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='42']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "42",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/dllist[.='1']",
+          "schema": "/defaults:df/dllist",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/dllist[.='2']",
+          "schema": "/defaults:df/dllist",
+          "value": {
+            "canonical": "2",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/dllist[.='3']",
+          "schema": "/defaults:df/dllist",
+          "value": {
+            "canonical": "3",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/b1_1",
+          "schema": "/defaults:df/select2/s2b/s2b/b1/b1_1",
+          "value": {
+            "canonical": "42",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:hidden",
+          "schema": "/defaults:hidden",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:hidden/foo",
+          "schema": "/defaults:hidden/foo",
+          "value": {
+            "canonical": "42",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:hidden/baz",
+          "schema": "/defaults:hidden/baz",
+          "value": {
+            "canonical": "42",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c",
+          "schema": "/dm2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c/d",
+          "schema": "/dm2:c/d",
+          "value": {
+            "canonical": "3",
+            "type": "int8",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"dm2:c\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"d\": 3,\n    \"@d\": {\n      \"yang:orig-default\": true\n    }\n  }\n}\n",
+        "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:dm2\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <d yang:orig-default=\"true\">3</d>\n</c>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/dm2:c",
+          "schema": "/dm2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "orig-default",
+              "value": "true"
+            }
+          ],
+          "opaque": null,
+          "path": "/dm2:c/d",
+          "schema": "/dm2:c/d",
+          "value": {
+            "canonical": "3",
+            "type": "int8",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff_apply",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/foo",
+          "schema": "/defaults:df/foo",
+          "value": {
+            "canonical": "42",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='42']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "42",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/dllist[.='1']",
+          "schema": "/defaults:df/dllist",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/dllist[.='2']",
+          "schema": "/defaults:df/dllist",
+          "value": {
+            "canonical": "2",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/dllist[.='3']",
+          "schema": "/defaults:df/dllist",
+          "value": {
+            "canonical": "3",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/b1_1",
+          "schema": "/defaults:df/select2/s2b/s2b/b1/b1_1",
+          "value": {
+            "canonical": "42",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:hidden",
+          "schema": "/defaults:hidden",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:hidden/foo",
+          "schema": "/defaults:hidden/foo",
+          "value": {
+            "canonical": "42",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:hidden/baz",
+          "schema": "/defaults:hidden/baz",
+          "value": {
+            "canonical": "42",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c",
+          "schema": "/dm2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c/d",
+          "schema": "/dm2:c/d",
+          "value": {
+            "canonical": "3",
+            "type": "int8",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"dm2:c\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"d\": 4,\n    \"@d\": {\n      \"yang:orig-default\": true,\n      \"yang:operation\": \"replace\"\n    }\n  }\n}\n",
+        "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:dm2\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <d yang:orig-default=\"true\" yang:operation=\"replace\">4</d>\n</c>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/dm2:c",
+          "schema": "/dm2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "orig-default",
+              "value": "true"
+            },
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "replace"
+            }
+          ],
+          "opaque": null,
+          "path": "/dm2:c/d",
+          "schema": "/dm2:c/d",
+          "value": {
+            "canonical": "4",
+            "type": "int8",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff",
+      "new_diff": {
+        "json": "{\n  \"dm2:c\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"d\": 4,\n    \"@d\": {\n      \"yang:operation\": \"replace\",\n      \"yang:orig-default\": false,\n      \"yang:orig-value\": \"3\"\n    }\n  }\n}\n",
+        "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:dm2\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <d yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"3\">4</d>\n</c>\n"
+      },
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/foo",
+          "schema": "/defaults:df/foo",
+          "value": {
+            "canonical": "42",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='42']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "42",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/dllist[.='1']",
+          "schema": "/defaults:df/dllist",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/dllist[.='2']",
+          "schema": "/defaults:df/dllist",
+          "value": {
+            "canonical": "2",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/dllist[.='3']",
+          "schema": "/defaults:df/dllist",
+          "value": {
+            "canonical": "3",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/b1_1",
+          "schema": "/defaults:df/select2/s2b/s2b/b1/b1_1",
+          "value": {
+            "canonical": "42",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:hidden",
+          "schema": "/defaults:hidden",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:hidden/foo",
+          "schema": "/defaults:hidden/foo",
+          "value": {
+            "canonical": "42",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:hidden/baz",
+          "schema": "/defaults:hidden/baz",
+          "value": {
+            "canonical": "42",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c",
+          "schema": "/dm2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c/d",
+          "schema": "/dm2:c/d",
+          "value": {
+            "canonical": "3",
+            "type": "int8",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 3,
+            "name": "LY_EINVAL"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Unexpected value of node \"/dm2:c/d\" in target diff.",
+          "phase": "diff",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 12,
+            "name": "LY_EOTHER"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Merging operation \"replace\" failed.",
+          "phase": "diff",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "diff": {
+        "json": "{\n  \"dm2:c\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"d\": 4,\n    \"@d\": {\n      \"yang:orig-default\": true,\n      \"yang:operation\": \"replace\"\n    }\n  }\n}\n",
+        "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:dm2\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <d yang:orig-default=\"true\" yang:operation=\"replace\">4</d>\n</c>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/dm2:c",
+          "schema": "/dm2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "orig-default",
+              "value": "true"
+            },
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "replace"
+            }
+          ],
+          "opaque": null,
+          "path": "/dm2:c/d",
+          "schema": "/dm2:c/d",
+          "value": {
+            "canonical": "4",
+            "type": "int8",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff",
+      "new_diff": {
+        "json": "{\n  \"dm2:c\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"d\": 4,\n    \"@d\": {\n      \"yang:operation\": \"replace\",\n      \"yang:orig-default\": false,\n      \"yang:orig-value\": \"3\"\n    }\n  }\n}\n",
+        "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:dm2\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <d yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"3\">4</d>\n</c>\n"
+      },
+      "rc": {
+        "err": 3,
+        "name": "LY_EINVAL"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/foo",
+          "schema": "/defaults:df/foo",
+          "value": {
+            "canonical": "42",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='42']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "42",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/dllist[.='1']",
+          "schema": "/defaults:df/dllist",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/dllist[.='2']",
+          "schema": "/defaults:df/dllist",
+          "value": {
+            "canonical": "2",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/dllist[.='3']",
+          "schema": "/defaults:df/dllist",
+          "value": {
+            "canonical": "3",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/b1_1",
+          "schema": "/defaults:df/select2/s2b/s2b/b1/b1_1",
+          "value": {
+            "canonical": "42",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:hidden",
+          "schema": "/defaults:hidden",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:hidden/foo",
+          "schema": "/defaults:hidden/foo",
+          "value": {
+            "canonical": "42",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:hidden/baz",
+          "schema": "/defaults:hidden/baz",
+          "value": {
+            "canonical": "42",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c",
+          "schema": "/dm2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c/d",
+          "schema": "/dm2:c/d",
+          "value": {
+            "canonical": "3",
+            "type": "int8",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "invalid"
+}

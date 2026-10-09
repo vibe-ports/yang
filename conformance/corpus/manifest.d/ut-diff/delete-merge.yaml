@@ -1,0 +1,14 @@
+fixtures:
+  - id: ut-diff/delete-merge
+    dir: ut-diff
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_diff.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_delete_merge:338 (merge of a list delete into the delete of its nested list)
+    rfc: []   # libyang diff format (yang:operation metadata), no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: defaults}]
+      steps:
+        - {"do": "diff_parse", "format": "xml", "data_type": "data", "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <list>\n    <name>a</name>\n    <list2 yang:operation=\"delete\">\n      <name2>a</name2>\n    </list2>\n  </list>\n</df>\n"}
+        - {"do": "diff_merge", "format": "xml", "data_type": "data", "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <list yang:operation=\"delete\">\n    <name>a</name>\n  </list>\n</df>\n"}
+    golden: golden/delete-merge.json

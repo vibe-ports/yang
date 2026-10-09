@@ -14,3 +14,4 @@ module; listed in `conformance/NOTICE`):
 
 - ietf-netconf-nmda@2019-01-07.yang (RFC 8526)
 - ietf-origin@2018-02-14.yang (RFC 8342)
+- ietf-netconf-acm@2018-02-14.yang (RFC 8341)

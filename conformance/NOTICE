@@ -64,7 +64,8 @@ with the libyang file, tag/commit and license):
   - conformance/corpus/ut-compare/ (tests/utests/data/test_tree_data.c, test_compare).
   - conformance/corpus/ut-context/ (tests/utests/basic/test_context.c; includes/ and all-implemented/
     are byte-identical copies from tests/modules/yang).
-  - conformance/corpus/ietf/ietf-netconf-nmda@2019-01-07.yang and ietf-origin@2018-02-14.yang
+  - conformance/corpus/ut-diff/ (tests/utests/data/test_diff.c; schemas/dm2.yang and the own-* fixtures are hand-written; ut-diff/same loads ietf-netconf-acm from corpus/ietf).
+  - conformance/corpus/ietf/ietf-netconf-nmda@2019-01-07.yang, ietf-origin@2018-02-14.yang and ietf-netconf-acm@2018-02-14.yang
     (tests/modules/yang, byte-identical; IETF modules under the Simplified BSD License stated in
     each file).
 - docs/conformance/utests-inventory.md quotes counts and file names from that suite.

@@ -1,0 +1,2901 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "defaults",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta",
+              "value": "val1"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta2",
+              "value": "val2"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta",
+              "value": "val10"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta",
+              "value": "repeated"
+            },
+            {
+              "module": "defaults",
+              "name": "my-meta",
+              "value": "repeated"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"defaults:df\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"list\": [\n      {\n        \"@\": {\n          \"yang:operation\": \"delete\",\n          \"yang:meta-delete\": \"defaults:my-meta=val1\"\n        },\n        \"name\": \"a\",\n        \"value\": 1,\n        \"@value\": {\n          \"yang:meta-delete\": \"defaults:my-meta2=val2\"\n        }\n      },\n      {\n        \"name\": \"b\",\n        \"@name\": {\n          \"yang:meta-delete\": \"defaults:my-meta=val10\"\n        },\n        \"value\": 2,\n        \"@value\": {\n          \"yang:orig-default\": false,\n          \"yang:meta-delete\": \"defaults:my-meta=repeated\"\n        }\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"create\"\n        },\n        \"name\": \"c\",\n        \"@name\": {\n          \"yang:meta-create\": \"defaults:my-meta2=val22\"\n        },\n        \"value\": 3,\n        \"@value\": {\n          \"yang:meta-create\": \"defaults:my-meta2=val23\"\n        }\n      }\n    ]\n  }\n}\n",
+        "xml": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <list yang:operation=\"delete\" yang:meta-delete=\"defaults:my-meta=val1\">\n    <name>a</name>\n    <value yang:meta-delete=\"defaults:my-meta2=val2\">1</value>\n  </list>\n  <list>\n    <name yang:meta-delete=\"defaults:my-meta=val10\">b</name>\n    <value yang:orig-default=\"false\" yang:meta-delete=\"defaults:my-meta=repeated\">2</value>\n  </list>\n  <list yang:operation=\"create\">\n    <name yang:meta-create=\"defaults:my-meta2=val22\">c</name>\n    <value yang:meta-create=\"defaults:my-meta2=val23\">3</value>\n  </list>\n</df>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            },
+            {
+              "module": "yang",
+              "name": "meta-delete",
+              "value": "defaults:my-meta=val1"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "meta-delete",
+              "value": "defaults:my-meta2=val2"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "meta-delete",
+              "value": "defaults:my-meta=val10"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "orig-default",
+              "value": "false"
+            },
+            {
+              "module": "yang",
+              "name": "meta-delete",
+              "value": "defaults:my-meta=repeated"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "meta-create",
+              "value": "defaults:my-meta2=val22"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "meta-create",
+              "value": "defaults:my-meta2=val23"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta",
+              "value": "val1"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta2",
+              "value": "val2"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta",
+              "value": "val10"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta",
+              "value": "repeated"
+            },
+            {
+              "module": "defaults",
+              "name": "my-meta",
+              "value": "repeated"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"defaults:df\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"list\": [\n      {\n        \"@\": {\n          \"yang:operation\": \"delete\",\n          \"yang:meta-delete\": \"defaults:my-meta=val1\"\n        },\n        \"name\": \"a\",\n        \"value\": 1,\n        \"@value\": {\n          \"yang:meta-delete\": \"defaults:my-meta2=val2\"\n        }\n      },\n      {\n        \"name\": \"b\",\n        \"@name\": {\n          \"yang:meta-delete\": \"defaults:my-meta=val10\"\n        },\n        \"value\": 2,\n        \"@value\": {\n          \"yang:orig-default\": false,\n          \"yang:meta-delete\": \"defaults:my-meta=repeated\"\n        }\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"create\"\n        },\n        \"name\": \"c\",\n        \"@name\": {\n          \"yang:meta-create\": \"defaults:my-meta2=val22\"\n        },\n        \"value\": 3,\n        \"@value\": {\n          \"yang:meta-create\": \"defaults:my-meta2=val23\"\n        }\n      }\n    ]\n  }\n}\n",
+        "xml": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <list yang:operation=\"delete\" yang:meta-delete=\"defaults:my-meta=val1\">\n    <name>a</name>\n    <value yang:meta-delete=\"defaults:my-meta2=val2\">1</value>\n  </list>\n  <list>\n    <name yang:meta-delete=\"defaults:my-meta=val10\">b</name>\n    <value yang:orig-default=\"false\" yang:meta-delete=\"defaults:my-meta=repeated\">2</value>\n  </list>\n  <list yang:operation=\"create\">\n    <name yang:meta-create=\"defaults:my-meta2=val22\">c</name>\n    <value yang:meta-create=\"defaults:my-meta2=val23\">3</value>\n  </list>\n</df>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            },
+            {
+              "module": "yang",
+              "name": "meta-delete",
+              "value": "defaults:my-meta=val1"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "meta-delete",
+              "value": "defaults:my-meta2=val2"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "meta-delete",
+              "value": "defaults:my-meta=val10"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "orig-default",
+              "value": "false"
+            },
+            {
+              "module": "yang",
+              "name": "meta-delete",
+              "value": "defaults:my-meta=repeated"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "meta-create",
+              "value": "defaults:my-meta2=val22"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "meta-create",
+              "value": "defaults:my-meta2=val23"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff_apply",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta",
+              "value": "repeated"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta2",
+              "value": "val22"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta2",
+              "value": "val23"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"defaults:df\": {\n    \"@\": {\n      \"yang:operation\": \"none\",\n      \"yang:meta-create\": \"defaults:my-meta=top\"\n    },\n    \"list\": [\n      {\n        \"name\": \"b\",\n        \"value\": 2,\n        \"@value\": {\n          \"yang:orig-default\": false,\n          \"yang:meta-create\": \"defaults:my-meta=new\"\n        }\n      },\n      {\n        \"name\": \"c\",\n        \"@name\": {\n          \"yang:meta-delete\": \"defaults:my-meta2=val22\",\n          \"yang:meta-create\": \"defaults:my-meta=val22\"\n        },\n        \"value\": 3,\n        \"@value\": {\n          \"yang:operation\": \"none\"\n        }\n      }\n    ]\n  }\n}\n",
+        "xml": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\" yang:meta-create=\"defaults:my-meta=top\">\n  <list>\n    <name>b</name>\n    <value yang:orig-default=\"false\" yang:meta-create=\"defaults:my-meta=new\">2</value>\n  </list>\n  <list>\n    <name yang:meta-delete=\"defaults:my-meta2=val22\" yang:meta-create=\"defaults:my-meta=val22\">c</name>\n    <value yang:operation=\"none\">3</value>\n  </list>\n</df>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            },
+            {
+              "module": "yang",
+              "name": "meta-create",
+              "value": "defaults:my-meta=top"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "orig-default",
+              "value": "false"
+            },
+            {
+              "module": "yang",
+              "name": "meta-create",
+              "value": "defaults:my-meta=new"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "meta-delete",
+              "value": "defaults:my-meta2=val22"
+            },
+            {
+              "module": "yang",
+              "name": "meta-create",
+              "value": "defaults:my-meta=val22"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta",
+              "value": "repeated"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta2",
+              "value": "val22"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta2",
+              "value": "val23"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"defaults:df\": {\n    \"@\": {\n      \"yang:operation\": \"none\",\n      \"yang:meta-create\": \"defaults:my-meta=top\"\n    },\n    \"list\": [\n      {\n        \"name\": \"b\",\n        \"value\": 2,\n        \"@value\": {\n          \"yang:orig-default\": false,\n          \"yang:meta-create\": \"defaults:my-meta=new\"\n        }\n      },\n      {\n        \"name\": \"c\",\n        \"@name\": {\n          \"yang:meta-delete\": \"defaults:my-meta2=val22\",\n          \"yang:meta-create\": \"defaults:my-meta=val22\"\n        },\n        \"value\": 3,\n        \"@value\": {\n          \"yang:operation\": \"none\"\n        }\n      }\n    ]\n  }\n}\n",
+        "xml": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\" yang:meta-create=\"defaults:my-meta=top\">\n  <list>\n    <name>b</name>\n    <value yang:orig-default=\"false\" yang:meta-create=\"defaults:my-meta=new\">2</value>\n  </list>\n  <list>\n    <name yang:meta-delete=\"defaults:my-meta2=val22\" yang:meta-create=\"defaults:my-meta=val22\">c</name>\n    <value yang:operation=\"none\">3</value>\n  </list>\n</df>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            },
+            {
+              "module": "yang",
+              "name": "meta-create",
+              "value": "defaults:my-meta=top"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "orig-default",
+              "value": "false"
+            },
+            {
+              "module": "yang",
+              "name": "meta-create",
+              "value": "defaults:my-meta=new"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "meta-delete",
+              "value": "defaults:my-meta2=val22"
+            },
+            {
+              "module": "yang",
+              "name": "meta-create",
+              "value": "defaults:my-meta=val22"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff_apply",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta",
+              "value": "top"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta",
+              "value": "repeated"
+            },
+            {
+              "module": "defaults",
+              "name": "my-meta",
+              "value": "new"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta",
+              "value": "val22"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta2",
+              "value": "val23"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta",
+              "value": "val1"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta2",
+              "value": "val2"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta",
+              "value": "val10"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta",
+              "value": "repeated"
+            },
+            {
+              "module": "defaults",
+              "name": "my-meta",
+              "value": "repeated"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"defaults:df\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"list\": [\n      {\n        \"@\": {\n          \"yang:operation\": \"delete\",\n          \"yang:meta-delete\": \"defaults:my-meta=val1\"\n        },\n        \"name\": \"a\",\n        \"value\": 1,\n        \"@value\": {\n          \"yang:meta-delete\": \"defaults:my-meta2=val2\"\n        }\n      },\n      {\n        \"name\": \"b\",\n        \"@name\": {\n          \"yang:meta-delete\": \"defaults:my-meta=val10\"\n        },\n        \"value\": 2,\n        \"@value\": {\n          \"yang:orig-default\": false,\n          \"yang:meta-delete\": \"defaults:my-meta=repeated\"\n        }\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"create\"\n        },\n        \"name\": \"c\",\n        \"@name\": {\n          \"yang:meta-create\": \"defaults:my-meta2=val22\"\n        },\n        \"value\": 3,\n        \"@value\": {\n          \"yang:meta-create\": \"defaults:my-meta2=val23\"\n        }\n      }\n    ]\n  }\n}\n",
+        "xml": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <list yang:operation=\"delete\" yang:meta-delete=\"defaults:my-meta=val1\">\n    <name>a</name>\n    <value yang:meta-delete=\"defaults:my-meta2=val2\">1</value>\n  </list>\n  <list>\n    <name yang:meta-delete=\"defaults:my-meta=val10\">b</name>\n    <value yang:orig-default=\"false\" yang:meta-delete=\"defaults:my-meta=repeated\">2</value>\n  </list>\n  <list yang:operation=\"create\">\n    <name yang:meta-create=\"defaults:my-meta2=val22\">c</name>\n    <value yang:meta-create=\"defaults:my-meta2=val23\">3</value>\n  </list>\n</df>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            },
+            {
+              "module": "yang",
+              "name": "meta-delete",
+              "value": "defaults:my-meta=val1"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "meta-delete",
+              "value": "defaults:my-meta2=val2"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "meta-delete",
+              "value": "defaults:my-meta=val10"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "orig-default",
+              "value": "false"
+            },
+            {
+              "module": "yang",
+              "name": "meta-delete",
+              "value": "defaults:my-meta=repeated"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "meta-create",
+              "value": "defaults:my-meta2=val22"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "meta-create",
+              "value": "defaults:my-meta2=val23"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta",
+              "value": "val1"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta2",
+              "value": "val2"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta",
+              "value": "val10"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta",
+              "value": "repeated"
+            },
+            {
+              "module": "defaults",
+              "name": "my-meta",
+              "value": "repeated"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"defaults:df\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"list\": [\n      {\n        \"@\": {\n          \"yang:operation\": \"delete\",\n          \"yang:meta-delete\": \"defaults:my-meta=val1\"\n        },\n        \"name\": \"a\",\n        \"value\": 1,\n        \"@value\": {\n          \"yang:meta-delete\": \"defaults:my-meta2=val2\"\n        }\n      },\n      {\n        \"name\": \"b\",\n        \"@name\": {\n          \"yang:meta-delete\": \"defaults:my-meta=val10\"\n        },\n        \"value\": 2,\n        \"@value\": {\n          \"yang:orig-default\": false,\n          \"yang:meta-delete\": \"defaults:my-meta=repeated\"\n        }\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"create\"\n        },\n        \"name\": \"c\",\n        \"@name\": {\n          \"yang:meta-create\": \"defaults:my-meta2=val22\"\n        },\n        \"value\": 3,\n        \"@value\": {\n          \"yang:meta-create\": \"defaults:my-meta2=val23\"\n        }\n      }\n    ]\n  }\n}\n",
+        "xml": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <list yang:operation=\"delete\" yang:meta-delete=\"defaults:my-meta=val1\">\n    <name>a</name>\n    <value yang:meta-delete=\"defaults:my-meta2=val2\">1</value>\n  </list>\n  <list>\n    <name yang:meta-delete=\"defaults:my-meta=val10\">b</name>\n    <value yang:orig-default=\"false\" yang:meta-delete=\"defaults:my-meta=repeated\">2</value>\n  </list>\n  <list yang:operation=\"create\">\n    <name yang:meta-create=\"defaults:my-meta2=val22\">c</name>\n    <value yang:meta-create=\"defaults:my-meta2=val23\">3</value>\n  </list>\n</df>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            },
+            {
+              "module": "yang",
+              "name": "meta-delete",
+              "value": "defaults:my-meta=val1"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "meta-delete",
+              "value": "defaults:my-meta2=val2"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "meta-delete",
+              "value": "defaults:my-meta=val10"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "orig-default",
+              "value": "false"
+            },
+            {
+              "module": "yang",
+              "name": "meta-delete",
+              "value": "defaults:my-meta=repeated"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "meta-create",
+              "value": "defaults:my-meta2=val22"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "meta-create",
+              "value": "defaults:my-meta2=val23"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff_apply",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta",
+              "value": "repeated"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta2",
+              "value": "val22"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta2",
+              "value": "val23"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"defaults:df\": {\n    \"@\": {\n      \"yang:operation\": \"none\",\n      \"yang:meta-create\": \"defaults:my-meta=top\"\n    },\n    \"list\": [\n      {\n        \"@\": {\n          \"yang:operation\": \"delete\",\n          \"yang:meta-delete\": \"defaults:my-meta=val1\"\n        },\n        \"name\": \"a\",\n        \"value\": 1,\n        \"@value\": {\n          \"yang:meta-delete\": \"defaults:my-meta2=val2\"\n        }\n      },\n      {\n        \"name\": \"b\",\n        \"@name\": {\n          \"yang:meta-delete\": \"defaults:my-meta=val10\"\n        },\n        \"value\": 2,\n        \"@value\": {\n          \"yang:orig-default\": false,\n          \"yang:meta-delete\": \"defaults:my-meta=repeated\",\n          \"yang:meta-create\": \"defaults:my-meta=new\"\n        }\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"create\"\n        },\n        \"name\": \"c\",\n        \"@name\": {\n          \"yang:meta-create\": \"defaults:my-meta=val22\"\n        },\n        \"value\": 3,\n        \"@value\": {\n          \"yang:meta-create\": \"defaults:my-meta2=val23\"\n        }\n      }\n    ]\n  }\n}\n",
+        "xml": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\" yang:meta-create=\"defaults:my-meta=top\">\n  <list yang:operation=\"delete\" yang:meta-delete=\"defaults:my-meta=val1\">\n    <name>a</name>\n    <value yang:meta-delete=\"defaults:my-meta2=val2\">1</value>\n  </list>\n  <list>\n    <name yang:meta-delete=\"defaults:my-meta=val10\">b</name>\n    <value yang:orig-default=\"false\" yang:meta-delete=\"defaults:my-meta=repeated\" yang:meta-create=\"defaults:my-meta=new\">2</value>\n  </list>\n  <list yang:operation=\"create\">\n    <name yang:meta-create=\"defaults:my-meta=val22\">c</name>\n    <value yang:meta-create=\"defaults:my-meta2=val23\">3</value>\n  </list>\n</df>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            },
+            {
+              "module": "yang",
+              "name": "meta-create",
+              "value": "defaults:my-meta=top"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            },
+            {
+              "module": "yang",
+              "name": "meta-delete",
+              "value": "defaults:my-meta=val1"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "meta-delete",
+              "value": "defaults:my-meta2=val2"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "meta-delete",
+              "value": "defaults:my-meta=val10"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "orig-default",
+              "value": "false"
+            },
+            {
+              "module": "yang",
+              "name": "meta-delete",
+              "value": "defaults:my-meta=repeated"
+            },
+            {
+              "module": "yang",
+              "name": "meta-create",
+              "value": "defaults:my-meta=new"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "meta-create",
+              "value": "defaults:my-meta=val22"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "meta-create",
+              "value": "defaults:my-meta2=val23"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff",
+      "new_diff": {
+        "json": "{\n  \"defaults:df\": {\n    \"@\": {\n      \"yang:operation\": \"none\",\n      \"yang:meta-create\": \"defaults:my-meta=top\"\n    },\n    \"list\": [\n      {\n        \"name\": \"b\",\n        \"value\": 2,\n        \"@value\": {\n          \"yang:orig-default\": false,\n          \"yang:meta-create\": \"defaults:my-meta=new\"\n        }\n      },\n      {\n        \"name\": \"c\",\n        \"@name\": {\n          \"yang:meta-delete\": \"defaults:my-meta2=val22\",\n          \"yang:meta-create\": \"defaults:my-meta=val22\"\n        },\n        \"value\": 3,\n        \"@value\": {\n          \"yang:operation\": \"none\"\n        }\n      }\n    ]\n  }\n}\n",
+        "xml": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\" yang:meta-create=\"defaults:my-meta=top\">\n  <list>\n    <name>b</name>\n    <value yang:orig-default=\"false\" yang:meta-create=\"defaults:my-meta=new\">2</value>\n  </list>\n  <list>\n    <name yang:meta-delete=\"defaults:my-meta2=val22\" yang:meta-create=\"defaults:my-meta=val22\">c</name>\n    <value yang:operation=\"none\">3</value>\n  </list>\n</df>\n"
+      },
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta",
+              "value": "repeated"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='b']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta2",
+              "value": "val22"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "defaults",
+              "name": "my-meta2",
+              "value": "val23"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='c']/value",
+          "schema": "/defaults:df/list/value",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

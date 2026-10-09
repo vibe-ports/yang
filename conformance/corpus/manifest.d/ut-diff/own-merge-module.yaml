@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-diff/own-merge-module
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # lyd_diff_merge_module: only the dm2 part of the source merged
+    rfc: []   # libyang diff API mechanics (yang:operation metadata), no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: defaults}, {name: dm2}]
+      steps:
+        - {"do": "parse", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\"><foo>1</foo><list><name>a</name><value>1</value></list><list><name>b</name><value>2</value></list></df><c xmlns=\"urn:vibe-ports:yang:conformance:dm2\"><a>x</a><ll>1</ll><ll>2</ll></c>"}
+        - {"do": "diff", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\"><foo>2</foo><list><name>a</name><value>5</value></list></df><c xmlns=\"urn:vibe-ports:yang:conformance:dm2\"><a>x</a><ll>1</ll><ll>2</ll></c>"}
+        - {"do": "diff_merge", "format": "xml", "data_type": "data", "unknown": "skip", "module": "dm2", "data": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\"><foo>2</foo></df><c xmlns=\"urn:vibe-ports:yang:conformance:dm2\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"replace\" yang:orig-value=\"x\" yang:orig-default=\"false\">z</a></c>"}
+    golden: golden/own-merge-module.json

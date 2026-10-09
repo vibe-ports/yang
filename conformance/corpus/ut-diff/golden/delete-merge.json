@@ -1,0 +1,242 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "defaults",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"defaults:df\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"list\": [\n      {\n        \"name\": \"a\",\n        \"list2\": [\n          {\n            \"@\": {\n              \"yang:operation\": \"delete\"\n            },\n            \"name2\": \"a\"\n          }\n        ]\n      }\n    ]\n  }\n}\n",
+        "xml": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <list>\n    <name>a</name>\n    <list2 yang:operation=\"delete\">\n      <name2>a</name2>\n    </list2>\n  </list>\n</df>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']/list2[name2='a']",
+          "schema": "/defaults:df/list/list2",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']/list2[name2='a']/name2",
+          "schema": "/defaults:df/list/list2/name2",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff_parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": []
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"defaults:df\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"list\": [\n      {\n        \"@\": {\n          \"yang:operation\": \"delete\"\n        },\n        \"name\": \"a\",\n        \"list2\": [\n          {\n            \"@\": {\n              \"yang:operation\": \"delete\"\n            },\n            \"name2\": \"a\"\n          }\n        ]\n      }\n    ]\n  }\n}\n",
+        "xml": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <list yang:operation=\"delete\">\n    <name>a</name>\n    <list2 yang:operation=\"delete\">\n      <name2>a</name2>\n    </list2>\n  </list>\n</df>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']",
+          "schema": "/defaults:df/list",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']/name",
+          "schema": "/defaults:df/list/name",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']/list2[name2='a']",
+          "schema": "/defaults:df/list/list2",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/list[name='a']/list2[name2='a']/name2",
+          "schema": "/defaults:df/list/list2/name2",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff_merge",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": []
+    }
+  ],
+  "verdict": "valid"
+}

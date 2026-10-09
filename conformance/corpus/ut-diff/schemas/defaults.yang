@@ -1,0 +1,94 @@
+module defaults {
+yang-version 1.1;
+namespace "urn:libyang:tests:defaults";
+prefix df;
+
+import ietf-yang-metadata {prefix md;}
+
+feature unhide;
+
+md:annotation my-meta {type string;}
+md:annotation my-meta2 {type string;}
+
+typedef defint32 {type int32; default "42";}
+
+leaf hiddenleaf {if-feature "unhide"; type int32; default "42";}
+container df {
+  leaf foo {type defint32; }
+  leaf hiddenleaf {if-feature "unhide"; type int32; default "42";}
+  container bar { presence "";
+    leaf hi {type int32; default "42";}
+    leaf ho {type int32; mandatory true;}
+  }
+  leaf-list llist {type defint32; ordered-by user;}
+  list ul {key "l1"; ordered-by user;
+    leaf l1 {type string;}
+    leaf l2 {type int32;}
+    container cont {
+      leaf l3 {type string;}
+    }
+  }
+  list person {key "name surname"; ordered-by user;
+    leaf name {type string;}
+    leaf surname {type string;}
+  }
+  leaf-list dllist {type uint8; default "1"; default "2"; default "3";}
+  list list {key "name";
+    leaf name {type string;}
+    leaf value {type int32; default "42";}
+    list list2 {key "name2";
+      leaf name2 {type string;}
+      leaf value2 {type int32;}
+    }
+  }
+  choice select {default "a";
+    case a {
+      choice a {
+         leaf a1 {type int32; default "42";}
+         leaf a2 {type int32; default "24";}
+      }
+    }
+    leaf b {type string;}
+    container c {presence "";
+      leaf x {type int32; default "42";}
+    }
+  }
+  choice select2 {default "s2b";
+    leaf s2a {type int32; default "42";}
+    case s2b {
+      choice s2b {default "b1";
+        case b1 {
+          leaf b1_1 {type int32; default "42";}
+          leaf b1_2 {type string;}
+          leaf b1_status {type int32; default "42"; config false;}
+        }
+        leaf b2 {type int32; default "42";}
+      }
+    }
+  }
+  list kl {config "false";
+    leaf l1 {type string;}
+    leaf l2 {type int32;}
+  }
+  leaf-list kll {config "false"; type string;}
+}
+container hidden {
+  leaf foo {type int32; default "42";}
+  leaf baz {type int32; default "42";}
+  leaf papa {type int32; default "42"; config false;}
+}
+rpc rpc1 {
+  input {
+    leaf inleaf1 {type string;}
+    leaf inleaf2 {type string; default "def1";}
+  }
+  output {
+    leaf outleaf1 {type string; default "def2";}
+    leaf outleaf2 {type string;}
+  }
+}
+notification notif {
+  leaf ntfleaf1 {type string; default "def3";}
+  leaf ntfleaf2 {type string;}
+}
+}

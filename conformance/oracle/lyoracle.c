@@ -115,6 +115,11 @@ static const struct flag diff_flags[] = {
     {NULL, 0}
 };
 
+static const struct flag diff_merge_flags[] = {
+    {"defaults", LYD_DIFF_MERGE_DEFAULTS},
+    {NULL, 0}
+};
+
 static const char *err_names[] = {
     "LY_SUCCESS", "LY_EMEM", "LY_ESYS", "LY_EINVAL", "LY_EEXIST", "LY_ENOTFOUND", "LY_EINT", "LY_EVALID",
     "LY_EDENIED", "LY_EINCOMPLETE", "LY_ERECOMPILE", "LY_ENOT", "LY_EOTHER"
@@ -1570,7 +1575,13 @@ check_step(const cJSON *step)
             "unknown parse_options" :
             !strcmp(what, "dump") ? "do with_defaults" : !strcmp(what, "dup") ? "do node parent options siblings" :
             !strcmp(what, "compare") ? "do format data_type data data_file unknown parse_only parse_options "
-            "validate_options first second options" : "do",
+            "validate_options first second options" :
+            !strcmp(what, "diff") ? "do format data_type data data_file unknown parse_only parse_options validate_options "
+            "node data_node single options merge merge_options" :
+            !strcmp(what, "diff_parse") ? "do format data_type data data_file unknown parse_options" :
+            !strcmp(what, "diff_merge") ? "do format data_type data data_file unknown parse_options options module "
+            "src_node parent" :
+            !strcmp(what, "diff_apply") ? "do module" : "do",
             "unknown key \"%s\" in a sequence step");
     if (!strcmp(what, "edit")) {
         /* the parse options belong to merge only */
@@ -1662,7 +1673,38 @@ check_step(const cJSON *step)
         str_of(step, "first");
         str_of(step, "second");
         flags_of(step, "options", compare_flags);
-    } else if (strcmp(what, "link") && strcmp(what, "links")) {
+    } else if (!strcmp(what, "diff") || !strcmp(what, "diff_parse") || !strcmp(what, "diff_merge")) {
+        const cJSON *b;
+
+        dparams_of(step, &p);
+        if (p.optype != LYD_TYPE_DATA_YANG) {
+            die("sequence supports datastore data types only%s", NULL);
+        }
+        if (strcmp(what, "diff") && !input_of(step, "data")) {
+            die("%s step needs data", what);
+        }
+        if (!strcmp(what, "diff")) {
+            flags_of(step, "options", diff_flags);
+            flags_of(step, "merge_options", diff_merge_flags);
+            str_of(step, "node");
+            str_of(step, "data_node");
+            if (((b = cJSON_GetObjectItemCaseSensitive(step, "single")) && !cJSON_IsBool(b)) ||
+                    ((b = cJSON_GetObjectItemCaseSensitive(step, "merge")) && !cJSON_IsBool(b))) {
+                die("diff single and merge must be booleans%s", NULL);
+            }
+        } else if (!strcmp(what, "diff_merge")) {
+            flags_of(step, "options", diff_merge_flags);
+            str_of(step, "module");
+            if (str_of(step, "parent") && !str_of(step, "src_node")) {
+                die("diff_merge parent needs src_node%s", NULL);
+            }
+            if (str_of(step, "src_node") && str_of(step, "module")) {
+                die("diff_merge takes module or src_node, not both%s", NULL);
+            }
+        }
+    } else if (!strcmp(what, "diff_apply")) {
+        str_of(step, "module");
+    } else if (strcmp(what, "link") && strcmp(what, "links") && strcmp(what, "diff_reverse")) {
         die("unknown step %s", what);
     }
     return what;
@@ -1850,13 +1892,152 @@ step_edit(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *
     return rc;
 }
 
+/* the node at path in tree (request-error when there is none) */
+static struct lyd_node *
+node_at(struct lyd_node *tree, const char *path, const char *what)
+{
+    struct lyd_node *node = NULL;
+
+    if (!tree || lyd_find_path(tree, path, 0, &node) || !node) {
+        die(what, path);
+    }
+    return node;
+}
+
+/* the implemented module named by the step's "module", NULL without one */
+static const struct lys_module *
+module_of(struct ly_ctx *ctx, const cJSON *step)
+{
+    const char *name = str_of(step, "module");
+    const struct lys_module *mod = NULL;
+
+    if (name && !(mod = ly_ctx_get_module_implemented(ctx, name))) {
+        die("module %s is not implemented", name);
+    }
+    return mod;
+}
+
+/*
+ * diff: lyd_diff_siblings (lyd_diff_tree with single) of the retained tree (or its node at "node")
+ * and the parsed data (or its node at "data_node"; no data: NULL); the result replaces the diff
+ * register, or with merge is merged into it (lyd_diff_merge_all, merge_options) and reported as
+ * new_diff
+ */
+static LY_ERR
+step_diff(struct ly_ctx *ctx, const cJSON *step, struct lyd_node *tree, struct lyd_node **diff, cJSON *diag,
+        cJSON *s)
+{
+    struct dparams p;
+    const char *data = input_of(step, "data"), *npath = str_of(step, "node"), *dpath = str_of(step, "data_node");
+    struct lyd_node *second = NULL, *first = tree, *snode, *res = NULL;
+    uint16_t opts = flags_of(step, "options", diff_flags);
+    LY_ERR rc = LY_SUCCESS;
+
+    if (npath) {
+        first = node_at(tree, npath, "diff node %s not found");
+    }
+    if (data) {
+        dparams_of(step, &p);
+        rc = parse_one(ctx, &p, data, NULL, &second, diag, "parse");
+        if (rc) {
+            return rc;
+        }
+    }
+    snode = dpath ? node_at(second, dpath, "diff data_node %s not found") : second;
+    if (cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(step, "single"))) {
+        rc = lyd_diff_tree(first, snode, opts, &res);
+    } else {
+        rc = lyd_diff_siblings(first, snode, opts, &res);
+    }
+    collect(ctx, diag, "diff");
+    if (!rc && cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(step, "merge"))) {
+        cJSON_AddItemToObject(s, "new_diff", res ? print_tree(res, LYD_PRINT_WD_ALL, 1) : cJSON_CreateNull());
+        rc = lyd_diff_merge_all(diff, res, flags_of(step, "merge_options", diff_merge_flags));
+        collect(ctx, diag, "diff");
+        lyd_free_all(res);
+    } else if (!rc) {
+        lyd_free_all(*diff);
+        *diff = res;
+    }
+    lyd_free_all(second);
+    return rc;
+}
+
+/* diff_parse: the data, parsed with LYD_PARSE_ONLY as test_diff.c does, replaces the diff register */
+static LY_ERR
+step_diff_parse(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **diff, cJSON *diag)
+{
+    struct dparams p;
+    struct lyd_node *t;
+    LY_ERR rc;
+
+    dparams_of(step, &p);
+    p.popts |= LYD_PARSE_ONLY;
+    rc = parse_one(ctx, &p, input_of(step, "data"), NULL, &t, diag, "parse");
+    if (!rc) {
+        lyd_free_all(*diff);
+        *diff = t;
+    }
+    return rc;
+}
+
+/*
+ * diff_merge: the data parsed like diff_parse merged into the diff register: lyd_diff_merge_module
+ * (lyd_diff_merge_all without module), or with src_node lyd_diff_merge_tree of that subtree under
+ * the register's node at "parent"
+ */
+static LY_ERR
+step_diff_merge(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **diff, cJSON *diag)
+{
+    struct dparams p;
+    struct lyd_node *src = NULL, *parent = NULL;
+    const char *spath = str_of(step, "src_node"), *ppath = str_of(step, "parent");
+    uint16_t opts = flags_of(step, "options", diff_merge_flags);
+    const struct lys_module *mod = module_of(ctx, step);
+    LY_ERR rc;
+
+    dparams_of(step, &p);
+    p.popts |= LYD_PARSE_ONLY;
+    rc = parse_one(ctx, &p, input_of(step, "data"), NULL, &src, diag, "parse");
+    if (rc) {
+        return rc;
+    }
+    if (spath) {
+        if (ppath) {
+            parent = node_at(*diff, ppath, "diff_merge parent %s not found");
+        }
+        rc = lyd_diff_merge_tree(diff, parent, node_at(src, spath, "diff_merge src_node %s not found"), NULL, NULL,
+                opts);
+    } else {
+        rc = lyd_diff_merge_module(diff, src, mod, NULL, NULL, opts);
+    }
+    collect(ctx, diag, "diff");
+    lyd_free_all(src);
+    return rc;
+}
+
+/* diff_reverse: lyd_diff_reverse_all of the diff register replaces it */
+static LY_ERR
+step_diff_reverse(struct ly_ctx *ctx, struct lyd_node **diff, cJSON *diag)
+{
+    struct lyd_node *res = NULL;
+    LY_ERR rc = lyd_diff_reverse_all(*diff, &res);
+
+    collect(ctx, diag, "diff");
+    if (!rc) {
+        lyd_free_all(*diff);
+        *diff = res;
+    }
+    return rc;
+}
+
 static void
 op_sequence(const cJSON *req)
 {
     int ok;
     struct ly_ctx *ctx = build_ctx(req, &ok, 0);
     const cJSON *steps = cJSON_GetObjectItemCaseSensitive(req, "steps"), *step;
-    struct lyd_node *tree = NULL;
+    struct lyd_node *tree = NULL, *diff = NULL;
     cJSON *out;
     LY_ERR rc = LY_SUCCESS;
     int i = 0, failed = -1;
@@ -1899,6 +2080,17 @@ op_sequence(const cJSON *req)
             rc = step_dup(ctx, step, &tree, diag);
         } else if (!strcmp(what, "compare")) {
             rc = step_compare(ctx, step, tree, diag, s);
+        } else if (!strcmp(what, "diff")) {
+            rc = step_diff(ctx, step, tree, &diff, diag, s);
+        } else if (!strcmp(what, "diff_parse")) {
+            rc = step_diff_parse(ctx, step, &diff, diag);
+        } else if (!strcmp(what, "diff_merge")) {
+            rc = step_diff_merge(ctx, step, &diff, diag);
+        } else if (!strcmp(what, "diff_reverse")) {
+            rc = step_diff_reverse(ctx, &diff, diag);
+        } else if (!strcmp(what, "diff_apply")) {
+            rc = lyd_diff_apply_module(&tree, diff, module_of(ctx, step), NULL, NULL);
+            collect(ctx, diag, "diff");
         } else {
             cJSON_AddItemToObject(s, "tree", print_tree(tree, wd_of(step), 1));
         }
@@ -1911,6 +2103,11 @@ op_sequence(const cJSON *req)
         }
         cJSON_AddItemToObject(s, "rc", code_json(rc));
         cJSON_AddItemToObject(s, "typed", typed_json(tree));
+        if (!strncmp(what, "diff", 4)) {
+            /* the diff register after the step, printed as op diff prints a diff */
+            cJSON_AddItemToObject(s, "diff", diff ? print_tree(diff, LYD_PRINT_WD_ALL, 1) : cJSON_CreateNull());
+            cJSON_AddItemToObject(s, "diff_typed", typed_json(diff));
+        }
         if (rc) {
             failed = i;
         }

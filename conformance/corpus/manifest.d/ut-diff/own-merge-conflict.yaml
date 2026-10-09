@@ -1,0 +1,14 @@
+fixtures:
+  - id: ut-diff/own-merge-conflict
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # merging create into create: LY_EINVAL
+    rfc: []   # libyang diff API mechanics (yang:operation metadata), no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: defaults}, {name: dm2}]
+      steps:
+        - {"do": "diff_parse", "format": "xml", "data_type": "data", "unknown": "skip", "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:dm2\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\"><a>x</a></c>"}
+        - {"do": "diff_merge", "format": "xml", "data_type": "data", "unknown": "skip", "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:dm2\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\"><a>y</a></c>"}
+    golden: golden/own-merge-conflict.json

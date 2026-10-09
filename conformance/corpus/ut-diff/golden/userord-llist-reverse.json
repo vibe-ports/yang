@@ -1,0 +1,935 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "defaults",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='1']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='2']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='3']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='4']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "4",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='5']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "5",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"defaults:df\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"llist\": [\n      4,\n      3\n    ],\n    \"@llist\": [\n      {\n        \"yang:operation\": \"replace\",\n        \"yang:orig-default\": false,\n        \"yang:orig-value\": \"3\",\n        \"yang:value\": \"1\"\n      },\n      {\n        \"yang:operation\": \"replace\",\n        \"yang:orig-default\": false,\n        \"yang:orig-value\": \"2\",\n        \"yang:value\": \"4\"\n      }\n    ]\n  }\n}\n",
+        "xml": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <llist yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"3\" yang:value=\"1\">4</llist>\n  <llist yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"2\" yang:value=\"4\">3</llist>\n</df>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "replace"
+            },
+            {
+              "module": "yang",
+              "name": "orig-default",
+              "value": "false"
+            },
+            {
+              "module": "yang",
+              "name": "orig-value",
+              "value": "3"
+            },
+            {
+              "module": "yang",
+              "name": "value",
+              "value": "1"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='4']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "4",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "replace"
+            },
+            {
+              "module": "yang",
+              "name": "orig-default",
+              "value": "false"
+            },
+            {
+              "module": "yang",
+              "name": "orig-value",
+              "value": "2"
+            },
+            {
+              "module": "yang",
+              "name": "value",
+              "value": "4"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='3']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='1']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='2']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='3']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='4']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "4",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='5']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "5",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"defaults:df\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"llist\": [\n      3,\n      4\n    ],\n    \"@llist\": [\n      {\n        \"yang:operation\": \"replace\",\n        \"yang:orig-default\": false,\n        \"yang:orig-value\": \"4\",\n        \"yang:value\": \"2\"\n      },\n      {\n        \"yang:operation\": \"replace\",\n        \"yang:orig-default\": false,\n        \"yang:orig-value\": \"1\",\n        \"yang:value\": \"3\"\n      }\n    ]\n  }\n}\n",
+        "xml": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <llist yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"4\" yang:value=\"2\">3</llist>\n  <llist yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"1\" yang:value=\"3\">4</llist>\n</df>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "replace"
+            },
+            {
+              "module": "yang",
+              "name": "orig-default",
+              "value": "false"
+            },
+            {
+              "module": "yang",
+              "name": "orig-value",
+              "value": "4"
+            },
+            {
+              "module": "yang",
+              "name": "value",
+              "value": "2"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='3']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "replace"
+            },
+            {
+              "module": "yang",
+              "name": "orig-default",
+              "value": "false"
+            },
+            {
+              "module": "yang",
+              "name": "orig-value",
+              "value": "1"
+            },
+            {
+              "module": "yang",
+              "name": "value",
+              "value": "3"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='4']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "4",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff_reverse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='1']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='2']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='3']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='4']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "4",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='5']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "5",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='1']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='4']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "4",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='3']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='2']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='5']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "5",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"defaults:df\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"llist\": [\n      3,\n      4\n    ],\n    \"@llist\": [\n      {\n        \"yang:operation\": \"replace\",\n        \"yang:orig-default\": false,\n        \"yang:orig-value\": \"4\",\n        \"yang:value\": \"2\"\n      },\n      {\n        \"yang:operation\": \"replace\",\n        \"yang:orig-default\": false,\n        \"yang:orig-value\": \"1\",\n        \"yang:value\": \"3\"\n      }\n    ]\n  }\n}\n",
+        "xml": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <llist yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"4\" yang:value=\"2\">3</llist>\n  <llist yang:operation=\"replace\" yang:orig-default=\"false\" yang:orig-value=\"1\" yang:value=\"3\">4</llist>\n</df>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "replace"
+            },
+            {
+              "module": "yang",
+              "name": "orig-default",
+              "value": "false"
+            },
+            {
+              "module": "yang",
+              "name": "orig-value",
+              "value": "4"
+            },
+            {
+              "module": "yang",
+              "name": "value",
+              "value": "2"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='3']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "replace"
+            },
+            {
+              "module": "yang",
+              "name": "orig-default",
+              "value": "false"
+            },
+            {
+              "module": "yang",
+              "name": "orig-value",
+              "value": "1"
+            },
+            {
+              "module": "yang",
+              "name": "value",
+              "value": "3"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='4']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "4",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff_apply",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='1']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='2']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='3']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='4']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "4",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/llist[.='5']",
+          "schema": "/defaults:df/llist",
+          "value": {
+            "canonical": "5",
+            "type": "int32",
+            "typedef": "defint32",
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

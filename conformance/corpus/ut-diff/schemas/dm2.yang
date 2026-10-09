@@ -1,0 +1,11 @@
+module dm2 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:dm2";
+  prefix dm2;
+
+  container c {
+    leaf a { type string; }
+    leaf d { type int8; default "3"; }
+    leaf-list ll { type string; ordered-by user; }
+  }
+}

@@ -1,0 +1,14 @@
+fixtures:
+  - id: ut-diff/empty1
+    dir: ut-diff
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_diff.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_empty1:227 (diff from NULL: create, applied to NULL)
+    rfc: []   # libyang diff format (yang:operation metadata), no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: defaults}]
+      steps:
+        - {"do": "diff", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\">\n  <foo>42</foo>\n  <b1_1>42</b1_1>\n</df>\n<hidden xmlns=\"urn:libyang:tests:defaults\">\n  <foo>42</foo>\n  <baz>42</baz>\n</hidden>\n"}
+        - {"do": "diff_apply"}
+    golden: golden/empty1.json

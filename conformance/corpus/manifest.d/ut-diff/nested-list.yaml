@@ -1,0 +1,14 @@
+fixtures:
+  - id: ut-diff/nested-list
+    dir: ut-diff
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_diff.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_nested_list:508 (nested list deletes)
+    rfc: []   # libyang diff format (yang:operation metadata), no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: defaults}]
+      steps:
+        - {"do": "parse", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\">  <list>    <name>n0</name>    <value>26</value>    <list2>      <name2>n22</name2>      <value2>26</value2>    </list2>    <list2>      <name2>n23</name2>      <value2>26</value2>    </list2>  </list>  <list>    <name>n1</name>    <value>25</value>    <list2>      <name2>n22</name2>      <value2>26</value2>    </list2>  </list>  <list>    <name>n2</name>    <value>25</value>    <list2>      <name2>n22</name2>      <value2>26</value2>    </list2>  </list>  <list>    <name>n3</name>    <value>25</value>    <list2>      <name2>n22</name2>      <value2>26</value2>    </list2>  </list>  <list>    <name>n4</name>    <value>25</value>    <list2>      <name2>n22</name2>      <value2>26</value2>    </list2>  </list></df>"}
+        - {"do": "diff", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\">  <list>    <name>n0</name>    <value>30</value>    <list2>      <name2>n23</name2>      <value2>26</value2>    </list2>  </list></df>"}
+    golden: golden/nested-list.json

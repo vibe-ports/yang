@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-diff/own-merge-tree-top
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # lyd_diff_merge_tree without a parent: a top-level source subtree
+    rfc: []   # libyang diff API mechanics (yang:operation metadata), no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: defaults}, {name: dm2}]
+      steps:
+        - {"do": "parse", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\"><foo>1</foo><list><name>a</name><value>1</value></list><list><name>b</name><value>2</value></list></df>"}
+        - {"do": "diff", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\"><foo>2</foo><list><name>a</name><value>5</value></list></df>"}
+        - {"do": "diff_merge", "format": "xml", "data_type": "data", "unknown": "skip", "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:dm2\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\"><a>q</a></c>", "src_node": "/dm2:c"}
+    golden: golden/own-merge-tree-top.json

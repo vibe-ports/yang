@@ -1,0 +1,17 @@
+fixtures:
+  - id: ut-diff/own-merge-defaults
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # LYD_DIFF_MERGE_DEFAULTS: an explicit default leaf, then changed, merged with and without the option
+    rfc: []   # libyang diff API mechanics (yang:operation metadata), no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: defaults}, {name: dm2}]
+      steps:
+        - {"do": "validate", "data_type": "config"}
+        - {"do": "diff", "options": ["defaults"], "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:dm2\"><d>3</d></c>", "format": "xml", "data_type": "config", "unknown": "skip"}
+        - {"do": "diff_apply"}
+        - {"do": "diff", "options": ["defaults"], "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:dm2\"><d>4</d></c>", "merge": true, "merge_options": ["defaults"], "format": "xml", "data_type": "config", "unknown": "skip"}
+        - {"do": "diff", "options": ["defaults"], "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:dm2\"><d>4</d></c>", "merge": true, "format": "xml", "data_type": "config", "unknown": "skip"}
+    golden: golden/own-merge-defaults.json

@@ -1,0 +1,14 @@
+fixtures:
+  - id: ut-diff/userord-conflicting-replace-list
+    dir: ut-diff
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_diff.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_userord_conflicting_replace_list:1491 (merge of conflicting user-ordered replaces)
+    rfc: []   # libyang diff format (yang:operation metadata), no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: defaults}]
+      steps:
+        - {"do": "diff_parse", "format": "xml", "data_type": "data", "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <person yang:operation=\"delete\" yang:orig-key=\"[name='alice'][surname='chalice']\">    <name>roland</name>    <surname>doland</surname>  </person>  <person yang:operation=\"replace\" yang:orig-key=\"\" yang:key=\"[name='bob'][surname='drop']\">    <name>jake</name>    <surname>fake</surname>  </person>  <person yang:operation=\"replace\" yang:orig-key=\"[name='jake'][surname='fake']\" yang:key=\"[name='alice'][surname='chalice']\">    <name>bob</name>    <surname>drop</surname>  </person></df>\n"}
+        - {"do": "diff_merge", "format": "xml", "data_type": "data", "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <person yang:operation=\"replace\" yang:orig-key=\"[name='alice'][surname='chalice']\" yang:key=\"\">    <name>bob</name>    <surname>drop</surname>  </person></df>\n"}
+    golden: golden/userord-conflicting-replace-list.json

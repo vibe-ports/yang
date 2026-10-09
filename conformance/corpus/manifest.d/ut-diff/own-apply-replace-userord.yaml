@@ -1,0 +1,17 @@
+fixtures:
+  - id: ut-diff/own-apply-replace-userord
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # applying user-ordered moves (yang:value) and a missing anchor
+    rfc: []   # libyang diff API mechanics (yang:operation metadata), no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: defaults}, {name: dm2}]
+      steps:
+        - {"do": "parse", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:dm2\"><a>x</a><ll>1</ll><ll>2</ll></c>"}
+        - {"do": "diff_parse", "format": "xml", "data_type": "data", "unknown": "skip", "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:dm2\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><ll yang:operation=\"replace\" yang:orig-value=\"1\" yang:value=\"\">2</ll><ll yang:operation=\"create\" yang:value=\"2\">0</ll></c>"}
+        - {"do": "diff_apply"}
+        - {"do": "diff_parse", "format": "xml", "data_type": "data", "unknown": "skip", "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:dm2\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><ll yang:operation=\"create\" yang:value=\"9\">5</ll></c>"}
+        - {"do": "diff_apply"}
+    golden: golden/own-apply-replace-userord.json

@@ -1,0 +1,21 @@
+fixtures:
+  - id: ut-diff/list
+    dir: ut-diff
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_diff.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_list:432 (TEST_DIFF_3: diff 1-2 and 2-3, each applied, then diff 2-3 merged into diff 1-2)
+    rfc: []   # libyang diff format (yang:operation metadata), no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: defaults}]
+      steps:
+        - {"do": "parse", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\">\n  <list>\n    <name>a</name>\n    <value>1</value>\n  </list>\n  <list>\n    <name>b</name>\n    <value>2</value>\n  </list>\n</df>\n"}
+        - {"do": "diff", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\">\n  <list>\n    <name>b</name>\n    <value>-2</value>\n  </list>\n  <list>\n    <name>c</name>\n    <value>3</value>\n  </list>\n</df>\n"}
+        - {"do": "diff_apply"}
+        - {"do": "diff", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\">\n  <list>\n    <name>b</name>\n    <value>-2</value>\n  </list>\n  <list>\n    <name>a</name>\n    <value>2</value>\n  </list>\n</df>\n"}
+        - {"do": "diff_apply"}
+        - {"do": "parse", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\">\n  <list>\n    <name>a</name>\n    <value>1</value>\n  </list>\n  <list>\n    <name>b</name>\n    <value>2</value>\n  </list>\n</df>\n"}
+        - {"do": "diff", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\">\n  <list>\n    <name>b</name>\n    <value>-2</value>\n  </list>\n  <list>\n    <name>c</name>\n    <value>3</value>\n  </list>\n</df>\n"}
+        - {"do": "diff_apply"}
+        - {"do": "diff", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\">\n  <list>\n    <name>b</name>\n    <value>-2</value>\n  </list>\n  <list>\n    <name>a</name>\n    <value>2</value>\n  </list>\n</df>\n", "merge": true}
+    golden: golden/list.json

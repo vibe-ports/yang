@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-diff/same
+    dir: ut-diff
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_diff.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_same:190 (equal trees: no diff, apply of NULL)
+    rfc: []   # libyang diff format (yang:operation metadata), no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas, ../ietf]
+      modules: [{name: defaults}, {name: ietf-netconf-acm}]
+      steps:
+        - {"do": "parse", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">\n  <enable-nacm>true</enable-nacm>\n  <read-default>permit</read-default>\n  <write-default>deny</write-default>\n  <exec-default>permit</exec-default>\n  <enable-external-groups>true</enable-external-groups>\n</nacm><df xmlns=\"urn:libyang:tests:defaults\">\n  <foo>42</foo><b1_1>42</b1_1>\n</df><hidden xmlns=\"urn:libyang:tests:defaults\">\n  <foo>42</foo><baz>42</baz></hidden>\n"}
+        - {"do": "diff", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<nacm xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-acm\">\n  <enable-nacm>true</enable-nacm>\n  <read-default>permit</read-default>\n  <write-default>deny</write-default>\n  <exec-default>permit</exec-default>\n  <enable-external-groups>true</enable-external-groups>\n</nacm><df xmlns=\"urn:libyang:tests:defaults\">\n  <foo>42</foo><b1_1>42</b1_1>\n</df><hidden xmlns=\"urn:libyang:tests:defaults\">\n  <foo>42</foo><baz>42</baz></hidden>\n"}
+        - {"do": "diff_apply"}
+    golden: golden/same.json

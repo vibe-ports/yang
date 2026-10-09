@@ -86,6 +86,11 @@ first failing step — rc not LY_SUCCESS or an error-level diagnostic logged (e.
 refusing a list key) — later steps are `{"do", "skipped": true}`; the response adds `failed_step`
 (index or null). `set` is `lyd_new_path` with `LYD_NEW_PATH_UPDATE` only. This is what makes
 `WhenTrue`/`Default`/`New` history observable.
+Steps `diff`, `diff_parse`, `diff_merge`, `diff_apply` and `diff_reverse` work on a second register,
+the diff: `lyd_diff_siblings`/`lyd_diff_tree` of the tree and parsed data, a parse-only diff,
+`lyd_diff_merge_module`/`lyd_diff_merge_tree`, `lyd_diff_apply_module` on the tree and
+`lyd_diff_reverse_all`; each reports the register after the call (`diff`, `diff_typed`), so the
+chains of test_diff.c (diff, apply, merge, reverse) run in one request. Fields: oracle/README.md.
 
 ## 5. Manifest v2 (conformance/corpus/manifest.yaml)
 ```yaml

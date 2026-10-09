@@ -1,0 +1,17 @@
+fixtures:
+# BEGIN ut-diff own (#137): module filters, lyd_diff_tree, lyd_diff_merge_tree, apply and merge errors
+  - id: ut-diff/own-apply-module
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # lyd_diff_apply_module: only the changes of module dm2 applied
+    rfc: []   # libyang diff API mechanics (yang:operation metadata), no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: defaults}, {name: dm2}]
+      steps:
+        - {"do": "parse", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\"><foo>1</foo><list><name>a</name><value>1</value></list><list><name>b</name><value>2</value></list></df><c xmlns=\"urn:vibe-ports:yang:conformance:dm2\"><a>x</a><ll>1</ll><ll>2</ll></c>"}
+        - {"do": "diff", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\"><foo>2</foo><list><name>a</name><value>5</value></list></df><c xmlns=\"urn:vibe-ports:yang:conformance:dm2\"><a>y</a><ll>2</ll><ll>1</ll></c>"}
+        - {"do": "diff_apply", "module": "dm2"}
+        - {"do": "diff_apply", "module": "defaults"}
+    golden: golden/own-apply-module.json

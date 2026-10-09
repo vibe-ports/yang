@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-diff/wd
+    dir: ut-diff
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_diff.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_wd:1260 (LYD_DIFF_DEFAULTS from a defaults-only tree (validate of NULL stands for lyd_validate_module; config: no state defaults))
+    rfc: []   # libyang diff format (yang:operation metadata), no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: defaults}]
+      steps:
+        - {"do": "validate", "data_type": "config"}
+        - {"do": "diff", "options": ["defaults"], "data": "<df xmlns=\"urn:libyang:tests:defaults\">\n  <foo>41</foo>\n  <dllist>4</dllist>\n</df>\n", "format": "xml", "data_type": "config", "unknown": "skip", "validate_options": ["present"]}
+        - {"do": "diff_apply"}
+        - {"do": "diff", "options": ["defaults"], "data": "<df xmlns=\"urn:libyang:tests:defaults\">\n  <foo>42</foo>\n  <dllist>4</dllist>\n  <dllist>1</dllist>\n</df>\n", "format": "xml", "data_type": "config", "unknown": "skip", "validate_options": ["present"]}
+        - {"do": "diff_apply"}
+        - {"do": "parse", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": ""}
+        - {"do": "validate", "data_type": "config"}
+        - {"do": "diff", "options": ["defaults"], "data": "<df xmlns=\"urn:libyang:tests:defaults\">\n  <foo>41</foo>\n  <dllist>4</dllist>\n</df>\n", "format": "xml", "data_type": "config", "unknown": "skip", "validate_options": ["present"]}
+        - {"do": "diff_apply"}
+        - {"do": "diff", "options": ["defaults"], "data": "<df xmlns=\"urn:libyang:tests:defaults\">\n  <foo>42</foo>\n  <dllist>4</dllist>\n  <dllist>1</dllist>\n</df>\n", "merge": true, "format": "xml", "data_type": "config", "unknown": "skip", "validate_options": ["present"]}
+    golden: golden/wd.json

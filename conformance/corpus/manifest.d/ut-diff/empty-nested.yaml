@@ -1,0 +1,16 @@
+fixtures:
+  - id: ut-diff/empty-nested
+    dir: ut-diff
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_diff.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_empty_nested:302 (NULL/NULL, NULL/child and child/NULL)
+    rfc: []   # libyang diff format (yang:operation metadata), no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: defaults}]
+      steps:
+        - {"do": "diff"}
+        - {"do": "diff", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\"><foo>42</foo></df>", "data_node": "/defaults:df/foo"}
+        - {"do": "parse", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\"><foo>42</foo></df>"}
+        - {"do": "diff", "node": "/defaults:df/foo"}
+    golden: golden/empty-nested.json

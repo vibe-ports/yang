@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-diff/own-diff-tree
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # lyd_diff_tree: the subtrees only, not their siblings
+    rfc: []   # libyang diff API mechanics (yang:operation metadata), no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: defaults}, {name: dm2}]
+      steps:
+        - {"do": "parse", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\"><foo>1</foo><list><name>a</name><value>1</value></list><list><name>b</name><value>2</value></list></df><c xmlns=\"urn:vibe-ports:yang:conformance:dm2\"><a>x</a><ll>1</ll><ll>2</ll></c>"}
+        - {"do": "diff", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\"><foo>2</foo><list><name>a</name><value>5</value></list></df><c xmlns=\"urn:vibe-ports:yang:conformance:dm2\"><a>y</a><ll>2</ll><ll>1</ll></c>", "single": true}
+        - {"do": "diff", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\"><foo>2</foo><list><name>a</name><value>5</value></list></df><c xmlns=\"urn:vibe-ports:yang:conformance:dm2\"><a>y</a><ll>2</ll><ll>1</ll></c>", "single": true, "node": "/defaults:df/list[name='a']", "data_node": "/defaults:df/list[name='a']"}
+    golden: golden/own-diff-tree.json

@@ -1,0 +1,19 @@
+fixtures:
+  - id: ut-diff/userord-conflicting-replace-list2
+    dir: ut-diff
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_diff.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_userord_conflicting_replace_list2:1548 (reverse(diff 1-3) merged with diff 1-2, applied to 3 gives 2)
+    rfc: []   # libyang diff format (yang:operation metadata), no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: defaults}]
+      steps:
+        - {"do": "parse", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\">\n  <person>\n    <name>alice</name>\n    <surname>chalice</surname>\n  </person>\n  <person>\n    <name>bob</name>\n    <surname>drop</surname>\n  </person>\n  <person>\n    <name>jake</name>\n    <surname>fake</surname>\n  </person>\n  <person>\n    <name>roland</name>\n    <surname>doland</surname>\n  </person>\n</df>\n"}
+        - {"do": "diff", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\">\n  <person>\n    <name>jake</name>\n    <surname>fake</surname>\n  </person>\n  <person>\n    <name>bob</name>\n    <surname>drop</surname>\n  </person>\n  <person>\n    <name>alice</name>\n    <surname>chalice</surname>\n  </person>\n  <person>\n    <name>roland</name>\n    <surname>doland</surname>\n  </person>\n</df>\n"}
+        - {"do": "diff_reverse"}
+        - {"do": "diff", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\">\n  <person>\n    <name>bob</name>\n    <surname>drop</surname>\n  </person>\n  <person>\n    <name>alice</name>\n    <surname>chalice</surname>\n  </person>\n  <person>\n    <name>jake</name>\n    <surname>fake</surname>\n  </person>\n  <person>\n    <name>roland</name>\n    <surname>doland</surname>\n  </person>\n</df>\n", "merge": true}
+        - {"do": "parse", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\">\n  <person>\n    <name>jake</name>\n    <surname>fake</surname>\n  </person>\n  <person>\n    <name>bob</name>\n    <surname>drop</surname>\n  </person>\n  <person>\n    <name>alice</name>\n    <surname>chalice</surname>\n  </person>\n  <person>\n    <name>roland</name>\n    <surname>doland</surname>\n  </person>\n</df>\n"}
+        - {"do": "diff_apply"}
+        - {"do": "dump"}
+    golden: golden/userord-conflicting-replace-list2.json

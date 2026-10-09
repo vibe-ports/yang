@@ -1,0 +1,3827 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "defaults",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"defaults:df\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"kl\": [\n      {\n        \"@\": {\n          \"yang:operation\": \"delete\",\n          \"yang:orig-position\": 2\n        },\n        \"l1\": \"c\",\n        \"l2\": 3\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"replace\",\n          \"yang:position\": [null],\n          \"yang:orig-position\": 1\n        },\n        \"l1\": \"b\",\n        \"l2\": 2\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"create\",\n          \"yang:position\": 2\n        },\n        \"l1\": \"a\",\n        \"l2\": 1\n      }\n    ]\n  }\n}\n",
+        "xml": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <kl yang:operation=\"delete\" yang:orig-position=\"2\">\n    <l1>c</l1>\n    <l2>3</l2>\n  </kl>\n  <kl yang:operation=\"replace\" yang:position=\"\" yang:orig-position=\"1\">\n    <l1>b</l1>\n    <l2>2</l2>\n  </kl>\n  <kl yang:operation=\"create\" yang:position=\"2\">\n    <l1>a</l1>\n    <l2>1</l2>\n  </kl>\n</df>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            },
+            {
+              "module": "yang",
+              "name": "orig-position",
+              "value": "2"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "replace"
+            },
+            {
+              "module": "yang",
+              "name": "position",
+              "value": ""
+            },
+            {
+              "module": "yang",
+              "name": "orig-position",
+              "value": "1"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            },
+            {
+              "module": "yang",
+              "name": "position",
+              "value": "2"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"defaults:df\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"kl\": [\n      {\n        \"@\": {\n          \"yang:operation\": \"delete\",\n          \"yang:orig-position\": 2\n        },\n        \"l1\": \"c\",\n        \"l2\": 3\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"replace\",\n          \"yang:position\": [null],\n          \"yang:orig-position\": 1\n        },\n        \"l1\": \"b\",\n        \"l2\": 2\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"create\",\n          \"yang:position\": 2\n        },\n        \"l1\": \"a\",\n        \"l2\": 1\n      }\n    ]\n  }\n}\n",
+        "xml": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <kl yang:operation=\"delete\" yang:orig-position=\"2\">\n    <l1>c</l1>\n    <l2>3</l2>\n  </kl>\n  <kl yang:operation=\"replace\" yang:position=\"\" yang:orig-position=\"1\">\n    <l1>b</l1>\n    <l2>2</l2>\n  </kl>\n  <kl yang:operation=\"create\" yang:position=\"2\">\n    <l1>a</l1>\n    <l2>1</l2>\n  </kl>\n</df>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            },
+            {
+              "module": "yang",
+              "name": "orig-position",
+              "value": "2"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "replace"
+            },
+            {
+              "module": "yang",
+              "name": "position",
+              "value": ""
+            },
+            {
+              "module": "yang",
+              "name": "orig-position",
+              "value": "1"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            },
+            {
+              "module": "yang",
+              "name": "position",
+              "value": "2"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff_apply",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"defaults:df\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"kl\": [\n      {\n        \"@\": {\n          \"yang:operation\": \"delete\",\n          \"yang:orig-position\": [null]\n        },\n        \"l1\": \"b\",\n        \"l2\": 2\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"delete\",\n          \"yang:orig-position\": [null]\n        },\n        \"l1\": \"a\",\n        \"l2\": 1\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"delete\",\n          \"yang:orig-position\": [null]\n        },\n        \"l1\": \"a\",\n        \"l2\": 1\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"create\",\n          \"yang:position\": [null]\n        },\n        \"l1\": \"c\"\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"create\",\n          \"yang:position\": 1\n        },\n        \"l2\": 4\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"create\",\n          \"yang:position\": 2\n        },\n        \"l1\": \"e\",\n        \"l2\": 5\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"create\",\n          \"yang:position\": 3\n        },\n        \"l1\": \"f\",\n        \"l2\": 6\n      }\n    ]\n  }\n}\n",
+        "xml": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <kl yang:operation=\"delete\" yang:orig-position=\"\">\n    <l1>b</l1>\n    <l2>2</l2>\n  </kl>\n  <kl yang:operation=\"delete\" yang:orig-position=\"\">\n    <l1>a</l1>\n    <l2>1</l2>\n  </kl>\n  <kl yang:operation=\"delete\" yang:orig-position=\"\">\n    <l1>a</l1>\n    <l2>1</l2>\n  </kl>\n  <kl yang:operation=\"create\" yang:position=\"\">\n    <l1>c</l1>\n  </kl>\n  <kl yang:operation=\"create\" yang:position=\"1\">\n    <l2>4</l2>\n  </kl>\n  <kl yang:operation=\"create\" yang:position=\"2\">\n    <l1>e</l1>\n    <l2>5</l2>\n  </kl>\n  <kl yang:operation=\"create\" yang:position=\"3\">\n    <l1>f</l1>\n    <l2>6</l2>\n  </kl>\n</df>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            },
+            {
+              "module": "yang",
+              "name": "orig-position",
+              "value": ""
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            },
+            {
+              "module": "yang",
+              "name": "orig-position",
+              "value": ""
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            },
+            {
+              "module": "yang",
+              "name": "orig-position",
+              "value": ""
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            },
+            {
+              "module": "yang",
+              "name": "position",
+              "value": ""
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[4]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[4]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            },
+            {
+              "module": "yang",
+              "name": "position",
+              "value": "1"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[5]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[5]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "4",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            },
+            {
+              "module": "yang",
+              "name": "position",
+              "value": "2"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[6]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[6]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "e",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[6]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "5",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            },
+            {
+              "module": "yang",
+              "name": "position",
+              "value": "3"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[7]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[7]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "f",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[7]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "6",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"defaults:df\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"kl\": [\n      {\n        \"@\": {\n          \"yang:operation\": \"delete\",\n          \"yang:orig-position\": [null]\n        },\n        \"l1\": \"b\",\n        \"l2\": 2\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"delete\",\n          \"yang:orig-position\": [null]\n        },\n        \"l1\": \"a\",\n        \"l2\": 1\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"delete\",\n          \"yang:orig-position\": [null]\n        },\n        \"l1\": \"a\",\n        \"l2\": 1\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"create\",\n          \"yang:position\": [null]\n        },\n        \"l1\": \"c\"\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"create\",\n          \"yang:position\": 1\n        },\n        \"l2\": 4\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"create\",\n          \"yang:position\": 2\n        },\n        \"l1\": \"e\",\n        \"l2\": 5\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"create\",\n          \"yang:position\": 3\n        },\n        \"l1\": \"f\",\n        \"l2\": 6\n      }\n    ]\n  }\n}\n",
+        "xml": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <kl yang:operation=\"delete\" yang:orig-position=\"\">\n    <l1>b</l1>\n    <l2>2</l2>\n  </kl>\n  <kl yang:operation=\"delete\" yang:orig-position=\"\">\n    <l1>a</l1>\n    <l2>1</l2>\n  </kl>\n  <kl yang:operation=\"delete\" yang:orig-position=\"\">\n    <l1>a</l1>\n    <l2>1</l2>\n  </kl>\n  <kl yang:operation=\"create\" yang:position=\"\">\n    <l1>c</l1>\n  </kl>\n  <kl yang:operation=\"create\" yang:position=\"1\">\n    <l2>4</l2>\n  </kl>\n  <kl yang:operation=\"create\" yang:position=\"2\">\n    <l1>e</l1>\n    <l2>5</l2>\n  </kl>\n  <kl yang:operation=\"create\" yang:position=\"3\">\n    <l1>f</l1>\n    <l2>6</l2>\n  </kl>\n</df>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            },
+            {
+              "module": "yang",
+              "name": "orig-position",
+              "value": ""
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            },
+            {
+              "module": "yang",
+              "name": "orig-position",
+              "value": ""
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            },
+            {
+              "module": "yang",
+              "name": "orig-position",
+              "value": ""
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            },
+            {
+              "module": "yang",
+              "name": "position",
+              "value": ""
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[4]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[4]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            },
+            {
+              "module": "yang",
+              "name": "position",
+              "value": "1"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[5]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[5]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "4",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            },
+            {
+              "module": "yang",
+              "name": "position",
+              "value": "2"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[6]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[6]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "e",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[6]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "5",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            },
+            {
+              "module": "yang",
+              "name": "position",
+              "value": "3"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[7]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[7]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "f",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[7]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "6",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff_apply",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "4",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "e",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "5",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[4]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[4]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "f",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[4]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "6",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"defaults:df\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"kl\": [\n      {\n        \"@\": {\n          \"yang:operation\": \"delete\",\n          \"yang:orig-position\": 2\n        },\n        \"l1\": \"c\",\n        \"l2\": 3\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"replace\",\n          \"yang:position\": [null],\n          \"yang:orig-position\": 1\n        },\n        \"l1\": \"b\",\n        \"l2\": 2\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"create\",\n          \"yang:position\": 2\n        },\n        \"l1\": \"a\",\n        \"l2\": 1\n      }\n    ]\n  }\n}\n",
+        "xml": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <kl yang:operation=\"delete\" yang:orig-position=\"2\">\n    <l1>c</l1>\n    <l2>3</l2>\n  </kl>\n  <kl yang:operation=\"replace\" yang:position=\"\" yang:orig-position=\"1\">\n    <l1>b</l1>\n    <l2>2</l2>\n  </kl>\n  <kl yang:operation=\"create\" yang:position=\"2\">\n    <l1>a</l1>\n    <l2>1</l2>\n  </kl>\n</df>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            },
+            {
+              "module": "yang",
+              "name": "orig-position",
+              "value": "2"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "replace"
+            },
+            {
+              "module": "yang",
+              "name": "position",
+              "value": ""
+            },
+            {
+              "module": "yang",
+              "name": "orig-position",
+              "value": "1"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            },
+            {
+              "module": "yang",
+              "name": "position",
+              "value": "2"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"defaults:df\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"kl\": [\n      {\n        \"@\": {\n          \"yang:operation\": \"delete\",\n          \"yang:orig-position\": 2\n        },\n        \"l1\": \"c\",\n        \"l2\": 3\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"replace\",\n          \"yang:position\": [null],\n          \"yang:orig-position\": 1\n        },\n        \"l1\": \"b\",\n        \"l2\": 2\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"create\",\n          \"yang:position\": 2\n        },\n        \"l1\": \"a\",\n        \"l2\": 1\n      }\n    ]\n  }\n}\n",
+        "xml": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <kl yang:operation=\"delete\" yang:orig-position=\"2\">\n    <l1>c</l1>\n    <l2>3</l2>\n  </kl>\n  <kl yang:operation=\"replace\" yang:position=\"\" yang:orig-position=\"1\">\n    <l1>b</l1>\n    <l2>2</l2>\n  </kl>\n  <kl yang:operation=\"create\" yang:position=\"2\">\n    <l1>a</l1>\n    <l2>1</l2>\n  </kl>\n</df>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            },
+            {
+              "module": "yang",
+              "name": "orig-position",
+              "value": "2"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "replace"
+            },
+            {
+              "module": "yang",
+              "name": "position",
+              "value": ""
+            },
+            {
+              "module": "yang",
+              "name": "orig-position",
+              "value": "1"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            },
+            {
+              "module": "yang",
+              "name": "position",
+              "value": "2"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff_apply",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"defaults:df\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"kl\": [\n      {\n        \"@\": {\n          \"yang:operation\": \"delete\",\n          \"yang:orig-position\": 2\n        },\n        \"l1\": \"c\",\n        \"l2\": 3\n      },\n      {\n        \"@\": {\n          \"yang:orig-position\": 1,\n          \"yang:operation\": \"delete\"\n        },\n        \"l1\": \"b\",\n        \"l2\": 2\n      },\n      {\n        \"@\": {\n          \"yang:orig-position\": [null],\n          \"yang:operation\": \"delete\"\n        },\n        \"l1\": \"a\",\n        \"l2\": 1\n      },\n      {\n        \"@\": {\n          \"yang:position\": [null],\n          \"yang:operation\": \"create\"\n        },\n        \"l1\": \"c\"\n      },\n      {\n        \"@\": {\n          \"yang:position\": 1,\n          \"yang:operation\": \"create\"\n        },\n        \"l2\": 4\n      },\n      {\n        \"@\": {\n          \"yang:position\": 2,\n          \"yang:operation\": \"create\"\n        },\n        \"l1\": \"e\",\n        \"l2\": 5\n      },\n      {\n        \"@\": {\n          \"yang:position\": 3,\n          \"yang:operation\": \"create\"\n        },\n        \"l1\": \"f\",\n        \"l2\": 6\n      }\n    ]\n  }\n}\n",
+        "xml": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <kl yang:operation=\"delete\" yang:orig-position=\"2\">\n    <l1>c</l1>\n    <l2>3</l2>\n  </kl>\n  <kl yang:orig-position=\"1\" yang:operation=\"delete\">\n    <l1>b</l1>\n    <l2>2</l2>\n  </kl>\n  <kl yang:orig-position=\"\" yang:operation=\"delete\">\n    <l1>a</l1>\n    <l2>1</l2>\n  </kl>\n  <kl yang:position=\"\" yang:operation=\"create\">\n    <l1>c</l1>\n  </kl>\n  <kl yang:position=\"1\" yang:operation=\"create\">\n    <l2>4</l2>\n  </kl>\n  <kl yang:position=\"2\" yang:operation=\"create\">\n    <l1>e</l1>\n    <l2>5</l2>\n  </kl>\n  <kl yang:position=\"3\" yang:operation=\"create\">\n    <l1>f</l1>\n    <l2>6</l2>\n  </kl>\n</df>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            },
+            {
+              "module": "yang",
+              "name": "orig-position",
+              "value": "2"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "3",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "orig-position",
+              "value": "1"
+            },
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "orig-position",
+              "value": ""
+            },
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "position",
+              "value": ""
+            },
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[4]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[4]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "position",
+              "value": "1"
+            },
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[5]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[5]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "4",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "position",
+              "value": "2"
+            },
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[6]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[6]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "e",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[6]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "5",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "position",
+              "value": "3"
+            },
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            }
+          ],
+          "opaque": null,
+          "path": "/defaults:df/kl[7]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[7]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "f",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[7]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "6",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff",
+      "new_diff": {
+        "json": "{\n  \"defaults:df\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"kl\": [\n      {\n        \"@\": {\n          \"yang:operation\": \"delete\",\n          \"yang:orig-position\": [null]\n        },\n        \"l1\": \"b\",\n        \"l2\": 2\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"delete\",\n          \"yang:orig-position\": [null]\n        },\n        \"l1\": \"a\",\n        \"l2\": 1\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"delete\",\n          \"yang:orig-position\": [null]\n        },\n        \"l1\": \"a\",\n        \"l2\": 1\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"create\",\n          \"yang:position\": [null]\n        },\n        \"l1\": \"c\"\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"create\",\n          \"yang:position\": 1\n        },\n        \"l2\": 4\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"create\",\n          \"yang:position\": 2\n        },\n        \"l1\": \"e\",\n        \"l2\": 5\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"create\",\n          \"yang:position\": 3\n        },\n        \"l1\": \"f\",\n        \"l2\": 6\n      }\n    ]\n  }\n}\n",
+        "xml": "<df xmlns=\"urn:libyang:tests:defaults\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <kl yang:operation=\"delete\" yang:orig-position=\"\">\n    <l1>b</l1>\n    <l2>2</l2>\n  </kl>\n  <kl yang:operation=\"delete\" yang:orig-position=\"\">\n    <l1>a</l1>\n    <l2>1</l2>\n  </kl>\n  <kl yang:operation=\"delete\" yang:orig-position=\"\">\n    <l1>a</l1>\n    <l2>1</l2>\n  </kl>\n  <kl yang:operation=\"create\" yang:position=\"\">\n    <l1>c</l1>\n  </kl>\n  <kl yang:operation=\"create\" yang:position=\"1\">\n    <l2>4</l2>\n  </kl>\n  <kl yang:operation=\"create\" yang:position=\"2\">\n    <l1>e</l1>\n    <l2>5</l2>\n  </kl>\n  <kl yang:operation=\"create\" yang:position=\"3\">\n    <l1>f</l1>\n    <l2>6</l2>\n  </kl>\n</df>\n"
+      },
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df",
+          "schema": "/defaults:df",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[1]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "2",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[2]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]",
+          "schema": "/defaults:df/kl",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l1",
+          "schema": "/defaults:df/kl/l1",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/defaults:df/kl[3]/l2",
+          "schema": "/defaults:df/kl/l2",
+          "value": {
+            "canonical": "1",
+            "type": "int32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

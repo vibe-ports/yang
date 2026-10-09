@@ -1,0 +1,21 @@
+fixtures:
+  - id: ut-diff/userord-list
+    dir: ut-diff
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_diff.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_userord_list:766 (TEST_DIFF_3: diff 1-2 and 2-3, each applied, then diff 2-3 merged into diff 1-2)
+    rfc: []   # libyang diff format (yang:operation metadata), no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: defaults}]
+      steps:
+        - {"do": "parse", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\">\n  <ul>\n    <l1>a</l1>\n    <l2>1</l2>\n  </ul>\n  <ul>\n    <l1>b</l1>\n    <l2>2</l2>\n  </ul>\n  <ul>\n    <l1>c</l1>\n    <l2>3</l2>\n  </ul>\n</df>\n"}
+        - {"do": "diff", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\">\n  <ul>\n    <l1>a</l1>\n    <l2>11</l2>\n  </ul>\n  <ul>\n    <l1>c</l1>\n    <l2>3</l2>\n  </ul>\n</df>\n"}
+        - {"do": "diff_apply"}
+        - {"do": "diff", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\">\n  <ul>\n    <l1>c</l1>\n    <l2>33</l2>\n  </ul>\n  <ul>\n    <l1>b</l1>\n    <l2>2</l2>\n  </ul>\n</df>\n"}
+        - {"do": "diff_apply"}
+        - {"do": "parse", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\">\n  <ul>\n    <l1>a</l1>\n    <l2>1</l2>\n  </ul>\n  <ul>\n    <l1>b</l1>\n    <l2>2</l2>\n  </ul>\n  <ul>\n    <l1>c</l1>\n    <l2>3</l2>\n  </ul>\n</df>\n"}
+        - {"do": "diff", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\">\n  <ul>\n    <l1>a</l1>\n    <l2>11</l2>\n  </ul>\n  <ul>\n    <l1>c</l1>\n    <l2>3</l2>\n  </ul>\n</df>\n"}
+        - {"do": "diff_apply"}
+        - {"do": "diff", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<df xmlns=\"urn:libyang:tests:defaults\">\n  <ul>\n    <l1>c</l1>\n    <l2>33</l2>\n  </ul>\n  <ul>\n    <l1>b</l1>\n    <l2>2</l2>\n  </ul>\n</df>\n", "merge": true}
+    golden: golden/userord-list.json

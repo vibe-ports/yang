@@ -311,6 +311,17 @@ becomes observable. Context fields as in `schema`; step fields are per step (not
 | `links` | — | `leafref_links`: the record of every term node that has one (`lyd_leafref_get_links`), in DFS order: `{"node", "leafref_nodes", "target_nodes"}` as `lyd_path(LYD_PATH_STD)` lists in record order |
 | `dup` | `node` (path), `parent` (path, optional), `options` (`recursive no_meta with_parents with_flags no_lyds`), `siblings` (bool) | `lyd_dup_siblings` (`siblings: true`) or `lyd_dup_single` of `node` into `parent`; without `parent` the duplicate, from its top duplicated parent, replaces the tree (diagnostics phase `edit`) |
 | `compare` | the fields of `parse` for a second tree, `first` / `second` (paths in the retained / second tree, omitted: its first top-level node), `options` (`full_recursion defaults opaq`) | `lyd_compare_single(first, second, options)`; `compare` = its rc (`LY_SUCCESS` equal, `LY_ENOT` not); the step's rc is the second parse's, the retained tree is unchanged |
+| `diff` | the parse fields of `parse` (`data`/`data_file` optional: none is a NULL tree), `node` (path in the tree), `data_node` (path in the parsed data), `single` (bool), `options` (`defaults meta`), `merge` (bool), `merge_options` (`defaults`) | `lyd_diff_siblings` (`single`: `lyd_diff_tree`) of the tree (or its node at `node`) and the parsed data (or its node at `data_node`); the diff replaces the diff register, or with `merge` is merged into it (`lyd_diff_merge_all` with `merge_options`) and reported as `new_diff` (diagnostics phases `parse`, `diff`) |
+| `diff_parse` | `format`, `data_type`, `data`/`data_file`, `unknown`, `parse_options` | the data, parsed with `LYD_PARSE_ONLY` as test_diff.c parses diffs, replaces the diff register |
+| `diff_merge` | as `diff_parse`, plus `options` (`defaults`), and `module` or `src_node` (path in the parsed source) with an optional `parent` (path in the register) | `lyd_diff_merge_module` (`lyd_diff_merge_all` without `module`) of the parsed source into the register; with `src_node` `lyd_diff_merge_tree` of that subtree under `parent` (none: the top level) |
+| `diff_apply` | `module` (optional) | `lyd_diff_apply_module(&tree, register, module)` (`lyd_diff_apply_all` without `module`) |
+| `diff_reverse` | — | `lyd_diff_reverse_all` of the register replaces it |
+
+The diff register is the second state of a sequence next to the tree: NULL at the start, set by
+`diff`, `diff_parse` and `diff_reverse`, merged into by `diff_merge` and `diff` with `merge`. Every
+executed `diff*` step reports it after the call as `diff` (`{"json", "xml"}` printed with
+`LYD_PRINT_WD_ALL`, as op `diff`, or null) and `diff_typed` (its typed dump). A `node`, `data_node`,
+`src_node` or `parent` path that selects nothing is a request-error raised when the step runs.
 
 `insert_term` / `insert_inner` with a `parent` path, and `new_meta` / `free_meta` with a `node` path, that does not exist in the tree is a request-error raised when the step runs (not in the pre-check).
 
@@ -323,6 +334,7 @@ then that item's code.
 
 Response: `steps` (one per request step), `verdict` (`valid` iff every step succeeded), `rc` (of the last executed step), `failed_step` (index or null). Executed step:
 `{"do", "diagnostics" (phase `parse` | `validate` | `edit`), "rc", "typed"}`, plus
+`diff`/`diff_typed` (and `new_diff` for `diff` with `merge`) for the `diff*` steps,
 `implicit_diff` for `validate` (the diff printed as JSON with `LYD_PRINT_WD_ALL`, carrying
 `yang:operation`; null when validation changed nothing) and `tree` for `dump`. The first step whose
 rc is not `LY_SUCCESS` stops the run; later steps are `{"do": "...", "skipped": true}`. A failed

@@ -1,0 +1,800 @@
+{
+  "context_diagnostics": [],
+  "failed_step": 4,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "defaults",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "dm2",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 3,
+    "name": "LY_EINVAL"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c",
+          "schema": "/dm2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c/a",
+          "schema": "/dm2:c/a",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c/ll[.='1']",
+          "schema": "/dm2:c/ll",
+          "value": {
+            "canonical": "1",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c/ll[.='2']",
+          "schema": "/dm2:c/ll",
+          "value": {
+            "canonical": "2",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"dm2:c\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"ll\": [\n      \"2\",\n      \"0\"\n    ],\n    \"@ll\": [\n      {\n        \"yang:operation\": \"replace\",\n        \"yang:orig-value\": \"1\",\n        \"yang:value\": \"\"\n      },\n      {\n        \"yang:operation\": \"create\",\n        \"yang:value\": \"2\"\n      }\n    ]\n  }\n}\n",
+        "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:dm2\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <ll yang:operation=\"replace\" yang:orig-value=\"1\" yang:value=\"\">2</ll>\n  <ll yang:operation=\"create\" yang:value=\"2\">0</ll>\n</c>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/dm2:c",
+          "schema": "/dm2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "replace"
+            },
+            {
+              "module": "yang",
+              "name": "orig-value",
+              "value": "1"
+            },
+            {
+              "module": "yang",
+              "name": "value",
+              "value": ""
+            }
+          ],
+          "opaque": null,
+          "path": "/dm2:c/ll[.='2']",
+          "schema": "/dm2:c/ll",
+          "value": {
+            "canonical": "2",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            },
+            {
+              "module": "yang",
+              "name": "value",
+              "value": "2"
+            }
+          ],
+          "opaque": null,
+          "path": "/dm2:c/ll[.='0']",
+          "schema": "/dm2:c/ll",
+          "value": {
+            "canonical": "0",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff_parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c",
+          "schema": "/dm2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c/a",
+          "schema": "/dm2:c/a",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c/ll[.='1']",
+          "schema": "/dm2:c/ll",
+          "value": {
+            "canonical": "1",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c/ll[.='2']",
+          "schema": "/dm2:c/ll",
+          "value": {
+            "canonical": "2",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"dm2:c\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"ll\": [\n      \"2\",\n      \"0\"\n    ],\n    \"@ll\": [\n      {\n        \"yang:operation\": \"replace\",\n        \"yang:orig-value\": \"1\",\n        \"yang:value\": \"\"\n      },\n      {\n        \"yang:operation\": \"create\",\n        \"yang:value\": \"2\"\n      }\n    ]\n  }\n}\n",
+        "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:dm2\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <ll yang:operation=\"replace\" yang:orig-value=\"1\" yang:value=\"\">2</ll>\n  <ll yang:operation=\"create\" yang:value=\"2\">0</ll>\n</c>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/dm2:c",
+          "schema": "/dm2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "replace"
+            },
+            {
+              "module": "yang",
+              "name": "orig-value",
+              "value": "1"
+            },
+            {
+              "module": "yang",
+              "name": "value",
+              "value": ""
+            }
+          ],
+          "opaque": null,
+          "path": "/dm2:c/ll[.='2']",
+          "schema": "/dm2:c/ll",
+          "value": {
+            "canonical": "2",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            },
+            {
+              "module": "yang",
+              "name": "value",
+              "value": "2"
+            }
+          ],
+          "opaque": null,
+          "path": "/dm2:c/ll[.='0']",
+          "schema": "/dm2:c/ll",
+          "value": {
+            "canonical": "0",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff_apply",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c",
+          "schema": "/dm2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c/a",
+          "schema": "/dm2:c/a",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c/ll[.='2']",
+          "schema": "/dm2:c/ll",
+          "value": {
+            "canonical": "2",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c/ll[.='0']",
+          "schema": "/dm2:c/ll",
+          "value": {
+            "canonical": "0",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c/ll[.='1']",
+          "schema": "/dm2:c/ll",
+          "value": {
+            "canonical": "1",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"dm2:c\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"ll\": [\n      \"5\"\n    ],\n    \"@ll\": [\n      {\n        \"yang:operation\": \"create\",\n        \"yang:value\": \"9\"\n      }\n    ]\n  }\n}\n",
+        "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:dm2\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <ll yang:operation=\"create\" yang:value=\"9\">5</ll>\n</c>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/dm2:c",
+          "schema": "/dm2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            },
+            {
+              "module": "yang",
+              "name": "value",
+              "value": "9"
+            }
+          ],
+          "opaque": null,
+          "path": "/dm2:c/ll[.='5']",
+          "schema": "/dm2:c/ll",
+          "value": {
+            "canonical": "5",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff_parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c",
+          "schema": "/dm2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c/a",
+          "schema": "/dm2:c/a",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c/ll[.='2']",
+          "schema": "/dm2:c/ll",
+          "value": {
+            "canonical": "2",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c/ll[.='0']",
+          "schema": "/dm2:c/ll",
+          "value": {
+            "canonical": "0",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c/ll[.='1']",
+          "schema": "/dm2:c/ll",
+          "value": {
+            "canonical": "1",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 3,
+            "name": "LY_EINVAL"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Node \"ll\" instance to insert next to not found.",
+          "phase": "diff",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "diff": {
+        "json": "{\n  \"dm2:c\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"ll\": [\n      \"5\"\n    ],\n    \"@ll\": [\n      {\n        \"yang:operation\": \"create\",\n        \"yang:value\": \"9\"\n      }\n    ]\n  }\n}\n",
+        "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:dm2\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <ll yang:operation=\"create\" yang:value=\"9\">5</ll>\n</c>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/dm2:c",
+          "schema": "/dm2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            },
+            {
+              "module": "yang",
+              "name": "value",
+              "value": "9"
+            }
+          ],
+          "opaque": null,
+          "path": "/dm2:c/ll[.='5']",
+          "schema": "/dm2:c/ll",
+          "value": {
+            "canonical": "5",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff_apply",
+      "rc": {
+        "err": 3,
+        "name": "LY_EINVAL"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c",
+          "schema": "/dm2:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c/a",
+          "schema": "/dm2:c/a",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c/ll[.='2']",
+          "schema": "/dm2:c/ll",
+          "value": {
+            "canonical": "2",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c/ll[.='0']",
+          "schema": "/dm2:c/ll",
+          "value": {
+            "canonical": "0",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/dm2:c/ll[.='1']",
+          "schema": "/dm2:c/ll",
+          "value": {
+            "canonical": "1",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "invalid"
+}

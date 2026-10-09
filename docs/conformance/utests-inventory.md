@@ -63,7 +63,7 @@ work must fix* (multi-module ordering for `deviation`/`augment`, non-verdict res
 | `basic/test_xml.c` | 6 | 691 | codec lexer | M5 | in | C | - | xml.c (lyxml_ctx_*): token stream + error message per input string |
 | `basic/test_xpath.c` | 16 | 1353 | xpath | M3 | in | B | 32 (1/32) | xpath.c (lyxp_eval, lyxp_atomize), plugins_types xpath1.0 canonical form |
 | `basic/test_yanglib.c` | 1 | 144 | yang-library | M6 | in | C | - | context.c (ly_ctx_new_yldata), yanglib.c |
-| `data/test_diff.c` | 25 | 1768 | diff | M6 | in | B | 57 (2/2) | diff.c (lyd_diff_siblings/tree, lyd_diff_apply_all, lyd_diff_merge_*, lyd_diff_reverse_all) |
+| `data/test_diff.c` | 25 | 1768 | diff | M6 | in | B | 57 (2/2) | diff.c (lyd_diff_siblings/tree, lyd_diff_apply_all, lyd_diff_merge_*, lyd_diff_reverse_all); imported: corpus/ut-diff/ (all 25 functions, every diff/apply/merge/reverse step, as sequences; #137) |
 | `data/test_lyb.c` | 13 | 2905 | lyb | - | out | N | - | parser_lyb.c, printer_lyb.c |
 | `data/test_merge.c` | 11 | 756 | merge | M6 | in | B | 27 (22/26) | tree_data.c (lyd_merge_siblings/module/tree) |
 | `data/test_new.c` | 4 | 580 | data tree API | M4 | in | C | - | tree_data_new.c (lyd_new_*, lyd_new_path) |
