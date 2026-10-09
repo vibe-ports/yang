@@ -311,7 +311,7 @@ func (vc *valCtx) duplicates(d *dupIndex, n *Node) error {
 		return nil
 	}
 	for _, m := range d.bucket(k) {
-		vc.t.work++
+		vc.t.work.Add(1)
 		if m == n || !vc.linkedIn(m, d.sib) || !htValEqual(vc.t, m, n) {
 			continue
 		}

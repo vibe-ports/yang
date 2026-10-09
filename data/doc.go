@@ -25,6 +25,9 @@
 // libyang's text of the check. Invalid input yields no tree, as libyang frees the whole tree on
 // any error.
 //
-// A Schema may be shared by any number of goroutines. A Tree is not safe for concurrent use
-// (lookups build indexes lazily): use one goroutine per tree.
+// A Schema may be shared by any number of goroutines. Read-only calls on a Tree may run
+// concurrently: Find, FindXPath, EvalXPath, EvalXPathAs, the Node accessors and iterators,
+// metadata lookups and printing. Anything that modifies a tree (NewPath, NewMeta, Remove, Validate,
+// diff application, …) needs exclusive access: no other call on that tree, read or write, at the
+// same time.
 package data

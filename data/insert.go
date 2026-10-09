@@ -118,7 +118,7 @@ func compareSorted(a, b *Node) int {
 // the comparisons.
 func (t *Tree) upper(l []*Node, lo int, after func(*Node) bool) int {
 	i, _ := slices.BinarySearchFunc(l[lo:], struct{}{}, func(a *Node, _ struct{}) int {
-		t.work++
+		t.work.Add(1)
 		if after(a) {
 			return 1
 		}
@@ -161,7 +161,7 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 			// predecessor, the greatest tree member not above it, or before the leader
 			at := lo
 			for i := lo; i < hi; i++ {
-				t.work++
+				t.work.Add(1)
 				if l[i].inRB && compareSorted(l[i], n) <= 0 {
 					at = i + 1
 				}
@@ -169,7 +169,7 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 			return at
 		}
 		// after the equal values (rb_insert_node goes right on 0); append fast path
-		t.work++
+		t.work.Add(1)
 		if compareSorted(l[hi-1], n) <= 0 {
 			return hi
 		}
@@ -177,7 +177,7 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 	}
 	// lyd_insert_node_ordby_schema; append fast path
 	at := len(l)
-	t.work++
+	t.work.Add(1)
 	if t.after(l[at-1], n) {
 		at = t.upper(l, 0, afterN)
 	}
@@ -371,7 +371,7 @@ func (t *Tree) unlinkAll(ns []*Node) error {
 			n.hashed = false
 		}
 	}
-	isGone := func(n *Node) bool { t.work++; return gone[n] }
+	isGone := func(n *Node) bool { t.work.Add(1); return gone[n] }
 	for _, sib := range order {
 		sib.gen++
 		sib.list = slices.DeleteFunc(sib.list, isGone)

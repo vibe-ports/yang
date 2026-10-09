@@ -72,12 +72,12 @@ func (p *xmlParser) syncNS() {
 		} else {
 			delete(p.nsMap, k)
 		}
-		p.lc.tree.work++
+		p.lc.tree.work.Add(1)
 	}
 	for _, d := range ns[len(p.nsPfx):] {
 		p.nsPfx = append(p.nsPfx, d.Prefix)
 		p.nsMap[d.Prefix] = append(p.nsMap[d.Prefix], d.URI)
-		p.lc.tree.work++
+		p.lc.tree.work.Add(1)
 	}
 }
 
@@ -94,7 +94,7 @@ func (p *xmlParser) getNS(prefix string) (string, bool) {
 // LY_VALUE_XML): the default namespace and the in-scope namespaces of the prefixes the value
 // uses. A snapshot, because a stored union value or an opaque node keeps it.
 func (p *xmlParser) prefixes(value string) types.PrefixCtx {
-	p.lc.tree.work++
+	p.lc.tree.work.Add(1)
 	ns := map[string]string{}
 	var order []string
 	if u, ok := p.getNS(""); ok {
@@ -120,7 +120,7 @@ func (p *xmlParser) prefixes(value string) types.PrefixCtx {
 		}
 		i = j
 	}
-	p.lc.tree.work += len(ns) // the namespace entries the snapshot copies
+	p.lc.tree.work.Add(int64(len(ns))) // the namespace entries the snapshot copies
 	return types.XMLNamespaces{Set: p.lc.tree.set, NS: ns, Order: order}
 }
 

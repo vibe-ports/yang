@@ -7,6 +7,7 @@ package data
 import (
 	"iter"
 	"sync"
+	"sync/atomic"
 
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
@@ -75,7 +76,9 @@ type Tree struct {
 	// order); lookups only read the tree otherwise, so the cache has its own lock.
 	rankMu sync.Mutex
 	rank   map[*schema.Node]int
-	work   int // comparisons made by insertions, sibling visits of the parsers (tests count work, not time)
+	// work counts comparisons made by insertions and sibling visits (tests count work, not time).
+	// ponytail: one shared atomic, contended by concurrent readers; per-call counters if that shows.
+	work atomic.Int64
 }
 
 // newTree returns an empty tree over the compiled schema s (the public constructor over a

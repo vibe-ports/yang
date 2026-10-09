@@ -461,7 +461,7 @@ func (t *Tree) run(c *dupCache, inst *Node) []*Node {
 	if idx == nil {
 		idx = map[idxKey][]*Node{}
 		for n := range t.instances(sib, inst.schema) {
-			t.work++
+			t.work.Add(1)
 			if k, ok := hashOf(n); ok {
 				idx[k] = append(idx[k], n)
 			}
@@ -494,7 +494,7 @@ func (t *Tree) dupInstNext(inst *Node, c *dupCache) *Node {
 		d = &dupInst{set: []*Node{inst}}
 		full := isDupInstList(inst.schema)
 		for _, n := range t.run(c, inst) {
-			t.work++
+			t.work.Add(1)
 			if n != inst && compareSingle(t, n, inst, full) {
 				d.set = append(d.set, n)
 			}

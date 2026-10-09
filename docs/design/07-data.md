@@ -322,7 +322,7 @@ an unknown result type are LY_EINVAL argument refusals, #160), or an error wrapp
 `yang.ErrBudget` (10 000 000 steps per query, `xpath.DefaultMaxSteps`). No `context.Context`, as
 `Find` and `NewPath`: the step budget bounds a query; `FindXPathContext` and friends can be added
 later without breaking anything. Methods of `Tree` rather than `Node`: the tree is the accessible
-tree. Not safe for concurrent use, even read-only (the package rule).
+tree. Safe to run concurrently with other read-only calls on the tree, not with a modification (the package rule, #170).
 
 Planned for the other M3 items (signatures fixed here, implemented there), in the same
 options-struct style:

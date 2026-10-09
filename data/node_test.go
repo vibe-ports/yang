@@ -163,7 +163,7 @@ func TestInsertWork(t *testing.T) {
 		tr := newTree(f.set)
 		c := newInner(f.c)
 		tr.insert(nil, c, insertDefault)
-		tr.work = 0
+		tr.work.Store(0)
 		for i := range n {
 			v := i + 1
 			if reversed {
@@ -176,8 +176,8 @@ func TestInsertWork(t *testing.T) {
 				t.Fatalf("position %d holds %s", i, k.value.Canonical())
 			}
 		}
-		if limit := n * (3*bits.Len(n) + 4); tr.work > limit {
-			t.Fatalf("reversed %v: %d comparisons, limit %d", reversed, tr.work, limit)
+		if limit := n * (3*bits.Len(n) + 4); int(tr.work.Load()) > limit {
+			t.Fatalf("reversed %v: %d comparisons, limit %d", reversed, int(tr.work.Load()), limit)
 		}
 	}
 }
@@ -540,15 +540,15 @@ func TestBulkWork(t *testing.T) {
 		all = append(all, s)
 		tr.insert(c, newOpaque(opaque{Name: "o"}), insertDefault)
 	}
-	if tr.work > 4*n || len(c.kids.opq) != n {
-		t.Fatalf("alternating inserts: %d comparisons", tr.work)
+	if int(tr.work.Load()) > 4*n || len(c.kids.opq) != n {
+		t.Fatalf("alternating inserts: %d comparisons", int(tr.work.Load()))
 	}
-	tr.work = 0
+	tr.work.Store(0)
 	if err := tr.unlinkAll(all); err != nil {
 		t.Fatal(err)
 	}
-	if tr.work > 4*n || len(c.kids.list) != 0 || len(c.kids.ht) != 0 {
-		t.Fatalf("bulk unlink: %d steps, %d left, %d buckets", tr.work, len(c.kids.list), len(c.kids.ht))
+	if int(tr.work.Load()) > 4*n || len(c.kids.list) != 0 || len(c.kids.ht) != 0 {
+		t.Fatalf("bulk unlink: %d steps, %d left, %d buckets", int(tr.work.Load()), len(c.kids.list), len(c.kids.ht))
 	}
 }
 

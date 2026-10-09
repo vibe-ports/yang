@@ -10,6 +10,7 @@ import (
 	"iter"
 	"slices"
 	"strings"
+	"sync/atomic"
 
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
@@ -29,13 +30,13 @@ type siblings struct {
 	unsorted map[*schema.Node]bool // runs appended out of value order
 	rbTree   map[*schema.Node]bool // runs that have libyang's RB tree (lyds)
 	gen      uint64                // changes with every insertion and removal
-	work     *int                  // the tree's work counter once a node was linked: all and indexOf count visits
+	work     *atomic.Int64         // the tree's work counter once a node was linked: all and indexOf count visits
 }
 
 // visit counts one sibling visit in the tree's work counter.
 func (s *siblings) visit() {
 	if s.work != nil {
-		*s.work++
+		s.work.Add(1) // atomic: concurrent reads of one tree all count here
 	}
 }
 

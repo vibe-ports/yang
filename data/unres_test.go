@@ -331,16 +331,16 @@ func TestWhenQueueWork(t *testing.T) {
 		args = append(args, f.t, fmt.Sprint(i), f.r, fmt.Sprint(i))
 	}
 	vc, _, _ = f.build(t, ValidateOptions{}, args...)
-	w0 := vc.t.work
+	w0 := int(vc.t.work.Load())
 	if err := vc.unres(); err != nil {
 		t.Fatal(err, diagCodes(vc.log.diags))
 	}
 	// O(n²) sibling visits in all (each `..` result is sorted once per evaluation, its sibling list
 	// read once); reading the list again per sorted node made it O(n³), outside the step budget
-	if w := vc.t.work - w0; w > 8*(n/2)*(n/2) {
+	if w := int(vc.t.work.Load()) - w0; w > 8*(n/2)*(n/2) {
 		t.Fatalf("leafrefs to a leaf-list: %d sibling visits for %d references", w, n/4)
 	}
-	t.Logf("leafrefs to a leaf-list: %d steps, %d sibling visits for %d references", vc.budget.steps, vc.t.work-w0, n/4)
+	t.Logf("leafrefs to a leaf-list: %d steps, %d sibling visits for %d references", vc.budget.steps, int(vc.t.work.Load())-w0, n/4)
 }
 
 // TestPathEvalPositions: an instance-identifier position beyond the instances — including the
@@ -537,11 +537,11 @@ func TestUnresWork(t *testing.T) {
 				x.flags |= FlagWhenTrue
 			}
 		}
-		vc.t.work = 0
+		vc.t.work.Store(0)
 		_ = vc.unres()
-		if vc.posBuilds > 2 || vc.nodeTypes.scans > 2*n || vc.t.work > 4*n || vc.nodeWhen.len() != 0 {
+		if vc.posBuilds > 2 || vc.nodeTypes.scans > 2*n || int(vc.t.work.Load()) > 4*n || vc.nodeWhen.len() != 0 {
 			t.Fatalf("whenTrue %v: %d position maps, %d queue scans, %d unlink steps, %d queued",
-				whenTrue, vc.posBuilds, vc.nodeTypes.scans, vc.t.work, vc.nodeWhen.len())
+				whenTrue, vc.posBuilds, vc.nodeTypes.scans, int(vc.t.work.Load()), vc.nodeWhen.len())
 		}
 		if whenTrue && c.kids.len() != 0 || !whenTrue && len(vc.log.diags) != n {
 			t.Fatalf("whenTrue %v: %d left, %d errors", whenTrue, c.kids.len(), len(vc.log.diags))

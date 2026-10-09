@@ -358,7 +358,7 @@ func (p *jsonParser) metadataFinish(parent *Node) error {
 	var ats []*Node
 	byName := map[string][]*Node{} // opaque siblings by name, in order
 	for _, n := range sib.opq {
-		lc.tree.work++
+		lc.tree.work.Add(1)
 		byName[n.opaq.Name] = append(byName[n.opaq.Name], n)
 		if strings.HasPrefix(n.opaq.Name, "@") {
 			ats = append(ats, n)
@@ -377,7 +377,7 @@ func (p *jsonParser) metadataFinish(parent *Node) error {
 	var rc error
 	prev, instance := "", 0
 	for _, at := range ats {
-		lc.tree.work++
+		lc.tree.work.Add(1)
 		if prev != at.opaq.Name {
 			prev, instance = at.opaq.Name, 1
 		} else {
@@ -395,7 +395,7 @@ func (p *jsonParser) metadataFinish(parent *Node) error {
 		if !ok && sn != nil {
 			if r.at = lc.tree.schemaIndex(sib, sn); r.at >= 0 {
 				for r.n = 0; r.at+r.n < len(sib.list) && sib.list[r.at+r.n].schema == sn; r.n++ {
-					lc.tree.work++
+					lc.tree.work.Add(1)
 				}
 			}
 			runs[sn] = r
@@ -770,7 +770,7 @@ func (p *jsonParser) parseAttribute(attrNode *Node, sn *schema.Node, name, prefi
 	lc := p.lc
 	idx := -1
 	if attrNode == nil {
-		lc.tree.work++
+		lc.tree.work.Add(1)
 		sib := lc.tree.childrenOf(parent)
 		mod := ""
 		if sn == nil {

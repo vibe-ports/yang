@@ -330,12 +330,12 @@ func TestMergeWork(t *testing.T) {
 	}
 	const n = 4000
 	tr, src := build(n), build(n)
-	tr.work = 0
+	tr.work.Store(0)
 	if err := tr.Merge(src); err != nil {
 		t.Fatal(err)
 	}
-	if limit := 8 * n; tr.work > limit {
-		t.Fatalf("merging %d equal instances: %d units of work, limit %d", n, tr.work, limit)
+	if limit := 8 * n; int(tr.work.Load()) > limit {
+		t.Fatalf("merging %d equal instances: %d units of work, limit %d", n, int(tr.work.Load()), limit)
 	}
 }
 

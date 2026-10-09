@@ -320,6 +320,6 @@ func (t *Tree) merge(parent *Node, dst *siblings, src *Tree, run []*Node) {
 
 // less reports whether a orders strictly before b by value, counting the comparison.
 func (t *Tree) less(a, b *Node) bool {
-	t.work++
+	t.work.Add(1)
 	return compareSorted(a, b) < 0
 }

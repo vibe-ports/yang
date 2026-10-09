@@ -293,12 +293,12 @@ func TestDuplicateWork(t *testing.T) {
 			tr.insert(parent, x, insertDefault)
 			x.flags = FlagNew
 		}
-		tr.work = 0
+		tr.work.Store(0)
 		if err := vc.validateNew(parent, nil, mod); err != nil {
 			t.Fatal(err)
 		}
-		if tr.work > 2*n {
-			t.Fatalf("top %v: %d probes for %d siblings", top, tr.work, n)
+		if int(tr.work.Load()) > 2*n {
+			t.Fatalf("top %v: %d probes for %d siblings", top, int(tr.work.Load()), n)
 		}
 	}
 }
@@ -350,12 +350,12 @@ func TestAutodelWork(t *testing.T) {
 		typ.add(d)
 	}
 	tr.insert(top, f.term(t, f.ll, fmt.Sprint(n), FlagNew), insertDefault)
-	tr.work = 0
+	tr.work.Store(0)
 	if err := vc.validateNew(top, nil, nil); err != nil {
 		t.Fatal(err)
 	}
-	if top.kids.len() != 1 || typ.len() != 0 || tr.work > 4*n {
-		t.Fatalf("%d left, %d queued, %d steps", top.kids.len(), typ.len(), tr.work)
+	if top.kids.len() != 1 || typ.len() != 0 || int(tr.work.Load()) > 4*n {
+		t.Fatalf("%d left, %d queued, %d steps", top.kids.len(), typ.len(), int(tr.work.Load()))
 	}
 	charged := 0
 	vc.charge = func() error { charged++; return nil }

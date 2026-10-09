@@ -340,7 +340,7 @@ func TestParseXMLLinear(t *testing.T) {
 					func(l *lydCtx) { lc = l }); err != nil {
 					t.Fatalf("%v %v", err, diags)
 				}
-				return lc.tree.work
+				return int(lc.tree.work.Load())
 			}
 			if w1, w4 := work(1000), work(4000); w4 > 5*w1 {
 				t.Fatalf("work %d for 1000 values, %d for 4000: not linear", w1, w4)

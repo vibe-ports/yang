@@ -263,10 +263,10 @@ func TestUniqueWork(t *testing.T) {
 		tr.insert(li, b.term(u, fmt.Sprint(i%(n-1))), insertDefault) // one collision: 0 and n-1
 		tr.insert(nil, li, insertDefault)
 	}
-	tr.work = 0
+	tr.work.Store(0)
 	diags, _ := tr.validateAll(context.Background(), ValidateOptions{MultiError: true}, Budget{}, nil)
-	if len(diags) != 1 || tr.work > 8*n {
-		t.Fatalf("%d diagnostics, %d steps", len(diags), tr.work)
+	if len(diags) != 1 || int(tr.work.Load()) > 8*n {
+		t.Fatalf("%d diagnostics, %d steps", len(diags), int(tr.work.Load()))
 	}
 }
 
@@ -293,9 +293,9 @@ func TestUniqueMissingDefault(t *testing.T) {
 	work := func(n int) (int, []yang.Diagnostic, error) {
 		tr := newTree(b.set)
 		fill(tr, n)
-		tr.work = 0
+		tr.work.Store(0)
 		diags, err := tr.validateAll(context.Background(), ValidateOptions{NoDefaults: true}, Budget{}, nil)
-		return tr.work, diags, err
+		return int(tr.work.Load()), diags, err
 	}
 	l.Uniques = nil
 	base, _, _ := work(50) // the work of the other checks
@@ -306,10 +306,10 @@ func TestUniqueMissingDefault(t *testing.T) {
 	}
 	tr := newTree(b.set)
 	fill(tr, 3000)
-	tr.work = 0
+	tr.work.Store(0)
 	_, err = tr.validateAll(context.Background(), ValidateOptions{NoDefaults: true}, Budget{MaxXPathSteps: 1000}, nil)
-	if !errors.Is(err, yang.ErrBudget) || tr.work > 1001+3000*2 {
-		t.Fatalf("%v, %d steps", err, tr.work)
+	if !errors.Is(err, yang.ErrBudget) || int(tr.work.Load()) > 1001+3000*2 {
+		t.Fatalf("%v, %d steps", err, int(tr.work.Load()))
 	}
 	fp := func(lc *lydCtx, _ []byte) error {
 		fill(lc.tree, 3000)

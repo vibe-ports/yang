@@ -513,7 +513,7 @@ func (vc *valCtx) uniqValue(leaf *schema.Node, list *Node, useDefault bool) (str
 	}
 	d, ok := vc.uniqDefs[leaf]
 	if !ok {
-		vc.t.work++
+		vc.t.work.Add(1)
 		v, diag := types.StoreDefault(leaf, leaf.Default[0])
 		if d.ok = diag == nil; d.ok {
 			d.canon = v.Canonical()
@@ -654,7 +654,7 @@ func (vc *valCtx) unique(sib *siblings, sn *schema.Node) error {
 				}
 				k := key.String()
 				for _, prev := range tables[u][k] {
-					vc.t.work++
+					vc.t.work.Add(1)
 					if err := vc.uniqStep(); err != nil {
 						return err
 					}

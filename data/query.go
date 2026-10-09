@@ -145,8 +145,8 @@ type XPathResult struct {
 // node that is not in t is an LY_EINVAL *ValidationError. One query evaluates at most 10 000 000
 // steps (then an error wrapping yang.ErrBudget). The diagnostics are libyang's log of the call in
 // order, also on success: libyang logs some internal errors (LY_EINT) and goes on, so err is nil
-// unless the query failed. Like every Tree method, a query is not safe for concurrent use, even on
-// a tree nothing modifies.
+// unless the query failed. Queries may run concurrently with other read-only calls on t, but not
+// with a modification (see the package documentation).
 func (t *Tree) FindXPath(expr string, o XPathOptions) ([]*Node, []yang.Diagnostic, error) {
 	r, d, err := t.EvalXPathAs(expr, XPathNodeSet, o)
 	return r.Nodes, d, err
