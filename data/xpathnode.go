@@ -6,6 +6,8 @@
 package data
 
 import (
+	"strings"
+
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
 	"github.com/vibe-ports/yang/internal/xpath"
@@ -37,6 +39,36 @@ func (x xn) Children() []xpath.Node {
 		}
 	}
 	return out
+}
+
+// LookupChild is the children hash table lookup of moveto_node_hash_child (lyd_find_sibling_val /
+// lyd_find_sibling_first): the live instances of sn among the children of x whose list keys or
+// leaf-list value have the canonical texts vals, all instances for nil vals. It answers only from
+// one bucket and declines (ok=false: the evaluator's charged scan) everything that needs a scan:
+// a parent without a table (fewer than htMinItems schema children), a bucket of several
+// instances (duplicate state instances, which also need document order), and a miss while
+// opaque children could be the fallback.
+func (x xn) LookupChild(sn xpath.SchemaNode, vals []string) ([]xpath.Node, bool) {
+	s, ok := sn.(xs)
+	sib := &x.n.kids
+	if !ok || sib.ht == nil || x.n.flags&flagDead != 0 {
+		return nil, false
+	}
+	k := idxKey{s: s.s}
+	if s.s.Kind == schema.LeafList && len(vals) == 1 {
+		k.key = vals[0]
+	} else if vals != nil {
+		k.key = strings.Join(vals, "\x00") + "\x00" // hashOf of a list
+	}
+	b := sib.ht[k]
+	live := len(b) == 1 && b[0].flags&flagDead == 0
+	switch {
+	case len(b) > 1, !live && len(sib.opq) > 0:
+		return nil, false
+	case live:
+		return []xpath.Node{xn{b[0], x.set}}, true
+	}
+	return nil, true
 }
 
 func (x xn) Name() string { return x.n.Name() }

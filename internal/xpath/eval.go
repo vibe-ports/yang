@@ -6,7 +6,6 @@ package xpath
 import (
 	"context"
 	"errors"
-	"fmt"
 	"slices"
 	"strings"
 )
@@ -631,27 +630,14 @@ func (ev *evaluator) hashChild(set value, sn SchemaNode, name string, preds []as
 	var out []item
 	for _, it := range set.nodes {
 		var hit []Node
+		looked := false
 		if lookup {
 			if err := ev.tick(); err != nil {
 				return value{}, 0, err
 			}
-			var ok bool
-			if hit, ok = lookupOf(it).LookupChild(sn, vals); !ok {
-				return value{}, 0, fmt.Errorf("xpath: LookupChild of %s refused a lookup it was asked for", sn.Name())
-			}
-			if len(hit) == 1 && hit[0].Schema() == nil && used > 0 {
-				// the opaque fallback: the scan runs the predicates on it, so the consumed
-				// ones run here (D-0013; libyang returns it unfiltered)
-				v, err := ev.predicates(nodesV([]item{{hit[0], itElem}}), preds[:used], "child")
-				if err != nil {
-					return value{}, 0, err
-				}
-				hit = nil
-				for _, o := range v.nodes {
-					hit = append(hit, o.n)
-				}
-			}
-		} else {
+			hit, looked = lookupOf(it).LookupChild(sn, vals)
+		}
+		if !looked { // no lookup, or the node declined it: scan (one step per child)
 			var kids []Node
 			switch it.t {
 			case itRoot:
@@ -676,6 +662,18 @@ func (ev *evaluator) hashChild(set value, sn SchemaNode, name string, preds []as
 				}
 			}
 		}
+		if used > 0 && (!looked || len(hit) == 1 && hit[0].Schema() == nil) {
+			// the consumed predicates run on a scan's instances and on the opaque fallback
+			// (D-0013; libyang returns the opaque node unfiltered)
+			v, err := ev.predicates(nodesV(nodeItems(hit)), preds[:used], "child")
+			if err != nil {
+				return value{}, 0, err
+			}
+			hit = nil
+			for _, o := range v.nodes {
+				hit = append(hit, o.n)
+			}
+		}
 		for _, c := range hit {
 			switch c.When() {
 			case WhenUnresolved:
@@ -689,6 +687,14 @@ func (ev *evaluator) hashChild(set value, sn SchemaNode, name string, preds []as
 		}
 	}
 	return nodesV(out), used, nil
+}
+
+func nodeItems(ns []Node) []item {
+	out := make([]item, len(ns))
+	for i, n := range ns {
+		out[i] = item{n, itElem}
+	}
+	return out
 }
 
 // lookupValues returns the values of the predicates libyang turns into a hash

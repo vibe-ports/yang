@@ -281,10 +281,9 @@ func TestXPathBudget(t *testing.T) {
 	}
 }
 
-// TestWhenQueueWork: n queued nodes with true whens cost O(n) XPath steps in one pass. The n
-// leafrefs are logged, not bounded: the evaluator's moveto_node_hash_child scans the children
-// (xpath.Node has no keyed lookup), so `../t[.='v']` costs O(siblings) per reference where
-// libyang uses the children hash table; ponytail: an optional xpath.Node child-lookup hook.
+// TestWhenQueueWork: n queued nodes with true whens cost O(n) XPath steps in one pass, and so do
+// n leafrefs: `../t[.='v']` finds its target through the children hash table (xn.LookupChild,
+// moveto_node_hash_child), not by a scan of the siblings.
 func TestWhenQueueWork(t *testing.T) {
 	f := newUnresFixture(t)
 	const n = 2000
@@ -313,7 +312,9 @@ func TestWhenQueueWork(t *testing.T) {
 	if err := vc.unres(); err != nil {
 		t.Fatal(err, diagCodes(vc.log.diags))
 	}
-	t.Logf("leafrefs: %d steps for %d references", vc.budget.steps, n/4)
+	if vc.budget.steps > 10*n/4 {
+		t.Fatalf("leafrefs: %d steps for %d references", vc.budget.steps, n/4)
+	}
 }
 
 // TestPathEvalPositions: an instance-identifier position beyond the instances — including the

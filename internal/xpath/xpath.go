@@ -94,8 +94,10 @@ type ChildLookup interface {
 	// when the node has no instance of sn at all, the result is the first opaque
 	// child named like sn (lyd_find_sibling_opaq_next) if there is one, and the
 	// evaluator runs the consumed predicates on it: the scan's fallback (D-0013;
-	// libyang falls back whenever the value is not found and does not filter). ok=false means the node cannot look up and is an error: implement
-	// the interface only where lookups work.
+	// libyang falls back whenever the value is not found and does not filter).
+	// ok=false declines the lookup: the evaluator scans this node's children
+	// instead, charging the step budget per child. A lookup must cost O(1)
+	// steps; decline wherever it would have to scan.
 	LookupChild(sn SchemaNode, vals []string) (nodes []Node, ok bool)
 }
 
