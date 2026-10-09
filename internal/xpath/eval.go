@@ -888,13 +888,24 @@ func (ev *evaluator) moveto(set value, axis string, nt nameTest) (value, error) 
 		return value{}, xpErr("Cannot apply XPath operation path operator on %s.", typeNames[set.t])
 	}
 	var out []item
+	type id struct {
+		n Node
+		t itemType
+	}
+	var seen map[id]bool // set_dup_node_check: only the non-child axes can repeat a node
+	if axis != "child" && axis != "self" {
+		seen = map[id]bool{}
+	}
 	for _, it := range set.nodes {
 		err := ev.axis(it, axis, func(x item) error {
 			if err := ev.tick(); err != nil {
 				return err
 			}
 			ok, _, err := ev.check(x, nt)
-			if ok {
+			if ok && (seen == nil || !seen[id{x.n, x.t}]) {
+				if seen != nil {
+					seen[id{x.n, x.t}] = true
+				}
 				out = append(out, x)
 			}
 			return err
@@ -905,7 +916,7 @@ func (ev *evaluator) moveto(set value, axis string, nt nameTest) (value, error) 
 	}
 	nonChild := set.nonChild || axis != "child" && axis != "self" && len(out) > 0
 	if nonChild { // libyang sorts after the other axes and on any set that saw one (set_sort)
-		out = ev.sortUnique(out)
+		out = ev.sortSet(out)
 	}
 	v := nodesV(out)
 	v.nonChild = nonChild
@@ -1252,14 +1263,15 @@ func (ev *evaluator) sortedMerge(trg, src []item) []item {
 	return out
 }
 
-// sortUnique is set_sort + duplicate removal.
-func (ev *evaluator) sortUnique(items []item) []item {
+// sortSet is set_sort: positions assigned, then document order. Duplicates stay (libyang only
+// asserts there are none).
+func (ev *evaluator) sortSet(items []item) []item {
 	if len(items) < 2 {
 		return items
 	}
 	ev.assignPos(items)
 	slices.SortStableFunc(items, ev.sortCompare)
-	return slices.CompactFunc(items, func(a, b item) bool { return a.n == b.n && a.t == b.t && a.m == b.m })
+	return items
 }
 
 // assignPos is set_assign_pos: every item without a stored position gets its own (roots keep none).

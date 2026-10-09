@@ -813,3 +813,9 @@
 {"set": "opq", "cp": "/pv2:c", "x": "count(pv2:l)"}
 {"set": "opq", "cp": "/pv2:c", "x": "count(*)"}
 {"set": "opq", "cp": "/pv2:c", "x": "name(l[2])"}
+{"cp": "/pv2:c", "x": "(l[1]/following::* | .)//k/self::*"}
+{"cp": "/pv2:c", "x": "count((l[1]/following::* | .)//k/self::*)"}
+{"cp": "/pv2:c", "x": "(l | .)//k | l/k"}
+{"cp": "/pv2:c", "x": "count((l | .)//k | l/k)"}
+{"cp": "/pv2:c", "x": "count((l | .)//k/..)"}
+{"cp": "/pv2:c", "x": "count((l[1]/following::* | .)//k/ancestor::*)"}

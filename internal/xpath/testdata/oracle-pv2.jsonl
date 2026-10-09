@@ -814,3 +814,9 @@
 {"set":"opq","cp":"/pv2:c","x":"count(pv2:l)","result":{"type":"number","value":2}}
 {"set":"opq","cp":"/pv2:c","x":"count(*)","result":{"type":"number","value":2}}
 {"set":"opq","cp":"/pv2:c","x":"name(l[2])","result":{"type":"string","value":"pv2:l"}}
+{"cp":"/pv2:c","x":"(l[1]/following::* | .)//k/self::*","result":{"type":"node-set","nodes":["/pv2:c/l[k='a']/k","/pv2:c/l[k='b']/k","/pv2:c/l[k='b']/k","/pv2:c/l[k='c']/k","/pv2:c/l[k='c']/k"]}}
+{"cp":"/pv2:c","x":"count((l[1]/following::* | .)//k/self::*)","result":{"type":"number","value":5}}
+{"cp":"/pv2:c","x":"(l | .)//k | l/k","result":{"type":"node-set","nodes":["/pv2:c/l[k='a']/k","/pv2:c/l[k='b']/k","/pv2:c/l[k='c']/k","/pv2:c/l[k='a']/k","/pv2:c/l[k='b']/k","/pv2:c/l[k='c']/k"]}}
+{"cp":"/pv2:c","x":"count((l | .)//k | l/k)","result":{"type":"number","value":6}}
+{"cp":"/pv2:c","x":"count((l | .)//k/..)","result":{"type":"number","value":3}}
+{"cp":"/pv2:c","x":"count((l[1]/following::* | .)//k/ancestor::*)","result":{"type":"number","value":5}}
