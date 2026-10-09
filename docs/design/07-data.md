@@ -335,7 +335,7 @@ options-struct style:
   diagnostic, the last error in the slice (`Err` = the return code). `Diagnostic` moves to
   internal/snap (package `yang` aliases it) so that the snapshot methods can return it.
   `lys_find_expr_atoms` takes a compiled expression and stays internal.
-- #87: `func (t *Tree) TrimXPath(expr string, o XPathOptions) error` is public (lyd_trim_xpath: the
+- #87: `func (t *Tree) TrimXPath(expr string, o XPathOptions) ([]yang.Diagnostic, error)` is public (lyd_trim_xpath: the
   context node is always the first top-level sibling, so a non-nil `o.Node` is an LY_EINVAL
   `*ValidationError`; `o.Vars` as for the queries).
 

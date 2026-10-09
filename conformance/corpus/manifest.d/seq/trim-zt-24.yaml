@@ -1,0 +1,16 @@
+fixtures:
+  # lyd_trim_xpath edge cases over test_xpath.c test_trim (review of #190)
+  - id: seq/trim-zt-24
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # data after test_xpath.c test_trim
+    rfc: []   # libyang lyd_trim_xpath: no RFC behaviour
+    areas: [xpath]
+    request:
+      op: sequence
+      searchdirs: [../ut-xpath/a.1]
+      modules: [{name: a}]
+      steps:
+        - {do: parse, format: xml, data_type: data, unknown: reject, validate_options: [present], data: "<l1 xmlns=\"urn:tests:a\">  <a>a1</a>  <b>b1</b>  <c>c1</c></l1><l1 xmlns=\"urn:tests:a\">  <a>a2</a>  <b>b2</b></l1><l1 xmlns=\"urn:tests:a\">  <a>a3</a>  <b>b3</b></l1><l1 xmlns=\"urn:tests:a\">  <a>a4</a>  <b>b4</b>  <c>c4</c></l1><l1 xmlns=\"urn:tests:a\">  <a>a5</a>  <b>b5</b>  <c>c5</c></l1><foo2 xmlns=\"urn:tests:a\">50</foo2><c xmlns=\"urn:tests:a\">  <x>key2</x>  <ll>    <a>key1</a>    <ll>      <a>key11</a>      <b>val11</b>    </ll>    <ll>      <a>key12</a>      <b>val12</b>    </ll>    <ll>      <a>key13</a>      <b>val13</b>    </ll>  </ll>  <ll>    <a>key2</a>    <ll>      <a>key21</a>      <b>val21</b>    </ll>    <ll>      <a>key22</a>      <b>val22</b>    </ll>  </ll>  <ll>    <a>key3</a>    <ll>      <a>key31</a>      <b>val31</b>    </ll>    <ll>      <a>key32</a>      <b>val32</b>    </ll>  </ll></c>"}
+        - {do: trim, xpath: "//a:l1/a | /a:foo2 | /a:c"}
+        - {do: dump}
+    golden: golden/seq-trim-zt-24.json

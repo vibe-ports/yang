@@ -77,7 +77,7 @@ in a `modules` item whose `accepted` flipped, the flip (`accepted`, `phase`, `rc
 `features`, `identities`, `ext_trees`), other module items compared in full; and the `steps` from the
 earlier `failed_step` of the two on, earlier steps compared. With the same verdict all of these
 are compared. With `waive` it waives instead only the
-named response fields, dropped at the top level and in every `modules` item before the golden
+named response fields, dropped at the top level, in every `modules` item and in every sequence step before the golden
 comparison: `schema_tree` and/or `compiled` when libyang's compiled tree is what the deviation is
 about, `tree` (the printed data) when the deviation is in the data output, `result` when it is in
 an XPath result; the verdict and

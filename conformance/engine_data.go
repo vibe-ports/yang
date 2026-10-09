@@ -103,17 +103,19 @@ func runData(r Request, s *yang.Schema, resp map[string]any) error {
 	return nil
 }
 
-// printTree is lyoracle.c print_tree with siblings: the JSON and XML printouts, "" for no tree.
+// printTree is lyoracle.c print_tree with siblings: the JSON and XML printouts. libyang prints
+// a NULL tree as "{}\n" in JSON and nothing in XML (a trim can free every node).
 func printTree(tree *data.Tree, wd data.WD) (map[string]any, error) {
 	po := data.PrintOptions{WithDefaults: wd}
 	var j, x strings.Builder
-	if tree != nil && !empty(tree) {
-		if err := tree.PrintJSON(&j, po); err != nil {
-			return nil, unsupported(err)
-		}
-		if err := tree.PrintXML(&x, po); err != nil {
-			return nil, unsupported(err)
-		}
+	if tree == nil || empty(tree) {
+		return map[string]any{"json": "{}\n", "xml": ""}, nil
+	}
+	if err := tree.PrintJSON(&j, po); err != nil {
+		return nil, unsupported(err)
+	}
+	if err := tree.PrintXML(&x, po); err != nil {
+		return nil, unsupported(err)
 	}
 	return map[string]any{"json": j.String(), "xml": x.String()}, nil
 }

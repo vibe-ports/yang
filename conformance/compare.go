@@ -276,30 +276,35 @@ func firstFailed(golden, got Response) int {
 // Waivable are the response fields assert.waive may name.
 var Waivable = []string{"schema_tree", "compiled", "tree", "typed", "result"}
 
-// withoutFields drops the fields of an assert.waive at the top level and in every module.
+// withoutFields drops the fields of an assert.waive at the top level, in every module and in
+// every sequence step.
 func withoutFields(r Response, fields []string) Response {
 	o := maps.Clone(map[string]any(r))
 	for _, k := range fields {
 		delete(o, k)
 	}
-	mapItems(o, "modules", func(m map[string]any) {
-		for _, k := range fields {
-			delete(m, k)
-		}
-	})
+	for _, list := range []string{"modules", "steps"} {
+		mapItems(o, list, func(m map[string]any) {
+			for _, k := range fields {
+				delete(m, k)
+			}
+		})
+	}
 	return o
 }
 
-// hasField reports whether r has field at the top level or in some module.
+// hasField reports whether r has field at the top level, in some module or in some step.
 func hasField(r Response, field string) bool {
 	if _, ok := r[field]; ok {
 		return true
 	}
-	l, _ := r["modules"].([]any)
-	for _, e := range l {
-		if m, ok := e.(map[string]any); ok {
-			if _, ok := m[field]; ok {
-				return true
+	for _, list := range []string{"modules", "steps"} {
+		l, _ := r[list].([]any)
+		for _, e := range l {
+			if m, ok := e.(map[string]any); ok {
+				if _, ok := m[field]; ok {
+					return true
+				}
 			}
 		}
 	}

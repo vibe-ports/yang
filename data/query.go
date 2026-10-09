@@ -37,7 +37,9 @@ func (t *Tree) evalXPath4(l *logger, ctxNode *Node, src string, vars []xpath.Var
 	if err != nil {
 		return xpath.Result{}, queryErr(l, ctxNode, err)
 	}
-	// the first top-level sibling (opaque ones are last and have no schema node)
+	// lyxp_eval's tree check of the first top-level sibling (opaque ones are last and have no
+	// schema node). The public API cannot build such a tree (insertions check the parent), so this
+	// is reached only by trees the package builds by hand: it stays for parity with libyang.
 	if l0 := t.top.list; len(l0) > 0 && l0[0].schema.DataParent() != nil {
 		first := l0[0]
 		return xpath.Result{}, l.logErr("LY_EINVAL",

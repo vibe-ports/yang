@@ -1,0 +1,281 @@
+{
+  "context_diagnostics": [],
+  "failed_step": 1,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "xml",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ietf-origin",
+      "revision": "2018-02-14"
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 6,
+    "name": "LY_EINT"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "xml",
+              "name": "lang",
+              "value": "en-US"
+            }
+          ],
+          "opaque": null,
+          "path": "/a:l1[a='a1'][b='b1']",
+          "schema": "/a:l1",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            },
+            {
+              "module": "yang",
+              "name": "key",
+              "value": "[no-key='no-value']"
+            },
+            {
+              "module": "yang",
+              "name": "value",
+              "value": "v"
+            }
+          ],
+          "opaque": null,
+          "path": "/a:l1[a='a1'][b='b1']/a",
+          "schema": "/a:l1/a",
+          "value": {
+            "canonical": "a1",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "ietf-origin",
+              "name": "origin",
+              "value": "ietf-origin:learned"
+            },
+            {
+              "module": "xml",
+              "name": "lang",
+              "value": "de"
+            }
+          ],
+          "opaque": null,
+          "path": "/a:l1[a='a1'][b='b1']/b",
+          "schema": "/a:l1/b",
+          "value": {
+            "canonical": "b1",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "replace"
+            }
+          ],
+          "opaque": null,
+          "path": "/a:l1[a='a1'][b='b1']/c",
+          "schema": "/a:l1/c",
+          "value": {
+            "canonical": "c1",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:foo",
+          "schema": "/a:foo",
+          "value": {
+            "canonical": "f",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:c",
+          "schema": "/a:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "xml",
+              "name": "lang",
+              "value": "EN"
+            },
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            }
+          ],
+          "opaque": null,
+          "path": "/a:c/x",
+          "schema": "/a:c/x",
+          "value": {
+            "canonical": "val",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 6,
+            "name": "LY_EINT"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Internal error (/src/libyang/src/xpath.c:1348).",
+          "phase": "xpath",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 6,
+            "name": "LY_EINT"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Internal error (/src/libyang/src/xpath.c:1348).",
+          "phase": "xpath",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "do": "trim",
+      "rc": {
+        "err": 6,
+        "name": "LY_EINT"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:foo",
+          "schema": "/a:foo",
+          "value": {
+            "canonical": "f",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "do": "dump",
+      "skipped": true
+    }
+  ],
+  "verdict": "invalid"
+}

@@ -36,18 +36,9 @@ func runXPath(r Request, s *yang.Schema, resp map[string]any) error {
 		return errors.New("missing xpath")
 	}
 	var o data.XPathOptions
-	if v, ok := p["vars"]; ok {
-		m, ok := v.(map[string]any)
-		if !ok {
-			return errors.New("vars must be an object")
-		}
-		for _, k := range slices.Sorted(maps.Keys(m)) {
-			val, ok := m[k].(string)
-			if !ok {
-				return fmt.Errorf("vars value of %s must be a string", k)
-			}
-			o.Vars = append(o.Vars, data.XPathVar{Name: k, Value: val})
-		}
+	var err error
+	if o.Vars, err = xpathVars(p); err != nil {
+		return err
 	}
 	tree, pd, err := parseInput(r, s, p, "data")
 	rc, err := rcOf(err)
@@ -112,4 +103,26 @@ func runXPath(r Request, s *yang.Schema, resp map[string]any) error {
 	}
 	resp["result"] = out
 	return nil
+}
+
+// xpathVars is the "vars" object of a request or step, in the order lyoracle sets them (sorted
+// keys).
+func xpathVars(p map[string]any) ([]data.XPathVar, error) {
+	v, ok := p["vars"]
+	if !ok {
+		return nil, nil
+	}
+	m, ok := v.(map[string]any)
+	if !ok {
+		return nil, errors.New("vars must be an object")
+	}
+	var out []data.XPathVar
+	for _, k := range slices.Sorted(maps.Keys(m)) {
+		val, ok := m[k].(string)
+		if !ok {
+			return nil, fmt.Errorf("vars value of %s must be a string", k)
+		}
+		out = append(out, data.XPathVar{Name: k, Value: val})
+	}
+	return out, nil
 }

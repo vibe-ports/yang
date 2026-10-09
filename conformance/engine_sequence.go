@@ -27,6 +27,7 @@ var seqKeys = map[string]map[string]bool{
 	"diff_merge":   set("do", "format", "data_type", "data", "data_file", "unknown", "parse_options", "options", "module", "src_node", "parent"),
 	"diff_apply":   set("do", "module"),
 	"diff_reverse": set("do"),
+	"trim":         set("do", "xpath", "vars"),
 }
 
 var seqRequestKeys = set("op", "base_dir", "searchdirs", "modules", "context_options", "steps")
@@ -38,7 +39,6 @@ var seqUnsupported = map[string]string{
 	"links":        "(leafref links, LY_CTX_LEAFREF_LINKING, are not exported by package data)",
 	"insert_term":  "(lyd_new_term + lyd_insert_sibling: package data exports only NewPath)",
 	"insert_inner": "(lyd_new_inner + lyd_insert_sibling: package data exports only NewPath)",
-	"trim":         "(lyd_trim_xpath is not exported by package data yet, #87)",
 }
 
 func set(keys ...string) map[string]bool {
@@ -129,6 +129,16 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any) error {
 			}
 			err = tree.ApplyDiff(diff, data.ApplyDiffOptions{Module: str(st, "module", "")})
 			diags = diagsOf(err)
+		case "trim":
+			phase = "xpath"
+			var o data.XPathOptions
+			if o.Vars, err = xpathVars(st); err != nil {
+				return err
+			}
+			if tree == nil {
+				break // lyd_trim_xpath of a NULL tree does nothing
+			}
+			diags, err = tree.TrimXPath(str(st, "xpath", ""), o)
 		case "diff_reverse":
 			phase = "diff"
 			diff, err = diff.ReverseDiff()
