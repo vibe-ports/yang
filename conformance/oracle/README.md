@@ -336,6 +336,7 @@ becomes observable. Context fields as in `schema`; step fields are per step (not
 | `diff_merge` | as `diff_parse`, plus `options` (`defaults`), and `module` or `src_node` (path in the parsed source) with an optional `parent` (path in the register) | `lyd_diff_merge_module` (`lyd_diff_merge_all` without `module`) of the parsed source into the register; with `src_node` `lyd_diff_merge_tree` of that subtree under `parent` (none: the top level) |
 | `diff_apply` | `module` (optional) | `lyd_diff_apply_module(&tree, register, module)` (`lyd_diff_apply_all` without `module`) |
 | `diff_reverse` | — | `lyd_diff_reverse_all` of the register replaces it |
+| `trim` | `xpath`, `vars` (object of strings, as op `xpath`) | `lyd_trim_xpath(&tree, xpath, vars)`: every node neither selected nor an ancestor of a selected node is freed (diagnostics phase `xpath`) |
 
 The diff register is the second state of a sequence next to the tree: NULL at the start, set by
 `diff`, `diff_parse` and `diff_reverse`, merged into by `diff_merge` and `diff` with `merge`. Every

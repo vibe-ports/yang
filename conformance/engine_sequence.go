@@ -38,6 +38,7 @@ var seqUnsupported = map[string]string{
 	"links":        "(leafref links, LY_CTX_LEAFREF_LINKING, are not exported by package data)",
 	"insert_term":  "(lyd_new_term + lyd_insert_sibling: package data exports only NewPath)",
 	"insert_inner": "(lyd_new_inner + lyd_insert_sibling: package data exports only NewPath)",
+	"trim":         "(lyd_trim_xpath is not exported by package data yet, #87)",
 }
 
 func set(keys ...string) map[string]bool {

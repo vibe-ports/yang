@@ -1592,7 +1592,7 @@ check_step(const cJSON *step)
             !strcmp(what, "diff_parse") ? "do format data_type data data_file unknown parse_options" :
             !strcmp(what, "diff_merge") ? "do format data_type data data_file unknown parse_options options module "
             "src_node parent" :
-            !strcmp(what, "diff_apply") ? "do module" : "do",
+            !strcmp(what, "diff_apply") ? "do module" : !strcmp(what, "trim") ? "do xpath vars" : "do",
             "unknown key \"%s\" in a sequence step");
     if (!strcmp(what, "edit")) {
         /* the parse options belong to merge only */
@@ -1715,6 +1715,20 @@ check_step(const cJSON *step)
         }
     } else if (!strcmp(what, "diff_apply")) {
         str_of(step, "module");
+    } else if (!strcmp(what, "trim")) {
+        const cJSON *jv = cJSON_GetObjectItemCaseSensitive(step, "vars"), *v;
+
+        if (!str_of(step, "xpath")) {
+            die("trim step needs an xpath%s", NULL);
+        }
+        if (jv && !cJSON_IsObject(jv)) {
+            die("trim vars must be an object%s", NULL);
+        }
+        cJSON_ArrayForEach(v, jv) {
+            if (!cJSON_IsString(v)) {
+                die("trim vars value of %s must be a string", v->string);
+            }
+        }
     } else if (strcmp(what, "link") && strcmp(what, "links") && strcmp(what, "diff_reverse")) {
         die("unknown step %s", what);
     }
@@ -2027,6 +2041,25 @@ step_diff_merge(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **diff, c
     return rc;
 }
 
+/* trim: lyd_trim_xpath of the tree with the step's xpath and variables */
+static LY_ERR
+step_trim(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *diag)
+{
+    const cJSON *v;
+    struct lyxp_var *vars = NULL;
+    LY_ERR rc;
+
+    cJSON_ArrayForEach(v, cJSON_GetObjectItemCaseSensitive(step, "vars")) {
+        if (lyxp_vars_set(&vars, v->string, v->valuestring)) {
+            die("lyxp_vars_set %s failed", v->string);
+        }
+    }
+    rc = lyd_trim_xpath(tree, str_of(step, "xpath"), vars);
+    lyxp_vars_free(vars);
+    collect(ctx, diag, "xpath");
+    return rc;
+}
+
 /* diff_reverse: lyd_diff_reverse_all of the diff register replaces it */
 static LY_ERR
 step_diff_reverse(struct ly_ctx *ctx, struct lyd_node **diff, cJSON *diag)
@@ -2099,6 +2132,8 @@ op_sequence(const cJSON *req)
             rc = step_diff_merge(ctx, step, &diff, diag);
         } else if (!strcmp(what, "diff_reverse")) {
             rc = step_diff_reverse(ctx, &diff, diag);
+        } else if (!strcmp(what, "trim")) {
+            rc = step_trim(ctx, step, &tree, diag);
         } else if (!strcmp(what, "diff_apply")) {
             rc = lyd_diff_apply_module(&tree, diff, module_of(ctx, step), NULL, NULL);
             collect(ctx, diag, "diff");

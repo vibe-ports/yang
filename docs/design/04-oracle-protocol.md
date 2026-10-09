@@ -90,7 +90,8 @@ Steps `diff`, `diff_parse`, `diff_merge`, `diff_apply` and `diff_reverse` work o
 the diff: `lyd_diff_siblings`/`lyd_diff_tree` of the tree and parsed data, a parse-only diff,
 `lyd_diff_merge_module`/`lyd_diff_merge_tree`, `lyd_diff_apply_module` on the tree and
 `lyd_diff_reverse_all`; each reports the register after the call (`diff`, `diff_typed`), so the
-chains of test_diff.c (diff, apply, merge, reverse) run in one request. Fields: oracle/README.md.
+chains of test_diff.c (diff, apply, merge, reverse) run in one request. Step `trim` is
+`lyd_trim_xpath` of the tree (test_xpath.c test_trim). Fields: oracle/README.md.
 
 ## 4a. op `atoms` (M3) — schema atoms of an expression or a path
 `{"op": "atoms", "searchdirs", "modules", "context_options", "xpath" | "path", "context_path",
