@@ -140,7 +140,7 @@ func (n *Node) print(w io.Writer, o PrintOptions, f func(*printer, []*Node, int)
 		root = root.parent
 	}
 	if root.tree == nil {
-		return errors.New("data: printing a node that is not in a tree")
+		return (&logger{}).done(argErr("node (not in a tree)", "lyd_print_tree")) // libyang nodes always have a context
 	}
 	sibs := slices.Collect(n.siblingsOf().all())
 	return printData(w, root.tree.set, o, sibs, slices.Index(sibs, n), false, f)

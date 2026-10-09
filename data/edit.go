@@ -31,6 +31,10 @@ var (
 // done turns an operation's error into its result: the logged diagnostics as a
 // *ValidationError, other errors (budget, not found) as they are.
 func (l *logger) done(err error) error {
+	var oe *opError
+	if errors.As(err, &oe) {
+		err = l.logErr(oe.Err, "%s", oe.Msg)
+	}
 	if errors.Is(err, errLogged) {
 		return l.result()
 	}
@@ -69,15 +73,7 @@ func (t *Tree) Find(path string) (*Node, error) {
 // Remove is lyd_free_tree: n and its subtree leave the tree. A list key is refused (an
 // LY_EINVAL *ValidationError) and nothing is removed.
 func (n *Node) Remove() error {
-	lg := &logger{}
-	if err := freeTree(n); err != nil {
-		var oe *opError
-		if errors.As(err, &oe) {
-			return lg.done(lg.logErr(oe.Err, "%s", oe.Msg))
-		}
-		return err
-	}
-	return nil
+	return (&logger{}).done(freeTree(n))
 }
 
 // Merge is lyd_merge_siblings without options: the top-level subtrees of src are merged into t.
@@ -113,7 +109,7 @@ func (s *siblings) nodes() []*Node {
 // reports LY_ENOTFOUND there without calling lyd_find_path).
 func (t *Tree) findPath(lg *logger, path string) (*Node, error) {
 	if path == "" || path[0] != '/' {
-		return nil, fmt.Errorf("data: %q is not an absolute path", path)
+		return nil, argErr("path (not absolute)", "lyd_find_path") // libyang takes it relative to ctx_node
 	}
 	var ctxNode *schema.Node // ctx_node->schema: the first top-level node
 	if len(t.top.list) > 0 {
@@ -199,7 +195,7 @@ func (t *Tree) createList(seg types.PathSegment) *Node {
 // level of t is the parent's siblings).
 func (t *Tree) newPath(lg *logger, path, value string, o NewPathOptions) (*Node, error) {
 	if path == "" || path[0] != '/' {
-		return nil, fmt.Errorf("data: %q is not an absolute path", path)
+		return nil, argErr("(path[0] == '/') || parent", "lyd_new_path")
 	}
 	var ctxNode *schema.Node // lyd_node_schema(parent): the first top-level node
 	if len(t.top.list) > 0 {

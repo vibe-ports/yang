@@ -171,23 +171,20 @@ type diffError struct {
 
 func (e *diffError) Error() string { return e.items[0].Msg }
 
-// diffDone is the error of a public diff call: the items of an *opError or *diffError logged.
+// diffDone is the error of a public diff call: the items of a *diffError logged (done logs an
+// *opError).
 func diffDone(lg *logger, err error) error {
-	var oe *opError
 	var de *diffError
-	switch {
-	case errors.As(err, &de):
-		for _, it := range de.items {
-			_ = lg.logErr(it.Err, "%s", it.Msg)
-		}
-		if de.rc != "" {
-			return lg.done(rcError(de.rc))
-		}
-		return lg.done(errLogged)
-	case errors.As(err, &oe):
-		return lg.done(lg.logErr(oe.Err, "%s", oe.Msg))
+	if !errors.As(err, &de) {
+		return lg.done(err)
 	}
-	return lg.done(err)
+	for _, it := range de.items {
+		_ = lg.logErr(it.Err, "%s", it.Msg)
+	}
+	if de.rc != "" {
+		return lg.done(rcError(de.rc))
+	}
+	return lg.done(errLogged)
 }
 
 // diffChangeOp is lyd_diff_change_op.

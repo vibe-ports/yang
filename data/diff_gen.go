@@ -92,11 +92,7 @@ func diffNodes(first, second *Node, o DiffOptions, nosiblings bool, ft, st *Tree
 	}
 	d := newTree(set)
 	if err := d.diffSiblingsR(first, second, o, nosiblings); err != nil {
-		var oe *opError
-		if errors.As(err, &oe) {
-			return nil, lg.done(lg.logErr(oe.Err, "%s", oe.Msg))
-		}
-		return nil, err
+		return nil, lg.done(err)
 	}
 	if d.top.len() == 0 {
 		return nil, nil

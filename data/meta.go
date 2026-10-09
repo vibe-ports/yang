@@ -121,10 +121,6 @@ func (lc *lydCtx) setDataFlags(n *Node, metas *[]*meta) {
 // createAttr is lyd_create_attr: a generic attribute appended to the opaque node n.
 func createAttr(n *Node, a attr) { n.opaq.Attrs = append(n.opaq.Attrs, a) }
 
-// errMetaArg is LY_CHECK_ARG_RET of the metadata API: a call libyang refuses before looking at
-// the data (no module for an unprefixed name, an attribute on a schema node).
-var errMetaArg = errors.New("data: invalid metadata argument")
-
 // parseNodeID is ly_parse_nodeid over all of s ([prefix:]name). shown is what libyang prints as
 // the name when s is not valid: from the name's start to the end of s, "(null)" when the
 // identifier does not even start.
@@ -163,7 +159,7 @@ func parseNodeID(s string) (prefix, name string, hasPrefix bool, shown string, o
 // module returns LY_ENOTFOUND.
 func (l *logger) newMeta(parent *Node, mod *schema.Module, name, val string, clearDflt bool) (*meta, error) {
 	if mod == nil && !strings.Contains(name, ":") {
-		return nil, errMetaArg
+		return nil, argErr("module || strchr(name, ':')", "lyd_new_meta")
 	}
 	if parent != nil && parent.schema == nil {
 		return nil, l.logErr("LY_EINVAL", "Cannot add metadata \"%s\" to an opaque node \"%s\".", name, parent.Name())
@@ -243,7 +239,7 @@ func compareMeta(a, b *meta) bool {
 // logged).
 func (l *logger) findMeta(metas []*meta, mod *schema.Module, name string) (*meta, error) {
 	if mod == nil && !strings.Contains(name, ":") {
-		return nil, errMetaArg
+		return nil, argErr("module || strchr(name, ':')", "lyd_find_meta")
 	}
 	if len(metas) == 0 {
 		return nil, nil
@@ -269,8 +265,11 @@ func (l *logger) findMeta(metas []*meta, mod *schema.Module, name string) (*meta
 // value val appended to the opaque node parent, in the JSON format with module moduleName (""
 // for the prefix). The new attribute is the last of parent's.
 func (l *logger) newAttr(parent *Node, moduleName, name, val string) error {
-	if parent == nil || parent.schema != nil {
-		return errMetaArg
+	if parent == nil {
+		return argErr("parent", "lyd_new_attr")
+	}
+	if parent.schema != nil {
+		return argErr("!parent->schema", "lyd_new_attr")
 	}
 	prefix, local, _, shown, ok := parseNodeID(name)
 	if !ok {

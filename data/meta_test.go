@@ -265,7 +265,8 @@ func TestMetaAPI(t *testing.T) {
 	if _, err := l.newMeta(c, nil, "pj:ann", "d", true); err != nil || c.flags&FlagDefault != 0 {
 		t.Fatalf("clear default: %v %x", err, c.flags)
 	}
-	if _, err := l.newMeta(s, nil, "ann", "x", false); !errors.Is(err, errMetaArg) {
+	if _, err := l.newMeta(s, nil, "ann", "x", false); err == nil ||
+		err.Error() != "Invalid argument module || strchr(name, ':') (lyd_new_meta())." {
 		t.Fatalf("no module: %v", err)
 	}
 	for _, e := range []struct {
@@ -351,7 +352,7 @@ func TestMetaAPI(t *testing.T) {
 		last() != `LY_EINVAL LYVE_SUCCESS ||0: Attribute name "" is not valid.` {
 		t.Fatalf("bad attribute name: %v %s", err, last())
 	}
-	if err := l.newAttr(s, "", "a", "1"); !errors.Is(err, errMetaArg) {
+	if err := l.newAttr(s, "", "a", "1"); err == nil || err.Error() != "Invalid argument !parent->schema (lyd_new_attr())." {
 		t.Fatalf("attribute of a schema node: %v", err)
 	}
 }

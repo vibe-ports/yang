@@ -61,7 +61,7 @@ func (n *Node) FindMeta(name string) (*Meta, error) {
 	set := setOf(n)
 	if set == nil { // a removed subtree: no context to resolve the module in, match its name
 		if !strings.Contains(name, ":") {
-			return nil, errMetaArg
+			return nil, (&logger{}).done(argErr("module || strchr(name, ':')", "lyd_find_meta"))
 		}
 		prefix, local, _, _, _ := parseNodeID(name) // invalid: "", matching nothing
 		for _, m := range n.meta {
@@ -85,10 +85,10 @@ func (n *Node) FindMeta(name string) (*Meta, error) {
 // unknown module or annotation, a value the type rejects or an opaque n is a *ValidationError with
 // libyang's diagnostics and return code (RC). The Default flags of n and its parents are kept.
 func (t *Tree) NewMeta(n *Node, name, value string) (*Meta, error) {
-	if n == nil {
-		return nil, errMetaArg
-	}
 	lg := &logger{set: t.set}
+	if n == nil { // libyang creates a detached instance, which this API cannot return
+		return nil, lg.done(argErr("parent", "lyd_new_meta"))
+	}
 	if !sameSet(setOf(n), t.set) {
 		return nil, lg.done(lg.logErr("LY_EINVAL", "Different contexts mixed in a \"lyd_new_meta\" function call."))
 	}

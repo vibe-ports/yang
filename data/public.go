@@ -4,8 +4,6 @@ package data
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"io"
 
 	"github.com/vibe-ports/yang"
@@ -22,7 +20,9 @@ import (
 // a later Load into the context does not change it.
 func Parse(ctx context.Context, r io.Reader, f Format, s *yang.Schema, o ParseOptions) (*Tree, []yang.Diagnostic, error) {
 	if s == nil {
-		return nil, nil, errors.New("data: Parse without a schema")
+		lg := &logger{}
+		err := lg.done(argErr("ctx || parent", "lyd_parse_data"))
+		return nil, lg.diags, err
 	}
 	var fp formatParser
 	switch f {
@@ -31,7 +31,9 @@ func Parse(ctx context.Context, r io.Reader, f Format, s *yang.Schema, o ParseOp
 	case FormatXML:
 		fp = parseXML
 	default:
-		return nil, nil, fmt.Errorf("data: unknown format %d", f)
+		lg := &logger{set: snap.Set(s)}
+		err := lg.done(argErr("format", "lyd_parse"))
+		return nil, lg.diags, err
 	}
 	if o.StoreOnly {
 		o.ParseOnly = true // LYD_PARSE_STORE_ONLY = 0x01010000 contains LYD_PARSE_ONLY = 0x010000

@@ -15,8 +15,11 @@
 // Diagnostics are yang.Diagnostic values in libyang's log order, with libyang's LY_ERR and
 // LY_VECODE names, data path, schema path and error-app-tag. A failed call returns a
 // *ValidationError holding them (RC is the call's LY_ERR name), or an error wrapping
-// yang.ErrBudget when a Budget limit or one of libyang's nesting limits was hit. Invalid input
-// yields no tree, as libyang frees the whole tree on any error.
+// yang.ErrBudget when a Budget limit or one of libyang's nesting limits was hit. An invalid
+// argument (libyang's LY_CHECK_ARG_RET / LOGARG) is no exception: it is an LY_EINVAL
+// *ValidationError whose message is libyang's "Invalid argument <arg> (<function>())." with
+// libyang's text of the check. Invalid input yields no tree, as libyang frees the whole tree on
+// any error.
 //
 // A Schema may be shared by any number of goroutines. A Tree is not safe for concurrent use
 // (lookups build indexes lazily): use one goroutine per tree.

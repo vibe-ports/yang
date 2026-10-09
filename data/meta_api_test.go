@@ -66,12 +66,10 @@ func TestMetaPublic(t *testing.T) {
 			t.Errorf("new %s=%s: %v", e.name, e.value, err)
 		}
 	}
-	if _, err := tr.NewMeta(n, "operation", "create"); err == nil || errors.As(err, &ve) {
-		t.Errorf("unprefixed name: %v", err)
-	}
-	if _, err := tr.NewMeta(nil, "fz:ann", "x"); err == nil {
-		t.Error("nil node")
-	}
+	_, err = tr.NewMeta(n, "operation", "create")
+	wantArgErr(t, "unprefixed name", "Invalid argument module || strchr(name, ':') (lyd_new_meta()).", err)
+	_, err = tr.NewMeta(nil, "fz:ann", "x")
+	wantArgErr(t, "nil node", "Invalid argument parent (lyd_new_meta()).", err)
 	other, _, _ := parse(fzContext(t).Schema(), `{"fz:c": {}}`, data.FormatJSON, data.ParseOptions{ParseOnly: true})
 	if _, err := other.NewMeta(n, "fz:ann", "x"); !errors.As(err, &ve) || ve.RC() != "LY_EINVAL" {
 		t.Errorf("another context: %v", err)
@@ -90,9 +88,8 @@ func TestMetaPublic(t *testing.T) {
 	if _, err := n.FindMeta("nope:x"); !errors.As(err, &ve) || ve.Diags[0].Msg != `Module "nope" not found.` {
 		t.Fatalf("find unknown module: %v", err)
 	}
-	if _, err := n.FindMeta("ann"); err == nil || errors.As(err, &ve) {
-		t.Fatalf("find unprefixed: %v", err)
-	}
+	_, err = n.FindMeta("ann")
+	wantArgErr(t, "find unprefixed", "Invalid argument module || strchr(name, ':') (lyd_find_meta()).", err)
 
 	// Remove, also while iterating; a second Remove does nothing
 	m, _ := n.FindMeta("yang:operation")
@@ -121,6 +118,8 @@ func TestMetaPublic(t *testing.T) {
 	if m, err := c.FindMeta("yang:a b"); m != nil || err != nil {
 		t.Fatalf("detached, invalid name: %v %v", m, err)
 	}
+	_, err = c.FindMeta("operation")
+	wantArgErr(t, "detached, unprefixed", "Invalid argument module || strchr(name, ':') (lyd_find_meta()).", err)
 }
 
 // ExampleNode_Meta reads, adds and removes metadata of a data node.

@@ -59,6 +59,12 @@ extension data (`LYD_EXT`), LYB, RESTCONF/NETCONF envelopes, full diff/merge opt
    A `Tree` pins the snapshot it was parsed with; a later `Load` does not affect it. libyang trees use
    the live `LYD_CTX` instead — **U-0045**. `data` → `yang`/`internal/snap` is acyclic (`yang` never
    imports `data`; the yang-library builder of M6 lives in `data`).
+5. **One error shape for every exported call.** A failure is a `*ValidationError` (its `RC()` the
+   call's LY_ERR name) or an error wrapping `yang.ErrBudget` / `ErrUnsupported` / `ctx.Err()`; no
+   other sentinel or plain error. An invalid argument (`LY_CHECK_ARG_RET`, `LOGARG`) is built with
+   `argErr(arg, fn)`: an LY_EINVAL item "Invalid argument <arg> (<fn>())." with libyang's
+   stringified check as `arg` where libyang has one, else the argument with the reason in
+   parentheses (`"node (not in a tree)"`). `logger.done` turns it into the `*ValidationError`.
 
 ## 1. libyang flow
 
