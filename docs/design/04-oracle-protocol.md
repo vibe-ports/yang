@@ -92,6 +92,15 @@ the diff: `lyd_diff_siblings`/`lyd_diff_tree` of the tree and parsed data, a par
 `lyd_diff_reverse_all`; each reports the register after the call (`diff`, `diff_typed`), so the
 chains of test_diff.c (diff, apply, merge, reverse) run in one request. Fields: oracle/README.md.
 
+## 4a. op `atoms` (M3) — schema atoms of an expression or a path
+`{"op": "atoms", "searchdirs", "modules", "context_options", "xpath" | "path", "context_path",
+"atom_options"}` builds the context as op `schema` does, then calls `lys_find_xpath_atoms` (for
+`xpath`) or `lys_find_path_atoms` (for `path`) from the schema node `lys_find_path` finds for
+`context_path` (none = the document root), with `atom_options` `schema`, `output`,
+`no_match_error` (LYS_FIND_*). The response carries `verdict`, `rc`, `diagnostics` (phases
+`context_path`, `xpath`, `path`) and `atoms`: the set in libyang's order as `lysc_path(LYSC_PATH_LOG)`
+strings, `null` when the call fails. Field reference: conformance/oracle/README.md.
+
 ## 5. Manifest v2 (conformance/corpus/manifest.yaml)
 ```yaml
 version: 2

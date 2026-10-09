@@ -1,0 +1,45 @@
+{
+  "atoms": [
+    "/yang:date-and-time",
+    "/ietf-yang-schema-mount:schema-mounts",
+    "/ietf-yang-library:yang-library",
+    "/ietf-yang-library:modules-state",
+    "/ietf-yang-library:yang-library-update",
+    "/ietf-yang-library:yang-library-change",
+    "/a:l1",
+    "/a:foo",
+    "/a:foo2",
+    "/a:foo3",
+    "/a:foo4",
+    "/a:foo5",
+    "/a:any",
+    "/a:c",
+    "/a:r",
+    "/ietf-interfaces:interfaces",
+    "/ietf-interfaces:interfaces-state"
+  ],
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ietf-interfaces",
+      "revision": "2014-05-08"
+    }
+  ],
+  "op": "atoms",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "verdict": "valid"
+}

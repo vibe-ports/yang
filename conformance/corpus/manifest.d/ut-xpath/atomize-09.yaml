@@ -1,0 +1,16 @@
+fixtures:
+  - id: ut-xpath/atomize-09
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_atomize:571 (expected 2 atom(s)); ietf-interfaces@2014-05-08 from tests/modules/yang (RFC 7223, BSD-2-Clause)
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: atoms
+      searchdirs: [a.1, if.1]
+      modules: [{name: a}, {name: ietf-interfaces}]
+      xpath: "/child::l1/child::a"
+    golden: golden/atomize-09.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null

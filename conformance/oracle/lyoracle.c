@@ -123,6 +123,14 @@ static const struct flag diff_merge_flags[] = {
     {NULL, 0}
 };
 
+/* op atoms: LYS_FIND_* (lys_find_path_atoms reads only output) */
+static const struct flag atom_flags[] = {
+    {"schema", LYS_FIND_XP_SCHEMA},
+    {"output", LYS_FIND_XP_OUTPUT},
+    {"no_match_error", LYS_FIND_NO_MATCH_ERROR},
+    {NULL, 0}
+};
+
 static const char *err_names[] = {
     "LY_SUCCESS", "LY_EMEM", "LY_ESYS", "LY_EINVAL", "LY_EEXIST", "LY_ENOTFOUND", "LY_EINT", "LY_EVALID",
     "LY_EDENIED", "LY_EINCOMPLETE", "LY_ERECOMPILE", "LY_ENOT", "LY_EOTHER"
@@ -2124,6 +2132,58 @@ op_sequence(const cJSON *req)
     }
 }
 
+/* ---------- atoms: the schema nodes an expression or a path needs ---------- */
+
+static void
+op_atoms(const cJSON *req)
+{
+    int ok;
+    struct ly_ctx *ctx = build_ctx(req, &ok, 0);
+    const char *xp = str_of(req, "xpath"), *path = str_of(req, "path"), *cpath = str_of(req, "context_path");
+    uint32_t opts = flags_of(req, "atom_options", atom_flags);
+    const struct lysc_node *cnode = NULL;
+    struct ly_set *set = NULL;
+    cJSON *diag = cJSON_AddArrayToObject(resp, "diagnostics"), *atoms;
+    LY_ERR rc;
+
+    if (!ok) {
+        cJSON_AddStringToObject(resp, "verdict", "schema-error");
+        return;
+    }
+    if (!xp == !path) {
+        die("atoms needs exactly one of xpath and path%s", NULL);
+    }
+    if (cpath) {
+        /* the schema context node; output nodes for an output query */
+        cnode = lys_find_path(ctx, NULL, cpath, (opts & LYS_FIND_XP_OUTPUT) ? 1 : 0);
+        collect(ctx, diag, "context_path");
+        if (!cnode) {
+            die("context_path %s not found", cpath);
+        }
+    }
+    if (xp) {
+        rc = lys_find_xpath_atoms(ctx, cnode, xp, opts, &set);
+    } else {
+        rc = lys_find_path_atoms(ctx, cnode, path, (opts & LYS_FIND_XP_OUTPUT) ? 1 : 0, &set);
+    }
+    collect(ctx, diag, xp ? "xpath" : "path");
+    set_verdict(rc);
+    if (rc) {
+        /* lys_find_xpath_atoms leaves an empty set behind, lys_find_path_atoms none */
+        ly_set_free(set, NULL);
+        cJSON_AddNullToObject(resp, "atoms");
+        return;
+    }
+    atoms = cJSON_AddArrayToObject(resp, "atoms");
+    for (uint32_t i = 0; i < set->count; i++) {
+        char *p = lysc_path(set->snodes[i], LYSC_PATH_LOG, NULL, 0);
+
+        cJSON_AddItemToArray(atoms, cJSON_CreateString(p));
+        free(p);
+    }
+    ly_set_free(set, NULL);
+}
+
 static void
 op_schema(const cJSON *req)
 {
@@ -2180,6 +2240,8 @@ main(void)
         op_diff(req);
     } else if (!strcmp(op, "sequence")) {
         op_sequence(req);
+    } else if (!strcmp(op, "atoms")) {
+        op_atoms(req);
     } else {
         die("unknown op %s", op);
     }

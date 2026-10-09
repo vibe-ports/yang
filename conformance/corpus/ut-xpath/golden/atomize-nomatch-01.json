@@ -1,0 +1,45 @@
+{
+  "atoms": [
+    "/a:c"
+  ],
+  "context_diagnostics": [],
+  "diagnostics": [
+    {
+      "apptag": null,
+      "code": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "data_path": null,
+      "level": "warning",
+      "line": 0,
+      "msg": "Schema node \"nope\" for parent \"/a:c\" not found; in expr \"/a:c/nope\" with context node \"/\".",
+      "phase": "xpath",
+      "schema_path": null,
+      "vecode": 0,
+      "vecode_name": "LYVE_SUCCESS"
+    }
+  ],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ietf-interfaces",
+      "revision": "2014-05-08"
+    }
+  ],
+  "op": "atoms",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "verdict": "valid"
+}

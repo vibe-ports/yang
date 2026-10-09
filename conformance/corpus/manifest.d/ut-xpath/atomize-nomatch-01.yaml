@@ -1,0 +1,16 @@
+fixtures:
+  - id: ut-xpath/atomize-nomatch-01
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # hand-written query over the test_xpath.c schemas: no match: warning
+    rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+    areas: [xpath]
+    request:
+      op: atoms
+      searchdirs: [a.1, if.1]
+      modules: [{name: a}, {name: ietf-interfaces}]
+      xpath: "/a:c/nope"
+    golden: golden/atomize-nomatch-01.json
+    assert:
+      verdict: valid
+      rfc: ["XPath1.0#2", "XPath1.0#3", "XPath1.0#4", "RFC7950#10"]
+      deviation: null

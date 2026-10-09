@@ -53,7 +53,7 @@ Produce goldens and `internal/xpath/testdata/oracle-pv2.jsonl` with
 
 | Field | Meaning |
 |---|---|
-| `op` | `schema` \| `data` \| `xpath` \| `diff` \| `sequence` |
+| `op` | `schema` \| `data` \| `xpath` \| `atoms` \| `diff` \| `sequence` |
 | `base_dir` | optional; `chdir` before anything, all relative paths resolve from it |
 | `searchdirs` | module search dirs. libyang's installed module dir is always searched first (it holds the internal modules); CWD is never searched |
 | `modules` | ordered list `{name, revision?, features?}` to **implement**; `features`: omitted = none enabled, `["*"]` = all, else list |
@@ -79,7 +79,7 @@ after each phase:
 ```
 
 `phase` says which call produced it: `context`, `parse`, `compile`, `operational`, `rpc`, `data`,
-`validate_op`, `operation_parent`, `first`, `second`, `context_path`, `xpath`, `diff`. Items with
+`validate_op`, `operation_parent`, `first`, `second`, `context_path`, `xpath`, `path`, `diff`. Items with
 `"source": "lyoracle"` are synthesized by the helper (see `operation_parent`). `line` is 0 when
 libyang does not know it. `err` may carry the `LY_EPLUGIN` bit (name `LY_EPLUGIN|LY_E...`).
 
@@ -267,6 +267,26 @@ node; omitted = document root. `vars` (optional) binds XPath variables: each mem
 `lyxp_vars_set` in member order (the value is an XPath expression, `"'x'"` for a string) and the
 list to `lyd_eval_xpath4`.
 
+## op: atoms
+
+```json
+{"op": "atoms", "searchdirs": ["a.1"], "modules": [{"name": "a"}],
+ "context_path": "/a:c/ll", "xpath": "ll[a = current()/a]/b", "atom_options": []}
+```
+```json
+{"verdict": "valid", "rc": {"err": 0, "name": "LY_SUCCESS"}, "diagnostics": [],
+ "atoms": ["/a:c/ll", "/a:c/ll/ll", "/a:c/ll/ll/a", "/a:c/ll/a", "/a:c/ll/ll/b"]}
+```
+The schema nodes an expression needs, without data. `xpath` goes to `lys_find_xpath_atoms`, `path`
+(a JSON data path, simple predicates) to `lys_find_path_atoms`; exactly one of them. `context_path`
+is a schema path for `lys_find_path` (output nodes when `atom_options` has `output`); omitted = the
+document root. `atom_options`: `schema` (`LYS_FIND_XP_SCHEMA`, the when/must accessible tree),
+`output` (`LYS_FIND_XP_OUTPUT`, the `output` argument of `lys_find_path_atoms`), `no_match_error`
+(`LYS_FIND_NO_MATCH_ERROR`: a step that matches nothing is an `LY_ENOTFOUND` error, not a warning);
+`path` reads only `output`. `atoms` is the result set in order, each node as
+`lysc_path(LYSC_PATH_LOG)`; `null` on error (`verdict: "invalid"`). A rejected module gives
+`verdict: "schema-error"`.
+
 ## op: diff
 
 ```json
@@ -359,7 +379,8 @@ The Go harness (`conformance/`) reads `steps[].diagnostics` for asserts, ignores
 - XPath uses `lyd_eval_xpath4` (format `LY_VALUE_JSON`, no variables): node-set results keep only
   element nodes (root, text and metadata nodes are dropped by libyang), `when` is ignored during
   evaluation (`LYXP_IGNORE_WHEN`), the tree must be non-empty, numbers go through `double`.
-  Schema-node XPath (`lys_find_xpath`/atomize) is not exposed.
+  Schema-node XPath is exposed only as atoms (`lys_find_xpath_atoms`, `lys_find_path_atoms`), not as
+  `lys_find_xpath`.
 - `with_defaults: all-tagged|implicit-tagged` emit `default` metadata only if
   `ietf-netconf-with-defaults` is in the context — add it to `searchdirs` + `modules`.
 - No NETCONF/RESTCONF envelopes (`nc-rpc`, ...), LYB, yang-library contexts, merged multi-file

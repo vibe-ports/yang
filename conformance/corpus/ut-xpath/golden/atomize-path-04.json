@@ -1,0 +1,43 @@
+{
+  "atoms": null,
+  "context_diagnostics": [],
+  "diagnostics": [
+    {
+      "apptag": null,
+      "code": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "data_path": null,
+      "level": "error",
+      "line": 0,
+      "msg": "Not found node \"nope\" in path.",
+      "phase": "path",
+      "schema_path": "/a:c",
+      "vecode": 5,
+      "vecode_name": "LYVE_XPATH"
+    }
+  ],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ietf-interfaces",
+      "revision": "2014-05-08"
+    }
+  ],
+  "op": "atoms",
+  "protocol": 2,
+  "rc": {
+    "err": 7,
+    "name": "LY_EVALID"
+  },
+  "verdict": "invalid"
+}
