@@ -119,18 +119,17 @@ func (t *Tree) yangMeta(n *Node, name, val string) error {
 // findYangMeta is lyd_diff_find_meta / lyd_find_meta(…, "yang:name"): the index of the metadata
 // name of the module yang of n, -1 if there is none.
 func findYangMeta(n *Node, name string) int {
-	for i, m := range n.meta {
-		if m.name == name && m.mod.Name == "yang" {
-			return i
-		}
+	for i := range metasNamed(n, "yang", name) {
+		return i
 	}
 	return -1
 }
 
-// delYangMeta is lyd_diff_del_meta.
+// delYangMeta is lyd_diff_del_meta: the first metadata name of the module yang of n removed
+// (removeMeta).
 func delYangMeta(n *Node, name string) {
 	if i := findYangMeta(n, name); i >= 0 {
-		n.meta = append(n.meta[:i:i], n.meta[i+1:]...)
+		removeMeta(n, n.meta[i])
 	}
 }
 

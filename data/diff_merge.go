@@ -254,19 +254,10 @@ func (t *Tree) isRedundantUserordMove(dm, child *Node) bool {
 // metaOfName is the diff metadata of n of the module yang named name (lyd_diff_meta_store).
 func metaOfName(n *Node, name string) []*meta {
 	var out []*meta
-	for _, m := range n.meta {
-		if m.mod.Name == "yang" && m.name == name {
-			out = append(out, m)
-		}
+	for _, m := range metasNamed(n, "yang", name) {
+		out = append(out, m)
 	}
 	return out
-}
-
-// delMeta is lyd_free_meta_single of m, a metadata instance of n.
-func delMeta(n *Node, m *meta) {
-	if i := slices.Index(n.meta, m); i >= 0 {
-		n.meta = slices.Delete(n.meta, i, i+1)
-	}
 }
 
 // diffMergeMetadata is lyd_diff_merge_metadata: the diff metadata of src (meta-create,
@@ -288,13 +279,13 @@ func (t *Tree) diffMergeMetadata(src, trg *Node) error {
 			i := slices.IndexFunc(trgOrig, func(o *meta) bool { return o.value.Canonical() == val })
 			switch {
 			case m1 != nil: // create + delete: no change
-				delMeta(trg, m1)
+				removeMeta(trg, m1)
 			case i >= 0: // create + replace: a create of the new value
 				if err := t.metaNew(trg, "meta-create", trgRepl[i].value.Canonical()); err != nil {
 					return err
 				}
-				delMeta(trg, trgRepl[i])
-				delMeta(trg, trgOrig[i])
+				removeMeta(trg, trgRepl[i])
+				removeMeta(trg, trgOrig[i])
 				trgRepl = slices.Delete(trgRepl, i, i+1)
 				trgOrig = slices.Delete(trgOrig, i, i+1)
 			default:
@@ -303,7 +294,7 @@ func (t *Tree) diffMergeMetadata(src, trg *Node) error {
 			}
 		case "meta-delete":
 			if m1 := findMetaVal(trg, "meta-create", val); m1 != nil { // delete + create: no change
-				delMeta(trg, m1)
+				removeMeta(trg, m1)
 			} else {
 				c := *m
 				trg.meta = append(trg.meta, &c)

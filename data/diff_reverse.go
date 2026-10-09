@@ -106,7 +106,7 @@ func (t *Tree) renameMeta(n *Node, src, trg string) error {
 	if err := t.yangMeta(n, trg, m.value.Canonical()); err != nil {
 		return err
 	}
-	delMeta(n, m)
+	removeMeta(n, m)
 	return nil
 }
 
@@ -122,7 +122,7 @@ func (t *Tree) reverseMetadataDiff(n *Node) error {
 		if err := t.metaNew(n, "meta-delete", m.value.Canonical()); err != nil {
 			return err
 		}
-		delMeta(n, m)
+		removeMeta(n, m)
 	}
 	for i, r := range repl {
 		v := r.value.Canonical()
@@ -137,7 +137,7 @@ func (t *Tree) reverseMetadataDiff(n *Node) error {
 		if err := t.metaNew(n, "meta-create", m.value.Canonical()); err != nil {
 			return err
 		}
-		delMeta(n, m)
+		removeMeta(n, m)
 	}
 	return nil
 }

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -354,5 +355,30 @@ func TestMetaAPI(t *testing.T) {
 	}
 	if err := l.newAttr(s, "", "a", "1"); err == nil || err.Error() != "Invalid argument !parent->schema (lyd_new_attr())." {
 		t.Fatalf("attribute of a schema node: %v", err)
+	}
+}
+
+// TestRemoveMetaCopies: removeMeta, the one lyd_free_meta_single (Meta.Remove, delYangMeta, the
+// diff merge, apply and reverse), leaves a slice taken before it as it was; findYangMeta and
+// metaOfName see only the module yang.
+func TestRemoveMetaCopies(t *testing.T) {
+	y, o := &schema.Module{Name: "yang"}, &schema.Module{Name: "other"}
+	a, b, c := &meta{mod: y, name: "key"}, &meta{mod: o, name: "key"}, &meta{mod: y, name: "key"}
+	n := &Node{meta: []*meta{b, a, c}}
+	if i := findYangMeta(n, "key"); i != 1 {
+		t.Fatalf("findYangMeta: %d", i)
+	}
+	if got := metaOfName(n, "key"); !slices.Equal(got, []*meta{a, c}) {
+		t.Fatalf("metaOfName: %v", got)
+	}
+	old := n.meta
+	delYangMeta(n, "key")
+	removeMeta(n, c)
+	removeMeta(n, c)
+	if !slices.Equal(old, []*meta{b, a, c}) || !slices.Equal(n.meta, []*meta{b}) {
+		t.Fatalf("old %v, now %v", old, n.meta)
+	}
+	if findYangMeta(n, "key") != -1 {
+		t.Fatal("yang:key left")
 	}
 }

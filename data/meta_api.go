@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Ported from libyang v5.8.6 src/tree_data_free.c (lyd_free_meta_single) and
-// src/plugins_exts/metadata.h (lyd_get_meta_value) (BSD-3-Clause, © CESNET).
+// Ported from libyang v5.8.6 src/tree_data_free.c (lyd_free_meta_single), src/tree_data.c
+// (lyd_find_meta) and src/plugins_exts/metadata.h (lyd_get_meta_value) (BSD-3-Clause, © CESNET).
 
 package data
 
 import (
 	"iter"
+	"slices"
 	"strings"
 
 	"github.com/vibe-ports/yang"
@@ -31,11 +32,26 @@ func (m *Meta) Name() string { return m.m.name }
 func (m *Meta) Value() string { return m.m.value.Canonical() }
 
 // Remove is lyd_free_meta_single: the instance leaves its node. Removing it again does nothing.
-func (m *Meta) Remove() {
-	for i, x := range m.node.meta {
-		if x == m.m {
-			m.node.meta = append(m.node.meta[:i:i], m.node.meta[i+1:]...)
-			return
+func (m *Meta) Remove() { removeMeta(m.node, m.m) }
+
+// removeMeta is lyd_free_meta_single: m leaves the metadata of n; nothing when it is not there.
+// It builds a new slice instead of shifting n.meta in place, so a range over the old n.meta (the
+// Node.Meta iterator, the diff code removing while it walks) keeps seeing it unchanged.
+func removeMeta(n *Node, m *meta) {
+	if i := slices.Index(n.meta, m); i >= 0 {
+		n.meta = append(n.meta[:i:i], n.meta[i+1:]...)
+	}
+}
+
+// metasNamed is lyd_find_meta by module name, every match: the metadata of n of the module named
+// mod and named name, in order, with their index in n.meta. The diff's lookups of its yang
+// metadata (findYangMeta, metaOfName, findMetaNamed) are over it.
+func metasNamed(n *Node, mod, name string) iter.Seq2[int, *meta] {
+	return func(yield func(int, *meta) bool) {
+		for i, m := range n.meta {
+			if m.mod.Name == mod && m.name == name && !yield(i, m) {
+				return
+			}
 		}
 	}
 }
@@ -46,7 +62,7 @@ func (m *Meta) Remove() {
 // not exist in the port, which keeps no such tree.
 func (n *Node) Meta() iter.Seq[*Meta] {
 	return func(yield func(*Meta) bool) {
-		for _, m := range n.meta { // Remove builds a new slice: this one stays as it was
+		for _, m := range n.meta { // removeMeta builds a new slice: this one stays as it was
 			if !yield(&Meta{n, m}) {
 				return
 			}

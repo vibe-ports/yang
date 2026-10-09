@@ -283,8 +283,8 @@ func splitMetaDiff(m *meta) (name, val string, err error) {
 // with the canonical value val, nil if none.
 func findMetaNamed(n *Node, name, val string) *meta {
 	mod, local, _ := strings.Cut(name, ":")
-	for _, m := range n.meta {
-		if m.mod.Name == mod && m.name == local && m.value.Canonical() == val {
+	for _, m := range metasNamed(n, mod, local) {
+		if m.value.Canonical() == val {
 			return m
 		}
 	}
@@ -375,7 +375,7 @@ func (t *Tree) applyMetadata(n, dn *Node) error {
 			if m2 == nil {
 				return &opError{"LY_EINT", "Internal error."}
 			}
-			delMeta(n, m2)
+			removeMeta(n, m2)
 		case "meta-replace":
 			repl = append(repl, m)
 		case "meta-orig":
