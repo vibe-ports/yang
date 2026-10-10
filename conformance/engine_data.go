@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/vibe-ports/yang"
@@ -56,7 +57,12 @@ var wdModes = map[string]data.WD{"explicit": data.WDExplicit, "trim": data.WDTri
 // printing, operations) makes the fixture unsupported rather than silently ignored.
 var dataKeys = map[string]bool{"op": true, "base_dir": true, "searchdirs": true, "modules": true,
 	"context_options": true, "format": true, "data_type": true, "data": true, "data_file": true, "unknown": true,
-	"parse_only": true, "parse_options": true, "validate_options": true, "with_defaults": true}
+	"parse_only": true, "parse_options": true, "validate_options": true, "with_defaults": true,
+	"operational": true, "operational_file": true, "operational_format": true, "rpc": true, "rpc_file": true,
+	"keep_input": true}
+
+// opTypes are lyoracle.c dparams_of's operation data types.
+var opTypes = map[string]data.OpType{"rpc": data.OpRPC, "reply": data.OpReply, "notif": data.OpNotif}
 
 // runData is lyoracle.c op_data for datastore data: lyd_parse_data with the preset's flags and
 // LYD_VALIDATE_MULTI_ERROR, then the printed tree (none for an empty tree: libyang's is NULL).
@@ -65,6 +71,14 @@ func runData(r Request, s *yang.Schema, resp map[string]any) error {
 	for k := range p {
 		if !dataKeys[k] {
 			return fmt.Errorf("%w: data request field %s", ErrUnsupported, k)
+		}
+	}
+	if typ, ok := opTypes[str(p, "data_type", "")]; ok {
+		return runOp(r, s, resp, typ)
+	}
+	for _, k := range []string{"operational", "operational_file", "operational_format", "rpc", "rpc_file", "keep_input"} {
+		if _, ok := p[k]; ok {
+			return fmt.Errorf("%w: %s with a datastore data type", ErrUnsupported, k)
 		}
 	}
 	o, err := dataOptions(p)
@@ -235,4 +249,141 @@ func typedJSON(tree *data.Tree) []any {
 		}
 	}
 	return out
+}
+
+// runOp is lyoracle.c op_data for the operation data types (parse_one, load_oper): the
+// operational tree parsed only (lyd_parse_data with LYD_PARSE_ONLY, unknown nodes dropped), the
+// operation parsed (ParseOp; a reply with an rpc request is parsed into that request, its input
+// removed), then, unless parse_only, ValidateOp against the operational tree and yanglint's
+// check_operation_parent (a nested action or notification needs its parent in the operational
+// tree). The tree is printed from its first node without siblings.
+func runOp(r Request, s *yang.Schema, resp map[string]any, typ data.OpType) error {
+	p := r.Params
+	unknown, ok := unknownPolicies[str(p, "unknown", "reject")]
+	if !ok {
+		return fmt.Errorf("%w: unknown %v", ErrUnsupported, p["unknown"])
+	}
+	parseOnly, _ := p["parse_only"].(bool)
+	wd, err := wdOf(p)
+	if err != nil {
+		return err
+	}
+	f, err := formatOf(p)
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	diags := []any{}
+	resp["diagnostics"] = diags
+	var oper *data.Tree
+	if _, ok := p["operational"]; ok || p["operational_file"] != nil {
+		in, err := inputOf(r, p, "operational")
+		if err != nil {
+			return err
+		}
+		of := f
+		if v, ok := p["operational_format"]; ok {
+			if of, err = formatOf(map[string]any{"format": v}); err != nil {
+				return err
+			}
+		}
+		t, d, perr := data.Parse(ctx, strings.NewReader(in), of, s, data.ParseOptions{Unknown: data.Skip, ParseOnly: true})
+		rc, err := rcOf(perr)
+		if err != nil {
+			return err
+		}
+		diags = append(diags, diagsJSON(d, "operational")...)
+		resp["diagnostics"] = diags
+		if rc != "LY_SUCCESS" {
+			resp["verdict"] = "operational-error"
+			return nil
+		}
+		oper = t
+	}
+	in, err := inputOf(r, p, "data")
+	if err != nil {
+		return err
+	}
+	var res data.OpResult
+	var d []yang.Diagnostic
+	var perr error
+	rpcIn, rpcErr := inputOf(r, p, "rpc")
+	if typ != data.OpReply && rpcErr == nil {
+		return fmt.Errorf("%w: an rpc request with data_type %v (ParseOpOptions.Request is for replies only, design 07 §6.1.1)",
+			ErrUnsupported, p["data_type"])
+	}
+	keep, _ := p["keep_input"].(bool)
+	if typ == data.OpReply && rpcErr == nil {
+		req, rd, rerr := data.ParseOp(ctx, strings.NewReader(rpcIn), f, s, data.OpRPC, data.ParseOpOptions{Unknown: unknown})
+		diags = append(diags, diagsJSON(rd, "rpc")...)
+		perr = rerr
+		if rerr == nil {
+			for _, c := range slices.Collect(req.Op.Children()) { // lyd_free_siblings(lyd_child(op))
+				if keep {
+					break
+				}
+				if err := c.Remove(); err != nil {
+					return err
+				}
+			}
+			res, d, perr = data.ParseOp(ctx, strings.NewReader(in), f, s, typ,
+				data.ParseOpOptions{Unknown: unknown, Request: req.Op})
+			diags = append(diags, diagsJSON(d, "data")...)
+			if perr != nil {
+				resp["request_typed"] = typedJSON(req.Tree) // what the failed reply left of the request
+			}
+		}
+	} else {
+		res, d, perr = data.ParseOp(ctx, strings.NewReader(in), f, s, typ, data.ParseOpOptions{Unknown: unknown})
+		diags = append(diags, diagsJSON(d, "data")...)
+	}
+	rc, err := rcOf(perr)
+	if err != nil {
+		return err
+	}
+	if rc == "LY_SUCCESS" && !parseOnly {
+		vd, verr := res.Tree.ValidateOp(ctx, typ, data.ValidateOpOptions{Operational: oper})
+		if rc, err = rcOf(verr); err != nil {
+			return err
+		}
+		diags = append(diags, diagsJSON(vd, "validate_op")...)
+		if par := res.Op.Parent(); rc == "LY_SUCCESS" && par != nil {
+			// yanglint check_operation_parent: the operation's parent in the operational tree
+			path := par.Path()
+			found := false
+			if oper != nil {
+				nodes, _, ferr := oper.FindXPath(path, data.XPathOptions{})
+				found = ferr == nil && len(nodes) > 0
+			}
+			if !found {
+				diags = append(diags, map[string]any{"phase": "operation_parent", "level": "error",
+					"code": codeJSON("LY_EVALID"), "source": "lyoracle", "data_path": path,
+					"msg": "operation parent not found in the operational tree"})
+				rc = "LY_EVALID"
+			}
+		}
+	}
+	resp["diagnostics"] = diags
+	resp["verdict"], resp["rc"] = "valid", codeJSON(rc)
+	resp["tree"] = nil
+	if rc != "LY_SUCCESS" {
+		resp["verdict"] = "invalid"
+		return nil
+	}
+	var first *data.Node
+	for n := range res.Tree.Top() {
+		first = n
+		break
+	}
+	po := data.PrintOptions{WithDefaults: wd}
+	var j, x strings.Builder
+	if err := first.PrintJSON(&j, po); err != nil {
+		return unsupported(err)
+	}
+	if err := first.PrintXML(&x, po); err != nil {
+		return unsupported(err)
+	}
+	resp["tree"] = map[string]any{"json": j.String(), "xml": x.String()}
+	resp["typed"] = typedJSON(res.Tree)
+	return nil
 }

@@ -33,7 +33,9 @@ func (Yang) SkippedFields(op string) []string {
 	switch op {
 	case "schema":
 		return []string{"compiled"}
-	case "data", "diff":
+	case "data":
+		return append(typedSkipped("typed"), typedSkipped("request_typed")...)
+	case "diff":
 		return typedSkipped("typed")
 	case "sequence":
 		return append(typedSkipped("typed"), typedSkipped("diff_typed")...)
