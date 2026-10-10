@@ -535,7 +535,9 @@ func (t *Tree) mergeSibling(lv *mergeLevel, src *Node) {
 			c = compareSorted(last, src)
 		}
 		switch {
-		case c == 0 && !isDupInstList(src.schema):
+		case c == 0 && !isDupInstList(src.schema) && compareSingle(t, last, src, false):
+			// equal in sort order is not equal (identityrefs sort by local name only): only an
+			// equal instance matches, an unequal one flushes and is looked up as usual
 			// a source with duplicate instances (parsed only): the equal one matches the pending
 			// copy, the first instance of its value (none was in the destination), as it would
 			// once linked; the batch goes on

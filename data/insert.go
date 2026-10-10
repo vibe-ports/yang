@@ -316,7 +316,8 @@ func (t *Tree) splice(parent *Node, sib *siblings, lo, hi int, ns []*Node, first
 		}
 		out = append(out, n)
 	}
-	sib.list, sib.base = append(out, old[j:]...), nil
+	out = append(out, old[j:]...)
+	sib.list, sib.base = out, nil
 	if t.work.shifts {
 		t.work.Add(int64(len(sib.list)))
 	}
