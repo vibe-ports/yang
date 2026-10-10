@@ -1,0 +1,15 @@
+fixtures:
+  - id: seq/new-path-ut-04
+    dir: protocol-v2
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_new.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_path:198, canonical key lookup and LYD_NEW_PATH_UPDATE
+    rfc: []   # libyang lyd_new_path API mechanics
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: a}]
+      steps:
+        - {do: edit, set: {path: "/a:l11[a='01']/b", value: "02"}}
+        - {do: edit, set: {path: "/a:l11[a='1']/b", value: "3"}}
+        - {do: dump, with_defaults: all-tagged}
+    golden: golden/seq-new-path-ut-04.json

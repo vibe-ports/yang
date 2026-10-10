@@ -1,0 +1,78 @@
+// Derived from libyang v5.8.6 tests/utests/data/test_new.c (BSD-3-Clause, © CESNET).
+module a {
+  yang-version 1.1;
+  namespace "urn:tests:a";
+  prefix a;
+
+  list l1 {
+    key "a b";
+    leaf a {
+      type string;
+    }
+    leaf b {
+      type string;
+    }
+    leaf c {
+      type string;
+    }
+  }
+  list l11 {
+    key "a";
+    leaf a {
+      type uint32;
+    }
+    leaf b {
+      type uint32;
+    }
+  }
+  leaf foo {
+    type uint16;
+  }
+  leaf-list ll {
+    type string;
+  }
+  container c {
+    leaf-list x {
+      type string;
+    }
+  }
+  anydata any {
+    config false;
+  }
+  anyxml anyx;
+  leaf-list ll2 {
+    config false;
+    type string;
+  }
+  list l2 {
+    config false;
+    container c {
+      leaf x {
+        type string;
+      }
+    }
+  }
+  container c2 {
+    config false;
+    list l3 {
+      leaf x {
+        type string;
+      }
+      leaf y {
+        type string;
+      }
+    }
+  }
+  rpc oper {
+    input {
+      leaf param {
+        type string;
+      }
+    }
+    output {
+      leaf param {
+        type int8;
+      }
+    }
+  }
+}

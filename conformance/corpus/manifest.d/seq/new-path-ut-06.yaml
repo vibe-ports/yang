@@ -1,0 +1,16 @@
+fixtures:
+  - id: seq/new-path-ut-06
+    dir: protocol-v2
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_new.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_path:198, keyless state-list instances and positional predicate
+    rfc: []   # libyang lyd_new_path API mechanics
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: a}]
+      steps:
+        - {do: edit, set: {path: "/a:l2/c/x", value: "a"}}
+        - {do: edit, set: {path: "/a:l2/c/x", value: "b"}}
+        - {do: edit, set: {path: "/a:l2[1]/c/x", value: "c"}}
+        - {do: dump, with_defaults: all-tagged}
+    golden: golden/seq-new-path-ut-06.json

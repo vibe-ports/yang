@@ -1,0 +1,17 @@
+fixtures:
+  - id: seq/new-path-ut-02
+    dir: protocol-v2
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_new.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_path:198, top-level creation and schema ordering
+    rfc: []   # libyang lyd_new_path API mechanics
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: a}]
+      steps:
+        - {do: edit, set: {path: "/a:ll", value: "b"}}
+        - {do: edit, set: {path: "/a:foo", value: "1"}}
+        - {do: edit, set: {path: "/a:ll", value: "a"}}
+        - {do: edit, set: {path: "/a:c"}}
+        - {do: dump, with_defaults: all-tagged}
+    golden: golden/seq-new-path-ut-02.json
