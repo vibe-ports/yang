@@ -16,6 +16,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -400,6 +401,34 @@ func TestParseOpManyParameters(t *testing.T) {
 			t.Errorf("reverse %v: work %d for 250 parameters, %d for 1000: not linear", reverse, w1, w4)
 		}
 	}
+}
+
+// TestParseOpConcurrentFind: the instance index of an operation's children is built by the
+// mutations, so concurrent lookups on a parsed operation (also after a removal) only read it
+// (run with -race).
+func TestParseOpConcurrentFind(t *testing.T) {
+	set := opsSet(t, readOpsFixture(t, filepath.Join(opsManifest, "parse-json-reply-keep-order.yaml")))
+	tree, op, diags, err := parseOp(context.Background(), strings.NewReader(`{"rb:r":{"in":"a","in2":"b"}}`), set,
+		FormatJSON, opRPC, nil, Reject)
+	if err != nil {
+		t.Fatal(err, diags)
+	}
+	find := func(path string, want bool) {
+		var wg sync.WaitGroup
+		for range 8 {
+			wg.Go(func() {
+				if n, err := tree.Find(path); (n != nil) != want || err != nil && want {
+					t.Errorf("Find(%s): %v %v", path, n, err)
+				}
+			})
+		}
+		wg.Wait()
+	}
+	find("/rb:r/in", true)
+	if err := tree.findSchema(&op.kids, op.kids.list[1].schema).Remove(); err != nil {
+		t.Fatal(err)
+	}
+	find("/rb:r/in", true)
 }
 
 // errReader fails every read.

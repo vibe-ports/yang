@@ -150,7 +150,9 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 			// inserted in order, so it is sorted stably (rb_insert_node puts equal values after
 			// the existing ones)
 			slices.SortStableFunc(l[lo:hi], compareSorted)
-			sib.opIdx = nil // reordered
+			if sib.opIdx != nil {
+				sib.opBuild(t) // reordered
+			}
 			for _, a := range l[lo:hi] {
 				a.inRB = true
 			}
@@ -196,7 +198,7 @@ func (t *Tree) runBounds(sib *siblings, n *Node) (lo, hi int) {
 	l := sib.list
 	if opChild(n.schema) {
 		// a system-ordered run under an operation is input data: its instances are contiguous
-		inst := sib.opInst(t, n.schema)
+		inst := sib.opInst(n.schema)
 		if len(inst) == 0 {
 			at := t.opAnchor(sib, n)
 			return at, at
@@ -263,19 +265,32 @@ func (t *Tree) opOrder(op *schema.Node, out bool) []*schema.Node {
 	return o
 }
 
-// opInst is the instances of the operation child s in sib.list, in list order, from the index
-// built on first use and kept by link (opIdxAdd); a removal or reordering drops it.
-func (s *siblings) opInst(t *Tree, sn *schema.Node) []*Node {
-	if s.opIdx == nil {
-		s.opIdx = map[*schema.Node][]*Node{}
-		s.opTop = [2]int{}
-		for _, a := range s.list {
-			t.work.Add(1)
-			s.opIdx[a.schema] = append(s.opIdx[a.schema], a)
-			s.opRaise(t, a.schema)
-		}
+// opInst is the instances of the operation child sn in s.list, in list order. It only reads: the
+// index is kept by the mutations alone (link, unlink, the RB sort), so concurrent readers of an
+// unchanged tree share it safely.
+func (s *siblings) opInst(sn *schema.Node) []*Node { return s.opIdx[sn] }
+
+// opBuild (re)builds the instance index of an operation's children from s.list; mutations only.
+func (s *siblings) opBuild(t *Tree) {
+	s.opIdx = map[*schema.Node][]*Node{}
+	s.opTop = [2]int{}
+	for _, a := range s.list {
+		t.work.Add(1)
+		s.opIdx[a.schema] = append(s.opIdx[a.schema], a)
+		s.opRaise(t, a.schema)
 	}
-	return s.opIdx[sn]
+}
+
+// opRemove drops n, being unlinked, from the instance index.
+func (s *siblings) opRemove(n *Node) {
+	if s.opIdx == nil {
+		return
+	}
+	if inst := slices.DeleteFunc(s.opIdx[n.schema], func(a *Node) bool { return a == n }); len(inst) > 0 {
+		s.opIdx[n.schema] = inst
+	} else {
+		delete(s.opIdx, n.schema)
+	}
 }
 
 // opRaise records that sn has instances: opTop is, per input (0) and output (1), one more than
@@ -333,7 +348,6 @@ func (t *Tree) opAnchor(sib *siblings, n *Node) int {
 		// the closest following schema sibling with instances; none past the greatest rank with
 		// instances (opTop), so input in schema order appends at once and input in reverse
 		// order finds the next rank at once
-		sib.opInst(t, n.schema) // built, with opTop
 		d := 0
 		if opts == schema.GetNextOutput {
 			d = 1
@@ -437,7 +451,11 @@ func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) {
 		// reversed inputs ever matter.
 		sib.list = slices.Insert(sib.list, at, n)
 	}
-	if sib.opIdx != nil && opChild(n.schema) {
+	switch {
+	case !opChild(n.schema):
+	case sib.opIdx == nil:
+		sib.opBuild(t) // the operation's first child (or the first since a bulk removal)
+	default:
 		sib.opIdxAdd(t, n, at)
 	}
 	n.parent = parent
@@ -493,7 +511,7 @@ func unlink(n *Node) {
 		}
 	} else if i := slices.Index(sib.list, n); i >= 0 {
 		sib.list = slices.Delete(sib.list, i, i+1)
-		sib.opIdx = nil
+		sib.opRemove(n)
 	}
 	sib.hashRemove(n)
 	sib.gen++
@@ -565,7 +583,9 @@ func (t *Tree) unlinkAll(ns []*Node) error {
 	for _, sib := range order {
 		sib.gen++
 		sib.list = slices.DeleteFunc(sib.list, isGone)
-		sib.opIdx = nil
+		if sib.opIdx != nil {
+			sib.opBuild(t)
+		}
 		sib.opq = slices.DeleteFunc(sib.opq, isGone)
 		for k := range sibs[sib] { // each bucket compacted once
 			if b := slices.DeleteFunc(sib.ht[k], isGone); len(b) > 0 {

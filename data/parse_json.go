@@ -393,9 +393,8 @@ func (p *jsonParser) metadataFinish(parent *Node) error {
 	if len(ats) == 0 {
 		return nil
 	}
-	type run struct{ at, n int } // the instances of a schema node: sib.list[at:at+n]
-	runs := map[*schema.Node]run{}
-	firstList := map[string]int{} // index of the first list-hinted opaque node of a name, -1: none
+	runs := map[*schema.Node][]*Node{} // the instances of a schema node in sibling order
+	firstList := map[string]int{}      // index of the first list-hinted opaque node of a name, -1: none
 	var done []*Node
 	// libyang frees each one when it is attached; none of them is a target of another (their
 	// names start with '@'), except for a "@@name" member
@@ -419,19 +418,25 @@ func (p *jsonParser) metadataFinish(parent *Node) error {
 		}
 		r, ok := runs[sn]
 		if !ok && sn != nil {
-			if r.at = lc.tree.schemaIndex(sib, sn); r.at >= 0 {
-				for r.n = 0; r.at+r.n < len(sib.list) && sib.list[r.at+r.n].schema == sn; r.n++ {
+			if opChild(sn) {
+				// an operation's output instances may be split by its input (the anchor):
+				// libyang counts every one in sibling order
+				r = slices.Clone(sib.opInst(sn))
+			} else if i := lc.tree.schemaIndex(sib, sn); i >= 0 {
+				j := i
+				for ; j < len(sib.list) && sib.list[j].schema == sn; j++ {
 					lc.tree.work.Add(1)
 				}
+				r = sib.list[i:j:j]
 			}
 			runs[sn] = r
 		}
 		var n *Node
-		if instance <= r.n {
-			n = sib.list[r.at+instance-1]
+		if instance <= len(r) {
+			n = r[instance-1]
 		} else {
 			// then the opaque siblings of the name; a list-hinted one before the instance fails
-			m, same := instance-r.n, byName[at.opaq.Name[1:]]
+			m, same := instance-len(r), byName[at.opaq.Name[1:]]
 			fl, ok := firstList[at.opaq.Name[1:]]
 			if !ok {
 				fl = slices.IndexFunc(same, func(o *Node) bool { return o.opaq.Hints&hintList != 0 })

@@ -164,7 +164,7 @@ func (s *siblings) hashRemove(n *Node) {
 // findSchema is lyd_find_sibling_schema: the first instance of the schema node.
 func (t *Tree) findSchema(s *siblings, sn *schema.Node) *Node {
 	if opChild(sn) {
-		if inst := s.opInst(t, sn); len(inst) > 0 {
+		if inst := s.opInst(sn); len(inst) > 0 {
 			return inst[0]
 		}
 		return nil
@@ -181,7 +181,7 @@ func (t *Tree) schemaIndex(s *siblings, sn *schema.Node) int {
 		return -1
 	}
 	if opChild(sn) {
-		if inst := s.opInst(t, sn); len(inst) > 0 {
+		if inst := s.opInst(sn); len(inst) > 0 {
 			return t.indexFromEnd(s.list, inst[0])
 		}
 		return -1

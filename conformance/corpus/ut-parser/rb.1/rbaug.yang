@@ -4,6 +4,9 @@ module rbaug {
   prefix ra;
 
   import rb { prefix rb; }
+  import ietf-yang-metadata { prefix md; }
+
+  md:annotation a { type string; }
 
   augment "/rb:r/rb:input" {
     leaf y { type string; }
