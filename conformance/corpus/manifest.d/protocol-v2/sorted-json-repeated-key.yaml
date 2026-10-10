@@ -1,0 +1,16 @@
+fixtures:
+  - id: protocol-v2/sorted-json-repeated-key
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: parse-only list instances whose key member repeats ({"k":"a","k":"z"}): libyang links an instance once its first key is parsed, so its place in the sorted run is decided by that key, not by the later duplicate
+    rfc: ["RFC7950#7.7.7", "RFC7951#4"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2-sorted}]
+      format: json
+      data_type: data
+      unknown: reject
+      parse_only: true
+      data: '{"pv2-sorted:c":{"l":[{"k":"z"},{"k":"a","k":"z"},{"k":"a","k":"b"}]}}'
+    golden: golden/sorted-json-repeated-key.json

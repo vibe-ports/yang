@@ -1,0 +1,16 @@
+fixtures:
+  - id: protocol-v2/sorted-json-meta-before
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: @ll before a shuffled leaf-list: attached by position after the run is sorted
+    rfc: ["RFC7950#7.7.7"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2-sorted}]
+      format: json
+      data_type: data
+      unknown: reject
+      parse_only: true
+      data: '{"pv2-sorted:c":{"@ll":[{"pv2-sorted:a":"1"},{"pv2-sorted:a":"2"},{"pv2-sorted:a":"3"}],"ll":["c","a","b"]}}'
+    golden: golden/sorted-json-meta-before.json

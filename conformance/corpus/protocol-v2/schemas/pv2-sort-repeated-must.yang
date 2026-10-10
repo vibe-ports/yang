@@ -1,0 +1,14 @@
+module pv2-sort-repeated-must {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-sort-repeated-must";
+  prefix psrm;
+
+  container c {
+    list l {
+      key "a b";
+      must "false()";
+      leaf a { type string; }
+      leaf b { type string; }
+    }
+  }
+}

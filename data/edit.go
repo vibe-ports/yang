@@ -611,7 +611,8 @@ func (t *Tree) mergeSibling(lv *mergeLevel, src *Node) {
 		last := lv.pend[len(lv.pend)-1]
 		c := 1
 		if src.schema == last.schema {
-			c = compareSorted(last, src)
+			t.work.Add(1)
+			c = t.compareSorted(last, src)
 		}
 		switch {
 		case c == 0 && !isDupInstList(src.schema) && compareSingle(t, last, src, false):

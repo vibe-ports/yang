@@ -1,0 +1,20 @@
+# libyang v5.8.6: the first rpc input instance gets a repeated key after it is linked; lyd_hash
+# re-hashes it but its RB node stays (tree_data.c:836-842), and the later even then odd instances
+# are inserted by rb_insert_node (tree_data_sorted.c:669-716) and linked after their RB
+# predecessor (lyds_link_data_node, tree_data_sorted.c:1021-1040): ascending order.
+fixtures:
+  - id: protocol-v2/sorted-rpc-repeated-key-even-odd
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.7.7", "RFC7950#7.14"]
+    areas: [operations]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2-sort-rpc}]
+      format: json
+      data_type: rpc
+      unknown: reject
+      parse_only: true
+      data: '{"pv2-sort-rpc:r":{"l":[{"k":0,"k":0},{"k":2},{"k":4},{"k":6},{"k":1},{"k":3},{"k":5}]}}'
+    golden: golden/sorted-rpc-repeated-key-even-odd.json

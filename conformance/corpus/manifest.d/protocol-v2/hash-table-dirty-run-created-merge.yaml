@@ -1,0 +1,16 @@
+fixtures:
+  # Expectation basis: libyang v5.8.6 parse-only, then lyd_merge of the first pair again: the two ll values make the fourth child, so lyd_insert_hash builds the children table while the pair run is deferred, from the sibling order (tree_data_hash.c:181-197), where the second pair (x,y,b,c) already sorts before the first (x,y,bc) (rb_compare_lists, tree_data_sorted.c:235-270); both pairs hash on the declared keys alike, so the merge finds the second one first and updates B.
+  - id: protocol-v2/hash-table-dirty-run-created-merge
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.8.5", "RFC7951#4"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-hash-lyb}]
+      steps:
+        - {do: parse, format: json, data_type: config, parse_only: true, data: '{"pv2-hash-lyb:c":{"pair":[{"b":"y","b":"bc","a":"x","v":"A"},{"b":"y","b":"b","b":"c","a":"x","v":"B"}],"ll":[1,2]}}'}
+        - {do: edit, format: json, data_type: config, merge: '{"pv2-hash-lyb:c":{"pair":[{"b":"y","b":"bc","a":"x","v":"new"}]}}'}
+        - {do: dump, with_defaults: all}
+    golden: golden/hash-table-dirty-run-created-merge.json

@@ -1,0 +1,16 @@
+fixtures:
+  - id: protocol-v2/sorted-xml-shuffled
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: shuffled leaf-list with equal values and annotations, list with an equal key, state leaf-list with duplicates, values interleaved with another node
+    rfc: ["RFC7950#7.7.7"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2-sorted}]
+      format: xml
+      data_type: data
+      unknown: reject
+      parse_only: true
+      data: '<c xmlns="urn:vibe-ports:yang:conformance:pv2-sorted" xmlns:so="urn:vibe-ports:yang:conformance:pv2-sorted"><ll so:a="1">c</ll><ll so:a="2">a</ll><z>mid</z><ll so:a="3">b</ll><ll so:a="4">a</ll><l><k>b</k><v>1</v></l><l><k>a</k><v>2</v></l><l><k>b</k><v>3</v></l><st>z</st><st>y</st><st>z</st><st>x</st></c>'
+    golden: golden/sorted-xml-shuffled.json

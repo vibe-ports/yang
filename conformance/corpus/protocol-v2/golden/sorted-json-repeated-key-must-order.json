@@ -1,0 +1,97 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [
+    {
+      "apptag": null,
+      "code": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "data_path": "/pv2-sort-repeated-must:c/l[a='x'][a='a'][b='z']",
+      "level": "error",
+      "line": 1,
+      "msg": "List instance is missing its key \"b\".",
+      "phase": "data",
+      "schema_path": null,
+      "vecode": 9,
+      "vecode_name": "LYVE_DATA"
+    },
+    {
+      "apptag": null,
+      "code": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "data_path": "/ietf-yang-library:yang-library",
+      "level": "error",
+      "line": 0,
+      "msg": "Mandatory node \"content-id\" instance does not exist.",
+      "phase": "data",
+      "schema_path": null,
+      "vecode": 9,
+      "vecode_name": "LYVE_DATA"
+    },
+    {
+      "apptag": null,
+      "code": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "data_path": "/ietf-yang-library:modules-state",
+      "level": "error",
+      "line": 0,
+      "msg": "Mandatory node \"module-set-id\" instance does not exist.",
+      "phase": "data",
+      "schema_path": null,
+      "vecode": 9,
+      "vecode_name": "LYVE_DATA"
+    },
+    {
+      "apptag": "must-violation",
+      "code": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "data_path": "/pv2-sort-repeated-must:c/l[a='x'][a='a'][b='z']",
+      "level": "error",
+      "line": 0,
+      "msg": "Must condition \"false()\" not satisfied.",
+      "phase": "data",
+      "schema_path": null,
+      "vecode": 9,
+      "vecode_name": "LYVE_DATA"
+    },
+    {
+      "apptag": "must-violation",
+      "code": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "data_path": "/pv2-sort-repeated-must:c/l[a='x'][b='m']",
+      "level": "error",
+      "line": 0,
+      "msg": "Must condition \"false()\" not satisfied.",
+      "phase": "data",
+      "schema_path": null,
+      "vecode": 9,
+      "vecode_name": "LYVE_DATA"
+    }
+  ],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-sort-repeated-must",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 7,
+    "name": "LY_EVALID"
+  },
+  "tree": null,
+  "verdict": "invalid"
+}

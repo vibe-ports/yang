@@ -1,38 +1,95 @@
-// SPDX-License-Identifier: BSD-3-Clause
+// SPDX-License-Identifier: BSD-3-Clause AND ISC AND BSD-2-Clause
+// Ported from libyang v5.8.6 src/tree_data_sorted.c (rb_rotate_left, rb_rotate_right,
+// rb_insert_color, rb_insert_node) (BSD-3-Clause, © CESNET).
+//
+// RB tree routines derived from OpenBSD subr_tree.c 1.9 via libyang. libyang's file carries
+// "SPDX-License-Identifier: ISC AND BSD-2-Clause" and these copyright lines:
+//   Copyright 2002 Niels Provos <provos@citi.umich.edu>
+//   Copyright (c) 2016 David Gwynne <dlg@openbsd.org>
+// The permission notices below are verbatim from that OpenBSD file at revision 1.9:
+//
+// /*	$OpenBSD: subr_tree.c,v 1.9 2017/06/08 03:30:52 dlg Exp $ */
+//
+// /*
+//  * Copyright 2002 Niels Provos <provos@citi.umich.edu>
+//  * All rights reserved.
+//  *
+//  * Redistribution and use in source and binary forms, with or without
+//  * modification, are permitted provided that the following conditions
+//  * are met:
+//  * 1. Redistributions of source code must retain the above copyright
+//  *    notice, this list of conditions and the following disclaimer.
+//  * 2. Redistributions in binary form must reproduce the above copyright
+//  *    notice, this list of conditions and the following disclaimer in the
+//  *    documentation and/or other materials provided with the distribution.
+//  *
+//  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+//  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+//  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+//  * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+//  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+//  * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+//  * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+//  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+//  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+//  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//  */
+//
+// /*
+//  * Copyright (c) 2016 David Gwynne <dlg@openbsd.org>
+//  *
+//  * Permission to use, copy, modify, and distribute this software for any
+//  * purpose with or without fee is hereby granted, provided that the above
+//  * copyright notice and this permission notice appear in all copies.
+//  *
+//  * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+//  * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+//  * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+//  * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+//  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+//  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+//  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+//  */
 
 package data
 
-// dirtyOrder is the parser's ordered view of one deferred system-ordered operation run. The
-// physical sibling and operation-index slices remain in link order until publication. Equal
-// values are ordered by seq, matching rb_insert_node's insert-to-the-right stability.
+// dirtyOrder is the parser's copy of a system-ordered run's RB tree (lyds): the same red-black
+// algorithm and comparison direction as rb_insert_node and rb_insert_color
+// (tree_data_sorted.c:430-479,669-716), fed in the same order, so it has libyang's shape. The
+// shape matters once a repeated key has changed an instance after it was linked: libyang leaves
+// that instance where it is and later insertions compare its current keys on their way down
+// (rb_compare_lists, tree_data_sorted.c:235-270). The physical sibling and operation-index
+// slices hold link order while the run is dirty and in-order otherwise.
 type dirtyOrder struct {
-	root  *dirtyOrderNode
-	nodes map[*Node]*dirtyOrderNode
-	next  uint64
-	work  *workCounter
+	root    *dirtyOrderNode
+	nodes   map[*Node]*dirtyOrderNode
+	work    *workCounter
+	compare func(*Node, *Node) int
+	// leaders are the first-instance changes (lyds_link_data_node without a predecessor,
+	// tree_data_sorted.c:1021-1040) of the latest insertions, until applyLeaders applies them.
+	leaders [][2]*Node
 }
 
 type dirtyOrderNode struct {
 	node                *Node
 	left, right, parent *dirtyOrderNode
-	seq                 uint64
-	height, size        int
-	active              bool
+	size                int
+	red, active         bool
 }
 
-func newDirtyOrder(work *workCounter, nodes []*Node) *dirtyOrder {
-	d := &dirtyOrder{nodes: make(map[*Node]*dirtyOrderNode, len(nodes)), work: work}
+// newDirtyOrder starts the tree of a run. create inserts the nodes one by one as
+// lyds_additionally_create_rb_tree does (the first is the leader); otherwise the run already
+// had a tree before this parse, whose shape is not kept, and the nodes go in in their order.
+// It reports whether the given order was not sorted.
+func newDirtyOrder(work *workCounter, nodes []*Node, compare func(*Node, *Node) int, create bool) (*dirtyOrder, bool) {
+	d := &dirtyOrder{nodes: make(map[*Node]*dirtyOrderNode, len(nodes)), work: work, compare: compare}
+	moved := false
 	for _, n := range nodes {
-		d.insert(n)
+		if isMax, _ := d.insertNode(n, !create); !isMax {
+			moved = true
+		}
 	}
-	return d
-}
-
-func dirtyHeight(n *dirtyOrderNode) int {
-	if n == nil {
-		return 0
-	}
-	return n.height
+	return d, moved
 }
 
 func dirtySize(n *dirtyOrderNode) int {
@@ -43,89 +100,128 @@ func dirtySize(n *dirtyOrderNode) int {
 }
 
 func dirtyFix(n *dirtyOrderNode) {
-	if n == nil {
-		return
-	}
-	n.height = 1 + max(dirtyHeight(n.left), dirtyHeight(n.right))
 	n.size = dirtySize(n.left) + dirtySize(n.right)
 	if n.active {
 		n.size++
 	}
 }
 
-func (d *dirtyOrder) rotateLeft(n *dirtyOrderNode) *dirtyOrderNode {
+func (d *dirtyOrder) replaceChild(parent, old, x *dirtyOrderNode) {
+	switch {
+	case parent == nil:
+		d.root = x
+	case parent.left == old:
+		parent.left = x
+	default:
+		parent.right = x
+	}
+}
+
+// rotateLeft is rb_rotate_left (tree_data_sorted.c:374-400).
+func (d *dirtyOrder) rotateLeft(n *dirtyOrderNode) {
 	r := n.right
 	n.right = r.left
 	if r.left != nil {
 		r.left.parent = n
 	}
-	r.left, r.parent = n, n.parent
-	n.parent = r
+	r.parent = n.parent
+	d.replaceChild(n.parent, n, r)
+	r.left, n.parent = n, r
 	dirtyFix(n)
 	dirtyFix(r)
-	return r
 }
 
-func (d *dirtyOrder) rotateRight(n *dirtyOrderNode) *dirtyOrderNode {
+// rotateRight is rb_rotate_right (tree_data_sorted.c:402-428).
+func (d *dirtyOrder) rotateRight(n *dirtyOrderNode) {
 	l := n.left
 	n.left = l.right
 	if l.right != nil {
 		l.right.parent = n
 	}
-	l.right, l.parent = n, n.parent
-	n.parent = l
+	l.parent = n.parent
+	d.replaceChild(n.parent, n, l)
+	l.right, n.parent = n, l
 	dirtyFix(n)
 	dirtyFix(l)
-	return l
 }
 
-func (d *dirtyOrder) balance(n *dirtyOrderNode) *dirtyOrderNode {
-	dirtyFix(n)
-	switch b := dirtyHeight(n.left) - dirtyHeight(n.right); {
-	case b > 1:
-		if dirtyHeight(n.left.left) < dirtyHeight(n.left.right) {
-			n.left = d.rotateLeft(n.left)
-			n.left.parent = n
-		}
-		return d.rotateRight(n)
-	case b < -1:
-		if dirtyHeight(n.right.right) < dirtyHeight(n.right.left) {
-			n.right = d.rotateRight(n.right)
-			n.right.parent = n
-		}
-		return d.rotateLeft(n)
-	default:
-		return n
-	}
-}
-
-func (d *dirtyOrder) insert(n *Node) {
-	d.next++
-	x := &dirtyOrderNode{node: n, seq: d.next, height: 1, size: 1, active: true}
-	d.nodes[n] = x
-	var add func(**dirtyOrderNode, *dirtyOrderNode)
-	add = func(slot **dirtyOrderNode, parent *dirtyOrderNode) {
-		if *slot == nil {
-			x.parent = parent
-			*slot = x
-			return
-		}
-		d.work.Add(1) // one unit for each visited ordered-index node
-		cur := *slot
-		if c := compareSorted(n, cur.node); c < 0 || c == 0 && x.seq < cur.seq {
-			add(&cur.left, cur)
+// insertColor is rb_insert_color (tree_data_sorted.c:430-479).
+func (d *dirtyOrder) insertColor(x *dirtyOrderNode) {
+	for p := x.parent; p != nil && p.red; p = x.parent {
+		d.work.Add(1)
+		g := p.parent
+		if p == g.left {
+			if u := g.right; u != nil && u.red {
+				u.red, p.red, g.red = false, false, true
+				x = g
+				continue
+			}
+			if p.right == x {
+				d.rotateLeft(p)
+				p, x = x, p
+			}
+			p.red, g.red = false, true
+			d.rotateRight(g)
 		} else {
-			add(&cur.right, cur)
+			if u := g.left; u != nil && u.red {
+				u.red, p.red, g.red = false, false, true
+				x = g
+				continue
+			}
+			if p.left == x {
+				d.rotateRight(p)
+				p, x = x, p
+			}
+			p.red, g.red = false, true
+			d.rotateLeft(g)
 		}
-		oldParent := cur.parent
-		*slot = d.balance(cur)
-		(*slot).parent = oldParent
 	}
-	add(&d.root, nil)
+	d.root.red = false
 }
 
-// remove makes an unlinked parser node invisible without restructuring the AVL tree. Its key is
-// immutable for the lifetime of this parse, and inactive nodes still keep the tree balanced.
+// insert is rb_insert_node for a parser instance; it reports rb_insert_node's max (n follows
+// every instance, so linking it last keeps the physical order) and records a leader change.
+func (d *dirtyOrder) insert(n *Node) bool {
+	isMax, _ := d.insertNode(n, false)
+	return isMax
+}
+
+func (d *dirtyOrder) insertNode(n *Node, right bool) (isMax, leftmost bool) {
+	x := &dirtyOrderNode{node: n, size: 1, red: true, active: true}
+	d.nodes[n] = x
+	isMax, leftmost = true, true
+	var parent *dirtyOrderNode
+	left := false
+	for cur := d.root; cur != nil; {
+		d.work.Add(1) // one unit for each visited tree node
+		parent = cur
+		cur.size++
+		if left = !right && d.compare(cur.node, n) > 0; left {
+			cur, isMax = cur.left, false
+		} else {
+			cur, leftmost = cur.right, false
+		}
+	}
+	x.parent = parent
+	switch {
+	case parent == nil:
+		d.root = x
+		leftmost = false // the run's first instance is its leader already
+	case left:
+		parent.left = x
+	default:
+		parent.right = x
+	}
+	if leftmost {
+		d.leaders = append(d.leaders, [2]*Node{d.successor(n), n})
+	}
+	d.insertColor(x)
+	return isMax, leftmost
+}
+
+// remove makes an unlinked parser node invisible without restructuring the tree. rb_remove
+// would restructure it (tree_data_sorted.c:582-667); the shape differs only for later insertions
+// past an instance a repeated key moved out of value order (ponytail: no rb_remove port).
 func (d *dirtyOrder) remove(n *Node) {
 	x := d.nodes[n]
 	if x == nil || !x.active {

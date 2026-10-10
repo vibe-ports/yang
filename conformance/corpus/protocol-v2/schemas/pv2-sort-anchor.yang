@@ -1,0 +1,45 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module pv2-sort-anchor {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-sort-anchor";
+  prefix psa;
+
+  rpc r {
+    input {
+      leaf pre { type string; }
+      leaf-list v { type uint8; }
+      list l {
+        key k;
+        leaf k { type uint8; }
+      }
+      leaf post { type string; }
+    }
+    output {
+      leaf pre { type string; }
+      leaf-list v { type uint8; }
+      leaf post { type string; }
+    }
+  }
+
+  container c {
+    leaf pre { type string; }
+    leaf-list v { type uint8; }
+    list l {
+      key k;
+      leaf k { type uint8; }
+    }
+    leaf post { type string; }
+    action act {
+      input {
+        leaf pre { type string; }
+        leaf-list v { type uint8; }
+        list l {
+          key k;
+          leaf k { type uint8; }
+        }
+        leaf post { type string; }
+      }
+    }
+  }
+}

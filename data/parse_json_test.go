@@ -6,12 +6,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/schema"
+	"github.com/vibe-ports/yang/internal/xpath"
 )
 
 func parseJSONString(set *schema.Set, in string, unknown UnknownPolicy, multi bool) (*Tree, []yang.Diagnostic, error) {
@@ -21,6 +23,26 @@ func parseJSONString(set *schema.Set, in string, unknown UnknownPolicy, multi bo
 
 // noValidation keeps these parser tests at parse level (their expectations predate D8/D10).
 func noValidation(lc *lydCtx) { lc.validateNewImplicit, lc.validate = nil, nil }
+
+// cancelAfterErrContext models cancellation immediately after a caller's context checkpoint:
+// the checkpoint returns nil, but all subsequent observations see the cancellation.
+type cancelAfterErrContext struct {
+	context.Context
+	cancel  context.CancelFunc
+	checked bool
+}
+
+func (c *cancelAfterErrContext) Err() error {
+	if err := c.Context.Err(); err != nil {
+		return err
+	}
+	if !c.checked {
+		c.checked = true
+		c.cancel()
+		return nil
+	}
+	return c.Context.Err()
+}
 
 // TestParseJSON: lyd_parse_json against libyang v5.8.6 (the expectations are oracle probes over
 // the same schema; multi is LYD_VALIDATE_MULTI_ERROR). Validation (D8/D10) is not wired yet, so
@@ -89,6 +111,8 @@ func TestParseJSON(t *testing.T) {
 		{"list-key-order", rej, true, `{"pj:c": {"l2": [{"v": "x", "b": "2", "a": "1"}]}}`, []string{
 			"/pj:c", "/pj:c/l2[a='1'][b='2']", "/pj:c/l2[a='1'][b='2']/a=1", "/pj:c/l2[a='1'][b='2']/b=2",
 			"/pj:c/l2[a='1'][b='2']/v=x"}},
+		{"list-repeated-first-key-sort", rej, true, `{"pj:c": {"l2": [{"a": "x", "b": "z", "a": "a"}, {"a": "x", "b": "m"}]}}`, []string{
+			`LY_EVALID LYVE_DATA /pj:c/l2[a='x'][a='a'][b='z']||1: List instance is missing its key "b".`}},
 		{"augment-and-sorted", rej, true, `{"pk:top": "b", "pj:c": {"pk:ext": "e", "ll": [3, 1, 2]}, "pj:top": "a"}`, []string{
 			"/pj:c", "/pj:c/ll[.='1']=1", "/pj:c/ll[.='2']=2", "/pj:c/ll[.='3']=3", "/pj:c/pk:ext=e", "/pj:top=a",
 			"/pk:top=b"}},
@@ -222,6 +246,36 @@ func TestParseJSON(t *testing.T) {
 	}
 }
 
+// TestParseJSONRepeatedKeyMustOrder covers a malformed list retained for multi-error
+// validation after a key is repeated. libyang inserts the first instance before its repeated
+// key changes the current tuple from (x,z) to (x,a), then compares that current tuple when the
+// second instance (x,m) is inserted. Final must diagnostics therefore visit the malformed
+// instance first.
+func TestParseJSONRepeatedKeyMustOrder(t *testing.T) {
+	set := pjSchema()
+	c := set.Modules[1].Top[0]
+	l2 := schema.FindChild(c, nil, c.Module, "l2", 0)
+	if l2 == nil {
+		t.Fatal("l2 schema not found")
+	}
+	e, err := xpath.Compile("false()", testNS("pj"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	l2.Musts = []*schema.Must{{Src: "false()", Compiled: e}}
+	in := `{"pj:c":{"l2":[{"a":"x","b":"z","a":"a"},{"a":"x","b":"m"}]}}`
+	_, diags, err := parseWith(context.Background(), strings.NewReader(in), set,
+		parseOpts{ParseOptions: ParseOptions{Validate: ValidateOptions{MultiError: true}}}, parseJSON, nil)
+	want := []string{
+		`LY_EVALID LYVE_DATA /pj:c/l2[a='x'][a='a'][b='z']: List instance is missing its key "b".`,
+		`LY_EVALID LYVE_DATA /pj:c/l2[a='x'][a='a'][b='z']: Must condition "false()" not satisfied.`,
+		`LY_EVALID LYVE_DATA /pj:c/l2[a='x'][b='m']: Must condition "false()" not satisfied.`,
+	}
+	if err == nil || !reflect.DeepEqual(codes(diags), want) {
+		t.Fatalf("diagnostics:\n got  %q\n want %q\nerror: %v", codes(diags), want, err)
+	}
+}
+
 // TestParseJSONUnsupported: anydata/anyxml instances are yang.ErrUnsupported (U-0043); RPCs in
 // datastore data are rejected as libyang does.
 func TestParseJSONUnsupported(t *testing.T) {
@@ -311,12 +365,53 @@ func FuzzParseJSON(f *testing.F) {
 	})
 }
 
+// TestParseLazySortCancellation covers cancellation immediately after the final node-count
+// checkpoint, with a large shuffled system-ordered run still waiting for its deferred sort.
+// Both format parsers must propagate the lazy sort's cancellation instead of returning a tree.
+func TestParseLazySortCancellation(t *testing.T) {
+	set := pjSchema()
+	c := set.Modules[1].Top[0]
+	ls := &schema.Node{Kind: schema.LeafList, Name: "cancel-ls", Module: c.Module, Parent: c,
+		Type: &schema.Type{Base: schema.String}, Config: true}
+	c.Children = append(c.Children, ls)
+	const n = 1500                              // one 1024-node checkpoint, followed by a substantial deferred run
+	perm := rand.New(rand.NewSource(1)).Perm(n) //nolint:gosec // a fixed, reproducible shuffle
+	var jsonIn, xmlIn strings.Builder
+	jsonIn.WriteString(`{"pj:c":{"cancel-ls":[`)
+	xmlIn.WriteString(`<c xmlns="urn:pj">`)
+	for i, v := range perm {
+		if i > 0 {
+			jsonIn.WriteByte(',')
+		}
+		fmt.Fprintf(&jsonIn, `"v%07d"`, v)
+		fmt.Fprintf(&xmlIn, `<cancel-ls>v%07d</cancel-ls>`, v)
+	}
+	jsonIn.WriteString(`]}}`)
+	xmlIn.WriteString(`</c>`)
+
+	for _, tc := range []struct {
+		name string
+		in   string
+		fp   formatParser
+	}{{"json", jsonIn.String(), parseJSON}, {"xml", xmlIn.String(), parseXML}} {
+		t.Run(tc.name, func(t *testing.T) {
+			base, cancel := context.WithCancel(context.Background())
+			ctx := &cancelAfterErrContext{Context: base, cancel: cancel}
+			t.Cleanup(cancel)
+			tr, diags, err := parseWith(ctx, strings.NewReader(tc.in), set,
+				parseOpts{ParseOptions: ParseOptions{ParseOnly: true}}, tc.fp, nil)
+			if tr != nil || len(diags) != 0 || !errors.Is(err, context.Canceled) || !ctx.checked {
+				t.Fatalf("tree %v, diagnostics %v, error %v, checkpoint %v", tr != nil, diags, err, ctx.checked)
+			}
+		})
+	}
+}
+
 // TestParseJSONLinear: attaching metadata is linear in the number of siblings. work counts the
 // insertions and every sibling visit: those of siblings.all and siblings.indexOf (which any
 // sibling scan goes through, the quadratic ones of the old parser included) and the parser's own
-// slice walks; 4× the input must cost about 4× the work. Cases: a
-// leaf-list metadata array after and before its instances, and the metadata of many opaque
-// siblings after and before them.
+// slice walks; work(4N) must be at most 6× work(N). The system-ordered cases cover sorted,
+// reverse, shuffled and duplicate-heavy inputs; metadata also appears before and after nodes.
 func TestParseJSONLinear(t *testing.T) {
 	set := pjSchema()
 	c := set.Modules[1].Top[0]
@@ -332,6 +427,9 @@ func TestParseJSONLinear(t *testing.T) {
 	values := func(n int) string {
 		return `"ls": [` + join(n, func(i int) string { return fmt.Sprintf(`"v%07d"`, i) }) + `]`
 	}
+	valuesBy := func(n int, at func(i int) int) string {
+		return `"ls": [` + join(n, func(i int) string { return fmt.Sprintf(`"v%07d"`, at(i)) }) + `]`
+	}
 	metas := func(n int) string { return `"@ls": [` + join(n, func(int) string { return `{"pj:ann": "a"}` }) + `]` }
 	opaq := func(n int) string { return join(n, func(i int) string { return fmt.Sprintf(`"q%d": 1`, i) }) }
 	attrs := func(n int) string {
@@ -343,6 +441,16 @@ func TestParseJSONLinear(t *testing.T) {
 		in      func(n int) string
 	}{
 		{"leaf-list-after", Reject, func(n int) string { return values(n) + ", " + metas(n) }},
+		{"leaf-list-singleton-members", Reject, func(n int) string {
+			// one member per value, each followed by its metadata: every "@ls" reads the run
+			return join(n, func(i int) string { return fmt.Sprintf(`"ls": ["v%07d"], "@ls": [null]`, i) })
+		}},
+		{"leaf-list-shuffled", Reject, func(n int) string {
+			p := rand.New(rand.NewSource(1)).Perm(n) //nolint:gosec // a fixed, reproducible shuffle
+			return `"ls": [` + join(n, func(i int) string { return fmt.Sprintf(`"v%07d"`, p[i]) }) + `], ` + metas(n)
+		}},
+		{"leaf-list-reverse", Reject, func(n int) string { return valuesBy(n, func(i int) int { return n - i }) }},
+		{"leaf-list-duplicate-heavy", Reject, func(n int) string { return valuesBy(n, func(i int) int { return i % 8 }) }},
 		{"leaf-list-before", Reject, func(n int) string { return metas(n) + ", " + values(n) }},
 		{"opaque-after", Opaque, func(n int) string { return opaq(n) + ", " + attrs(n) }},
 		{"opaque-before", Opaque, func(n int) string { return attrs(n) + ", " + opaq(n) }},
@@ -354,12 +462,12 @@ func TestParseJSONLinear(t *testing.T) {
 				o := parseOpts{ParseOptions: ParseOptions{Unknown: tc.unknown, ParseOnly: true}}
 				in := `{"pj:c": {` + tc.in(n) + `}}`
 				if _, diags, err := parseWith(context.Background(), strings.NewReader(in), set, o, parseJSON,
-					func(l *lydCtx) { lc = l; l.tree.work.visits = true }); err != nil {
+					func(l *lydCtx) { lc = l; l.tree.work.visits, l.tree.work.shifts = true, true }); err != nil {
 					t.Fatalf("%v %v", err, diags)
 				}
 				return int(lc.tree.work.Load())
 			}
-			if w1, w4 := work(1000), work(4000); w4 > 5*w1 {
+			if w1, w4 := work(1000), work(4000); w4 > 6*w1 {
 				t.Fatalf("work %d for 1000 siblings, %d for 4000: not linear", w1, w4)
 			}
 		})

@@ -381,7 +381,9 @@ func (p *jsonParser) checkOpaq(sn *schema.Node) (h types.Hints, err error) {
 func (p *jsonParser) metadataFinish(parent *Node) error {
 	lc := p.lc
 	sib := lc.tree.childrenOf(parent)
-	lc.flushDirty(sib)
+	if err := lc.flushDirty(sib); err != nil {
+		return err
+	}
 	var ats []*Node
 	byName := map[string][]*Node{} // opaque siblings by name, in order
 	for _, n := range sib.opq {
@@ -551,17 +553,17 @@ func (p *jsonParser) metaAttr(node *Node, idx int) (rc error) {
 	}
 	prev, instance := node, 0
 	next := func(i int) *Node { return sibAt(prev.siblingsOf(), i) }
-	var pastRun func() *Node // the sibling after a contiguous operation run, located on demand
-	if nodetype == schema.LeafList && opChild(node.schema) {
+	var pastRun func() *Node // the sibling after a contiguous run, located on demand
+	if nodetype == schema.LeafList {
 		// parseAttribute found the first instance in document order. lydjson_meta_attr then uses
 		// node->next, so a different schema node ends the metadata-to-instance coupling even when
 		// more instances of this operation child occur after it.
 		sib := node.siblingsOf()
 		if ord := lc.dirtyOrd[dirtyRun{sib, node.schema}]; ord != nil {
-			// The deferred run's AVL order is the node->next order libyang's already-linked
+			// The deferred run's tree order is the node->next order libyang's already-linked
 			// RB tree exposes. The physical sibling after the run is needed only to name a
 			// representation error.
-			d := sib.opIdx[node.schema]
+			sn := node.schema
 			current := node
 			idx = 0
 			next = func(_ int) *Node {
@@ -570,7 +572,11 @@ func (p *jsonParser) metaAttr(node *Node, idx int) (rc error) {
 					return current
 				}
 				pastRun = func() *Node {
-					return sibAt(sib, lc.position(sib, d.list[len(d.list)-1])+1)
+					if d := sib.opIdx[sn]; d != nil {
+						return sibAt(sib, lc.position(sib, d.list[len(d.list)-1])+1)
+					}
+					_, hi := lc.tree.runBounds(sib, prev)
+					return sibAt(sib, hi)
 				}
 				return nil
 			}
@@ -591,7 +597,7 @@ func (p *jsonParser) metaAttr(node *Node, idx int) (rc error) {
 				}
 				return nil
 			}
-		} else {
+		} else if opChild(node.schema) {
 			// ponytail: a run split by the anchor (bounded split boundaries, #240) is located by
 			// a counted scan from the nearer end.
 			idx = lc.position(sib, node)
@@ -882,7 +888,7 @@ func (p *jsonParser) parseAttribute(attrNode *Node, sn *schema.Node, name, prefi
 			} else {
 				attrNode = lc.tree.documentFirst(sib, sn)
 			}
-			if attrNode != nil && sn.Kind == schema.LeafList && !opChild(sn) {
+			if attrNode != nil && sn.Kind == schema.LeafList && !opChild(sn) && lc.dirtyOrd[dirtyRun{sib, sn}] == nil {
 				idx = lc.tree.schemaIndex(sib, sn)
 			}
 		}

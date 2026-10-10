@@ -1,0 +1,182 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-sort-keys",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"pv2-sort-keys:c\": {\n    \"l\": [\n      {\n        \"a\": \"q\",\n        \"b\": \"x\",\n        \"b\": \"a\"\n      },\n      {\n        \"a\": \"q\",\n        \"b\": \"x\",\n        \"b\": \"z\"\n      }\n    ]\n  }\n}\n",
+    "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-sort-keys\">\n  <l>\n    <a>q</a>\n    <b>x</b>\n    <b>a</b>\n  </l>\n  <l>\n    <a>q</a>\n    <b>x</b>\n    <b>z</b>\n  </l>\n</c>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sort-keys:c",
+      "schema": "/pv2-sort-keys:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sort-keys:c/l[a='q'][b='x'][b='a']",
+      "schema": "/pv2-sort-keys:c/l",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sort-keys:c/l[a='q'][b='x'][b='a']/a",
+      "schema": "/pv2-sort-keys:c/l/a",
+      "value": {
+        "canonical": "q",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sort-keys:c/l[a='q'][b='x'][b='a']/b",
+      "schema": "/pv2-sort-keys:c/l/b",
+      "value": {
+        "canonical": "x",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sort-keys:c/l[a='q'][b='x'][b='a']/b",
+      "schema": "/pv2-sort-keys:c/l/b",
+      "value": {
+        "canonical": "a",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sort-keys:c/l[a='q'][b='x'][b='z']",
+      "schema": "/pv2-sort-keys:c/l",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sort-keys:c/l[a='q'][b='x'][b='z']/a",
+      "schema": "/pv2-sort-keys:c/l/a",
+      "value": {
+        "canonical": "q",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sort-keys:c/l[a='q'][b='x'][b='z']/b",
+      "schema": "/pv2-sort-keys:c/l/b",
+      "value": {
+        "canonical": "x",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sort-keys:c/l[a='q'][b='x'][b='z']/b",
+      "schema": "/pv2-sort-keys:c/l/b",
+      "value": {
+        "canonical": "z",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

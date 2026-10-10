@@ -1,0 +1,16 @@
+fixtures:
+  # Expectation basis: libyang v5.8.6 src/tree_data_hash.c:55-66 feeds every leading key's LYB bytes to lyht_hash_multi, which without xxhash (the oracle build) is a running byte hash (src/hash_table.c:34-64), so the key runs a,bc and a,b,c hash alike; src/tree_data.c:1714-1716,1758-1785 (lyd_compare_single_data) then needs that equal hash and compares only the declared key k. without a children hash table (one child: lyd_find_sibling_first compares each sibling with lyd_compare_single)
+  - id: protocol-v2/hash-repeated-key-concat-merge-noht
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.8.5", "RFC7951#4"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-sorted}]
+      steps:
+        - {do: parse, format: json, data_type: config, parse_only: true, data: '{"pv2-sorted:c":{"l":[{"k":"a","k":"bc","v":"1"}]}}'}
+        - {do: edit, format: json, data_type: config, merge: '{"pv2-sorted:c":{"l":[{"k":"a","k":"b","k":"c","v":"2"}]}}'}
+        - {do: dump, with_defaults: all}
+    golden: golden/hash-repeated-key-concat-merge-noht.json

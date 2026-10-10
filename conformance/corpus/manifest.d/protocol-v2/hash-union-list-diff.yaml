@@ -1,0 +1,16 @@
+fixtures:
+  # Expectation basis: libyang v5.8.6 src/tree_data_hash.c:47-66 uses each key's LY_VALUE_LYB bytes, src/tree_data.c:1714-1717 rejects a hash mismatch before positional key comparison, and src/plugins_types/union.c:633-666 includes the int8/string member index in those bytes.
+  - id: protocol-v2/hash-union-list-diff
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.8.5", "RFC7950#9.12", "RFC7951#6.10"]
+    areas: [types, codecs, diff]
+    request:
+      op: diff
+      searchdirs: [schemas]
+      modules: [{name: pv2-hash-lyb}]
+      format: json
+      data_type: config
+      first: '{"pv2-hash-lyb:c":{"l":[{"k":1}]}}'
+      second: '{"pv2-hash-lyb:c":{"l":[{"k":"1"}]}}'
+    golden: golden/hash-union-list-diff.json

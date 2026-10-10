@@ -1,0 +1,16 @@
+fixtures:
+  # Expectation basis: libyang v5.8.6 src/tree_data.c:684-702,836-842 captures the hash when leading children match keys a,b, while src/tree_data_hash.c:47-66 hashes all leading key-flagged children; src/validation.c:651-672 then performs duplicate checks using that hash/comparison.
+  - id: protocol-v2/hash-multikey-aba-merge-validate
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.8.5", "RFC7951#4"]
+    areas: [codecs, validation, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-hash-lyb}]
+      steps:
+        - {do: parse, format: json, data_type: config, parse_only: true, data: '{"pv2-hash-lyb:c":{"pair":[{"a":"dst","b":"dst"}]}}'}
+        - {do: edit, format: json, data_type: config, merge: '{"pv2-hash-lyb:c":{"pair":[{"a":"x","b":"y","a":"z","v":"aba"}]}}'}
+        - {do: validate, data_type: config, validate_options: [multi_error]}
+    golden: golden/hash-multikey-aba-merge-validate.json

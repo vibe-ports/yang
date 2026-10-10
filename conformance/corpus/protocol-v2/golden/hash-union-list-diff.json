@@ -1,0 +1,140 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "diff": {
+    "json": "{\n  \"pv2-hash-lyb:c\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"l\": [\n      {\n        \"@\": {\n          \"yang:operation\": \"create\"\n        },\n        \"k\": \"1\"\n      },\n      {\n        \"@\": {\n          \"yang:operation\": \"delete\"\n        },\n        \"k\": 1\n      }\n    ]\n  }\n}\n",
+    "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-hash-lyb\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <l yang:operation=\"create\">\n    <k>1</k>\n  </l>\n  <l yang:operation=\"delete\">\n    <k>1</k>\n  </l>\n</c>\n"
+  },
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-hash-lyb",
+      "revision": null
+    }
+  ],
+  "op": "diff",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [
+        {
+          "module": "yang",
+          "name": "operation",
+          "value": "none"
+        }
+      ],
+      "opaque": null,
+      "path": "/pv2-hash-lyb:c",
+      "schema": "/pv2-hash-lyb:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [
+        {
+          "module": "yang",
+          "name": "operation",
+          "value": "create"
+        }
+      ],
+      "opaque": null,
+      "path": "/pv2-hash-lyb:c/l[k='1']",
+      "schema": "/pv2-hash-lyb:c/l",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-hash-lyb:c/l[k='1']/k",
+      "schema": "/pv2-hash-lyb:c/l/k",
+      "value": {
+        "canonical": "1",
+        "type": "union",
+        "typedef": "number-or-text",
+        "union_member": {
+          "index": 1,
+          "realtype": {
+            "type": "string",
+            "typedef": null
+          },
+          "type": "string",
+          "typedef": null
+        }
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [
+        {
+          "module": "yang",
+          "name": "operation",
+          "value": "delete"
+        }
+      ],
+      "opaque": null,
+      "path": "/pv2-hash-lyb:c/l[k='1']",
+      "schema": "/pv2-hash-lyb:c/l",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-hash-lyb:c/l[k='1']/k",
+      "schema": "/pv2-hash-lyb:c/l/k",
+      "value": {
+        "canonical": "1",
+        "type": "union",
+        "typedef": "number-or-text",
+        "union_member": {
+          "index": 0,
+          "realtype": {
+            "type": "int8",
+            "typedef": null
+          },
+          "type": "int8",
+          "typedef": null
+        }
+      }
+    }
+  ],
+  "verdict": "valid"
+}

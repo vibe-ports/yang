@@ -1,0 +1,16 @@
+fixtures:
+  # Expectation basis: libyang v5.8.6 parse-only, then lyd_merge of the first pair again: the table already exists when the pairs arrive, so each registers when it is linked (lyd_insert_hash, tree_data_hash.c:181-197) in input order, and the merge finds the first input pair first and updates A.
+  - id: protocol-v2/hash-table-dirty-run-existing-merge
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.8.5", "RFC7951#4"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-hash-lyb}]
+      steps:
+        - {do: parse, format: json, data_type: config, parse_only: true, data: '{"pv2-hash-lyb:c":{"ll":[1,2,3,4],"pair":[{"b":"y","b":"bc","a":"x","v":"A"},{"b":"y","b":"b","b":"c","a":"x","v":"B"}]}}'}
+        - {do: edit, format: json, data_type: config, merge: '{"pv2-hash-lyb:c":{"pair":[{"b":"y","b":"bc","a":"x","v":"new"}]}}'}
+        - {do: dump, with_defaults: all}
+    golden: golden/hash-table-dirty-run-existing-merge.json

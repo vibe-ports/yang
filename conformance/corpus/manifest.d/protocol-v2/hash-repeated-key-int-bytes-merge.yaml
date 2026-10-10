@@ -1,0 +1,16 @@
+fixtures:
+  # Expectation basis: libyang v5.8.6 src/plugins_types/integer.c:518-560 prints an integer's LYB as its little-endian bytes up to the highest set bit, src/tree_data_hash.c:55-66 feeds those of every leading key to lyht_hash_multi, a running byte hash without xxhash (src/hash_table.c:34-64), so int32 key runs 1,2,3 (01 02 03) and 1,770 (01, 02 03) hash alike; src/tree_data.c:1714-1716,1758-1785 then compares only the declared key k, and the merge finds the parsed instance.
+  - id: protocol-v2/hash-repeated-key-int-bytes-merge
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.8.5", "RFC7951#4"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-sort-rpc}]
+      steps:
+        - {do: parse, format: json, data_type: config, parse_only: true, data: '{"pv2-sort-rpc:c":{"l":[{"k":1,"k":2,"k":3}]}}'}
+        - {do: edit, format: json, data_type: config, merge: '{"pv2-sort-rpc:c":{"l":[{"k":1,"k":770}]}}'}
+        - {do: dump, with_defaults: all}
+    golden: golden/hash-repeated-key-int-bytes-merge.json

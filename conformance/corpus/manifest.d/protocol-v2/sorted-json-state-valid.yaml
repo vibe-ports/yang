@@ -1,0 +1,15 @@
+fixtures:
+  - id: protocol-v2/sorted-json-state-valid
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: validated: state leaf-list duplicates allowed and kept in input order among equals, lists sorted by key
+    rfc: ["RFC7950#7.7.7"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2-sorted}]
+      format: json
+      data_type: get
+      unknown: reject
+      data: '{"pv2-sorted:c":{"st":["b","a","b","a"],"l":[{"k":"c"},{"k":"a"},{"k":"b"}],"ll":["y","x"]}}'
+    golden: golden/sorted-json-state-valid.json

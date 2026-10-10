@@ -1,0 +1,311 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-sorted",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-sorted:c",
+          "schema": "/pv2-sorted:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-sorted:c/l[k='a'][k='bc']",
+          "schema": "/pv2-sorted:c/l",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-sorted:c/l[k='a'][k='bc']/k",
+          "schema": "/pv2-sorted:c/l/k",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-sorted:c/l[k='a'][k='bc']/k",
+          "schema": "/pv2-sorted:c/l/k",
+          "value": {
+            "canonical": "bc",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-sorted:c/l[k='a'][k='bc']/v",
+          "schema": "/pv2-sorted:c/l/v",
+          "value": {
+            "canonical": "1",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "edit",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-sorted:c",
+          "schema": "/pv2-sorted:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-sorted:c/l[k='a'][k='bc']",
+          "schema": "/pv2-sorted:c/l",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-sorted:c/l[k='a'][k='bc']/k",
+          "schema": "/pv2-sorted:c/l/k",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-sorted:c/l[k='a'][k='bc']/k",
+          "schema": "/pv2-sorted:c/l/k",
+          "value": {
+            "canonical": "bc",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-sorted:c/l[k='a'][k='bc']/v",
+          "schema": "/pv2-sorted:c/l/v",
+          "value": {
+            "canonical": "2",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "dump",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "tree": {
+        "json": "{\n  \"pv2-sorted:c\": {\n    \"l\": [\n      {\n        \"k\": \"a\",\n        \"k\": \"bc\",\n        \"v\": \"2\"\n      }\n    ]\n  }\n}\n",
+        "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-sorted\">\n  <l>\n    <k>a</k>\n    <k>bc</k>\n    <v>2</v>\n  </l>\n</c>\n"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-sorted:c",
+          "schema": "/pv2-sorted:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-sorted:c/l[k='a'][k='bc']",
+          "schema": "/pv2-sorted:c/l",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-sorted:c/l[k='a'][k='bc']/k",
+          "schema": "/pv2-sorted:c/l/k",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-sorted:c/l[k='a'][k='bc']/k",
+          "schema": "/pv2-sorted:c/l/k",
+          "value": {
+            "canonical": "bc",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-sorted:c/l[k='a'][k='bc']/v",
+          "schema": "/pv2-sorted:c/l/v",
+          "value": {
+            "canonical": "2",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

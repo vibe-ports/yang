@@ -1,0 +1,16 @@
+fixtures:
+  - id: protocol-v2/sorted-json-repeated-member
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: one leaf-list in two members with another member between: one sorted run
+    rfc: ["RFC7950#7.7.7"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2-sorted}]
+      format: json
+      data_type: data
+      unknown: reject
+      parse_only: true
+      data: '{"pv2-sorted:c":{"ll":["d","b"],"z":"mid","ll":["c","a","b"],"l":[{"k":"y"}],"l":[{"k":"x"}]}}'
+    golden: golden/sorted-json-repeated-member.json

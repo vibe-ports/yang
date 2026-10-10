@@ -1,0 +1,21 @@
+# libyang v5.8.6: parser_json.c calls lyd_parser_node_insert after every child, but each instance
+# enters the parent RB tree only when its late "a" makes the leading children a,b,b; the first input
+# instance enters before the second. rb_compare_lists then compares every leading key-flagged child:
+# q=q, x=x, and the second instance's third child b=a sorts before the first instance's b=z, so the
+# second input instance is dumped first.
+fixtures:
+  - id: protocol-v2/sorted-json-repeated-leading-key
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.7.7", "RFC7951#4"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2-sort-keys}]
+      format: json
+      data_type: data
+      unknown: reject
+      parse_only: true
+      data: '{"pv2-sort-keys:c":{"l":[{"b":"x","b":"z","a":"q"},{"b":"x","b":"a","a":"q"}]}}'
+    golden: golden/sorted-json-repeated-leading-key.json

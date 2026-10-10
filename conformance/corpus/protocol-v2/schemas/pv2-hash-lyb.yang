@@ -1,0 +1,43 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module pv2-hash-lyb {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-hash-lyb";
+  prefix phl;
+
+  typedef number-or-text {
+    type union {
+      type int8;
+      type string;
+    }
+  }
+
+  container c {
+    list l {
+      key "k";
+      leaf k {
+        type number-or-text;
+      }
+      leaf v {
+        type string;
+      }
+    }
+
+    leaf-list ll {
+      type number-or-text;
+    }
+
+    list pair {
+      key "a b";
+      leaf a {
+        type string;
+      }
+      leaf b {
+        type string;
+      }
+      leaf v {
+        type string;
+      }
+    }
+  }
+}

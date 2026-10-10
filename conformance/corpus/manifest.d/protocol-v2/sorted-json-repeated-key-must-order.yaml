@@ -1,0 +1,24 @@
+fixtures:
+  - id: protocol-v2/sorted-json-repeated-key-must-order
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: a repeated key mutates an already-linked list before the next instance is incrementally inserted
+    rfc: ["RFC7950#7.5.3", "RFC7950#7.7.7", "RFC7951#4"]
+    areas: [validation, codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2-sort-repeated-must}]
+      format: json
+      data_type: data
+      unknown: reject
+      validate_options: [multi_error]
+      data: '{"pv2-sort-repeated-must:c":{"l":[{"a":"x","b":"z","a":"a"},{"a":"x","b":"m"}]}}'
+    golden: golden/sorted-json-repeated-key-must-order.json
+    assert:
+      verdict: invalid
+      diagnostics:
+        - {vecode_name: LYVE_DATA, data_path: "/pv2-sort-repeated-must:c/l[a='x'][a='a'][b='z']"}
+        - {vecode_name: LYVE_DATA, data_path: "/pv2-sort-repeated-must:c/l[a='x'][a='a'][b='z']", apptag: must-violation}
+        - {vecode_name: LYVE_DATA, data_path: "/pv2-sort-repeated-must:c/l[a='x'][b='m']", apptag: must-violation}
+      rfc: ["RFC7950#7.5.3", "RFC7950#7.7.7"]
+      deviation: null

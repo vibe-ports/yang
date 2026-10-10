@@ -1,0 +1,16 @@
+fixtures:
+  - id: protocol-v2/merge-repeated-key
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: parse-only list instances repeat their JSON key member; libyang preserves both malformed instances even though their leading key values match
+    rfc: ["RFC7950#7.8.5", "RFC7951#4"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-sorted}]
+      steps:
+        - {do: edit, set: {path: "/pv2-sorted:c/l[k='m']", value: ""}}
+        - {do: edit, set: {path: "/pv2-sorted:c/l[k='z']", value: ""}}
+        - {do: edit, merge: '{"pv2-sorted:c":{"l":[{"k":"a","k":"b","v":"1"},{"k":"a","k":"c","v":"2"}]}}', data_type: config}
+        - {do: dump, with_defaults: all}
+    golden: golden/merge-repeated-key.json

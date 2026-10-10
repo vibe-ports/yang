@@ -1,0 +1,16 @@
+fixtures:
+  # Expectation basis: libyang v5.8.6 src/tree_data.c:684-702,836-842 leaves the list unhashed while leading children are a,a instead of positional a,b; src/tree_data_hash.c:47-66 defines the eventual list hash and src/validation.c:651-672 applies hash-aware duplicate validation.
+  - id: protocol-v2/hash-multikey-aab-merge-validate
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.8.5", "RFC7951#4"]
+    areas: [codecs, validation, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-hash-lyb}]
+      steps:
+        - {do: parse, format: json, data_type: config, parse_only: true, data: '{"pv2-hash-lyb:c":{"pair":[{"a":"dst","b":"dst"}]}}'}
+        - {do: edit, format: json, data_type: config, merge: '{"pv2-hash-lyb:c":{"pair":[{"a":"x","a":"z","b":"y","v":"aab"}]}}'}
+        - {do: validate, data_type: config, validate_options: [multi_error]}
+    golden: golden/hash-multikey-aab-merge-validate.json

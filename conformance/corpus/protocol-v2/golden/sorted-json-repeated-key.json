@@ -1,0 +1,177 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-sorted",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"pv2-sorted:c\": {\n    \"l\": [\n      {\n        \"k\": \"a\",\n        \"k\": \"z\"\n      },\n      {\n        \"k\": \"a\",\n        \"k\": \"b\"\n      },\n      {\n        \"k\": \"z\"\n      }\n    ]\n  }\n}\n",
+    "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-sorted\">\n  <l>\n    <k>a</k>\n    <k>z</k>\n  </l>\n  <l>\n    <k>a</k>\n    <k>b</k>\n  </l>\n  <l>\n    <k>z</k>\n  </l>\n</c>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sorted:c",
+      "schema": "/pv2-sorted:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sorted:c/l[k='a'][k='z']",
+      "schema": "/pv2-sorted:c/l",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sorted:c/l[k='a'][k='z']/k",
+      "schema": "/pv2-sorted:c/l/k",
+      "value": {
+        "canonical": "a",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sorted:c/l[k='a'][k='z']/k",
+      "schema": "/pv2-sorted:c/l/k",
+      "value": {
+        "canonical": "z",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sorted:c/l[k='a'][k='b']",
+      "schema": "/pv2-sorted:c/l",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sorted:c/l[k='a'][k='b']/k",
+      "schema": "/pv2-sorted:c/l/k",
+      "value": {
+        "canonical": "a",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sorted:c/l[k='a'][k='b']/k",
+      "schema": "/pv2-sorted:c/l/k",
+      "value": {
+        "canonical": "b",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sorted:c/l[k='z']",
+      "schema": "/pv2-sorted:c/l",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sorted:c/l[k='z']/k",
+      "schema": "/pv2-sorted:c/l/k",
+      "value": {
+        "canonical": "z",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

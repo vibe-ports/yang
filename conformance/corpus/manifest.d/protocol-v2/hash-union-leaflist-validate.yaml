@@ -1,0 +1,17 @@
+fixtures:
+  # Expectation basis: libyang v5.8.6 src/tree_data_hash.c:68-77 hashes leaf-list values in LYB form, src/plugins_types/union.c:633-666 writes the union member index, and src/validation.c:651-672 uses the resulting hash/comparison for duplicate validation.
+  - id: protocol-v2/hash-union-leaflist-validate
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.7", "RFC7950#9.12", "RFC7951#5.4", "RFC7951#6.10"]
+    areas: [types, codecs, validation]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2-hash-lyb}]
+      format: json
+      data_type: config
+      unknown: reject
+      validate_options: [multi_error]
+      data: '{"pv2-hash-lyb:c":{"ll":[1,"1"]}}'
+    golden: golden/hash-union-leaflist-validate.json

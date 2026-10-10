@@ -106,8 +106,24 @@ func compareSorted(a, b *Node) int {
 	if a.schema.Kind == schema.LeafList {
 		return types.Compare(a.value, b.value)
 	}
-	for i := 0; i < len(a.kids.list) && i < len(b.kids.list); i++ {
-		ka, kb := a.kids.list[i], b.kids.list[i]
+	return compareKeyRuns(nil, a.kids.list, b.kids.list)
+}
+
+func (t *Tree) compareSorted(a, b *Node) int {
+	if a.schema.Kind == schema.LeafList {
+		return types.Compare(a.value, b.value)
+	}
+	return compareKeyRuns(&t.work, a.kids.list, b.kids.list)
+}
+
+// compareKeyRuns is rb_compare_lists (tree_data_sorted.c:235-270): compare every
+// leading key pair, with equality when either run ends, including a proper prefix.
+func compareKeyRuns(work *workCounter, a, b []*Node) int {
+	for i := range min(len(a), len(b)) {
+		if work != nil {
+			work.Add(1)
+		}
+		ka, kb := a[i], b[i]
 		if !ka.isKey() || !kb.isKey() {
 			break
 		}
@@ -137,7 +153,7 @@ const (
 //     new one (refused when it already has one, D-0118). Every transition is replayed in order,
 //     not only old first → final first: the intermediate removals are observable.
 //
-// The parser defers the sort: appendSortedOperation applies reorderExact to the instances that
+// The parser defers the sort: appendSorted applies reorderExact to the instances that
 // existed when the run got its RB tree, and flushDirtyRun applies reorderFirst to the whole run
 // in sibling order (those instances, then the parsed ones in parse order), which is the order
 // lyds_insert linked them in. One counted comparison per instance and mode.
@@ -152,7 +168,7 @@ func (t *Tree) applyRunReorderHash(sib *siblings, before []*Node, mode reorderHa
 	for _, n := range before[1:] {
 		if mode&reorderExact != 0 {
 			t.work.Add(1)
-			if compareSorted(maximum, n) <= 0 { // equal values extend the running maximum
+			if t.compareSorted(maximum, n) <= 0 { // equal values extend the running maximum
 				maximum = n
 			} else {
 				sib.hashRemove(n)
@@ -161,7 +177,7 @@ func (t *Tree) applyRunReorderHash(sib *siblings, before []*Node, mode reorderHa
 		}
 		if mode&reorderFirst != 0 {
 			t.work.Add(1)
-			if compareSorted(n, minimum) < 0 {
+			if t.compareSorted(n, minimum) < 0 {
 				sib.leaderReplace(n.schema, minimum, n)
 				minimum = n
 			}
@@ -207,7 +223,7 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 			t.applyRunReorderHash(sib, l[lo:hi], reorderExact|reorderFirst)
 			slices.SortStableFunc(l[lo:hi], func(a, b *Node) int {
 				t.work.Add(1)
-				return compareSorted(a, b)
+				return t.compareSorted(a, b)
 			})
 			for _, a := range l[lo:hi] {
 				a.inRB = true
@@ -223,7 +239,7 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 			at := lo
 			for i := lo; i < hi; i++ {
 				t.work.Add(1)
-				if l[i].inRB && compareSorted(l[i], n) <= 0 {
+				if l[i].inRB && t.compareSorted(l[i], n) <= 0 {
 					at = i + 1
 				}
 			}
@@ -231,10 +247,10 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 		}
 		// after the equal values (rb_insert_node goes right on 0); append fast path
 		t.work.Add(1)
-		if compareSorted(l[hi-1], n) <= 0 {
+		if t.compareSorted(l[hi-1], n) <= 0 {
 			return hi
 		}
-		return t.upper(l[:hi], lo, func(a *Node) bool { return compareSorted(a, n) > 0 })
+		return t.upper(l[:hi], lo, func(a *Node) bool { return t.compareSorted(a, n) > 0 })
 	}
 	// lyd_insert_node_ordby_schema; append fast path
 	at := len(l)
@@ -505,12 +521,26 @@ func (t *Tree) schemaLookupOperation(s *siblings, sn *schema.Node) *Node {
 	return nil
 }
 
+// physicalStart turns an operation child's first-instance record into a node to take a physical
+// position from. While the parser defers its run (siblings.pending) the record follows the tree
+// order, but the run's slots still hold link order: libyang's run is sorted in place, so its
+// sorted first instance stands where the deferred run physically starts.
+func physicalStart(s *siblings, sn *schema.Node, leader *Node) *Node {
+	if leader == nil || s.pending[sn] == nil {
+		return leader
+	}
+	if inst := s.opInst(sn); len(inst) > 0 {
+		return inst[0]
+	}
+	return leader
+}
+
 // opRun is LYD_LIST_FOR_INST from the first instance: stop at the first other schema.
 // Most entries are contiguous, so their index slice is already the run and needs no position.
 // ponytail: anchor-created split entries arise only around the hash-table transition with
 // fewer than four kept input nodes; those boundaries bound the position lookups on replies.
 func (t *Tree) opRun(s *siblings, sn *schema.Node) []*Node {
-	leader := t.schemaLookupOperation(s, sn)
+	leader := physicalStart(s, sn, t.schemaLookupOperation(s, sn))
 	if leader == nil {
 		return nil
 	}
@@ -706,7 +736,7 @@ func (t *Tree) opAnchor(sib *siblings, n *Node) int {
 			d = 1
 		}
 		for r := sib.opRanks[d].next(t, t.schemaRank(n.schema)); r >= 0 && r < len(order); r = sib.opRanks[d].next(t, r) {
-			leader := t.schemaLookupOperation(sib, order[r])
+			leader := physicalStart(sib, order[r], t.schemaLookupOperation(sib, order[r]))
 			if leader != nil {
 				// The record, not the document-first instance, is the anchor.
 				return t.indexFromEnd(l, leader)

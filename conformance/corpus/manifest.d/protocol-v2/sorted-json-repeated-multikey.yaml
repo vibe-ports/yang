@@ -1,0 +1,16 @@
+fixtures:
+  - id: protocol-v2/sorted-json-repeated-multikey
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: after both keys link the first instance, a repeated first key displaces the second key from the leading children; libyang reports the missing second key at close time
+    rfc: ["RFC7950#7.7.7", "RFC7951#4"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2-sort-keys}]
+      format: json
+      data_type: data
+      unknown: reject
+      parse_only: true
+      data: '{"pv2-sort-keys:c":{"l":[{"a":"x","b":"z","a":"a"},{"a":"x","b":"m"}]}}'
+    golden: golden/sorted-json-repeated-multikey.json

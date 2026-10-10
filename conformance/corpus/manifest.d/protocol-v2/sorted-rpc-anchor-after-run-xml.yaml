@@ -1,0 +1,17 @@
+fixtures:
+  # Expectation basis: libyang v5.8.6 links each input instance at its sorted place (rb_insert_node, tree_data_sorted.c:669-716); the fourth v makes the children table (tree_data_hash.c:181-197); pre, declared before v, then goes before v's first-instance record (lyd_insert_get_next_anchor, tree_data.c:468-493), the start of the sorted run: pre, 1, 2, 3, 4.
+  - id: protocol-v2/sorted-rpc-anchor-after-run-xml
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.7.7", "RFC7950#7.14"]
+    areas: [operations]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2-sort-anchor}]
+      format: xml
+      data_type: rpc
+      unknown: reject
+      parse_only: true
+      data: '<r xmlns="urn:vibe-ports:yang:conformance:pv2-sort-anchor"><v>3</v><v>1</v><v>2</v><v>4</v><pre>x</pre></r>'
+    golden: golden/sorted-rpc-anchor-after-run-xml.json

@@ -1,0 +1,16 @@
+fixtures:
+  - id: protocol-v2/sorted-json-shuffled
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: shuffled leaf-list with equal values and positional metadata, list with an equal key, state leaf-list with duplicates: the sorted order, equal values in input order, the n-th @ll entry on the n-th sorted instance
+    rfc: ["RFC7950#7.7.7"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2-sorted}]
+      format: json
+      data_type: data
+      unknown: reject
+      parse_only: true
+      data: '{"pv2-sorted:c":{"ll":["c","a","b","a"],"@ll":[{"pv2-sorted:a":"1"},{"pv2-sorted:a":"2"},{"pv2-sorted:a":"3"},{"pv2-sorted:a":"4"}],"l":[{"k":"b","v":"1"},{"k":"a","v":"2"},{"k":"b","v":"3"}],"st":["z","y","z","x"],"z":"end"}}'
+    golden: golden/sorted-json-shuffled.json

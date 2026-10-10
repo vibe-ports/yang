@@ -1,0 +1,21 @@
+# libyang v5.8.6: repeated b keys change instances after rb_insert_node placed them, so the run is
+# no longer in value order and where a later instance lands depends on the RB tree's shape: each
+# rb_insert_node walks from the root comparing the current keys (rb_compare_lists,
+# tree_data_sorted.c:235-270,669-716) and the instance is linked after its RB predecessor
+# (lyds_link_data_node, tree_data_sorted.c:1021-1040). A sort of the final tuples gives another order.
+fixtures:
+  - id: protocol-v2/sorted-json-repeated-key-rb-shape
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.7.7", "RFC7951#4"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2-sort-keys}]
+      format: json
+      data_type: data
+      unknown: reject
+      parse_only: true
+      data: '{"pv2-sort-keys:c":{"l":[{"b":"x","a":"p"},{"a":"p","b":"z","b":"z"},{"a":"p","b":"z","b":"x","b":"z"},{"b":"z","b":"y","b":"z","a":"p"},{"b":"z","a":"q"}]}}'
+    golden: golden/sorted-json-repeated-key-rb-shape.json

@@ -54,12 +54,13 @@ type siblings struct {
 	// exist only while ht does; without a table lookup starts at the first sibling instance.
 	leaders      map[*schema.Node]*recordChain
 	leaderByNode map[*Node]*record
-	unsorted     map[*schema.Node]bool     // runs appended out of value order
-	rbTree       map[*schema.Node]bool     // runs that have libyang's RB tree (lyds)
-	opIdx        map[*schema.Node]*opEntry // an operation's children by schema node (opInst), nil: not built
-	opRanks      [2]rankBits               // occupied input/output schema ranks, for the next anchor
-	gen          uint64                    // changes with every insertion and removal
-	work         *workCounter              // the tree's work counter once a node was linked: all and indexOf count visits
+	unsorted     map[*schema.Node]bool        // runs appended out of value order
+	pending      map[*schema.Node]*dirtyOrder // the parser's dirty runs: the sibling order is their tree's
+	rbTree       map[*schema.Node]bool        // runs that have libyang's RB tree (lyds)
+	opIdx        map[*schema.Node]*opEntry    // an operation's children by schema node (opInst), nil: not built
+	opRanks      [2]rankBits                  // occupied input/output schema ranks, for the next anchor
+	gen          uint64                       // changes with every insertion and removal
+	work         *workCounter                 // the tree's work counter once a node was linked: all and indexOf count visits
 }
 
 type recordChain struct {
@@ -243,10 +244,38 @@ func (s *siblings) hashAdd(parent, n *Node) {
 	}
 	s.ht = map[idxKey]*recordChain{}
 	s.exactByNode = map[*Node]*record{}
-	for _, c := range s.list {
+	// lyd_insert_hash builds the table from the children in sibling order (tree_data_hash.c:
+	// 181-197), which for a run the parser still defers is its tree order: libyang has linked
+	// each instance at its sorted place.
+	order := s.logical()
+	for _, c := range order {
 		s.hashPut(c)
 	}
-	s.leaderBuild()
+	s.leaderBuild(order)
+}
+
+// logical is the sibling order libyang has: s.list with each dirty run in its tree order, at
+// the place of its first instance.
+func (s *siblings) logical() []*Node {
+	if len(s.pending) == 0 {
+		return s.list
+	}
+	out := make([]*Node, 0, len(s.list))
+	done := map[*schema.Node]bool{}
+	for _, n := range s.list {
+		if s.work != nil {
+			s.work.Add(1)
+		}
+		ord := s.pending[n.schema]
+		switch {
+		case ord == nil:
+			out = append(out, n)
+		case !done[n.schema]:
+			done[n.schema] = true
+			out = append(out, ord.ordered()...)
+		}
+	}
+	return out
 }
 
 func (s *siblings) hashPut(n *Node) {
@@ -324,11 +353,11 @@ func firstRecordSchema(sn *schema.Node) bool {
 
 // leaderBuild is lyd_insert_hash_add's empty_ht branch: every run start is registered in sibling
 // order. It is called only when the children table is created, never for a copied empty table.
-func (s *siblings) leaderBuild() {
+func (s *siblings) leaderBuild(order []*Node) {
 	s.leaders = map[*schema.Node]*recordChain{}
 	s.leaderByNode = map[*Node]*record{}
 	var prev *schema.Node
-	for _, n := range s.list {
+	for _, n := range order {
 		if s.work != nil {
 			s.work.Add(1)
 		}
@@ -583,6 +612,13 @@ func (s *siblings) leaderInsertBetween(n, prev, next *Node) {
 // opRehashNeighbours gets the neighbours relevant to first-record rehashing in O(1) for a
 // gap-free operation entry. Split entries retain the counted position scan below (#240).
 func (s *siblings) opRehashNeighbours(n *Node) (prev, next *Node, ok bool) {
+	if ord := s.pending[n.schema]; ord != nil {
+		// a run the parser defers: its tree order is the sibling order libyang has
+		if first := ord.first(); first != n {
+			return first, nil, true
+		}
+		return nil, ord.successor(n), true
+	}
 	d := s.opIdx[n.schema]
 	if d == nil || d.gaps != 0 || len(d.list) == 0 {
 		return nil, nil, false
@@ -743,7 +779,7 @@ func (t *Tree) schemaIndex(s *siblings, sn *schema.Node) int {
 		return -1
 	}
 	if opChild(sn) {
-		if leader := t.schemaLookupOperation(s, sn); leader != nil {
+		if leader := physicalStart(s, sn, t.schemaLookupOperation(s, sn)); leader != nil {
 			return t.indexFromEnd(s.list, leader)
 		}
 		return -1

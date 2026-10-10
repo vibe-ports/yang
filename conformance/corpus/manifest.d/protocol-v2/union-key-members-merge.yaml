@@ -1,0 +1,15 @@
+fixtures:
+  - id: protocol-v2/union-key-members-merge
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # libyang v5.8.6: the union LYB member index makes the two list hashes differ, so lyd_find_sibling_first/lyd_compare_single_data do not match them and merge keeps both instances
+    rfc: ["RFC7950#7.8.5", "RFC7950#9.12", "RFC7951#6.10"]
+    areas: [types, operations, codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-union-key-members}]
+      steps:
+        - {do: parse, format: json, data_type: config, parse_only: true, data: '{"pv2-union-key-members:c":{"l":[{"k":1,"v":"a"}]}}'}
+        - {do: edit, format: json, data_type: config, merge: '{"pv2-union-key-members:c":{"l":[{"k":"1","v":"b"}]}}'}
+        - {do: dump, with_defaults: all}
+    golden: golden/union-key-members-merge.json

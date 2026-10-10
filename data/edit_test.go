@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	mathrand "math/rand"
 	"math/rand/v2"
 	"os"
 	"path/filepath"
@@ -254,6 +255,105 @@ func TestMerge(t *testing.T) {
 	}
 }
 
+// TestMergeRepeatedKey merges parse-only instances with repeated JSON key members. libyang keeps
+// both malformed source instances separate even though their leading key values are the same.
+func TestMergeRepeatedKey(t *testing.T) {
+	set := editSet(t)
+	tr := newTree(set)
+	for _, key := range []string{"m", "z"} {
+		if _, err := tr.NewPath(fmt.Sprintf("/pv2-edit:c/l[k='%s']", key), "", NewPathOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	src, diags, err := parseWith(context.Background(), strings.NewReader(
+		`{"pv2-edit:c":{"l":[{"k":"a","k":"b","v":1},{"k":"a","k":"c","v":2}]}}`), set,
+		parseOpts{ParseOptions: ParseOptions{ParseOnly: true}}, parseJSON, nil)
+	if err != nil {
+		t.Fatal(err, diags)
+	}
+	if err := tr.Merge(src); err != nil {
+		t.Fatal(err)
+	}
+	c := tr.top.list[0]
+	if got := len(c.kids.list); got != 4 {
+		t.Fatalf("%d list instances after merge, want 4", got)
+	}
+	want := []string{
+		"/pv2-edit:c new",
+		"/pv2-edit:c/l[k='a'][k='b'] new",
+		"/pv2-edit:c/l[k='a'][k='b']/k new = a",
+		"/pv2-edit:c/l[k='a'][k='b']/k new = b",
+		"/pv2-edit:c/l[k='a'][k='b']/v new = 1",
+		"/pv2-edit:c/l[k='a'][k='c'] new",
+		"/pv2-edit:c/l[k='a'][k='c']/k new = a",
+		"/pv2-edit:c/l[k='a'][k='c']/k new = c",
+		"/pv2-edit:c/l[k='a'][k='c']/v new = 2",
+		"/pv2-edit:c/l[k='m'] new",
+		"/pv2-edit:c/l[k='m']/k new = m",
+		"/pv2-edit:c/l[k='z'] new",
+		"/pv2-edit:c/l[k='z']/k new = z",
+	}
+	if got := typedDump(tr); !reflect.DeepEqual(got, want) {
+		t.Fatalf("merged:\n got  %q\n want %q", got, want)
+	}
+}
+
+// TestMergeRepeatedKeyMultikey verifies both malformed member orders against a valid (x,z)
+// destination. For a,b,a the hash gate passes but the positional key loop rejects child[1]=a
+// against destination b=z; for a,a,b one side has hash 0, so the hash gate itself rejects it.
+// In both cases libyang therefore inserts the source instance instead of merging it.
+func TestMergeRepeatedKeyMultikey(t *testing.T) {
+	set := pv2Set(t, "pv2-sort-keys")
+	cSchema := set.Implemented("pv2-sort-keys").Top[0]
+	lSchema := schema.FindChild(cSchema, nil, cSchema.Module, "l", 0)
+	a := schema.FindChild(lSchema, nil, lSchema.Module, "a", 0)
+	b := schema.FindChild(lSchema, nil, lSchema.Module, "b", 0)
+	for _, tc := range []struct {
+		name  string
+		order []struct {
+			sn  *schema.Node
+			val string
+		}
+	}{
+		{"hashed-a-b-a", []struct {
+			sn  *schema.Node
+			val string
+		}{{a, "x"}, {b, "z"}, {a, "a"}}},
+		{"unhashed-a-a-b", []struct {
+			sn  *schema.Node
+			val string
+		}{{a, "x"}, {a, "a"}, {b, "z"}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dst := newTree(set)
+			if _, err := dst.NewPath("/pv2-sort-keys:c/l[a='x'][b='z']", "", NewPathOptions{}); err != nil {
+				t.Fatal(err)
+			}
+			src := newTree(set)
+			c := newInner(cSchema)
+			src.insert(nil, c, insertDefault)
+			list := newInner(lSchema)
+			for _, member := range tc.order {
+				v, d := types.Store(member.sn.Type, member.val, types.FormatJSON,
+					types.JSONHints("string")|types.HintStringDatatypes, nil, member.sn)
+				if d != nil {
+					t.Fatal(d.Msg)
+				}
+				src.insert(list, newTerm(member.sn, v), insertDefault)
+			}
+			// The low-level libyang merge accepts an already linked malformed list; force the
+			// equivalent state because the public parser rejects its missing positional key.
+			src.insert(c, list, insertDefault)
+			if err := dst.Merge(src); err != nil {
+				t.Fatal(err)
+			}
+			if got := len(dst.top.list[0].kids.list); got != 2 {
+				t.Fatalf("%d list instances after merge, want 2", got)
+			}
+		})
+	}
+}
+
 // TestNewPathAPI: the cases the oracle's sequence cannot express (no UPDATE, return values,
 // Find, key refusal).
 func TestNewPathAPI(t *testing.T) {
@@ -350,8 +450,9 @@ func TestMergeWork(t *testing.T) {
 	}
 }
 
-// TestInsertScaling: single edits at either end of a sorted run and merges of interleaved sorted
-// runs cost amortized O(1) shifted slots per instance (design 07 §4 Ordering).
+// TestInsertScaling: parsing sorted, reverse, and shuffled runs and merging duplicate-heavy runs
+// stay linear or n log n. The deterministic work counter includes comparisons, sibling visits,
+// and shifted slots; 4x the input may cost at most 6x the work (not the 16x of quadratic growth).
 func TestInsertScaling(t *testing.T) {
 	set := editSet(t)
 	measured := func(tr *Tree) *Tree {
@@ -368,10 +469,48 @@ func TestInsertScaling(t *testing.T) {
 		}
 		return tr
 	}
+	parseWork := func(order []int) int64 {
+		vals := make([]string, len(order))
+		for i, v := range order {
+			vals[i] = fmt.Sprintf(`"v%07d"`, v)
+		}
+		in := `{"pv2-edit:c":{"ll":[` + strings.Join(vals, ",") + `]}}`
+		var lc *lydCtx
+		tr, diags, err := parseWith(context.Background(), strings.NewReader(in), set,
+			parseOpts{ParseOptions: ParseOptions{ParseOnly: true}}, parseJSON,
+			func(l *lydCtx) {
+				lc = l
+				l.tree.work.visits, l.tree.work.shifts = true, true
+			})
+		if err != nil {
+			t.Fatal(err, diags)
+		}
+		if got := len(tr.top.list[0].kids.list); got != len(order) {
+			t.Fatalf("%d parsed instances, want %d", got, len(order))
+		}
+		return lc.tree.work.Load()
+	}
 	cases := []struct {
 		name string
 		work func(n int) int64
 	}{
+		{"parse-sorted", func(n int) int64 {
+			order := make([]int, n)
+			for i := range order {
+				order[i] = i
+			}
+			return parseWork(order)
+		}},
+		{"parse-reverse", func(n int) int64 {
+			order := make([]int, n)
+			for i := range order {
+				order[i] = n - i
+			}
+			return parseWork(order)
+		}},
+		{"parse-shuffled", func(n int) int64 {
+			return parseWork(mathrand.New(mathrand.NewSource(1)).Perm(n)) //nolint:gosec // deterministic shuffle
+		}},
 		{"new-path-reversed", func(n int) int64 {
 			tr := measured(newTree(set))
 			for i := range n {
@@ -394,7 +533,7 @@ func TestInsertScaling(t *testing.T) {
 			}
 			return tr.work.Load()
 		}},
-		{"merge-duplicate-pairs", func(n int) int64 {
+		{"merge-duplicate-heavy", func(n int) int64 {
 			// a parse-only source [v1, v1, v3, v3, ...] into [v0, v2, ...]: one batch, the equal
 			// instance matches the pending copy
 			vals := make([]string, 0, 2*n)
@@ -420,7 +559,7 @@ func TestInsertScaling(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if w1, w4 := tc.work(1000), tc.work(4000); w4 > 5*w1 {
+			if w1, w4 := tc.work(1000), tc.work(4000); w4 > 6*w1 {
 				t.Fatalf("work %d for 1000 values, %d for 4000: not linear", w1, w4)
 			}
 		})

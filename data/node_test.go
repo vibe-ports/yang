@@ -3,6 +3,7 @@
 package data
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/bits"
@@ -334,8 +335,7 @@ func TestFindSibling(t *testing.T) {
 	// the index is built now: later inserts and unlinks keep it current
 	l2 := f.list(t, tr, c, "b", "")
 	probe := newInner(f.l)
-	probe.kids.list = []*Node{f.term(t, f.lk, "b")}
-	probe.kids.list[0].parent = probe
+	tr.insert(probe, f.term(t, f.lk, "b"), insertDefault)
 	if got := tr.findFirst(&c.kids, probe); got != l2 {
 		t.Fatalf("list b: %v", got)
 	}
@@ -477,6 +477,50 @@ func TestCompareLiteral(t *testing.T) {
 	}
 }
 
+// TestUnionKeyHashIdentity checks that keyed-list hashing retains the selected union member even
+// though the canonical-text bucket key is the same for JSON 1 and "1".
+func TestUnionKeyHashIdentity(t *testing.T) {
+	f := newFixture()
+	f.lk.Type = &schema.Type{Base: schema.Union, Union: []*schema.Type{
+		{Base: schema.Int8},
+		{Base: schema.String},
+	}}
+	tr := newTree(f.set)
+	c := newInner(f.c)
+	tr.insert(nil, c, insertDefault)
+	for _, v := range []string{"2", "3", "4"} {
+		tr.insert(c, f.term(t, f.ll, v), insertDefault)
+	}
+	list := func(kind string) *Node {
+		l := newInner(f.l)
+		v, d := types.Store(f.lk.Type, "1", types.FormatJSON, types.JSONHints(kind), nil, f.lk)
+		if d != nil {
+			t.Fatal(d.Msg)
+		}
+		tr.insert(l, newTerm(f.lk, v), insertDefault)
+		return l
+	}
+	number := list("number")
+	tr.insert(c, number, insertDefault)
+	stringProbe := list("string")
+	if c.kids.ht == nil {
+		t.Fatal("children hash table was not built")
+	}
+	if hashEqual(number, stringProbe) {
+		t.Fatal(`union key JSON 1 and "1" have equal hashes`)
+	}
+	if got := tr.findFirst(&c.kids, stringProbe); got != nil {
+		t.Fatalf(`union key JSON "1" matched JSON 1: %v`, got)
+	}
+	numberProbe := list("number")
+	if !hashEqual(number, numberProbe) {
+		t.Fatal("equal union key members have different hashes")
+	}
+	if got := tr.findFirst(&c.kids, numberProbe); got != number {
+		t.Fatalf("equal union key member lookup = %v, want %v", got, number)
+	}
+}
+
 // TestKeyUnlinkRehash: removing a key (internally) moves the list out of its old bucket in the
 // parent's table (lyd_unlink_hash leaves libyang's stale; the index must not serve it).
 func TestKeyUnlinkRehash(t *testing.T) {
@@ -489,7 +533,7 @@ func TestKeyUnlinkRehash(t *testing.T) {
 		l = f.list(t, tr, c, k, "")
 	}
 	probe := newInner(f.l)
-	probe.kids.list = []*Node{f.term(t, f.lk, "d")}
+	tr.insert(probe, f.term(t, f.lk, "d"), insertDefault)
 	if tr.findFirst(&c.kids, probe) != l {
 		t.Fatal("list d not found")
 	}
@@ -703,5 +747,51 @@ func TestRBTreeRun(t *testing.T) {
 	tr.insert(c, f.term(t, f.ll, "0"), insertDefault)
 	if got := names(c.Children()); !reflect.DeepEqual(got, []string{"ll=0", "ll=3", "ll=4", "ll=5", "ll=6", "ll=1"}) {
 		t.Fatalf("%v", got)
+	}
+}
+
+// TestParserSortedRuns adapts the parser insertion check to main's deferred operation
+// runs. Both kinds share the same stable order; appends outside the RB tree stay eager.
+func TestParserSortedRuns(t *testing.T) {
+	for _, operation := range []bool{false, true} {
+		t.Run(fmt.Sprintf("operation=%v", operation), func(t *testing.T) {
+			f := newFixture()
+			parentSchema, sn := f.c, f.ll
+			if operation {
+				rpc := &schema.Node{Kind: schema.RPC, Name: "r", Module: f.a}
+				input := &schema.Node{Kind: schema.Input, Name: "input", Module: f.a, Parent: rpc}
+				sn = &schema.Node{Kind: schema.LeafList, Name: "v", Module: f.a, Parent: input, Type: f.ll.Type}
+				rpc.Children, input.Children = []*schema.Node{input}, []*schema.Node{sn}
+				parentSchema = rpc
+			}
+			tr := newTree(f.set)
+			parent := newInner(parentSchema)
+			tr.insert(nil, parent, insertDefault)
+			lc := &lydCtx{ctx: context.Background(), tree: tr}
+			for _, v := range []string{"1", "3"} {
+				lc.nodeInsert(parent, nil, f.term(t, sn, v))
+			}
+			if len(lc.dirtyOrd) != 0 {
+				t.Fatal("ascending run has pending work")
+			}
+			equal := f.term(t, sn, "2")
+			lc.nodeInsert(parent, nil, equal)
+			lc.nodeInsert(parent, nil, f.term(t, sn, "2"))
+			if len(lc.dirtyOrd) != 1 {
+				t.Fatal("shuffled run was not deferred")
+			}
+			if err := lc.flushDirtyAll(); err != nil {
+				t.Fatal(err)
+			}
+			if !slices.IsSortedFunc(parent.kids.list, compareSorted) || parent.kids.list[1] != equal {
+				t.Fatal("run did not retain stable value order")
+			}
+			outside := f.term(t, sn, "0")
+			tr.insert(parent, outside, insertLastBySchema)
+			lc.nodeInsert(parent, nil, f.term(t, sn, "4"))
+			if len(lc.dirtyOrd) != 0 || outside.inRB || parent.kids.list[len(parent.kids.list)-1] != outside {
+				t.Fatal("parser reordered an instance outside the RB tree")
+			}
+		})
 	}
 }

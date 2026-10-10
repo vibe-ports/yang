@@ -1,0 +1,16 @@
+fixtures:
+  # Expectation basis: libyang v5.8.6 src/tree_data_hash.c:68-77 hashes each leaf-list value's LY_VALUE_LYB bytes, src/tree_data.c:1714-1717 rejects unequal hashes first, and src/plugins_types/union.c:633-666 distinguishes int8 and string with the member index.
+  - id: protocol-v2/hash-union-leaflist-merge
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.7", "RFC7950#9.12", "RFC7951#5.4", "RFC7951#6.10"]
+    areas: [types, codecs, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-hash-lyb}]
+      steps:
+        - {do: parse, format: json, data_type: config, parse_only: true, data: '{"pv2-hash-lyb:c":{"ll":[1]}}'}
+        - {do: edit, format: json, data_type: config, merge: '{"pv2-hash-lyb:c":{"ll":[1,"1"]}}'}
+        - {do: dump, with_defaults: all}
+    golden: golden/hash-union-leaflist-merge.json
