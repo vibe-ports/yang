@@ -37,7 +37,11 @@ scripts/goldens-remote my-branch '^basic/(diff|leafref)$'   # branch, fixture id
 It dispatches `.github/workflows/goldens.yml`, which checks out the pushed branch on a
 GitHub-hosted linux/amd64 runner, runs `make oracle` and `go run ./cmd/golden -require-protocol
 -run <regexp>` in the published `ghcr.io/vibe-ports/yang-dev` image, and uploads the changed or new
-golden files plus a manifest (commit, image digest, matched fixtures). The script waits for the
+golden files plus a manifest (commit, oracle runtime, matched fixtures). Warm runs skip the image: a
+job that runs only main's code caches the oracle runtime extracted from it (lyoracle, `/opt/libyang`,
+the image's glibc loader and shared libraries) by image digest, after `cmd/golden -check` with it
+reproduces all of main's goldens byte for byte; a branch whose `conformance/oracle` equals main's
+then runs `cmd/golden` natively under the image's Go version. The script waits for the
 run and copies those files into your checkout at the same paths. A regexp that matches no
 fixture fails the run. Needs `gh` logged in with write access to the repository (required to
 dispatch a workflow); contributors working from a fork ask in their PR instead.

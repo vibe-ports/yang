@@ -5,15 +5,32 @@ name: goldens
 # is pushed: the author reviews and commits the goldens.
 # Who can run it: workflow_dispatch needs write access to this repository (GitHub refuses the
 # dispatch otherwise; forks can't dispatch it), so no extra actor check is done here.
-# The job holds a read-only token, no persisted git credentials and no secrets; the branch's code
-# runs in the published dev image (pulled anonymously, the package is public). Inputs reach shells
-# only through env and are validated against strict character classes first.
-# Branch code never sees the checkout: the commit and the goldens' hashes are recorded first, the
-# committed tree is exported (git archive, no .git) to a separate directory, and only that is
-# mounted. Results are found by comparing hashes in that copy; no git command runs over a tree
-# branch code wrote to.
-# No caches: the job runs the input branch's code in main's cache scope, so anything it saved could
-# be restored by later runs for other branches.
+# Both jobs hold a read-only token, no persisted git credentials and no secrets. Inputs reach
+# shells only through env and are validated against strict character classes first.
+# Speed without cache poisoning:
+#  - `runtime` runs no input-branch code, only this workflow's own commit (main when dispatched
+#    from main, as scripts/goldens-remote does). It reads the dev image's linux/amd64 digest from
+#    the registry without pulling and, only when a cache is missing, builds and saves
+#    - the oracle runtime: lyoracle built from main's conformance/oracle in the image,
+#      /opt/libyang, and every shared object ldd lists, the image's glibc loader included; key
+#      goldens-oracle-<digest>-<oracle sources hash>; saved only after `cmd/golden -check`, run
+#      natively with it, reproduces every committed golden of main byte for byte;
+#    - a Go module/build cache of main's code.
+#  - `goldens` runs the input branch's code and only restores caches, never saves one. If the
+#    branch's conformance/oracle equals main's, cmd/golden runs natively (no Docker) under the
+#    image's Go version, lyoracle under the image's own loader and libraries; otherwise it pulls
+#    the image and generates there.
+#  - Enforced, not just by convention: `goldens` has `cache-mode: read`, so even code it runs
+#    can't save a cache entry. The runtime carries a SHA256SUMS manifest (every file, mode and
+#    link); `runtime` re-verifies a restored entry against it and passes the manifest's sha256 on
+#    as output `fp`; `goldens` uses the runtime only if its restored copy verifies and matches `fp`,
+#    otherwise it falls back to the image.
+# Branch code never sees the checkout: `goldens` records the commit and the goldens' hashes first,
+# exports the committed tree (git archive, no .git) to a separate directory and runs the branch's
+# code there (in the container, or natively on a runtime hit). Results are found by comparing
+# hashes in that copy; no git command runs over a tree branch code wrote to.
+# Caches saved by a dispatch from another branch stay in that branch's scope (GitHub cache
+# isolation), so main-dispatched runs never read them.
 run-name: goldens ${{ inputs.ref }} ${{ inputs.request_id }}
 on:
   workflow_dispatch:
@@ -32,10 +49,156 @@ on:
         type: string
         default: ""
 permissions: {}
+env:
+  REPO_IMAGE: vibe-ports/yang-dev
+  IMAGE: ghcr.io/vibe-ports/yang-dev
+  # sha256 of every golden file under the current directory, sorted by path.
+  GOLDENS: >-
+    find conformance/corpus -mindepth 3 -maxdepth 3 -type f -path 'conformance/corpus/*/golden/*.json' -print0 |
+    LC_ALL=C sort -z | xargs -0 -r sha256sum
+  # Prints the runtime manifest of the current directory: type, mode, path, link target of every
+  # entry, then the sha256 of every file (SHA256SUMS itself excluded).
+  SUMS: >-
+    { find . ! -name SHA256SUMS ! -path . -printf '%y %m %p -> %l\n' | LC_ALL=C sort;
+    find . -type f ! -name SHA256SUMS -print0 | LC_ALL=C sort -z | xargs -0 sha256sum; }
 jobs:
-  goldens:
+  runtime:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    cache-mode: write # the only job that saves caches; it runs no input-branch code
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash
+    outputs:
+      digest: ${{ steps.img.outputs.digest }}
+      go: ${{ steps.img.outputs.go }}
+      gokey: ${{ steps.gocache.outputs.cache-primary-key }}
+      fp: ${{ steps.verify.outputs.fp || steps.build.outputs.fp }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Resolve the image's linux/amd64 digest and Go version (no pull)
+        id: img
+        run: |
+          tok=$(curl -sSf "https://ghcr.io/token?scope=repository:$REPO_IMAGE:pull" | jq -r .token)
+          get() { curl -sSfL -o "$RUNNER_TEMP/$3" -H "Authorization: Bearer $tok" -H "Accept: $2" "https://ghcr.io/v2/$REPO_IMAGE/$1"; }
+          sum() { echo "sha256:$(sha256sum "$RUNNER_TEMP/$1" | cut -d' ' -f1)"; }
+          one='application/vnd.oci.image.manifest.v1+json,application/vnd.docker.distribution.manifest.v2+json'
+          get manifests/latest "application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.list.v2+json,$one" latest.json
+          if jq -e .manifests "$RUNNER_TEMP/latest.json" >/dev/null; then  # multi-platform: pick linux/amd64
+            digest=$(jq -r '[.manifests[] | select(.platform.os == "linux" and .platform.architecture == "amd64")][0].digest // empty' "$RUNNER_TEMP/latest.json")
+          else  # single-platform manifest: its own digest
+            digest=$(sum latest.json)
+          fi
+          [[ $digest =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::no linux/amd64 image digest"; exit 1; }
+          get "manifests/$digest" "$one" manifest.json
+          [[ $(sum manifest.json) == "$digest" ]] || { echo "::error::manifest digest mismatch"; exit 1; }
+          cfg=$(jq -r .config.digest "$RUNNER_TEMP/manifest.json")
+          [[ $cfg =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::bad config digest"; exit 1; }
+          get "blobs/$cfg" '*/*' config.json
+          [[ $(sum config.json) == "$cfg" ]] || { echo "::error::config digest mismatch"; exit 1; }
+          [[ $(jq -r '.os + "/" + .architecture' "$RUNNER_TEMP/config.json") == linux/amd64 ]] || { echo "::error::image $digest is not linux/amd64"; exit 1; }
+          gov=$(jq -r '.config.Env[] | select(startswith("GOLANG_VERSION=")) | sub("GOLANG_VERSION="; "")' "$RUNNER_TEMP/config.json")
+          [[ $gov =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]] || { echo "::error::no GOLANG_VERSION in the image"; exit 1; }
+          echo "image $IMAGE@$digest, go $gov"
+          { echo "digest=$digest"; echo "go=$gov"; } >> "$GITHUB_OUTPUT"
+      - name: Restore the oracle runtime
+        id: rt
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/rt
+          key: goldens-oracle-${{ steps.img.outputs.digest }}-${{ hashFiles('conformance/oracle/**') }}
+      - name: Verify the restored runtime (manifest, image digest)
+        id: verify
+        if: steps.rt.outputs.cache-hit == 'true'
+        env:
+          DIGEST: ${{ steps.img.outputs.digest }}
+          KEY: ${{ steps.rt.outputs.cache-primary-key }}
+        run: |
+          cd "$RUNNER_TEMP/rt"
+          cmp -s SHA256SUMS <(eval "$SUMS") || { echo "::error::cached oracle runtime does not match its SHA256SUMS: delete cache $KEY"; exit 1; }
+          grep -qF "image $IMAGE@$DIGEST;" VERIFIED || { echo "::error::cached oracle runtime is not from $DIGEST"; exit 1; }
+          cat VERIFIED
+          echo "fp=$(sha256sum SHA256SUMS | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+      - name: Is the Go cache cached?
+        id: gocache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          # ponytail: refreshed only when go.sum or Go changes; add main's sha to the key if hit builds get slow.
+          key: goldens-go-${{ steps.img.outputs.go }}-${{ hashFiles('go.sum', 'conformance/go.sum') }}
+          lookup-only: true
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        if: steps.rt.outputs.cache-hit != 'true' || steps.gocache.outputs.cache-hit != 'true'
+        with:
+          go-version: ${{ steps.img.outputs.go }}
+          cache: false
+      - name: Build the oracle runtime from the image, check it against main's goldens
+        id: build
+        if: steps.rt.outputs.cache-hit != 'true'
+        env:
+          DIGEST: ${{ steps.img.outputs.digest }}
+        run: |
+          rt="$RUNNER_TEMP/rt"; mkdir -p "$rt"
+          docker pull -q --platform linux/amd64 "$IMAGE@$DIGEST"
+          docker run --rm --platform linux/amd64 --user "$(id -u):$(id -g)" \
+            -v "$GITHUB_WORKSPACE":/workspaces/yang -v "$rt":/rt "$IMAGE@$DIGEST" bash -c '
+              set -euo pipefail
+              make -C conformance/oracle LIBYANG_PREFIX=/opt/libyang
+              cp conformance/oracle/lyoracle-x86_64 /rt/
+              tar -C /opt -cf - --exclude=libyang/src --exclude=libyang/include libyang | tar -C /rt -xf -
+              mkdir /rt/lib
+              { find /opt/libyang/lib -name "*.so*" -type f; echo /rt/lyoracle-x86_64; } |
+                xargs -n1 ldd | awk "\$3 ~ /^\// {print \$3} \$1 ~ /^\// {print \$1}" | sort -u |
+                xargs -I{} cp -L {} /rt/lib/
+              ls -l /rt/lib'
+          # lyoracle under the image's loader, libc, libm and PCRE2, never the runner's.
+          cat > "$rt/lyoracle" <<'SH'
+          #!/bin/sh
+          d=$(dirname "$0")
+          exec "$d/lib/ld-linux-x86-64.so.2" --library-path "$d/lib" "$d/lyoracle-x86_64" "$@"
+          SH
+          chmod +x "$rt/lyoracle"
+          # libyang's compiled-in paths (module dir, plugins) and lyoracle's RUNPATH are /opt/libyang.
+          sudo ln -sfn "$rt/libyang" /opt/libyang
+          if (cd conformance && TZ=UTC go run ./cmd/golden -check -require-protocol -oracle "$rt/lyoracle") > "$RUNNER_TEMP/check.log"; then
+            n=$(awk '/^ok /{n++} END{print n+0}' "$RUNNER_TEMP/check.log")
+            echo "image $IMAGE@$DIGEST; native cmd/golden -check: $n goldens of $GITHUB_SHA byte-identical" > "$rt/VERIFIED"
+            cat "$rt/VERIFIED"
+            (cd "$rt" && eval "$SUMS" > SHA256SUMS)
+            { echo "ok=true"; echo "fp=$(sha256sum "$rt/SHA256SUMS" | cut -d' ' -f1)"; } >> "$GITHUB_OUTPUT"
+          else
+            awk '!/^ok / && n++ < 50' "$RUNNER_TEMP/check.log"
+            echo "::warning::the native oracle runtime does not reproduce main's goldens; not caching it (runs use the image)"
+          fi
+      - name: Save the oracle runtime
+        if: steps.build.outputs.ok == 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/rt
+          key: ${{ steps.rt.outputs.cache-primary-key }}
+      - name: Build main's cmd/golden for the Go cache
+        if: steps.gocache.outputs.cache-hit != 'true'
+        run: cd conformance && go build -o /dev/null ./cmd/golden
+      - name: Save the Go cache
+        if: steps.gocache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ steps.gocache.outputs.cache-primary-key }}
+
+  goldens:
+    needs: runtime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    cache-mode: read # runs the input branch's code: restores only, can't save
     permissions:
       contents: read
     defaults:
@@ -45,11 +208,7 @@ jobs:
       REF: ${{ inputs.ref }}
       RUN: ${{ inputs.run }}
       REQUEST_ID: ${{ inputs.request_id }}
-      IMAGE: ghcr.io/vibe-ports/yang-dev:latest
-      # sha256 of every golden file under the current directory, sorted by path.
-      GOLDENS: >-
-        find conformance/corpus -mindepth 3 -maxdepth 3 -type f -path 'conformance/corpus/*/golden/*.json' -print0 |
-        LC_ALL=C sort -z | xargs -0 -r sha256sum
+    # This job runs the input branch's code: it only restores caches, never saves one.
     steps:
       - name: Validate inputs
         run: |
@@ -71,16 +230,46 @@ jobs:
           src="$RUNNER_TEMP/src"; mkdir "$src"
           git archive HEAD | tar -x -C "$src"
           cd "$src" && eval "$GOLDENS" > "$RUNNER_TEMP/before"
-      - name: Generate goldens (linux/amd64, published dev image)
+      - name: Restore the oracle runtime (hits only if the branch's oracle sources are main's)
+        id: rt
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/rt
+          key: goldens-oracle-${{ needs.runtime.outputs.digest }}-${{ hashFiles('conformance/oracle/**') }}
+      - name: Restore main's Go cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ needs.runtime.outputs.gokey }}
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ needs.runtime.outputs.go }}
+          cache: false
+      - name: Generate goldens
+        env:
+          DIGEST: ${{ needs.runtime.outputs.digest }}
+          HIT: ${{ steps.rt.outputs.cache-hit }}
+          FP: ${{ needs.runtime.outputs.fp }}
         run: |
-          docker pull -q --platform linux/amd64 "$IMAGE"
-          docker image inspect --format '{{index .RepoDigests 0}}' "$IMAGE" > "$RUNNER_TEMP/image"
-          # Only the exported tree is mounted; runner uid so it stays writable; Go caches in /tmp.
+          rt="$RUNNER_TEMP/rt"
+          if [[ $HIT == true && -n $FP ]] &&
+            [[ $(sha256sum "$rt/SHA256SUMS" | cut -d' ' -f1) == "$FP" ]] && (cd "$rt" && cmp -s SHA256SUMS <(eval "$SUMS")); then
+            sudo ln -sfn "$rt/libyang" /opt/libyang
+            (cd "$RUNNER_TEMP/src/conformance" && TZ=UTC go run ./cmd/golden -require-protocol -run="$RUN" -oracle "$rt/lyoracle") |
+              tee "$RUNNER_TEMP/golden.log"
+            echo "runtime: cached native oracle runtime ($(cat "$rt/VERIFIED"))" > "$RUNNER_TEMP/runtime"
+            exit 0
+          fi
+          docker pull -q --platform linux/amd64 "$IMAGE@$DIGEST"
+          mod=$(go env GOMODCACHE) cache=$(go env GOCACHE); mkdir -p "$mod" "$cache"
           docker run --rm --platform linux/amd64 --user "$(id -u):$(id -g)" \
-            -v "$RUNNER_TEMP/src":/workspaces/yang \
-            -e HOME=/tmp -e GOMODCACHE=/tmp/go/mod -e GOCACHE=/tmp/go/build -e TZ=UTC -e RUN \
-            "$IMAGE" bash -c 'make oracle && cd conformance && go run ./cmd/golden -require-protocol -run="$RUN"' |
+            -v "$RUNNER_TEMP/src":/workspaces/yang -v "$mod":/cache/mod -v "$cache":/cache/build \
+            -e HOME=/tmp -e GOMODCACHE=/cache/mod -e GOCACHE=/cache/build -e TZ=UTC -e RUN \
+            "$IMAGE@$DIGEST" bash -c 'make oracle && cd conformance && go run ./cmd/golden -require-protocol -run="$RUN"' |
             tee "$RUNNER_TEMP/golden.log"
+          echo "runtime: image $IMAGE@$DIGEST (docker: no verified cached runtime for this branch's conformance/oracle)" > "$RUNNER_TEMP/runtime"
       - name: Collect changed goldens
         env:
           SHA: ${{ steps.src.outputs.sha }}
@@ -100,7 +289,8 @@ jobs:
             echo "ref: $REF"
             echo "commit: $SHA"
             echo "run: $RUN"
-            echo "image: $(cat "$RUNNER_TEMP/image")"
+            cat "$RUNNER_TEMP/runtime"
+            echo "go: $(go env GOVERSION)"
             echo "matched: $matched"
             echo "changed: $(grep -c . <<<"$changed" || true)"
             echo "--- changed (M modified, A new)"
@@ -111,6 +301,7 @@ jobs:
           {
             echo "### goldens for \`$REF\`"
             echo "Regexp \`$RUN\`: $matched fixture(s) regenerated on linux/amd64."
+            cat "$RUNNER_TEMP/runtime"
             if [[ -z $changed ]]; then echo "All byte-identical to the branch: nothing to commit."
             else echo '```'; echo "$changed"; echo '```'; fi
           } >> "$GITHUB_STEP_SUMMARY"
