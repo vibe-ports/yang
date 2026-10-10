@@ -319,7 +319,7 @@ func runOp(r Request, s *yang.Schema, resp map[string]any, typ data.OpType) erro
 		}
 	}
 	if typ != data.OpReply && given {
-		return fmt.Errorf("%w: an rpc request with data_type %v (ParseOpOptions.Request is for replies only, design 07 §6.1.1)",
+		return fmt.Errorf("%w: an rpc request with data_type %v (ParseOpOptions.Request is for replies only, deviations.md U-0106)",
 			ErrUnsupported, p["data_type"])
 	}
 	keep, _ := p["keep_input"].(bool)

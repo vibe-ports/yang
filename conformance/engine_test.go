@@ -5,6 +5,7 @@ package conformance
 import (
 	"maps"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -131,6 +132,84 @@ func schemaLimit(reason string) string {
 	return ""
 }
 
+// TestYangEngineValidation is the M4 exit gate (#105): no validation-area fixture and no operation
+// fixture (area operations, or an rpc, reply or notif data type in the request or a step) may
+// differ, and none may be unsupported unless validationUnsupported lists it with the
+// deviations.md entry its reason names.
+func TestYangEngineValidation(t *testing.T) {
+	m := load(t)
+	rep, err := m.Compare(Yang{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := map[string]int{}
+	for i, r := range rep.Results {
+		kind := validationKind(m.Fixtures[i])
+		if kind == "" {
+			continue
+		}
+		n[kind]++
+		switch {
+		case r.Status == Differ:
+			t.Errorf("differ %s: %s", r.ID, r.Detail)
+		case r.Status == Unsupported && !validationAllowed(r.ID, r.Detail):
+			t.Errorf("unsupported %s fixture %s without a listed deviation: %s", kind, r.ID, r.Detail)
+		}
+	}
+	t.Logf("gated fixtures: %v", n)
+	for kind, floor := range validationFloors {
+		if n[kind] < floor {
+			t.Errorf("%d %s fixtures gated, fewer than %d: the selection lost fixtures", n[kind], kind, floor)
+		}
+	}
+}
+
+// validationFloors are the gated fixtures of each kind at the M4 exit; fewer means the selection
+// or the corpus lost some, which would let the gate pass on nothing.
+var validationFloors = map[string]int{"validation": 166, "operation": 90}
+
+// validationKind is the M4 gate kind of a fixture: "operation" (area operations, or an operation
+// data type in the request or one of its steps), "validation" (area validation) or "" outside the
+// gate.
+func validationKind(f Fixture) string {
+	isOp := func(m map[string]any) bool { _, ok := opTypes[str(m, "data_type", "")]; return ok }
+	op := slices.Contains(f.Areas, "operations") || isOp(f.Request)
+	for _, st := range list(f.Request["steps"]) {
+		if s, ok := st.(map[string]any); ok && isOp(s) {
+			op = true
+		}
+	}
+	switch {
+	case op:
+		return "operation"
+	case slices.Contains(f.Areas, "validation"):
+		return "validation"
+	}
+	return ""
+}
+
+// validationUnsupported are the validation and operation fixtures that may stay unsupported after
+// M4, each with the deviations.md id its reason must name.
+var validationUnsupported = map[string]string{
+	// anydata/anyxml data instances (M5)
+	"ops/parse-json-rpc-01":        "U-0043",
+	"ops/parse-xml-rpc-01":         "U-0043",
+	"ut-parser/json-rpc-01":        "U-0043",
+	"ut-parser/xml-rpc-01":         "U-0043",
+	"protocol-v2/sequence-edits":   "U-0043",
+	"protocol-v2/when-auto-delete": "U-0043",
+	// an rpc input parsed into an existing request (ParseOpOptions.Request is for replies only)
+	"ops/parse-json-rpc-parent-opaque-meta":   "U-0106",
+	"ops/parse-xml-rpc-parent-envelope-value": "U-0106",
+	"ops/parse-xml-rpc-parent-input":          "U-0106",
+}
+
+// validationAllowed reports whether fixture id may be unsupported with this reason.
+func validationAllowed(id, reason string) bool {
+	u, ok := validationUnsupported[id]
+	return ok && strings.Contains(reason, u)
+}
+
 // TestYangEngineTargets: the m1 schema dumps agree with the oracle (compiled printout skipped).
 func TestYangEngineTargets(t *testing.T) {
 	m := load(t)
@@ -190,6 +269,30 @@ func TestXPathGateSelection(t *testing.T) {
 	}
 	if !xpathAllowed("ut-xpath/anydata-01", "not supported: anydata (deviations.md U-0043)") ||
 		xpathAllowed("ut-xpath/anydata-01", "some other reason") || xpathAllowed("ut-xpath/axes-01", "U-0043") {
+		t.Error("allowlist")
+	}
+}
+
+// TestValidationGateSelection: the M4 gate takes validation-area fixtures and operation fixtures
+// (by area, request data type or step data type), and allows only listed fixtures with their id.
+func TestValidationGateSelection(t *testing.T) {
+	for _, c := range []struct {
+		f    Fixture
+		want string
+	}{
+		{Fixture{Areas: []string{"validation"}, Request: map[string]any{"op": "data"}}, "validation"},
+		{Fixture{Areas: []string{"operations"}, Request: map[string]any{"op": "data"}}, "operation"},
+		{Fixture{Areas: []string{"codecs"}, Request: map[string]any{"op": "data", "data_type": "reply"}}, "operation"},
+		{Fixture{Areas: []string{"validation"}, Request: map[string]any{"op": "sequence",
+			"steps": []any{map[string]any{"do": "parse", "data_type": "notif"}}}}, "operation"},
+		{Fixture{Areas: []string{"codecs"}, Request: map[string]any{"op": "data", "data_type": "config"}}, ""},
+	} {
+		if got := validationKind(c.f); got != c.want {
+			t.Errorf("%v: %q, want %q", c.f, got, c.want)
+		}
+	}
+	if !validationAllowed("ut-parser/xml-rpc-01", "anyxml \"config\" instance (deviations.md U-0043)") ||
+		validationAllowed("ut-parser/xml-rpc-01", "some other reason") || validationAllowed("ops/parse-xml-reply-01", "U-0043") {
 		t.Error("allowlist")
 	}
 }
