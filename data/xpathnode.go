@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/vibe-ports/yang/internal/schema"
+	"github.com/vibe-ports/yang/internal/snap"
 	"github.com/vibe-ports/yang/internal/types"
 	"github.com/vibe-ports/yang/internal/xpath"
 )
@@ -293,8 +294,8 @@ func (x xs) CheckValue(lex string, pc xpath.NamespaceCtx) (string, bool) {
 	return "", true
 }
 
-// LeafrefTarget is the target of a leaf whose own type is a leafref: the last node of the
-// compiled path (compile stores a types.Path in Type.PathCompiled).
+// LeafrefTarget is the target of a leaf whose own type is a leafref. A snapshot drops the
+// compiled path because it names the compiler's nodes, so resolve it lazily against the copy.
 func (x xs) LeafrefTarget() xpath.SchemaNode {
 	t := x.s.Type
 	if t == nil || t.Base != schema.Leafref {
@@ -303,7 +304,7 @@ func (x xs) LeafrefTarget() xpath.SchemaNode {
 	if p, ok := t.PathCompiled.(types.Path); ok && len(p) > 0 {
 		return xs{p[len(p)-1].Node, x.set}
 	}
-	return nil
+	return wrapSchema(x.set, snap.LeafrefTarget(x.s, t))
 }
 
 func (x xs) Type() xpath.SchemaType {

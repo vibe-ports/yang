@@ -1,0 +1,27 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "snapshot",
+      "revision": null
+    }
+  ],
+  "op": "xpath",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "result": {
+    "nodes": [
+      "/snapshot:top/l[k='a']/k",
+      "/snapshot:top/l[k='b']/k"
+    ],
+    "type": "node-set"
+  },
+  "verdict": "valid"
+}

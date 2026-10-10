@@ -430,14 +430,17 @@ func (n *Node) LeafrefTargets() iter.Seq2[*Type, *Node] {
 			if t.Base != schema.Leafref {
 				continue
 			}
-			if !yield(&Type{t}, wrapNode(target(n.n, t))) {
+			if !yield(&Type{t}, wrapNode(LeafrefTarget(n.n, t))) {
 				return
 			}
 		}
 	}
 }
 
-func target(n *schema.Node, t *schema.Type) *schema.Node {
+// LeafrefTarget compiles t's path from n and returns its target. Snapshot types do not keep
+// PathCompiled because it points at the compiler's mutable schema nodes, so snapshot readers
+// resolve the target lazily against the copied nodes.
+func LeafrefTarget(n *schema.Node, t *schema.Type) *schema.Node {
 	e, msg := lyxp.ParsePath(t.Path, lyxp.Opts{Begin: lyxp.BeginEither, Prefix: lyxp.PrefixOptional,
 		Pred: lyxp.PredLeafref, Leafref: true, Extended: t.PathExtended})
 	if msg != "" {

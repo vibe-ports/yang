@@ -1,0 +1,20 @@
+fixtures:
+  - id: ut-xpath/xpath-deref-key-dependency
+    dir: ut-xpath
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # deref() targets keep keyed-list predicate dependencies across a schema snapshot
+    rfc: ["RFC7950#9.9.2", "RFC7950#10.3.1"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [snapshot.1]
+      modules: [{name: snapshot}]
+      format: json
+      data_type: data
+      validate_options: ["present"]
+      data_file: snapshot.1/data.json
+      xpath: "/snapshot:top/l[k = deref(../ref)/../other]/k"
+    golden: golden/xpath-deref-key-dependency.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#10.3.1"]
+      deviation: null
