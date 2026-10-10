@@ -1,0 +1,19 @@
+fixtures:
+  - id: ops/validate-reply-defaults
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # lyd_validate_op: output defaults and the mandatory output leaf
+    rfc: ["RFC7950#7.14", "RFC7950#7.15", "RFC7950#7.16"]
+    areas: [operations]
+    request:
+      op: data
+      searchdirs: [opv.1]
+      modules: [{name: opv}]
+      format: json
+      data_type: reply
+      unknown: reject
+      data: "{\"opv:run\":{\"result\":\"ok\"}}"
+    golden: golden/ops-validate-reply-defaults.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.14", "RFC7950#7.15", "RFC7950#7.16"]
+      deviation: null

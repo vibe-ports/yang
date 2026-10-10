@@ -261,7 +261,7 @@ func (vc *valCtx) finalR(parent *Node, sibs []*Node, sparent *schema.Node, mod *
 			err = vc.log.opaqError(n)
 		case n.parent == nil && mod != nil && ownerModule(vc.t.set, n) != mod:
 		default:
-			if inn := unexpected(n.schema, vc.opts.NoState); inn != "" {
+			if inn := unexpected(n.schema, vc.opts.NoState, vc.op); inn != "" {
 				err = vc.log.val(n, "", ly.Data, "Unexpected data %s node \"%s\" found.", inn, n.schema.Name)
 			} else if n.flags&FlagWhenFalse == 0 {
 				vc.obsolete(n)
@@ -307,20 +307,34 @@ func slicesOf(s *siblings) []*Node {
 	return append(append(make([]*Node, 0, s.len()), s.list...), s.opq...)
 }
 
-// unexpected is the "no state/input/output/op data" check of lyd_validate_final_r for datastore
-// data: the kind of node that must not be here, or "".
-func unexpected(sn *schema.Node, noState bool) string {
+// unexpected is the "no state/input/output/op data" check of lyd_validate_final_r: the kind of
+// node that must not be here, or "".
+func unexpected(sn *schema.Node, noState bool, op opOpts) string {
 	switch {
 	case noState && configR(sn):
 		return "state"
-	case sn.Kind == schema.RPC:
+	case (op.rpc || op.action) && sn.InOutput():
+		return "output"
+	case op.reply && inInput(sn):
+		return "input"
+	case !op.rpc && !op.reply && sn.Kind == schema.RPC:
 		return "rpc"
-	case sn.Kind == schema.Action:
+	case !op.action && !op.reply && sn.Kind == schema.Action:
 		return "action"
-	case sn.Kind == schema.Notification:
+	case !op.notif && sn.Kind == schema.Notification:
 		return "notification"
 	}
 	return ""
+}
+
+// inInput is LYS_IS_INPUT: sn is inside an rpc/action input.
+func inInput(sn *schema.Node) bool {
+	for p := sn; p != nil; p = p.Parent {
+		if p.Kind == schema.Input {
+			return true
+		}
+	}
+	return false
 }
 
 // obsolete is lyd_validate_obsolete: a warning for an obsolete node (an inner one only with
