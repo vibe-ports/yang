@@ -7,7 +7,7 @@ Status: contract for M1-pre. v1 = conformance/oracle/README.md. Every response g
 Request field `unknown`: `reject` (default → `LYD_PARSE_STRICT`), `skip` (no STRICT: unknown
 data silently dropped, libyang default), `opaque` (`LYD_PARSE_OPAQ`: kept as opaque nodes).
 `parse_options` may no longer contain `strict`/`opaq` (request-error) — `unknown` is the only knob.
-Operations (`lyd_parse_op`) accept `reject` and `opaque` only. `opaque` only keeps the nodes:
+Operations (`lyd_parse_op`) take all three: `skip` is parse options 0 there. `opaque` only keeps the nodes:
 libyang validation rejects them (datastore data and operations alike).
 
 ## 2. Typed tree dump (all ops that produce a data tree)

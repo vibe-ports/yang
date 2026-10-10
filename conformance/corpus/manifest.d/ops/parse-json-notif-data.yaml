@@ -1,0 +1,20 @@
+fixtures:
+  - id: ops/parse-json-notif-data
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written over the test_parser_*.c module a: data next to the notification
+    rfc: ["RFC7950#7.14"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: json
+      data_type: notif
+      unknown: reject
+      parse_only: true
+      data: "{\"a:c\":{\"n1\":{\"nl\":\"v\"},\"x\":\"y\"}}"
+    golden: golden/ops-parse-json-notif-data.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.14"]
+      deviation: null

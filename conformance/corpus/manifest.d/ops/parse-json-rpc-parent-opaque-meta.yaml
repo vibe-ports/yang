@@ -1,0 +1,22 @@
+fixtures:
+  - id: ops/parse-json-rpc-parent-opaque-meta
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: metadata of an opaque input node parsed with the request
+    rfc: ["RFC7950#7.14"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: json
+      data_type: rpc
+      unknown: opaque
+      parse_only: true
+      rpc: "{\"a:r1\":{\"zz\":1}}"
+      keep_input: true
+      data: "{\"@a:zz\":{\"a:hint\":1}}"
+    golden: golden/ops-parse-json-rpc-parent-opaque-meta.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.14"]
+      deviation: null

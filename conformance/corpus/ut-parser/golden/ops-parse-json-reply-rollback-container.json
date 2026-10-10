@@ -1,0 +1,72 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [
+    {
+      "apptag": null,
+      "code": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "data_path": "/rb:r/oc/n",
+      "level": "error",
+      "line": 1,
+      "msg": "Invalid non-number-encoded uint8 value \"x\".",
+      "phase": "data",
+      "schema_path": null,
+      "vecode": 9,
+      "vecode_name": "LYVE_DATA"
+    }
+  ],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "rb",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 7,
+    "name": "LY_EVALID"
+  },
+  "request_typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "rpc",
+      "meta": [],
+      "opaque": null,
+      "path": "/rb:r",
+      "schema": "/rb:r",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/rb:r/v[1]",
+      "schema": "/rb:r/output/v",
+      "value": {
+        "canonical": "1",
+        "type": "uint8",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "tree": null,
+  "verdict": "invalid"
+}

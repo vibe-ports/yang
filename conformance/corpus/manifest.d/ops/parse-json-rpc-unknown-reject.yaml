@@ -1,0 +1,20 @@
+fixtures:
+  - id: ops/parse-json-rpc-unknown-reject
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: an unknown input node, unknown: reject
+    rfc: ["RFC7950#7.14"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: json
+      data_type: rpc
+      unknown: reject
+      parse_only: true
+      data: "{\"a:r1\":{\"zz\":1,\"l1\":\"x\"}}"
+    golden: golden/ops-parse-json-rpc-unknown-reject.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.14"]
+      deviation: null

@@ -4,6 +4,7 @@
 package data
 
 import (
+	"errors"
 	"fmt"
 	"math"
 
@@ -25,9 +26,11 @@ type xmlParser struct {
 	nsMap map[string][]string // prefix -> URIs, innermost last
 }
 
-// parseXML is lyd_parse_xml for datastore data (LYD_INTOPT_WITH_SIBLINGS, no parent): every
-// top-level element. Operations and NETCONF envelopes are design 07 M4; anydata/anyxml instances
-// fail with yang.ErrUnsupported (deviations.md U-0043).
+// parseXML is lyd_parse_xml: every top-level element (only the first one under
+// LYD_INTOPT_NO_SIBLINGS) as children of lc.parent (the top level when nil), and the operation
+// checks of an operation parse, an rpc-or-action parse first opening a YANG "action" element.
+// NETCONF envelopes are not ported; anydata/anyxml instances fail with yang.ErrUnsupported
+// (deviations.md U-0043).
 func parseXML(lc *lydCtx, in []byte) error {
 	x, err := lyxml.New(in)
 	if err != nil {
@@ -38,15 +41,87 @@ func parseXML(lc *lydCtx, in []byte) error {
 	p := &xmlParser{lc: lc, x: x, strict: lc.opts.Unknown == Reject, opaq: lc.opts.Unknown == Opaque,
 		nsMap: map[string][]string{}}
 	p.syncNS()
+	if err := lc.findOperation(); err != nil {
+		return errLoggedFatal
+	}
+	closeElem := false
+	if lc.op.rpc && lc.op.action {
+		// can be either: try to parse "action"; libyang clears LYD_INTOPT_RPC only in its local
+		// copy of the options, which the checks of an rpc inside the element never read
+		if r := p.envelope("action", "urn:ietf:params:xml:ns:yang:1"); r == nil {
+			closeElem = true
+		}
+	}
 	var rc error
+	parsedData := false
 	for x.Status == lyxml.Element {
-		if r := p.subtree(nil); r != nil {
+		if r := p.subtree(lc.parent); r != nil {
 			if rc = r; lc.fatal(r) {
 				return rc
 			}
 		}
+		parsedData = true
+		if lc.op.noSiblings {
+			break
+		}
+	}
+	if closeElem {
+		if x.Status != lyxml.ElemClose {
+			_ = lc.log.val(nil, "", ly.Syntax, "Unexpected child element \"%s\".", x.Name)
+			return errLoggedFatal
+		}
+		if err := p.next(); err != nil {
+			return err
+		}
+	}
+	if lc.op.noSiblings && x.Status == lyxml.Element {
+		r := lc.log.val(nil, "", ly.Syntax, "Unexpected sibling node.")
+		if rc = r; lc.fatal(r) {
+			return rc
+		}
+	}
+	if lc.op.any() && lc.opNode == nil {
+		r := lc.log.val(nil, "", ly.Data, "Missing the operation node.")
+		if rc = r; lc.fatal(r) {
+			return rc
+		}
+	}
+	if !parsedData {
+		lc.opNode = nil // no data nodes were parsed
 	}
 	return rc
+}
+
+// errNotEnvelope is lydxml_envelope's LY_ENOT: the current element is not the envelope.
+var errNotEnvelope = errors.New("data: not the envelope element")
+
+// envelope is lydxml_envelope for an envelope element without a value: when the current element
+// is name in namespace uri, it is opened and its attributes read (the opaque envelope node
+// libyang creates is freed by its only caller here, so none is made). errNotEnvelope when it is
+// another element.
+func (p *xmlParser) envelope(name, uri string) error {
+	x := p.x
+	if x.Status != lyxml.Element || x.Name != name {
+		return errNotEnvelope
+	}
+	ns, ok := p.getNS(x.Prefix)
+	if !ok {
+		return p.namespaceErr(nil, x.Prefix, "")
+	} else if ns != uri {
+		return errNotEnvelope
+	}
+	if err := p.next(); err != nil {
+		return err
+	}
+	if x.Status == lyxml.Attribute {
+		if _, err := p.attrs(nil); err != nil {
+			return err
+		}
+	}
+	if !x.WSOnly {
+		return p.lc.log.val(nil, "", ly.Syntax, "Unexpected value \"%s\" in the \"%s\" element.", x.Value, name)
+	}
+	return p.next()
 }
 
 // next is lyxml_ctx_next with its error logged (lexErr).
@@ -471,7 +546,7 @@ func (p *xmlParser) getSnode(parent *Node, prefix, name string) (*schema.Node, e
 	ns, nsOK := p.getNS(prefix)
 	if nsOK {
 		if mod := set.ByNamespace(ns); mod != nil {
-			if sn := schema.FindChild(sparent, mod.Top, mod, name, 0); sn != nil {
+			if sn := schema.FindChild(sparent, mod.Top, mod, name, lc.getnextOpts()); sn != nil {
 				if err := lc.checkSchema(sn); err != nil {
 					return nil, err
 				}
@@ -613,13 +688,29 @@ func (p *xmlParser) subtreeInner(sn *schema.Node, parent *Node) (*Node, error) {
 		}
 		lc.nodeInsert(parent, nil, node) // a list that had its keys missing
 	}
-	return node, lc.closeInner(node, rc)
+	if rc = lc.closeInner(node, rc); rc == nil {
+		lc.opParsed(node)
+	}
+	return node, rc
+}
+
+// freeFailed is the cleanup condition of lydxml_subtree_opaq, _term and _inner after their error
+// r: an opaque node always, a schema node unless the error is a validation error that
+// LYD_VALIDATE_MULTI_ERROR goes past, a list instance also when it lacks keys. Errors after the
+// node was parsed (moving past its closing tag) free nothing: the node stays linked.
+func (p *xmlParser) freeFailed(sn *schema.Node, node *Node, r error) bool {
+	if sn == nil || !p.lc.isEValid(r) || !p.lc.opts.Validate.MultiError {
+		return true
+	}
+	_, hashed := hashOf(node)
+	return sn.Kind == schema.List && !hashed
 }
 
 // subtree is lydxml_subtree_r: the current element and its descendants as data nodes under parent
 // (the top level when nil).
 func (p *xmlParser) subtree(parent *Node) error {
 	lc, x := p.lc, p.x
+	var node *Node
 	prefix, name := x.Prefix, x.Name
 	if err := p.next(); err != nil {
 		return err
@@ -652,7 +743,6 @@ func (p *xmlParser) subtree(parent *Node) error {
 			}
 		}
 	}
-	var node *Node
 	switch {
 	case sn == nil:
 		node, r = p.subtreeOpaq(prefix, name, parent)
@@ -663,6 +753,10 @@ func (p *xmlParser) subtree(parent *Node) error {
 			yang.ErrUnsupported, nodetypeStr(sn.Kind), sn.Name)
 	default:
 		node, r = p.subtreeInner(sn, parent)
+	}
+	if r != nil && node != nil && p.freeFailed(sn, node, r) {
+		lc.nodeFree(node)
+		node = nil
 	}
 	if r != nil {
 		if rc = r; lc.fatal(r) {
@@ -683,6 +777,9 @@ func (p *xmlParser) subtree(parent *Node) error {
 		for _, a := range attrs {
 			createAttr(node, a) // lyd_insert_attr
 		}
+	}
+	if node != nil && parent == lc.parent && lc.op.any() {
+		lc.parsed = append(lc.parsed, node) // lyd_parse_op's parsed set
 	}
 	return rc
 }

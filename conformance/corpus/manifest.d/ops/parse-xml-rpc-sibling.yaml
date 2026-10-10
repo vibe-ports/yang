@@ -1,0 +1,20 @@
+fixtures:
+  - id: ops/parse-xml-rpc-sibling
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written over the test_parser_*.c module a: two operations at the top level
+    rfc: ["RFC7950#7.14"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: xml
+      data_type: rpc
+      unknown: reject
+      parse_only: true
+      data: "<r1 xmlns=\"urn:tests:a\"/><foo xmlns=\"urn:tests:a\">y</foo>"
+    golden: golden/ops-parse-xml-rpc-sibling.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.14"]
+      deviation: null

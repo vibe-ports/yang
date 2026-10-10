@@ -1,0 +1,54 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"a:r1\": 42\n}\n",
+    "xml": "<r1 xmlns=\"urn:tests:a\">42</r1>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "a",
+        "name": "r1",
+        "namespace": null,
+        "prefix": "a"
+      },
+      "path": "/a:r1",
+      "schema": null,
+      "value": {
+        "canonical": "42",
+        "hints": [
+          "decnum"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

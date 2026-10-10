@@ -1161,6 +1161,7 @@ struct dparams {
     uint32_t popts, vopts;
     int parse_only;
     struct lyd_node *oper;  /* external operational tree for operations */
+    int keep_input;         /* rpc kept with its parsed children (keep_input) */
 };
 
 static LYD_FORMAT
@@ -1189,6 +1190,7 @@ dparams_of(const cJSON *req, struct dparams *p)
     p->vopts = LYD_VALIDATE_MULTI_ERROR;
     p->optype = LYD_TYPE_DATA_YANG;
     p->parse_only = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(req, "parse_only"));
+    p->keep_input = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(req, "keep_input"));
 
     if (!strcmp(p->type, "config")) {
         p->popts |= LYD_PARSE_NO_STATE;
@@ -1213,9 +1215,6 @@ dparams_of(const cJSON *req, struct dparams *p)
     if (p->parse_only) {
         p->popts |= LYD_PARSE_ONLY;
     }
-    if ((p->optype != LYD_TYPE_DATA_YANG) && u && !strcmp(u, "skip")) {
-        die("unknown \"skip\" is not supported for operations%s", NULL);
-    }
     extra = flags_of(req, "parse_options", parse_flags);
     if (extra & (LYD_PARSE_STRICT | LYD_PARSE_OPAQ)) {
         die("parse_options strict/opaq are replaced by \"unknown\"%s", NULL);
@@ -1228,6 +1227,9 @@ dparams_of(const cJSON *req, struct dparams *p)
  * Parse (and unless parse-only, validate) one input. Returns rc; *tree is the top-level tree
  * (NULL on failure). For "reply", rpc_src is the request whose output is being parsed.
  */
+/* the request's tree after a failed reply parsed into it (what lyd_parse_op's cleanup left) */
+static cJSON *req_typed;
+
 static LY_ERR
 parse_one(struct ly_ctx *ctx, const struct dparams *p, const char *data, const char *rpc_src,
         struct lyd_node **tree, cJSON *diag, const char *phase)
@@ -1244,7 +1246,7 @@ parse_one(struct ly_ctx *ctx, const struct dparams *p, const char *data, const c
     }
 
     /* operations: lyd_parse_op accepts only STRICT/OPAQ */
-    if ((p->optype == LYD_TYPE_REPLY_YANG) && rpc_src) {
+    if (((p->optype == LYD_TYPE_REPLY_YANG) || (p->optype == LYD_TYPE_RPC_YANG)) && rpc_src) {
         struct ly_in *rin = NULL;
 
         ly_in_new_memory(rpc_src, &rin);
@@ -1255,9 +1257,15 @@ parse_one(struct ly_ctx *ctx, const struct dparams *p, const char *data, const c
         if (rc) {
             goto done;
         }
-        lyd_free_siblings(lyd_child(op));
-        rc = lyd_parse_op(ctx, op, in, p->fmt, LYD_TYPE_REPLY_YANG, p->popts & (LYD_PARSE_STRICT | LYD_PARSE_OPAQ),
+        if (!p->keep_input) {
+            lyd_free_siblings(lyd_child(op));
+        }
+        /* the reply, or (data_type rpc) the input again, parsed under the request */
+        rc = lyd_parse_op(ctx, op, in, p->fmt, p->optype, p->popts & (LYD_PARSE_STRICT | LYD_PARSE_OPAQ),
                 NULL, NULL);
+        if (rc) {
+            req_typed = typed_json(*tree);
+        }
     } else {
         rc = lyd_parse_op(ctx, NULL, in, p->fmt, p->optype, p->popts & (LYD_PARSE_STRICT | LYD_PARSE_OPAQ), tree, &op);
     }
@@ -1405,6 +1413,9 @@ op_data(const cJSON *req)
         }
     } else {
         cJSON_AddNullToObject(resp, "tree");
+    }
+    if (req_typed) {
+        cJSON_AddItemToObject(resp, "request_typed", req_typed);
     }
 }
 

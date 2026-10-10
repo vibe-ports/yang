@@ -1,0 +1,18 @@
+fixtures:
+  - id: ops/parse-json-reply-keep-order-split-meta
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: forward @v metadata for a leaf-list the anchor splits around the kept input ([before, v1, v2, in, v3]): lydjson_metadata_finish counts every instance in sibling order
+    rfc: ["RFC7950#7.14", "RFC7950#7.17"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [rb.1]
+      modules: [{name: rb}, {name: rbaug}]
+      format: json
+      data_type: reply
+      unknown: reject
+      parse_only: true
+      rpc: "{\"rb:r\":{\"in\":\"keep\"}}"
+      keep_input: true
+      data: "{\"@rb:v\":[{\"rbaug:a\":\"1\"},{\"rbaug:a\":\"2\"},{\"rbaug:a\":\"3\"}],\"rb:before\":\"b\",\"rb:v\":[1,2,3]}"
+    golden: golden/ops-parse-json-reply-keep-order-split-meta.json

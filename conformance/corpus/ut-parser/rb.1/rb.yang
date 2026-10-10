@@ -1,0 +1,27 @@
+module rb {
+  yang-version 1.1;
+  namespace "urn:rb";
+  prefix rb;
+
+  rpc r {
+    input {
+      leaf in { type string; }
+      leaf in2 { type string; }
+      leaf in3 { type string; }
+      leaf in4 { type string; }
+      leaf-list il { type uint8; }
+      list ik {
+        key k;
+        leaf k { type uint8; }
+      }
+    }
+    output {
+      leaf before { type string; }
+      leaf-list v { type uint8; }
+      leaf-list s { type string; }
+      container oc {
+        leaf n { type uint8; }
+      }
+    }
+  }
+}

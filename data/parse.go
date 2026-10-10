@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Ported from libyang v5.8.6 src/tree_data.c (lyd_parse), src/parser_common.c (the data parser
-// helpers lyd_parser_*), src/parser_internal.h (struct lyd_ctx, LY_DPARSER_ERR_GOTO) and
+// Ported from libyang v5.8.6 src/tree_data.c (lyd_parse, lyd_parse_op), src/parser_common.c (the
+// data parser helpers lyd_parser_*), src/parser_internal.h (struct lyd_ctx, LY_DPARSER_ERR_GOTO) and
 // src/tree_data_new.c (lyd_create_term, lyd_create_inner, lyd_create_opaq) (BSD-3-Clause,
 // © CESNET).
 
@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 
 	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/ly"
@@ -118,6 +119,140 @@ type lydCtx struct {
 	// validate is the lyd_validate of the Parse path over the queues (design 07 D10; nil until
 	// then).
 	validate func(lc *lydCtx) error
+	// op is the operation part of the internal options (LYD_INTOPT_*), zero for datastore data;
+	// parent is the node parsed into (nil: the top level) and opNode the operation node
+	// (lyd_ctx.op_node), opSchema its schema node: the JSON parser also records an opaque node
+	// parsed for an operation member (D-0110).
+	op       opOpts
+	parent   *Node
+	opNode   *Node
+	opSchema *schema.Node
+	// rcOnly is lyd_parse_op's result rule: the format parser's return code is the result, so an
+	// error it logged and went past (the YANG action element, lydxml_envelope) does not fail it
+	rcOnly bool
+	parsed []*Node // the nodes parsed directly under parent (lyd_parse_op's parsed set)
+}
+
+// opOpts are the LYD_INTOPT_* options of an operation parse.
+type opOpts struct {
+	rpc, action, notif, reply bool
+	noSiblings                bool // LYD_INTOPT_NO_SIBLINGS: one top-level node only
+}
+
+func (o opOpts) any() bool { return o.rpc || o.action || o.notif || o.reply }
+
+// opType is the operation lyd_parse_op parses (LYD_TYPE_*_YANG).
+type opType uint8
+
+const (
+	opRPC   opType = iota + 1 // LYD_TYPE_RPC_YANG: an rpc or action
+	opNotif                   // LYD_TYPE_NOTIF_YANG
+	opReply                   // LYD_TYPE_REPLY_YANG
+)
+
+// parseOp is lyd_parse_op for the YANG operation types (no NETCONF/RESTCONF envelopes): the
+// operation in format f, parsed only (LYD_PARSE_ONLY), with the unknown-node policy (Skip is
+// libyang's parse options 0: unknown nodes are dropped). With parent nil the result is a new tree holding the
+// operation and its parents; with parent, the nodes are parsed as its children (a reply into
+// its rpc or action) and the tree is parent's. op is the operation node. On error the nodes
+// parsed are removed again (from parent's tree) and the tree is nil.
+func parseOp(ctx context.Context, r io.Reader, s *schema.Set, f Format, t opType, parent *Node,
+	unknown UnknownPolicy) (tree *Tree, op *Node, diags []yang.Diagnostic, err error) {
+	var oo opOpts
+	switch t {
+	case opRPC:
+		oo.rpc, oo.action = true, true
+	case opNotif:
+		oo.notif = true
+	case opReply:
+		oo.reply = true
+	default:
+		return nil, nil, nil, fmt.Errorf("data: unknown operation type %d", t)
+	}
+	oo.noSiblings = parent == nil
+	fp := parseJSON
+	if f == FormatXML {
+		fp = parseXML
+	}
+	var lc *lydCtx
+	o := parseOpts{ParseOptions: ParseOptions{Unknown: unknown, ParseOnly: true}}
+	tree, diags, err = parseWith(ctx, r, s, o, fp, func(c *lydCtx) {
+		lc, c.op, c.parent, c.rcOnly = c, oo, parent, true
+		if parent != nil {
+			if pt := parent.treeOf(); pt != nil {
+				c.tree = pt
+			} // a detached parent (LYD_CTX(parent)): the parser's own tree of s stands in for lookups
+		}
+	})
+	if err != nil {
+		if lc != nil && parent != nil {
+			lc.freeParsed() // nil lc: the input was not read, nothing was parsed
+		}
+		return nil, nil, diags, err
+	}
+	if parent != nil {
+		tree = parent.treeOf() // libyang returns no tree with a parent; nil for a detached parent
+	}
+	return tree, lc.opNode, diags, nil
+}
+
+// freeParsed frees the nodes parsed under lc.parent again (lyd_parse_op's cleanup of its parsed
+// set), keys excepted (lyd_parser_node_free never frees a key), in one bulk unlink.
+func (lc *lydCtx) freeParsed() {
+	ns := slices.DeleteFunc(lc.parsed, func(n *Node) bool { return n.schema != nil && n.schema.IsKey() })
+	_ = lc.tree.unlinkAll(ns) // no keys left: unlinkCheck cannot refuse
+	for _, n := range ns {
+		freeSubtreeLinks(lc.tree.set, n)
+	}
+	lc.parsed = nil
+}
+
+// findOperation is lyd_parser_find_operation: the operation node among parent and its ancestors,
+// when the operation parsed allows it there.
+func (lc *lydCtx) findOperation() error {
+	lc.opNode = nil
+	var it *Node
+	for it = lc.parent; it != nil; it = it.parent {
+		if it.schema != nil && (it.schema.Kind == schema.RPC || it.schema.Kind == schema.Action ||
+			it.schema.Kind == schema.Notification) {
+			break
+		}
+	}
+	if it == nil {
+		return nil
+	}
+	o, sn := lc.op, it.schema
+	switch {
+	case !o.any():
+		return lc.log.logErr("LY_EINVAL", "Invalid parent %s \"%s\" node when not parsing any operation.",
+			nodetypeStr(sn.Kind), sn.Name)
+	case sn.Kind == schema.RPC && !o.rpc && !o.reply:
+		return lc.log.logErr("LY_EINVAL", "Invalid parent RPC \"%s\" node when not parsing RPC nor rpc-reply.", sn.Name)
+	case sn.Kind == schema.Action && !o.action && !o.reply:
+		return lc.log.logErr("LY_EINVAL", "Invalid parent action \"%s\" node when not parsing action nor rpc-reply.",
+			sn.Name)
+	case sn.Kind == schema.Notification && !o.notif:
+		return lc.log.logErr("LY_EINVAL", "Invalid parent notification \"%s\" node when not parsing a notification.",
+			sn.Name)
+	}
+	lc.opNode, lc.opSchema = it, it.schema
+	return nil
+}
+
+// getnextOpts are the lys_getnext options of a schema lookup: an rpc-reply looks into outputs.
+func (lc *lydCtx) getnextOpts() schema.GetNextOpt {
+	if lc.op.reply {
+		return schema.GetNextOutput
+	}
+	return 0
+}
+
+// opParsed records n as the operation node when it is one.
+func (lc *lydCtx) opParsed(n *Node) {
+	if n != nil && n.schema != nil && (n.schema.Kind == schema.RPC || n.schema.Kind == schema.Action ||
+		n.schema.Kind == schema.Notification) {
+		lc.opNode, lc.opSchema = n, n.schema // remember the RPC/action/notification
+	}
 }
 
 // formatParser parses the whole input into lc.tree, logging through lc.log; it returns the
@@ -156,7 +291,7 @@ func parseWith(ctx context.Context, r io.Reader, s *schema.Set, o parseOpts, fp 
 			}
 		}
 	}
-	if err == nil {
+	if err == nil && !lc.rcOnly {
 		err = lc.log.result()
 	} else if errors.Is(err, errLogged) {
 		ve := &ValidationError{Diags: lc.log.diags}
@@ -343,19 +478,34 @@ func (lc *lydCtx) createOpaq(o opaque) (*Node, error) {
 	return newOpaque(o), nil // lyd_create_opaq sets no flag (no LYD_NEW)
 }
 
-// checkSchema is lyd_parser_check_schema for datastore data: a state node with LYD_PARSE_NO_STATE,
-// and any rpc, action or notification, are unexpected (operations are M4).
+// checkSchema is lyd_parser_check_schema: a state node with LYD_PARSE_NO_STATE is unexpected, and
+// an rpc, action or notification unless the parse is of that operation and none was parsed yet.
 func (lc *lydCtx) checkSchema(sn *schema.Node) error {
 	if lc.opts.NoState && !sn.Config && !inOperation(sn) {
 		lc.log.locSet(sn)
 		defer lc.log.locBack(1)
 		return lc.log.val(nil, "", ly.Data, "Unexpected data %s node \"%s\" found.", "state", sn.Name)
 	}
+	var ok bool
 	switch sn.Kind {
-	case schema.RPC, schema.Action, schema.Notification:
-		lc.log.locSet(sn)
-		defer lc.log.locBack(1)
+	case schema.RPC:
+		ok = lc.op.rpc || lc.op.reply
+	case schema.Action:
+		ok = lc.op.action || lc.op.reply
+	case schema.Notification:
+		ok = lc.op.notif
+	default:
+		return nil
+	}
+	lc.log.locSet(sn)
+	defer lc.log.locBack(1)
+	if !ok {
 		return lc.log.val(nil, "", ly.Data, "Unexpected %s element \"%s\".", nodetypeStr(sn.Kind), sn.Name)
+	}
+	if op := lc.opSchema; lc.opNode != nil {
+		// libyang reads op_node->schema, NULL for an opaque operation node: SIGSEGV (D-0110)
+		return lc.log.val(nil, "", ly.Data, "Unexpected %s element \"%s\", %s \"%s\" already parsed.",
+			nodetypeStr(sn.Kind), sn.Name, nodetypeStr(op.Kind), op.Name)
 	}
 	return nil
 }
@@ -474,4 +624,12 @@ func (lc *lydCtx) nodeFree(n *Node) {
 	}
 	unlink(n)
 	freeSubtreeLinks(lc.tree.set, n)
+}
+
+// treeOf is the tree n is linked into, nil for an unlinked subtree.
+func (n *Node) treeOf() *Tree {
+	for n.parent != nil {
+		n = n.parent
+	}
+	return n.tree
 }

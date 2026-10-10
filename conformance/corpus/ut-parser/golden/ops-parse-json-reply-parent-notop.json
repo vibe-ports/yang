@@ -1,0 +1,67 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [
+    {
+      "apptag": null,
+      "code": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "data_path": "/a:c/act",
+      "level": "error",
+      "line": 1,
+      "msg": "Node \"x\" not found as a child of \"act\" node.",
+      "phase": "data",
+      "schema_path": null,
+      "vecode": 4,
+      "vecode_name": "LYVE_REFERENCE"
+    }
+  ],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 7,
+    "name": "LY_EVALID"
+  },
+  "request_typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:c",
+      "schema": "/a:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "action",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:c/act",
+      "schema": "/a:c/act",
+      "value": null
+    }
+  ],
+  "tree": null,
+  "verdict": "invalid"
+}
