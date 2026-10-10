@@ -109,6 +109,7 @@ func xpathAllowed(id, reason string) bool {
 // schemaLimits are the reasons an op schema fixture may be unsupported after M2 (issue #43): the
 // formats and extensions outside v1 and the resource budgets (conformance/deviations.md).
 var schemaLimits = []struct{ id, re string }{
+	{"U-0001", `character-class expansion exceeds \d+ ranges \(U-0001\)`},
 	{"U-0021", `\(U-0021\)`}, // YIN module file
 	{"U-0022", `directories searched for module`},
 	{"U-0024", `extension instance .* \(U-0024\)`}, // schema mount
@@ -196,6 +197,7 @@ func TestXPathGateSelection(t *testing.T) {
 // TestSchemaLimit: only the allowlisted limits pass the M2 gate.
 func TestSchemaLimit(t *testing.T) {
 	for reason, want := range map[string]string{
+		"unsupported: pattern: character-class expansion exceeds 1048576 ranges (U-0001)":                       "U-0001",
 		"unsupported: not supported: extension instance yangmnt:mount-point of ietf-yang-schema-mount (U-0024)": "U-0024",
 		"unsupported: not supported: YIN module file \"a.yin\" (U-0021)":                                        "U-0021",
 		"unsupported: resource budget exceeded: more than 1048576 compiled schema nodes and uses":               "U-0034",

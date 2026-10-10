@@ -4,6 +4,7 @@ package xsdre
 
 import (
 	"errors"
+	"fmt"
 	"runtime"
 	"strings"
 	"testing"
@@ -91,6 +92,37 @@ func TestCompatLargeClass(t *testing.T) {
 		}
 		if alloc := after.TotalAlloc - before.TotalAlloc; d > 5*time.Second || alloc > 512<<20 {
 			t.Errorf("%.20q… (%d bytes): %v, %d bytes allocated", p, len(p), d, alloc)
+		}
+	}
+}
+
+// TestClassExpansionBudget covers the adversarial shape from issue #169 in both compilation
+// modes. The budget is charged while parsing each class, before all 40 000 expanded sets can be
+// retained in the AST.
+func TestClassExpansionBudget(t *testing.T) {
+	for _, brackets := range []bool{false, true} {
+		part := `\W`
+		if brackets {
+			part = `[` + part + `]`
+		}
+		for name, compile := range map[string]func(string) (*Pattern, error){
+			"strict": Compile,
+			"compat": CompileCompat,
+		} {
+			t.Run(fmt.Sprintf("%s/brackets=%t", name, brackets), func(t *testing.T) {
+				var before, after runtime.MemStats
+				runtime.ReadMemStats(&before)
+				start := time.Now()
+				_, err := compile(strings.Repeat(part, 40000))
+				d := time.Since(start)
+				runtime.ReadMemStats(&after)
+				if !errors.Is(err, ErrUnsupported) || !strings.Contains(err.Error(), "class expansion") {
+					t.Fatalf("Compile: %v, want class-expansion ErrUnsupported", err)
+				}
+				if alloc := after.TotalAlloc - before.TotalAlloc; d > 5*time.Second || alloc > 128<<20 {
+					t.Errorf("%v, %d bytes allocated", d, alloc)
+				}
+			})
 		}
 	}
 }

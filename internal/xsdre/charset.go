@@ -4,6 +4,7 @@ package xsdre
 
 import (
 	"slices"
+	"sync"
 	"unicode"
 )
 
@@ -156,6 +157,9 @@ var nameChar = union(nameStartChar, normalize([]rng{
 // multiChar returns the XSD Part 2 §F.1.1 multi-character escape set for
 // \s \i \c \d \w (lower case); upper case is the complement.
 func multiChar(c rune) (charSet, bool) {
+	if s, ok := multiCharSets.Load(c); ok {
+		return s.(charSet), true
+	}
 	var s charSet
 	switch unicode.ToLower(c) {
 	case 's':
@@ -177,5 +181,10 @@ func multiChar(c rune) (charSet, bool) {
 	if unicode.IsUpper(c) {
 		s = complement(s)
 	}
-	return s, true
+	actual, _ := multiCharSets.LoadOrStore(c, s)
+	return actual.(charSet), true
 }
+
+// The sets are immutable. Caching them avoids rebuilding the Unicode tables before a parser's
+// class-expansion budget can reject a pattern containing many copies of the same escape.
+var multiCharSets sync.Map

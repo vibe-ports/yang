@@ -290,6 +290,9 @@ type pcreParser struct {
 	// propItems is the number of items of the last class when they are all properties or
 	// character types other than \h \v (each one XCL_PROP item), else 0
 	propItems int
+	// classExpansion counts ranges copied into parsed character classes, bounding memory before
+	// the PCRE2 compiled-size bounds and RE2 translation are computed (U-0001).
+	classExpansion int
 }
 
 // item records a single item and the bounds of its compiled length.
@@ -356,6 +359,15 @@ func (p *pcreParser) fail(code, at int) error {
 
 func (p *pcreParser) unsupported(what string) error {
 	return &Error{ErrUnsupported, p.pat, p.src[min(p.pos, len(p.s))], "PCRE2 " + what + " is not translated to RE2 (U-0011)", false}
+}
+
+func (p *pcreParser) addClassExpansion(n int) error {
+	if n > maxClassExpansion-p.classExpansion {
+		return &Error{ErrUnsupported, p.pat, p.src[min(p.pos, len(p.s))],
+			"character-class expansion exceeds 1048576 ranges (U-0001)", false}
+	}
+	p.classExpansion += n
+	return nil
 }
 
 // item kinds returned by escape
@@ -521,6 +533,9 @@ func (p *pcreParser) seq(depth int) (*node, error) {
 			case escChar:
 				item, okq = p.item(&node{op: opSet, set: single(r)}, 1+utf8.RuneLen(r), 1+utf8.RuneLen(r)), true
 			case escSet:
+				if err := p.addClassExpansion(len(set)); err != nil {
+					return nil, err
+				}
 				// compile_branch: \h \H \v \V \N are one opcode, \p{Any} is OP_ALLANY, \P{Any}
 				// an empty 32-byte OP_CLASS, the other properties and types OP_PROP/OP_NOTPROP
 				n := 3
@@ -1268,18 +1283,22 @@ func (p *pcreParser) class() (charSet, error) {
 	var raw []rng
 	normalized := 0
 	shared := map[*rng]bool{} // memoSet results already added: a repeated \w adds nothing
-	add := func(s charSet) {
+	add := func(s charSet) error {
 		if len(s) > 1 {
 			if shared[&s[0]] {
-				return
+				return nil
 			}
 			shared[&s[0]] = true
+		}
+		if err := p.addClassExpansion(len(s)); err != nil {
+			return err
 		}
 		raw = append(raw, s...)
 		if len(raw) > 2*normalized+4096 {
 			raw = normalize(raw)
 			normalized = len(raw)
 		}
+		return nil
 	}
 	// lits are the literal characters of PCRE2's parsed class while it has nothing else (other):
 	// a range of one character is one literal, a dangling '-' is one too
@@ -1294,13 +1313,17 @@ func (p *pcreParser) class() (charSet, error) {
 			if c < start {
 				return p.fail(8, p.pos-1) // FAILED_BACK
 			}
-			add(span(start, c))
+			if err := add(span(start, c)); err != nil {
+				return err
+			}
 			other = other || c != start
 			state = rangeNo
 		case rangeForbidStarted:
 			return p.fail(50, forbidPtr)
 		default:
-			add(single(c))
+			if err := add(single(c)); err != nil {
+				return err
+			}
 			lits = append(lits, c)
 			start, state = c, rangeOKLiteral
 			if !isLiteral {
@@ -1349,7 +1372,9 @@ func (p *pcreParser) class() (charSet, error) {
 				if ps == nil {
 					return nil, p.unsupported("POSIX class [:" + name + ":]")
 				}
-				add(ps)
+				if err := add(ps); err != nil {
+					return nil, err
+				}
 				other, propOnly = true, false
 				p.wide = true
 				state = rangeForbidNo
@@ -1360,7 +1385,9 @@ func (p *pcreParser) class() (charSet, error) {
 			}
 		case c == ']':
 			if state == rangeStarted {
-				add(single('-'))
+				if err := add(single('-')); err != nil {
+					return nil, err
+				}
 				lits = append(lits, '-')
 			}
 			p.anyClass = hasAny && !neg
@@ -1406,7 +1433,9 @@ func (p *pcreParser) class() (charSet, error) {
 			case rangeForbidStarted:
 				return nil, p.fail(50, forbidPtr)
 			}
-			add(cs)
+			if err := add(cs); err != nil {
+				return nil, err
+			}
 			members++
 			full := len(cs) == 1 && cs[0] == rng{0, unicode.MaxRune}
 			hasAny = hasAny || full && (letter == 'p' || letter == 'P')
@@ -1416,7 +1445,9 @@ func (p *pcreParser) class() (charSet, error) {
 		case c == '-' && state >= rangeOKEscaped:
 			state = rangeStarted
 		case c == '-' && state == rangeForbidNo:
-			add(single('-'))
+			if err := add(single('-')); err != nil {
+				return nil, err
+			}
 			lits = append(lits, '-')
 			state, forbidPtr = rangeForbidStarted, p.pos
 		default:

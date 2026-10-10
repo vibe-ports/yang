@@ -27,8 +27,8 @@ import (
 var (
 	// ErrSyntax means the pattern is not a valid XSD regular expression.
 	ErrSyntax = errors.New("invalid XSD regular expression")
-	// ErrUnsupported means the pattern is valid XSD but exceeds what Go's RE2
-	// engine accepts (repeat count > 1000, nesting depth, program size).
+	// ErrUnsupported means the pattern is valid XSD but exceeds a compiler resource budget or
+	// what Go's RE2 engine accepts (repeat count > 1000, nesting depth, program size).
 	ErrUnsupported = errors.New("XSD regular expression not supported")
 )
 
@@ -53,8 +53,9 @@ func (e *Error) Unwrap() error { return e.Kind }
 
 // maxRepeat is Go's regexp/syntax repeat limit; maxDepth bounds parser recursion.
 const (
-	maxRepeat = 1000
-	maxDepth  = 1000
+	maxRepeat         = 1000
+	maxDepth          = 1000
+	maxClassExpansion = 1 << 20 // ranges materialized while parsing character classes (U-0001)
 )
 
 // Pattern is a compiled XSD regular expression.
@@ -124,12 +125,21 @@ type node struct {
 // ---- parser (XSD Part 2 §F, productions [1]-[37]) ----
 
 type parser struct {
-	src string
-	pos int
+	src            string
+	pos            int
+	classExpansion int
 }
 
 func (p *parser) errf(kind error, format string, a ...any) error {
 	return &Error{kind, p.src, p.pos, fmt.Sprintf(format, a...), false}
+}
+
+func (p *parser) addClassExpansion(n int) error {
+	if n > maxClassExpansion-p.classExpansion {
+		return p.errf(ErrUnsupported, "character-class expansion exceeds %d ranges (U-0001)", maxClassExpansion)
+	}
+	p.classExpansion += n
+	return nil
 }
 
 func (p *parser) eof() bool { return p.pos >= len(p.src) }
@@ -295,6 +305,9 @@ func (p *parser) atom(depth int) (*node, error) {
 		if err != nil {
 			return nil, err
 		}
+		if err := p.addClassExpansion(len(s)); err != nil {
+			return nil, err
+		}
 		return &node{op: opSet, set: s}, nil
 	case '?', '*', '+', '{', '}', ']', ')', '|':
 		// '{' and '}' are metacharacters (XSD §F.1, NormalChar in XSD 1.1).
@@ -362,7 +375,30 @@ func (p *parser) charGroup(depth int) (charSet, error) {
 	if neg {
 		p.next()
 	}
-	set := charSet{}
+	var raw []rng
+	normalized := 0
+	maybeNormalize := func() {
+		if len(raw) > 2*normalized+4096 {
+			raw = normalize(raw)
+			normalized = len(raw)
+		}
+	}
+	addRange := func(lo, hi rune) error {
+		if err := p.addClassExpansion(1); err != nil {
+			return err
+		}
+		raw = append(raw, rng{lo, hi})
+		maybeNormalize()
+		return nil
+	}
+	addSet := func(s charSet) error {
+		if err := p.addClassExpansion(len(s)); err != nil {
+			return err
+		}
+		raw = append(raw, s...)
+		maybeNormalize()
+		return nil
+	}
 	first := true
 	for {
 		if p.eof() {
@@ -375,6 +411,7 @@ func (p *parser) charGroup(depth int) (charSet, error) {
 				return nil, p.errf(ErrSyntax, "empty character group")
 			}
 			p.next()
+			set := normalize(raw)
 			if neg {
 				set = complement(set)
 			}
@@ -390,6 +427,7 @@ func (p *parser) charGroup(depth int) (charSet, error) {
 				return nil, p.errf(ErrSyntax, "subtraction must be last in a character class")
 			}
 			p.next()
+			set := normalize(raw)
 			if neg {
 				set = complement(set)
 			}
@@ -407,7 +445,9 @@ func (p *parser) charGroup(depth int) (charSet, error) {
 				return nil, err
 			}
 			if !isChar {
-				set = union(set, s)
+				if err := addSet(s); err != nil {
+					return nil, err
+				}
 				continue
 			}
 			lo = s[0].lo
@@ -416,7 +456,9 @@ func (p *parser) charGroup(depth int) (charSet, error) {
 		}
 		// seRange ::= charOrEsc '-' charOrEsc (not '-[' and not '-]')
 		if c == '-' || p.eof() || p.peek() != '-' || p.peekAt(1) == ']' || p.peekAt(1) == '[' {
-			set = union(set, single(lo))
+			if err := addRange(lo, lo); err != nil {
+				return nil, err
+			}
 			continue
 		}
 		p.next() // '-'
@@ -439,7 +481,9 @@ func (p *parser) charGroup(depth int) (charSet, error) {
 		if hi < lo {
 			return nil, p.errf(ErrSyntax, "range out of order")
 		}
-		set = union(set, span(lo, hi))
+		if err := addRange(lo, hi); err != nil {
+			return nil, err
+		}
 	}
 }
 

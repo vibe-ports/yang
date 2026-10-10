@@ -1,0 +1,12 @@
+fixtures:
+  - id: pcre-compat/class-expansion-compat-over
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 169", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request:
+      op: schema
+      context_options: [pattern_compat] # exercise canonical YAML mode decoding
+      searchdirs: [size]
+      modules: [{name: "pcb-over"}]
+    golden: golden/class-expansion-compat-over.json

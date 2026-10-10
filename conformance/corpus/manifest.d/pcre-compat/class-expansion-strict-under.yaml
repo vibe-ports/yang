@@ -1,0 +1,15 @@
+fixtures:
+  - id: pcre-compat/class-expansion-strict-under
+    dir: pcre-compat
+    source: {url: "hand-written (this repo), see issue 169", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.4.5"]
+    areas: [types]
+    request:
+      op: schema
+      searchdirs: [size]
+      modules: [{name: "pcb-under"}]
+    golden: golden/class-expansion-strict-under.json
+    assert:
+      verdict: valid
+      deviation: null
+

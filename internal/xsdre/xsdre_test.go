@@ -186,6 +186,40 @@ func TestCases(t *testing.T) {
 	}
 }
 
+// TestStrictLargeClassAllocations covers issue #169's adversarial valid class. Keeping each
+// literal non-adjacent prevents normalization from coalescing the 50,000 members into one range.
+func TestStrictLargeClassAllocations(t *testing.T) {
+	var b strings.Builder
+	b.Grow(4*50000 + 2)
+	b.WriteByte('[')
+	for i := range 50000 {
+		b.WriteRune(0x10000 + 2*rune(i))
+	}
+	b.WriteByte(']')
+	pattern := b.String()
+
+	var parsed charSet
+	var parseErr error
+	var consumed bool
+	var charged int
+	allocs := testing.AllocsPerRun(1, func() {
+		p := parser{src: pattern}
+		p.next() // '['
+		parsed, parseErr = p.charGroup(1)
+		consumed = p.eof()
+		charged = p.classExpansion
+	})
+	if parseErr != nil {
+		t.Fatalf("charGroup: %v", parseErr)
+	}
+	if allocs > 1000 {
+		t.Fatalf("charGroup allocated %.0f objects, want at most 1000", allocs)
+	}
+	if !consumed || charged != 50000 || len(parsed) != 50000 || !parsed.contains(rune(0x10000+2*49999)) {
+		t.Fatalf("parsed class: consumed=%t, charged=%d, ranges=%d", consumed, charged, len(parsed))
+	}
+}
+
 func TestErrors(t *testing.T) {
 	for _, want := range []struct {
 		kind error
