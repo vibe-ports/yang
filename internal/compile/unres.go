@@ -318,6 +318,7 @@ func (c *Context) unresDflts(n *schema.Node) error {
 		if c.opts.RefImplemented { // LYPLG_TYPE_STORE_IMPLEMENT
 			_, diag = types.StoreImplement(n.Type, d.Lex, types.FormatSchema, types.HintSchema, d.NS, n,
 				func(m *schema.Module, importFeatures bool) error {
+					// Only the last implementation call's error is the store rc.
 					implErr = c.implementRef(m, importFeatures)
 					return implErr
 				})
