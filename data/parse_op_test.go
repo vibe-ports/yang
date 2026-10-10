@@ -359,6 +359,39 @@ func TestParseOpSplitRun(t *testing.T) {
 	}
 }
 
+// TestParseOpDupKeepsOrder: a recursive copy of an operation keeps its children's order
+// (lyd_dup_single inserts the copies with LYD_INSERT_NODE_LAST), also when the anchor split an
+// output leaf-list around the kept input. lyoracle's sequences take datastore data only, so this
+// has no oracle fixture.
+func TestParseOpDupKeepsOrder(t *testing.T) {
+	set := opsSet(t, readOpsFixture(t, filepath.Join(opsManifest, "parse-json-reply-keep-order.yaml")))
+	_, op, diags, err := parseOp(context.Background(), strings.NewReader(`{"rb:r":{"in":"keep"}}`), set,
+		FormatJSON, opRPC, nil, Reject)
+	if err != nil {
+		t.Fatal(err, diags)
+	}
+	if _, _, diags, err := parseOp(context.Background(), strings.NewReader(`{"rb:before":"b","rb:v":[1,2,3]}`), set,
+		FormatJSON, opReply, op, Reject); err != nil {
+		t.Fatal(err, diags)
+	}
+	order := func(n *Node) []string {
+		var out []string
+		for c := range n.kids.all() {
+			out = append(out, c.Name()+"="+c.Value())
+		}
+		return out
+	}
+	want := []string{"before=b", "v=1", "v=2", "in=keep", "v=3"}
+	if got := order(op); !slices.Equal(got, want) {
+		t.Fatalf("parsed %v, want %v", got, want)
+	}
+	tr := newTree(set)
+	d := tr.dup(op)
+	if got := order(d); !slices.Equal(got, want) {
+		t.Errorf("copy %v, want %v", got, want)
+	}
+}
+
 // TestParseOpManyParameters: an rpc with many distinct input leaves costs counted work linear in
 // their count (n log n with headroom), given in schema order (each appends) or in reverse (each
 // lands at the front, before the next rank).

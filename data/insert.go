@@ -181,6 +181,9 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 	at := len(l)
 	t.work.Add(1)
 	switch {
+	case opChild(n.schema) && order == insertLast:
+		// LYD_INSERT_NODE_LAST appends: an operation's children keep the order they are copied in
+		// (lyd_dup), however the anchor split them
 	case opChild(n.schema):
 		at = t.opAnchor(sib, n)
 	case t.after(l[at-1], n):
@@ -316,7 +319,8 @@ func (s *siblings) opIdxAdd(t *Tree, n *Node, at int) {
 	case t.indexFromEnd(s.list, inst[len(inst)-1]) < at:
 		s.opIdx[n.schema] = append(inst, n)
 	case sortedSupported(n):
-		s.opIdx[n.schema] = slices.Insert(inst, at-t.indexFromEnd(s.list, inst[0]), n)
+		// the run is contiguous; n, already linked at at, may be its new first instance
+		s.opIdx[n.schema] = slices.Insert(inst, max(at-t.indexFromEnd(s.list, inst[0]), 0), n)
 	default:
 		var all []*Node
 		for _, a := range s.list {

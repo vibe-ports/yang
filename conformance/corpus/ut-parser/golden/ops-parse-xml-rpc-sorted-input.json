@@ -1,0 +1,163 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "rb",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"rb:r\": {\n    \"il\": [\n      1,\n      2,\n      3\n    ],\n    \"ik\": [\n      {\n        \"k\": 1\n      },\n      {\n        \"k\": 2\n      }\n    ]\n  }\n}\n",
+    "xml": "<r xmlns=\"urn:rb\">\n  <il>1</il>\n  <il>2</il>\n  <il>3</il>\n  <ik>\n    <k>1</k>\n  </ik>\n  <ik>\n    <k>2</k>\n  </ik>\n</r>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "rpc",
+      "meta": [],
+      "opaque": null,
+      "path": "/rb:r",
+      "schema": "/rb:r",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/rb:r/il[1]",
+      "schema": "/rb:r/input/il",
+      "value": {
+        "canonical": "1",
+        "type": "uint8",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/rb:r/il[2]",
+      "schema": "/rb:r/input/il",
+      "value": {
+        "canonical": "2",
+        "type": "uint8",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/rb:r/il[3]",
+      "schema": "/rb:r/input/il",
+      "value": {
+        "canonical": "3",
+        "type": "uint8",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/rb:r/ik[k='1']",
+      "schema": "/rb:r/input/ik",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/rb:r/ik[k='1']/k",
+      "schema": "/rb:r/input/ik/k",
+      "value": {
+        "canonical": "1",
+        "type": "uint8",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/rb:r/ik[k='2']",
+      "schema": "/rb:r/input/ik",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/rb:r/ik[k='2']/k",
+      "schema": "/rb:r/input/ik/k",
+      "value": {
+        "canonical": "2",
+        "type": "uint8",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

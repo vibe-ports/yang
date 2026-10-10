@@ -1,0 +1,16 @@
+fixtures:
+  - id: ops/parse-json-rpc-sorted-input
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: system-ordered input leaf-list and keyed list given in descending order: each smaller instance becomes the first of its run
+    rfc: ["RFC7950#7.14", "RFC7950#7.7.7"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [rb.1]
+      modules: [{name: rb}]
+      format: json
+      data_type: rpc
+      unknown: reject
+      parse_only: true
+      data: "{\"rb:r\":{\"il\":[2,3,1],\"ik\":[{\"k\":2},{\"k\":1}]}}"
+    golden: golden/ops-parse-json-rpc-sorted-input.json
