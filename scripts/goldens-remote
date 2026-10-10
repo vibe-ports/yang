@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# Regenerate oracle goldens on GitHub's linux/amd64 runners (.github/workflows/goldens.yml) and
+# copy the changed/new ones into this checkout, for machines that can't run linux/amd64.
+#   scripts/goldens-remote <branch> <fixture-id-regexp>
+# <branch> must be pushed to GH_REPO (default vibe-ports/yang); the workflow is dispatched from
+# main, so main's copy of the workflow decides what runs. Needs gh, logged in with write access
+# (workflow_dispatch requires it). The files are copied, not staged: review and commit them yourself.
+# The run is matched by a unique request id and its manifest checked (request, branch, commit,
+# regexp) before anything is copied; the archive is treated as untrusted.
+set -euo pipefail
+die() { echo "goldens-remote: $*" >&2; exit 1; }
+[[ $# -eq 2 ]] || die "usage: scripts/goldens-remote <branch> <fixture-id-regexp>"
+ref=$1 run=$2
+# Same character classes as the workflow, so a bad input fails here instead of in a run.
+ref_re='^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$'
+run_re='^[]A-Za-z0-9._/|^$*+?()[-]{1,200}$'
+[[ $ref =~ $ref_re && $ref != *..* && $ref != *//* && $ref != */ && $ref != *. && $ref != *.lock ]] || die "bad branch name: $ref"
+git check-ref-format --branch "$ref" >/dev/null 2>&1 || die "bad branch name: $ref"
+[[ $run =~ $run_re ]] || die "regexp may contain only letters, digits and ._/|^\$*+?()[]-"
+cd "$(git rev-parse --show-toplevel)"
+repo=${GH_REPO:-vibe-ports/yang}
+
+top=$(pwd -P)
+
+remote=$(gh api "repos/$repo/branches/$ref" --jq .commit.sha) || die "branch $ref not found in $repo (push it first)"
+[[ $remote =~ ^[0-9a-f]{40}$ ]] || die "bad commit for $ref: $remote"
+[[ $remote == "$(git rev-parse HEAD)" ]] || echo "goldens-remote: warning: $repo $ref is at $remote, local HEAD differs" >&2
+
+# A unique request id names the run (run-name) and is echoed into its manifest.
+req=$(date -u +%Y%m%d%H%M%S)-$RANDOM$RANDOM$RANDOM
+gh workflow run goldens.yml -R "$repo" --ref main -f ref="$ref" -f run="$run" -f request_id="$req"
+id=
+for _ in $(seq 30); do
+  sleep 2
+  id=$(gh run list -R "$repo" --workflow goldens.yml --event workflow_dispatch --limit 50 \
+    --json databaseId,displayTitle --jq ".[] | select(.displayTitle | endswith(\" $req\")) | .databaseId" | head -1)
+  [[ -n $id ]] && break
+done
+[[ $id =~ ^[0-9]+$ ]] || die "dispatched request $req, but no run showed up; see: gh run list -R $repo --workflow goldens.yml"
+echo "goldens-remote: run https://github.com/$repo/actions/runs/$id"
+gh run watch "$id" -R "$repo" --exit-status >/dev/null ||
+  die "run $id failed; log: gh run view $id -R $repo --log-failed"
+
+tmpf=
+tmp=$(mktemp -d); trap 'rm -rf "$tmp"; [[ -z $tmpf ]] || rm -f "$tmpf"' EXIT
+gh run download "$id" -R "$repo" -n "goldens-$id" -D "$tmp"
+
+# The artifact must answer this request: same request id, branch, commit and regexp.
+hdr=$(sed '/^---/,$d' "$tmp/manifest.txt")
+field() { sed -n "s/^$1: //p" <<<"$hdr" | head -1; }
+[[ $(field request) == "$req" && $(field ref) == "$ref" && $(field run) == "$run" ]] ||
+  die "artifact of run $id is not for this request ($req $ref $run)"
+[[ $(field commit) == "$remote" ]] || die "$ref moved during the run (artifact is for $(field commit), expected $remote); rerun"
+
+# The artifact is untrusted: only regular files at conformance/corpus/<set>/golden/<name>.json.
+listing=$(tar -tvf "$tmp/goldens.tar") || die "unreadable archive"
+[[ -z $listing ]] || ! grep -qv '^-' <<<"$listing" || die "artifact holds a non-regular file"
+golden_re='^conformance/corpus/[A-Za-z0-9._-]+/golden/[A-Za-z0-9._-]+\.json$'
+files=()
+while IFS= read -r f; do
+  [[ $f =~ $golden_re && $f != *..* && /$f/ != */./* ]] || die "artifact holds an unexpected path: $f"
+  files+=("$f")
+done < <(tar -tf "$tmp/goldens.tar")
+# Destinations (as scripts/import-goldens): no symlinked or redirected directory, no symlink or
+# non-regular file in the way; all checked before anything is written.
+for f in ${files[@]+"${files[@]}"}; do
+  d=${f%/*} set=${f%/golden/*}
+  [[ -d $set && ! -L $set && $(cd "$set" && pwd -P) == "$top/$set" ]] || die "$set is missing or redirected"
+  [[ ! -L $d && ( ! -e $d || -d $d ) ]] || die "$d is not a plain directory"
+  [[ ! -L $f && ( ! -e $f || -f $f ) ]] || die "$f exists and is not a regular file"
+done
+mkdir "$tmp/x"
+tar -xf "$tmp/goldens.tar" -C "$tmp/x"
+for f in ${files[@]+"${files[@]}"}; do
+  d=${f%/*}
+  [[ -d $d ]] || mkdir "$d"
+  [[ ! -L $d && $(cd "$d" && pwd -P) == "$top/$d" ]] || die "$d is redirected"
+  # Copy into a fresh mktemp file beside the target (created O_EXCL: nothing pre-planted is
+  # followed), then rename over the target: rename replaces a path, never follows a link.
+  tmpf=$(mktemp "$d/.goldens-remote.XXXXXX")
+  cp "$tmp/x/$f" "$tmpf"
+  chmod 0644 "$tmpf"
+  mv -f "$tmpf" "$f"
+  tmpf=
+done
+printf '%s\n' "$hdr"
+echo "goldens-remote: copied ${#files[@]} golden file(s); review and commit them:"
+for f in ${files[@]+"${files[@]}"}; do echo "  $f"; done

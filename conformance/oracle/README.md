@@ -27,6 +27,26 @@ make -C conformance/oracle                         # LIBYANG_PREFIX=/opt/homebre
 # DEV_PLATFORMs sharing the checkout never run each other's binary
 ```
 
+### No amd64 machine? Use scripts/goldens-remote
+
+```sh
+git push origin my-branch
+scripts/goldens-remote my-branch '^basic/(diff|leafref)$'   # branch, fixture id regexp (-run)
+```
+
+It dispatches `.github/workflows/goldens.yml`, which checks out the pushed branch on a
+GitHub-hosted linux/amd64 runner, runs `make oracle` and `go run ./cmd/golden -require-protocol
+-run <regexp>` in the published `ghcr.io/vibe-ports/yang-dev` image, and uploads the changed or new
+golden files plus a manifest (commit, image digest, matched fixtures). The script waits for the
+run and copies those files into your checkout at the same paths. A regexp that matches no
+fixture fails the run. Needs `gh` logged in with write access to the repository (required to
+dispatch a workflow); contributors working from a fork ask in their PR instead.
+
+The goldens are linux/amd64 output from the published dev image (main's Dockerfile), i.e. the
+same as `DEV_PLATFORM=linux/amd64 ./dev make oracle-golden`. Nothing is pushed: review the diff and
+commit the goldens yourself, as for locally generated ones. `internal/xpath/testdata/oracle-pv2.jsonl`
+is not covered.
+
 ## Pinned versions
 
 | Item | Value |
