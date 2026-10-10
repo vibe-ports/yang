@@ -1,0 +1,5 @@
+# actionlint v1.7.12 does not know jobs.<id>.cache-mode yet; drop this once it does.
+paths:
+  .github/workflows/goldens.yml:
+    ignore:
+      - unexpected key "cache-mode" for "job" section
