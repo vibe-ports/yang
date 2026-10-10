@@ -139,7 +139,7 @@ func TestInsertOrder(t *testing.T) {
 		t.Fatalf("list children %v", got)
 	}
 	// equal values: the new instance goes after the existing ones
-	ll3 := c.kids.list[:2]
+	ll3 := slices.Clone(c.kids.list[:2])
 	n3 := f.term(t, f.ll, "3")
 	tr.insert(c, n3, insertDefault)
 	if c.kids.list[2] != n3 || c.kids.list[0] != ll3[0] {

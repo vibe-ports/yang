@@ -85,6 +85,7 @@ type Tree struct {
 type workCounter struct {
 	atomic.Int64
 	visits bool // count sibling visits too (tests only; set before the calls it measures)
+	shifts bool // count the sibling slots moved by insertions too (tests only)
 }
 
 // newTree returns an empty tree over the compiled schema s (the public constructor over a

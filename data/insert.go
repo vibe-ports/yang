@@ -234,22 +234,57 @@ func (t *Tree) childrenOf(parent *Node) *siblings {
 // at is -1) under parent, and updates the children index and the default flags of the NP-container
 // ancestors.
 func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) {
-	if n.parent != nil || n.tree != nil {
-		panic("data: inserting a linked node") // internal invariant: callers unlink first
-	}
 	sib.work = &t.work
 	switch {
 	case n.schema == nil && (at < 0 || at >= len(sib.opq)):
 		sib.opq = append(sib.opq, n)
 	case n.schema == nil:
 		sib.opq = slices.Insert(sib.opq, at, n)
-	case at == len(sib.list):
-		sib.list = append(sib.list, n)
 	default:
-		// ponytail: insertion in the middle moves the tail (O(n) per insert, like design 02's
-		// slice); the parsers append and sort runs lazily, a tree structure if API-built
-		// reversed inputs ever matter.
-		sib.list = slices.Insert(sib.list, at, n)
+		moved := sib.insertAt(at, n)
+		if t.work.shifts {
+			t.work.Add(int64(moved))
+		}
+	}
+	t.attach(parent, sib, n)
+}
+
+// insertAt puts n at position at of s.list and returns how many slots it shifted: the shorter
+// side moves, the front into headroom kept before the list (s.base), so appending and prepending
+// are amortized O(1) and an edit in the middle shifts at most half the list. Batches (Merge,
+// moved runs) are spliced in one pass instead (splice).
+// ponytail: a single edit in the middle stays O(n/2) shifts (a 160k list: ~40µs); an ordered
+// structure if API edits of huge sibling lists in random order ever matter.
+func (s *siblings) insertAt(at int, n *Node) int {
+	l := s.list
+	if at >= len(l)/2 || len(l) == 0 {
+		c := cap(l)
+		s.list = slices.Insert(l, at, n)
+		if cap(s.list) != c {
+			s.base = nil // reallocated: drop the old array
+		}
+		return len(l) - at
+	}
+	off := cap(s.base) - cap(l)
+	if off <= 0 || off >= len(s.base) || &s.base[off] != &l[0] {
+		// no headroom: copy the list between as much free space as it is long on either side
+		buf := make([]*Node, 3*len(l)+1)
+		off = len(l) + 1
+		copy(buf[off:], l)
+		s.base = buf
+		l = buf[off : off+len(l)]
+	}
+	nl := s.base[off-1 : off+len(l)]
+	copy(nl, l[:at])
+	nl[at] = n
+	s.list = nl
+	return at
+}
+
+// attach finishes linking n, already placed in sib's lists, under parent.
+func (t *Tree) attach(parent *Node, sib *siblings, n *Node) {
+	if n.parent != nil || n.tree != nil {
+		panic("data: inserting a linked node") // internal invariant: callers unlink first
 	}
 	n.parent = parent
 	if parent == nil {
@@ -262,6 +297,31 @@ func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) {
 	}
 	if n.isKey() {
 		rehashParent(parent) // the list's keys changed: lyd_hash + lyd_insert_hash of the parent
+	}
+}
+
+// splice links the unlinked nodes ns, ascending, into the sorted run lo..hi of sib.list in one
+// pass: each after the equal values, or before them when first. Linking them one by one would
+// shift the list once per node (quadratic for a merged run).
+func (t *Tree) splice(parent *Node, sib *siblings, lo, hi int, ns []*Node, first bool) {
+	sib.work = &t.work
+	old := sib.list
+	out := make([]*Node, 0, len(old)+len(ns))
+	out = append(out, old[:lo]...)
+	j := lo
+	for _, n := range ns {
+		for j < hi && (first && t.less(old[j], n) || !first && !t.less(n, old[j])) {
+			out = append(out, old[j])
+			j++
+		}
+		out = append(out, n)
+	}
+	sib.list, sib.base = append(out, old[j:]...), nil
+	if t.work.shifts {
+		t.work.Add(int64(len(sib.list)))
+	}
+	for _, n := range ns {
+		t.attach(parent, sib, n)
 	}
 }
 

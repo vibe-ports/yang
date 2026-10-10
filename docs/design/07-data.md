@@ -449,10 +449,17 @@ Single-error mode stops at the first item of this sequence.
 - **Ordering**: sibling order must be libyang's whenever anything reads it — JSON metadata
   attachment (`lydjson_parse_attribute` PJ:1166 and `lydjson_metadata_finish` PJ:583 attach `@ll` entries by position to the already
   sorted instances), the parent's close, the end of parse (parse-only too), XML key-position checks.
-  A run of system-ordered instances is appended during parse and stably sorted **before the first such
-  read** (metadata finish, parent close, end of parse); equal to libyang's incremental RB insert except
-  the order of equal values — duplicates, errors anyway: VERIFY(order/sorted-dup). `NewPath`/`Merge`
-  insert with binary search (append fast path). No quadratic insertion on reversed input.
+  So it is kept at every insertion, like libyang's RB insert: a system-ordered instance goes to its
+  sorted place by binary search (append fast path), after the equal values. `sib.list` is one
+  slice: an insertion moves its shorter side, the front into headroom kept before the list, so
+  appending and prepending are amortized O(1) (sorted or reversed `NewPath` input is linear) and an
+  insertion in the middle moves at most half the list. Batches are spliced in one pass,
+  O(list + batch): `Merge` collects a level's consecutive new instances of a sorted run (source runs
+  are sorted) and splices them when the run ends, and `lyds_merge` (moving nodes) splices the source run. Pinned by `TestInsertScaling` (moved
+  slots counted) and `TestMergeWork`. Ceiling: a run filled in random order, by the parsers or
+  `NewPath`, still moves O(n²) slots (memmove; 100k shuffled XML leaf-list values parse in 0.4 s,
+  4·10⁶ would take about ten minutes) — a per-run ordered structure or a sort before the first read
+  if that input matters.
 - Fuzz targets: `FuzzJSONLex`, `FuzzXMLLex`, `FuzzParseJSON`, `FuzzParseXML` (over a fixed m1-like
   hand-built schema), round-trip property parse → print → parse.
 

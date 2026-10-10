@@ -24,6 +24,7 @@ const htMinItems = 4
 // returns colliding records. It is written only by insertions and removals; lookups read.
 type siblings struct {
 	list     []*Node // schema nodes, in order
+	base     []*Node // list's whole backing array when list leaves headroom before it (insertAt)
 	opq      []*Node // opaque nodes, after all schema nodes (libyang keeps them last)
 	ht       map[idxKey][]*Node
 	unsorted map[*schema.Node]bool // runs appended out of value order
