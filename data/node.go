@@ -76,6 +76,7 @@ type Tree struct {
 	// order); lookups only read the tree otherwise, so the cache has its own lock.
 	rankMu sync.Mutex
 	rank   map[*schema.Node]int
+	orders map[orderKey][]*schema.Node // an operation's input or output children (opOrder)
 	work   workCounter
 }
 

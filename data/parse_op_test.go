@@ -358,38 +358,47 @@ func TestParseOpSplitRun(t *testing.T) {
 	}
 }
 
-// TestParseOpManyParameters: an rpc with many distinct input leaves given in schema order costs
-// counted work quadratic in the leaf count at most (libyang's anchor walks the following schema
-// siblings with one hash lookup each), not cubic.
+// TestParseOpManyParameters: an rpc with many distinct input leaves costs counted work linear in
+// their count (n log n with headroom), given in schema order (each appends) or in reverse (each
+// lands at the front, before the next rank).
 func TestParseOpManyParameters(t *testing.T) {
-	work := func(n int) int64 {
-		var y, in strings.Builder
-		y.WriteString("module mp { yang-version 1.1; namespace urn:mp; prefix mp; rpc r { input {")
-		for i := range n {
-			fmt.Fprintf(&y, " leaf p%05d { type string; }", i)
-			if i > 0 {
-				in.WriteByte(',')
+	for _, reverse := range []bool{false, true} {
+		work := func(n int) int64 {
+			var y strings.Builder
+			y.WriteString("module mp { yang-version 1.1; namespace urn:mp; prefix mp; rpc r { input {")
+			params := make([]string, n)
+			for i := range n {
+				fmt.Fprintf(&y, " leaf p%05d { type string; }", i)
+				j := i
+				if reverse {
+					j = n - 1 - i
+				}
+				params[i] = fmt.Sprintf(`"p%05d":"x"`, j)
 			}
-			fmt.Fprintf(&in, `"p%05d":"x"`, i)
+			y.WriteString(" } } }")
+			dir := t.TempDir()
+			if err := os.WriteFile(filepath.Join(dir, "mp.yang"), []byte(y.String()), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			set := opsSet(t, opsFixture{dir: dir, searchdirs: []string{"."}, modules: []struct {
+				name, revision string
+				features       []string
+			}{{name: "mp"}}})
+			in := `{"mp:r":{` + strings.Join(params, ",") + `}}`
+			tree, op, diags, err := parseOp(context.Background(), strings.NewReader(in), set, FormatJSON, opRPC, nil, Reject)
+			if err != nil {
+				t.Fatal(err, diags)
+			}
+			if l := op.kids.list; len(l) != n || l[0].schema.Name != "p00000" || l[n-1].schema.Name != fmt.Sprintf("p%05d", n-1) {
+				t.Fatalf("%d children, not in schema order", len(l))
+			}
+			return tree.work.Load()
 		}
-		y.WriteString(" } } }")
-		dir := t.TempDir()
-		if err := os.WriteFile(filepath.Join(dir, "mp.yang"), []byte(y.String()), 0o600); err != nil {
-			t.Fatal(err)
+		w1, w4 := work(250), work(1000)
+		t.Logf("reverse %v: %d %d", reverse, w1, w4)
+		if w4 > 6*w1 {
+			t.Errorf("reverse %v: work %d for 250 parameters, %d for 1000: not linear", reverse, w1, w4)
 		}
-		set := opsSet(t, opsFixture{dir: dir, searchdirs: []string{"."}, modules: []struct {
-			name, revision string
-			features       []string
-		}{{name: "mp"}}})
-		tree, _, diags, err := parseOp(context.Background(), strings.NewReader(`{"mp:r":{`+in.String()+`}}`), set,
-			FormatJSON, opRPC, nil, Reject)
-		if err != nil {
-			t.Fatal(err, diags)
-		}
-		return tree.work.Load()
-	}
-	if w1, w4 := work(250), work(1000); w4 > 20*w1 {
-		t.Fatalf("work %d for 250 parameters, %d for 1000: more than quadratic", w1, w4)
 	}
 }
 

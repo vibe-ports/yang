@@ -29,6 +29,7 @@ type siblings struct {
 	unsorted map[*schema.Node]bool    // runs appended out of value order
 	rbTree   map[*schema.Node]bool    // runs that have libyang's RB tree (lyds)
 	opIdx    map[*schema.Node][]*Node // an operation's children by schema node (opInst), nil: not built
+	opTop    [2]int                   // per input/output: greatest schema rank with instances, plus one
 	gen      uint64                   // changes with every insertion and removal
 	work     *workCounter             // the tree's work counter once a node was linked: all and indexOf count visits
 }

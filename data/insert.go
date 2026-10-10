@@ -221,12 +221,15 @@ func opChild(s *schema.Node) bool {
 	return dp != nil && (dp.Kind == schema.RPC || dp.Kind == schema.Action)
 }
 
-// indexFromEnd is the index of n in l, scanned from the end, each step counted.
-// ponytail: O(distance from the end); operation children are placed at or near the end
-// (appends, anchors before the few input nodes), a node→position index if that ever changes.
+// indexFromEnd is the index of n in l, scanned from both ends at once, each step counted: the
+// cost is the distance to the nearer end, which the slice insertion at that index moves anyway
+// (insertAt shifts the shorter side), so it adds no order of growth.
 func (t *Tree) indexFromEnd(l []*Node, n *Node) int {
-	for i := len(l) - 1; i >= 0; i-- {
+	for i, j := 0, len(l)-1; i <= j; i, j = i+1, j-1 {
 		t.work.Add(1)
+		if l[j] == n {
+			return j
+		}
 		if l[i] == n {
 			return i
 		}
@@ -234,17 +237,55 @@ func (t *Tree) indexFromEnd(l []*Node, n *Node) int {
 	return -1
 }
 
+// orderKey is an operation's input (out false) or output children.
+type orderKey struct {
+	op  *schema.Node
+	out bool
+}
+
+// opOrder is lys_getnext over an operation's input or output, cached per tree.
+func (t *Tree) opOrder(op *schema.Node, out bool) []*schema.Node {
+	t.rankMu.Lock()
+	defer t.rankMu.Unlock()
+	k := orderKey{op, out}
+	if o, ok := t.orders[k]; ok {
+		return o
+	}
+	var opts schema.GetNextOpt
+	if out {
+		opts = schema.GetNextOutput
+	}
+	o := slices.Collect(schema.GetNext(op, nil, opts))
+	if t.orders == nil {
+		t.orders = map[orderKey][]*schema.Node{}
+	}
+	t.orders[k] = o
+	return o
+}
+
 // opInst is the instances of the operation child s in sib.list, in list order, from the index
 // built on first use and kept by link (opIdxAdd); a removal or reordering drops it.
 func (s *siblings) opInst(t *Tree, sn *schema.Node) []*Node {
 	if s.opIdx == nil {
 		s.opIdx = map[*schema.Node][]*Node{}
+		s.opTop = [2]int{}
 		for _, a := range s.list {
 			t.work.Add(1)
 			s.opIdx[a.schema] = append(s.opIdx[a.schema], a)
+			s.opRaise(t, a.schema)
 		}
 	}
 	return s.opIdx[sn]
+}
+
+// opRaise records that sn has instances: opTop is, per input (0) and output (1), one more than
+// the greatest schema rank with instances, so that the anchor search stops there.
+func (s *siblings) opRaise(t *Tree, sn *schema.Node) {
+	d := 0
+	if sn.InOutput() {
+		d = 1
+	}
+	s.opTop[d] = max(s.opTop[d], t.schemaRank(sn)+1)
 }
 
 // opIdxAdd records n, just placed at index at of s.list, in the operation's instance index:
@@ -256,6 +297,7 @@ func (s *siblings) opIdxAdd(t *Tree, n *Node, at int) {
 	switch {
 	case len(inst) == 0:
 		s.opIdx[n.schema] = []*Node{n}
+		s.opRaise(t, n.schema)
 	case t.indexFromEnd(s.list, inst[len(inst)-1]) < at:
 		s.opIdx[n.schema] = append(inst, n)
 	case sortedSupported(n):
@@ -286,11 +328,19 @@ func (t *Tree) opAnchor(sib *siblings, n *Node) int {
 	if n.schema.InOutput() {
 		opts = schema.GetNextOutput
 	}
-	order := slices.Collect(schema.GetNext(n.schema.DataParent(), nil, opts))
+	order := t.opOrder(n.schema.DataParent(), opts == schema.GetNextOutput)
 	if sib.ht != nil {
-		for _, s := range order[slices.Index(order, n.schema)+1:] {
+		// the closest following schema sibling with instances; none past the greatest rank with
+		// instances (opTop), so input in schema order appends at once and input in reverse
+		// order finds the next rank at once
+		sib.opInst(t, n.schema) // built, with opTop
+		d := 0
+		if opts == schema.GetNextOutput {
+			d = 1
+		}
+		for r := t.schemaRank(n.schema) + 1; r < sib.opTop[d]; r++ {
 			t.work.Add(1)
-			if inst := sib.opInst(t, s); len(inst) > 0 {
+			if inst := sib.opIdx[order[r]]; len(inst) > 0 {
 				return t.indexFromEnd(l, inst[0])
 			}
 		}
