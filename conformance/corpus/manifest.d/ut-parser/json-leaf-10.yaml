@@ -18,5 +18,6 @@ fixtures:
     golden: golden/json-leaf-10.json
     assert:
       verdict: invalid
+      rc: LY_EINVAL   # lyd_create_meta returns LY_EINVAL after its LYVE_REFERENCE message (design 07 §2)
       rfc: ["RFC7950#7.6", "RFC7951#6.1"]
       deviation: null

@@ -135,6 +135,12 @@ func MatchAssert(a *Assert, resp Response) string {
 	if v := resp.Verdict(); v != a.Verdict {
 		return fmt.Sprintf("verdict %q, want %q", v, a.Verdict)
 	}
+	if a.RC != "" {
+		rc, _ := resp["rc"].(map[string]any)
+		if name, _ := rc["name"].(string); name != a.RC {
+			return fmt.Sprintf("rc %q, want %q", name, a.RC)
+		}
+	}
 	diags := resp.Diagnostics()
 	for _, want := range a.Diagnostics {
 		if !slices.ContainsFunc(diags, func(d map[string]any) bool { return subset(want, d) }) {

@@ -92,7 +92,10 @@ func (s *Source) UnmarshalYAML(n *yaml.Node) error {
 // Assert is what the RFC requires (hand-written). Diagnostics match as a subset: every listed
 // item must equal some actual diagnostic on all the fields it names.
 type Assert struct {
-	Verdict     string           `yaml:"verdict"`
+	Verdict string `yaml:"verdict"`
+	// RC is the call's LY_ERR name (rc.name), when the fixture pins it: libyang's return code need
+	// not be the code of its last diagnostic (design 07 §2).
+	RC          string           `yaml:"rc"`
 	Diagnostics []map[string]any `yaml:"diagnostics"`
 	RFC         []string         `yaml:"rfc"`
 	Deviation   *string          `yaml:"deviation"` // deviations.md id when libyang differs
