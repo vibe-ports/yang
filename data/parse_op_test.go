@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/vibe-ports/yang/internal/ly"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -257,6 +258,54 @@ func TestParseOpOpaqueOperation(t *testing.T) {
 		FormatJSON, opRPC, nil, Opaque)
 	if err == nil || len(diags) == 0 || diags[len(diags)-1].Msg != `Unexpected action element "act", action "act" already parsed.` {
 		t.Fatal(err, diags)
+	}
+}
+
+// TestParseOpJSONInitFirst: lyd_parse_json_init checks the first token before
+// lyd_parser_find_operation checks the parent, so input that is not an object fails with the
+// JSON syntax error even under a parent the operation type refuses; a NUL ends the input before
+// the sibling check.
+func TestParseOpJSONInitFirst(t *testing.T) {
+	set := opsSet(t, readOpsFixture(t, filepath.Join(opsManifest, "parse-xml-rpc-input.yaml")))
+	_, op := opParent(t, set)
+	_, _, diags, err := parseOp(context.Background(), strings.NewReader(`1`), set, FormatJSON, opNotif, op, Reject)
+	if err == nil || len(diags) != 1 || diags[0].Code != ly.SyntaxJSON.String() {
+		t.Fatal(err, diags)
+	}
+	if _, _, diags, err := parseOp(context.Background(), strings.NewReader("{\"a:r1\":{},\x00{\"a:foo\":1}"), set,
+		FormatJSON, opRPC, nil, Reject); err != nil {
+		t.Fatal(err, diags)
+	}
+}
+
+// TestParseOpMixedInputOutput: output parameters parsed into a request that keeps its input go
+// before the input nodes (lyd_insert_get_next_anchor), and both stay findable by path.
+func TestParseOpMixedInputOutput(t *testing.T) {
+	set := opsSet(t, readOpsFixture(t, filepath.Join(opsManifest, "parse-json-reply-keep-order.yaml")))
+	tree, op, diags, err := parseOp(context.Background(), strings.NewReader(`{"rb:r":{"in":"keep"}}`), set,
+		FormatJSON, opRPC, nil, Reject)
+	if err != nil {
+		t.Fatal(err, diags)
+	}
+	if _, _, diags, err := parseOp(context.Background(), strings.NewReader(`{"rb:v":[2],"rb:oc":{"n":1}}`), set,
+		FormatJSON, opReply, op, Reject); err != nil {
+		t.Fatal(err, diags)
+	}
+	var names []string
+	for c := range op.kids.all() {
+		names = append(names, c.schema.Name)
+	}
+	if !slices.Equal(names, []string{"v", "oc", "in"}) {
+		t.Fatalf("children %v, want [v oc in]", names)
+	}
+	// lyd_find_path resolves the path in the input (no output flag); the XPath finds both
+	if n, err := tree.Find("/rb:r/in"); n == nil || err != nil {
+		t.Errorf("Find: %v %v", n, err)
+	}
+	for _, path := range []string{"/rb:r/in", "/rb:r/oc/n", "/rb:r/v"} {
+		if ns, _, err := tree.FindXPath(path, XPathOptions{}); len(ns) != 1 || err != nil {
+			t.Errorf("FindXPath(%s): %v %v", path, ns, err)
+		}
 	}
 }
 

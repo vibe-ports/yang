@@ -6,8 +6,12 @@ module rb {
   rpc r {
     input {
       leaf in { type string; }
+      leaf in2 { type string; }
+      leaf in3 { type string; }
+      leaf in4 { type string; }
     }
     output {
+      leaf before { type string; }
       leaf-list v { type uint8; }
       container oc {
         leaf n { type uint8; }

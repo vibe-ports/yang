@@ -1,0 +1,18 @@
+fixtures:
+  - id: ops/parse-json-reply-keep-order
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: a reply parsed into its rpc with keep_input, output parameters into the kept input: the output node goes before the input one (lyd_insert_get_next_anchor walks only the output schema list)
+    rfc: ["RFC7950#7.14"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [rb.1]
+      modules: [{name: rb}]
+      format: json
+      data_type: reply
+      unknown: reject
+      parse_only: true
+      rpc: "{\"rb:r\":{\"in\":\"keep\"}}"
+      keep_input: true
+      data: "{\"rb:oc\":{\"n\":1}}"
+    golden: golden/ops-parse-json-reply-keep-order.json

@@ -65,11 +65,11 @@ func parseJSON(lc *lydCtx, in []byte) error {
 			}
 		}
 	}
-	if err := lc.findOperation(); err != nil {
+	if st := lx.Status(); st != lyjson.TokenObject { // lyd_parse_json_init
+		_ = lc.log.val(nil, "", ly.SyntaxJSON, "Expected top-level JSON object or correct bare value, but %s found.", st)
 		return errLoggedFatal
 	}
-	if st := lx.Status(); st != lyjson.TokenObject {
-		_ = lc.log.val(nil, "", ly.SyntaxJSON, "Expected top-level JSON object or correct bare value, but %s found.", st)
+	if err := lc.findOperation(); err != nil {
 		return errLoggedFatal
 	}
 	var rc error
@@ -84,7 +84,7 @@ func parseJSON(lc *lydCtx, in []byte) error {
 			break
 		}
 	}
-	if lc.op.noSiblings && lx.Offset() < len(in) && status != lyjson.TokenObjectClosed {
+	if lc.op.noSiblings && !lx.AtEnd() && status != lyjson.TokenObjectClosed {
 		r := lc.log.val(nil, "", ly.Syntax, "Unexpected sibling node.")
 		if rc = r; lc.fatal(r) {
 			return rc

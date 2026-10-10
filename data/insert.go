@@ -140,8 +140,7 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 	}
 	afterN := func(a *Node) bool { return t.after(a, n) }
 	if order == insertDefault && sortedSupported(n) {
-		lo := t.upper(l, 0, func(a *Node) bool { return t.sameOrAfter(a, n) })
-		hi := t.upper(l, lo, afterN)
+		lo, hi := t.runBounds(sib, n)
 		if lo == hi {
 			return hi // no instance yet: by schema, no RB tree for a single instance
 		}
@@ -178,13 +177,95 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 	// lyd_insert_node_ordby_schema; append fast path
 	at := len(l)
 	t.work.Add(1)
-	if t.after(l[at-1], n) {
+	switch {
+	case opChild(n.schema):
+		at = t.opAnchor(sib, n)
+	case t.after(l[at-1], n):
 		at = t.upper(l, 0, afterN)
 	}
 	if order != insertDefault && sortedSupported(n) && sib.rbTree[n.schema] {
 		markUnsorted(sib, n.schema) // n is not in the run's RB tree
 	}
 	return at
+}
+
+// runBounds is the run of n's schema node in sib.list, or the empty run where its first instance
+// goes.
+func (t *Tree) runBounds(sib *siblings, n *Node) (lo, hi int) {
+	l := sib.list
+	if opChild(n.schema) {
+		if lo = slices.IndexFunc(l, func(a *Node) bool { return a.schema == n.schema }); lo < 0 {
+			at := t.opAnchor(sib, n)
+			return at, at
+		}
+		for hi = lo; hi < len(l) && l[hi].schema == n.schema; hi++ {
+		}
+		return lo, hi
+	}
+	lo = t.upper(l, 0, func(a *Node) bool { return t.sameOrAfter(a, n) })
+	return lo, t.upper(l, lo, func(a *Node) bool { return t.after(a, n) })
+}
+
+// opChild reports whether s is a child of an rpc or action's input or output. Such siblings are
+// ordered by lyd_insert_get_next_anchor, which walks only the new node's own input or output
+// schema list, so input and output instances interleave and are not monotone in schema order:
+// they are placed by opAnchor and searched linearly (an operation has few children).
+func opChild(s *schema.Node) bool {
+	if s == nil {
+		return false
+	}
+	dp := s.DataParent()
+	return dp != nil && (dp.Kind == schema.RPC || dp.Kind == schema.Action)
+}
+
+// opAnchor is lyd_insert_get_next_anchor for an operation's child n: the index of the sibling n
+// goes before, len(sib.list) to append (before the opaque nodes).
+//   - with the parent's children hash table: the first instance of the closest following schema
+//     sibling in n's own input or output;
+//   - without it: the siblings walked against n's input or output schema list, the anchor being
+//     the first sibling past n's schema node there; a sibling of the other direction is never in
+//     that list, so an output node goes before the first input node that does not precede it in
+//     the walk, and an input node before such an output node.
+func (t *Tree) opAnchor(sib *siblings, n *Node) int {
+	l := sib.list
+	var opts schema.GetNextOpt
+	if n.schema.InOutput() {
+		opts = schema.GetNextOutput
+	}
+	order := slices.Collect(schema.GetNext(n.schema.DataParent(), nil, opts))
+	if sib.ht != nil {
+		for _, s := range order[slices.Index(order, n.schema)+1:] {
+			t.work.Add(1)
+			if j := slices.IndexFunc(l, func(a *Node) bool { return a.schema == s }); j >= 0 {
+				return j
+			}
+		}
+		return len(l)
+	}
+	k, found := 0, false
+	for m, a := range l {
+		t.work.Add(1)
+		if a.schema.Module != n.schema.Module {
+			return m // lyd_owner_module differs: the data of the next module
+		}
+		for !found {
+			if k >= len(order) {
+				return len(l) // extension instance data: no anchor
+			}
+			if order[k] == n.schema {
+				found = true
+				break
+			}
+			if a.schema == order[k] {
+				break
+			}
+			k++
+		}
+		if found && a.schema != n.schema {
+			return m
+		}
+	}
+	return len(l)
 }
 
 // markRB records that the run of s has libyang's RB tree (created by its first sorted insertion
