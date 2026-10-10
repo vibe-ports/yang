@@ -26,10 +26,11 @@ type siblings struct {
 	list     []*Node // schema nodes, in order
 	opq      []*Node // opaque nodes, after all schema nodes (libyang keeps them last)
 	ht       map[idxKey][]*Node
-	unsorted map[*schema.Node]bool // runs appended out of value order
-	rbTree   map[*schema.Node]bool // runs that have libyang's RB tree (lyds)
-	gen      uint64                // changes with every insertion and removal
-	work     *workCounter          // the tree's work counter once a node was linked: all and indexOf count visits
+	unsorted map[*schema.Node]bool    // runs appended out of value order
+	rbTree   map[*schema.Node]bool    // runs that have libyang's RB tree (lyds)
+	opIdx    map[*schema.Node][]*Node // an operation's children by schema node (opInst), nil: not built
+	gen      uint64                   // changes with every insertion and removal
+	work     *workCounter             // the tree's work counter once a node was linked: all and indexOf count visits
 }
 
 // visit counts one sibling visit in the tree's work counter.
@@ -161,6 +162,12 @@ func (s *siblings) hashRemove(n *Node) {
 
 // findSchema is lyd_find_sibling_schema: the first instance of the schema node.
 func (t *Tree) findSchema(s *siblings, sn *schema.Node) *Node {
+	if opChild(sn) {
+		if inst := s.opInst(t, sn); len(inst) > 0 {
+			return inst[0]
+		}
+		return nil
+	}
 	if i := t.schemaIndex(s, sn); i >= 0 {
 		return s.list[i]
 	}
@@ -173,8 +180,10 @@ func (t *Tree) schemaIndex(s *siblings, sn *schema.Node) int {
 		return -1
 	}
 	if opChild(sn) {
-		lo, _ := t.opRun(s.list, sn)
-		return lo
+		if inst := s.opInst(t, sn); len(inst) > 0 {
+			return t.indexFromEnd(s.list, inst[0])
+		}
+		return -1
 	}
 	probe := &Node{schema: sn, parent: s.list[0].parent} // top level or not decides the module order
 	i, _ := slices.BinarySearchFunc(s.list, probe, func(a, n *Node) int {

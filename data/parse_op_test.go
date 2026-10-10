@@ -117,6 +117,9 @@ func readOpsFixture(t *testing.T, path string) opsFixture {
 func opsSet(t *testing.T, f opsFixture) *schema.Set {
 	t.Helper()
 	base := filepath.Join("../conformance/corpus", f.dir)
+	if filepath.IsAbs(f.dir) {
+		base = f.dir
+	}
 	var dirs []fs.FS
 	for _, d := range f.searchdirs {
 		dirs = append(dirs, os.DirFS(filepath.Join(base, d)))
@@ -328,6 +331,65 @@ func TestParseOpLinear(t *testing.T) {
 	}
 	if w1, w4 := work(1000), work(4000); w4 > 5*w1 {
 		t.Fatalf("work %d for 1000 values, %d for 4000: not linear", w1, w4)
+	}
+}
+
+// TestParseOpSplitRun: an output leaf-list whose instances the anchor splits around a kept input
+// node ([before, v1, v2, in, v3], ops/parse-*-reply-keep-order-split) keeps every node findable.
+func TestParseOpSplitRun(t *testing.T) {
+	set := opsSet(t, readOpsFixture(t, filepath.Join(opsManifest, "parse-json-reply-keep-order.yaml")))
+	tree, op, diags, err := parseOp(context.Background(), strings.NewReader(`{"rb:r":{"in":"keep"}}`), set,
+		FormatJSON, opRPC, nil, Reject)
+	if err != nil {
+		t.Fatal(err, diags)
+	}
+	if _, _, diags, err := parseOp(context.Background(), strings.NewReader(`{"rb:before":"b","rb:v":[1,2,3]}`), set,
+		FormatJSON, opReply, op, Reject); err != nil {
+		t.Fatal(err, diags)
+	}
+	if n, err := tree.Find("/rb:r/in"); n == nil || err != nil {
+		t.Errorf("Find(/rb:r/in): %v %v", n, err)
+	}
+	if ns, _, err := tree.FindXPath("/rb:r/v", XPathOptions{}); len(ns) != 3 || err != nil {
+		t.Errorf("FindXPath(/rb:r/v): %d nodes, %v", len(ns), err)
+	}
+	if n := tree.findSchema(&op.kids, op.kids.list[0].schema); n == nil || n.schema.Name != "before" {
+		t.Errorf("findSchema(before): %v", n)
+	}
+}
+
+// TestParseOpManyParameters: an rpc with many distinct input leaves given in schema order costs
+// counted work quadratic in the leaf count at most (libyang's anchor walks the following schema
+// siblings with one hash lookup each), not cubic.
+func TestParseOpManyParameters(t *testing.T) {
+	work := func(n int) int64 {
+		var y, in strings.Builder
+		y.WriteString("module mp { yang-version 1.1; namespace urn:mp; prefix mp; rpc r { input {")
+		for i := range n {
+			fmt.Fprintf(&y, " leaf p%05d { type string; }", i)
+			if i > 0 {
+				in.WriteByte(',')
+			}
+			fmt.Fprintf(&in, `"p%05d":"x"`, i)
+		}
+		y.WriteString(" } } }")
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, "mp.yang"), []byte(y.String()), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		set := opsSet(t, opsFixture{dir: dir, searchdirs: []string{"."}, modules: []struct {
+			name, revision string
+			features       []string
+		}{{name: "mp"}}})
+		tree, _, diags, err := parseOp(context.Background(), strings.NewReader(`{"mp:r":{`+in.String()+`}}`), set,
+			FormatJSON, opRPC, nil, Reject)
+		if err != nil {
+			t.Fatal(err, diags)
+		}
+		return tree.work.Load()
+	}
+	if w1, w4 := work(250), work(1000); w4 > 20*w1 {
+		t.Fatalf("work %d for 250 parameters, %d for 1000: more than quadratic", w1, w4)
 	}
 }
 

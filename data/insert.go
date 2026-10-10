@@ -150,6 +150,7 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 			// inserted in order, so it is sorted stably (rb_insert_node puts equal values after
 			// the existing ones)
 			slices.SortStableFunc(l[lo:hi], compareSorted)
+			sib.opIdx = nil // reordered
 			for _, a := range l[lo:hi] {
 				a.inRB = true
 			}
@@ -194,11 +195,14 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 func (t *Tree) runBounds(sib *siblings, n *Node) (lo, hi int) {
 	l := sib.list
 	if opChild(n.schema) {
-		if lo, hi = t.opRun(l, n.schema); lo < 0 {
+		// a system-ordered run under an operation is input data: its instances are contiguous
+		inst := sib.opInst(t, n.schema)
+		if len(inst) == 0 {
 			at := t.opAnchor(sib, n)
 			return at, at
 		}
-		return lo, hi
+		hi = t.indexFromEnd(l, inst[len(inst)-1]) + 1
+		return hi - len(inst), hi
 	}
 	lo = t.upper(l, 0, func(a *Node) bool { return t.sameOrAfter(a, n) })
 	return lo, t.upper(l, lo, func(a *Node) bool { return t.after(a, n) })
@@ -206,8 +210,9 @@ func (t *Tree) runBounds(sib *siblings, n *Node) (lo, hi int) {
 
 // opChild reports whether s is a child of an rpc or action's input or output. Such siblings are
 // ordered by lyd_insert_get_next_anchor, which walks only the new node's own input or output
-// schema list, so input and output instances interleave and are not monotone in schema order:
-// they are placed by opAnchor and searched run by run (runEnd).
+// schema list: input and output instances interleave, and the instances of one output node need
+// not be contiguous (they are ordered by user, each placed by the anchor). They are found through
+// the operation's instance index (siblings.opInst), as libyang finds them by hash.
 func opChild(s *schema.Node) bool {
 	if s == nil {
 		return false
@@ -216,43 +221,65 @@ func opChild(s *schema.Node) bool {
 	return dp != nil && (dp.Kind == schema.RPC || dp.Kind == schema.Action)
 }
 
-// runEnd is the end of the run of l[i]'s schema node that starts at i: instances of one schema
-// node are contiguous, so a galloping search finds it in O(log run) counted steps.
-func (t *Tree) runEnd(l []*Node, i int) int {
-	s := l[i].schema
-	step, j := 1, i // l[j] is in the run
-	for j+step < len(l) && l[j+step].schema == s {
+// indexFromEnd is the index of n in l, scanned from the end, each step counted.
+// ponytail: O(distance from the end); operation children are placed at or near the end
+// (appends, anchors before the few input nodes), a node→position index if that ever changes.
+func (t *Tree) indexFromEnd(l []*Node, n *Node) int {
+	for i := len(l) - 1; i >= 0; i-- {
 		t.work.Add(1)
-		j += step
-		step *= 2
+		if l[i] == n {
+			return i
+		}
 	}
-	hi := min(j+step, len(l)) // l[hi] is past the run, or the end
-	return j + 1 + t.upper(l[j+1:hi], 0, func(a *Node) bool { return a.schema != s })
+	return -1
 }
 
-// opRun is the run of s among an operation's children l, (-1, -1) if there is none; it visits
-// the runs, not the instances.
-func (t *Tree) opRun(l []*Node, s *schema.Node) (lo, hi int) {
-	for i := 0; i < len(l); {
-		t.work.Add(1)
-		j := t.runEnd(l, i)
-		if l[i].schema == s {
-			return i, j
+// opInst is the instances of the operation child s in sib.list, in list order, from the index
+// built on first use and kept by link (opIdxAdd); a removal or reordering drops it.
+func (s *siblings) opInst(t *Tree, sn *schema.Node) []*Node {
+	if s.opIdx == nil {
+		s.opIdx = map[*schema.Node][]*Node{}
+		for _, a := range s.list {
+			t.work.Add(1)
+			s.opIdx[a.schema] = append(s.opIdx[a.schema], a)
 		}
-		i = j
 	}
-	return -1, -1
+	return s.opIdx[sn]
+}
+
+// opIdxAdd records n, just placed at index at of s.list, in the operation's instance index:
+// appended when it follows the last instance of its schema node, at its place in a contiguous
+// system-ordered run, else by a rescan of the list (an instance placed before another one of an
+// output node, which the anchor does not do).
+func (s *siblings) opIdxAdd(t *Tree, n *Node, at int) {
+	inst := s.opIdx[n.schema]
+	switch {
+	case len(inst) == 0:
+		s.opIdx[n.schema] = []*Node{n}
+	case t.indexFromEnd(s.list, inst[len(inst)-1]) < at:
+		s.opIdx[n.schema] = append(inst, n)
+	case sortedSupported(n):
+		s.opIdx[n.schema] = slices.Insert(inst, at-t.indexFromEnd(s.list, inst[0]), n)
+	default:
+		var all []*Node
+		for _, a := range s.list {
+			t.work.Add(1)
+			if a.schema == n.schema {
+				all = append(all, a)
+			}
+		}
+		s.opIdx[n.schema] = all
+	}
 }
 
 // opAnchor is lyd_insert_get_next_anchor for an operation's child n: the index of the sibling n
 // goes before, len(sib.list) to append (before the opaque nodes).
 //   - with the parent's children hash table: the first instance of the closest following schema
-//     sibling in n's own input or output;
-//   - without it: the siblings walked against n's input or output schema list, the anchor being
-//     the first sibling past n's schema node there; a sibling of the other direction is never in
-//     that list, so an output node goes before the first input node that does not precede it in
-//     the walk, and an input node before such an output node. The walk goes run by run: the
-//     siblings of one run decide alike.
+//     sibling in n's own input or output (lyd_find_sibling_schema: the instance index);
+//   - without it (fewer than htMinItems children): the siblings walked against n's input or output
+//     schema list, the anchor being the first sibling past n's schema node there; a sibling of the
+//     other direction is never in that list, so an output node goes before the first input node
+//     that does not precede it in the walk, and an input node before such an output node.
 func (t *Tree) opAnchor(sib *siblings, n *Node) int {
 	l := sib.list
 	var opts schema.GetNextOpt
@@ -262,17 +289,17 @@ func (t *Tree) opAnchor(sib *siblings, n *Node) int {
 	order := slices.Collect(schema.GetNext(n.schema.DataParent(), nil, opts))
 	if sib.ht != nil {
 		for _, s := range order[slices.Index(order, n.schema)+1:] {
-			if j, _ := t.opRun(l, s); j >= 0 {
-				return j
+			t.work.Add(1)
+			if inst := sib.opInst(t, s); len(inst) > 0 {
+				return t.indexFromEnd(l, inst[0])
 			}
 		}
 		return len(l)
 	}
 	own := ownerModule(t.set, n)
 	k, found := 0, false
-	for m := 0; m < len(l); m = t.runEnd(l, m) {
+	for m, a := range l {
 		t.work.Add(1)
-		a := l[m]
 		if ownerModule(t.set, a) != own {
 			return m // lyd_owner_module differs: the data of the next module
 		}
@@ -360,6 +387,9 @@ func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) {
 		// reversed inputs ever matter.
 		sib.list = slices.Insert(sib.list, at, n)
 	}
+	if sib.opIdx != nil && opChild(n.schema) {
+		sib.opIdxAdd(t, n, at)
+	}
 	n.parent = parent
 	if parent == nil {
 		n.tree = t
@@ -413,6 +443,7 @@ func unlink(n *Node) {
 		}
 	} else if i := slices.Index(sib.list, n); i >= 0 {
 		sib.list = slices.Delete(sib.list, i, i+1)
+		sib.opIdx = nil
 	}
 	sib.hashRemove(n)
 	sib.gen++
@@ -484,6 +515,7 @@ func (t *Tree) unlinkAll(ns []*Node) error {
 	for _, sib := range order {
 		sib.gen++
 		sib.list = slices.DeleteFunc(sib.list, isGone)
+		sib.opIdx = nil
 		sib.opq = slices.DeleteFunc(sib.opq, isGone)
 		for k := range sibs[sib] { // each bucket compacted once
 			if b := slices.DeleteFunc(sib.ht[k], isGone); len(b) > 0 {
