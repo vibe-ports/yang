@@ -223,6 +223,7 @@ func (t *Tree) findFirst(s *siblings, target *Node) *Node {
 				return nil
 			}
 			for _, n := range s.list[i:] {
+				s.visit()
 				if n.schema != sn {
 					break
 				}
@@ -238,6 +239,7 @@ func (t *Tree) findFirst(s *siblings, target *Node) *Node {
 		}
 		k.s = sn
 		for _, n := range s.ht[k] {
+			s.visit()
 			if htValEqual(t, n, target) {
 				return n
 			}

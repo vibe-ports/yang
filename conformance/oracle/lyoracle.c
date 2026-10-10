@@ -104,6 +104,20 @@ static const struct flag dup_flags[] = {
     {NULL, 0}
 };
 
+/* sequence edits insert_term, insert_list, insert_list2: LYD_NEW_VAL_* */
+static const struct flag newval_flags[] = {
+    {"output", LYD_NEW_VAL_OUTPUT},
+    {"store_only", LYD_NEW_VAL_STORE_ONLY},
+    {"canon", LYD_NEW_VAL_CANON},
+    {NULL, 0}
+};
+
+/* sequence edit insert_inner: lyd_new_inner's output argument */
+static const struct flag inner_flags[] = {
+    {"output", 1},
+    {NULL, 0}
+};
+
 /* sequence step compare: LYD_COMPARE_* */
 static const struct flag compare_flags[] = {
     {"full_recursion", LYD_COMPARE_FULL_RECURSION},
@@ -1582,8 +1596,9 @@ check_step(const cJSON *step)
     }
     keys_only(step, !strcmp(what, "parse") ? "do format data_type data data_file unknown parse_only "
             "parse_options validate_options" : !strcmp(what, "validate") ? "do data_type validate_options" :
-            !strcmp(what, "edit") ? "do merge merge_file set delete insert_term insert_inner new_meta free_meta format data_type "
-            "unknown parse_options" :
+            !strcmp(what, "edit") ? "do merge merge_file set delete insert_term insert_inner insert_list insert_list2 "
+            "insert_opaq new_meta free_meta format data_type unknown parse_options" :
+            !strcmp(what, "change_term") ? "do node value canon" :
             !strcmp(what, "dump") ? "do with_defaults" : !strcmp(what, "dup") ? "do node parent options siblings" :
             !strcmp(what, "compare") ? "do format data_type data data_file unknown parse_only parse_options "
             "validate_options first second options" :
@@ -1600,6 +1615,9 @@ check_step(const cJSON *step)
                 cJSON_GetObjectItemCaseSensitive(step, "delete") ? "do delete" :
                 cJSON_GetObjectItemCaseSensitive(step, "insert_term") ? "do insert_term" :
                 cJSON_GetObjectItemCaseSensitive(step, "insert_inner") ? "do insert_inner" :
+                cJSON_GetObjectItemCaseSensitive(step, "insert_list") ? "do insert_list" :
+                cJSON_GetObjectItemCaseSensitive(step, "insert_list2") ? "do insert_list2" :
+                cJSON_GetObjectItemCaseSensitive(step, "insert_opaq") ? "do insert_opaq" :
                 cJSON_GetObjectItemCaseSensitive(step, "new_meta") ? "do new_meta" :
                 cJSON_GetObjectItemCaseSensitive(step, "free_meta") ? "do free_meta" :
                 "do merge merge_file format data_type unknown parse_options",
@@ -1620,12 +1638,15 @@ check_step(const cJSON *step)
         const cJSON *set = cJSON_GetObjectItemCaseSensitive(step, "set");
         const cJSON *ins = cJSON_GetObjectItemCaseSensitive(step, "insert_term");
         const cJSON *inn = cJSON_GetObjectItemCaseSensitive(step, "insert_inner");
+        const cJSON *il = cJSON_GetObjectItemCaseSensitive(step, "insert_list");
+        const cJSON *il2 = cJSON_GetObjectItemCaseSensitive(step, "insert_list2");
+        const cJSON *io = cJSON_GetObjectItemCaseSensitive(step, "insert_opaq");
         const cJSON *nm = cJSON_GetObjectItemCaseSensitive(step, "new_meta");
         const cJSON *fm = cJSON_GetObjectItemCaseSensitive(step, "free_meta");
 
-        if (!!merge + !!del + !!set + !!ins + !!inn + !!nm + !!fm != 1) {
-            die("edit step needs exactly one of merge, merge_file, set, delete, insert_term, insert_inner, new_meta, "
-                    "free_meta%s", NULL);
+        if (!!merge + !!del + !!set + !!ins + !!inn + !!il + !!il2 + !!io + !!nm + !!fm != 1) {
+            die("edit step needs exactly one of merge, merge_file, set, delete, insert_term, insert_inner, insert_list, "
+                    "insert_list2, insert_opaq, new_meta, free_meta%s", NULL);
         }
         if (nm || fm) {
             const cJSON *o = nm ? nm : fm;
@@ -1639,15 +1660,56 @@ check_step(const cJSON *step)
                 die("new_meta needs a value%s", NULL);
             }
         }
-        if (ins || inn) {
-            const cJSON *o = ins ? ins : inn;
+        if (ins || inn || il || il2 || io) {
+            const cJSON *o = ins ? ins : inn ? inn : il ? il : il2 ? il2 : io, *k;
+            const char *ppath, *popaq;
 
-            if (!cJSON_IsObject(o) || !str_of(o, "name") || (!!str_of(o, "module") + !!str_of(o, "parent") != 1)) {
-                die("insert_term/insert_inner need an object with name and exactly one of module, parent%s", NULL);
+            if (!cJSON_IsObject(o)) {
+                die("insert_* need an object with name and at most one of parent, parent_opaq%s", NULL);
             }
-            keys_only(o, ins ? "module parent name value" : "module parent name", "unknown key \"%s\" in insert_term/insert_inner");
+            /* both type-checked whatever the other fields are */
+            ppath = str_of(o, "parent");
+            popaq = str_of(o, "parent_opaq");
+            if (!str_of(o, "name") || (ppath && popaq)) {
+                die("insert_* need an object with name and at most one of parent, parent_opaq%s", NULL);
+            }
+            keys_only(o, ins ? "module parent parent_opaq name value options" :
+                    inn ? "module parent parent_opaq name options" :
+                    io ? "parent parent_opaq name value prefix module xml" :
+                    "module parent parent_opaq name keys options", "unknown key \"%s\" in an insert_* edit");
+            if (io) {
+                /* lyd_new_opaq / lyd_new_opaq2: module is the module name / namespace, not a module */
+                str_of(o, "value");
+                str_of(o, "prefix");
+                if (!str_of(o, "module")) {
+                    die("insert_opaq needs a module%s", NULL);
+                }
+                if (cJSON_GetObjectItemCaseSensitive(o, "xml") && !cJSON_IsBool(cJSON_GetObjectItemCaseSensitive(o, "xml"))) {
+                    die("insert_opaq xml must be a boolean%s", NULL);
+                }
+            } else {
+                if (!str_of(o, "module") && !ppath && !popaq) {
+                    die("insert_term/inner/list/list2 need a module or a parent%s", NULL);
+                }
+                flags_of(o, "options", inn ? inner_flags : newval_flags);
+            }
             if (ins && !str_of(o, "value")) {
                 die("insert_term needs a value%s", NULL);
+            }
+            if (il2) {
+                str_of(o, "keys");
+            }
+            if (il && (k = cJSON_GetObjectItemCaseSensitive(o, "keys"))) {
+                const cJSON *it;
+
+                if (!cJSON_IsArray(k) || cJSON_GetArraySize(k) > 16) {
+                    die("insert_list keys must be an array of at most 16 strings or nulls%s", NULL);
+                }
+                cJSON_ArrayForEach(it, k) {
+                    if (!cJSON_IsString(it) && !cJSON_IsNull(it)) {
+                        die("insert_list keys must be an array of at most 16 strings or nulls%s", NULL);
+                    }
+                }
             }
         }
         if (merge) {
@@ -1659,6 +1721,15 @@ check_step(const cJSON *step)
         if (set) {
             keys_only(set, "path value", "unknown key \"%s\" in set");
             str_of(set, "value");
+        }
+    } else if (!strcmp(what, "change_term")) {
+        const cJSON *canon = cJSON_GetObjectItemCaseSensitive(step, "canon");
+
+        if (!str_of(step, "node") || !str_of(step, "value")) {
+            die("change_term needs node and value%s", NULL);
+        }
+        if (canon && !cJSON_IsBool(canon)) {
+            die("change_term canon must be a boolean%s", NULL);
         }
     } else if (!strcmp(what, "dump")) {
         wd_of(step);
@@ -1838,6 +1909,9 @@ step_edit(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *
     const cJSON *set = cJSON_GetObjectItemCaseSensitive(step, "set");
     const cJSON *ins = cJSON_GetObjectItemCaseSensitive(step, "insert_term");
     const cJSON *inn = cJSON_GetObjectItemCaseSensitive(step, "insert_inner");
+    const cJSON *il = cJSON_GetObjectItemCaseSensitive(step, "insert_list");
+    const cJSON *il2 = cJSON_GetObjectItemCaseSensitive(step, "insert_list2");
+    const cJSON *io = cJSON_GetObjectItemCaseSensitive(step, "insert_opaq");
     const cJSON *nm = cJSON_GetObjectItemCaseSensitive(step, "new_meta");
     const cJSON *fm = cJSON_GetObjectItemCaseSensitive(step, "free_meta");
     struct lyd_node *node = NULL;
@@ -1855,23 +1929,60 @@ step_edit(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *
         } else {
             lyd_free_meta_single(lyd_find_meta(node->meta, NULL, str_of(o, "name")));
         }
-    } else if (ins || inn) {
-        /* lyd_new_term / lyd_new_inner + lyd_insert_sibling (top level) or a child of "parent" */
-        const cJSON *o = ins ? ins : inn;
-        const char *mname = str_of(o, "module"), *ppath = str_of(o, "parent");
-        const struct lys_module *mod = mname ? ly_ctx_get_module_implemented(ctx, mname) : NULL;
+    } else if (ins || inn || il || il2 || io) {
+        /* lyd_new_term / _inner / _list3 / _list2 / _opaq / _opaq2, then lyd_insert_sibling (top level), or a child
+         * of "parent" (a path) or "parent_opaq" (the name of a top-level opaque node) */
+        const cJSON *o = ins ? ins : inn ? inn : il ? il : il2 ? il2 : io;
+        const char *mname = str_of(o, "module"), *ppath = str_of(o, "parent"), *popaq = str_of(o, "parent_opaq");
+        const char *name = str_of(o, "name");
+        const struct lys_module *mod = (mname && !io) ? ly_ctx_get_module_implemented(ctx, mname) : NULL;
+        uint32_t opts = io ? 0 : flags_of(o, "options", inn ? inner_flags : newval_flags);
         struct lyd_node *parent = NULL;
 
-        if (mname && !mod) {
+        if (mname && !io && !mod) {
             die("module %s is not implemented", mname);
         }
         if (ppath && (!*tree || lyd_find_path(*tree, ppath, 0, &parent))) {
             die("insert parent %s not found", ppath);
         }
+        if (popaq && (!*tree || lyd_find_sibling_opaq_next(lyd_first_sibling(*tree), popaq, &parent))) {
+            die("insert parent_opaq %s not found", popaq);
+        }
+        if (io && parent && parent->schema && (parent->schema->nodetype & LYD_NODE_TERM)) {
+            die("insert_opaq under the leaf %s: libyang links it over the leaf's value", LYD_NAME(parent));
+        }
+        if (!io && !mod && (!parent || !parent->schema)) {
+            die("insert %s under an opaque parent needs a module (libyang reads its NULL schema)", name);
+        }
         if (ins) {
-            rc = lyd_new_term(parent, mod, str_of(o, "name"), str_of(o, "value"), 0, &node);
+            rc = lyd_new_term(parent, mod, name, str_of(o, "value"), opts, &node);
+        } else if (inn) {
+            rc = lyd_new_inner(parent, mod, name, opts ? 1 : 0, &node);
+        } else if (il2) {
+            rc = lyd_new_list2(parent, mod, name, str_of(o, "keys"), opts, &node);
+        } else if (il) {
+            /* lyd_new_list3: "keys" absent is a NULL array; fewer values than the list has keys would be read
+             * past its end, a request-error */
+            const cJSON *k = cJSON_GetObjectItemCaseSensitive(o, "keys"), *it;
+            const void *vals[16] = {0};
+            const struct lysc_node *sl, *key;
+            int n = 0;
+
+            cJSON_ArrayForEach(it, k) {
+                vals[n++] = cJSON_IsString(it) ? it->valuestring : NULL;
+            }
+            sl = lys_find_child(ctx, parent ? parent->schema : NULL, mod ? mod : parent->schema->module, NULL, 0, name,
+                    strlen(name), (opts & LYD_NEW_VAL_OUTPUT) ? LYS_GETNEXT_OUTPUT : 0);
+            for (key = (sl && (sl->nodetype == LYS_LIST)) ? lysc_node_child(sl) : NULL; k && key && (key->flags & LYS_KEY); key = key->next) {
+                if (n-- <= 0) {
+                    die("insert_list %s has fewer keys than the list", name);
+                }
+            }
+            rc = lyd_new_list3(parent, mod, name, k ? vals : NULL, NULL, opts, &node);
+        } else if (cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(o, "xml"))) {
+            rc = lyd_new_opaq2(parent, ctx, name, str_of(o, "value"), str_of(o, "prefix"), mname, &node);
         } else {
-            rc = lyd_new_inner(parent, mod, str_of(o, "name"), 0, &node);
+            rc = lyd_new_opaq(parent, ctx, name, str_of(o, "value"), str_of(o, "prefix"), mname, &node);
         }
         if (!rc && !parent) {
             rc = lyd_insert_sibling(*tree, node, tree);
@@ -2124,6 +2235,18 @@ op_sequence(const cJSON *req)
             rc = step_dup(ctx, step, &tree, diag);
         } else if (!strcmp(what, "compare")) {
             rc = step_compare(ctx, step, tree, diag, s);
+        } else if (!strcmp(what, "change_term")) {
+            /* lyd_change_term(_canon) of the node at "node": "change" is its rc; LY_EEXIST (only the default
+             * flag changed) and LY_ENOT (nothing changed) are results, not failures */
+            struct lyd_node *n = node_at(tree, str_of(step, "node"), "change_term node %s not found");
+            LY_ERR r = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(step, "canon")) ?
+                    lyd_change_term_canon(n, str_of(step, "value")) : lyd_change_term(n, str_of(step, "value"));
+
+            collect(ctx, diag, "edit");
+            /* a changed value may move the node among its siblings, the first top-level one too */
+            tree = lyd_first_sibling(tree);
+            cJSON_AddItemToObject(s, "change", code_json(r));
+            rc = (r == LY_EEXIST) || (r == LY_ENOT) ? LY_SUCCESS : r;
         } else if (!strcmp(what, "diff")) {
             rc = step_diff(ctx, step, tree, &diff, diag, s);
         } else if (!strcmp(what, "diff_parse")) {

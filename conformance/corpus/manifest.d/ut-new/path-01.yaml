@@ -1,0 +1,8 @@
+fixtures:
+  - id: ut-new/path-01
+    dir: ut-new
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # module e; a union key through lyd_new_path: [k='01'] creates the enumeration "1" instance, then [k='01'] and [k='1'] both find it to update and delete it (lyd_create_list in creation and in lookup) (#98)
+    rfc: []   # libyang API (lyd_new_path, lyd_find_path, lyd_diff_apply_all): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["e.1"], "modules": [{"name": "e"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "edit", "set": {"path": "/e:lu[k='01']/v", "value": "a"}}, {"do": "edit", "set": {"path": "/e:lu[k='1']/v", "value": "b"}}, {"do": "edit", "set": {"path": "/e:lu[k='01']/v", "value": "c"}}, {"do": "edit", "delete": "/e:lu[k='01']"}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/path-01.json

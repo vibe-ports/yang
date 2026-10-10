@@ -458,6 +458,7 @@ func TestOracleRequestErrors(t *testing.T) {
 		{"merge option on set", `{"do":"edit","set":{"path":"/pv2:c/mode","value":"on"},"format":"garbage"}`, `key "format" not allowed`},
 		{"merge option on delete", `{"do":"edit","delete":"/pv2:c/mode","data_type":"config"}`, `key "data_type" not allowed`},
 		{"malformed step after a failing one", `{"do":"edit","delete":"/pv2:c/nope"},{"do":"dump","with_defaults":"bogus"}`, `unknown with_defaults mode`},
+		{"malformed insert after a failing one", `{"do":"edit","delete":"/pv2:c/nope"},{"do":"edit","insert_term":{"module":"pv2","name":"mode","value":"on","parent_opaq":5}}`, `"parent_opaq" must be a string`},
 	} {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		cmd := exec.CommandContext(ctx, oracle) //nolint:gosec // test runs the repo's own oracle binary

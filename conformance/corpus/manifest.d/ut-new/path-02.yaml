@@ -1,0 +1,8 @@
+fixtures:
+  - id: ut-new/path-02
+    dir: ut-new
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # module e; a union key as a user-ordered list's diff anchor: yang:key "[k='01']" finds the enumeration "1" instance (lyd_find_sibling_val, lyd_create_list2) (#98)
+    rfc: []   # libyang API (lyd_new_path, lyd_find_path, lyd_diff_apply_all): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["e.1"], "modules": [{"name": "e"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "parse", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"e:lo\": [{\"k\": \"1\"}, {\"k\": 2}]}"}, {"do": "diff_parse", "format": "json", "data_type": "data", "data": "{\"e:lo\": [{\"@\": {\"yang:operation\": \"create\", \"yang:insert\": \"after\", \"yang:key\": \"[k='01']\"}, \"k\": 3}]}"}, {"do": "diff_apply"}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/path-02.json

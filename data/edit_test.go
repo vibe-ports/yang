@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -48,8 +50,11 @@ func typedLine(set *schema.Set, n *Node) string {
 		}
 	}
 	s := lydPath(set, n, false) + " " + strings.Join(fl, ",")
-	if n.isTerm() {
+	switch {
+	case n.isTerm():
 		s += " = " + n.value.Canonical()
+	case n.opaq != nil:
+		s += " = " + n.opaq.Value // the oracle's typed dump gives an opaque node's value too
 	}
 	return s
 }
@@ -65,11 +70,13 @@ func typedDump(tr *Tree) []string {
 }
 
 type goldenStep struct {
+	Skipped     bool `json:"skipped"`
 	Diagnostics []struct {
-		Msg        string  `json:"msg"`
-		VecodeName string  `json:"vecode_name"`
-		DataPath   *string `json:"data_path"`
-		SchemaPath *string `json:"schema_path"`
+		Code       struct{ Name string } `json:"code"`
+		Msg        string                `json:"msg"`
+		VecodeName string                `json:"vecode_name"`
+		DataPath   *string               `json:"data_path"`
+		SchemaPath *string               `json:"schema_path"`
 	} `json:"diagnostics"`
 	RC    struct{ Name string } `json:"rc"`
 	Typed []struct {
@@ -79,6 +86,8 @@ type goldenStep struct {
 			Canonical string `json:"canonical"`
 		} `json:"value"`
 	} `json:"typed"`
+	Tree   struct{ JSON, XML string } `json:"tree"`
+	Change struct{ Name string }      `json:"change"`
 }
 
 func (g goldenStep) dump() []string {
@@ -352,4 +361,47 @@ func TestEditEdges(t *testing.T) {
 		t.Errorf("malformed path on an empty tree: %v", err)
 	}
 	// seq/new-path-leaflist-invalid replays the invalid leaf-list value
+}
+
+// TestKeyLookupWork: a list-key lookup (Find, the instance-identifier and diff-anchor lookups)
+// re-stores the keys and searches the run by value: n lookups among n instances stay n log n,
+// work(4n) <= 6 x work(n), for lookups in sorted, reverse, shuffled and duplicate-heavy order.
+func TestKeyLookupWork(t *testing.T) {
+	set := editSet(t)
+	work := func(n int, order string) int64 {
+		tr := newTree(set)
+		keys := make([]string, n)
+		for i := range keys {
+			keys[i] = fmt.Sprintf("k%06d", i)
+			if _, err := tr.NewPath("/pv2-edit:c/l[k='"+keys[i]+"']/v", "1", NewPathOptions{}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		switch order {
+		case "reverse":
+			slices.Reverse(keys)
+		case "shuffled":
+			r := rand.New(rand.NewPCG(1, 2)) //nolint:gosec // deterministic test order
+			r.Shuffle(len(keys), func(i, j int) { keys[i], keys[j] = keys[j], keys[i] })
+		case "duplicates":
+			for i := range keys {
+				keys[i] = keys[i%3]
+			}
+		}
+		tr.work.Store(0)
+		tr.work.visits = true
+		for _, k := range keys {
+			if n, err := tr.Find("/pv2-edit:c/l[k='" + k + "']"); err != nil || n == nil {
+				t.Fatalf("%s: %v %v", k, n, err)
+			}
+		}
+		return tr.work.Load()
+	}
+	const n = 1500
+	for _, order := range []string{"sorted", "reverse", "shuffled", "duplicates"} {
+		w1, w4 := work(n, order), work(4*n, order)
+		if w1 < n || w4 > 6*w1 { // each lookup counts at least one sibling visit
+			t.Errorf("%s: work(%d) = %d, work(%d) = %d: more than 6x", order, n, w1, 4*n, w4)
+		}
+	}
 }

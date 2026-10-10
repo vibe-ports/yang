@@ -165,6 +165,7 @@ func (t *Tree) dupR(n, parent *Node, top bool, order insertOrder, opts dupOpts) 
 	switch {
 	case d.schema == nil:
 		o := *n.opaq
+		o.set = t.set // the target context
 		o.Attrs = nil
 		if opts&dupNoMeta == 0 { // lyd_dup_attr_single
 			o.Attrs = append([]attr(nil), n.opaq.Attrs...)

@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo): an instance-identifier whose target is a union-key
+// instance of module e (require-instance and deref() re-store its key); a key whose canonical text
+// fails its pattern (#98).
+module f {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:ut-new:f";
+  prefix f;
+
+  import ietf-inet-types {
+    prefix inet;
+  }
+
+  leaf ir {
+    type instance-identifier;
+    must "count(deref(.)) = 1";
+  }
+  list lp {
+    key "p";
+    leaf p {
+      type inet:ipv6-prefix {
+        pattern ".*0db8.*";
+      }
+    }
+  }
+}

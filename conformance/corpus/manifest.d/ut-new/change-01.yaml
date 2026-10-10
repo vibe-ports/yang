@@ -1,0 +1,8 @@
+fixtures:
+  - id: ut-new/change-01
+    dir: ut-new
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_new.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # module a of libyang's tests/utests/data/test_new.c; value changes, then no change, then canonical (#98)
+    rfc: []   # libyang API (lyd_change_term): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["a.1"], "modules": [{"name": "a"}], "steps": [{"do": "edit", "insert_term": {"module": "a", "name": "foo", "value": "1"}}, {"do": "change_term", "node": "/a:foo", "value": "2"}, {"do": "change_term", "node": "/a:foo", "value": "2"}, {"do": "change_term", "node": "/a:foo", "value": "3", "canon": true}, {"do": "edit", "insert_term": {"module": "a", "name": "ll", "value": "q"}}, {"do": "change_term", "node": "/a:ll[.='q']", "value": "r"}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/change-01.json

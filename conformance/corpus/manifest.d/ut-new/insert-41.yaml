@@ -1,0 +1,8 @@
+fixtures:
+  - id: ut-new/insert-41
+    dir: ut-new
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_new.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # module a of libyang's tests/utests/data/test_new.c; lyd_new_opaq and lyd_new_opaq2 at the top level and in a container (#98)
+    rfc: []   # libyang API (lyd_new_* and lyd_insert_sibling): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["a.1"], "modules": [{"name": "a"}], "steps": [{"do": "edit", "insert_opaq": {"name": "node1", "module": "a", "value": "val_1"}}, {"do": "edit", "insert_opaq": {"name": "node2", "module": "a", "prefix": "a", "value": "[null]"}}, {"do": "edit", "insert_opaq": {"name": "node3", "module": "urn:tests:a", "value": "v", "xml": true}}, {"do": "edit", "insert_opaq": {"name": "node4", "module": "urn:tests:a", "prefix": "p", "xml": true}}, {"do": "edit", "insert_inner": {"module": "a", "name": "c"}}, {"do": "edit", "insert_opaq": {"parent": "/a:c", "name": "z", "module": "a", "value": "1"}}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/insert-41.json

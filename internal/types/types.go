@@ -195,6 +195,9 @@ type storeArgs struct {
 	// keyErr is the error item of the last path predicate value that failed to store, which
 	// lyd_value_validate3 logs at the key or leaf-list node (ly_path_compile_predicate).
 	keyErr *Diag
+	// vars lets key predicates hold variable references (ly_path_compile_predicate stores them as
+	// LY_PATH_PREDTYPE_LIST_VAR; lyd_create_list resolves them): lyd_create_list2's keys.
+	vars bool
 }
 
 func store(t *schema.Type, lex string, f Format, h Hints, pc PrefixCtx, ctx *schema.Node, only bool) (Value, *Diag) {

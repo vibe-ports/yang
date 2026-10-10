@@ -574,12 +574,10 @@ func (vc *valCtx) pathEval(p types.Path) *Node {
 				}
 			case types.PredLeafList:
 				node = vc.t.findFirst(sib, newTerm(seg.Node, pr.Value))
-			case types.PredKey:
-				target := newInner(seg.Node)
-				for _, kp := range seg.Preds {
-					target.kids.list = append(target.kids.list, &Node{schema: kp.Key, value: kp.Value, parent: target})
+			case types.PredKey: // ly_path_eval → ly_path_eval_partial: lyd_create_list, store-only
+				if target := vc.t.lookupList(seg); target != nil {
+					node = vc.t.findFirst(sib, target)
 				}
-				node = vc.t.findFirst(sib, target)
 			}
 		}
 		if node == nil || node.flags&flagDead != 0 {
@@ -704,7 +702,7 @@ func (vc *valCtx) validateMust(n *Node) error {
 // dummyWhen is lyd_validate_dummy_when: the whens of an absent node sn under parent (nil: the top
 // level), evaluated on an opaque stand-in linked at its place; the first false one.
 func (vc *valCtx) dummyWhen(parent *Node, sn *schema.Node) (*schema.When, error) {
-	dummy := newOpaque(opaque{Name: sn.Name, ModuleNS: sn.Module.Name, Format: types.FormatJSON})
+	dummy := newOpaque(opaque{Name: sn.Name, ModuleNS: sn.Module.Name, Format: types.FormatJSON, set: vc.t.set})
 	vc.t.insert(parent, dummy, insertDefault)
 	defer unlink(dummy)
 	root := xpath.RootAll

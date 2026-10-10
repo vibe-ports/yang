@@ -1,0 +1,8 @@
+fixtures:
+  - id: ut-new/change-07
+    dir: ut-new
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_new.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # module a of libyang's tests/utests/data/test_new.c; a top-level leaf-list value changed past its siblings: the first top-level node changes (#98)
+    rfc: []   # libyang API (lyd_change_term): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["a.1"], "modules": [{"name": "a"}], "steps": [{"do": "parse", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"a:ll\": [\"a\", \"b\"]}"}, {"do": "change_term", "node": "/a:ll[.='a']", "value": "z"}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/change-07.json
