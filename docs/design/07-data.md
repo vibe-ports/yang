@@ -462,14 +462,372 @@ a fixture with `assert` (extractor, inventory §5.4).
 | feature | M1-6 | later |
 |---|---|---|
 | datastore data JSON/XML, all `data_type`s except operations | yes | — |
-| rpc/action/notification/reply (`lyd_parse_op`, `lyd_validate_op`) | data-tree parse rejects op nodes as libyang does | M4 (U-0044 for the adapter's op types) |
+| rpc/action/notification/reply (`lyd_parse_op`, `lyd_validate_op`) | data-tree parse rejects op nodes as libyang does | M4: `ParseOp`, `ValidateOp` (§6.1.1); U-0044 goes with #97 (§6.1.6) |
 | anydata/anyxml | instance → `ErrUnsupported` (U-0043) | M5 |
 | metadata | annotation lookup + store, `default`, `yang:operation`, with-defaults tags | full RFC 7952 / origin inheritance M4–M5 |
-| opaque nodes | `unknown: opaque`, printing, validation error | envelopes M4 |
+| opaque nodes | `unknown: opaque`, printing, validation error | `NewOpaq`, `Node.Attrs` and the envelopes in M5 (§6.1.5) |
 | diff | implicit diff (create/delete/none); since #137 Diff, ApplyDiff, MergeDiff, ReverseDiff (PoC #133) | anydata/anyxml values in diffs (M5) |
-| edits | NewPath(Update), Find, Remove, Merge without options | `ApplyEdit` M6 |
+| edits | NewPath(Update), Find, Remove, Merge without options | M4: NewTerm, NewInner, NewList, Insert, SetValue, Dup, DupSiblings (§6.1.2, §6.1.3); `ApplyEdit` M6 |
+| leafref links (`LY_CTX_LEAFREF_LINKING`) | ported internally (data/links.go) | M4: `Options.LeafrefLinking`, `LeafrefLinks`, `LinkLeafrefs` (§6.1.3) |
 | extension data (`LYD_EXT`, schema-mount, yang-data, structure) | never reached: compile rejects schema-mount (U-0024); a data node of a yang-data/structure tree fails the parse with `ErrUnsupported` (U-0060) | later |
-| LYB, `lyd_parse_value_fragment`, RESTCONF/NETCONF wrappers | no | out of v1 / M4 |
+| LYB, `lyd_parse_value_fragment` | no | out of v1 |
+| NETCONF/RESTCONF envelopes (`LYD_TYPE_*_NETCONF`, `LYD_TYPE_*_RESTCONF`) | no | M5, parse only (§6.1.5, decided 2026-10-10); transport and message building stay out of v1 (PLAN §1) |
+
+### 6.1 M4 exported API (#92, proposal for the maintainer)
+
+Status: proposal, 2026-10-10. Nothing below is exported until the maintainer approves it; #93, #96
+and #98 port the engine work unexported, and #97 and #99 wire the conformance engine to this API.
+libyang references are v5.8.6: `tree_data.c` (TD), `tree_data_new.c` (TDN), `validation.c` (VAL),
+`parser_xml.c` (PX), `parser_json.c` (PJ).
+
+```go
+// operations (§6.1.1)
+type OpType uint8 // OpRPC (rpc and action), OpNotif, OpReply; zero is invalid
+const ( OpRPC OpType = iota + 1; OpNotif; OpReply )
+type ParseOpOptions struct {
+    Unknown UnknownPolicy // Reject = LYD_PARSE_STRICT, Opaque = LYD_PARSE_OPAQ, Skip = neither
+    Request *Node         // OpReply only: the rpc/action node the reply belongs to (lyd_parse_op parent)
+    Budget  Budget
+}
+type OpResult struct {
+    Tree *Tree // the operation with its parents (a nested action/notification), or Request's tree
+    Op   *Node // the rpc, action or notification node
+}
+func ParseOp(ctx context.Context, r io.Reader, f Format, s *yang.Schema, typ OpType, o ParseOpOptions) (OpResult, []yang.Diagnostic, error)
+type ValidateOpOptions struct{ Operational *Tree } // dep_tree, the -O operational datastore
+func (t *Tree) ValidateOp(ctx context.Context, typ OpType, o ValidateOpOptions) ([]yang.Diagnostic, error)
+
+// tree building (§6.1.2); name is "module:node" or, below parent, "node" of parent's module
+type NewOptions struct{ Output bool } // LYD_NEW_VAL_OUTPUT
+func (t *Tree) NewTerm(parent *Node, name, value string, o NewOptions) (*Node, error)
+func (t *Tree) NewInner(parent *Node, name string, o NewOptions) (*Node, error)
+func (t *Tree) NewList(parent *Node, name string, keys []string, o NewOptions) (*Node, error)
+func (t *Tree) Insert(parent, n *Node) error // lyd_insert_child; parent nil: lyd_insert_sibling at the top level
+func (n *Node) SetValue(value string) (changed bool, err error) // lyd_change_term
+
+// duplication and leafref links (§6.1.3)
+type DupOptions struct{ Recursive, NoMeta, WithParents, WithFlags bool } // LYD_DUP_*
+func (t *Tree) Dup(n, parent *Node, o DupOptions) (*Node, []yang.Diagnostic, error)         // lyd_dup_single(_to_ctx)
+func (t *Tree) DupSiblings(n, parent *Node, o DupOptions) (*Node, []yang.Diagnostic, error) // lyd_dup_siblings(_to_ctx)
+func (t *Tree) LinkLeafrefs(ctx context.Context) ([]yang.Diagnostic, error) // lyd_leafref_link_node_tree
+func (n *Node) LeafrefLinks() (leafrefs, targets []*Node)                 // lyd_leafref_get_links
+// package yang: Options.LeafrefLinking bool                              // LY_CTX_LEAFREF_LINKING
+
+// validation and parse options (§6.1.4)
+func (t *Tree) ValidateModule(ctx context.Context, module string, o ValidateOptions) ([]yang.Diagnostic, error)
+// ParseOptions.WhenTrue bool                                             // LYD_PARSE_WHEN_TRUE
+
+// M5 (§6.1.5, envelopes): OpType values, OpResult.Envelope, NewOpaq, Node.Attrs
+```
+
+Rules this follows, from the package as shipped: options structs, never positional bools
+(`lyd_new_inner`'s `output` is `NewOptions.Output`); a call that libyang lets log on success
+returns `(…, []yang.Diagnostic, error)` (ParseOp, ValidateOp, ValidateModule, Dup, DupSiblings,
+LinkLeafrefs, as Parse, Validate and the queries); calls that log only on failure return
+`(…, error)` with the diagnostics in the `*ValidationError` (NewTerm, NewInner, NewList, Insert,
+SetValue, as NewPath and NewMeta: their value stores and schema checks log only on the failing
+path, and none of them evaluates XPath or copies across snapshots; LeafrefLinks logs nothing); every LY_CHECK_ARG_RET /
+LOGARG refusal is an LY_EINVAL `*ValidationError` built with `argErr` (§0.5, #160/#168), with
+libyang's text of the check; results that are sets are slices (`[]*Node`, as FindXPath), walks stay
+`iter.Seq`; calls that create or change nodes are methods of the `Tree` they change, as NewPath,
+NewMeta and Merge are, so that a nil parent means the top level of that tree (Go has no unlinked
+sibling lists: a parentless node is a top-level node of some tree, §2). Names follow the
+libyang function minus `lyd_` and the existing Go names (New*, Find*, Validate*); the one
+exception is SetValue, the setter twin of `Node.Value`.
+
+Concurrency (data/doc.go): **read** = may run with other reads of the same tree; **mutation** =
+exclusive access to the tree it changes. Each item below names its class; doc.go's lists get the
+new calls when they are exported.
+
+**Linked trees are one synchronization domain.** Leafref link records (`LeafrefLinking`) can join
+two trees: ValidateOp leaves records between the operation tree and `o.Operational` (§6.1.1), and
+the records are kept on the nodes of both, unsynchronized (data/links.go). A mutation of either
+tree may change the other's records: SetValue, Remove and any call that frees or unlinks nodes
+runs `freeLinks`, which edits the records of the nodes linked to them, and a later ValidateOp or
+LinkLeafrefs adds records. So once trees are linked, a mutation of any of them needs exclusive
+access to all of them, and a read of one (LeafrefLinks included) must not run with a mutation of
+another. Trees over a snapshot without `LeafrefLinking` are never linked and keep the per-tree
+rule. Link storage stays unsynchronized (no lock on the hot path); a lock can be added later
+without changing this contract. doc.go states this rule when ValidateOp is exported.
+
+#### 6.1.1 Operations: ParseOp, ValidateOp
+
+| Go | libyang | class |
+|---|---|---|
+| `ParseOp(ctx, r, f, s, OpRPC, o)` | `lyd_parse_op(ctx, NULL, in, f, LYD_TYPE_RPC_YANG, opts, &tree, &op)` (TD:352) | creates a new tree |
+| `ParseOp(ctx, r, f, s, OpNotif, o)` | same, `LYD_TYPE_NOTIF_YANG` | creates a new tree |
+| `ParseOp(ctx, r, f, s, OpReply, o)` | same, `LYD_TYPE_REPLY_YANG`; with `o.Request`: `lyd_parse_op(ctx, request, …, NULL, NULL)` | new tree; with Request, mutation of Request's tree |
+| `t.ValidateOp(ctx, typ, o)` | `lyd_validate_op(op_tree, dep_tree, LYD_TYPE_*_YANG, NULL)` (VAL:2523) | mutation of t (implicit nodes of input/output/notification) and of `o.Operational` (see below) |
+
+- **ParseOp only parses**, as `lyd_parse_op` does (`LYD_PARSE_ONLY` is forced and only
+  STRICT/OPAQ are accepted, so `ParseOpOptions` has only `Unknown` and `Budget`); validation is
+  `ValidateOp`. One operation per input, an action or a nested notification with its parents
+  (`lyd_parser_find_operation`, #93). `OpRPC` covers rpc and action (`LYD_INTOPT_RPC |
+  LYD_INTOPT_ACTION`). `typ` other than the three types is LY_EINVAL `argErr("data_type",
+  "lyd_parse_op")`, libyang's `data_type` check. `Unknown: Skip` is libyang's "neither STRICT nor
+  OPAQ": unknown nodes are skipped (lydxml_subtree_r and the JSON twin), not refused; #198's
+  remap of Skip to Reject is being fixed to match (no fixture can tell, since lyoracle refuses
+  `unknown: skip` for operations).
+- **A reply bound to its request**: `o.Request` is the rpc/action node of a request tree (an earlier
+  `ParseOp(…, OpRPC, …)` result's `Op`, or one built with NewInner). The input holds the output
+  parameters (`LYD_INTOPT_WITH_SIBLINGS`); they become children of Request, as libyang appends
+  them, and the result is `{Request's tree, Request}`. The input parameters are not removed:
+  `Remove` them first (yanglint and lyoracle do, `lyd_free_siblings(lyd_child(op))`). Without
+  Request the input is the whole reply with its operation node and parents, as yanglint reads it.
+  **Port refusals, not libyang checks**: for the `LYD_TYPE_*_YANG` types lyd_parse_op checks
+  only `ctx || parent`, `in`, the STRICT/OPAQ mask, `data_type` and `parent || tree || op`; it
+  accepts a parent with `RPC_YANG`/`NOTIF_YANG` (a nested action or notification parsed into an
+  existing parent), has no rpc/action check on the parent for the YANG types and no
+  context-equality check. The port narrows `Request` to its one use and refuses the rest with its
+  own LY_EINVAL texts: `argErr("request (only with a reply)", "lyd_parse_op")` with
+  `OpRPC`/`OpNotif` (§6.1.7), `argErr("request (not an RPC or action)", "lyd_parse_op")`, and
+  `argErr("request (another schema snapshot)", "lyd_parse_op")` when Request's tree is not over
+  `s`.
+- **ValidateOp** validates only the operation subtree of t (the op node is found as
+  `lyd_validate_op` finds it; an opaque node on the way is `lyd_parse_opaq_error`, no operation
+  of `typ` is LY_EINVAL "No RPC/action to validate found." / "No notification to validate found."). `typ` other
+  than the three types is LY_EINVAL with libyang's check text. `o.Operational` is the dependency
+  tree for leafref, when and must references outside the operation (the `-O` file of yanglint).
+  It is used as given, without validating it (yanglint and lyoracle parse it with
+  `LYD_PARSE_ONLY`). `Operational == t` is ignored as libyang does (`op_tree == dep_tree`).
+  libyang's only check on it is `!dep_tree->parent`; Go has no parented tree handle, so that
+  check cannot fail. A tree over another snapshot is a **port refusal**:
+  `argErr("dep_tree (another schema snapshot)", "lyd_validate_op")`.
+- **ValidateOp mutates `o.Operational`**: `_lyd_validate_op` (VAL:2423) unlinks the operation
+  subtree and inserts it into the dependency tree under its parent for the whole validation, then
+  unlinks it again (#200 ports that as written: `dep.insert`, then `restore`). The tree's
+  structure is restored on return. With `LeafrefLinking`, link records between Operational's
+  nodes and the op tree stay (unres.go `linkLeafrefNode`), as in libyang. So ValidateOp needs
+  exclusive access to both t and Operational: concurrent ValidateOp calls cannot share one
+  Operational tree, and no read of it may run at the same time. doc.go lists Operational among
+  the mutations when ValidateOp is exported. A read-only promise can be added later if the port
+  stops linking into the dependency tree; it cannot be withdrawn after a tag.
+- **Not ported into the library**: yanglint's `check_operation_parent` (a nested action's parent
+  must exist in the operational tree). libyang does not check it; it is a CLI check, and the
+  lyoracle `operation_parent` diagnostic is reproduced by the conformance engine (#97) with
+  `Tree.FindXPath` on the operational tree.
+- **Not exported**: the `diff` out-parameter of `lyd_validate_op` (a `ValidateOpDiff` can be
+  added like ValidateDiff when a user asks). `lyd_validate_op` has no `val_opts`, so
+  `LYD_VALIDATE_MULTI_ERROR` is never set: ValidateOp is single-error, and there is no knob.
+- Diagnostics: ParseOp and ValidateOp as Parse and Validate (warnings on success, the
+  `*ValidationError` on failure, `yang.ErrBudget` for the Budget and nesting limits, `ctx.Err()`).
+  ParseOp returns no tree on failure (libyang frees it); a failed parse with Request removes the
+  nodes it added (libyang frees its `parsed` set, TD:483), so Request's tree is as before.
+
+#### 6.1.2 Tree building: NewTerm, NewInner, NewList, Insert, SetValue
+
+| Go | libyang | class |
+|---|---|---|
+| `t.NewTerm(parent, name, value, o)` | `lyd_new_term(parent, module, name, value, options, &node)` (TDN:738) | mutation of t |
+| `t.NewInner(parent, name, o)` | `lyd_new_inner(parent, module, name, output, &node)` (TDN:446) | mutation of t |
+| `t.NewList(parent, name, keys, o)` | `lyd_new_list` (TDN:528) / `lyd_new_list3` with string values (TDN:628) | mutation of t |
+| `t.Insert(parent, n)` | `lyd_insert_child(parent, n)` (TD:1095); parent nil: `lyd_insert_sibling(first top-level, n, &first)` (TD:1114) | mutation of t, of n's tree when n comes from another tree, and of trees linked to either (§6.1) |
+| `n.SetValue(value)` | `lyd_change_term(n, value)` (TDN:1296) | mutation of n's tree and of trees linked to it (§6.1) |
+
+- `parent` nil: the node becomes a top-level node of t. This is `lyd_new_*(NULL, …)` followed by
+  `lyd_insert_sibling` into t, exactly the lyoracle `insert_term`/`insert_inner` steps (#99).
+  `parent` must be a node of t: else LY_EINVAL `argErr("parent (not in the tree)", fn)`.
+- `name` is `"module:node"`, or `"node"` below a parent (libyang's `module` NULL = the parent's
+  module). The module must be implemented in t's snapshot. A top-level name without a module is
+  `LY_CHECK_ARG_RET(parent || module)`, logged with `__func__`: LY_EINVAL "Invalid argument parent || module
+  (_lyd_new_term())." A name that does not resolve keeps libyang's message and code ("Term node
+  "%s" not found.", "Inner node (container, notif, RPC, or action) "%s" not found.", "List node
+  "%s" not found."; logged LY_EINVAL, returned LY_ENOTFOUND: `RC()` is "LY_ENOTFOUND").
+- `value` and `keys` are JSON-format (`LY_VALUE_JSON`, as NewPath): identityref values are
+  `module:identity`. Store errors are the type plugin's diagnostics.
+- `NewList`: `keys` in schema key order, one value per key (`lyd_new_list`'s variadic keys).
+  It mirrors libyang: the keys are taken in order, one per key of the schema
+  (`for (key_s = lysc_node_child(…); key_s && (key_s->flags & LYS_KEY); …)`), so extra values are
+  ignored, and a keyless list has no key to take, so values given to it are ignored too. A keyed
+  list with nil keys is lyd_new_list3's "Missing list "%s" keys." (LY_EINVAL). Too few values is
+  an error: libyang would read past the end of its varargs or array, which Go cannot do, so it is
+  LY_EINVAL `argErr("keys", "lyd_new_list")` (#196 does this).
+- `NewOptions.Output` is `LYD_NEW_VAL_OUTPUT` / `lyd_new_inner`'s `output`: below an rpc/action,
+  look the node up in output instead of input. That is what a server needs to build a reply under
+  the request node.
+- `Insert` has no oracle fixture yet (the `insert_term`/`insert_inner` steps reach only a fresh
+  top-level node): one that moves an existing node, between parents and from another tree, must
+  exist and agree before the M4 gate #105.
+- `Insert`: n leaves the tree it is in (libyang unlinks it). If n is the first top-level node of
+  another tree, all that tree's top-level nodes move (libyang inserts a whole unlinked sibling
+  list; data/move.go `sibList`). n over another snapshot than t is a port refusal (lyd_insert_child
+  and lyd_insert_sibling have no context check; a Go tree has one snapshot): LY_EINVAL
+  `argErr("node (another schema snapshot)", fn)`. The schema checks are `lyd_insert_check_schema`'s. A key cannot be inserted or moved.
+- `SetValue`: `changed` is true for LY_SUCCESS; LY_EEXIST (same value, the default flag cleared)
+  and LY_ENOT (no change) are `false, nil`. The caller can tell them apart by `FlagDefault` before
+  the call. An opaque node fails libyang's `term->schema` check and another non-term node the
+  `term->schema->nodetype & LYD_NODE_TERM` check: LY_EINVAL with that text, "(lyd_change_term())".
+  When the value changes and `LeafrefLinking` is on, n's leafref link records are dropped
+  (`lyd_change_term_val` calls `lyd_free_leafref_nodes`; data/links.go `freeLinks`). The Default flag of n and its NP-container ancestors is cleared, as NewPath's Update
+  path already does (`lyd_change_term_val`).
+
+#### 6.1.3 Duplication and leafref links
+
+| Go | libyang | class |
+|---|---|---|
+| `t.Dup(n, parent, o)` | `lyd_dup_single(n, parent, opts, &dup)` (TD:2510); t over another snapshot: `lyd_dup_single_to_ctx` (TD:2522) | mutation of t, read of n's tree (and of trees linked to it, §6.1) |
+| `t.DupSiblings(n, parent, o)` | `lyd_dup_siblings` (TD:2535) / `_to_ctx` (TD:2547) | same |
+| `t.LinkLeafrefs(ctx)` | `lyd_leafref_link_node_tree(tree)` (TD:3904) | mutation of t (the link records) |
+| `n.LeafrefLinks()` | `lyd_leafref_get_links(n, &rec)` (TD:3804) | read (of n's tree and of trees linked to it, §6.1) |
+| `yang.Options.LeafrefLinking` | `LY_CTX_LEAFREF_LINKING` (context.h:226) | context option |
+
+- Dup copies n (with `Recursive` its subtree) into t: under `parent` (a node of t), or with parent
+  nil as top-level nodes of t. A fresh `NewTree(s)` gives libyang's unlinked copy. With
+  `WithParents`, the parents of n up to `parent` are copied too, and the result is the copy of n
+  (libyang's `*dup`). When t's snapshot is not n's, this is the `_to_ctx` variant. That is the way
+  to move a tree onto a newer snapshot after `Context.Load` (U-0045: trees pin their snapshot).
+  The internal port is data/dup.go `dupTo`/`dupNodes`; D-0065 and D-0066 apply as registered.
+  Errors: LY_EINVAL for a node or parent not in a tree, a parent not in t, and libyang's context
+  messages; a schema node missing in the target snapshot is `lyd_find_schema_ctx`'s LY_ENOTFOUND.
+- Diagnostics: Dup and DupSiblings log on success. Across snapshots, `lyd_dup_meta_single_to_ctx`
+  logs the store errors of a metadata value the target annotation rejects ("…value duplication
+  failed."), drops that metadata and the duplicate still succeeds (port-map dup rows, Go test
+  TestDupMetaContexts). The diagnostics of the call are returned also on success, as Parse and the
+  queries do; the exported wrapper must keep them (today data/dup.go `dupMeta` drops the store
+  diagnostic and returns nil, so the export collects it into the logger). A failed Dup is a
+  `*ValidationError` with all of them.
+- DupSiblings copies n and the siblings that follow it (`LY_LIST_FOR(node, orig)`), not the
+  whole sibling list: the siblings before n are not copied.
+- `DupOptions`: `Recursive`, `NoMeta`, `WithParents`, `WithFlags` (`LYD_DUP_RECURSIVE`,
+  `_NO_META`, `_WITH_PARENTS`, `_WITH_FLAGS`).
+- Leafref links: `yang.Options.LeafrefLinking` sets `schema.Set.LeafrefLinking` (already there).
+  Parse and Validate then link resolved leafrefs (data/unres.go) as libyang does. `LinkLeafrefs`
+  links a tree that was built without validation (NewPath, NewTerm). An empty tree is LY_EINVAL
+  `argErr("tree", "lyd_leafref_link_node_tree")` whether or not the option is set (libyang's
+  `LY_CHECK_ARG_RET(NULL, tree)` comes before the option check). It logs on success: a leafref
+  path whose evaluation fails (a dangling `deref()`, pv2-deref-xperr) is logged at the node by
+  `lyxp_eval` and the link is skipped, and libyang's return code stays LY_SUCCESS (data/links.go
+  `linkType`). So LinkLeafrefs returns `([]yang.Diagnostic, error)`: the diagnostics of the call
+  also on success, err nil unless something failed. #99 adds an oracle fixture for this, a
+  parse-only parse then a `link` step over a dangling `deref()` leafref, which must agree
+  before #105. Without the option it is an
+  LY_EDENIED `*ValidationError` (`RC()` "LY_EDENIED") with no diagnostics, as libyang returns
+  LY_EDENIED from `lyd_leafref_link_node_tree` without logging; protocol-v2/links-denied pins it.
+  `LeafrefLinks` returns the record's `leafref_nodes` and `target_nodes` as slices in record
+  order; no record (LY_ENOTFOUND) and linking disabled (LY_EDENIED) both give `nil, nil`. A
+  record never exists empty (data/links.go `freeLinks` drops it), so "no record" equals "both
+  empty". The lyoracle `links` step lists exactly the nodes with a non-empty result.
+
+#### 6.1.4 Validation and parse options
+
+| Go | libyang | class |
+|---|---|---|
+| `t.ValidateModule(ctx, module, o)` | `lyd_validate_module(&tree, module, val_opts, NULL)` (VAL:2302) | mutation of t |
+| `ParseOptions.WhenTrue` | `LYD_PARSE_WHEN_TRUE` | — |
+| `LYD_PARSE_ORDERED` | not exported (D-0058) | — |
+
+- `ValidateModule` validates only the data of `module` (an implemented module's name, as
+  `ApplyDiffOptions.Module`), its implicit nodes included (#100). `o.Present` is refused as libyang
+  refuses it: LY_EINVAL "Invalid argument !(val_opts & LYD_VALIDATE_PRESENT)
+  (lyd_validate_module())." An unknown or not implemented module is LY_EINVAL `argErr("module",
+  "lyd_validate_module")`. Diagnostics as Validate. No diff variant until asked (ValidateDiff is
+  the precedent if one is).
+- `WhenTrue`: the parsed nodes that depend on a when start with `FlagWhenTrue`, so a later
+  Validate removes them silently when their when turns false instead of failing. This is how a
+  server reloads a datastore it validated before and then applies edits. Already internal
+  (`parseOpts.whenTrue`); the engine's `when_true` refusal goes.
+- `ordered` stays unexported. Its behaviour is not mirrored (D-0058), and libyang documents it as
+  undefined for input not in schema order, so it is a speed knob with no value for a Go user. The two
+  `protocol-v2/ordered-*` fixtures stay unsupported under D-0058.
+
+#### 6.1.5 Envelopes (NETCONF/RESTCONF): in v1, parse only, M5
+
+**Decision (maintainer, 2026-10-10, on #197):** the envelopes are in v1, parse only, scheduled
+for M5; #95 moved to M5. The question, the arguments and the surface that follow are kept as the
+record of the decision.
+
+Question: are `LYD_TYPE_RPC_NETCONF`, `_NOTIF_NETCONF`, `_REPLY_NETCONF`, `_RPC_RESTCONF`,
+`_NOTIF_RESTCONF` and `_REPLY_RESTCONF` (`lydxml_envelope` PX:1154, `lydxml_env_netconf_rpc`
+PX:1323, `lydxml_env_netconf_reply` PX:1371, `lyd_parse_xml_netconf` PX:1451, `lydjson_envelope`
+PJ:2062, `lyd_parse_json_restconf` PJ:2117) in v1? Today this section said "out of v1 / M4" and
+PLAN §1 keeps transport out. The envelopes are message parsing, not transport. Sessions, framing
+(RFC 6242 chunking), SSH/TLS and HTTP stay out either way.
+
+For v1:
+- The target user is a Go service that replaces a cgo libyang binding. NETCONF servers and
+  clients built on libyang call `lyd_parse_op` with the NETCONF types for every `<rpc>`,
+  `<rpc-reply>` and `<notification>` (netopeer2 and libnetconf2 do). Without them such a
+  service keeps a hand-written envelope parser next to this library.
+- Stripping the wrapper outside is not equivalent. Namespace declarations and prefixes bound
+  on `<rpc>` apply inside it (an `nc:operation` or an identityref prefix declared on the
+  envelope), so handing the inner bytes to ParseOp breaks prefix scoping. libyang parses the
+  envelope and the operation in one XML context for that reason.
+- The `eventTime` check (#94, `lyd_parser_notif_eventtime_validate`) is reachable only through
+  the envelopes: `LYD_INTOPT_EVENTTIME` is set only for `LYD_TYPE_NOTIF_NETCONF` (PX:1493) and
+  `_NOTIF_RESTCONF` (PJ:2156). Without envelopes #94 has nothing to do and should close as
+  not planned.
+- The code is bounded: about 450 lines of PX (PX:1154-1611) and 180 of PJ (PJ:2062-2239), no new dependency. The test
+  cases already exist in test_parser_xml.c and test_parser_json.c (#95 lists them), and the
+  oracle needs only new `data_type` values.
+- #95 is off the critical path (#105 does not wait for it), so it costs no M4 schedule.
+
+Against:
+- It adds exported surface: six more `OpType` values or a NETCONF/RESTCONF flag,
+  `OpResult.Envelope *Tree` (libyang returns the envelopes as a separate opaque tree), and a way
+  to read opaque attributes (`message-id` lives in `lyd_node_opaq.attr`, which the package does
+  not expose today), so a `Node.Attrs()` accessor and probably `NewOpaq` to build replies.
+- It pulls toward protocol features that libyang does not have either (envelope printing,
+  `<rpc-error>` construction, message-id bookkeeping). Each would need a scope fence.
+- RESTCONF error replies are `yang-data` extension data (`LYD_TYPE_REPLY_RESTCONF` docs), which
+  is out until U-0023/U-0060 move, so RESTCONF support would be partial.
+- NETCONF `<config>` and `<data>` payloads are anyxml/anydata (U-0043, M5), so a NETCONF
+  `edit-config` or `get` parse is not useful before M5 anyway.
+
+**Decided: yes, in v1, in M5, not M4.** Take the NETCONF XML envelopes (rpc,
+rpc-reply, notification) and the RESTCONF JSON ones, parse only, with this surface:
+```go
+const ( OpRPCNetconf OpType = iota + 4; OpNotifNetconf; OpReplyNetconf; OpRPCRestconf; OpNotifRestconf; OpReplyRestconf )
+// OpResult gains Envelope *Tree: the opaque envelope nodes (lyd_parse_op's tree); also returned on failure, as libyang does
+type Attr struct{ Name, Prefix, Module, Value string }  // lyd_attr: Module is the XML namespace or JSON module name
+func (n *Node) Attrs() []Attr                           // read; opaque nodes only, nil otherwise
+type OpaqOptions struct{ Prefix, Module, Namespace string } // Module: lyd_new_opaq (JSON), Namespace: lyd_new_opaq2 (XML)
+func (t *Tree) NewOpaq(parent *Node, name, value string, o OpaqOptions) (*Node, error) // mutation
+```
+#95 moved to M5, next to anydata (U-0043), where `<config>`/`<data>` first parse; #94 belongs
+with it, since it has nothing to check before the envelopes. Keep
+everything above the envelope layer (sessions, framing, error-reply building, envelope printing)
+out of v1, as PLAN §1 now says. `ParseOp`'s result struct and `OpType` let this land without breaking §6.1.1.
+
+#### 6.1.6 U-0044 removal plan
+
+U-0044 ("engine: operation `data_type`s unsupported until M4") is only a design candidate (§7). It
+was never registered in conformance/deviations.md. The operation fixtures are `unsupported`
+because `runData` refuses `data_type` rpc/reply/notif and the `operational` field, not because
+of a registry entry. So #105 cannot pass with them unsupported; they must agree.
+1. #93 (parse) and #96 (validate) port the engine work unexported; nothing user-visible changes.
+2. This design is approved, and ParseOp and ValidateOp are exported (with examples and the doc.go
+   concurrency list) in the PR that #97 stacks on.
+3. #97 maps `data_type` rpc/notif/reply to ParseOp with `ParseOpOptions.Unknown` from `unknown`.
+   A reply with an `rpc` field parses the request first, removes the request's input children and
+   passes it as `Request`. `operational` is parsed with `Parse(…, ParseOptions{ParseOnly: true,
+   Unknown: data.Skip})`, as lyoracle's `lyd_parse_data(…, LYD_PARSE_ONLY, 0, …)` (no STRICT: unknown nodes skipped),
+   then ValidateOp runs with it as `Operational`, then the `operation_parent` check (§6.1.1). Then
+   ut-validation-ops/{rpc-01, action-01…03, reply-01…03, when-rpc-reply-01} and the 10 ut-parser
+   operation fixtures leave `unsupported`. Those whose payload is anydata/anyxml (the edit-config /
+   edit-data `config` of ut-parser/{json,xml}-rpc-01) move to U-0043 instead, the engine's
+   existing anydata reason. That is a re-labelling, not a new id.
+4. #97 deletes the U-0044 row of §7 and this table's mention, and adds no deviations.md row. The
+   id is retired, not reused. `agreeFloor` rises by the fixtures that moved.
+5. #105 checks that no fixture or reason string cites U-0044.
+
+#### 6.1.7 Deliberately not exported
+
+| libyang | why not |
+|---|---|
+| `lyd_new_list2` (keys as a predicate string) | `NewPath("/m:l[k='v']", …)` already does it, with the same predicate parser |
+| `LYD_NEW_VAL_STORE_ONLY`, `LYD_NEW_VAL_CANON`, `lyd_new_term_raw`, `lyd_new_term_bin`, `lyd_change_term_canon` | speed knobs over the JSON value form; no fixture uses them; add when a user shows a need |
+| `lyd_new_opaq`, `lyd_new_opaq2`, `lyd_new_attr*` | not in M4: exported in M5 with the envelopes (§6.1.5); internal until then (#98) |
+| `lyd_insert_before`, `lyd_insert_after`, `lyd_unlink_*` | user-ordered positioning belongs to `ApplyEdit` (M6, `yang:insert`); `Remove` covers unlinking |
+| `LYD_DUP_NO_LYDS` | leaves (leaf-)list instances unsorted, against the tree's own order invariant; a speed knob. seq/dup-no-lyds stays unsupported under **U-0105** |
+| `LYD_DUP_NO_EXT`, `LYD_DUP_WITH_PRIV`, `lyd_dup_meta_single` | nothing to act on (no extension data, no private pointers); metadata copies come with Dup |
+| `struct lyd_leafref_links_rec`, LY_EDENIED/LY_ENOTFOUND of `lyd_leafref_get_links` | two slices carry the record; the error cases are "no links" |
+| `lyd_validate_module_final`, `LYD_VALIDATE_NOT_FINAL` | a split-validation speed path (sysrepo-style); #100 ports and tests it in Go, the engine refuses `final_only` under **U-0106** |
+| `lyd_validate_op`'s `diff`, `lyd_validate_module`'s `diff` | no user yet; ValidateDiff is the shape to copy |
+| `LYD_PARSE_ORDERED`, `LYD_PARSE_NO_NEW` | D-0058; NO_NEW is internal validation plumbing |
+| `lyd_parse_op` with a parent for `RPC_YANG`/`NOTIF_YANG` (a nested action or notification parsed into an existing parent) | no fixture or user; ParseOp returns the operation with its parents in a new tree instead. `Request` is refused with OpRPC/OpNotif (§6.1.1); allowing it later is additive |
+| `lyd_parser_find_operation`, `lyd_parser_notif_eventtime_validate` | parser internals (#93, #94) |
+| `lyd_validate_ext`, extension data trees | U-0023 / U-0060, after M4 |
+| yanglint `check_operation_parent` | a CLI check, not libyang behaviour; the engine reproduces lyoracle's diagnostic |
 
 ## 7. Deviation candidates (D-0050…D-0069, U-0040…U-0059)
 

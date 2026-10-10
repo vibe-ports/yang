@@ -75,7 +75,9 @@ In:
 Out of v1 (explicit): YIN input/output, LYB binary format, schema-mount (RFC 8528), tree printer
 (RFC 8340), YANG printer beyond debugging, extension plugins beyond `yang-data`/`structure`
 (RFC 8791)/metadata, sorted/hash performance tricks of libyang until profiling asks for them,
-NETCONF/RESTCONF transport, YANG Patch, public plugin interfaces (§2).
+NETCONF/RESTCONF transport and message building (sessions, framing, error replies, envelope
+printing; parsing the `<rpc>`/`<rpc-reply>`/`<notification>` and RESTCONF envelopes is in v1, M5,
+design 07 §6.1.5), YANG Patch, public plugin interfaces (§2).
 
 ## 2. Idiomatic-Go rules (non-negotiable)
 
