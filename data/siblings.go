@@ -127,7 +127,9 @@ func (s *siblings) hashAdd(parent, n *Node) {
 		return
 	}
 	if s.ht != nil {
-		s.hashPut(n)
+		if !n.hashed { // a splice publishes its batch first: the table built for one has the rest
+			s.hashPut(n)
+		}
 		return
 	}
 	if len(s.list) < htMinItems {
