@@ -1,0 +1,21 @@
+fixtures:
+  - id: protocol-v2/must-internal-error-message
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.5.3", "RFC7950#7.5.4"]
+    areas: [validation, xpath]
+    request:
+      op: data
+      searchdirs: [schemas]
+      context_options: [no_yanglibrary]
+      modules: [{name: pv2-must-message}]
+      format: json
+      data_type: data
+      data_file: data/must-internal-error-message.json
+    golden: golden/must-internal-error-message.json
+    assert:
+      verdict: invalid
+      diagnostics:
+        - {vecode_name: LYVE_DATA, data_path: "/pv2-must-message:c", apptag: must-violation, msg: "Internal error (xpath.c:1348)."}
+      rfc: ["RFC7950#7.5.3", "RFC7950#7.5.4"]
+      deviation: null

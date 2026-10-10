@@ -46,8 +46,10 @@ func (e *ValidationError) RC() string {
 }
 
 // failing reports whether d is an error that decides a result or return code: not a warning and
-// not the internal error an XPath evaluation logs and goes on after (msgXPathInt).
-func failing(d yang.Diagnostic) bool { return !d.Warning && d.Msg != msgXPathInt }
+// not the LY_EINT diagnostic that XPath evaluation logs and continues past (msgXPathInt).
+func failing(d yang.Diagnostic) bool {
+	return !d.Warning && (d.Err != "LY_EINT" || d.Msg != msgXPathInt)
+}
 
 func (e *ValidationError) Error() string {
 	for _, d := range e.Diags {
@@ -176,7 +178,8 @@ func (l *logger) lexVal(code ly.Code, msg string, line int) {
 }
 
 // msgXPathInt is the LOGINT of set_insert_node during an XPath evaluation (xpath.Result.
-// InternalErrors): libyang logs it as an error and goes on, so it changes no return code.
+// InternalErrors). libyang logs it as LY_EINT and continues, so it changes no return code;
+// schema-controlled must/when messages use LY_EVALID even when their text is identical.
 const msgXPathInt = "Internal error (xpath.c:1348)."
 
 // errLogged is returned by the logging helpers: the details are in the logger's diagnostics.
@@ -188,8 +191,8 @@ type rcError string
 
 func (e rcError) Error() string { return "data: " + string(e) }
 
-// result is the error of the operation: nil when only warnings (and msgXPathInt) were logged, else a
-// *ValidationError with every diagnostic.
+// result is the error of the operation: nil when only warnings (and the continuing XPath LY_EINT)
+// were logged, else a *ValidationError with every diagnostic.
 func (l *logger) result() error {
 	for _, d := range l.diags {
 		if failing(d) {
