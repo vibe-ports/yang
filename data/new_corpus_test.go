@@ -82,6 +82,9 @@ func TestNewCorpus(t *testing.T) {
 				switch st["do"] {
 				case "parse":
 					o := parseOpts{ParseOptions: ParseOptions{ParseOnly: st["parse_only"] == true}}
+					if st["unknown"] == "opaque" {
+						o.Unknown = Opaque
+					}
 					if tr, _, err = parseWith(context.Background(), strings.NewReader(st["data"].(string)), set, o, parseJSON, nil); err != nil {
 						t.Fatal(err)
 					}

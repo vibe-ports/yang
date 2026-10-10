@@ -3,6 +3,7 @@
 package data
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -152,7 +153,7 @@ func TestLeafrefLinks(t *testing.T) {
 		t.Fatalf("after validation:\n%v", got)
 	}
 	for i := 0; i < 2; i++ {
-		if err := tr.linkLeafrefs(&logger{set: tr.set}); err != nil {
+		if err := tr.linkLeafrefs(context.Background(), &logger{set: tr.set}); err != nil {
 			t.Fatal(err)
 		}
 		if got := dumpLinks(t, tr); !reflect.DeepEqual(got, linked) {
@@ -162,7 +163,7 @@ func TestLeafrefLinks(t *testing.T) {
 
 	// links-free-target: lyd_free_tree of l[k='a']
 	tr, _ = linksTree(t, true)
-	_ = tr.linkLeafrefs(&logger{set: tr.set})
+	_ = tr.linkLeafrefs(context.Background(), &logger{set: tr.set})
 	if err := freeTree(find(t, tr, "/lk:c/l[k='a']")); err != nil {
 		t.Fatal(err)
 	}
@@ -182,7 +183,7 @@ func TestLeafrefLinks(t *testing.T) {
 
 	// links-free-leafref: lyd_free_tree of r, a leafref that is also v's target
 	tr, _ = linksTree(t, true)
-	_ = tr.linkLeafrefs(&logger{set: tr.set})
+	_ = tr.linkLeafrefs(context.Background(), &logger{set: tr.set})
 	if err := freeTree(find(t, tr, "/lk:c/r")); err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +203,7 @@ func TestLeafrefLinks(t *testing.T) {
 
 	// links-change-value: lyd_new_path(UPDATE) of u to "a" (lyd_change_term_val) drops u's links
 	tr, _ = linksTree(t, true)
-	_ = tr.linkLeafrefs(&logger{set: tr.set})
+	_ = tr.linkLeafrefs(context.Background(), &logger{set: tr.set})
 	if _, err := tr.NewPath("/lk:c/u", "a", NewPathOptions{Update: true}); err != nil {
 		t.Fatal(err)
 	}
@@ -222,7 +223,7 @@ func TestLeafrefLinks(t *testing.T) {
 
 	// links-denied: no flag, no records, LY_EDENIED
 	tr, _ = linksTree(t, false)
-	if err := tr.linkLeafrefs(&logger{set: tr.set}); !errors.Is(err, errLinksDenied) || len(dumpLinks(t, tr)) != 0 {
+	if err := tr.linkLeafrefs(context.Background(), &logger{set: tr.set}); !errors.Is(err, errLinksDenied) || len(dumpLinks(t, tr)) != 0 {
 		t.Fatalf("denied: %v %v", err, dumpLinks(t, tr))
 	}
 }

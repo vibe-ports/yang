@@ -54,6 +54,8 @@ type Options struct {
 	RefImplemented bool
 	// LeafrefExtended allows deref() in leafref paths (LY_CTX_LEAFREF_EXTENDED).
 	LeafrefExtended bool
+	// LeafrefLinking makes data trees keep leafref link records (LY_CTX_LEAFREF_LINKING).
+	LeafrefLinking bool
 	// BuiltinPluginsOnly disables the type plugins of non-built-in typedefs
 	// (LY_CTX_BUILTIN_PLUGINS_ONLY): every module gets schema.Module.BuiltinPluginsOnly.
 	BuiltinPluginsOnly bool

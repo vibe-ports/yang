@@ -1,0 +1,8 @@
+fixtures:
+  - id: ut-new/insert-57
+    dir: ut-new
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # module a of libyang's tests/utests/data/test_new.c; lyd_new_list2 under an opaque parent made by parsing: the module's top-level list goes under it (#99)
+    rfc: []   # libyang API (lyd_new_list2): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["a.1"], "modules": [{"name": "a"}], "steps": [{"do": "parse", "format": "json", "data_type": "data", "parse_only": true, "unknown": "opaque", "data": "{\"a:zz\": {\"q\": 1}}"}, {"do": "edit", "insert_list2": {"parent_opaq": "zz", "module": "a", "name": "l1", "keys": "[a='x'][b='y']"}}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/insert-57.json

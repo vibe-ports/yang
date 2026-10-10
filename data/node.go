@@ -77,6 +77,9 @@ type Tree struct {
 	rankMu sync.Mutex
 	rank   map[*schema.Node]int
 	work   workCounter
+	// dupLog is the logger of an exported Dup or DupSiblings while it runs: the metadata values
+	// the target snapshot rejects are logged there (lyd_dup_meta_single_to_ctx).
+	dupLog *logger
 }
 
 // workCounter counts the work of a tree for tests (work, not time): comparisons made by

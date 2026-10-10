@@ -1072,13 +1072,22 @@ dump_schema(cJSON *m, const struct lys_module *mod)
  * phase is the following ly_ctx_compile(). A failed compile is reverted by libyang, so later
  * modules are still tried. Returns ctx and sets *ok to 1 if every module was accepted.
  */
+static struct ly_ctx *build_ctx_in(const cJSON *req, int *ok, int dump, cJSON *into);
+
 static struct ly_ctx *
 build_ctx(const cJSON *req, int *ok, int dump)
 {
+    return build_ctx_in(req, ok, dump, resp);
+}
+
+/* build_ctx with its "modules" and "context_diagnostics" reported into the object into */
+static struct ly_ctx *
+build_ctx_in(const cJSON *req, int *ok, int dump, cJSON *into)
+{
     struct ly_ctx *ctx;
     const cJSON *it, *mods = cJSON_GetObjectItemCaseSensitive(req, "modules");
-    cJSON *out = cJSON_AddArrayToObject(resp, "modules");
-    cJSON *cdiag = cJSON_AddArrayToObject(resp, "context_diagnostics");
+    cJSON *out = cJSON_AddArrayToObject(into, "modules");
+    cJSON *cdiag = cJSON_AddArrayToObject(into, "context_diagnostics");
     uint32_t opts = flags_of(req, "context_options", ctx_flags);
 
     *ok = 1;
@@ -1599,7 +1608,7 @@ check_step(const cJSON *step)
             !strcmp(what, "edit") ? "do merge merge_file set delete insert_term insert_inner insert_list insert_list2 "
             "insert_opaq new_meta free_meta format data_type unknown parse_options" :
             !strcmp(what, "change_term") ? "do node value canon" :
-            !strcmp(what, "dump") ? "do with_defaults" : !strcmp(what, "dup") ? "do node parent options siblings" :
+            !strcmp(what, "dump") ? "do with_defaults" : !strcmp(what, "dup") ? "do node parent options siblings target" :
             !strcmp(what, "compare") ? "do format data_type data data_file unknown parse_only parse_options "
             "validate_options first second options" :
             !strcmp(what, "diff") ? "do format data_type data data_file unknown parse_only parse_options validate_options "
@@ -1744,6 +1753,14 @@ check_step(const cJSON *step)
         if (sib && !cJSON_IsBool(sib)) {
             die("dup siblings must be a boolean%s", NULL);
         }
+        if (cJSON_GetObjectItemCaseSensitive(step, "target")) {
+            const cJSON *tg = cJSON_GetObjectItemCaseSensitive(step, "target");
+
+            if (!cJSON_IsObject(tg) || str_of(step, "parent")) {
+                die("dup target must be a context object, without a parent%s", NULL);
+            }
+            keys_only(tg, "searchdirs modules context_options", "unknown key \"%s\" in a dup target");
+        }
     } else if (!strcmp(what, "compare")) {
         dparams_of(step, &p);
         if (p.optype != LYD_TYPE_DATA_YANG) {
@@ -1812,8 +1829,11 @@ static LY_ERR
 step_dup(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *diag)
 {
     const char *npath = str_of(step, "node"), *ppath = str_of(step, "parent");
+    const cJSON *target = cJSON_GetObjectItemCaseSensitive(step, "target");
     struct lyd_node *node = NULL, *parent = NULL, *dup = NULL;
+    struct ly_ctx *tctx = NULL;
     uint32_t opts = flags_of(step, "options", dup_flags);
+    int sib = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(step, "siblings")), ok;
     LY_ERR rc;
 
     if (!*tree || lyd_find_path(*tree, npath, 0, &node)) {
@@ -1822,12 +1842,27 @@ step_dup(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *d
     if (ppath && lyd_find_path(*tree, ppath, 0, &parent)) {
         die("dup parent %s not found", ppath);
     }
-    if (cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(step, "siblings"))) {
-        rc = lyd_dup_siblings(node, parent, opts, &dup);
+    if (target) {
+        /* lyd_dup_*_to_ctx into a second context built like the request's ("searchdirs", "modules",
+         * "context_options"); the duplicate, then in that context, replaces the tree */
+        cJSON *scratch = cJSON_CreateObject();
+
+        if (!cJSON_IsObject(target) || ppath) {
+            die("dup target must be a context object, without a parent%s", NULL);
+        }
+        tctx = build_ctx_in(target, &ok, 0, scratch);
+        cJSON_Delete(scratch);
+        if (!ok) {
+            die("dup target context failed%s", NULL);
+        }
+        rc = sib ? lyd_dup_siblings_to_ctx(node, tctx, NULL, opts, &dup) :
+                lyd_dup_single_to_ctx(node, tctx, NULL, opts, &dup);
+        collect(ctx, diag, "edit");
+        collect(tctx, diag, "edit");
     } else {
-        rc = lyd_dup_single(node, parent, opts, &dup);
+        rc = sib ? lyd_dup_siblings(node, parent, opts, &dup) : lyd_dup_single(node, parent, opts, &dup);
+        collect(ctx, diag, "edit");
     }
-    collect(ctx, diag, "edit");
     if (!rc && !parent) {
         while (dup->parent) {
             dup = dup->parent;
@@ -1835,6 +1870,7 @@ step_dup(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *d
         lyd_free_all(*tree);
         *tree = lyd_first_sibling(dup);
     }
+    /* tctx stays: the tree may now live in it, and the process ends after the response */
     return rc;
 }
 
@@ -2190,7 +2226,7 @@ static void
 op_sequence(const cJSON *req)
 {
     int ok;
-    struct ly_ctx *ctx = build_ctx(req, &ok, 0);
+    struct ly_ctx *ctx = build_ctx(req, &ok, 0), *sctx;
     const cJSON *steps = cJSON_GetObjectItemCaseSensitive(req, "steps"), *step;
     struct lyd_node *tree = NULL, *diff = NULL;
     cJSON *out;
@@ -2220,21 +2256,23 @@ op_sequence(const cJSON *req)
             continue;
         }
         diag = cJSON_AddArrayToObject(s, "diagnostics");
+        /* the retained tree's context: a dup step with a target moves the tree into another one */
+        sctx = tree ? (struct ly_ctx *)LYD_CTX(tree) : ctx;
         if (!strcmp(what, "parse")) {
-            rc = step_parse(ctx, step, &tree, diag);
+            rc = step_parse(sctx, step, &tree, diag);
         } else if (!strcmp(what, "validate")) {
-            rc = step_validate(ctx, step, &tree, diag, s);
+            rc = step_validate(sctx, step, &tree, diag, s);
         } else if (!strcmp(what, "edit")) {
-            rc = step_edit(ctx, step, &tree, diag);
+            rc = step_edit(sctx, step, &tree, diag);
         } else if (!strcmp(what, "link")) {
             rc = lyd_leafref_link_node_tree(tree);
-            collect(ctx, diag, "link");
+            collect(sctx, diag, "link");
         } else if (!strcmp(what, "links")) {
             cJSON_AddItemToObject(s, "leafref_links", links_json(tree));
         } else if (!strcmp(what, "dup")) {
-            rc = step_dup(ctx, step, &tree, diag);
+            rc = step_dup(sctx, step, &tree, diag);
         } else if (!strcmp(what, "compare")) {
-            rc = step_compare(ctx, step, tree, diag, s);
+            rc = step_compare(sctx, step, tree, diag, s);
         } else if (!strcmp(what, "change_term")) {
             /* lyd_change_term(_canon) of the node at "node": "change" is its rc; LY_EEXIST (only the default
              * flag changed) and LY_ENOT (nothing changed) are results, not failures */
@@ -2242,24 +2280,24 @@ op_sequence(const cJSON *req)
             LY_ERR r = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(step, "canon")) ?
                     lyd_change_term_canon(n, str_of(step, "value")) : lyd_change_term(n, str_of(step, "value"));
 
-            collect(ctx, diag, "edit");
+            collect(sctx, diag, "edit");
             /* a changed value may move the node among its siblings, the first top-level one too */
             tree = lyd_first_sibling(tree);
             cJSON_AddItemToObject(s, "change", code_json(r));
             rc = (r == LY_EEXIST) || (r == LY_ENOT) ? LY_SUCCESS : r;
         } else if (!strcmp(what, "diff")) {
-            rc = step_diff(ctx, step, tree, &diff, diag, s);
+            rc = step_diff(sctx, step, tree, &diff, diag, s);
         } else if (!strcmp(what, "diff_parse")) {
-            rc = step_diff_parse(ctx, step, &diff, diag);
+            rc = step_diff_parse(sctx, step, &diff, diag);
         } else if (!strcmp(what, "diff_merge")) {
-            rc = step_diff_merge(ctx, step, &diff, diag);
+            rc = step_diff_merge(sctx, step, &diff, diag);
         } else if (!strcmp(what, "diff_reverse")) {
-            rc = step_diff_reverse(ctx, &diff, diag);
+            rc = step_diff_reverse(sctx, &diff, diag);
         } else if (!strcmp(what, "trim")) {
-            rc = step_trim(ctx, step, &tree, diag);
+            rc = step_trim(sctx, step, &tree, diag);
         } else if (!strcmp(what, "diff_apply")) {
-            rc = lyd_diff_apply_module(&tree, diff, module_of(ctx, step), NULL, NULL);
-            collect(ctx, diag, "diff");
+            rc = lyd_diff_apply_module(&tree, diff, module_of(sctx, step), NULL, NULL);
+            collect(sctx, diag, "diff");
         } else {
             cJSON_AddItemToObject(s, "tree", print_tree(tree, wd_of(step), 1));
         }

@@ -1,0 +1,8 @@
+fixtures:
+  - id: ut-new/insert-51
+    dir: ut-new
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # module a of libyang's tests/utests/data/test_new.c; lyd_new_list2 of a container without keys: "List node … not found." where NewPath would build the container (#99)
+    rfc: []   # libyang API: no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["a.1"], "modules": [{"name": "a"}], "steps": [{"do": "edit", "insert_list2": {"module": "a", "name": "c"}}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/insert-51.json

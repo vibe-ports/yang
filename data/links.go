@@ -7,8 +7,10 @@
 package data
 
 import (
+	"context"
 	"errors"
 
+	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
 	"github.com/vibe-ports/yang/internal/xpath"
@@ -120,11 +122,11 @@ func freeSubtreeLinks(set *schema.Set, n *Node) {
 // linkLeafrefs is lyd_leafref_link_node_tree: every leafref value of the tree (union members
 // included) is linked with the targets lyplg_type_resolve_leafref finds; a value without one is
 // skipped.
-func (t *Tree) linkLeafrefs(l *logger) error {
+func (t *Tree) linkLeafrefs(ctx context.Context, l *logger) error {
 	if !t.set.LeafrefLinking {
 		return errLinksDenied
 	}
-	vc := &valCtx{t: t, log: l}
+	vc := &valCtx{t: t, log: l, budget: xpathBudget{ctx: ctx}}
 	for top := range t.top.all() {
 		for n := range top.All() {
 			if !n.isTerm() {
@@ -170,4 +172,40 @@ func (vc *valCtx) linkType(n *Node, v types.Value, t *schema.Type) error {
 		}
 	}
 	return nil
+}
+
+// LinkLeafrefs is lyd_leafref_link_node_tree: every leafref value of t (union members included)
+// is linked to the targets it resolves to, for LeafrefLinks; a value without one is skipped. It
+// needs yang.Options.LeafrefLinking (else an LY_EDENIED *ValidationError without diagnostics) and
+// a non-empty tree (else an LY_EINVAL argument error, "tree"). The diagnostics are those logged
+// also on success: a leafref path whose evaluation fails (a dangling deref()) is logged at its
+// node and the link skipped. The XPath evaluations stop when ctx is done.
+func (t *Tree) LinkLeafrefs(ctx context.Context) ([]yang.Diagnostic, error) {
+	lg := &logger{set: t.set}
+	if t.top.len() == 0 {
+		return nil, lg.done(argErr("tree", "lyd_leafref_link_node_tree"))
+	}
+	err := t.linkLeafrefs(ctx, lg)
+	if errors.Is(err, errLinksDenied) {
+		return nil, lg.done(rcError("LY_EDENIED"))
+	}
+	if err = lg.done(err); err != nil {
+		return nil, err
+	}
+	return lg.diags, nil
+}
+
+// LeafrefLinks is lyd_leafref_get_links: the leafref nodes pointing to n (a target) and, for a
+// leafref, its targets, in link order; nil without a record or without
+// yang.Options.LeafrefLinking.
+func (n *Node) LeafrefLinks() (leafrefs, targets []*Node) {
+	set := setOf(n)
+	if set == nil {
+		return nil, nil
+	}
+	rec, err := linksOf(set, n)
+	if err != nil {
+		return nil, nil
+	}
+	return append([]*Node(nil), rec.leafrefs...), append([]*Node(nil), rec.targets...)
 }
