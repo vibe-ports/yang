@@ -179,6 +179,7 @@ is a request-error.
 | `get` | `+ONLY` | — | `lyd_parse_data` |
 | `getconfig`, `edit` | `+ONLY +NO_STATE` | — | `lyd_parse_data` |
 | `rpc`, `reply`, `notif` | `unknown` flag only | `lyd_validate_op(tree, operational, type)` | `lyd_parse_op(LYD_TYPE_*_YANG)` |
+| `notif-netconf`, `notif-restconf` | `unknown` flag only; `parse_only` required | — (lyd_validate_op takes the YANG types only) | `lyd_parse_op(LYD_TYPE_NOTIF_NETCONF/RESTCONF)`: `tree` and `typed` are the envelope (with its eventTime), `op_typed` the notification's tree |
 
 `parse_only: true` adds `LYD_PARSE_ONLY` (and skips `lyd_validate_op`). `parse_options` /
 `validate_options` add flags: parse `only no_state ordered when_true store_only json_null

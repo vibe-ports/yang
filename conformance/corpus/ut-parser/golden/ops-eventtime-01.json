@@ -1,0 +1,38 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"yang:date-and-time\": \"2010-12-06T08:00:01Z\"\n}\n",
+    "xml": "<date-and-time xmlns=\"urn:ietf:params:xml:ns:yang:1\">2010-12-06T08:00:01Z</date-and-time>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/yang:date-and-time",
+      "schema": "/yang:date-and-time",
+      "value": {
+        "canonical": "2010-12-06T08:00:01Z",
+        "type": "string",
+        "typedef": "date-and-time",
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

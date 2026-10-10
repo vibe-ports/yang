@@ -715,6 +715,9 @@ func (p *xmlParser) subtree(parent *Node) error {
 	if err := p.next(); err != nil {
 		return err
 	}
+	if lc.op.eventTime && parent == nil && name == "eventTime" && prefix == "" {
+		return p.eventTimeXML()
+	}
 	sn, r := p.getSnode(parent, prefix, name)
 	switch {
 	case r != nil:

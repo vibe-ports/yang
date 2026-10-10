@@ -1,0 +1,30 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [
+    {
+      "apptag": null,
+      "code": {
+        "err": 3,
+        "name": "LY_EINVAL"
+      },
+      "data_path": null,
+      "level": "error",
+      "line": 1,
+      "msg": "Invalid date-and-time timezone hour \"\"}\".",
+      "phase": "data",
+      "schema_path": "/yang:date-and-time",
+      "vecode": 0,
+      "vecode_name": "LYVE_SUCCESS"
+    }
+  ],
+  "libyang": "5.8.6",
+  "modules": [],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 3,
+    "name": "LY_EINVAL"
+  },
+  "tree": null,
+  "verdict": "invalid"
+}

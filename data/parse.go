@@ -137,6 +137,9 @@ type lydCtx struct {
 type opOpts struct {
 	rpc, action, notif, reply bool
 	noSiblings                bool // LYD_INTOPT_NO_SIBLINGS: one top-level node only
+	// eventTime is LYD_INTOPT_EVENTTIME: a top-level eventTime node is parsed and validated. Only
+	// the NETCONF/RESTCONF notification envelopes set it (#95).
+	eventTime bool
 }
 
 func (o opOpts) any() bool { return o.rpc || o.action || o.notif || o.reply }
