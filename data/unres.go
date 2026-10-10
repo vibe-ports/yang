@@ -122,7 +122,7 @@ func (vc *valCtx) whenOf(n *Node, sn *schema.Node, root *xpath.RootKind) (*schem
 			if root != nil {
 				rk = *root
 			}
-			r, err := vc.eval(e, ctx, rk, false)
+			r, err := vc.eval(e, ctx, rk, vc.ignoreWhen)
 			if err != nil {
 				return nil, vc.xpathErr(err, ctx)
 			}
@@ -657,16 +657,29 @@ func (vc *valCtx) derefType(n *Node, v types.Value, t *schema.Type, log bool) ([
 	return nil, nil
 }
 
-// validateMust is lyd_validate_must for datastore data: every must of the node, false ones
-// reported with error-message/error-app-tag (warnings for operational data).
+// validateMust is lyd_validate_must: every must of the node (of an rpc or action: of its input,
+// or of its output for a reply), false ones reported with error-message/error-app-tag (warnings
+// for operational data).
 func (vc *valCtx) validateMust(n *Node) error {
 	var rc error
-	for _, m := range n.schema.Musts {
+	musts := n.schema.Musts
+	if k := n.schema.Kind; k == schema.RPC || k == schema.Action {
+		switch {
+		case vc.op.rpc || vc.op.action:
+			musts = n.schema.Children[0].Musts // input
+		case vc.op.reply:
+			musts = n.schema.Children[1].Musts // output
+		default:
+			_ = vc.log.logErr("LY_EINT", "Internal error (%s:%d).", "validation.c", 1726)
+			return fatalRC("LY_EINT")
+		}
+	}
+	for _, m := range musts {
 		e, ok := m.Compiled.(*xpath.Expr)
 		if !ok {
 			return fmt.Errorf("data: must %q of %s is not compiled", m.Src, n.schema.LogPath())
 		}
-		r, err := vc.eval(e, n, rootType(n), false)
+		r, err := vc.eval(e, n, rootType(n), vc.ignoreWhen)
 		if errors.Is(err, errIncomplete) {
 			return vc.log.logErr("LY_EINCOMPLETE",
 				"Must \"%s\" depends on a node with a when condition, which has not been evaluated.", m.Src)
@@ -704,6 +717,10 @@ func (vc *valCtx) validateMust(n *Node) error {
 // dummyWhen is lyd_validate_dummy_when: the whens of an absent node sn under parent (nil: the top
 // level), evaluated on an opaque stand-in linked at its place; the first false one.
 func (vc *valCtx) dummyWhen(parent *Node, sn *schema.Node) (*schema.When, error) {
+	// lyd_validate_dummy_when evaluates without LYXP_IGNORE_WHEN, also in operation validation
+	iw := vc.ignoreWhen
+	vc.ignoreWhen = false
+	defer func() { vc.ignoreWhen = iw }()
 	dummy := newOpaque(opaque{Name: sn.Name, ModuleNS: sn.Module.Name, Format: types.FormatJSON})
 	vc.t.insert(parent, dummy, insertDefault)
 	defer unlink(dummy)
@@ -716,7 +733,8 @@ func (vc *valCtx) dummyWhen(parent *Node, sn *schema.Node) (*schema.When, error)
 		if vc.opts.MultiError {
 			return nil, nil // cannot evaluate properly, ignored
 		}
-		return nil, vc.log.logErr("LY_EINT", "Internal error (dummy when).")
+		_ = vc.log.logErr("LY_EINT", "Internal error (%s:%d).", "validation.c", 1132) // LOGINT
+		return nil, fatalRC("LY_EINT")
 	}
 	return w, err
 }

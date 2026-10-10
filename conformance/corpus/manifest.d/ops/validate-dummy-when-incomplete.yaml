@@ -1,0 +1,16 @@
+fixtures:
+  - id: ops/validate-dummy-when-incomplete
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # lyd_validate_op: absent mandatory input under a when, unresolved when of the operational tree
+    rfc: ["RFC7950#7.14", "RFC7950#7.21.5"]
+    areas: [operations]
+    request:
+      op: data
+      searchdirs: [opw.1]
+      modules: [{name: opw}]
+      format: json
+      data_type: rpc
+      unknown: reject
+      operational: "{\"opw:mode\":\"off\",\"opw:gate\":\"x\"}"
+      data: "{\"opw:run\":{}}"
+    golden: golden/ops-validate-dummy-when-incomplete.json

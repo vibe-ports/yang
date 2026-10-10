@@ -43,12 +43,15 @@ type opsFixture struct {
 	hasRPC                 bool
 	unknown                UnknownPolicy // the request's unknown (reject when absent)
 	keepInput              bool          // keep_input: the request keeps its parsed children
+	operational            string
+	hasOper                bool
 }
 
 var (
 	reField = regexp.MustCompile(`(?m)^      (\w+): (.*)$`)
 	reTop   = regexp.MustCompile(`(?m)^    (dir|golden): (.*)$`)
 	reMod   = regexp.MustCompile(`\{name: "?([\w-]+)"?(?:, features: \[([^\]]*)\])?\}`)
+	reFlow  = regexp.MustCompile(`(?m)^    request: (\{.*\})$`)
 )
 
 func unquote(t *testing.T, v string) string {
@@ -76,6 +79,38 @@ func readOpsFixture(t *testing.T, path string) opsFixture {
 		} else {
 			f.golden = m[2]
 		}
+	}
+	if m := reFlow.FindSubmatch(b); m != nil { // a request in JSON flow style
+		var r struct {
+			Searchdirs []string
+			Modules    []struct {
+				Name     string
+				Features []string
+			}
+			Format, Data string
+			DataType     string `json:"data_type"`
+			RPC          *string
+			Operational  *string
+			Unknown      string
+		}
+		if err := json.Unmarshal(m[1], &r); err != nil {
+			t.Fatal(path, err)
+		}
+		f.searchdirs, f.format, f.dataType, f.data = r.Searchdirs, r.Format, r.DataType, r.Data
+		for _, mod := range r.Modules {
+			f.modules = append(f.modules, struct {
+				name, revision string
+				features       []string
+			}{name: mod.Name, features: mod.Features})
+		}
+		if r.RPC != nil {
+			f.rpc, f.hasRPC = *r.RPC, true
+		}
+		if r.Operational != nil {
+			f.operational, f.hasOper = *r.Operational, true
+		}
+		f.unknown = map[string]UnknownPolicy{"skip": Skip, "opaque": Opaque}[r.Unknown]
+		return f
 	}
 	for _, m := range reField.FindAllStringSubmatch(string(b), -1) {
 		v := m[2]
@@ -109,6 +144,8 @@ func readOpsFixture(t *testing.T, path string) opsFixture {
 			f.keepInput = v == "true"
 		case "unknown":
 			f.unknown = map[string]UnknownPolicy{"reject": Reject, "skip": Skip, "opaque": Opaque}[unquote(t, v)]
+		case "operational":
+			f.operational, f.hasOper = unquote(t, v), true
 		}
 	}
 	return f
