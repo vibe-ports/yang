@@ -59,6 +59,7 @@ fixtures go into fragments.
 ```yaml
 assert:
   verdict: invalid
+  rc: LY_EINVAL                                               # optional, the call's LY_ERR name (rc.name)
   rfc: ["RFC7950#9.2.4"]                                      # optional, the clause it rests on
   diagnostics: [{vecode_name: LYVE_DATA, data_path: /basic:sys/mtu}]   # subset match
   deviation: null                                             # or "D-0001"
