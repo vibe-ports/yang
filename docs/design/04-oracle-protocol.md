@@ -102,11 +102,11 @@ chains of test_diff.c (diff, apply, merge, reverse) run in one request. Step `tr
 `context_path`, `xpath`, `path`) and `atoms`: the set in libyang's order as `lysc_path(LYSC_PATH_LOG)`
 strings, `null` when the call fails. Field reference: conformance/oracle/README.md.
 
-## 5. Manifest v2 (conformance/corpus/manifest.yaml)
+## 5. Manifest v2 (corpus/manifest.yaml + manifest.d/)
 ```yaml
-version: 2
+# conformance/corpus/manifest.d/basic/range.yaml
 fixtures:
-  - id: basic/range
+  - id: basic/range # fixture id equals the fragment path without .yaml
     dir: basic
     source: {url: …, commit: …, license: …}
     rfc: ["RFC7950#9.2.4"]
@@ -118,6 +118,9 @@ fixtures:
       diagnostics: [{vecode_name: LYVE_DATA, data_path: /basic:sys/mtu}]   # subset match
       deviation: null         # or "D-0001" when libyang (the golden) is known to differ
 ```
+Each fixture is defined in its own `conformance/corpus/manifest.d/<set>/<name>.yaml`
+fragment; `conformance/corpus/manifest.yaml` contains only the version and oracle pin.
+See `conformance/manifest.schema.md` for the fragment format.
 Rules: goldens record what libyang does; `assert` records what the spec requires. A fixture whose
 `assert` contradicts its golden must name a deviation id from `conformance/deviations.md`,
 otherwise the harness fails. Without a deviation our engine must match the `assert` (if present) AND the whole normalized golden.

@@ -34,7 +34,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-Derived material (every fixture also carries a `source:` entry in conformance/corpus/manifest.yaml
+Derived material (every fixture also carries a `source:` entry in its fragment under conformance/corpus/manifest.d/
 with the libyang file, tag/commit and license):
 
 - conformance/tools/extract-utests/ reads tests/utests/**/*.c and writes schemas, data and expected

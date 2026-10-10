@@ -312,7 +312,7 @@ state-data cases can mis-verify.
 
 ### 5.5 Acceptance gate for extracted fixtures (proposed)
 
-A candidate enters `manifest.yaml` only if, running the oracle: (1) verdict == asserted verdict;
+A candidate enters the corpus (a `manifest.d` fragment) only if, running the oracle: (1) verdict == asserted verdict;
 (2) every asserted `CHECK_LOG_CTX` message/path is found in the golden diagnostics (message text is
 informational elsewhere, but here it doubles as a cross-check that extraction picked the right
 schema/data pair); (3) the fixture carries the attribution block above. Failures go to a triage list,
