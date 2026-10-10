@@ -1,0 +1,17 @@
+fixtures:
+  - id: ut-tree-data/list-pos
+    dir: ut-tree-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_tree_data.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_list_pos:408
+    rfc: []   # libyang API: lyd_list_pos
+    areas: [operations]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: tree-data}]
+      format: json
+      data_type: data
+      validate_options: [present]
+      data_file: data/tree.json
+      context_path: "/tree-data:c/state[2]"
+      xpath: "."
+    golden: golden/list-pos.json

@@ -1,0 +1,17 @@
+{
+  "tree-data:c": {
+    "first": "alpha",
+    "second": "beta",
+    "l": [
+      {"k": "one", "v": "1"},
+      {"k": "two", "v": "2"}
+    ],
+    "state": [
+      {"value": "one"},
+      {"value": "two"}
+    ],
+    "ll": ["b", "a"],
+    "target": "chosen",
+    "ref": "chosen"
+  }
+}

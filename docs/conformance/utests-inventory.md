@@ -71,7 +71,7 @@ work must fix* (multi-module ordering for `deviation`/`augment`, non-verdict res
 | `data/test_parser_xml.c` | 20 | 1132 | codec xml | M5 | in | B | 35 (20/30) | parser_xml.c |
 | `data/test_printer_json.c` | 4 | 170 | codec json | M5 | in | B | 8 (8/8) | printer_json.c |
 | `data/test_printer_xml.c` | 2 | 347 | codec xml | M5 | in | B | 10 (10/10) | printer_xml.c |
-| `data/test_tree_data.c` | 11 | 856 | data tree API | M4 | in | C | 36 (35/35) | tree_data.c, tree_data_common.c, tree_data_hash.c (find, dup, insert, path) |
+| `data/test_tree_data.c` | 11 | 856 | data tree API | M4 | in | C | 36 (35/35) | tree_data.c, tree_data_common.c, tree_data_hash.c (find, dup, insert, path). **Imported (#103): 5 conformance cases in `conformance/corpus/ut-tree-data/` derived from** `test_lyxp_vars`, `test_find_path`, `test_list_pos`, `test_first_sibling`, and `test_target`; the `test_find_path` case directly exercises `lyd_find_path` / `Tree.Find`. Pending the oracle `dup` and `link`/`links` steps (#222): `test_dup`, `test_data_leafref_nodes`, `test_data_leafref_nodes2`. Tier C remaining: `test_compare` (six expressible cases were imported earlier in `ut-compare`; the rest needs C-level tree construction), `test_compare_diff_ctx`, `test_data_hash`. |
 | `data/test_tree_data_sorted.c` | 38 | 1691 | data tree sorted index | - | out | N | - | tree_data_sorted.c (sorted/hash child index: perf trick, PLAN 1 out until profiling) |
 | `data/test_validation.c` | 21 | 1905 | validation | M4 | in | B | 62 (59/59) | validation.c (mandatory, min/max, unique, when, must, leafref, dup, choice, defaults, operational) |
 | `extensions/test_metadata.c` | 2 | 205 | extensions | M5 | in | B | 7 (6/6) | plugins_exts/metadata.c (RFC 7952) |

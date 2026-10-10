@@ -1,0 +1,18 @@
+fixtures:
+  - id: ut-tree-data/lyxp-vars
+    dir: ut-tree-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_tree_data.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_lyxp_vars
+    rfc: ["XPath1.0#3.7"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: tree-data}]
+      format: json
+      data_type: data
+      validate_options: [present]
+      data_file: data/tree.json
+      context_path: "/tree-data:c"
+      xpath: "l[k = $key]/v"
+      vars: {key: "'two'"}
+    golden: golden/lyxp-vars.json

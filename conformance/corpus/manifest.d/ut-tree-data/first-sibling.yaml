@@ -1,0 +1,17 @@
+fixtures:
+  - id: ut-tree-data/first-sibling
+    dir: ut-tree-data
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_tree_data.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_first_sibling:452
+    rfc: []   # libyang API: lyd_first_sibling
+    areas: [operations]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: tree-data}]
+      format: json
+      data_type: data
+      validate_options: [present]
+      data_file: data/tree.json
+      context_path: "/tree-data:c/second"
+      xpath: "../*[1]"
+    golden: golden/first-sibling.json

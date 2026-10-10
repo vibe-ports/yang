@@ -1,0 +1,41 @@
+module tree-data {
+  yang-version 1.1;
+  namespace "urn:tests:tree-data";
+  prefix td;
+
+  container c {
+    leaf first {
+      type string;
+    }
+    leaf second {
+      type string;
+    }
+    list l {
+      key "k";
+      leaf k {
+        type string;
+      }
+      leaf v {
+        type string;
+      }
+    }
+    list state {
+      config false;
+      leaf value {
+        type string;
+      }
+    }
+    leaf-list ll {
+      type string;
+      ordered-by user;
+    }
+    leaf target {
+      type string;
+    }
+    leaf ref {
+      type leafref {
+        path "../target";
+      }
+    }
+  }
+}

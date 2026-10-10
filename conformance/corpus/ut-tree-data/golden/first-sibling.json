@@ -1,0 +1,26 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "tree-data",
+      "revision": null
+    }
+  ],
+  "op": "xpath",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "result": {
+    "nodes": [
+      "/tree-data:c/first"
+    ],
+    "type": "node-set"
+  },
+  "verdict": "valid"
+}
