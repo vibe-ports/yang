@@ -1,0 +1,8 @@
+fixtures:
+  - id: ut-new/insert-06
+    dir: ut-new
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # module a of libyang's tests/utests/data/test_new.c; lyd_new_term / lyd_new_inner (a list is no inner node, #98)
+    rfc: []   # libyang API (lyd_new_term, lyd_new_inner, lyd_insert_sibling): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["a.1"], "modules": [{"name": "a"}], "steps": [{"do": "edit", "insert_inner": {"name": "l1", "module": "a"}}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/insert-06.json

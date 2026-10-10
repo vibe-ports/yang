@@ -1,0 +1,8 @@
+fixtures:
+  - id: ut-new/insert-52
+    dir: ut-new
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # module e; a union key [k='01']: the predicate stores uint8 1, lyd_create_list stores its canonical "1" again and the enumeration takes it (#98)
+    rfc: []   # libyang API (lyd_new_list2, lyd_new_list3): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["e.1"], "modules": [{"name": "e"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "edit", "insert_list2": {"module": "e", "name": "lu", "keys": "[k='01']"}}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/insert-52.json

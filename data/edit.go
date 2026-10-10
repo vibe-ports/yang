@@ -154,7 +154,7 @@ func (t *Tree) evalPartial(p types.Path) (*Node, int) {
 		case seg.Preds[0].Kind == types.PredLeafList:
 			n = t.findFirst(sib, newTerm(seg.Node, seg.Preds[0].Value))
 		default:
-			n = t.findFirst(sib, t.createList(seg))
+			n = t.findFirst(sib, t.createList(seg, true)) // ly_path_eval_partial: store-only
 		}
 		if n == nil {
 			return prev, u
@@ -179,12 +179,26 @@ func (t *Tree) instances(s *siblings, sn *schema.Node) func(func(*Node) bool) {
 	}
 }
 
-// createList is lyd_create_list: an unlinked list instance with the predicate's keys.
-func (t *Tree) createList(seg types.PathSegment) *Node {
+// createList is lyd_create_list: an unlinked list instance with the predicate's keys, each stored
+// again from its canonical text (store-only for the lookups: ly_path_eval_partial and
+// lyd_find_sibling_val pass it, lyd_new_path its own option, which the port does not take).
+func (t *Tree) createList(seg types.PathSegment, storeOnly bool) *Node {
 	l := newInner(seg.Node)
 	l.flags = FlagNew
 	for _, pr := range seg.Preds {
-		k := newTerm(pr.Key, pr.Value)
+		// lyd_create_list stores each key again from its canonical text in the JSON format, so a
+		// union may take another member (enumeration "1" before uint8 for '01')
+		// ponytail: a canonical text the key type refuses again keeps the predicate's value
+		v := pr.Value
+		store := types.Store
+		if storeOnly {
+			store = types.StoreOnly
+		}
+		if rv, d := store(pr.Key.Type, v.Canonical(), types.FormatJSON, types.HintData,
+			types.ModuleNames{Set: t.set}, pr.Key); d == nil {
+			v = rv
+		}
+		k := newTerm(pr.Key, v)
 		k.flags = FlagNew
 		t.insert(l, k, insertDefault)
 	}
@@ -241,7 +255,7 @@ func (t *Tree) newPath(lg *logger, path, value string, o NewPathOptions) (*Node,
 				node = newInner(seg.Node)
 				node.flags = FlagNew
 			} else {
-				node = t.createList(seg)
+				node = t.createList(seg, false)
 			}
 		case schema.Container:
 			node = newInner(seg.Node)

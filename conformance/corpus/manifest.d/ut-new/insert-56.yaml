@@ -1,0 +1,8 @@
+fixtures:
+  - id: ut-new/insert-56
+    dir: ut-new
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # modules a and e; schema nodes of two modules under an opaque parent, inserted in reverse module order (#98)
+    rfc: []   # libyang API (lyd_new_list2, lyd_new_term, lyd_new_opaq): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["e.1", "a.1"], "modules": [{"name": "e"}, {"name": "a"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "edit", "insert_opaq": {"name": "op", "module": "a", "value": ""}}, {"do": "edit", "insert_term": {"parent_opaq": "op", "module": "e", "name": "r", "value": "1"}}, {"do": "edit", "insert_term": {"parent_opaq": "op", "module": "a", "name": "foo", "value": "2"}}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/insert-56.json

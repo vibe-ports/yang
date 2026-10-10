@@ -247,7 +247,7 @@ func (t *Tree) findAnchor(sib *siblings, sn *schema.Node, anchor string) (*Node,
 		if msg != "" {
 			return nil, &opError{"LY_EVALID", msg}
 		}
-		target = t.createList(types.PathSegment{Node: sn, Preds: preds})
+		target = t.createList(types.PathSegment{Node: sn, Preds: preds}, true) // lyd_find_sibling_val: store-only
 	}
 	return t.findFirst(sib, target), nil
 }

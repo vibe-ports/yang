@@ -70,15 +70,18 @@ func (t *Tree) schemaRank(s *schema.Node) int {
 }
 
 // after reports whether sibling a goes after n in schema order (the anchor test of
-// lyd_insert_get_next_anchor and lyd_insert_node_find_anchor): opaque nodes are always last; at
-// the top level the data of modules are ordered by strcmp of the module names.
+// lyd_insert_get_next_anchor and lyd_insert_node_find_anchor): opaque nodes are always last;
+// top-level schema nodes of different modules, at the top level or under an opaque parent, are
+// ordered by strcmp of the module names.
 func (t *Tree) after(a, n *Node) bool {
 	switch {
 	case a.schema == nil:
 		return n.schema != nil
 	case n.schema == nil:
 		return false
-	case a.parent == nil && n.parent == nil && a.schema.Module != n.schema.Module:
+	case a.schema.Module != n.schema.Module && a.schema.DataParent() == nil && n.schema.DataParent() == nil:
+		// top-level schema nodes of different modules, at the top level or under an opaque
+		// parent (no schema parent either way): by module name
 		return strings.Compare(a.schema.Module.Name, n.schema.Module.Name) > 0
 	}
 	return t.schemaRank(a.schema) > t.schemaRank(n.schema)

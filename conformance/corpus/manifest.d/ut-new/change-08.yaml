@@ -1,0 +1,8 @@
+fixtures:
+  - id: ut-new/change-08
+    dir: ut-new
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # module a of libyang's tests/utests/data/test_new.c; list keys changed: the instances reorder (#98)
+    rfc: []   # libyang API (lyd_change_term): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["a.1"], "modules": [{"name": "a"}], "steps": [{"do": "parse", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"a:l11\": [{\"a\": 1}, {\"a\": 2}], \"a:l1\": [{\"a\": \"x\", \"b\": \"y\"}, {\"a\": \"p\", \"b\": \"q\"}]}"}, {"do": "change_term", "node": "/a:l11[a='1']/a", "value": "3"}, {"do": "change_term", "node": "/a:l1[a='p'][b='q']/a", "value": "z"}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/change-08.json

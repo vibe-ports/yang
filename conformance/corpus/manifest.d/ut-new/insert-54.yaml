@@ -1,0 +1,8 @@
+fixtures:
+  - id: ut-new/insert-54
+    dir: ut-new
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # module e; a union key through lyd_new_list3: the JSON value "01" stores as uint8, no second store (#98)
+    rfc: []   # libyang API (lyd_new_list2, lyd_new_list3): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["e.1"], "modules": [{"name": "e"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "edit", "insert_list": {"module": "e", "name": "lu", "keys": ["01"]}}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/insert-54.json

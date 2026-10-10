@@ -1,0 +1,8 @@
+fixtures:
+  - id: ut-new/insert-53
+    dir: ut-new
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # module e; a key predicate with a variable: it compiles, and lyd_create_list finds no variables (LY_ENOTFOUND) (#98)
+    rfc: []   # libyang API (lyd_new_list2, lyd_new_list3): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["e.1"], "modules": [{"name": "e"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "edit", "insert_list2": {"module": "e", "name": "lk", "keys": "[k=$v]"}}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/insert-53.json

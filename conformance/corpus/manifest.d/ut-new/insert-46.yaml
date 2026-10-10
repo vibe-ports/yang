@@ -1,0 +1,8 @@
+fixtures:
+  - id: ut-new/insert-46
+    dir: ut-new
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # module e (restrictions); a value outside a length: stored without the check (store_only) (#98)
+    rfc: []   # libyang API (lyd_new_term, lyd_new_list3, LYD_NEW_VAL_STORE_ONLY): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["e.1"], "modules": [{"name": "e"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "edit", "insert_term": {"module": "e", "name": "s", "value": "abcd", "options": ["store_only"]}}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/insert-46.json

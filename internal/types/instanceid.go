@@ -40,6 +40,9 @@ type PathPred struct {
 	Key      *schema.Node // PredKey
 	Value    Value        // PredKey, PredLeafList
 	Position uint64       // PredPosition
+	// Var is the variable of a key predicate [k=$var] (LY_PATH_PREDTYPE_LIST_VAR), its token
+	// text; only lyd_create_list2's predicates take one (storeArgs.vars).
+	Var string
 }
 
 // String prints the path in JSON form (libyang instanceid_path2str with LY_VALUE_JSON), which is
@@ -324,7 +327,16 @@ func compilePredicate(a *storeArgs, node *schema.Node, e *lyxp.Expr, i int) ([]P
 			}
 			i += 2 // key, '='
 			if e.Toks[i] == lyxp.TokVarRef {
-				return nil, i, "Variable reference not allowed in an instance-identifier."
+				if !a.vars {
+					return nil, i, "Variable reference not allowed in an instance-identifier."
+				}
+				preds = append(preds, PathPred{Kind: PredKey, Key: key, Var: e.Text(i)}) // resolved at creation
+				i += 2                                                                   // variable, ']'
+				if !e.Is(i, lyxp.TokBrack1) {
+					break
+				}
+				i++
+				continue
 			}
 			v, d := storeKey(a, key, literal(e, i))
 			if d != nil {
@@ -368,6 +380,7 @@ func compilePredicate(a *storeArgs, node *schema.Node, e *lyxp.Expr, i int) ([]P
 func storeKey(a *storeArgs, node *schema.Node, lex string) (Value, *Diag) {
 	b := *a
 	b.t, b.lex, b.h, b.ctx, b.only = node.Type, lex, HintData, node, false
+	b.vars = false // only the outer key predicates of lyd_create_list2 take variables
 	v, d := storeArgsDispatch(&b)
 	if d != nil {
 		k := *d
