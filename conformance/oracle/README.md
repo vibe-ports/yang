@@ -329,6 +329,7 @@ becomes observable. Context fields as in `schema`; step fields are per step (not
 | | `insert_opaq: {"parent" \| "parent_opaq", "name", "value", "prefix", "module", "xml"}` only | `lyd_new_opaq` (`module`: the module name), with `xml: true` `lyd_new_opaq2` (`module`: the namespace); top level: `lyd_insert_sibling` |
 | | `new_meta: {"node", "name", "value"}` only (`name` = `module:name`, value in JSON format) | `lyd_find_path` + `lyd_new_meta(NULL, node, NULL, name, value, 0, NULL)` |
 | | `free_meta: {"node", "name"}` only (`name` = `module:name`) | `lyd_find_path` + `lyd_free_meta_single(lyd_find_meta(node->meta, NULL, name))` (nothing found: nothing freed) |
+| `insert` | `node` (path), `parent` (path, optional), the fields of `parse` for a second tree (optional) | `lyd_insert_child(parent, node)`, without `parent` `lyd_insert_sibling(tree, node, &tree)`; with data the node comes from the parsed second tree (`node` a path in it, omitted: its first top-level node, which moves with its siblings) and the rest of that tree is freed (diagnostics phases `parse`, `edit`) |
 | `change_term` | `node` (path), `value`, `canon` (bool) | `lyd_change_term` (`canon`: `lyd_change_term_canon`) of the node; `change` = its rc, where `LY_EEXIST` (only the default flag changed) and `LY_ENOT` (no change) are results and the step succeeds (diagnostics phase `edit`) |
 | `dump` | `with_defaults` | `tree` = `{"json", "xml"}` as op `data` |
 | `link` | — | `lyd_leafref_link_node_tree(tree)` (`LY_EDENIED` without the `leafref_linking` context option) |
