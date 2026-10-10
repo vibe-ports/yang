@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo): XPath query formats (#171); revision 2021-01-01 of a
+// module xpf-user imports in its older revision.
+module xpf-rev {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:xpf-rev";
+  prefix xr;
+
+  revision 2021-01-01;
+  leaf z {
+    type string;
+  }
+}

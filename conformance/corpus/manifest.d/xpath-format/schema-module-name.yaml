@@ -1,0 +1,9 @@
+fixtures:
+  # module names are not prefixes in the schema format (lyd_eval_xpath4 format, prefix_data, cur_mod; #171)
+  - id: xpath-format/schema-module-name
+    dir: xpath-format
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#6.4.1"]
+    areas: [xpath]
+    request: {"op": "xpath", "context_options": ["no_yanglibrary"], "searchdirs": ["schemas"], "modules": [{"name": "xpf"}, {"name": "xpf-base"}], "format": "json", "data_type": "data", "data": "{\"xpf:c\": {\"a\": \"xpf-base:dog\", \"l\": [\"p\", \"q\"], \"k\": [{\"n\": \"1\"}]}, \"xpf-base:zoo\": {\"name\": \"z\"}}", "xpath": "/xpf:c", "xpath_format": "schema", "cur_module": "xpf"}
+    golden: golden/schema-module-name.json

@@ -310,10 +310,17 @@ func (t *Tree) EvalXPath(expr string, o XPathOptions) (XPathResult, []yang.Diagn
 func (t *Tree) EvalXPathAs(expr string, typ XPathType, o XPathOptions) (XPathResult, []yang.Diagnostic, error) // lyd_eval_xpath4, one output: cast;
                                                                                           // lyd_eval_xpath, _xpath2, _xpath3 = XPathBoolean
 ```
-Expressions are JSON format only (`LY_VALUE_JSON`, prefixes are module names), the format of
-every query of the conformance corpus; XML-namespace prefixes are added when a user asks.
-`cur_mod` is not exported: in JSON format it only names the module of an unprefixed
-`derived-from()` identity when there is no current node. `Number` is the `long double` result
+Expressions are JSON format by default (`LY_VALUE_JSON`, prefixes are module names). #171 adds
+`lyd_eval_xpath4`'s `format`, `prefix_data` and `cur_mod` as three `XPathOptions` fields:
+`Format XPathFormat` (`XPathJSON`, `XPathXML`, `XPathSchema`), `Namespaces []XPathNamespace`
+(the XML declarations in scope, the outermost first, as `lyxml_ns_get` searches them from the end)
+and `Module string` (`cur_mod`, an implemented module: the module of an `XPathSchema` expression,
+whose own and import prefixes are its `prefix_data`, required there; in JSON the module of an
+unprefixed `derived-from()` identity when there is no current node). An XML expression needs a
+prefix on every node name, and an unprefixed value is in the default namespace.
+`LY_VALUE_SCHEMA_RESOLVED` is libyang's internal format for compiled expressions and is not
+exported. `TrimXPath` takes JSON only (`lyd_trim_xpath` has no format). Fixtures: xpath-format/*.
+`Number` is the `long double` result
 narrowed to `float64`, as lyoracle prints it (D-0010); NaN and ±Inf are math's. Errors as for
 `Parse`: the diagnostics of the call are returned also on success (libyang logs internal errors,
 LY_EINT `Internal error (xpath.c:1348).`, on some successful evaluations and goes on), and a

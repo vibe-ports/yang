@@ -1,0 +1,9 @@
+fixtures:
+  # name() in a schema-format expression of a module that imports another revision than the implemented one: the import does not name the node's module ((null) prefix) (lyd_eval_xpath4 format, prefix_data, cur_mod; #171)
+  - id: xpath-format/schema-name-other-revision
+    dir: xpath-format
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#6.4.1"]
+    areas: [xpath]
+    request: {"op": "xpath", "context_options": ["no_yanglibrary"], "searchdirs": ["schemas"], "modules": [{"name": "xpf-rev", "revision": "2021-01-01"}, {"name": "xpf-user"}], "format": "json", "data_type": "data", "data": "{\"xpf-rev:z\": \"v\", \"xpf-user:w\": \"x\"}", "xpath": "concat(name(/*[. = 'v']), ' ', name(/*[. = 'x']))", "xpath_format": "schema", "cur_module": "xpf-user"}
+    golden: golden/schema-name-other-revision.json

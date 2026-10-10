@@ -492,7 +492,10 @@ func (ev *evaluator) resolveName(qname string) (nameTest, error) {
 		}
 		nt.mod, qname = mod, local
 	} else {
-		nt.mod = ev.ns.Default()
+		var err error
+		if nt.mod, err = unprefixed(ev.ns, qname); err != nil {
+			return nt, err
+		}
 	}
 	if qname != "*" {
 		nt.name = qname
@@ -689,6 +692,7 @@ type jsonPrefixes struct{}
 func (jsonPrefixes) Resolve(p string) (string, bool) { return p, true }
 func (jsonPrefixes) Prefix(m string) string          { return m }
 func (jsonPrefixes) Default() string                 { return "" }
+func (jsonPrefixes) KeyValue()                       {}
 
 // hasLogOp reports an 'or'/'and' token outside nested brackets, which makes
 // eval_name_test_try_compile_predicates give up on a value.

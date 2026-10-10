@@ -13,12 +13,12 @@ import (
 	"github.com/vibe-ports/yang/data"
 )
 
-// xpathKeys are the op xpath request fields runXPath handles; any other (cur_module, operations)
-// makes the fixture unsupported rather than silently ignored.
+// xpathKeys are the op xpath request fields runXPath handles; any other (operations) makes the
+// fixture unsupported rather than silently ignored.
 var xpathKeys = map[string]bool{"op": true, "base_dir": true, "searchdirs": true, "modules": true,
 	"context_options": true, "format": true, "data_type": true, "data": true, "data_file": true, "unknown": true,
 	"parse_only": true, "parse_options": true, "validate_options": true, "xpath": true, "context_path": true,
-	"vars": true}
+	"vars": true, "cur_module": true, "xpath_format": true, "namespaces": true}
 
 // runXPath is lyoracle.c op_xpath: the data parsed as op data parses it, the context node
 // selected by context_path (lyd_find_xpath from the first top-level node), then lyd_eval_xpath4
@@ -39,6 +39,19 @@ func runXPath(r Request, s *yang.Schema, resp map[string]any) error {
 	var err error
 	if o.Vars, err = xpathVars(p); err != nil {
 		return err
+	}
+	o.Module, _ = p["cur_module"].(string)
+	switch f, _ := p["xpath_format"].(string); f {
+	case "xml":
+		o.Format = data.XPathXML
+		for _, x := range list(p["namespaces"]) {
+			n, _ := x.(map[string]any)
+			pfx, _ := n["prefix"].(string)
+			uri, _ := n["uri"].(string)
+			o.Namespaces = append(o.Namespaces, data.XPathNamespace{Prefix: pfx, URI: uri})
+		}
+	case "schema":
+		o.Format = data.XPathSchema
 	}
 	tree, pd, err := parseInput(r, s, p, "data")
 	rc, err := rcOf(err)

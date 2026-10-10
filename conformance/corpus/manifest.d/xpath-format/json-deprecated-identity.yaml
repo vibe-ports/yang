@@ -1,0 +1,9 @@
+fixtures:
+  # the same comparison in JSON: no status check, the value is canonicalized (lyd_eval_xpath4 format, prefix_data, cur_mod; #171)
+  - id: xpath-format/json-deprecated-identity
+    dir: xpath-format
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#6.4.1"]
+    areas: [xpath]
+    request: {"op": "xpath", "context_options": ["no_yanglibrary"], "searchdirs": ["schemas"], "modules": [{"name": "xpf"}, {"name": "xpf-base"}], "format": "json", "data_type": "data", "data": "{\"xpf:c\": {\"a\": \"xpf:old\"}}", "xpath": "/xpf:c/a = 'xpf:old'"}
+    golden: golden/json-deprecated-identity.json

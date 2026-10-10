@@ -1,0 +1,9 @@
+fixtures:
+  # name() in an XML expression: libyang reads the namespace set as modules and appends to it (lyd_eval_xpath4 format, prefix_data, cur_mod; #171)
+  - id: xpath-format/xml-name-all
+    dir: xpath-format
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#6.4.1"]
+    areas: [xpath]
+    request: {"op": "xpath", "context_options": ["no_yanglibrary"], "searchdirs": ["schemas"], "modules": [{"name": "xpf"}, {"name": "xpf-base"}], "format": "json", "data_type": "data", "data": "{\"xpf:c\": {\"a\": \"xpf-base:dog\", \"l\": [\"p\", \"q\"], \"k\": [{\"n\": \"1\"}]}, \"xpf-base:zoo\": {\"name\": \"z\"}}", "xpath": "concat(name(/*), ' ', name(/p:c/p:a))", "xpath_format": "xml", "namespaces": [{"prefix": "p", "uri": "urn:vibe-ports:yang:conformance:xpf"}, {"prefix": "q", "uri": "urn:vibe-ports:yang:conformance:xpf-base"}]}
+    golden: golden/xml-name-all.json

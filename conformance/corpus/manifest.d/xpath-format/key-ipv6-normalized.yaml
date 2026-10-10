@@ -1,0 +1,9 @@
+fixtures:
+  # a list key predicate is stored with the key's type, so an ipv6-address in another spelling finds the instance (unlike a compared string value) (lyd_eval_xpath4 format, prefix_data, cur_mod; #171)
+  - id: xpath-format/key-ipv6-normalized
+    dir: xpath-format
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#6.4.1"]
+    areas: [xpath]
+    request: {"op": "xpath", "context_options": ["no_yanglibrary"], "searchdirs": ["schemas"], "modules": [{"name": "xpf"}, {"name": "xpf-base"}], "format": "json", "data_type": "data", "data": "{\"xpf:c\": {\"v6\": [{\"a\": \"2001:db8::1\"}]}}", "xpath": "/xpf:c/v6[a='2001:0db8::1']"}
+    golden: golden/key-ipv6-normalized.json

@@ -158,9 +158,15 @@ func derived(ev *evaluator, a []value, orSelf bool) (value, error) {
 		}
 		id = Ident{mod, local}
 	} else {
-		id = Ident{ev.ns.Default(), name}
+		mod, err := unprefixed(ev.ns, name)
+		if err != nil {
+			return value{}, err
+		}
+		id = Ident{mod, name}
 		if id.Module == "" && ev.cur.t == itElem { // JSON: the module of the current node
 			id.Module = ev.cur.n.Module()
+		} else if cm, ok := ev.ns.(CurModule); ok && id.Module == "" { // else cur_mod
+			id.Module = cm.CurModule()
 		}
 	}
 	if ev.ec.Schema == nil || !ev.ec.Schema.HasIdentity(id) {

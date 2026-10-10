@@ -68,7 +68,7 @@ func TestFindXPath(t *testing.T) {
 		{false, xpath.NodeSet, xpath.Result{Type: xpath.NodeSet, Nodes: []xpath.Node{xn{c.kids.list[0], f.set}}}},
 	} {
 		src := "/b:c/ll"
-		r, err := tr.evalXPath4(&logger{set: f.set}, nil, src, nil, tc.single, tc.to)
+		r, err := tr.evalXPath4(&logger{set: f.set}, nil, src, jsonNS{set: f.set}, nil, tc.single, tc.to)
 		r.Steps = 0
 		if err != nil || !reflect.DeepEqual(r.Type, tc.want.Type) || r.Bool != tc.want.Bool || r.Str != tc.want.Str ||
 			r.Num != tc.want.Num || tc.want.Type == xpath.NodeSet && len(r.Nodes) != 3 {
@@ -88,6 +88,6 @@ func TestFindXPath(t *testing.T) {
 
 // findXPath is FindXPath over the internal twin, so the tests see the logger.
 func findXPath(t *Tree, l *logger, ctxNode *Node, src string, vars []xpath.Var) ([]*Node, error) {
-	r, err := t.evalXPath4(l, ctxNode, src, vars, true, xpath.NodeSet)
+	r, err := t.evalXPath4(l, ctxNode, src, jsonNS{set: t.set}, vars, true, xpath.NodeSet)
 	return nodesOf(r), err
 }

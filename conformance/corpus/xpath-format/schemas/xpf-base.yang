@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo): XPath query formats (#171).
+module xpf-base {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:xpf-base";
+  prefix xb;
+
+  identity animal;
+  identity dog {
+    base animal;
+  }
+  identity cat {
+    base animal;
+  }
+  container zoo {
+    leaf name {
+      type string;
+    }
+  }
+}
