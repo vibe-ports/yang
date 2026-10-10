@@ -1031,7 +1031,12 @@ func (p *jsonParser) subtree(parent *Node) (err error) {
 			case errors.Is(r, errNot):
 				return true, nil
 			case r != nil:
-				node = n // lydjson_subtree_r frees the failed node (an output container with a bad child)
+				if n != nil {
+					// lydjson_subtree_r frees the failed node (an output container with a bad
+					// child); an instance that failed before its node was made leaves node at the
+					// previous one, which is freed instead (lydjson_parse_instance never resets it)
+					node = n
+				}
 				if rc = r; lc.fatal(r) {
 					return false, rc
 				}
