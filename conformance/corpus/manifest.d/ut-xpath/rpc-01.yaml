@@ -1,0 +1,17 @@
+fixtures:
+  - id: ut-xpath/rpc-01
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_rpc (L407-430): a reply parsed with lyd_parse_op, /a:r/l finds the output leaf (input and output share the name)
+    rfc: ["XPath1.0#2", "RFC7950#7.14", "RFC7950#6.4.1"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1, if.1]
+      modules: [{name: a}, {name: ietf-interfaces}]
+      format: xml
+      data_type: reply
+      unknown: reject
+      parse_only: true
+      data: "<r xmlns=\"urn:tests:a\">\n    <l>val</l>\n</r>"
+      xpath: "/a:r/l"
+    golden: golden/rpc-01.json
