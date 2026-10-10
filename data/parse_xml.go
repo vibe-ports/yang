@@ -694,16 +694,23 @@ func (p *xmlParser) subtreeInner(sn *schema.Node, parent *Node) (*Node, error) {
 	return node, rc
 }
 
+// freeFailed is the cleanup condition of lydxml_subtree_opaq, _term and _inner after their error
+// r: an opaque node always, a schema node unless the error is a validation error that
+// LYD_VALIDATE_MULTI_ERROR goes past, a list instance also when it lacks keys. Errors after the
+// node was parsed (moving past its closing tag) free nothing: the node stays linked.
+func (p *xmlParser) freeFailed(sn *schema.Node, node *Node, r error) bool {
+	if sn == nil || !p.lc.isEValid(r) || !p.lc.opts.Validate.MultiError {
+		return true
+	}
+	_, hashed := hashOf(node)
+	return sn.Kind == schema.List && !hashed
+}
+
 // subtree is lydxml_subtree_r: the current element and its descendants as data nodes under parent
 // (the top level when nil).
-func (p *xmlParser) subtree(parent *Node) (err error) {
+func (p *xmlParser) subtree(parent *Node) error {
 	lc, x := p.lc, p.x
 	var node *Node
-	defer func() {
-		if err != nil && lc.fatal(err) && node != nil {
-			lc.nodeFree(node) // lyd_parser_node_free of the inner/term parsers' cleanup
-		}
-	}()
 	prefix, name := x.Prefix, x.Name
 	if err := p.next(); err != nil {
 		return err
@@ -746,6 +753,10 @@ func (p *xmlParser) subtree(parent *Node) (err error) {
 			yang.ErrUnsupported, nodetypeStr(sn.Kind), sn.Name)
 	default:
 		node, r = p.subtreeInner(sn, parent)
+	}
+	if r != nil && node != nil && p.freeFailed(sn, node, r) {
+		lc.nodeFree(node)
+		node = nil
 	}
 	if r != nil {
 		if rc = r; lc.fatal(r) {
