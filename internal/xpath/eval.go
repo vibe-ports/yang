@@ -28,16 +28,6 @@ type item struct {
 	pos Node
 }
 
-// meta is the metadata of an itMeta item.
-func (it item) meta() Meta { return metaOf(it.n)[it.m] }
-
-func metaOf(n Node) []Meta {
-	if m, ok := n.(MetaNode); ok {
-		return m.Meta()
-	}
-	return nil
-}
-
 type valType uint8
 
 const (
@@ -88,12 +78,34 @@ type evaluator struct {
 	err     error            // sticky budget / cancellation error
 	sib     map[Node]sibList // per parent (nil: top level), its children; built lazily
 	keys    map[Node][]int   // sibling indexes from the top level down to the node
+	metas   map[Node][]Meta  // metadata snapshots returned by MetaNode, built lazily
 	nums    map[string]ld    // parsed long number texts
 	parses  int              // long number texts actually parsed (tests)
 	vars    int              // variable references being evaluated, nested
 	varASTs map[int]varAST   // parsed variable values, by index in ec.Vars
 	intErrs int              // Result.InternalErrors
 }
+
+// metaOf returns one snapshot of n's metadata per evaluation. MetaNode implementations may need
+// to allocate and copy their annotations, so calling Meta for every access would turn a linear
+// attribute expression into quadratic work outside the step budget.
+func (ev *evaluator) metaOf(n Node) []Meta {
+	if m, ok := ev.metas[n]; ok {
+		return m
+	}
+	var out []Meta
+	if m, ok := n.(MetaNode); ok {
+		out = m.Meta()
+	}
+	if ev.metas == nil {
+		ev.metas = map[Node][]Meta{}
+	}
+	ev.metas[n] = out
+	return out
+}
+
+// meta is the metadata of an itMeta item.
+func (ev *evaluator) meta(it item) Meta { return ev.metaOf(it.n)[it.m] }
 
 func newEvaluator(e *Expr, ec *EvalContext) *evaluator {
 	ev := &evaluator{e: e, ns: e.ns, ec: ec, ctx: ec.Ctx, steps: ec.MaxSteps}
@@ -448,7 +460,7 @@ func (ev *evaluator) attr(set value, nt nameTest, allDesc bool) (value, error) {
 			continue
 		}
 		var ms []item
-		for j, m := range metaOf(nodes[p].n) {
+		for j, m := range ev.metaOf(nodes[p].n) {
 			if err := ev.tick(); err != nil {
 				return value{}, err
 			}
@@ -1399,7 +1411,7 @@ func (ev *evaluator) toString(v value) string {
 // libyang's own string-value, an indented dump of the subtree's term values.
 func (ev *evaluator) stringValue(it item) string {
 	if it.t == itMeta {
-		return orNoValue(it.meta().Value).String()
+		return orNoValue(ev.meta(it).Value).String()
 	}
 	var b strings.Builder
 	var rec func(n Node, indent int)

@@ -170,7 +170,7 @@ func derived(ev *evaluator, a []value, orSelf bool) (value, error) {
 		var v Value
 		switch {
 		case it.t == itMeta:
-			v = orNoValue(it.meta().Value)
+			v = orNoValue(ev.meta(it).Value)
 		case it.t == itElem && isTerm(it.n):
 			v = valueOf(it.n)
 		default:
@@ -222,7 +222,7 @@ func fnLang(ev *evaluator, a []value, set value) (value, error) {
 		return boolV(false), nil
 	}
 	for n := set.nodes[0].n; n != nil; n = n.Parent() {
-		for _, m := range metaOf(n) {
+		for _, m := range ev.metaOf(n) {
 			if m.Name != "lang" || m.Module != "xml" {
 				continue
 			}
@@ -281,13 +281,13 @@ func nameArg(a []value, set value, sig string) (item, bool, error) {
 	return v.nodes[0], true, nil
 }
 
-func fnLocalName(_ *evaluator, a []value, set value) (value, error) {
+func fnLocalName(ev *evaluator, a []value, set value) (value, error) {
 	it, ok, err := nameArg(a, set, "local-name(node-set?)")
 	switch {
 	case !ok:
 		return strV(""), err
 	case it.t == itMeta:
-		return strV(it.meta().Name), nil
+		return strV(ev.meta(it).Name), nil
 	}
 	return strV(it.n.Name()), nil
 }
@@ -298,19 +298,19 @@ func fnName(ev *evaluator, a []value, set value) (value, error) {
 	case !ok:
 		return strV(""), err
 	case it.t == itMeta:
-		m := it.meta()
+		m := ev.meta(it)
 		return strV(ev.ns.Prefix(m.Module) + ":" + m.Name), nil
 	}
 	return strV(ev.ns.Prefix(it.n.Module()) + ":" + it.n.Name()), nil
 }
 
-func fnNamespaceURI(_ *evaluator, a []value, set value) (value, error) {
+func fnNamespaceURI(ev *evaluator, a []value, set value) (value, error) {
 	it, ok, err := nameArg(a, set, "namespace-uri(node-set?)")
 	switch {
 	case !ok:
 		return strV(""), err
 	case it.t == itMeta:
-		return strV(it.meta().Namespace), nil
+		return strV(ev.meta(it).Namespace), nil
 	case it.n.Schema() == nil:
 		return strV(""), nil
 	}
