@@ -80,11 +80,11 @@ type Tree struct {
 }
 
 // workCounter counts the work of a tree for tests (work, not time): comparisons made by
-// insertions and, when visits is set, sibling visits. Reads of a tree count nothing unless a test
-// sets visits, so concurrent readers do not contend on it (#186).
+// insertions and, when visits is set, sibling and bulk link-record visits. Reads of a tree count
+// nothing unless a test sets visits, so concurrent readers do not contend on it (#186).
 type workCounter struct {
 	atomic.Int64
-	visits bool // count sibling visits too (tests only; set before the calls it measures)
+	visits bool // count sibling/link-record visits too (tests only; set before measured calls)
 }
 
 // newTree returns an empty tree over the compiled schema s (the public constructor over a

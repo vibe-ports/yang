@@ -68,3 +68,37 @@ func TestBudgetInCasts(t *testing.T) {
 		}
 	}
 }
+
+// copyingMetaNode models the data adapter: every Meta call allocates and copies all annotations.
+type copyingMetaNode struct {
+	*tnode
+	meta          []Meta
+	calls, copied int
+}
+
+func (n *copyingMetaNode) Meta() []Meta {
+	n.calls++
+	n.copied += len(n.meta)
+	return append([]Meta(nil), n.meta...)
+}
+
+// TestMetadataBudget: selecting M annotations and then reading every selected item must perform
+// only O(M) metadata copying covered by the O(M) charged XPath walk, not M copies of an M-item
+// slice outside MaxSteps.
+func TestMetadataBudget(t *testing.T) {
+	const count = 2000
+	base := leaf("pv2:x", "")
+	tree := top(base)
+	n := &copyingMetaNode{tnode: base, meta: make([]Meta, count)}
+	for i := range n.meta {
+		n.meta[i] = Meta{Module: "pv2", Name: "a", Value: &tval{str: "1"}}
+	}
+	tree[0] = n
+	r, err := eval("sum(/pv2:x/@*)", EvalContext{Tree: tree, MaxSteps: 3 * count})
+	if err != nil || r.Num != count {
+		t.Fatalf("sum: %v, %v", r.Num, err)
+	}
+	if n.calls != 1 || n.copied > int(r.Steps) {
+		t.Fatalf("metadata copied %d entries in %d calls for %d charged steps", n.copied, n.calls, r.Steps)
+	}
+}
