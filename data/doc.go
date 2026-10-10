@@ -35,7 +35,9 @@
 // NewPath, NewTerm, NewInner, NewList, Insert (also of the tree n leaves), SetValue (of n's
 // tree), NewMeta, Remove, Validate, ValidateDiff, TrimXPath, LinkLeafrefs, and Merge, ApplyDiff,
 // MergeDiff, MergeDiffTree, Dup and DupSiblings into it (Dup and DupSiblings only read the tree
-// they copy from). LeafrefLinks is a read.
+// they copy from); ParseOp with a Request (the request's tree); ValidateOp, which also changes
+// its Operational tree while it runs (the operation is linked into it and out again).
+// LeafrefLinks is a read.
 //
 // Leafref link records (yang.Options.LeafrefLinking) join the trees whose nodes they link: once
 // trees are linked, a mutation of any of them needs exclusive access to all of them, and a read

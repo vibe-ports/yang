@@ -1,0 +1,17 @@
+fixtures:
+  - id: ops/parse-json-reply-opaque-request
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: the request parsed opaque (unknown: opaque, a non-object rpc member); lyd_parse_op of the reply into that opaque parent finds no operation (lyd_parser_find_operation) and fails "Missing the operation node."
+    rfc: ["RFC7950#7.14"]
+    areas: [operations]
+    request:
+      op: data
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: json
+      data_type: reply
+      unknown: opaque
+      parse_only: true
+      rpc: "{\"a:r1\":42}"
+      data: "{}"
+    golden: golden/ops-parse-json-reply-opaque-request.json
