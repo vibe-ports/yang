@@ -7,6 +7,7 @@
 package data
 
 import (
+	"errors"
 	"slices"
 	"strings"
 
@@ -359,4 +360,101 @@ func (b newBuilder) changeTerm(n *Node, value string, canon bool) error {
 		return rcError("LY_EEXIST")
 	}
 	return rcError("LY_ENOT")
+}
+
+// NewOptions are the options of NewTerm, NewInner and NewList.
+type NewOptions struct {
+	// Output is LYD_NEW_VAL_OUTPUT (lyd_new_inner's output): below an rpc or action the node is
+	// looked up in its output instead of its input.
+	Output bool
+}
+
+// builder checks the arguments the exported tree-building calls add to libyang's (parent a node
+// of t, the module of a "module:node" name implemented in t's snapshot) and splits the name:
+// the module (nil: the parent's) and the node name.
+func (t *Tree) builder(parent *Node, name, fn string) (newBuilder, *schema.Module, string, error) {
+	b := newBuilder{set: t.set, log: &logger{set: t.set}}
+	if parent != nil && treeOf(parent) != t {
+		return b, nil, "", b.log.done(argErr("parent (not in the tree)", fn))
+	}
+	prefix, local, ok := strings.Cut(name, ":")
+	if !ok {
+		return b, nil, name, nil
+	}
+	mod := t.set.Implemented(prefix)
+	if mod == nil {
+		return b, nil, "", b.log.done(argErr("module (not implemented)", fn))
+	}
+	return b, mod, local, nil
+}
+
+// placed finishes an exported tree-building call: a node created without a parent becomes a
+// top-level node of t, as lyd_insert_sibling with t's first top-level node inserts it (its schema
+// check included: a top-level node that is not a top-level schema node refuses n).
+func (t *Tree) placed(b newBuilder, parent, n *Node, err error) (*Node, error) {
+	if err == nil && parent == nil {
+		err = t.insertSibling(t.top.first(), n)
+	}
+	if err = b.log.done(err); err != nil {
+		return nil, err
+	}
+	return n, nil
+}
+
+// NewTerm is lyd_new_term: a leaf or leaf-list instance of name with the JSON-format value, a
+// child of parent (a node of t) or, with parent nil, a top-level node of t (then
+// lyd_insert_sibling). name is "module:node", or "node" below a parent (the parent's module); the
+// module must be implemented in t's snapshot. Errors are a *ValidationError with libyang's
+// diagnostics and return code: a name that does not resolve is "Term node … not found."
+// (LY_ENOTFOUND), a value the type rejects the type's diagnostics.
+func (t *Tree) NewTerm(parent *Node, name, value string, o NewOptions) (*Node, error) {
+	b, mod, local, err := t.builder(parent, name, "_lyd_new_term")
+	if err != nil {
+		return nil, err
+	}
+	n, err := b.newTerm(parent, mod, local, value, newValOptions{output: o.Output})
+	return t.placed(b, parent, n, err)
+}
+
+// NewInner is lyd_new_inner: a container, notification, rpc or action of name, placed as NewTerm
+// places its node. A non-presence container is created with the Default flag, which inserting a
+// child into it clears.
+func (t *Tree) NewInner(parent *Node, name string, o NewOptions) (*Node, error) {
+	b, mod, local, err := t.builder(parent, name, "lyd_new_inner")
+	if err != nil {
+		return nil, err
+	}
+	n, err := b.newInner(parent, mod, local, o.Output)
+	return t.placed(b, parent, n, err)
+}
+
+// NewList is lyd_new_list: a list instance of name with the JSON-format key values in schema key
+// order, placed as NewTerm places its node. Values past the list's keys are ignored, all of them
+// for a keyless list, as libyang ignores them; nil keys of a keyed list is "Missing list … keys."
+// and fewer values than keys an LY_EINVAL argument error, "keys".
+func (t *Tree) NewList(parent *Node, name string, keys []string, o NewOptions) (*Node, error) {
+	b, mod, local, err := t.builder(parent, name, "lyd_new_list")
+	if err != nil {
+		return nil, err
+	}
+	n, err := b.newList(parent, mod, local, keys, newValOptions{output: o.Output}, "lyd_new_list")
+	return t.placed(b, parent, n, err)
+}
+
+// SetValue is lyd_change_term: the leaf or leaf-list instance n takes the JSON-format value.
+// changed is true when the value changed; setting the same value is no error: it clears the
+// Default flag of a default node and of its non-presence container parents (LY_EEXIST), or
+// changes nothing (LY_ENOT). An opaque or non-term n is an LY_EINVAL *ValidationError.
+func (n *Node) SetValue(value string) (changed bool, err error) {
+	var set *schema.Set
+	if n != nil {
+		set = setOf(n)
+	}
+	b := newBuilder{set: set, log: &logger{set: set}}
+	err = b.log.done(b.changeTerm(n, value, false))
+	var ve *ValidationError
+	if errors.As(err, &ve) && ve.Diags == nil && (ve.rc == "LY_EEXIST" || ve.rc == "LY_ENOT") {
+		return false, nil
+	}
+	return err == nil, err
 }

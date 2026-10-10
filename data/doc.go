@@ -32,6 +32,12 @@
 // a read-only argument is read the same way: the source of Merge, the diff given to ApplyDiff,
 // MergeDiff or MergeDiffTree (its src subtree). Every call that changes a tree is a mutation and
 // needs exclusive access to that tree, with no other call on it, read or write, at the same time:
-// NewPath, NewMeta, Remove, Validate, ValidateDiff, TrimXPath, and Merge, ApplyDiff, MergeDiff and
-// MergeDiffTree into it.
+// NewPath, NewTerm, NewInner, NewList, Insert (also of the tree n leaves), SetValue (of n's
+// tree), NewMeta, Remove, Validate, ValidateDiff, TrimXPath, LinkLeafrefs, and Merge, ApplyDiff,
+// MergeDiff, MergeDiffTree, Dup and DupSiblings into it (Dup and DupSiblings only read the tree
+// they copy from). LeafrefLinks is a read.
+//
+// Leafref link records (yang.Options.LeafrefLinking) join the trees whose nodes they link: once
+// trees are linked, a mutation of any of them needs exclusive access to all of them, and a read
+// of one must not run with a mutation of another (design 07 §6.1).
 package data

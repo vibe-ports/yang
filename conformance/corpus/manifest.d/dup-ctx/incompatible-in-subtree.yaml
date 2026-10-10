@@ -1,0 +1,9 @@
+fixtures:
+  # the same value inside a recursive duplicate (lyd_dup_single_to_ctx, lyd_insert_sibling; #99)
+  - id: dup-ctx/incompatible-in-subtree
+    dir: dup-ctx
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang API (lyd_dup_single_to_ctx): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["schemas-a"], "modules": [{"name": "dc"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "parse", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"dc:c\": {\"id\": \"dc:one\", \"ref\": \"/dc:c/id\", \"x\": \"str\", \"y\": \"v\", \"@id\": {\"dc:tag\": \"dc:one\", \"dc:where\": \"/dc:c/y\"}}}"}, {"do": "dup", "node": "/dc:c", "options": ["recursive"], "target": {"searchdirs": ["schemas-b"], "modules": [{"name": "dc"}], "context_options": ["no_yanglibrary"]}}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/incompatible-in-subtree.json

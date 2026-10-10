@@ -69,6 +69,45 @@ func sibList(n *Node) *Tree {
 	return n.tree
 }
 
+// Insert is lyd_insert_child: n becomes a child of parent, a node of t; with parent nil it is
+// lyd_insert_sibling with t's first top-level node, so n becomes a top-level node of t. n leaves
+// the tree it is in; when n is the first top-level node of another tree, all that tree's
+// top-level nodes move (libyang moves a whole sibling list). Refused as an LY_EINVAL
+// *ValidationError: a list key, a node of another schema snapshot, a parent not in t, and what
+// lyd_insert_check_schema refuses (n's schema node not a child of parent's, or not top-level).
+func (t *Tree) Insert(parent, n *Node) error {
+	fn := "lyd_insert_child"
+	if parent == nil {
+		fn = "lyd_insert_sibling"
+	}
+	lg := &logger{set: t.set}
+	switch {
+	case n == nil:
+		return lg.done(argErr("node", fn))
+	case parent != nil && treeOf(parent) != t:
+		return lg.done(argErr("parent (not in the tree)", fn))
+	case !sameSet(setOf(n), t.set) || setOf(n) == nil:
+		return lg.done(argErr("node (another schema snapshot)", fn)) // a Go tree has one snapshot
+	}
+	if parent != nil {
+		return lg.done(t.insertChild(parent, n))
+	}
+	return lg.done(t.insertSibling(t.top.first(), n))
+}
+
+// intoItself refuses a destination at or inside what moves (D-0112): n's subtree, or every
+// top-level subtree of n's tree when n starts it (sibList). libyang links the node into its own
+// subtree and every later walk of the tree never ends.
+func intoItself(dest, n *Node, fn string) error {
+	src := sibList(n)
+	for d := dest; d != nil; d = d.parent {
+		if d == n || src != nil && d.parent == nil && d.tree == src {
+			return argErr("node (the destination is inside it)", fn)
+		}
+	}
+	return nil
+}
+
 // insertChild is lyd_insert_child: n becomes a child of parent, or every top-level node of n's
 // tree when n starts it (sibList).
 func (t *Tree) insertChild(parent, n *Node) error {
@@ -81,6 +120,9 @@ func (t *Tree) insertChild(parent, n *Node) error {
 		return argErr("!parent->schema || (parent->schema->nodetype & LYD_NODE_INNER)", "lyd_insert_child")
 	}
 	if err := insertCheckSchema(parent.schema, nil, n.schema); err != nil {
+		return err
+	}
+	if err := intoItself(parent, n, "lyd_insert_child"); err != nil {
 		return err
 	}
 	if src := sibList(n); src != nil {
@@ -114,6 +156,11 @@ func (t *Tree) insertSibling(sibling, n *Node) error {
 			if dt = sibling.tree; dt == nil {
 				return &opError{"LY_EINVAL", "Sibling is not linked (no parent, no tree)."}
 			}
+		}
+	}
+	if sibling != nil {
+		if err := intoItself(sibling, n, "lyd_insert_sibling"); err != nil {
+			return err
 		}
 	}
 	if src := sibList(n); src != nil && src != dt {

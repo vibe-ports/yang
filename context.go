@@ -35,6 +35,10 @@ type Options struct {
 	RefImplemented bool
 	// LeafrefExtended allows deref() in leafref paths (LY_CTX_LEAFREF_EXTENDED).
 	LeafrefExtended bool
+	// LeafrefLinking makes data trees over the context's snapshots keep leafref link records
+	// (LY_CTX_LEAFREF_LINKING): Parse and Validate link every resolved leafref to its target, and
+	// data.Tree.LinkLeafrefs and data.Node.LeafrefLinks work.
+	LeafrefLinking bool
 	// BuiltinPluginsOnly limits the context to the built-in type handlers
 	// (LY_CTX_BUILTIN_PLUGINS_ONLY): typedefs of ietf-inet-types, ietf-yang-types and the
 	// other modules with their own handler store as their base type, with only its
@@ -96,7 +100,7 @@ func NewContext(opts Options, dirs ...fs.FS) (*Context, []Diagnostic, error) {
 	c, diags, err := compile.NewContext(compile.Options{AllImplemented: opts.AllImplemented,
 		NoYangLibrary: opts.NoYangLibrary, DisableSearchdirs: opts.DisableSearchdirs,
 		PreferSearchdirs: opts.PreferSearchdirs, EnableImportFeatures: opts.EnableImportFeatures, CompileObsolete: opts.CompileObsolete,
-		RefImplemented: opts.RefImplemented, LeafrefExtended: opts.LeafrefExtended,
+		RefImplemented: opts.RefImplemented, LeafrefExtended: opts.LeafrefExtended, LeafrefLinking: opts.LeafrefLinking,
 		BuiltinPluginsOnly: opts.BuiltinPluginsOnly, PatternCompat: opts.PatternCompat, Loader: opts.Loader, MaxSearchDirs: opts.MaxSearchDirs,
 		Parse: parser.Budget(opts.ParseBudget)}, dirs...)
 	if err != nil {

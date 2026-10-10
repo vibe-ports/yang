@@ -9,6 +9,7 @@ package data
 import (
 	"fmt"
 
+	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
 )
@@ -179,10 +180,14 @@ func (t *Tree) dupR(n, parent *Node, top bool, order insertOrder, opts dupOpts) 
 		}
 	case d.schema.Kind == schema.Leaf || d.schema.Kind == schema.LeafList:
 		d.value = n.value
-		if cross { // the canonical value stored in the target context
-			v, diag := types.StoreOnly(d.schema.Type, n.value.Canonical(), types.FormatCanon, types.HintData, nil, d.schema)
+		if cross { // the canonical value stored in the target context (its prefixes: module names)
+			v, diag := types.StoreOnly(d.schema.Type, n.value.Canonical(), types.FormatCanon, types.HintData,
+				types.ModuleNames{Set: t.set}, d.schema)
 			if diag != nil {
-				return nil, &opError{"LY_EVALID", diag.Msg}
+				if t.dupLog == nil {
+					return nil, &opError{"LY_EVALID", diag.Msg}
+				}
+				return nil, t.dupLog.storeErr(d, d.schema, diag) // at the unlinked duplicate
 			}
 			d.value = v
 		}
@@ -220,8 +225,13 @@ func (t *Tree) dupMeta(m *meta, parent *Node) *meta {
 	if ant == nil {
 		return nil // D-0067
 	}
-	v, d := types.StoreOnly(ant.Type, m.value.Canonical(), types.FormatCanon, types.HintData, nil, parent.schema)
+	v, d := types.StoreOnly(ant.Type, m.value.Canonical(), types.FormatCanon, types.HintData,
+		types.ModuleNames{Set: t.set}, parent.schema)
 	if d != nil {
+		if t.dupLog != nil { // lyd_value_store's items at the duplicate, then LOGERR; the copy goes on
+			_ = t.dupLog.storeErr(parent, parent.schema, d)
+			_ = t.dupLog.logErr("LY_EINT", "Value duplication failed.")
+		}
 		return nil
 	}
 	return &meta{mod: mod, name: m.name, value: v}
@@ -390,4 +400,60 @@ func dupTo(n *Node, trg *schema.Set, parent *Node, opts dupOpts, siblings bool) 
 		}
 	}
 	return t.dupNodes(n, parent, opts, siblings)
+}
+
+// DupOptions are the LYD_DUP_* options of Dup and DupSiblings.
+type DupOptions struct {
+	Recursive   bool // LYD_DUP_RECURSIVE: the whole subtree, not only the node (and a list's keys)
+	NoMeta      bool // LYD_DUP_NO_META: without metadata
+	WithParents bool // LYD_DUP_WITH_PARENTS: the node's parents too, up to parent or the top level
+	WithFlags   bool // LYD_DUP_WITH_FLAGS: all the flags, not only Default (copies are New)
+}
+
+func (o DupOptions) opts() dupOpts {
+	var d dupOpts
+	for _, f := range []struct {
+		on bool
+		o  dupOpts
+	}{{o.Recursive, dupRecursive}, {o.NoMeta, dupNoMeta}, {o.WithParents, dupWithParents}, {o.WithFlags, dupWithFlags}} {
+		if f.on {
+			d |= f.o
+		}
+	}
+	return d
+}
+
+// Dup is lyd_dup_single: a copy of n, from any tree, under parent (a node of t) or, with parent
+// nil, as a top-level node of t (a fresh NewTree gives libyang's unlinked copy); with
+// o.WithParents the copy of n under copies of its parents. When n's snapshot is not t's it is
+// lyd_dup_single_to_ctx, the way to move data onto a newer snapshot: schema nodes are found by
+// path and values stored again. The diagnostics are those logged also on success (a metadata
+// value the target rejects: dropped, "Value duplication failed."); a failure is a
+// *ValidationError and changes nothing.
+func (t *Tree) Dup(n, parent *Node, o DupOptions) (*Node, []yang.Diagnostic, error) {
+	return t.dupPublic(n, parent, o, false, "lyd_dup_single")
+}
+
+// DupSiblings is lyd_dup_siblings: as Dup, n and the siblings that follow it (not those before).
+func (t *Tree) DupSiblings(n, parent *Node, o DupOptions) (*Node, []yang.Diagnostic, error) {
+	return t.dupPublic(n, parent, o, true, "lyd_dup_siblings")
+}
+
+func (t *Tree) dupPublic(n, parent *Node, o DupOptions, siblings bool, fn string) (*Node, []yang.Diagnostic, error) {
+	lg := &logger{set: t.set}
+	switch {
+	case n == nil:
+		return nil, nil, lg.done(argErr("node", fn))
+	case setOf(n) == nil:
+		return nil, nil, lg.done(&opError{"LY_EINVAL", "Duplicating a node that is not in a tree."})
+	case parent != nil && treeOf(parent) != t:
+		return nil, nil, lg.done(argErr("parent (not in the tree)", fn))
+	}
+	t.dupLog = lg
+	d, err := t.dupNodes(n, parent, o.opts(), siblings)
+	t.dupLog = nil
+	if err = lg.done(err); err != nil {
+		return nil, nil, err
+	}
+	return d, lg.diags, nil
 }
