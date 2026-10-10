@@ -1,0 +1,2356 @@
+{
+  "source": "Native linux/amd64 libyang v5.8.6 differential log (76,900 requests). Execution outcomes extracted verbatim; these are not generated corpus goldens.",
+  "cases": [
+    {
+      "id": "[schema modules[].revision empty false]",
+      "outcome": {
+        "context_diagnostics": [],
+        "modules": [
+          {
+            "accepted": false,
+            "diagnostics": [
+              {
+                "apptag": null,
+                "code": {
+                  "err": 3,
+                  "name": "LY_EINVAL"
+                },
+                "data_path": null,
+                "level": "error",
+                "line": 0,
+                "msg": "Module \"pv2\" parsed with the wrong revision (\"none\" instead \"\").",
+                "phase": "parse",
+                "schema_path": null,
+                "vecode": 0,
+                "vecode_name": "LYVE_SUCCESS"
+              },
+              {
+                "apptag": null,
+                "code": {
+                  "err": 12,
+                  "name": "LY_EOTHER"
+                },
+                "data_path": null,
+                "level": "error",
+                "line": 0,
+                "msg": "Parsing module \"pv2\" failed.",
+                "phase": "parse",
+                "schema_path": null,
+                "vecode": 0,
+                "vecode_name": "LYVE_SUCCESS"
+              }
+            ],
+            "name": "pv2",
+            "phase": "parse"
+          }
+        ],
+        "verdict": "invalid"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2",
+            "revision": ""
+          }
+        ],
+        "op": "schema",
+        "searchdirs": [
+          "schemas"
+        ]
+      }
+    },
+    {
+      "id": "[data modules[].revision empty false]",
+      "outcome": {
+        "context_diagnostics": [],
+        "diagnostics": [],
+        "modules": [
+          {
+            "accepted": false,
+            "diagnostics": [
+              {
+                "apptag": null,
+                "code": {
+                  "err": 3,
+                  "name": "LY_EINVAL"
+                },
+                "data_path": null,
+                "level": "error",
+                "line": 0,
+                "msg": "Module \"pv2\" parsed with the wrong revision (\"none\" instead \"\").",
+                "phase": "parse",
+                "schema_path": null,
+                "vecode": 0,
+                "vecode_name": "LYVE_SUCCESS"
+              },
+              {
+                "apptag": null,
+                "code": {
+                  "err": 12,
+                  "name": "LY_EOTHER"
+                },
+                "data_path": null,
+                "level": "error",
+                "line": 0,
+                "msg": "Parsing module \"pv2\" failed.",
+                "phase": "parse",
+                "schema_path": null,
+                "vecode": 0,
+                "vecode_name": "LYVE_SUCCESS"
+              }
+            ],
+            "name": "pv2",
+            "phase": "parse"
+          }
+        ],
+        "verdict": "schema-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+        "modules": [
+          {
+            "name": "pv2",
+            "revision": ""
+          }
+        ],
+        "op": "data",
+        "parse_only": true,
+        "searchdirs": [
+          "schemas"
+        ]
+      }
+    },
+    {
+      "id": "[data parse_options valid-when_true false]",
+      "outcome": {
+        "context_diagnostics": [],
+        "diagnostics": [],
+        "modules": [
+          {
+            "accepted": true,
+            "diagnostics": [],
+            "name": "pv2"
+          }
+        ],
+        "rc": {
+          "err": 0,
+          "name": "LY_SUCCESS"
+        },
+        "verdict": "valid"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "data",
+        "parse_only": true,
+        "parse_options": [
+          "when_true"
+        ],
+        "searchdirs": [
+          "schemas"
+        ]
+      }
+    },
+    {
+      "id": "[data parse_options valid-anydata_strict false]",
+      "outcome": {
+        "context_diagnostics": [],
+        "diagnostics": [],
+        "modules": [
+          {
+            "accepted": true,
+            "diagnostics": [],
+            "name": "pv2"
+          }
+        ],
+        "rc": {
+          "err": 0,
+          "name": "LY_SUCCESS"
+        },
+        "verdict": "valid"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "data",
+        "parse_only": true,
+        "parse_options": [
+          "anydata_strict"
+        ],
+        "searchdirs": [
+          "schemas"
+        ]
+      }
+    },
+    {
+      "id": "[xpath data absent false]",
+      "outcome": {
+        "context_diagnostics": [],
+        "diagnostics": [
+          {
+            "apptag": null,
+            "code": {
+              "err": 3,
+              "name": "LY_EINVAL"
+            },
+            "data_path": null,
+            "level": "error",
+            "line": 0,
+            "msg": "Invalid argument in (lyd_parse_data()).",
+            "phase": "data",
+            "schema_path": null,
+            "vecode": 0,
+            "vecode_name": "LYVE_SUCCESS"
+          }
+        ],
+        "modules": [
+          {
+            "accepted": true,
+            "diagnostics": [],
+            "name": "pv2"
+          }
+        ],
+        "verdict": "data-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "xpath",
+        "parse_only": true,
+        "searchdirs": [
+          "schemas"
+        ],
+        "xpath": "/pv2:c"
+      }
+    },
+    {
+      "id": "[xpath modules[].revision empty false]",
+      "outcome": {
+        "context_diagnostics": [],
+        "diagnostics": [],
+        "modules": [
+          {
+            "accepted": false,
+            "diagnostics": [
+              {
+                "apptag": null,
+                "code": {
+                  "err": 3,
+                  "name": "LY_EINVAL"
+                },
+                "data_path": null,
+                "level": "error",
+                "line": 0,
+                "msg": "Module \"pv2\" parsed with the wrong revision (\"none\" instead \"\").",
+                "phase": "parse",
+                "schema_path": null,
+                "vecode": 0,
+                "vecode_name": "LYVE_SUCCESS"
+              },
+              {
+                "apptag": null,
+                "code": {
+                  "err": 12,
+                  "name": "LY_EOTHER"
+                },
+                "data_path": null,
+                "level": "error",
+                "line": 0,
+                "msg": "Parsing module \"pv2\" failed.",
+                "phase": "parse",
+                "schema_path": null,
+                "vecode": 0,
+                "vecode_name": "LYVE_SUCCESS"
+              }
+            ],
+            "name": "pv2",
+            "phase": "parse"
+          }
+        ],
+        "verdict": "schema-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+        "modules": [
+          {
+            "name": "pv2",
+            "revision": ""
+          }
+        ],
+        "op": "xpath",
+        "parse_only": true,
+        "searchdirs": [
+          "schemas"
+        ],
+        "xpath": "/pv2:c"
+      }
+    },
+    {
+      "id": "[diff modules[].revision empty false]root",
+      "outcome": {
+        "context_diagnostics": [],
+        "diagnostics": [],
+        "modules": [
+          {
+            "accepted": false,
+            "diagnostics": [
+              {
+                "apptag": null,
+                "code": {
+                  "err": 3,
+                  "name": "LY_EINVAL"
+                },
+                "data_path": null,
+                "level": "error",
+                "line": 0,
+                "msg": "Module \"pv2\" parsed with the wrong revision (\"none\" instead \"\").",
+                "phase": "parse",
+                "schema_path": null,
+                "vecode": 0,
+                "vecode_name": "LYVE_SUCCESS"
+              },
+              {
+                "apptag": null,
+                "code": {
+                  "err": 12,
+                  "name": "LY_EOTHER"
+                },
+                "data_path": null,
+                "level": "error",
+                "line": 0,
+                "msg": "Parsing module \"pv2\" failed.",
+                "phase": "parse",
+                "schema_path": null,
+                "vecode": 0,
+                "vecode_name": "LYVE_SUCCESS"
+              }
+            ],
+            "name": "pv2",
+            "phase": "parse"
+          }
+        ],
+        "verdict": "schema-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "first": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+        "modules": [
+          {
+            "name": "pv2",
+            "revision": ""
+          }
+        ],
+        "op": "diff",
+        "parse_only": true,
+        "searchdirs": [
+          "schemas"
+        ],
+        "second": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}"
+      }
+    },
+    {
+      "id": "[sequence modules[].revision empty false]",
+      "outcome": {
+        "context_diagnostics": [],
+        "modules": [
+          {
+            "accepted": false,
+            "diagnostics": [
+              {
+                "apptag": null,
+                "code": {
+                  "err": 3,
+                  "name": "LY_EINVAL"
+                },
+                "data_path": null,
+                "level": "error",
+                "line": 0,
+                "msg": "Module \"pv2\" parsed with the wrong revision (\"none\" instead \"\").",
+                "phase": "parse",
+                "schema_path": null,
+                "vecode": 0,
+                "vecode_name": "LYVE_SUCCESS"
+              },
+              {
+                "apptag": null,
+                "code": {
+                  "err": 12,
+                  "name": "LY_EOTHER"
+                },
+                "data_path": null,
+                "level": "error",
+                "line": 0,
+                "msg": "Parsing module \"pv2\" failed.",
+                "phase": "parse",
+                "schema_path": null,
+                "vecode": 0,
+                "vecode_name": "LYVE_SUCCESS"
+              }
+            ],
+            "name": "pv2",
+            "phase": "parse"
+          }
+        ],
+        "verdict": "schema-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2",
+            "revision": ""
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[atoms modules[].revision empty false]",
+      "outcome": {
+        "context_diagnostics": [],
+        "diagnostics": [],
+        "modules": [
+          {
+            "accepted": false,
+            "diagnostics": [
+              {
+                "apptag": null,
+                "code": {
+                  "err": 3,
+                  "name": "LY_EINVAL"
+                },
+                "data_path": null,
+                "level": "error",
+                "line": 0,
+                "msg": "Module \"pv2\" parsed with the wrong revision (\"none\" instead \"\").",
+                "phase": "parse",
+                "schema_path": null,
+                "vecode": 0,
+                "vecode_name": "LYVE_SUCCESS"
+              },
+              {
+                "apptag": null,
+                "code": {
+                  "err": 12,
+                  "name": "LY_EOTHER"
+                },
+                "data_path": null,
+                "level": "error",
+                "line": 0,
+                "msg": "Parsing module \"pv2\" failed.",
+                "phase": "parse",
+                "schema_path": null,
+                "vecode": 0,
+                "vecode_name": "LYVE_SUCCESS"
+              }
+            ],
+            "name": "pv2",
+            "phase": "parse"
+          }
+        ],
+        "verdict": "schema-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2",
+            "revision": ""
+          }
+        ],
+        "op": "atoms",
+        "searchdirs": [
+          "schemas"
+        ],
+        "xpath": "/pv2:c"
+      }
+    },
+    {
+      "id": "[parse/data-operational data absent false]",
+      "outcome": {
+        "request_error_class": "parse step needs data",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data_type": "data-operational",
+            "do": "parse",
+            "format": "json",
+            "parse_only": true
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[parse/data-operational do empty true]",
+      "outcome": {
+        "request_error_class": "unknown-key:data",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "delete": "/missing:x",
+            "do": "edit"
+          },
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "data_type": "data-operational",
+            "do": "",
+            "format": "json",
+            "parse_only": true
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[diff/data-operational data_node empty false]",
+      "outcome": {
+        "request_error_class": "diff data_node  not found",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "data_node": "",
+            "data_type": "data-operational",
+            "do": "diff",
+            "format": "json",
+            "parse_only": true
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[diff/data-operational merge null false]",
+      "outcome": {
+        "request_error_class": "diff single and merge must be booleans",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "data_type": "data-operational",
+            "do": "diff",
+            "format": "json",
+            "merge": null,
+            "parse_only": true
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[diff/data-operational node empty false]",
+      "outcome": {
+        "request_error_class": "diff node  not found",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "data_type": "data-operational",
+            "do": "diff",
+            "format": "json",
+            "node": "",
+            "parse_only": true
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[diff/rpc parse_only absent false]",
+      "outcome": {
+        "request_error_class": "sequence diffs operation data with parse_only only",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:ping\":{\"n\":1}}",
+            "data_type": "rpc",
+            "do": "diff",
+            "format": "json"
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[diff/rpc target empty-object false]",
+      "outcome": {
+        "request_error_class": "diff target with operation data",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:ping\":{\"n\":1}}",
+            "data_type": "rpc",
+            "do": "diff",
+            "format": "json",
+            "parse_only": true,
+            "target": {}
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[validate do valid-diff_merge false]",
+      "outcome": {
+        "request_error_class": "diff_merge step needs data",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": "diff_merge",
+            "module": "pv2"
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[edit delete null false]",
+      "outcome": {
+        "request_error_class": "key merge not allowed in this edit step",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "delete": null,
+            "do": "edit",
+            "merge": "{}"
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[edit merge absent false]",
+      "outcome": {
+        "request_error_class": "edit step needs exactly one of merge, merge_file, set, delete, insert_term, insert_inner, insert_list, insert_list2, insert_opaq, new_meta, free_meta",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": "edit"
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[change_term canon null false]",
+      "outcome": {
+        "request_error_class": "change_term canon must be a boolean",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "canon": null,
+            "do": "change_term",
+            "node": "/pv2:c/mode",
+            "value": "off"
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[change_term node absent false]",
+      "outcome": {
+        "request_error_class": "change_term needs node and value",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": "change_term",
+            "value": "off"
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[change_term node empty false]",
+      "outcome": {
+        "request_error_class": "change_term node  not found",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": "change_term",
+            "node": "",
+            "value": "off"
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[dump do empty false]",
+      "outcome": {
+        "request_error_class": "unknown step ",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": ""
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[dump do bogus false]",
+      "outcome": {
+        "request_error_class": "unknown step bogus",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": "bogus"
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[dump do valid-dup false]",
+      "outcome": {
+        "request_error_class": "dup step needs a node path",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": "dup"
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[dump do valid-compare false]",
+      "outcome": {
+        "request_error_class": "compare step needs data",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": "compare"
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[dump do valid-diff_parse false]",
+      "outcome": {
+        "request_error_class": "diff_parse step needs data",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": "diff_parse"
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[dump do valid-trim false]",
+      "outcome": {
+        "request_error_class": "trim step needs an xpath",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": "trim"
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[dup node empty false]",
+      "outcome": {
+        "request_error_class": "dup node  not found",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": "dup",
+            "node": "",
+            "options": [
+              "recursive"
+            ]
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[dup parent empty false]",
+      "outcome": {
+        "request_error_class": "dup parent  not found",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": "dup",
+            "node": "/pv2:c",
+            "options": [
+              "recursive"
+            ],
+            "parent": ""
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[dup siblings null false]",
+      "outcome": {
+        "request_error_class": "dup siblings must be a boolean",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": "dup",
+            "node": "/pv2:c",
+            "options": [
+              "recursive"
+            ],
+            "siblings": null
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[dup/target modules[].revision empty false]",
+      "outcome": {
+        "request_error_class": "dup target context failed",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": "dup",
+            "node": "/pv2:c",
+            "options": [
+              "recursive"
+            ],
+            "target": {
+              "context_options": [
+                "no_yanglibrary"
+              ],
+              "modules": [
+                {
+                  "name": "pv2",
+                  "revision": ""
+                }
+              ],
+              "searchdirs": [
+                "schemas"
+              ]
+            }
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[insert node empty false]",
+      "outcome": {
+        "request_error_class": "insert node  not found in the data",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "data": "{\"pv2:c\":{\"grouped\":\"new\"}}",
+            "do": "insert",
+            "node": "",
+            "parent": "/pv2:c",
+            "parse_only": true
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[insert parent empty false]",
+      "outcome": {
+        "request_error_class": "insert parent  not found",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "data": "{\"pv2:c\":{\"grouped\":\"new\"}}",
+            "do": "insert",
+            "node": "/pv2:c/grouped",
+            "parent": "",
+            "parse_only": true
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[compare first empty false]",
+      "outcome": {
+        "request_error_class": "compare first  not found",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "compare",
+            "first": "",
+            "parse_only": true
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[compare second empty false]",
+      "outcome": {
+        "request_error_class": "compare second  not found",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "compare",
+            "parse_only": true,
+            "second": ""
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[diff/target modules[].features unknown-feature false]",
+      "outcome": {
+        "request_error_class": "diff target context failed",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "diff",
+            "parse_only": true,
+            "target": {
+              "context_options": [
+                "no_yanglibrary"
+              ],
+              "modules": [
+                {
+                  "features": [
+                    "bogus"
+                  ],
+                  "name": "pv2"
+                }
+              ],
+              "searchdirs": [
+                "schemas"
+              ]
+            }
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[diff_merge src_node empty false]",
+      "outcome": {
+        "request_error_class": "diff_merge src_node  not found",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "data": "{}",
+            "do": "diff_merge",
+            "src_node": ""
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[trim xpath empty false]",
+      "outcome": {
+        "context_diagnostics": [],
+        "failed_step": 1,
+        "modules": [
+          {
+            "accepted": true,
+            "diagnostics": [],
+            "name": "pv2"
+          }
+        ],
+        "rc": {
+          "err": 7,
+          "name": "LY_EVALID"
+        },
+        "steps": [
+          {
+            "diagnostics": [],
+            "do": "parse",
+            "rc": {
+              "err": 0,
+              "name": "LY_SUCCESS"
+            }
+          },
+          {
+            "diagnostics": [
+              {
+                "apptag": null,
+                "code": {
+                  "err": 7,
+                  "name": "LY_EVALID"
+                },
+                "data_path": null,
+                "level": "error",
+                "line": 0,
+                "msg": "Unexpected XPath expression end.",
+                "phase": "xpath",
+                "schema_path": null,
+                "vecode": 5,
+                "vecode_name": "LYVE_XPATH"
+              }
+            ],
+            "do": "trim",
+            "rc": {
+              "err": 7,
+              "name": "LY_EVALID"
+            }
+          },
+          {
+            "do": "dump",
+            "skipped": true
+          }
+        ],
+        "verdict": "invalid"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": "trim",
+            "xpath": ""
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[edit/set path absent false]",
+      "outcome": {
+        "request_error_class": "set needs an object with path",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": "edit",
+            "set": {
+              "value": "on"
+            }
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[edit/set path empty false]",
+      "gap": "relative-set-parent",
+      "outcome": {
+        "context_diagnostics": [],
+        "failed_step": 1,
+        "modules": [
+          {
+            "accepted": true,
+            "diagnostics": [],
+            "name": "pv2"
+          }
+        ],
+        "rc": {
+          "err": 7,
+          "name": "LY_EVALID"
+        },
+        "steps": [
+          {
+            "diagnostics": [],
+            "do": "parse",
+            "rc": {
+              "err": 0,
+              "name": "LY_SUCCESS"
+            }
+          },
+          {
+            "diagnostics": [
+              {
+                "apptag": null,
+                "code": {
+                  "err": 7,
+                  "name": "LY_EVALID"
+                },
+                "data_path": null,
+                "level": "error",
+                "line": 0,
+                "msg": "Unexpected XPath expression end.",
+                "phase": "edit",
+                "schema_path": null,
+                "vecode": 5,
+                "vecode_name": "LYVE_XPATH"
+              }
+            ],
+            "do": "edit",
+            "rc": {
+              "err": 7,
+              "name": "LY_EVALID"
+            }
+          },
+          {
+            "do": "dump",
+            "skipped": true
+          }
+        ],
+        "verdict": "invalid"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": "edit",
+            "set": {
+              "path": "",
+              "value": "on"
+            }
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[edit/set path bogus false]",
+      "gap": "relative-set-parent",
+      "outcome": {
+        "context_diagnostics": [],
+        "failed_step": 1,
+        "modules": [
+          {
+            "accepted": true,
+            "diagnostics": [],
+            "name": "pv2"
+          }
+        ],
+        "rc": {
+          "err": 7,
+          "name": "LY_EVALID"
+        },
+        "steps": [
+          {
+            "diagnostics": [],
+            "do": "parse",
+            "rc": {
+              "err": 0,
+              "name": "LY_SUCCESS"
+            }
+          },
+          {
+            "diagnostics": [
+              {
+                "apptag": null,
+                "code": {
+                  "err": 7,
+                  "name": "LY_EVALID"
+                },
+                "data_path": null,
+                "level": "error",
+                "line": 0,
+                "msg": "Not found node \"bogus\" in path.",
+                "phase": "edit",
+                "schema_path": "/pv2:c",
+                "vecode": 5,
+                "vecode_name": "LYVE_XPATH"
+              }
+            ],
+            "do": "edit",
+            "rc": {
+              "err": 7,
+              "name": "LY_EVALID"
+            }
+          },
+          {
+            "do": "dump",
+            "skipped": true
+          }
+        ],
+        "verdict": "invalid"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": "edit",
+            "set": {
+              "path": "bogus",
+              "value": "on"
+            }
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[edit/insert_term module empty false]",
+      "outcome": {
+        "request_error_class": "module  is not implemented",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": "edit",
+            "insert_term": {
+              "module": "",
+              "name": "grouped",
+              "parent": "/pv2:c",
+              "value": "x"
+            }
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[edit/insert_term name absent false]",
+      "outcome": {
+        "request_error_class": "insert_* need an object with name and at most one of parent, parent_opaq",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": "edit",
+            "insert_term": {
+              "parent": "/pv2:c",
+              "value": "x"
+            }
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[edit/insert_term parent absent false]",
+      "outcome": {
+        "request_error_class": "insert_term/inner/list/list2 need a module or a parent",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": "edit",
+            "insert_term": {
+              "name": "grouped",
+              "value": "x"
+            }
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[edit/insert_term value absent false]",
+      "outcome": {
+        "request_error_class": "insert_term needs a value",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": "edit",
+            "insert_term": {
+              "name": "grouped",
+              "parent": "/pv2:c"
+            }
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[edit/insert_list keys empty-array false]",
+      "outcome": {
+        "request_error_class": "insert_list l has fewer keys than the list",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": "edit",
+            "insert_list": {
+              "keys": [],
+              "name": "l",
+              "parent": "/pv2:c"
+            }
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[edit/insert_list keys wrong-key false]",
+      "outcome": {
+        "request_error_class": "insert_list keys must be an array of at most 16 strings or nulls",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": "edit",
+            "insert_list": {
+              "keys": [
+                false
+              ],
+              "name": "l",
+              "parent": "/pv2:c"
+            }
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[edit/insert_opaq module absent false]",
+      "outcome": {
+        "request_error_class": "insert_opaq needs a module",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": "edit",
+            "insert_opaq": {
+              "name": "unknown"
+            }
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[edit/insert_opaq parent_opaq empty false]",
+      "outcome": {
+        "request_error_class": "insert parent_opaq  not found",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": "edit",
+            "insert_opaq": {
+              "module": "pv2",
+              "name": "unknown",
+              "parent_opaq": ""
+            }
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[edit/insert_opaq xml null false]",
+      "outcome": {
+        "request_error_class": "insert_opaq xml must be a boolean",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": "edit",
+            "insert_opaq": {
+              "module": "pv2",
+              "name": "unknown",
+              "xml": null
+            }
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[edit/new_meta name absent false]",
+      "outcome": {
+        "request_error_class": "new_meta/free_meta need an object with node and a module-qualified name",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          },
+          {
+            "name": "pv2-meta"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": "edit",
+            "new_meta": {
+              "node": "/pv2:c",
+              "value": "merge"
+            }
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    },
+    {
+      "id": "[edit/new_meta value absent false]",
+      "outcome": {
+        "request_error_class": "new_meta needs a value",
+        "verdict": "request-error"
+      },
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          },
+          {
+            "name": "pv2-meta"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "do": "edit",
+            "new_meta": {
+              "name": "pv2-meta:ann",
+              "node": "/pv2:c"
+            }
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      }
+    }
+  ]
+}

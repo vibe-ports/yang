@@ -1,0 +1,86 @@
+{
+  "context_diagnostics": [],
+  "failed_step": 1,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 7,
+    "name": "LY_EVALID"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2:c",
+          "schema": "/pv2:c",
+          "value": null
+        }
+      ]
+    },
+    {
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 1,
+          "msg": "Missing the operation node.",
+          "phase": "parse",
+          "schema_path": null,
+          "vecode": 9,
+          "vecode_name": "LYVE_DATA"
+        }
+      ],
+      "do": "parse",
+      "rc": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2:c",
+          "schema": "/pv2:c",
+          "value": null
+        }
+      ]
+    }
+  ],
+  "verdict": "invalid"
+}

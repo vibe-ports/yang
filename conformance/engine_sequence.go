@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"iter"
+	"maps"
 	"slices"
 	"strings"
 
@@ -16,9 +17,9 @@ import (
 // seqKeys are the fields of each sequence step kind runSequence handles (lyoracle.c check_step).
 var seqKeys = map[string]map[string]bool{
 	"parse": set("do", "format", "data_type", "data", "data_file", "unknown", "parse_only", "parse_options",
-		"validate_options"),
-	"validate": set("do", "data_type", "validate_options"),
-	"edit": set("do", "set", "delete", "new_meta", "free_meta", "insert_term", "insert_inner", "insert_list", "insert_list2", "merge",
+		"validate_options", "rpc", "keep_input", "parent"),
+	"validate": set("do", "data_type", "validate_options", "module", "final_only"),
+	"edit": set("do", "set", "delete", "new_meta", "free_meta", "insert_term", "insert_inner", "insert_list", "insert_list2", "insert_opaq", "merge",
 		"merge_file", "format", "data_type", "unknown", "parse_options"),
 	"dup":         set("do", "node", "parent", "options", "siblings", "target"),
 	"link":        set("do"),
@@ -37,8 +38,6 @@ var seqKeys = map[string]map[string]bool{
 	"diff_reverse": set("do"),
 	"trim":         set("do", "xpath", "vars"),
 }
-
-var seqRequestKeys = set("op", "base_dir", "searchdirs", "modules", "context_options", "steps")
 
 var seqContextKeys = set("searchdirs", "modules", "context_options")
 
@@ -84,48 +83,24 @@ func set(keys ...string) map[string]bool {
 
 // runSequence is lyoracle.c op_sequence over the public data API: one retained tree, every step's
 // rc, diagnostics and typed dump, the steps after the first failure skipped. Every step is
-// checked first, so a fixture with a step the API cannot express is unsupported as a whole.
-func runSequence(r Request, s *yang.Schema, resp map[string]any) error {
-	for k := range r.Params {
-		if !seqRequestKeys[k] {
-			return fmt.Errorf("%w: sequence request field %s", ErrUnsupported, k)
-		}
+// request-checked first; capability checks run only for steps that execute.
+func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionContext) error {
+	if err := checkRequest(r, s, r.Params, exec, sequenceRequestRules); err != nil {
+		return err
 	}
 	var steps []map[string]any
+	// check_step checks every step against the ORIGINAL context before execution.
 	for _, x := range list(r.Params["steps"]) {
 		st, _ := x.(map[string]any)
-		what := str(st, "do", "")
-		if why, ok := seqUnsupported[what]; ok {
-			return fmt.Errorf("%w: sequence step %s %s", ErrUnsupported, what, why)
+		if err := checkRequest(r, s, st, exec, stepEntryRules); err != nil {
+			return err
 		}
-		keys, ok := seqKeys[what]
-		if !ok {
-			return fmt.Errorf("%w: sequence step %q", ErrUnsupported, what)
+		stepExec := stepExecutionContexts[str(st, "do", "")]
+		if err := checkRequest(r, s, st, stepExec, stepRequestRules[str(st, "do", "")]); err != nil {
+			return err
 		}
-		if why := seqOptionUnsupported(what, st); why != "" {
-			return fmt.Errorf("%w: %s", ErrUnsupported, why)
-		}
-		for k := range st {
-			if why, bad := seqUnsupported[k]; bad && what == "edit" {
-				return fmt.Errorf("%w: edit %s %s", ErrUnsupported, k, why)
-			}
-			if !keys[k] {
-				return fmt.Errorf("%w: %s step field %s", ErrUnsupported, what, k)
-			}
-		}
-		if what == "diff" && st["target"] != nil {
-			target, ok := st["target"].(map[string]any)
-			if !ok {
-				return fmt.Errorf("%w: diff target must be a context object", ErrUnsupported)
-			}
-			if st["data"] == nil && st["data_file"] == nil {
-				return fmt.Errorf("%w: diff target needs data", ErrUnsupported)
-			}
-			for k := range target {
-				if !seqContextKeys[k] {
-					return fmt.Errorf("%w: diff target context field %s", ErrUnsupported, k)
-				}
-			}
+		if _, ok := seqKeys[str(st, "do", "")]; !ok {
+			return requestError("unknown step %s", st["do"])
 		}
 		steps = append(steps, st)
 	}
@@ -151,10 +126,34 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any) error {
 			diags []yang.Diagnostic
 			err   error
 		)
+		stepExec := stepExecutionContexts[what]
+		if err := checkRequest(r, s, st, stepExec, stepExecutionRules[what]); err != nil {
+			return err
+		}
+		// Execution-time selectors precede the API call, including for opaque
+		// construction which the public API does not expose yet.
+		if what == "edit" {
+			if err := checkInsertSelectors(s, tree, st); err != nil {
+				return err
+			}
+		}
+		// A skipped step never needs an API capability (lyoracle.c:2502-2506).
+		if why := seqOptionUnsupported(what, st); why != "" {
+			return fmt.Errorf("%w: %s", ErrUnsupported, why)
+		}
+		for _, k := range slices.Sorted(maps.Keys(st)) { // the first refusal must not depend on map order
+			if why, bad := seqUnsupported[k]; bad && what == "edit" {
+				return fmt.Errorf("%w: edit %s %s", ErrUnsupported, k, why)
+			}
+		}
+		if what == "validate" && st["final_only"] == true {
+			return fmt.Errorf("%w: lyd_validate_module_final is not exported (split-validation speed path), U-0106", ErrUnsupported)
+		}
 		phase := what
 		switch what {
 		case "parse":
-			tree, diags, err = stepParse(r, s, st, tree)
+			phase = "" // parseOne distinguishes the request's "rpc" phase from "parse"
+			tree, diags, err = stepParse(r, s, st, stepExec, tree)
 		case "validate":
 			tree, diags, err = stepValidate(s, st, tree, so)
 		case "edit":
@@ -186,7 +185,7 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any) error {
 		case "diff_parse":
 			phase = "parse"
 			var d *data.Tree
-			if d, diags, err = parseDiff(r, s, st); err == nil {
+			if d, diags, err = parseDiff(r, s, st, stepExec); err == nil {
 				diff = d
 				if empty(diff) {
 					diff = nil
@@ -290,15 +289,15 @@ func stepCompare(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, 
 			return nil, fmt.Errorf("%w: compare option %v", ErrUnsupported, x)
 		}
 	}
-	other, diags, err := stepParse(r, s, st, nil)
+	other, diags, err := stepParse(r, s, st, execStepCompare, nil)
 	if err != nil || other == nil {
 		return diags, err
 	}
-	n1, err := nodeAt(tree, str(st, "first", ""))
+	n1, err := selectedNode(tree, st, "first", "compare first")
 	if err != nil {
 		return nil, err
 	}
-	n2, err := nodeAt(other, str(st, "second", ""))
+	n2, err := selectedNode(other, st, "second", "compare second")
 	if err != nil {
 		return nil, err
 	}
@@ -309,49 +308,66 @@ func stepCompare(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, 
 	return diags, nil
 }
 
-// nodeAt is the node at path in tree, its first top-level node for "" (nil for no tree).
-func nodeAt(tree *data.Tree, path string) (*data.Node, error) {
-	if tree == nil {
-		return nil, nil
+// selectedNode distinguishes an omitted selector from an explicitly empty path.
+func selectedNode(tree *data.Tree, p map[string]any, key, label string) (*data.Node, error) {
+	if path, present, _ := strField(p, key); present {
+		return findNode(tree, path, label)
 	}
-	if path == "" {
-		for n := range tree.Top() {
-			return n, nil
-		}
-		return nil, nil
-	}
-	n, err := tree.Find(path)
-	if err == nil && n == nil {
-		err = fmt.Errorf("compare node %s not found", path)
-	}
-	return n, err
+	return topNode(tree), nil
 }
 
 // stepParse is step_parse: the parsed tree replaces the retained one only on success.
-func stepParse(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*data.Tree, []yang.Diagnostic, error) {
-	o, err := dataOptions(st)
+func stepParse(r Request, s *yang.Schema, st map[string]any, exec executionContext, tree *data.Tree) (*data.Tree, []yang.Diagnostic, error) {
+	parentPath, hasParent, err := strField(st, "parent")
 	if err != nil {
-		return nil, nil, err
+		return tree, nil, err
 	}
-	f, err := formatOf(st)
-	if err != nil {
-		return nil, nil, err
+	if hasParent && exec == execStepParse {
+		typ, ok := opTypes[str(st, "data_type", "")]
+		if !ok {
+			return tree, nil, requestError("parse parent requires data_type rpc, reply or notif")
+		}
+		_, hasRPC, err := requestInput(r, st, "rpc")
+		if err != nil {
+			return tree, nil, err
+		}
+		if hasRPC || st["parse_only"] != true {
+			return tree, nil, requestError("parse parent excludes rpc and requires parse_only")
+		}
+		parent, err := findNode(tree, parentPath, "parse parent")
+		if err != nil {
+			return tree, nil, err
+		}
+		if typ != data.OpReply {
+			return tree, nil, fmt.Errorf("%w: operation input into an existing parent is not exported (U-0106)", ErrUnsupported)
+		}
+		in, present, err := requestInput(r, st, "data")
+		if err != nil {
+			return tree, nil, err
+		}
+		f, err := formatOf(st)
+		if err != nil {
+			return tree, nil, err
+		}
+		if ps := parent.Schema(); ps == nil || ps.Kind() != yang.KindRPC && ps.Kind() != yang.KindAction {
+			return tree, nil, fmt.Errorf("%w: reply into a non-operation parent (ParseOp requires an RPC or action, U-0110)", ErrUnsupported)
+		}
+		_, diags, err := data.ParseOp(context.Background(), inputReader(in, present), f, s, typ, data.ParseOpOptions{Unknown: unknownPolicies[str(st, "unknown", "reject")], Request: parent})
+		return tree, phased(nil, diags, "parse"), err
 	}
-	in, err := inputOf(r, st, "data")
-	if err != nil {
-		return nil, nil, err
-	}
-	t, diags, err := data.Parse(context.Background(), strings.NewReader(in), f, s, o)
+
+	t, diags, err := parseOne(r, s, st, exec, "data", "parse", nil)
 	if err == nil && t != nil {
 		tree = t
 	}
 	return tree, diags, err
 }
 
-// stepValidate is step_validate: lyd_validate_all with the step's flags and its implicit diff.
+// stepValidate is step_validate: lyd_validate_all or lyd_validate_module with the step's flags
+// and its implicit diff.
 func stepValidate(s *yang.Schema, st map[string]any, tree *data.Tree, so map[string]any) (*data.Tree,
 	[]yang.Diagnostic, error) {
-	o, err := dataOptions(st)
+	o, err := dataOptions(st, execStepValidate)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -360,7 +376,14 @@ func stepValidate(s *yang.Schema, st map[string]any, tree *data.Tree, so map[str
 			return nil, nil, err
 		}
 	}
-	diff, diags, err := tree.ValidateDiff(context.Background(), o.Validate)
+	module := str(st, "module", "")
+	var diff *data.Tree
+	var diags []yang.Diagnostic
+	if module == "" {
+		diff, diags, err = tree.ValidateDiff(context.Background(), o.Validate)
+	} else {
+		diff, diags, err = tree.ValidateModuleDiff(context.Background(), module, o.Validate)
+	}
 	so["implicit_diff"] = nil
 	if diff != nil && !empty(diff) {
 		var b strings.Builder
@@ -389,7 +412,20 @@ func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*d
 	switch {
 	case st["set"] != nil:
 		x, _ := st["set"].(map[string]any)
-		_, err = tree.NewPath(str(x, "path", ""), str(x, "value", ""), data.NewPathOptions{Update: true})
+		path := str(x, "path", "")
+		// lyoracle passes the retained first node as lyd_new_path's parent (NULL for an empty
+		// tree). lyd_new_path checks (path[0] == '/') || parent before it tokenizes
+		// (tree_data_new.c:1868), so without a parent the path goes to NewPath unchanged and a
+		// leading space is its LY_EINVAL argument error. With a parent, any path that does not
+		// start with '/' (relative, or whitespace-led and absolute only to the lexer) reaches
+		// lyd_new_path_ with that parent and the original text, which Tree.NewPath cannot take:
+		// it has no parent argument (#255), and trimming or rewriting the path changes libyang's
+		// diagnostics (positions, path text), so the engine does not emulate it.
+		if topNode(tree) != nil && (path == "" || path[0] != '/') {
+			return nil, nil, rc, fmt.Errorf("%w: relative set under a retained parent, or a path with leading "+
+				"whitespace (Tree.NewPath has no parent argument, #255, U-0110)", ErrUnsupported)
+		}
+		_, err = tree.NewPath(path, str(x, "value", ""), data.NewPathOptions{Update: true})
 	case st["new_meta"] != nil || st["free_meta"] != nil:
 		x, _ := st["new_meta"].(map[string]any)
 		if x == nil {
@@ -411,12 +447,13 @@ func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*d
 	case st["insert_list2"] != nil:
 		err = stepInsertList2(s, st, tree)
 	case st["insert_term"] != nil || st["insert_inner"] != nil || st["insert_list"] != nil:
-		err = stepInsert(st, tree)
+		err = stepInsert(s, st, tree)
 	case st["delete"] != nil:
 		path := str(st, "delete", "")
 		if empty(tree) {
 			return tree, nil, "LY_ENOTFOUND", nil // the oracle does not search a NULL tree
 		}
+		// lyoracle.c:2305 calls lyd_find_path from the retained first node.
 		var n *data.Node
 		if n, err = tree.Find(path); err == nil {
 			if n == nil {
@@ -425,7 +462,7 @@ func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*d
 			err = n.Remove()
 		}
 	default:
-		o, oerr := dataOptions(st)
+		o, oerr := dataOptions(st, execStepEdit)
 		if oerr != nil {
 			return nil, nil, rc, oerr
 		}
@@ -434,13 +471,13 @@ func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*d
 		if ferr != nil {
 			return nil, nil, rc, ferr
 		}
-		in, ierr := inputOf(r, st, "merge")
+		in, present, ierr := requestInput(r, st, "merge")
 		if ierr != nil {
 			return nil, nil, rc, ierr
 		}
 		var src *data.Tree
 		var diags []yang.Diagnostic
-		if src, diags, err = data.Parse(context.Background(), strings.NewReader(in), f, s, o); err != nil {
+		if src, diags, err = data.Parse(context.Background(), inputReader(in, present), f, s, o); err != nil {
 			return tree, diags, rc, err
 		}
 		err = tree.Merge(src)
@@ -461,7 +498,7 @@ func notFoundRC(tree *data.Tree, path string) string {
 	return "LY_ENOTFOUND"
 }
 
-// pathPrefixes are the proper prefixes of an absolute JSON path, longest first, split at the
+// pathPrefixes are the proper prefixes of an absolute or relative JSON path, longest first, split at the
 // '/' outside predicates and quotes.
 func pathPrefixes(path string) []string {
 	var cuts []int
@@ -492,7 +529,7 @@ func pathPrefixes(path string) []string {
 // stepInsert is step_edit's insert_term, insert_inner and insert_list: the node under the node at
 // "parent" (a path) or the top-level opaque node "parent_opaq", else a top-level node of the tree
 // (lyd_new_* + lyd_insert_sibling); "module" qualifies the name.
-func stepInsert(st map[string]any, tree *data.Tree) error {
+func stepInsert(s *yang.Schema, st map[string]any, tree *data.Tree) error {
 	x, kind := st["insert_term"], "term"
 	if st["insert_inner"] != nil {
 		x, kind = st["insert_inner"], "inner"
@@ -500,13 +537,16 @@ func stepInsert(st map[string]any, tree *data.Tree) error {
 		x, kind = st["insert_list"], "list"
 	}
 	o, _ := x.(map[string]any)
+	if err := checkRequest(Request{}, s, o, execStepEdit, []requestRule{{0, requestModule}}); err != nil {
+		return err
+	}
 	var parent *data.Node
-	if p := str(o, "parent", ""); p != "" {
+	if p, present, _ := strField(o, "parent"); present {
 		if parent, _ = tree.Find(p); parent == nil {
 			return fmt.Errorf("insert parent %s not found (a request-error)", p)
 		}
 	}
-	if p := str(o, "parent_opaq", ""); p != "" {
+	if p, present, _ := strField(o, "parent_opaq"); present {
 		for n := range tree.Top() {
 			if n.Schema() == nil && n.Name() == p {
 				parent = n
@@ -537,6 +577,30 @@ func stepInsert(st map[string]any, tree *data.Tree) error {
 				keys = append(keys, v)
 			}
 		}
+		if keys != nil {
+			var sn *yang.SchemaNode
+			if parent != nil && parent.Schema() != nil {
+				ps := parent.Schema()
+				if ps.Kind() == yang.KindRPC || ps.Kind() == yang.KindAction {
+					kind := yang.KindInput
+					if opts.Output {
+						kind = yang.KindOutput
+					}
+					for child := range ps.Children() {
+						if child.Kind() == kind {
+							ps = child
+							break
+						}
+					}
+				}
+				sn = ps.Child(str(o, "module", ""), str(o, "name", ""))
+			} else if m := s.Implemented(str(o, "module", "")); m != nil {
+				sn = topChild(m.Top(), str(o, "name", ""))
+			}
+			if sn != nil && sn.Kind() == yang.KindList && len(keys) < len(slices.Collect(sn.Keys())) {
+				return requestError("insert_list %s has fewer keys than the list", o["name"])
+			}
+		}
 		_, err = tree.NewList(parent, name, keys, opts)
 	}
 	return err
@@ -548,12 +612,12 @@ func stepInsert(st map[string]any, tree *data.Tree) error {
 // context built like the request's (lyd_dup_*_to_ctx).
 func stepDup(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*data.Tree, *yang.Schema, []yang.Diagnostic,
 	error) {
-	n, _ := nodeAt(tree, str(st, "node", ""))
+	n, _ := findNode(tree, str(st, "node", ""), "dup node")
 	if n == nil {
 		return nil, nil, nil, fmt.Errorf("dup node %s not found (a request-error)", str(st, "node", ""))
 	}
 	var parent *data.Node
-	if p := str(st, "parent", ""); p != "" {
+	if p, present, _ := strField(st, "parent"); present {
 		if parent, _ = tree.Find(p); parent == nil {
 			return nil, nil, nil, fmt.Errorf("dup parent %s not found (a request-error)", p)
 		}
@@ -576,14 +640,14 @@ func stepDup(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*da
 		dst = data.NewTree(s)
 	}
 	if tg, ok := st["target"].(map[string]any); ok {
-		ctx, _, _, verdict, err := buildContext(Request{ID: r.ID, BaseDir: r.BaseDir, Params: tg})
+		targetSchema, _, _, verdict, err := r.buildContext(Request{ID: r.ID, BaseDir: r.BaseDir, Params: tg, buildContext: r.buildContext})
 		if err != nil {
 			return nil, nil, nil, err
 		}
 		if verdict != "valid" || parent != nil {
 			return nil, nil, nil, fmt.Errorf("dup target context failed (a request-error)")
 		}
-		ds = ctx.Schema()
+		ds = targetSchema
 		dst = data.NewTree(ds)
 	}
 	dup := dst.Dup
@@ -602,7 +666,7 @@ func stepDup(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*da
 // are results. Node.SetValue tells changed from not, so the two are told apart by the node's
 // Default flag before the call. libyang's argument checks log without a context: no diagnostics.
 func stepChange(st map[string]any, tree *data.Tree, so map[string]any) ([]yang.Diagnostic, error) {
-	n, _ := nodeAt(tree, str(st, "node", ""))
+	n, _ := findNode(tree, str(st, "node", ""), "change_term node")
 	if n == nil {
 		return nil, fmt.Errorf("change_term node %s not found (a request-error)", str(st, "node", ""))
 	}
@@ -667,6 +731,14 @@ func linksJSON(tree *data.Tree) []any {
 func stepInsertList2(s *yang.Schema, st map[string]any, tree *data.Tree) error {
 	o, _ := st["insert_list2"].(map[string]any)
 	name, mod := str(o, "name", ""), str(o, "module", "")
+	if err := checkRequest(Request{}, s, o, execStepEdit, []requestRule{{0, requestModule}}); err != nil {
+		return err
+	}
+	if p, present, _ := strField(o, "parent"); present {
+		if _, err := findNode(tree, p, "insert parent"); err != nil {
+			return err
+		}
+	}
 	switch {
 	case str(o, "parent_opaq", "") != "": // NewPath cannot build under an opaque node
 		return fmt.Errorf("%w: insert_list2 under an opaque parent (U-0109: NewPath builds from the "+
@@ -681,7 +753,7 @@ func stepInsertList2(s *yang.Schema, st map[string]any, tree *data.Tree) error {
 	// lyd_new_list2 finds a list schema node first ("List node … not found." otherwise); NewPath
 	// would build any node the path names
 	var sn *yang.SchemaNode
-	if p := str(o, "parent", ""); p != "" {
+	if p, present, _ := strField(o, "parent"); present {
 		if pn, _ := tree.Find(p); pn != nil && pn.Schema() != nil {
 			sn = pn.Schema().Child(mod, name)
 		}
@@ -696,7 +768,7 @@ func stepInsertList2(s *yang.Schema, st map[string]any, tree *data.Tree) error {
 		name = mod + ":" + name
 	}
 	path := "/" + name + str(o, "keys", "")
-	if p := str(o, "parent", ""); p != "" {
+	if p, present, _ := strField(o, "parent"); present {
 		path = p + path
 	}
 	if _, err := tree.NewPath(path, "", data.NewPathOptions{}); err != nil {
@@ -763,20 +835,27 @@ func stepMove(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*d
 	}
 	src, path := tree, str(st, "node", "")
 	var diags []yang.Diagnostic
-	if _, ok := st["data"]; ok || st["data_file"] != nil {
-		if src, diags, err = stepParse(r, s, st, nil); err != nil {
+	_, hasData, err := requestInput(r, st, "data")
+	if err != nil {
+		return tree, nil, "", err
+	}
+	if hasData {
+		if src, diags, err = stepParse(r, s, st, execStepInsert, nil); err != nil {
 			return tree, diags, "parse", err
 		}
 		for i := range diags {
 			diags[i].Phase = "parse"
 		}
 	}
-	n, _ := nodeAt(src, path)
+	n, _ := selectedNode(src, st, "node", "insert node")
 	if n == nil {
-		return nil, nil, "", fmt.Errorf("insert node %q not found (a request-error)", path)
+		if hasData {
+			return nil, nil, "", requestError("insert node %s not found in the data", path)
+		}
+		return nil, nil, "", requestError("insert node %s not found", path)
 	}
 	var parent *data.Node
-	if p := str(st, "parent", ""); p != "" {
+	if p, present, _ := strField(st, "parent"); present {
 		if parent, _ = tree.Find(p); parent == nil {
 			return nil, nil, "", fmt.Errorf("insert parent %s not found (a request-error)", p)
 		}
@@ -797,4 +876,47 @@ func stepMove(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*d
 		}
 	}
 	return tree, append(diags, ins...), "", err
+}
+
+// checkInsertSelectors is step_edit's module and parent lookup before construction.
+func checkInsertSelectors(s *yang.Schema, tree *data.Tree, st map[string]any) error {
+	for _, kind := range []string{"insert_term", "insert_inner", "insert_list", "insert_list2", "insert_opaq"} {
+		o, ok := st[kind].(map[string]any)
+		if !ok {
+			continue
+		}
+		if kind != "insert_opaq" {
+			if err := checkRequest(Request{}, s, o, execStepEdit, []requestRule{{0, requestModule}}); err != nil {
+				return err
+			}
+		}
+		var parent *data.Node
+		if path, present, _ := strField(o, "parent"); present {
+			var err error
+			parent, err = findNode(tree, path, "insert parent")
+			if err != nil {
+				return err
+			}
+		}
+		if name, present, _ := strField(o, "parent_opaq"); present {
+			if tree != nil {
+				for n := range tree.Top() {
+					if n.Schema() == nil && n.Name() == name {
+						parent = n
+						break
+					}
+				}
+			}
+			if parent == nil {
+				return requestError("insert parent_opaq %s not found", name)
+			}
+		}
+		if kind == "insert_opaq" && parent != nil && isTerm(parent) {
+			return requestError("insert_opaq under the leaf %s: libyang links it over the leaf's value", parent.Name())
+		}
+		if kind != "insert_opaq" && o["module"] == nil && (parent == nil || parent.Schema() == nil) {
+			return requestError("insert %s under an opaque parent needs a module (libyang reads its NULL schema)", o["name"])
+		}
+	}
+	return nil
 }

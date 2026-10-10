@@ -1,0 +1,15 @@
+fixtures:
+  - id: protocol-v2/prelude-xpath-bogus-flag
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # oracle protocol request ordering and operation construction
+    areas: [validation]
+    request:
+      searchdirs: [schemas]
+      context_options: [no_yanglibrary]
+      op: xpath
+      modules: [{name: pv2-rejected}]
+      data: '{}'
+      xpath: /pv2:c
+      parse_options: [bogus]
+    golden: golden/prelude-xpath-bogus-flag.json

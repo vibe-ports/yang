@@ -70,7 +70,6 @@ func TestValidateModuleGoldens(t *testing.T) {
 			want := loadSteps(t, "seq-"+name)
 			g := implicitDiffs(t, "seq-"+name)
 			ctx := context.Background()
-			o := ValidateOptions{NoState: true, MultiError: true} // data_type config
 			var tr *Tree
 			nv := 0
 			for i, st := range steps {
@@ -90,15 +89,34 @@ func TestValidateModuleGoldens(t *testing.T) {
 				case "validate":
 					mod, _ := st["module"].(string)
 					final, _ := st["final_only"].(bool)
+					vo := ValidateOptions{MultiError: true}
+					switch st["data_type"] {
+					case nil, "data-operational":
+						vo.Operational = true // lyoracle.c:1215,1226-1227
+					case "config":
+						vo.NoState = true // lyoracle.c:1223-1225
+					default:
+						// lyoracle.c:1228-1244: all other data types have the neutral validation preset.
+					}
+					options, _ := st["validate_options"].([]any)
+					for _, option := range options {
+						if option == "present" {
+							vo.Present = true
+						}
+					}
 					dt := newTree(set)
 					var ds []yangDiag
 					switch {
 					case final:
-						ds, err = tr.validateModuleFinal(ctx, set.Implemented(mod), o, Budget{})
+						ds, err = tr.validateModuleFinal(ctx, set.Implemented(mod), vo, Budget{})
 					case mod != "":
-						ds, err = tr.validateModule(ctx, set.Implemented(mod), o, Budget{}, dt.valDiffAdd)
+						var module *schema.Module
+						module, ds, err = tr.validateModuleArgs(mod, vo)
+						if err == nil {
+							ds, err = tr.validateModule(ctx, module, vo, Budget{}, dt.valDiffAdd)
+						}
 					default:
-						ds, err = tr.validateAll(ctx, o, Budget{}, dt.valDiffAdd)
+						ds, err = tr.validateAll(ctx, vo, Budget{}, dt.valDiffAdd)
 					}
 					diags = diagLines(ds)
 					gotDiff := ""
@@ -122,11 +140,11 @@ func TestValidateModuleGoldens(t *testing.T) {
 				case "dump":
 				}
 				if err != nil {
-					rc = "LY_EVALID"
 					var ve *ValidationError
 					if !errors.As(err, &ve) {
 						t.Fatalf("step %d: %v", i, err)
 					}
+					rc = ve.RC()
 				}
 				w := want[i]
 				if rc != w.RC.Name {

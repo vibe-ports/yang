@@ -3,42 +3,43 @@
 package conformance
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"maps"
 	"math"
 	"slices"
-	"strings"
 
 	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/data"
 )
 
-// xpathKeys are the op xpath request fields runXPath handles; any other (operations) makes the
-// fixture unsupported rather than silently ignored.
-var xpathKeys = map[string]bool{"op": true, "base_dir": true, "searchdirs": true, "modules": true,
-	"context_options": true, "format": true, "data_type": true, "data": true, "data_file": true, "unknown": true,
-	"parse_only": true, "parse_options": true, "validate_options": true, "xpath": true, "context_path": true,
-	"vars": true, "cur_module": true, "xpath_format": true, "namespaces": true}
-
 // runXPath is lyoracle.c op_xpath: the data parsed as op data parses it, the context node
 // selected by context_path (lyd_find_xpath from the first top-level node), then lyd_eval_xpath4
 // with every output asked for, so the result keeps its type. The harness sends the request as
 // JSON with sorted keys, so the vars reach lyxp_vars_set in name order.
-func runXPath(r Request, s *yang.Schema, resp map[string]any) error {
+func runXPath(r Request, s *yang.Schema, resp map[string]any, exec executionContext) error {
 	p := r.Params
-	for k := range p {
-		if !xpathKeys[k] {
-			return fmt.Errorf("%w: xpath request field %s", ErrUnsupported, k)
-		}
+	if err := checkRequest(r, s, p, exec, dataPreludeRules); err != nil {
+		return err
 	}
-	expr, ok := p["xpath"].(string)
-	if !ok {
-		return errors.New("missing xpath")
+	oper, err := loadOperational(r, s, resp)
+	if err != nil {
+		return err
+	}
+	if err := checkOpInit(r, s, "xpath"); err != nil {
+		return err
+	}
+	if resp["verdict"] == "operational-error" {
+		return nil
+	}
+	expr, present, err := strField(p, "xpath")
+	if err != nil {
+		return err
+	}
+	if !present {
+		return requestError("missing xpath")
 	}
 	var o data.XPathOptions
-	var err error
 	if o.Vars, err = xpathVars(p); err != nil {
 		return err
 	}
@@ -52,12 +53,15 @@ func runXPath(r Request, s *yang.Schema, resp map[string]any) error {
 	if err != nil {
 		return err
 	}
-	tree, pd, err := parseXPathData(r, s, p)
-	rc, err := rcOf(err)
+	tree, pd, perr := parseXPathData(r, s, p, exec, oper)
+	rc, err := rcOf(perr)
 	if err != nil {
 		return err
 	}
-	diags := diagsJSON(pd, "data")
+	diags := append(list(resp["diagnostics"]), diagsJSON(pd, "")...)
+	if parent := operationParentDiagnostic(perr); parent != nil {
+		diags = append(diags, parent)
+	}
 	resp["diagnostics"] = diags
 	top := topNode(tree)
 	if rc != "LY_SUCCESS" || top == nil {
@@ -86,16 +90,16 @@ func runXPath(r Request, s *yang.Schema, resp map[string]any) error {
 		o.Format = data.XPathXML
 		for _, x := range list(ns) {
 			n, _ := x.(map[string]any)
+			pfx, _, err := strField(n, "prefix")
+			if err != nil {
+				return err
+			}
 			uri, hasURI, err := strField(n, "uri")
 			if err != nil {
 				return err
 			}
 			if !hasURI {
 				return errors.New("namespaces need a uri (a request-error)")
-			}
-			pfx, _, err := strField(n, "prefix")
-			if err != nil {
-				return err
 			}
 			o.Namespaces = append(o.Namespaces, data.XPathNamespace{Prefix: pfx, URI: uri})
 		}
@@ -111,10 +115,10 @@ func runXPath(r Request, s *yang.Schema, resp map[string]any) error {
 		nodes, cd, err := tree.FindXPath(cpath, data.XPathOptions{Node: top})
 		diags = append(diags, diagsJSON(cd, "context_path")...)
 		if err != nil {
-			return fmt.Errorf("context_path %s: %w", cpath, err)
+			return requestError("context_path %s must select exactly one node", cpath)
 		}
 		if len(nodes) != 1 {
-			return fmt.Errorf("context_path %s must select exactly one node, not %d", cpath, len(nodes))
+			return requestError("context_path %s must select exactly one node", cpath)
 		}
 		o.Node = nodes[0]
 	}
@@ -157,33 +161,10 @@ func runXPath(r Request, s *yang.Schema, resp map[string]any) error {
 	return nil
 }
 
-// parseXPathData is op_xpath's parse_one with no rpc request: the data, or for the operation data
-// types the operation parsed alone (lyd_parse_op without a parent). Validating an operation also
-// needs yanglint's operation-parent check against an operational tree, which op xpath has no
-// field for, so an operation must be parse_only.
-func parseXPathData(r Request, s *yang.Schema, p map[string]any) (*data.Tree, []yang.Diagnostic, error) {
-	typ, ok := opTypes[str(p, "data_type", "")]
-	if !ok {
-		return parseInput(r, s, p, "data")
-	}
-	if po, _ := p["parse_only"].(bool); !po {
-		return nil, nil, fmt.Errorf("%w: xpath over a validated operation (data_type %v without parse_only)",
-			ErrUnsupported, p["data_type"])
-	}
-	unknown, ok := unknownPolicies[str(p, "unknown", "reject")]
-	if !ok {
-		return nil, nil, fmt.Errorf("%w: unknown %v", ErrUnsupported, p["unknown"])
-	}
-	f, err := formatOf(p)
-	if err != nil {
-		return nil, nil, err
-	}
-	in, err := inputOf(r, p, "data")
-	if err != nil {
-		return nil, nil, err
-	}
-	res, d, err := data.ParseOp(context.Background(), strings.NewReader(in), f, s, typ, data.ParseOpOptions{Unknown: unknown})
-	return res.Tree, d, err
+// parseXPathData is op_xpath's parse_one with no rpc request. Every data type follows the same
+// parse_one argument checks, parse, operation validation and operation-parent check.
+func parseXPathData(r Request, s *yang.Schema, p map[string]any, exec executionContext, oper *data.Tree) (*data.Tree, []yang.Diagnostic, error) {
+	return parseOne(r, s, p, exec, "data", "data", oper)
 }
 
 // xpathVars is the "vars" object of a request or step, in the order lyoracle sets them (sorted
@@ -195,13 +176,13 @@ func xpathVars(p map[string]any) ([]data.XPathVar, error) {
 	}
 	m, ok := v.(map[string]any)
 	if !ok {
-		return nil, errors.New("vars must be an object")
+		return nil, requestError("vars must be an object")
 	}
 	var out []data.XPathVar
 	for _, k := range slices.Sorted(maps.Keys(m)) {
 		val, ok := m[k].(string)
 		if !ok {
-			return nil, fmt.Errorf("vars value of %s must be a string", k)
+			return nil, requestError("vars value of %s must be a string", k)
 		}
 		out = append(out, data.XPathVar{Name: k, Value: val})
 	}

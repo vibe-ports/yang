@@ -440,8 +440,8 @@ func TestOpaqueNamespaceDiffers(t *testing.T) {
 	}
 }
 
-// Malformed sequence requests are request-errors (exit 2), found before any step runs. Needs the
-// built oracle (oracle/lyoracle, i.e. make oracle-check); skipped without it.
+// Malformed sequence/data/XPath requests are request-errors (exit 2). Needs the built oracle
+// (oracle/lyoracle, i.e. make oracle-check); skipped without it.
 func TestOracleRequestErrors(t *testing.T) {
 	oracle, err := filepath.Abs(OracleBinary("oracle"))
 	if err != nil {
@@ -451,23 +451,43 @@ func TestOracleRequestErrors(t *testing.T) {
 		t.Skip("oracle not built")
 	}
 	const head = `{"op":"sequence","base_dir":"corpus/protocol-v2","searchdirs":["schemas"],"modules":[{"name":"pv2"}],"steps":[`
-	for _, tc := range []struct{ name, steps, want string }{
-		{"empty key (issue #5)", `{"do":"dump","":1}`, `unknown key ""`},
-		{"empty key in set", `{"do":"edit","set":{"path":"/pv2:c/mode","":1}}`, `unknown key ""`},
-		{"prefix of an allowed key", `{"do":"parse","data":"{}","dat":1}`, `unknown key "dat"`},
-		{"merge option on set", `{"do":"edit","set":{"path":"/pv2:c/mode","value":"on"},"format":"garbage"}`, `key "format" not allowed`},
-		{"merge option on delete", `{"do":"edit","delete":"/pv2:c/mode","data_type":"config"}`, `key "data_type" not allowed`},
-		{"malformed step after a failing one", `{"do":"edit","delete":"/pv2:c/nope"},{"do":"dump","with_defaults":"bogus"}`, `unknown with_defaults mode`},
-		{"final_only without module after a failing step", `{"do":"edit","delete":"/pv2:c/nope"},{"do":"validate","final_only":true}`, `final_only needs module`},
-		{"non-string module after a failing step", `{"do":"edit","delete":"/pv2:c/nope"},{"do":"validate","module":5}`, `field "module" must be a string`},
-		{"non-boolean final_only after a failing step", `{"do":"edit","delete":"/pv2:c/nope"},{"do":"validate","module":"pv2","final_only":"yes"}`, `final_only must be a boolean`},
-		{"unknown module after a failing step", `{"do":"edit","delete":"/pv2:c/nope"},{"do":"validate","module":"nope"}`, `validate module nope not implemented`},
-		{"insert options not an array", `{"do":"edit","insert_term":{"module":"pv2","name":"mode","value":"on","options":"canon"}}`, `"options" must be an array`},
-		{"malformed insert after a failing one", `{"do":"edit","delete":"/pv2:c/nope"},{"do":"edit","insert_term":{"module":"pv2","name":"mode","value":"on","parent_opaq":5}}`, `"parent_opaq" must be a string`},
+	const dataHead = `{"op":"data","base_dir":"corpus/protocol-v2","searchdirs":["schemas"],"modules":[{"name":"pv2"}],"format":"xml","data_type":"get"`
+	for _, tc := range []struct{ name, steps, request, want string }{
+		// check_step runs dparams_of for an edit merge before any step executes (lyoracle.c
+		// check_step: `if (merge) dparams_of(step, &p)`), so a malformed merge after a failing
+		// step is still a request-error, not a skipped step
+		{"malformed merge after a failing step", `{"do":"edit","delete":"/missing:x"},{"do":"edit","merge":"{}","format":"bogus"}`, "", `unknown format bogus`},
+		{"empty key (issue #5)", `{"do":"dump","":1}`, "", `unknown key ""`},
+		{"empty key in set", `{"do":"edit","set":{"path":"/pv2:c/mode","":1}}`, "", `unknown key ""`},
+		{"prefix of an allowed key", `{"do":"parse","data":"{}","dat":1}`, "", `unknown key "dat"`},
+		{"merge option on set", `{"do":"edit","set":{"path":"/pv2:c/mode","value":"on"},"format":"garbage"}`, "", `key "format" not allowed`},
+		{"merge option on delete", `{"do":"edit","delete":"/pv2:c/mode","data_type":"config"}`, "", `key "data_type" not allowed`},
+		{"malformed step after a failing one", `{"do":"edit","delete":"/pv2:c/nope"},{"do":"dump","with_defaults":"bogus"}`, "", `unknown with_defaults mode`},
+		{"final_only without module after a failing step", `{"do":"edit","delete":"/pv2:c/nope"},{"do":"validate","final_only":true}`, "", `final_only needs module`},
+		{"non-string module after a failing step", `{"do":"edit","delete":"/pv2:c/nope"},{"do":"validate","module":5}`, "", `field "module" must be a string`},
+		{"non-boolean final_only after a failing step", `{"do":"edit","delete":"/pv2:c/nope"},{"do":"validate","module":"pv2","final_only":"yes"}`, "", `final_only must be a boolean`},
+		{"unknown module after a failing step", `{"do":"edit","delete":"/pv2:c/nope"},{"do":"validate","module":"nope"}`, "", `validate module nope not implemented`},
+		{"insert options not an array", `{"do":"edit","insert_term":{"module":"pv2","name":"mode","value":"on","options":"canon"}}`, "", `"options" must be an array`},
+		// op_data: input_of returns NULL for an absent or null data and dies before parse_one
+		// (lyoracle.c op_data `if (!(data = input_of(req, "data"))) die("missing data")`)
+		{"data op without data", `}`, "", `missing data`},
+		{"data op with null data", `,"data":null}`, "", `missing data`},
+		{"malformed insert after a failing one", `{"do":"edit","delete":"/pv2:c/nope"},{"do":"edit","insert_term":{"module":"pv2","name":"mode","value":"on","parent_opaq":5}}`, "", `"parent_opaq" must be a string`},
+		{"xpath rpc_parent without rpc source", "", `{"op":"xpath","base_dir":"corpus/protocol-v2","searchdirs":["schemas"],"modules":[{"name":"pv2"}],"data_type":"rpc","data":"{\"pv2:ping\":{\"n\":1}}","parse_only":true,"rpc_parent":"/pv2:ping","xpath":"/pv2:ping"}`, `rpc_parent requires data_type rpc, rpc, and keep_input true`},
+		// several invalid trim vars: the harness sends sorted keys, the first one is rejected
+		{"several invalid trim vars", `{"do":"trim","xpath":"/pv2:c","vars":{"a":false,"b":false}}`, "", `trim vars value of a must be a string`},
+		{"relative print_subtree missing", "", `{"op":"data","base_dir":"corpus/protocol-v2","searchdirs":["schemas"],"modules":[{"name":"pv2"}],"data_type":"data","data":"{\"pv2:c\":{\"mode\":\"on\"}}","parse_only":true,"print_subtree":"grouped"}`, `print_subtree "grouped" not found`},
 	} {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		cmd := exec.CommandContext(ctx, oracle) //nolint:gosec // test runs the repo's own oracle binary
-		cmd.Stdin = strings.NewReader(head + tc.steps + "]}")
+		req := head + tc.steps + "]}"
+		if tc.request != "" {
+			req = tc.request
+		}
+		if strings.HasPrefix(tc.steps, ",") || tc.steps == "}" { // a data op request: dataHead + the rest
+			req = dataHead + tc.steps
+		}
+		cmd.Stdin = strings.NewReader(req)
 		out, err := cmd.Output()
 		cancel()
 		var ee *exec.ExitError

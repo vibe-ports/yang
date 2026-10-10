@@ -1,0 +1,29 @@
+{
+  "id": "protocol-v2/prelude-data-bogus-flag",
+  "source": {
+    "url": "hand-written (this repo)",
+    "license": "BSD-3-Clause",
+    "commit": null
+  },
+  "request": {
+    "op": "data",
+    "modules": [
+      {
+        "name": "pv2-rejected"
+      }
+    ],
+    "data": "{}",
+    "print_options": [
+      "bogus"
+    ],
+    "searchdirs": [
+      "schemas"
+    ],
+    "context_options": [
+      "no_yanglibrary"
+    ],
+    "base_dir": "."
+  },
+  "request_error_class": "unknown-flag:print_options",
+  "rfc": []
+}

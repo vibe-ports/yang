@@ -25,6 +25,8 @@ type FieldSkipper interface {
 // Yang is the engine of this repository (package yang).
 type Yang struct{}
 
+type contextBuilder func(Request) (*yang.Schema, map[string]any, []map[string]any, string, error)
+
 // SkippedFields implements FieldSkipper: the YANG printer of compiled modules is not ported;
 // the typed dump of data trees compares path, schema, kind, flags and canonical value, but not
 // the details package data does not export (value types, union members, metadata, anydata
@@ -73,11 +75,35 @@ var ctxUnsupported = map[string]string{}
 // (op_data, datastore data types), "diff" (op_diff), "xpath" (op_xpath), "atoms" (op_atoms) and
 // "sequence" (op_sequence over the public data API).
 func (Yang) Run(r Request) (Response, error) {
-	op, _ := r.Params["op"].(string)
-	if op != "schema" && op != "data" && op != "sequence" && op != "diff" && op != "xpath" && op != "atoms" {
-		return nil, ErrUnsupported
+	if r.buildContext == nil {
+		r.buildContext = buildSchemaContext
 	}
-	ctx, resp, mods, verdict, err := buildContext(r)
+	op, present, err := strField(r.Params, "op")
+	if err != nil {
+		return nil, err
+	}
+	base, hasBase, err := strField(r.Params, "base_dir")
+	if err != nil {
+		return nil, err
+	}
+	if hasBase {
+		path := base
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(r.BaseDir, path)
+		}
+		info, statErr := os.Stat(path)
+		if base == "" || statErr != nil || !info.IsDir() {
+			return nil, requestError("cannot chdir to %s", base)
+		}
+		r.BaseDir = path
+	}
+	if !present {
+		return nil, requestError("missing op")
+	}
+	if op != "schema" && op != "data" && op != "sequence" && op != "diff" && op != "xpath" && op != "atoms" {
+		return nil, requestError("unknown op %s", op)
+	}
+	schema, resp, mods, verdict, err := r.buildContext(r)
 	if err != nil {
 		return nil, err
 	}
@@ -85,15 +111,26 @@ func (Yang) Run(r Request) (Response, error) {
 	resp["modules"] = mods
 	if op != "schema" {
 		if verdict != "valid" {
-			return nil, fmt.Errorf("%w: %s request with a rejected module", ErrUnsupported, op)
+			if err := checkOpInit(r, schema, op); err != nil {
+				return nil, err
+			}
+			resp["verdict"] = "schema-error"
+			if op != "sequence" {
+				resp["diagnostics"] = []any{}
+			}
+			b, marshalErr := json.Marshal(resp)
+			if marshalErr != nil {
+				return nil, marshalErr
+			}
+			return ParseResponse(b)
 		}
-		run := map[string]func(Request, *yang.Schema, map[string]any) error{"data": runData, "sequence": runSequence,
+		run := map[string]func(Request, *yang.Schema, map[string]any, executionContext) error{"data": runData, "sequence": runSequence,
 			"diff": runDiff, "xpath": runXPath, "atoms": runAtoms}[op]
-		if err := run(r, ctx.Schema(), resp); err != nil {
+		if err := run(r, schema, resp, rootExecutionContexts[op]); err != nil {
 			return nil, err
 		}
 	} else {
-		s := ctx.Schema()
+		s := schema
 		for _, m := range mods {
 			if m["accepted"] == true {
 				if mod := s.Implemented(m["name"].(string)); mod != nil {
@@ -110,9 +147,26 @@ func (Yang) Run(r Request) (Response, error) {
 	return ParseResponse(b) // json.Number like the goldens
 }
 
+func buildSchemaContext(r Request) (*yang.Schema, map[string]any, []map[string]any, string, error) {
+	ctx, resp, mods, verdict, err := buildContext(r)
+	if ctx == nil {
+		return nil, resp, mods, verdict, err
+	}
+	return ctx.Schema(), resp, mods, verdict, err
+}
+
 // buildContext is lyoracle.c build_ctx: the context, the response with its module entries and
 // "valid" unless a module was rejected.
 func buildContext(r Request) (*yang.Context, map[string]any, []map[string]any, string, error) {
+	// Prelude ordering follows lyoracle.c:1094-1134. Context flags are rejected at
+	// 1094 before ly_ctx_new (1098); search directories are checked at 1100-1104
+	// before any requested module is loaded; and each module's name/revision plus
+	// missing-name check happen at 1113-1122 before ly_ctx_load_module (1134).
+	// Features add no request-level rejection (1124-1128): non-string children
+	// terminate the list, as reproduced below.
+	if err := requestFlags("context_options", "all_implemented ref_implemented no_yanglibrary enable_imp_features compile_obsolete leafref_extended leafref_linking builtin_plugins_only pattern_compat")(&requestCheck{p: r.Params}); err != nil {
+		return nil, nil, nil, "", err
+	}
 	var opts yang.Options
 	for _, o := range list(r.Params["context_options"]) {
 		set, ok := ctxOptions[fmt.Sprint(o)]
@@ -122,8 +176,20 @@ func buildContext(r Request) (*yang.Context, map[string]any, []map[string]any, s
 		set(&opts)
 	}
 	var dirs []fs.FS
-	for _, d := range list(r.Params["searchdirs"]) {
-		dirs = append(dirs, os.DirFS(filepath.Join(r.BaseDir, fmt.Sprint(d))))
+	for _, d := range requestChildren(r.Params["searchdirs"]) {
+		dir, ok := d.(string)
+		if !ok {
+			return nil, nil, nil, "", requestError("bad searchdir ?")
+		}
+		path := dir
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(r.BaseDir, path)
+		}
+		info, err := os.Stat(path)
+		if dir == "" || err != nil || !info.IsDir() {
+			return nil, nil, nil, "", requestError("bad searchdir %s", dir)
+		}
+		dirs = append(dirs, os.DirFS(path))
 	}
 	ctx, cdiags, err := yang.NewContext(opts, dirs...)
 	if err != nil {
@@ -132,21 +198,45 @@ func buildContext(r Request) (*yang.Context, map[string]any, []map[string]any, s
 	resp := map[string]any{"protocol": 2, "context_diagnostics": diagsJSON(cdiags, "context")}
 	verdict := "valid"
 	mods := []map[string]any{}
-	for _, x := range list(r.Params["modules"]) {
+	for _, x := range requestChildren(r.Params["modules"]) {
 		req, _ := x.(map[string]any)
-		name, _ := req["name"].(string)
-		rev, _ := req["revision"].(string)
+		name, hasName, err := strField(req, "name")
+		if err != nil {
+			return nil, nil, nil, "", err
+		}
+		rev, hasRev, err := strField(req, "revision")
+		if err != nil {
+			return nil, nil, nil, "", err
+		}
+		if !hasName {
+			return nil, nil, nil, "", requestError("module without name")
+		}
 		var feats []string
 		if fa, ok := req["features"]; ok {
 			feats = []string{}
-			for _, f := range list(fa) {
-				feats = append(feats, fmt.Sprint(f))
+			for _, f := range requestChildren(fa) {
+				value, ok := f.(string)
+				if !ok {
+					break
+				} // C valuestring is NULL: terminates features
+				feats = append(feats, value)
 			}
 		}
 		m := map[string]any{"name": name}
-		diags, err := ctx.Load(name, rev, feats)
+		// Load's empty revision means latest; the oracle distinguishes a non-NULL
+		// empty revision at ly_ctx_load_module (lyoracle.c:1134). Probe that load in
+		// a disposable context so a rejected entry cannot load a new module or
+		// change features on one implemented by an earlier entry.
+		var diags []yang.Diagnostic
+		if hasRev && rev == "" {
+			diags, err = probeEmptyRevision(opts, dirs, name)
+		} else {
+			diags, err = ctx.Load(name, rev, feats)
+		}
 		m["diagnostics"] = diagsJSON(diags, "")
 		switch {
+		case errors.Is(err, ErrUnsupported):
+			return nil, nil, nil, "", err
 		case errors.Is(err, yang.ErrUnsupported) || errors.Is(err, yang.ErrBudget):
 			return nil, nil, nil, "", unsupported(err)
 		case err != nil:
@@ -167,6 +257,45 @@ func buildContext(r Request) (*yang.Context, map[string]any, []map[string]any, s
 		mods = append(mods, m)
 	}
 	return ctx, resp, mods, verdict, nil
+}
+
+// probeEmptyRevision loads name with the latest revision in a disposable context, so the request
+// context is untouched. When it loads without any diagnostic, the oracle's explicit "" revision
+// is libyang's mismatch with the parsed module's revision (lysp_load_module_check), reported in
+// the parse phase. When the load logs any diagnostic (a warning included) or fails in any phase
+// (parse, imports, compile), libyang would still check the
+// revision right after parsing and before imports and compilation; the Load API has no
+// parse-only step, so that ordering is not emulated and the request is unsupported (U-0110,
+// class empty-revision-load-failure; the parse-phase check in the loader is tracked in #254).
+func probeEmptyRevision(opts yang.Options, dirs []fs.FS, name string) ([]yang.Diagnostic, error) {
+	scratch, _, err := yang.NewContext(opts, dirs...)
+	if err != nil {
+		return nil, err
+	}
+	// Revision validation happens while parsing the module, before requested features are
+	// applied. Do not let a feature error replace the empty-revision diagnostic.
+	diags, err := scratch.Load(name, "", nil)
+	switch {
+	case errors.Is(err, yang.ErrUnsupported) || errors.Is(err, yang.ErrBudget):
+		return diags, err
+	case err != nil:
+		return nil, fmt.Errorf("%w: empty revision with a failing module load: %s "+
+			"(libyang checks the revision before imports and compile, U-0110)", ErrUnsupported, err.Error())
+	case len(diags) > 0:
+		// libyang rejects the revision in lysp_load_module_data_check, before imports and
+		// compilation log anything; which of the probe's diagnostics (warnings included) come
+		// before that check cannot be told without a parse-only load.
+		return nil, fmt.Errorf("%w: empty revision with a failing module load: the load logged %d "+
+			"diagnostics (libyang checks the revision before imports and compile, U-0110)", ErrUnsupported, len(diags))
+	}
+	actual := "none"
+	if mod := scratch.Schema().Implemented(name); mod != nil && mod.Revision() != "" {
+		actual = mod.Revision()
+	}
+	diags = append([]yang.Diagnostic{},
+		yang.Diagnostic{Phase: "parse", Err: "LY_EINVAL", Code: "LYVE_SUCCESS", Msg: fmt.Sprintf(`Module %q parsed with the wrong revision (%q instead "").`, name, actual)},
+		yang.Diagnostic{Phase: "parse", Err: "LY_EOTHER", Code: "LYVE_SUCCESS", Msg: fmt.Sprintf("Parsing module %q failed.", name)})
+	return diags, fmt.Errorf("module revision mismatch")
 }
 
 func unsupported(err error) error { return fmt.Errorf("%w: %s", ErrUnsupported, err.Error()) }
@@ -480,4 +609,26 @@ func typeJSON(t *yang.Type, target any, utargets []any) map[string]any {
 		o["union"] = members
 	}
 	return o
+}
+
+// requestChildren follows cJSON_ArrayForEach for context inputs: arrays and
+// object values have children; null and scalar JSON values do not. JSON object
+// serialization is sorted by key, the same order in which the oracle sees it.
+func requestChildren(v any) []any {
+	if a, ok := v.([]any); ok {
+		return a
+	}
+	if m, ok := v.(map[string]any); ok {
+		keys := make([]string, 0, len(m))
+		for k := range m {
+			keys = append(keys, k)
+		}
+		slices.Sort(keys)
+		out := make([]any, 0, len(keys))
+		for _, k := range keys {
+			out = append(out, m[k])
+		}
+		return out
+	}
+	return nil
 }

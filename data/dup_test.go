@@ -6,8 +6,10 @@ import (
 	"errors"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 
+	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/schema"
 )
 
@@ -93,6 +95,41 @@ func TestDupSiblings(t *testing.T) {
 	}
 }
 
+// TestDupMismatchedParentRefused: a schema-backed parent that is not an instance of the node's
+// schema parent (lysc_data_parent) is refused before the tree changes (D-0124), for Dup and
+// DupSiblings, with and without the parent's children hash table: d (schema parent np) under c,
+// and c under its own instance. A matching parent is not affected.
+func TestDupMismatchedParentRefused(t *testing.T) {
+	set := editSet(t)
+	for _, in := range []string{`{"pv2-edit:c":{"np":{"d":7}}}`, `{"pv2-edit:c":{"a":"x","b":1,"np":{"d":7},"l":[{"k":"a"}]}}`} {
+		for name, dup := range map[string]func(*Tree, *Node, *Node, DupOptions) (*Node, []yang.Diagnostic, error){
+			"Dup": (*Tree).Dup, "DupSiblings": (*Tree).DupSiblings} {
+			for _, node := range []string{"/pv2-edit:c/np/d", "/pv2-edit:c"} {
+				tr, _, err := parseJSONString(set, in, Reject, false)
+				if err != nil {
+					t.Fatal(err)
+				}
+				before := typedDump(tr)
+				_, _, err = dup(tr, findNode(t, tr, node), findNode(t, tr, "/pv2-edit:c"), DupOptions{})
+				var ve *ValidationError
+				if !errors.As(err, &ve) || ve.RC() != "LY_EINVAL" || len(ve.Diags) != 1 || !strings.Contains(ve.Diags[0].Msg, "D-0124") {
+					t.Fatalf("%s %s in %s: %v; want the D-0124 LY_EINVAL", name, node, in, err)
+				}
+				if got := typedDump(tr); !reflect.DeepEqual(got, before) {
+					t.Fatalf("%s %s: tree changed:\n got  %q\n want %q", name, node, got, before)
+				}
+			}
+			tr, _, err := parseJSONString(set, in, Reject, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, _, err := dup(tr, findNode(t, tr, "/pv2-edit:c/np/d"), findNode(t, tr, "/pv2-edit:c/np"), DupOptions{}); err != nil {
+				t.Fatalf("%s under the schema parent: %v", name, err)
+			}
+		}
+	}
+}
+
 // TestDupWithParents: LYD_DUP_WITH_PARENTS builds the parents (a list with its keys) to the top,
 // or connects them into a given parent; a parent none of the schema parents matches is refused.
 func TestDupWithParents(t *testing.T) {
@@ -130,6 +167,62 @@ func TestDupWithParents(t *testing.T) {
 	k := findNode(t, tr, "/pv2-edit:c/l[k='b']/k")
 	if d, err := dupTo(k, nil, nil, dupWithParents, false); err != nil || d.parent == nil || d.parent.parent == nil {
 		t.Errorf("key with parents: %v %v", d, err)
+	}
+}
+
+// TestDupTermParent covers D-0123: lyd_dup reaches its unchecked insertion for a term parent
+// without LYD_DUP_WITH_PARENTS. The port refuses both public entry points before changing the
+// tree. WithParents keeps lyd_dup_get_local_parent's existing parent-mismatch result.
+func TestDupTermParent(t *testing.T) {
+	set := editSet(t)
+	for _, parentPath := range []string{"/pv2-edit:c/a", "/pv2-edit:c/ll[.='a']"} {
+		for _, tc := range []struct {
+			name string
+			fn   string
+			dup  func(*Tree, *Node, *Node, DupOptions) (*Node, []yang.Diagnostic, error)
+		}{
+			{"Dup", "lyd_dup_single", (*Tree).Dup},
+			{"DupSiblings", "lyd_dup_siblings", (*Tree).DupSiblings},
+		} {
+			t.Run(tc.name+"/"+parentPath, func(t *testing.T) {
+				tr := dupFixture(t, set)
+				before := typedDump(tr)
+				_, diags, err := tc.dup(tr, findNode(t, tr, "/pv2-edit:c"), findNode(t, tr, parentPath), DupOptions{Recursive: true})
+				var ve *ValidationError
+				want := "Invalid argument parent (not an inner node) (" + tc.fn + "())."
+				if !errors.As(err, &ve) || ve.RC() != "LY_EINVAL" || err.Error() != want || len(diags) != 0 {
+					t.Fatalf("duplicate = diagnostics %v, error %v; want LY_EINVAL %q", diags, err, want)
+				}
+				if got := typedDump(tr); !reflect.DeepEqual(got, before) {
+					t.Fatalf("tree changed:\n got  %q\n want %q", got, before)
+				}
+
+				_, _, withParentsErr := tc.dup(tr, findNode(t, tr, "/pv2-edit:c/l[k='a']/v"),
+					findNode(t, tr, parentPath), DupOptions{WithParents: true})
+				if withParentsErr == nil || strings.Contains(withParentsErr.Error(), "not an inner node") {
+					t.Fatalf("WithParents error = %v; want lyd_dup_get_local_parent result", withParentsErr)
+				}
+			})
+		}
+	}
+}
+
+// TestDupKeyTermParent: a list key duplicated under a term node is looked up, not inserted
+// (tree_data.c:2449-2453): LOGINT and LY_ENOTFOUND, the tree unchanged; D-0123 does not apply.
+func TestDupKeyTermParent(t *testing.T) {
+	set := editSet(t)
+	for _, dup := range []func(*Tree, *Node, *Node, DupOptions) (*Node, []yang.Diagnostic, error){(*Tree).Dup, (*Tree).DupSiblings} {
+		tr := dupFixture(t, set)
+		before := typedDump(tr)
+		_, _, err := dup(tr, findNode(t, tr, "/pv2-edit:c/l[k='a']/k"), findNode(t, tr, "/pv2-edit:c/a"), DupOptions{})
+		var ve *ValidationError
+		if !errors.As(err, &ve) || ve.RC() != "LY_ENOTFOUND" || len(ve.Diags) != 1 || ve.Diags[0].Err != "LY_EINT" ||
+			ve.Diags[0].Msg != "Internal error (tree_data.c:2453)." {
+			t.Fatalf("duplicate key = %v; want LOGINT and LY_ENOTFOUND from the key lookup", err)
+		}
+		if got := typedDump(tr); !reflect.DeepEqual(got, before) {
+			t.Fatalf("tree changed:\n got  %q\n want %q", got, before)
+		}
 	}
 }
 
@@ -189,9 +282,9 @@ func TestDupContexts(t *testing.T) {
 	}
 	// a key with its parents: libyang looks the key up in the duplicated list by the source
 	// schema node, which fails across contexts (LOGINT, LY_ENOTFOUND)
-	var oe *opError
-	if _, err := dupTo(findNode(t, tr, "/pv2-edit:c/l[k='b']/k"), set2, nil, dupWithParents, false); !errors.As(err, &oe) ||
-		oe.Err != "LY_ENOTFOUND" {
+	var rc rcError
+	if _, err := dupTo(findNode(t, tr, "/pv2-edit:c/l[k='b']/k"), set2, nil, dupWithParents, false); !errors.As(err, &rc) ||
+		rc != "LY_ENOTFOUND" {
 		t.Errorf("key with parents across contexts: %v", err)
 	}
 	// a schema node the target lacks

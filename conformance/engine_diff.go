@@ -3,19 +3,11 @@
 package conformance
 
 import (
-	"context"
 	"fmt"
-	"strings"
 
 	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/data"
 )
-
-// diffKeys are the op diff request fields runDiff handles.
-var diffKeys = map[string]bool{"op": true, "base_dir": true, "searchdirs": true, "modules": true,
-	"context_options": true, "format": true, "data_type": true, "first": true, "first_file": true, "second": true,
-	"second_file": true, "unknown": true, "parse_only": true, "parse_options": true, "validate_options": true,
-	"diff_options": true}
 
 // diffOptions are lyoracle.c diff_flags.
 func diffOptions(p map[string]any, key string) (data.DiffOptions, error) {
@@ -43,41 +35,24 @@ func topNode(t *data.Tree) *data.Node {
 	return nil
 }
 
-// parseInput is parse_one of the input key for datastore data.
-func parseInput(r Request, s *yang.Schema, p map[string]any, key string) (*data.Tree, []yang.Diagnostic, error) {
-	o, err := dataOptions(p)
-	if err != nil {
-		return nil, nil, err
-	}
-	f, err := formatOf(p)
-	if err != nil {
-		return nil, nil, err
-	}
-	in, err := inputOf(r, p, key)
-	if err != nil {
-		return nil, nil, err
-	}
-	return data.Parse(context.Background(), strings.NewReader(in), f, s, o)
-}
-
-// runDiff is lyoracle.c op_diff: both inputs parsed as op data parses them, lyd_diff_siblings,
-// the diff printed with LYD_PRINT_WD_ALL.
-func runDiff(r Request, s *yang.Schema, resp map[string]any) error {
+// runDiff is lyoracle.c op_diff: both datastore inputs parsed as op data parses them,
+// lyd_diff_siblings, the diff printed with LYD_PRINT_WD_ALL.
+func runDiff(r Request, s *yang.Schema, resp map[string]any, exec executionContext) error {
 	p := r.Params
-	for k := range p {
-		if !diffKeys[k] {
-			return fmt.Errorf("%w: diff request field %s", ErrUnsupported, k)
-		}
-	}
-	o, err := diffOptions(p, "diff_options")
-	if err != nil {
+	if err := checkRequest(r, s, p, exec, dataPreludeRules); err != nil {
 		return err
 	}
-	diags := []any{}
+	if _, err := loadOperational(r, s, resp); err != nil || resp["verdict"] == "operational-error" {
+		return err
+	}
+	if err := checkRequest(r, s, p, exec, diffRequestRules); err != nil {
+		return err
+	}
+	diags := list(resp["diagnostics"])
 	var trees [2]*data.Tree
 	failed := false
 	for i, key := range []string{"first", "second"} {
-		t, d, perr := parseInput(r, s, p, key)
+		t, d, perr := parseOne(r, s, p, exec, key, key, nil)
 		rc, err := rcOf(perr)
 		if err != nil {
 			return err
@@ -90,6 +65,13 @@ func runDiff(r Request, s *yang.Schema, resp map[string]any) error {
 	if failed {
 		resp["verdict"] = "data-error"
 		return nil
+	}
+	if err := requestFlags("diff_options", "defaults meta")(&requestCheck{p: p}); err != nil {
+		return err
+	}
+	o, err := diffOptions(p, "diff_options")
+	if err != nil {
+		return err
 	}
 	diff, err := data.DiffSiblings(topNode(trees[0]), topNode(trees[1]), o)
 	rc, rerr := rcOf(err)
@@ -117,6 +99,10 @@ func runDiff(r Request, s *yang.Schema, resp map[string]any) error {
 // their phase (parse, diff).
 func stepDiff(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, reg **data.Tree,
 	so map[string]any) ([]yang.Diagnostic, error) {
+	_, hasData, err := requestInput(r, st, "data")
+	if err != nil {
+		return nil, err
+	}
 	o, err := diffOptions(st, "options")
 	if err != nil {
 		return nil, err
@@ -127,35 +113,46 @@ func stepDiff(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, reg
 	}
 	first := topNode(tree)
 	if path, ok := st["node"].(string); ok {
-		if first, err = findNode(tree, path); err != nil {
+		if first, err = findNode(tree, path, "diff node"); err != nil {
 			return nil, err
 		}
 	}
 	var second *data.Node
+	var secondTree *data.Tree
 	var diags []yang.Diagnostic
-	if st["data"] != nil || st["data_file"] != nil {
+	crossContext := false
+	if hasData {
 		secondSchema := s
 		if p, ok := st["target"].(map[string]any); ok {
-			ctx, _, _, verdict, cerr := buildContext(Request{BaseDir: r.BaseDir, Params: p})
+			targetSchema, _, _, verdict, cerr := r.buildContext(Request{BaseDir: r.BaseDir, Params: p, buildContext: r.buildContext})
 			if cerr != nil {
 				return nil, cerr
 			}
 			if verdict != "valid" {
-				return nil, fmt.Errorf("conformance: diff target context failed")
+				return nil, requestError("diff target context failed")
 			}
-			secondSchema = ctx.Schema()
+			secondSchema = targetSchema
+			crossContext = secondSchema != s
 		}
-		t, d, perr := parseInput(r, secondSchema, st, "data")
-		diags = phased(diags, d, "parse")
+		t, d, perr := parseOne(r, secondSchema, st, execStepDiff, "data", "parse", nil)
+		diags = append(diags, d...)
 		if perr != nil {
 			return diags, perr
 		}
 		second = topNode(t)
-		if path, ok := st["data_node"].(string); ok {
-			if second, err = findNode(t, path); err != nil {
-				return nil, err
-			}
+		secondTree = t
+	}
+	// lyoracle.c:2382 resolves data_node even when no data was supplied.
+	if path, ok := st["data_node"].(string); ok {
+		if second, err = findNode(secondTree, path, "diff data_node"); err != nil {
+			return nil, err
 		}
+	}
+	// lyoracle.c:2366-2386 permits populated trees from separate contexts.
+	// DiffSiblings/DiffTree deliberately refuse this matching (D-0069, #236).
+	// Preserve parse and selector failures above, and the supported NULL cases.
+	if crossContext && first != nil && second != nil {
+		return nil, fmt.Errorf("%w: cross-context diff of populated trees (D-0069)", ErrUnsupported)
 	}
 	diff := data.DiffSiblings
 	if b, _ := st["single"].(bool); b {
@@ -218,13 +215,13 @@ func mergeInto(s *yang.Schema, reg **data.Tree, merge func(*data.Tree) error) er
 }
 
 // parseDiff is the parse of a diff_parse or diff_merge step: the data parsed with LYD_PARSE_ONLY.
-func parseDiff(r Request, s *yang.Schema, st map[string]any) (*data.Tree, []yang.Diagnostic, error) {
+func parseDiff(r Request, s *yang.Schema, st map[string]any, exec executionContext) (*data.Tree, []yang.Diagnostic, error) {
 	p := map[string]any{}
 	for k, v := range st {
 		p[k] = v
 	}
 	p["parse_only"] = true
-	return parseInput(r, s, p, "data")
+	return parseOne(r, s, p, exec, "data", "parse", nil)
 }
 
 // stepDiffMerge is lyoracle.c step_diff_merge: the parsed source merged into the register
@@ -235,22 +232,23 @@ func stepDiffMerge(r Request, s *yang.Schema, st map[string]any, reg **data.Tree
 		return nil, err
 	}
 	o.Module = str(st, "module", "")
-	src, d, err := parseDiff(r, s, st)
+	src, d, err := parseDiff(r, s, st, execStepDiffMerge)
 	diags := phased(nil, d, "parse")
 	if err != nil {
 		return diags, err
 	}
 	var merge func(*data.Tree) error
 	if path, ok := st["src_node"].(string); ok {
-		sn, err := findNode(src, path)
-		if err != nil {
-			return nil, err
-		}
+		// lyoracle.c:2446-2450 resolves parent before src_node.
 		var parent *data.Node
 		if pp, ok := st["parent"].(string); ok {
-			if parent, err = findNode(*reg, pp); err != nil {
+			if parent, err = findNode(*reg, pp, "diff_merge parent"); err != nil {
 				return nil, err
 			}
+		}
+		sn, err := findNode(src, path, "diff_merge src_node")
+		if err != nil {
+			return nil, err
 		}
 		merge = func(t *data.Tree) error { return t.MergeDiffTree(parent, sn, o) }
 	} else {
@@ -260,16 +258,15 @@ func stepDiffMerge(r Request, s *yang.Schema, st map[string]any, reg **data.Tree
 	return phased(diags, diagsOf(err), "diff"), err
 }
 
-// findNode is the node at path in t; none is an engine error (the oracle's request-error).
-func findNode(t *data.Tree, path string) (*data.Node, error) {
-	if t == nil {
-		return nil, fmt.Errorf("conformance: no tree for %s", path)
+// findNode preserves the oracle's selector failure as a request-error, including
+// empty paths and a NULL tree; Find's diagnostics are not collected by lyoracle.
+func findNode(t *data.Tree, path, label string) (*data.Node, error) {
+	if t != nil && path != "" {
+		if n, err := t.Find(path); err == nil && n != nil {
+			return n, nil
+		}
 	}
-	n, err := t.Find(path)
-	if err == nil && n == nil {
-		err = fmt.Errorf("conformance: %s not found", path)
-	}
-	return n, err
+	return nil, requestError("%s %s not found", label, path)
 }
 
 // diffOut is the diff register of a diff step as lyoracle.c reports it: printed and dumped.

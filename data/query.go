@@ -239,6 +239,11 @@ func (t *Tree) evalXPath4(l *logger, ctxNode *Node, src string, ns xpath.Namespa
 	if err != nil {
 		return xpath.Result{}, queryErr(l, ctxNode, err)
 	}
+	return t.evalCompiledXPath4(l, ctxNode, e, src, ns, vars, single, to)
+}
+
+// evalCompiledXPath4 evaluates after the caller has supplied the lexer location.
+func (t *Tree) evalCompiledXPath4(l *logger, ctxNode *Node, e *xpath.Expr, src string, ns xpath.NamespaceCtx, vars []xpath.Var, single bool, to xpath.ResultType) (xpath.Result, error) {
 	if s, ok := ns.(schemaNS); ok && s.cur == nil { // lyxp_eval's first check
 		return xpath.Result{}, l.logErr("LY_EINVAL", "Current module must be set if schema format is used.")
 	}

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/vibe-ports/yang/internal/ly"
 	"github.com/vibe-ports/yang/internal/schema"
@@ -60,14 +61,18 @@ func (t *Tree) NewPath(path, value string, o NewPathOptions) (*Node, error) {
 	return n, lg.done(err)
 }
 
-// Find is lyd_find_path from the top level of t: the node an absolute JSON path names (list and
-// leaf-list instances need their predicates), nil when it does not exist. A malformed path is a
-// *ValidationError.
+// Find is lyd_find_path from the first top-level node of t: the node an absolute JSON path names,
+// or the node a relative JSON path names among that first node's children (list and leaf-list
+// instances need their predicates). It returns nil when the path does not exist. A malformed path
+// is a *ValidationError.
 func (t *Tree) Find(path string) (*Node, error) {
 	lg := &logger{set: t.set}
 	n, err := t.findPath(lg, path)
 	if errors.Is(err, errNotFound) || errors.Is(err, errPartial) {
 		return nil, nil
+	}
+	if ve, silent := err.(*ValidationError); silent { //nolint:errorlint // findPath's unlogged argument check, never wrapped
+		return nil, ve
 	}
 	return n, lg.done(err)
 }
@@ -107,25 +112,46 @@ func (s *siblings) nodes() []*Node {
 	return out
 }
 
-// findPath is lyd_find_path from the first top-level node: errNotFound / errPartial when the
-// path does not match fully. The path is checked on an empty tree too (the oracle's sequence
-// reports LY_ENOTFOUND there without calling lyd_find_path).
+// findPath is lyd_find_path from the first top-level node (ctx_node): errNotFound / errPartial
+// when the path does not match fully. Absolute paths start at the document root; relative paths
+// start at the context node's children, as ly_path_eval_partial does. An absolute path is checked
+// on an empty tree too (the oracle's sequence reports LY_ENOTFOUND there without calling
+// lyd_find_path); a relative one has no context node to compile against there and is not found.
 func (t *Tree) findPath(lg *logger, path string) (*Node, error) {
-	if path == "" || path[0] != '/' {
-		return nil, argErr("path (not absolute)", "lyd_find_path") // libyang takes it relative to ctx_node
+	var ctx *Node
+	for n := range t.top.all() {
+		ctx = n
+		break
 	}
-	var ctxNode *schema.Node // ctx_node->schema: the first top-level node
-	if len(t.top.list) > 0 {
-		ctxNode = t.top.list[0].schema
+	// ly_path_parse decides absoluteness from the first token; lyxp skips XML whitespace first.
+	trimmed := strings.TrimLeft(path, " \t\n\r")
+	relative := trimmed == "" || trimmed[0] != '/'
+	if ctx == nil && relative {
+		return nil, errNotFound
+	}
+	var ctxNode *schema.Node
+	if ctx != nil {
+		if ctx.schema == nil {
+			// LY_CHECK_ARG_RET(NULL, ...), tree_data.c:3707: no context to log in, no diagnostic.
+			return nil, &ValidationError{err: argErr("ctx_node->schema", "lyd_find_path"), rc: "LY_EINVAL"}
+		}
+		ctxNode = ctx.schema
 	}
 	p, msg, at := types.CompilePath(t.set, ctxNode, path, false, false)
 	if msg != "" {
+		if at == nil {
+			at = ctxNode // ly_path_parse: LOG_LOCSET(ctx_node) before parsing (path.c:340)
+		}
 		return nil, lg.item(nil, at, false, "LY_EVALID", ly.XPath, "", msg)
 	}
-	if len(t.top.list) == 0 {
+	if ctx == nil {
 		return nil, errNotFound
 	}
-	n, idx, err := t.evalPartial(lg, p)
+	sib := &t.top
+	if relative {
+		sib = &ctx.kids
+	}
+	n, idx, err := t.evalPartialFrom(lg, sib, p)
 	switch {
 	case err != nil:
 		return nil, err
@@ -140,7 +166,10 @@ func (t *Tree) findPath(lg *logger, path string) (*Node, error) {
 // evalPartial is ly_path_eval_partial from the top level: the last node matched and the number
 // of path segments matched (len(p) for a full match).
 func (t *Tree) evalPartial(lg *logger, p types.Path) (*Node, int, error) {
-	sib := &t.top
+	return t.evalPartialFrom(lg, &t.top, p)
+}
+
+func (t *Tree) evalPartialFrom(lg *logger, sib *siblings, p types.Path) (*Node, int, error) {
 	var prev *Node
 	for u, seg := range p {
 		var n *Node

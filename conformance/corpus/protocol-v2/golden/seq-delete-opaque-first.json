@@ -1,0 +1,104 @@
+{
+  "context_diagnostics": [],
+  "failed_step": 1,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 3,
+    "name": "LY_EINVAL"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "opaque",
+          "meta": [],
+          "opaque": {
+            "format": "json",
+            "module": "pv2",
+            "name": "nosuch",
+            "namespace": null,
+            "prefix": "pv2"
+          },
+          "path": "/pv2:nosuch",
+          "schema": null,
+          "value": {
+            "canonical": "x",
+            "hints": [
+              "string",
+              "num64"
+            ],
+            "type": null,
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "edit",
+      "rc": {
+        "err": 3,
+        "name": "LY_EINVAL"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "opaque",
+          "meta": [],
+          "opaque": {
+            "format": "json",
+            "module": "pv2",
+            "name": "nosuch",
+            "namespace": null,
+            "prefix": "pv2"
+          },
+          "path": "/pv2:nosuch",
+          "schema": null,
+          "value": {
+            "canonical": "x",
+            "hints": [
+              "string",
+              "num64"
+            ],
+            "type": null,
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "do": "dump",
+      "skipped": true
+    }
+  ],
+  "verdict": "invalid"
+}

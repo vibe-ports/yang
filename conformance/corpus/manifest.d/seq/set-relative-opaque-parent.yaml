@@ -1,0 +1,23 @@
+fixtures:
+  - id: seq/set-relative-opaque-parent
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # lyd_new_path parent handling is libyang-specific.
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      steps:
+        - {do: parse, data: '{"pv2:nosuch":"x"}', unknown: opaque, parse_only: true}
+        # lyd_new_path compiles "mode" against lyd_node_schema(parent) (tree_data_new.c:1851);
+        # the opaque parent has none, so ly_path_compile reports "No initial schema parent for
+        # a relative path." (path.c:1219-1222, LY_EVALID).
+        # The engine reports a relative set under a retained parent unsupported (U-0110 class
+        # relative-set-parent: Tree.NewPath has no parent argument, #255).
+        - {do: edit, set: {path: mode, value: "on"}}
+        - {do: dump}
+    golden: golden/seq-set-relative-opaque-parent.json
+    assert:
+      verdict: invalid
+      deviation: null

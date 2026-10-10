@@ -24,6 +24,11 @@ func Parse(ctx context.Context, r io.Reader, f Format, s *yang.Schema, o ParseOp
 		err := lg.done(argErr("ctx || parent", "lyd_parse_data"))
 		return nil, lg.diags, err
 	}
+	if r == nil {
+		lg := &logger{set: snap.Set(s)}
+		err := lg.done(argErr("in", "lyd_parse_data"))
+		return nil, lg.diags, err
+	}
 	var fp formatParser
 	switch f {
 	case FormatJSON:
@@ -38,7 +43,7 @@ func Parse(ctx context.Context, r io.Reader, f Format, s *yang.Schema, o ParseOp
 	if o.StoreOnly {
 		o.ParseOnly = true // LYD_PARSE_STORE_ONLY = 0x01010000 contains LYD_PARSE_ONLY = 0x010000
 	}
-	return parseWith(ctx, r, snap.Set(s), parseOpts{ParseOptions: o, storeOnly: o.StoreOnly, jsonNull: o.JSONNull,
+	return parseWith(ctx, r, snap.Set(s), parseOpts{ParseOptions: o, storeOnly: o.StoreOnly, whenTrue: o.WhenTrue, jsonNull: o.JSONNull,
 		jsonStringDatatypes: o.JSONStringDatatypes}, fp, nil)
 }
 
@@ -78,4 +83,35 @@ func (n *Node) Schema() *yang.SchemaNode { return snap.NodeOf(n.schema) }
 // valid earlier (FlagWhenTrue), else it is an error. Diagnostics and err as for Parse.
 func (t *Tree) Validate(ctx context.Context, o ValidateOptions) ([]yang.Diagnostic, error) {
 	return t.validateAll(ctx, o, Budget{}, nil)
+}
+
+// ValidateModule is lyd_validate_module over only the data of the implemented module named
+// module: when conditions, value checks needing the tree, implicit default nodes (added to t),
+// must, mandatory, min/max-elements, unique and duplicate instances. It does not validate data
+// of other modules. ValidateOptions.Present is refused with LY_EINVAL and no diagnostic, matching
+// libyang's NULL-context argument check. An unknown or not implemented module also
+// returns LY_EINVAL without a diagnostic. Other diagnostics and err are as for Validate. See
+// ValidateModuleDiff for the diff-returning form and its mutation and error semantics.
+func (t *Tree) ValidateModule(ctx context.Context, module string, o ValidateOptions) ([]yang.Diagnostic, error) {
+	mod, d, err := t.validateModuleArgs(module, o)
+	if err != nil {
+		return d, err
+	}
+	return t.validateModule(ctx, mod, o, Budget{}, nil)
+}
+
+// validateModuleArgs applies lyd_validate_module's public module and option argument checks.
+func (t *Tree) validateModuleArgs(module string, o ValidateOptions) (*schema.Module, []yang.Diagnostic, error) {
+	mod := t.set.Implemented(module)
+	if mod == nil {
+		// validation.c:2304 checks module with a NULL logging context.
+		err := &ValidationError{err: argErr("module", "lyd_validate_module"), rc: "LY_EINVAL"}
+		return nil, nil, err
+	}
+	if o.Present {
+		// LY_CHECK_ARG_RET(NULL, ...): the argument error has no context in which to be logged.
+		err := &ValidationError{err: argErr("!(val_opts & LYD_VALIDATE_PRESENT)", "lyd_validate_module"), rc: "LY_EINVAL"}
+		return nil, nil, err
+	}
+	return mod, nil, nil
 }

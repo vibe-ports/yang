@@ -1,0 +1,23 @@
+fixtures:
+  - id: protocol-v2/when-false-removed
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.5"]
+    areas: [validation]
+    # Without LYD_PARSE_WHEN_TRUE, x is new rather than previously valid. Its false when is
+    # a validation error (LYVE_DATA at /pv2:c/x), so op_data returns no output tree.
+    request:
+      op: data
+      searchdirs: [schemas]
+      context_options: [no_yanglibrary]
+      modules: [{name: pv2}]
+      format: json
+      data_type: data
+      data: '{"pv2:c":{"mode":"off","x":"remove"}}'
+    golden: golden/when-false-removed.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.21.5"]
+      diagnostics:
+        - {vecode_name: LYVE_DATA, data_path: /pv2:c/x}
+      deviation: null

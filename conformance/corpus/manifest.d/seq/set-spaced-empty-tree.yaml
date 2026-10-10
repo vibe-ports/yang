@@ -1,0 +1,20 @@
+fixtures:
+  - id: seq/set-spaced-empty-tree
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # lyd_new_path argument checks are libyang-specific.
+    areas: [diff]
+    request:
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      context_options: [no_yanglibrary]
+      op: sequence
+      steps:
+        # lyd_new_path without a parent checks path[0] == '/' before tokenizing
+        # (tree_data_new.c:1868): a leading space is LY_EINVAL.
+        - {do: edit, set: {path: " /pv2:c/mode", value: "on"}}
+        - {do: dump}
+    golden: golden/seq-set-spaced-empty-tree.json
+    assert:
+      verdict: invalid
+      deviation: null

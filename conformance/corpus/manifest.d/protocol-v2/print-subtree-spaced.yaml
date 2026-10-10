@@ -1,0 +1,18 @@
+fixtures:
+  - id: protocol-v2/print-subtree-spaced
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # lyxp_expr_parse skips leading XML whitespace before ly_path_parse decides the path is absolute.
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      data_type: data
+      parse_only: true
+      data: '{"pv2:c":{"mode":"on"}}'
+      print_subtree: " /pv2:c/mode"
+    golden: golden/print-subtree-spaced.json
+    assert:
+      verdict: valid
+      deviation: null

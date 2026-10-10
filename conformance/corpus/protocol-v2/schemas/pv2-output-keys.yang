@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: BSD-3-Clause
+module pv2-output-keys {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-output-keys";
+  prefix ok;
+  description "Hand-written constructor input/output key-count interaction.";
+  rpc fewer {
+    input { list item { key "a b"; leaf a { type string; } leaf b { type string; } } }
+    output { list item { key a; leaf a { type string; } } }
+  }
+  rpc more {
+    input { list item { key a; leaf a { type string; } } }
+    output { list item { key "a b"; leaf a { type string; } leaf b { type string; } } }
+  }
+}

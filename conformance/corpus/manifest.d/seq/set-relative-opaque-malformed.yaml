@@ -1,0 +1,18 @@
+fixtures:
+  - id: seq/set-relative-opaque-malformed
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # lyd_new_path parent handling is libyang-specific.
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      steps:
+        - {do: parse, data: '{"pv2:nosuch":"x"}', unknown: opaque, parse_only: true}
+        # lyd_new_path_ parses the path before compiling it against the opaque parent: the syntax error comes first.
+        # The engine reports a relative set under a retained parent unsupported (U-0110 class
+        # relative-set-parent: Tree.NewPath has no parent argument, #255).
+        - {do: edit, set: {path: "[", value: "x"}}
+        - {do: dump}
+    golden: golden/seq-set-relative-opaque-malformed.json

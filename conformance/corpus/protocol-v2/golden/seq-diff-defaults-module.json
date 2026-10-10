@@ -1,0 +1,256 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-diff",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-diff:c",
+          "schema": "/pv2-diff:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-diff:c/mode",
+          "schema": "/pv2-diff:c/mode",
+          "value": {
+            "canonical": "off",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "validate",
+      "implicit_diff": "{\n  \"pv2-diff:c\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"d\": 5,\n    \"@d\": {\n      \"yang:operation\": \"create\"\n    },\n    \"np\": {\n      \"@\": {\n        \"yang:operation\": \"create\"\n      },\n      \"x\": \"dx\",\n      \"@x\": {\n        \"yang:operation\": \"create\"\n      }\n    },\n    \"dl\": [\n      1,\n      2\n    ],\n    \"@dl\": [\n      {\n        \"yang:operation\": \"create\"\n      },\n      {\n        \"yang:operation\": \"create\"\n      }\n    ],\n    \"ul\": [\n      \"b\",\n      \"a\"\n    ],\n    \"@ul\": [\n      {\n        \"yang:value\": \"\",\n        \"yang:operation\": \"create\"\n      },\n      {\n        \"yang:value\": \"b\",\n        \"yang:operation\": \"create\"\n      }\n    ],\n    \"c1a\": 7,\n    \"@c1a\": {\n      \"yang:operation\": \"create\"\n    }\n  }\n}\n",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-diff:c",
+          "schema": "/pv2-diff:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-diff:c/mode",
+          "schema": "/pv2-diff:c/mode",
+          "value": {
+            "canonical": "off",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-diff:c/d",
+          "schema": "/pv2-diff:c/d",
+          "value": {
+            "canonical": "5",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-diff:c/np",
+          "schema": "/pv2-diff:c/np",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-diff:c/np/x",
+          "schema": "/pv2-diff:c/np/x",
+          "value": {
+            "canonical": "dx",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-diff:c/dl[.='1']",
+          "schema": "/pv2-diff:c/dl",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-diff:c/dl[.='2']",
+          "schema": "/pv2-diff:c/dl",
+          "value": {
+            "canonical": "2",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-diff:c/ul[.='b']",
+          "schema": "/pv2-diff:c/ul",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-diff:c/ul[.='a']",
+          "schema": "/pv2-diff:c/ul",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-diff:c/c1a",
+          "schema": "/pv2-diff:c/ch/c1/c1a",
+          "value": {
+            "canonical": "7",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

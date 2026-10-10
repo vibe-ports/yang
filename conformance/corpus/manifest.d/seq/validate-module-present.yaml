@@ -1,0 +1,15 @@
+fixtures:
+  - id: seq/validate-module-present
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # lyd_validate_module: LYD_VALIDATE_PRESENT is refused by its NULL-context argument check
+    rfc: []   # libyang lyd_validate_module behaviour, not an RFC rule
+    areas: [validation]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: vm-a}, {name: vm-b}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {"do": "parse", "format": "json", "data_type": "config", "parse_only": true, "data": "{\"vm-a:top\": {\"x\": \"1\"}}"}
+        - {"do": "validate", "module": "vm-a", "validate_options": ["present"]}
+    golden: golden/seq-validate-module-present.json

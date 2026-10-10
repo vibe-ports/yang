@@ -44,8 +44,9 @@ func TestArgErrors(t *testing.T) {
 	}
 	_, err = tr.NewPath("fz:c/s", "y", data.NewPathOptions{})
 	wantArgErr(t, "NewPath relative", "Invalid argument (path[0] == '/') || parent (lyd_new_path()).", err)
-	_, err = tr.Find("fz:c")
-	wantArgErr(t, "Find relative", "Invalid argument path (not absolute) (lyd_find_path()).", err)
+	if n, findErr := tr.Find("s"); findErr != nil || n == nil || n.Value() != "x" {
+		t.Errorf("Find relative: %v, %v", n, findErr)
+	}
 
 	c, _ := tr.Find("/fz:c")
 	if err := c.Remove(); err != nil {

@@ -1,0 +1,19 @@
+fixtures:
+  # a list key duplicated under a leaf: lyd_dup looks the key up among lyd_child(parent), NULL
+  # for a term node, and fails with LOGINT and LY_ENOTFOUND (tree_data.c:2449-2453); no
+  # insertion happens, so D-0123 does not apply.
+  - id: seq/dup-key-term-parent
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang API (lyd_dup_single): no RFC behaviour
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: edit, set: {path: "/pv2-edit:c/a", value: "x"}}
+        - {do: edit, set: {path: "/pv2-edit:c/l[k='a']/v", value: "1"}}
+        - {do: dup, node: "/pv2-edit:c/l[k='a']/k", parent: "/pv2-edit:c/a"}
+        - {do: dump}
+    golden: golden/seq-dup-key-term-parent.json

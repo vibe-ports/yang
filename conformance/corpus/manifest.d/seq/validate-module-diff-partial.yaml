@@ -1,0 +1,16 @@
+fixtures:
+  # #235: lyd_validate_module keeps defaults and its partial diff when final validation fails
+  - id: seq/validate-module-diff-partial
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang lyd_validate_module diff and no-rollback semantics: no RFC behaviour
+    areas: [validation, defaults, diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: vm-b}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {"do": "parse", "format": "json", "data_type": "config", "parse_only": true, "data": "{\"vm-b:top\": {}}"}
+        - {"do": "validate", "data_type": "config", "module": "vm-b"}
+    golden: golden/seq-validate-module-diff-partial.json

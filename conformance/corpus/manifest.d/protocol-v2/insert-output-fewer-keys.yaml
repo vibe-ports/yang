@@ -1,0 +1,16 @@
+fixtures:
+  - id: protocol-v2/insert-output-fewer-keys
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # oracle protocol request ordering and operation construction
+    areas: [validation]
+    request:
+      searchdirs: [schemas]
+      context_options: [no_yanglibrary]
+      op: sequence
+      modules: [{name: pv2-output-keys}]
+      steps:
+        - {do: parse, data_type: rpc, parse_only: true, data: '{"pv2-output-keys:fewer":{}}'}
+        - {do: edit, insert_list: {parent: /pv2-output-keys:fewer, name: item, keys: [one], options: [output]}}
+        - {do: dump}
+    golden: golden/insert-output-fewer-keys.json

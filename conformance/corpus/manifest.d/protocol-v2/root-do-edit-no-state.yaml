@@ -1,0 +1,20 @@
+fixtures:
+  - id: protocol-v2/root-do-edit-no-state
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # lyoracle dispatch and its explicit no_state validation option
+    areas: [validation, nmda]
+    request:
+      op: data
+      searchdirs: [schemas]
+      context_options: [no_yanglibrary]
+      modules: [{name: pv2}]
+      format: json
+      data_type: data
+      do: edit # ignored by op_data; it must not select step_edit's parse-only flags
+      validate_options: [no_state]
+      data: '{"pv2:c":{"stats":[{"hits":1}]}}'
+    golden: golden/root-do-edit-no-state.json
+    assert:
+      verdict: invalid # pv2:stats is config false and no_state rejects it
+      deviation: null

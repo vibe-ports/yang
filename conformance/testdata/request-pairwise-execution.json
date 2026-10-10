@@ -1,0 +1,773 @@
+{
+  "source": {
+    "url": "hand-written (this repo)",
+    "license": "BSD-3-Clause",
+    "oracle": "libyang v5.8.6 linux/amd64 pairwise capture",
+    "note": "Complete native records, extracted without changing requests or responses; not corpus goldens."
+  },
+  "cases": [
+    {
+      "id": "missing-envelope-input",
+      "gap": "",
+      "sha256": "8379ba30cf0cbeafbcf898ff2d1ae15b9063e7ab49393bc3c2c81f2bd000409d",
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "data_type": "notif-restconf",
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "xpath",
+        "parse_only": true,
+        "searchdirs": [
+          "schemas"
+        ],
+        "xpath": "/pv2:c"
+      },
+      "response": {
+        "arch": "x86_64",
+        "context_diagnostics": [],
+        "diagnostics": [
+          {
+            "apptag": null,
+            "code": {
+              "err": 3,
+              "name": "LY_EINVAL"
+            },
+            "data_path": null,
+            "level": "error",
+            "line": 0,
+            "msg": "Invalid argument in (lyd_parse_op()).",
+            "phase": "data",
+            "schema_path": null,
+            "vecode": 0,
+            "vecode_name": "LYVE_SUCCESS"
+          }
+        ],
+        "libyang": "5.8.6",
+        "modules": [
+          {
+            "accepted": true,
+            "diagnostics": [],
+            "name": "pv2",
+            "revision": null
+          }
+        ],
+        "op": "xpath",
+        "protocol": 2,
+        "verdict": "data-error"
+      }
+    },
+    {
+      "id": "diff-null-input-selector",
+      "gap": "",
+      "sha256": "a08b4b0402a8fe8467c95465d7b2334d2b7eb82850f68c311326cbcbb7a306bb",
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data_node": "/pv2:c",
+            "data_type": "data",
+            "do": "diff",
+            "format": "json",
+            "parse_only": true
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      },
+      "response": {
+        "arch": "x86_64",
+        "context_diagnostics": [],
+        "libyang": "5.8.6",
+        "modules": [
+          {
+            "accepted": true,
+            "diagnostics": [],
+            "name": "pv2",
+            "revision": null
+          }
+        ],
+        "op": "sequence",
+        "protocol": 2,
+        "request_error": "diff data_node /pv2:c not found",
+        "steps": [
+          {
+            "diagnostics": [],
+            "do": "diff"
+          }
+        ],
+        "verdict": "request-error"
+      }
+    },
+    {
+      "id": "cross-context-diff",
+      "gap": "cross-context-diff",
+      "sha256": "4880013c9775b7a80336e52943db4d5c949ba47ecb36b20c8902e88ba03cfb3b",
+      "request": {
+        "base_dir": ".",
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "diff",
+            "parse_only": true,
+            "target": {
+              "context_options": [
+                "no_yanglibrary"
+              ],
+              "modules": [
+                {
+                  "features": [
+                    "*"
+                  ],
+                  "name": "pv2"
+                }
+              ],
+              "searchdirs": [
+                "schemas"
+              ]
+            }
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      },
+      "response": {
+        "arch": "x86_64",
+        "context_diagnostics": [],
+        "failed_step": null,
+        "libyang": "5.8.6",
+        "modules": [
+          {
+            "accepted": true,
+            "diagnostics": [],
+            "name": "pv2",
+            "revision": null
+          }
+        ],
+        "op": "sequence",
+        "protocol": 2,
+        "rc": {
+          "err": 0,
+          "name": "LY_SUCCESS"
+        },
+        "steps": [
+          {
+            "diagnostics": [],
+            "do": "parse",
+            "rc": {
+              "err": 0,
+              "name": "LY_SUCCESS"
+            },
+            "typed": [
+              {
+                "any": null,
+                "flags": {
+                  "default": false,
+                  "new": true,
+                  "when_true": false
+                },
+                "kind": "container",
+                "meta": [],
+                "opaque": null,
+                "path": "/pv2:c",
+                "schema": "/pv2:c",
+                "value": null
+              },
+              {
+                "any": null,
+                "flags": {
+                  "default": false,
+                  "new": true,
+                  "when_true": false
+                },
+                "kind": "leaf",
+                "meta": [],
+                "opaque": null,
+                "path": "/pv2:c/mode",
+                "schema": "/pv2:c/mode",
+                "value": {
+                  "canonical": "on",
+                  "type": "enumeration",
+                  "typedef": null,
+                  "union_member": null
+                }
+              },
+              {
+                "any": null,
+                "flags": {
+                  "default": false,
+                  "new": true,
+                  "when_true": false
+                },
+                "kind": "list",
+                "meta": [],
+                "opaque": null,
+                "path": "/pv2:c/l[k='a']",
+                "schema": "/pv2:c/l",
+                "value": null
+              },
+              {
+                "any": null,
+                "flags": {
+                  "default": false,
+                  "new": true,
+                  "when_true": false
+                },
+                "kind": "leaf",
+                "meta": [],
+                "opaque": null,
+                "path": "/pv2:c/l[k='a']/k",
+                "schema": "/pv2:c/l/k",
+                "value": {
+                  "canonical": "a",
+                  "type": "string",
+                  "typedef": null,
+                  "union_member": null
+                }
+              }
+            ]
+          },
+          {
+            "diagnostics": [],
+            "diff": null,
+            "diff_typed": [],
+            "do": "diff",
+            "rc": {
+              "err": 0,
+              "name": "LY_SUCCESS"
+            },
+            "typed": [
+              {
+                "any": null,
+                "flags": {
+                  "default": false,
+                  "new": true,
+                  "when_true": false
+                },
+                "kind": "container",
+                "meta": [],
+                "opaque": null,
+                "path": "/pv2:c",
+                "schema": "/pv2:c",
+                "value": null
+              },
+              {
+                "any": null,
+                "flags": {
+                  "default": false,
+                  "new": true,
+                  "when_true": false
+                },
+                "kind": "leaf",
+                "meta": [],
+                "opaque": null,
+                "path": "/pv2:c/mode",
+                "schema": "/pv2:c/mode",
+                "value": {
+                  "canonical": "on",
+                  "type": "enumeration",
+                  "typedef": null,
+                  "union_member": null
+                }
+              },
+              {
+                "any": null,
+                "flags": {
+                  "default": false,
+                  "new": true,
+                  "when_true": false
+                },
+                "kind": "list",
+                "meta": [],
+                "opaque": null,
+                "path": "/pv2:c/l[k='a']",
+                "schema": "/pv2:c/l",
+                "value": null
+              },
+              {
+                "any": null,
+                "flags": {
+                  "default": false,
+                  "new": true,
+                  "when_true": false
+                },
+                "kind": "leaf",
+                "meta": [],
+                "opaque": null,
+                "path": "/pv2:c/l[k='a']/k",
+                "schema": "/pv2:c/l/k",
+                "value": {
+                  "canonical": "a",
+                  "type": "string",
+                  "typedef": null,
+                  "union_member": null
+                }
+              }
+            ]
+          },
+          {
+            "diagnostics": [],
+            "do": "dump",
+            "rc": {
+              "err": 0,
+              "name": "LY_SUCCESS"
+            },
+            "tree": {
+              "json": "{\n  \"pv2:c\": {\n    \"mode\": \"on\",\n    \"l\": [\n      {\n        \"k\": \"a\"\n      }\n    ]\n  }\n}\n",
+              "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2\">\n  <mode>on</mode>\n  <l>\n    <k>a</k>\n  </l>\n</c>\n"
+            },
+            "typed": [
+              {
+                "any": null,
+                "flags": {
+                  "default": false,
+                  "new": true,
+                  "when_true": false
+                },
+                "kind": "container",
+                "meta": [],
+                "opaque": null,
+                "path": "/pv2:c",
+                "schema": "/pv2:c",
+                "value": null
+              },
+              {
+                "any": null,
+                "flags": {
+                  "default": false,
+                  "new": true,
+                  "when_true": false
+                },
+                "kind": "leaf",
+                "meta": [],
+                "opaque": null,
+                "path": "/pv2:c/mode",
+                "schema": "/pv2:c/mode",
+                "value": {
+                  "canonical": "on",
+                  "type": "enumeration",
+                  "typedef": null,
+                  "union_member": null
+                }
+              },
+              {
+                "any": null,
+                "flags": {
+                  "default": false,
+                  "new": true,
+                  "when_true": false
+                },
+                "kind": "list",
+                "meta": [],
+                "opaque": null,
+                "path": "/pv2:c/l[k='a']",
+                "schema": "/pv2:c/l",
+                "value": null
+              },
+              {
+                "any": null,
+                "flags": {
+                  "default": false,
+                  "new": true,
+                  "when_true": false
+                },
+                "kind": "leaf",
+                "meta": [],
+                "opaque": null,
+                "path": "/pv2:c/l[k='a']/k",
+                "schema": "/pv2:c/l/k",
+                "value": {
+                  "canonical": "a",
+                  "type": "string",
+                  "typedef": null,
+                  "union_member": null
+                }
+              }
+            ]
+          }
+        ],
+        "verdict": "valid"
+      }
+    },
+    {
+      "id": "relative-delete",
+      "sha256": "6356766c6db330ec99ae0060643b9f4eabc04b759864424866391e8acec53f5f",
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "delete": "x",
+            "do": "edit"
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      },
+      "response": {
+        "arch": "x86_64",
+        "context_diagnostics": [],
+        "failed_step": 1,
+        "libyang": "5.8.6",
+        "modules": [
+          {
+            "accepted": true,
+            "diagnostics": [],
+            "name": "pv2",
+            "revision": null
+          }
+        ],
+        "op": "sequence",
+        "protocol": 2,
+        "rc": {
+          "err": 5,
+          "name": "LY_ENOTFOUND"
+        },
+        "steps": [
+          {
+            "diagnostics": [],
+            "do": "parse",
+            "rc": {
+              "err": 0,
+              "name": "LY_SUCCESS"
+            },
+            "typed": [
+              {
+                "any": null,
+                "flags": {
+                  "default": false,
+                  "new": true,
+                  "when_true": false
+                },
+                "kind": "container",
+                "meta": [],
+                "opaque": null,
+                "path": "/pv2:c",
+                "schema": "/pv2:c",
+                "value": null
+              },
+              {
+                "any": null,
+                "flags": {
+                  "default": false,
+                  "new": true,
+                  "when_true": false
+                },
+                "kind": "leaf",
+                "meta": [],
+                "opaque": null,
+                "path": "/pv2:c/mode",
+                "schema": "/pv2:c/mode",
+                "value": {
+                  "canonical": "on",
+                  "type": "enumeration",
+                  "typedef": null,
+                  "union_member": null
+                }
+              },
+              {
+                "any": null,
+                "flags": {
+                  "default": false,
+                  "new": true,
+                  "when_true": false
+                },
+                "kind": "list",
+                "meta": [],
+                "opaque": null,
+                "path": "/pv2:c/l[k='a']",
+                "schema": "/pv2:c/l",
+                "value": null
+              },
+              {
+                "any": null,
+                "flags": {
+                  "default": false,
+                  "new": true,
+                  "when_true": false
+                },
+                "kind": "leaf",
+                "meta": [],
+                "opaque": null,
+                "path": "/pv2:c/l[k='a']/k",
+                "schema": "/pv2:c/l/k",
+                "value": {
+                  "canonical": "a",
+                  "type": "string",
+                  "typedef": null,
+                  "union_member": null
+                }
+              }
+            ]
+          },
+          {
+            "diagnostics": [],
+            "do": "edit",
+            "rc": {
+              "err": 5,
+              "name": "LY_ENOTFOUND"
+            },
+            "typed": [
+              {
+                "any": null,
+                "flags": {
+                  "default": false,
+                  "new": true,
+                  "when_true": false
+                },
+                "kind": "container",
+                "meta": [],
+                "opaque": null,
+                "path": "/pv2:c",
+                "schema": "/pv2:c",
+                "value": null
+              },
+              {
+                "any": null,
+                "flags": {
+                  "default": false,
+                  "new": true,
+                  "when_true": false
+                },
+                "kind": "leaf",
+                "meta": [],
+                "opaque": null,
+                "path": "/pv2:c/mode",
+                "schema": "/pv2:c/mode",
+                "value": {
+                  "canonical": "on",
+                  "type": "enumeration",
+                  "typedef": null,
+                  "union_member": null
+                }
+              },
+              {
+                "any": null,
+                "flags": {
+                  "default": false,
+                  "new": true,
+                  "when_true": false
+                },
+                "kind": "list",
+                "meta": [],
+                "opaque": null,
+                "path": "/pv2:c/l[k='a']",
+                "schema": "/pv2:c/l",
+                "value": null
+              },
+              {
+                "any": null,
+                "flags": {
+                  "default": false,
+                  "new": true,
+                  "when_true": false
+                },
+                "kind": "leaf",
+                "meta": [],
+                "opaque": null,
+                "path": "/pv2:c/l[k='a']/k",
+                "schema": "/pv2:c/l/k",
+                "value": {
+                  "canonical": "a",
+                  "type": "string",
+                  "typedef": null,
+                  "union_member": null
+                }
+              }
+            ]
+          },
+          {
+            "do": "dump",
+            "skipped": true
+          }
+        ],
+        "verdict": "invalid"
+      }
+    },
+    {
+      "id": "diff-merge-selector-order",
+      "gap": "",
+      "sha256": "eab7b3621499a7e00378ad23c5dc010b51bebc68b480478bc53ab55d80552d26",
+      "request": {
+        "base_dir": ".",
+        "context_options": [
+          "no_yanglibrary"
+        ],
+        "modules": [
+          {
+            "name": "pv2"
+          }
+        ],
+        "op": "sequence",
+        "searchdirs": [
+          "schemas"
+        ],
+        "steps": [
+          {
+            "data": "{\"pv2:c\":{\"mode\":\"on\",\"l\":[{\"k\":\"a\"}]}}",
+            "do": "parse",
+            "parse_only": true
+          },
+          {
+            "data": "{}",
+            "do": "diff_merge",
+            "parent": "/pv2:c",
+            "src_node": "/pv2:c"
+          },
+          {
+            "do": "dump"
+          }
+        ]
+      },
+      "response": {
+        "arch": "x86_64",
+        "context_diagnostics": [],
+        "libyang": "5.8.6",
+        "modules": [
+          {
+            "accepted": true,
+            "diagnostics": [],
+            "name": "pv2",
+            "revision": null
+          }
+        ],
+        "op": "sequence",
+        "protocol": 2,
+        "request_error": "diff_merge parent /pv2:c not found",
+        "steps": [
+          {
+            "diagnostics": [],
+            "do": "parse",
+            "rc": {
+              "err": 0,
+              "name": "LY_SUCCESS"
+            },
+            "typed": [
+              {
+                "any": null,
+                "flags": {
+                  "default": false,
+                  "new": true,
+                  "when_true": false
+                },
+                "kind": "container",
+                "meta": [],
+                "opaque": null,
+                "path": "/pv2:c",
+                "schema": "/pv2:c",
+                "value": null
+              },
+              {
+                "any": null,
+                "flags": {
+                  "default": false,
+                  "new": true,
+                  "when_true": false
+                },
+                "kind": "leaf",
+                "meta": [],
+                "opaque": null,
+                "path": "/pv2:c/mode",
+                "schema": "/pv2:c/mode",
+                "value": {
+                  "canonical": "on",
+                  "type": "enumeration",
+                  "typedef": null,
+                  "union_member": null
+                }
+              },
+              {
+                "any": null,
+                "flags": {
+                  "default": false,
+                  "new": true,
+                  "when_true": false
+                },
+                "kind": "list",
+                "meta": [],
+                "opaque": null,
+                "path": "/pv2:c/l[k='a']",
+                "schema": "/pv2:c/l",
+                "value": null
+              },
+              {
+                "any": null,
+                "flags": {
+                  "default": false,
+                  "new": true,
+                  "when_true": false
+                },
+                "kind": "leaf",
+                "meta": [],
+                "opaque": null,
+                "path": "/pv2:c/l[k='a']/k",
+                "schema": "/pv2:c/l/k",
+                "value": {
+                  "canonical": "a",
+                  "type": "string",
+                  "typedef": null,
+                  "union_member": null
+                }
+              }
+            ]
+          },
+          {
+            "diagnostics": [],
+            "do": "diff_merge"
+          }
+        ],
+        "verdict": "request-error"
+      }
+    }
+  ]
+}

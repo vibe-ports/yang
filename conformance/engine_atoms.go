@@ -5,22 +5,17 @@ package conformance
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/vibe-ports/yang"
 )
 
-// atomKeys are the op atoms request fields runAtoms handles.
-var atomKeys = map[string]bool{"op": true, "base_dir": true, "searchdirs": true, "modules": true,
-	"context_options": true, "xpath": true, "path": true, "context_path": true, "atom_options": true}
-
 // runAtoms is lyoracle.c op_atoms: Schema.FindXPathAtoms for xpath (lys_find_xpath_atoms) or
 // Schema.FindPathAtoms for path (lys_find_path_atoms) from the schema node of context_path.
-func runAtoms(r Request, s *yang.Schema, resp map[string]any) error {
+func runAtoms(r Request, s *yang.Schema, resp map[string]any, _ executionContext) error {
 	p := r.Params
-	for k := range p {
-		if !atomKeys[k] {
-			return fmt.Errorf("%w: atoms request field %s", ErrUnsupported, k)
-		}
+	if err := checkOpInit(r, s, "atoms"); err != nil {
+		return err
 	}
 	var o yang.AtomOptions
 	for _, f := range list(p["atom_options"]) {
@@ -38,15 +33,17 @@ func runAtoms(r Request, s *yang.Schema, resp map[string]any) error {
 	xp, isXPath := p["xpath"].(string)
 	path, isPath := p["path"].(string)
 	if isXPath == isPath {
-		return errors.New("atoms needs exactly one of xpath and path")
+		return requestError("atoms needs exactly one of xpath and path")
 	}
 	var node *yang.SchemaNode
 	if cp, ok := p["context_path"].(string); ok {
 		// lys_find_path; FindSchema looks into rpc input before output, as lys_find_path does
 		// without output, so an output context below an rpc is not supported
-		n, err := s.FindSchema(cp)
+		// lys_find_path parses with lyxp (tree_schema.c:851), which skips XML whitespace around
+		// tokens; FindSchema takes the bare path, so the surrounding whitespace is dropped here.
+		n, err := s.FindSchema(strings.Trim(cp, " \t\n\r"))
 		if err != nil {
-			return fmt.Errorf("context_path %s: %w", cp, err)
+			return requestError("context_path %s not found", cp)
 		}
 		for a := n; o.Output && a != nil; a = a.Parent() {
 			if k := a.Kind(); a != n && (k == yang.KindRPC || k == yang.KindAction) {

@@ -428,3 +428,34 @@ func ExampleTree_Validate() {
 	// Output:
 	// true /fz:c/w When condition "../s = 'x'" not satisfied.
 }
+
+// The request differential's when_true cases exercise this public option too:
+// false when conditions remove previously valid nodes, but reject new nodes.
+func TestParseWhenTrueAndNilInput(t *testing.T) {
+	c, _, err := yang.NewContext(yang.Options{NoYangLibrary: true}, fstest.MapFS{"w.yang": {Data: []byte(`module w { yang-version 1.1; namespace "urn:w"; prefix w; container c { leaf enabled { type boolean; } leaf x { when "../enabled = 'true'"; type string; } } }`)}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d, err := c.Load("w", "", nil); err != nil {
+		t.Fatal(d, err)
+	}
+	for _, prior := range []bool{false, true} {
+		tr, d, err := data.Parse(context.Background(), strings.NewReader(`{"w:c":{"enabled":false,"x":"remove"}}`), data.FormatJSON, c.Schema(), data.ParseOptions{WhenTrue: prior})
+		if !prior {
+			if err == nil {
+				t.Fatal("new when-false node accepted")
+			}
+			continue
+		}
+		if err != nil {
+			t.Fatal(d, err)
+		}
+		if n, err := tr.Find("/w:c/x"); err != nil || n != nil {
+			t.Fatalf("when-false node remains: %v, %v", n, err)
+		}
+	}
+	_, d, err := data.Parse(context.Background(), nil, data.FormatJSON, c.Schema(), data.ParseOptions{})
+	if err == nil || len(d) != 1 || d[0].Err != "LY_EINVAL" || d[0].Msg != "Invalid argument in (lyd_parse_data())." {
+		t.Fatalf("nil input: %v, %v", d, err)
+	}
+}

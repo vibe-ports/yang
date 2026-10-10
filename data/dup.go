@@ -329,8 +329,11 @@ func (t *Tree) dupNodes(n, parent *Node, opts dupOpts, siblings bool) (*Node, er
 						break
 					}
 				}
-				if d == nil {
-					return fail(&opError{"LY_ENOTFOUND", "Internal error."})
+				if d == nil { // LY_CHECK_ERR_GOTO(rc, LOGINT(trg_ctx), error), tree_data.c:2453
+					if t.dupLog != nil {
+						_ = t.dupLog.logErr("LY_EINT", "Internal error (%s:%d).", "tree_data.c", 2453)
+					}
+					return fail(rcError("LY_ENOTFOUND"))
 				}
 			} else { // a single key
 				var err error
@@ -434,15 +437,34 @@ func (o DupOptions) opts() dupOpts {
 // o.WithParents the copy of n under copies of its parents. When n's snapshot is not t's it is
 // lyd_dup_single_to_ctx, the way to move data onto a newer snapshot: schema nodes are found by
 // path and values stored again. The diagnostics are those logged also on success (a metadata
-// value the target rejects: dropped, "Value duplication failed."); a failure is a
+// value the target rejects: dropped, "Value duplication failed."); a schema-backed parent that
+// is not an inner node is refused (D-0123; opaque parents remain accepted), and so is a
+// schema-backed parent that is not an instance of n's schema parent (D-0124), except for a list
+// key, which libyang looks up in the parent instead (LY_ENOTFOUND there). A failure is a
 // *ValidationError and changes nothing.
 func (t *Tree) Dup(n, parent *Node, o DupOptions) (*Node, []yang.Diagnostic, error) {
 	return t.dupPublic(n, parent, o, false, "lyd_dup_single")
 }
 
 // DupSiblings is lyd_dup_siblings: as Dup, n and the siblings that follow it (not those before).
+// Like Dup, it refuses a schema-backed parent that is not an inner node (D-0123) or not an
+// instance of n's schema parent (D-0124).
 func (t *Tree) DupSiblings(n, parent *Node, o DupOptions) (*Node, []yang.Diagnostic, error) {
 	return t.dupPublic(n, parent, o, true, "lyd_dup_siblings")
+}
+
+// isSchemaParent reports whether parent is an instance of n's schema parent (lysc_data_parent),
+// n's schema node taken in t's context as lyd_dup_single_to_ctx finds it; a node the target
+// context lacks is left to the duplication's own error.
+func (t *Tree) isSchemaParent(n, parent *Node) bool {
+	sn := n.schema
+	if !sameSet(setOf(n), t.set) {
+		var err error
+		if sn, err = findSchemaCtx(sn, t.set, parent); err != nil {
+			return true
+		}
+	}
+	return sn.DataParent() == parent.schema
 }
 
 func (t *Tree) dupPublic(n, parent *Node, o DupOptions, siblings bool, fn string) (*Node, []yang.Diagnostic, error) {
@@ -454,6 +476,23 @@ func (t *Tree) dupPublic(n, parent *Node, o DupOptions, siblings bool, fn string
 		return nil, nil, lg.done(&opError{"LY_EINVAL", "Duplicating a node that is not in a tree."})
 	case parent != nil && treeOf(parent) != t:
 		return nil, nil, lg.done(argErr("parent (not in the tree)", fn))
+	case parent != nil && parent.schema != nil && !isInner(parent.schema) && !o.WithParents &&
+		(n.schema == nil || !n.schema.IsKey()):
+		// lyd_dup_get_local_parent rejects this parent with LYD_DUP_WITH_PARENTS. Without
+		// that option libyang reaches lyd_dup_r and inserts under a term node, corrupting
+		// the tree and crashing when the result is used (D-0123). A key is never inserted:
+		// lyd_dup looks it up among lyd_child(parent), NULL for a term node, and fails with
+		// LOGINT and LY_ENOTFOUND (tree_data.c:2449-2453), as dupNodes does. Duplicating
+		// siblings from a key stops at that key, so no later sibling reaches lyd_dup_r.
+		return nil, nil, lg.done(argErr("parent (not an inner node)", fn))
+	case parent != nil && parent.schema != nil && n.schema != nil && !o.WithParents && !n.schema.IsKey() &&
+		!t.isSchemaParent(n, parent):
+		// lyd_dup does not check that parent is an instance of n's schema parent either; it links
+		// the copy where lyd_insert_get_next_anchor finds an anchor among unrelated schema
+		// siblings, a tree whose later ordering and lookups depend on hash-table and rank
+		// internals. Refused before changing the tree (D-0124). A key keeps libyang's lookup.
+		return nil, nil, lg.done(&opError{"LY_EINVAL", fmt.Sprintf(
+			"Duplicating \"%s\" under \"%s\", which is not an instance of its schema parent (D-0124).", n.Path(), parent.Path())})
 	}
 	t.dupLog = lg
 	d, err := t.dupNodes(n, parent, o.opts(), siblings)

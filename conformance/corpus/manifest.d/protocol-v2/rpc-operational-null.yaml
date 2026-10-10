@@ -1,0 +1,18 @@
+fixtures:
+  - id: protocol-v2/rpc-operational-null
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.14"]
+    areas: [codecs, validation]
+    request:
+      searchdirs: [../ut-parser/a.1]
+      modules: [{name: a}]
+      context_options: [no_yanglibrary]
+      op: data
+      data_type: rpc
+      data: '{"a:r1":{"l1":"x"}}'
+      operational: null
+    golden: golden/rpc-operational-null.json
+    assert:
+      verdict: valid
+      deviation: null

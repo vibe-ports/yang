@@ -65,7 +65,11 @@ func TestTrimXPath(t *testing.T) {
 	if !errors.As(err, &ve) || ve.RC() != "LY_EINVAL" || dump(tr) != want {
 		t.Errorf("context node: %v", err)
 	}
-	d, err := tr.TrimXPath("/zz:c", data.XPathOptions{})
+	d, err := tr.TrimXPath("", data.XPathOptions{})
+	if !errors.As(err, &ve) || ve.RC() != "LY_EVALID" || len(d) != 1 || d[0].DataPath != "" || d[0].Msg != "Unexpected XPath expression end." || dump(tr) != want {
+		t.Errorf("empty XPath: %v %v, tree %s", err, d, dump(tr))
+	}
+	d, err = tr.TrimXPath("/zz:c", data.XPathOptions{})
 	if !errors.As(err, &ve) || ve.RC() != "LY_EVALID" || len(d) != 1 || dump(tr) != want {
 		t.Errorf("XPath error: %v %v, tree %s", err, d, dump(tr))
 	}

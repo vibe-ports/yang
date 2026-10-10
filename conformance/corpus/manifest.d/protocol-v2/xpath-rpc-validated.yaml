@@ -1,0 +1,17 @@
+fixtures:
+  - id: protocol-v2/xpath-rpc-validated
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.14"]
+    areas: [xpath, operations]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      data_type: rpc
+      data: '{"pv2:ping":{"n":1}}'
+      xpath: /pv2:ping/n
+    golden: golden/xpath-rpc-validated.json
+    assert:
+      verdict: valid
+      deviation: null

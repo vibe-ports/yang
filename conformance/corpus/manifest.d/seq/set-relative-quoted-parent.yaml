@@ -1,0 +1,15 @@
+fixtures:
+  - id: seq/set-relative-quoted-parent
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: lyd_new_path with the retained list instance as parent; its key holds both quote kinds. The engine reports a relative set under a retained parent unsupported (U-0110 class relative-set-parent: Tree.NewPath has no parent argument, #255).
+    rfc: [] # lyd_new_path parent handling is libyang-specific.
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: a}]
+      steps:
+        - {do: parse, data: "{\"a:l1\":[{\"a\":\"x'y\\\"z\",\"b\":\"b\",\"c\":\"c\"}]}", parse_only: true}
+        - {do: edit, set: {path: c, value: new}}
+        - {do: dump}
+    golden: golden/seq-set-relative-quoted-parent.json

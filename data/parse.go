@@ -54,7 +54,10 @@ type ValidateOptions struct {
 type ParseOptions struct {
 	Unknown   UnknownPolicy
 	ParseOnly bool // LYD_PARSE_ONLY
-	NoState   bool // LYD_PARSE_NO_STATE (with ValidateOptions.NoState for the validation part)
+	// WhenTrue marks parsed nodes with when conditions as previously valid, so
+	// validation removes them when their conditions are false (LYD_PARSE_WHEN_TRUE).
+	WhenTrue bool
+	NoState  bool // LYD_PARSE_NO_STATE (with ValidateOptions.NoState for the validation part)
 	// StoreOnly is LYD_PARSE_STORE_ONLY: values are stored without their restriction checks. It
 	// implies ParseOnly: libyang's flag value includes LYD_PARSE_ONLY.
 	StoreOnly bool

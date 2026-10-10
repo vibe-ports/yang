@@ -4,30 +4,347 @@ package conformance
 
 import (
 	"errors"
+	"fmt"
 	"maps"
+	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
+	"slices"
 	"strings"
+	"sync"
 	"testing"
+
+	"github.com/vibe-ports/yang/data"
 )
 
 // agreeFloor is the number of fixtures that agree (with or without skipped fields) on main; a
 // change that lowers it is a regression.
 const agreeFloor = 2323
 
-func TestSequenceDiffOperationFieldsRemainUnsupportedByDataType(t *testing.T) {
+func TestDataOptionsPresetsMatchDparamsOf(t *testing.T) {
+	neutral := data.ParseOptions{Validate: data.ValidateOptions{MultiError: true}}
+	operational := neutral
+	operational.Validate.Operational = true
+	config := neutral
+	config.NoState, config.Validate.NoState = true, true
+	get := neutral
+	get.ParseOnly = true
+	getconfig := neutral
+	getconfig.ParseOnly, getconfig.NoState = true, true
+
+	for _, tc := range []struct {
+		name string
+		typ  any
+		want data.ParseOptions
+	}{
+		{"absent", nil, operational},
+		{"config", "config", config},
+		{"data-operational", "data-operational", operational},
+		{"data", "data", neutral},
+		{"get", "get", get},
+		{"getconfig", "getconfig", getconfig},
+		{"edit", "edit", getconfig},
+		{"rpc", "rpc", neutral},
+		{"reply", "reply", neutral},
+		{"notif", "notif", neutral},
+		{"notif-netconf", "notif-netconf", neutral},
+		{"notif-restconf", "notif-restconf", neutral},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := map[string]any{}
+			if tc.typ != nil {
+				p["data_type"] = tc.typ
+			}
+			got, err := dataOptions(p, execData)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != tc.want {
+				t.Errorf("dataOptions(%v) = %+v, want %+v", p, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestRootDoDoesNotSetExecutionContext(t *testing.T) {
+	common := func(op string) map[string]any {
+		return map[string]any{
+			"op": op, "searchdirs": []any{"schemas"}, "modules": []any{map[string]any{"name": "pv2"}},
+			"context_options": []any{"no_yanglibrary"}, "data_type": "data",
+		}
+	}
+	dataReq := common("data")
+	dataReq["data"], dataReq["validate_options"] = inventoryStateData, []any{"no_state"}
+	xpathReq := common("xpath")
+	xpathReq["data"], xpathReq["xpath"], xpathReq["rpc"] = inventoryData, "/pv2:c", 42
+	diffReq := common("diff")
+	diffReq["first"], diffReq["second"], diffReq["rpc"] = inventoryData, inventoryData, 42
+	for _, tc := range []struct {
+		name, do string
+		params   map[string]any
+	}{
+		{"data/edit-do-cannot-drop-no-state", "edit", dataReq},
+		{"xpath/parse-do-cannot-read-rpc", "parse", xpathReq},
+		{"diff/parse-do-cannot-read-rpc", "parse", diffReq},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			without := maps.Clone(tc.params)
+			with := maps.Clone(tc.params)
+			with["do"] = tc.do
+			want, wantErr := (Yang{}).Run(Request{BaseDir: filepath.Join("corpus", "protocol-v2"), Params: without})
+			got, gotErr := (Yang{}).Run(Request{BaseDir: filepath.Join("corpus", "protocol-v2"), Params: with})
+			if fmt.Sprint(gotErr) != fmt.Sprint(wantErr) || !reflect.DeepEqual(got, want) {
+				t.Fatalf("root do changed execution\nwithout: %v, %v\nwith: %v, %v", want, wantErr, got, gotErr)
+			}
+		})
+	}
+}
+
+func TestSequenceParseReplyIntoRequestKeepsInput(t *testing.T) {
+	resp, err := Yang{}.Run(Request{
+		BaseDir: filepath.Join("corpus", "ut-parser"),
+		Params: map[string]any{
+			"op":         "sequence",
+			"searchdirs": []any{"rb.1"},
+			"modules":    []any{map[string]any{"name": "rb"}},
+			"steps": []any{map[string]any{
+				"do":         "parse",
+				"format":     "json",
+				"data_type":  "reply",
+				"unknown":    "reject",
+				"parse_only": true,
+				"keep_input": true,
+				"rpc":        `{"rb:r":{"in":"keep"}}`,
+				"data":       `{"rb:before":"out"}`,
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	steps := resp["steps"].([]any)
+	typed := steps[0].(map[string]any)["typed"].([]any)
+	var paths []string
+	for _, item := range typed {
+		paths = append(paths, item.(map[string]any)["path"].(string))
+	}
+	for _, want := range []string{"/rb:r/in", "/rb:r/before"} {
+		if !slices.Contains(paths, want) {
+			t.Errorf("typed paths %v do not contain %s", paths, want)
+		}
+	}
+}
+
+func TestDataRPCParentIsUnsupportedU0106(t *testing.T) {
+	_, err := Yang{}.Run(Request{
+		BaseDir: filepath.Join("corpus", "ut-parser"),
+		Params: map[string]any{
+			"op":         "data",
+			"searchdirs": []any{"rollback-key"},
+			"modules":    []any{map[string]any{"name": "rollback-key"}},
+			"format":     "json",
+			"data_type":  "rpc",
+			"parse_only": true,
+			"rpc":        `{"rollback-key:l":[{"k":"a","j":"z","a":{}}]}`,
+			"keep_input": true,
+			"rpc_parent": "/rollback-key:l[k='a'][j='z']",
+			"data":       `{"k":"b"}`,
+		},
+	})
+	if !errors.Is(err, ErrUnsupported) || !strings.Contains(err.Error(), "U-0106") {
+		t.Fatalf("Yang.Run rpc_parent error = %v, want unsupported U-0106", err)
+	}
+}
+
+func TestSequenceDiffRPCIntoExistingRequestIsRequestError(t *testing.T) {
 	step := map[string]any{
 		"do":         "diff",
-		"data_type":  "reply",
+		"data_type":  "rpc",
 		"parse_only": true,
 		"data":       `{}`,
 		"rpc":        `{}`,
 		"keep_input": true,
 	}
-	err := runSequence(Request{Params: map[string]any{"steps": []any{step}}}, nil, map[string]any{})
-	if !errors.Is(err, ErrUnsupported) || !strings.Contains(err.Error(), "data_type reply") {
-		t.Fatalf("runSequence operation diff error = %v, want unsupported data_type reply", err)
+	err := runSequence(Request{Params: map[string]any{"steps": []any{step}}}, nil, map[string]any{}, execSequence)
+	if err == nil || err.Error() != "diff step: rpc only with data_type reply (a request-error)" {
+		t.Fatalf("runSequence operation diff error = %v, want request-error", err)
 	}
+}
+
+func TestSequenceValidateModuleChecks(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		step        map[string]any
+		want        string
+		unsupported bool
+	}{
+		{"final only", map[string]any{"do": "validate", "module": "vm-a", "final_only": true},
+			"lyd_validate_module_final is not exported (split-validation speed path), U-0106", true},
+		{"final only without module", map[string]any{"do": "validate", "final_only": true},
+			"final_only needs module", false},
+		{"module not implemented", map[string]any{"do": "validate", "module": "missing"},
+			"validate module missing not implemented", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := Yang{}.Run(Request{
+				BaseDir: filepath.Join("corpus", "protocol-v2"),
+				Params: map[string]any{
+					"op":              "sequence",
+					"searchdirs":      []any{"schemas"},
+					"modules":         []any{map[string]any{"name": "vm-a"}},
+					"context_options": []any{"no_yanglibrary"},
+					"steps":           []any{tc.step},
+				},
+			})
+			if err == nil || !strings.Contains(err.Error(), tc.want) || errors.Is(err, ErrUnsupported) != tc.unsupported {
+				t.Fatalf("Yang.Run error = %v, unsupported = %v; want %q, unsupported = %v",
+					err, errors.Is(err, ErrUnsupported), tc.want, tc.unsupported)
+			}
+		})
+	}
+}
+
+func TestSequenceValidateModulePresentHasNoDiagnostic(t *testing.T) {
+	resp, err := Yang{}.Run(Request{
+		BaseDir: filepath.Join("corpus", "protocol-v2"),
+		Params: map[string]any{
+			"op":              "sequence",
+			"searchdirs":      []any{"schemas"},
+			"modules":         []any{map[string]any{"name": "vm-a"}},
+			"context_options": []any{"no_yanglibrary"},
+			"steps": []any{
+				map[string]any{"do": "parse", "format": "json", "data_type": "config", "parse_only": true,
+					"data": `{"vm-a:top":{"x":"1"}}`},
+				map[string]any{"do": "validate", "module": "vm-a", "validate_options": []any{"present"}},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	steps := resp["steps"].([]any)
+	validate := steps[1].(map[string]any)
+	rc := validate["rc"].(map[string]any)
+	if got := rc["name"]; got != "LY_EINVAL" {
+		t.Errorf("validate rc = %v, want LY_EINVAL", got)
+	}
+	if diags := validate["diagnostics"].([]any); len(diags) != 0 {
+		t.Errorf("validate diagnostics = %#v, want none", diags)
+	}
+}
+
+func TestSequenceValidateModuleDiffAnchors(t *testing.T) {
+	resp, err := Yang{}.Run(Request{
+		BaseDir: filepath.Join("corpus", "protocol-v2"),
+		Params: map[string]any{
+			"op":         "sequence",
+			"searchdirs": []any{"schemas"},
+			"modules":    []any{map[string]any{"name": "pv2-diff"}},
+			"steps": []any{
+				map[string]any{"do": "parse", "format": "json", "data_type": "config", "parse_only": true,
+					"data": `{"pv2-diff:c":{"mode":"off"}}`},
+				map[string]any{"do": "validate", "data_type": "config", "module": "pv2-diff"},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	diff := resp["steps"].([]any)[1].(map[string]any)["implicit_diff"].(string)
+	for _, anchor := range []string{`"yang:value": ""`, `"yang:value": "b"`} {
+		if !strings.Contains(diff, anchor) {
+			t.Errorf("module diff does not contain anchor %s:\n%s", anchor, diff)
+		}
+	}
+}
+
+func TestDiffRejectsOperationDataType(t *testing.T) {
+	_, err := Yang{}.Run(Request{
+		BaseDir: filepath.Join("corpus", "ut-parser"),
+		Params: map[string]any{
+			"op":         "diff",
+			"searchdirs": []any{"rb.1"},
+			"modules":    []any{map[string]any{"name": "rb"}},
+			"format":     "json",
+			"data_type":  "reply",
+			"first":      `not JSON`,
+			"second":     `not JSON`,
+		},
+	})
+	want := "diff supports datastore data types only (a request-error)"
+	if err == nil || err.Error() != want {
+		t.Fatalf("Yang.Run operation diff error = %v, want %q", err, want)
+	}
+}
+
+func TestDatastoreOperationFieldChecks(t *testing.T) {
+	base := map[string]any{
+		"op":        "data",
+		"format":    "json",
+		"data_type": "config",
+		"data":      `{}`,
+	}
+	t.Run("rpc_parent", func(t *testing.T) {
+		params := maps.Clone(base)
+		params["rpc_parent"] = "/x"
+		_, err := Yang{}.Run(Request{Params: params})
+		want := "rpc_parent requires data_type rpc, rpc, and keep_input true (a request-error)"
+		if err == nil || err.Error() != want || errors.Is(err, ErrUnsupported) {
+			t.Fatalf("Yang.Run error = %v; want %q request-error", err, want)
+		}
+	})
+	t.Run("rpc and keep_input ignored", func(t *testing.T) {
+		params := maps.Clone(base)
+		params["rpc"] = `not JSON`
+		params["keep_input"] = true
+		resp, err := Yang{}.Run(Request{Params: params})
+		if err != nil || resp.Verdict() != "valid" {
+			t.Fatalf("Yang.Run = verdict %q, error %v; want valid", resp.Verdict(), err)
+		}
+	})
+}
+
+func TestSequenceDatastoreOperationFieldChecks(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		step map[string]any
+		want string
+	}{
+		{"parse rpc", map[string]any{"do": "parse", "data_type": "config", "data": `{}`, "rpc": `{}`},
+			"parse step: rpc only with data_type reply (a request-error)"},
+		{"parse rpc_parent", map[string]any{"do": "parse", "data_type": "config", "data": `{}`, "rpc_parent": "/x"},
+			`unknown key "rpc_parent" in a sequence step (a request-error)`},
+		{"diff rpc", map[string]any{"do": "diff", "data_type": "config", "data": `{}`, "rpc": `{}`},
+			"diff step: rpc only with data_type reply (a request-error)"},
+		{"diff rpc_parent", map[string]any{"do": "diff", "data_type": "config", "data": `{}`, "rpc_parent": "/x"},
+			`unknown key "rpc_parent" in a sequence step (a request-error)`},
+		{"diff keep_input true", map[string]any{"do": "diff", "data_type": "config", "data": `{}`, "keep_input": true},
+			"diff step: keep_input only with rpc (a request-error)"},
+		{"diff keep_input false", map[string]any{"do": "diff", "data_type": "config", "data": `{}`, "keep_input": false},
+			"diff step: keep_input only with rpc (a request-error)"},
+		{"diff keep_input null", map[string]any{"do": "diff", "data_type": "config", "data": `{}`, "keep_input": nil},
+			"diff step: keep_input only with rpc (a request-error)"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := runSequence(Request{Params: map[string]any{"steps": []any{tc.step}}}, nil, map[string]any{}, execSequence)
+			if err == nil || err.Error() != tc.want || errors.Is(err, ErrUnsupported) {
+				t.Fatalf("runSequence error = %v; want %q request-error", err, tc.want)
+			}
+		})
+	}
+	t.Run("parse keep_input ignored", func(t *testing.T) {
+		resp, err := Yang{}.Run(Request{Params: map[string]any{
+			"op": "sequence",
+			"steps": []any{map[string]any{
+				"do": "parse", "format": "json", "data_type": "config", "parse_only": true,
+				"data": `{}`, "keep_input": true,
+			}},
+		}})
+		if err != nil || resp.Verdict() != "valid" {
+			t.Fatalf("Yang.Run = verdict %q, error %v; want valid", resp.Verdict(), err)
+		}
+	})
 }
 
 // TestYangEngineSchema runs every fixture through package yang and logs the tally. No fixture may
@@ -35,11 +352,7 @@ func TestSequenceDiffOperationFieldsRemainUnsupportedByDataType(t *testing.T) {
 // unsupported, never absorbed by new agreements under the floor. M2 exit gate (#43): an op schema
 // fixture may be unsupported only for a limit in schemaLimits.
 func TestYangEngineSchema(t *testing.T) {
-	m := load(t)
-	rep, err := m.Compare(Yang{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	m, rep := yangReport(t)
 	counts := map[Status]int{}
 	for _, r := range rep.Results {
 		counts[r.Status]++
@@ -65,11 +378,7 @@ func TestYangEngineSchema(t *testing.T) {
 // sequence with a trim step (lyd_trim_xpath), may differ, and none may be unsupported unless
 // xpathUnsupported lists it with the deviations.md entry its reason names.
 func TestYangEngineXPath(t *testing.T) {
-	m := load(t)
-	rep, err := m.Compare(Yang{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	m, rep := yangReport(t)
 	n := map[string]int{}
 	for i, r := range rep.Results {
 		kind := xpathKind(m.Fixtures[i].Request)
@@ -130,8 +439,10 @@ var xpathUnsupported = map[string]string{
 	"ut-xpath/anydata-01": "U-0043", // anydata/anyxml data instances (M5)
 	// native evidence for TrimXPath's run and link cleanup; the Go side is TestRBTreeRunEmptied
 	// and the Go-expressible seq/trim-lyds-all-indexed, seq/trim-links-lkorder-* fixtures
-	"seq/trim-lyds-emptied-run":     "U-0105", // LYD_DUP_NO_LYDS builds the unindexed instances
-	"seq/trim-lyds-partial-run":     "U-0105",
+	// step 2 parses with LYD_PARSE_ORDERED (D-0058) before step 3's LYD_DUP_NO_LYDS (U-0105): the
+	// engine refuses at the first unsupported step it executes
+	"seq/trim-lyds-emptied-run":     "D-0058",
+	"seq/trim-lyds-partial-run":     "D-0058",
 	"seq/trim-links-referrer-first": "D-0058", // LYD_PARSE_ORDERED puts referrers first
 }
 
@@ -154,6 +465,7 @@ var schemaLimits = []struct{ id, re string }{
 	{"U-0035", `schema nodes nested deeper than`},
 	{"U-0036", `XPath steps`},
 	{"U-0038", `extension instances of a top-level uses`},
+	{"U-0110", `empty revision with a failing module load`}, // class empty-revision-load-failure (#254)
 }
 
 // schemaLimit is the id of the allowed limit an unsupported reason names, "" for none.
@@ -164,6 +476,137 @@ func schemaLimit(reason string) string {
 		}
 	}
 	return ""
+}
+
+// TestYangEngineValidation is the M4 exit gate (#105): no validation-area fixture and no operation
+// fixture (area operations, or an rpc, reply or notif data type in the request or a step) may
+// differ, and none may be unsupported unless validationUnsupported lists it with the
+// deviations.md entry its reason names.
+func TestYangEngineValidation(t *testing.T) {
+	m, rep := yangReport(t)
+	n := map[string]int{}
+	for i, r := range rep.Results {
+		kind := validationKind(m.Fixtures[i])
+		if kind == "" {
+			continue
+		}
+		n[kind]++
+		switch {
+		case r.Status == Differ:
+			t.Errorf("differ %s: %s", r.ID, r.Detail)
+		case r.Status == Unsupported && !validationAllowed(r.ID, r.Detail):
+			t.Errorf("unsupported %s fixture %s without a listed deviation: %s", kind, r.ID, r.Detail)
+		}
+	}
+	t.Logf("gated fixtures: %v", n)
+	for kind, floor := range validationFloors {
+		if n[kind] < floor {
+			t.Errorf("%d %s fixtures gated, fewer than %d: the selection lost fixtures", n[kind], kind, floor)
+		}
+	}
+}
+
+// validationFloors are the gated fixtures of each kind at the M4 exit; fewer means the selection
+// or the corpus lost some, which would let the gate pass on nothing.
+var validationFloors = map[string]int{"validation": 166, "operation": 90}
+
+// validationKind is the M4 gate kind of a fixture: "operation" (area operations, or an operation
+// data type in the request or one of its steps), "validation" (area validation) or "" outside the
+// gate.
+func validationKind(f Fixture) string {
+	isOp := func(m map[string]any) bool { _, ok := opTypes[str(m, "data_type", "")]; return ok }
+	op := slices.Contains(f.Areas, "operations") || isOp(f.Request)
+	for _, st := range list(f.Request["steps"]) {
+		if s, ok := st.(map[string]any); ok && isOp(s) {
+			op = true
+		}
+	}
+	switch {
+	case op:
+		return "operation"
+	case slices.Contains(f.Areas, "validation"):
+		return "validation"
+	}
+	return ""
+}
+
+// validationUnsupported are the validation and operation fixtures that may stay unsupported after
+// M4, each with the deviations.md id its reason must name.
+var validationUnsupported = map[string]string{
+	// U-0110: ParseOp.Request requires an RPC/action, unlike the oracle parent.
+	"protocol-v2/reply-non-operation-parent": "U-0110",
+	// U-0043: anydata/anyxml data instances (M5).
+	"ops/parse-json-rpc-01": "U-0043",
+	"ops/parse-xml-rpc-01":  "U-0043",
+	"ut-parser/json-rpc-01": "U-0043",
+	"ut-parser/xml-rpc-01":  "U-0043",
+	// anyxml "filter" payloads (#103 import of test_filter_attributes).
+	"ut-parser/xml-filter-attributes-01": "U-0043",
+	"ut-parser/xml-filter-attributes-02": "U-0043",
+	"protocol-v2/sequence-edits":         "U-0043",
+	"protocol-v2/when-auto-delete":       "U-0043",
+	// D-0058: LYD_PARSE_ORDERED input order is not exported.
+	"seq/trim-links-referrer-first": "D-0058",
+	// U-0105: LYD_DUP_NO_LYDS is not exported.
+	"seq/trim-lyds-emptied-run": "D-0058", // parse ordered (step 2) before dup no_lyds (U-0105, step 3)
+	"seq/trim-lyds-partial-run": "D-0058",
+	// U-0106: an rpc input parsed into an existing request (Request is for replies only).
+	"ops/parse-json-rpc-parent-opaque-meta":   "U-0106",
+	"ops/opidx-meta-doc-first":                "U-0106",
+	"ops/parse-json-reply-opaque-request":     "U-0106",
+	"ops/seq-parse-json-reply-opaque-request": "U-0106",
+	"ops/parse-json-rpc-rollback-key":         "U-0106",
+	"ops/parse-json-rpc-rollback-keys-order":  "U-0106",
+	"ops/parse-xml-rpc-parent-envelope-value": "U-0106",
+	"ops/parse-xml-rpc-parent-input":          "U-0106",
+	"seq/validate-module-final-a":             "U-0106",
+	"seq/validate-module-final-a-none":        "U-0106",
+	"seq/validate-module-final-b":             "U-0106",
+	"seq/validate-module-final-when-absent":   "U-0106",
+	// U-0107: lyd_new_opaq and lyd_new_opaq2 are deferred to M5 with the envelopes.
+	"ut-new/insert-13": "U-0107",
+	"ut-new/insert-14": "U-0107",
+	"ut-new/insert-15": "U-0107",
+	"ut-new/insert-16": "U-0107",
+	"ut-new/insert-41": "U-0107",
+	"ut-new/insert-42": "U-0107",
+	"ut-new/insert-56": "U-0107",
+	"ut-new/insert-61": "U-0107",
+	"ut-new/insert-62": "U-0107",
+	// U-0108: canonical/store-only constructors and lyd_change_term_canon are not exported.
+	"ut-new/change-01": "U-0108",
+	"ut-new/change-03": "U-0108",
+	"ut-new/insert-23": "U-0108",
+	"ut-new/insert-24": "U-0108",
+	"ut-new/insert-25": "U-0108",
+	"ut-new/insert-36": "U-0108",
+	"ut-new/insert-37": "U-0108",
+	"ut-new/insert-38": "U-0108",
+	"ut-new/insert-44": "U-0108",
+	"ut-new/insert-46": "U-0108",
+	"ut-new/insert-48": "U-0108",
+	"ut-new/insert-50": "U-0108",
+	// U-0109: NewPath cannot reproduce lyd_new_list2's accepted inputs and diagnostics.
+	"ut-new/insert-27": "U-0109",
+	"ut-new/insert-28": "U-0109",
+	"ut-new/insert-29": "U-0109",
+	"ut-new/insert-30": "U-0109",
+	"ut-new/insert-32": "U-0109",
+	"ut-new/insert-33": "U-0109",
+	"ut-new/insert-34": "U-0109",
+	"ut-new/insert-35": "U-0109",
+	"ut-new/insert-51": "U-0109",
+	"ut-new/insert-53": "U-0109",
+	"ut-new/insert-57": "U-0109",
+	"ut-new/insert-58": "U-0109",
+	"ut-new/insert-59": "U-0109",
+	"ut-new/path-05":   "U-0109",
+}
+
+// validationAllowed reports whether fixture id may be unsupported with this reason.
+func validationAllowed(id, reason string) bool {
+	u, ok := validationUnsupported[id]
+	return ok && strings.Contains(reason, u)
 }
 
 // TestYangEngineTargets: the m1 schema dumps agree with the oracle (compiled printout skipped).
@@ -185,6 +628,55 @@ func TestYangEngineTargets(t *testing.T) {
 		got, _ = withoutSkipped(got, Yang{}.SkippedFields("schema"))
 		if d := diffResponses(golden, got); d != "" {
 			t.Errorf("%s: %s", f.ID, d)
+		}
+	}
+}
+
+func TestEmptyRevisionDoesNotMutateEarlierModule(t *testing.T) {
+	base := filepath.Join("corpus", "protocol-v2")
+	request := func(modules ...any) Response {
+		t.Helper()
+		got, err := (Yang{}).Run(Request{BaseDir: base, Params: map[string]any{
+			"op": "schema", "searchdirs": []any{"schemas"}, "modules": modules,
+		}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+	one := request(map[string]any{"name": "pv2"})
+	two := request(
+		map[string]any{"name": "pv2"},
+		map[string]any{"name": "pv2", "revision": "", "features": []any{"extra"}},
+	)
+	single := request(map[string]any{"name": "pv2", "revision": "", "features": []any{"extra"}})
+	oneModule := one["modules"].([]any)[0]
+	twoModules := two["modules"].([]any)
+	if !reflect.DeepEqual(oneModule, twoModules[0]) {
+		t.Fatalf("first module changed after rejected second load:\nalone: %#v\nrepeated: %#v", oneModule, twoModules[0])
+	}
+	second := twoModules[1].(map[string]any)
+	if two["verdict"] != "invalid" || second["accepted"] != false || second["phase"] != "parse" {
+		t.Fatalf("second module = %#v, verdict %v; want rejected in parse", second, two["verdict"])
+	}
+	if singleModule := single["modules"].([]any)[0]; !reflect.DeepEqual(singleModule, second) {
+		t.Fatalf("single empty-revision response = %#v, repeated response = %#v", singleModule, second)
+	}
+	wantDiagnostics := []struct{ err, msg string }{
+		{"LY_EINVAL", `Module "pv2" parsed with the wrong revision ("none" instead "").`},
+		{"LY_EOTHER", `Parsing module "pv2" failed.`},
+	}
+	diagnostics := second["diagnostics"].([]any)
+	if len(diagnostics) != len(wantDiagnostics) {
+		t.Fatalf("diagnostics = %#v", diagnostics)
+	}
+	for i, want := range wantDiagnostics {
+		diagnostic := diagnostics[i].(map[string]any)
+		code := diagnostic["code"].(map[string]any)
+		if diagnostic["phase"] != "parse" || diagnostic["level"] != "error" || code["name"] != want.err ||
+			diagnostic["vecode_name"] != "LYVE_SUCCESS" || diagnostic["msg"] != want.msg ||
+			diagnostic["data_path"] != nil || diagnostic["schema_path"] != nil || diagnostic["apptag"] != nil {
+			t.Errorf("diagnostic %d = %#v, want %s/%q", i, diagnostic, want.err, want.msg)
 		}
 	}
 }
@@ -214,6 +706,51 @@ func TestPathPrefixes(t *testing.T) {
 	}
 }
 
+func TestFindPathFixupRequests(t *testing.T) {
+	common := func(steps ...any) map[string]any {
+		return map[string]any{"op": "sequence", "searchdirs": []any{"schemas"},
+			"modules": []any{map[string]any{"name": "pv2"}}, "steps": steps}
+	}
+	t.Run("print subtree spaced", func(t *testing.T) {
+		resp, err := Yang{}.Run(Request{BaseDir: "corpus/protocol-v2", Params: map[string]any{
+			"op": "data", "searchdirs": []any{"schemas"}, "modules": []any{map[string]any{"name": "pv2"}},
+			"data": `{"pv2:c":{"mode":"on"}}`, "parse_only": true, "print_subtree": " /pv2:c/mode",
+		}})
+		if err != nil || resp.Verdict() != "valid" || resp["subtree"] == nil {
+			t.Fatalf("spaced subtree = %v, %v; want a valid subtree", resp, err)
+		}
+	})
+	t.Run("delete spaced", func(t *testing.T) {
+		resp, err := Yang{}.Run(Request{BaseDir: "corpus/protocol-v2", Params: common(
+			map[string]any{"do": "parse", "data": `{"pv2:c":{"mode":"on"}}`, "parse_only": true},
+			map[string]any{"do": "edit", "delete": " /pv2:c/mode"}, map[string]any{"do": "dump"},
+		)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		steps := list(resp["steps"])
+		dump := steps[2].(map[string]any)["tree"].(map[string]any)["json"].(string)
+		if resp.Verdict() != "valid" || strings.Contains(dump, "mode") {
+			t.Fatalf("spaced delete = %v, %v; want a valid tree without mode", resp, err)
+		}
+	})
+	t.Run("delete opaque first", func(t *testing.T) {
+		resp, err := Yang{}.Run(Request{BaseDir: "corpus/protocol-v2", Params: common(
+			map[string]any{"do": "parse", "data": `{"pv2:nosuch":"x"}`, "unknown": "opaque", "parse_only": true},
+			map[string]any{"do": "edit", "delete": "/pv2:c/mode"}, map[string]any{"do": "dump"},
+		)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		steps := list(resp["steps"])
+		edit := steps[1].(map[string]any)
+		rc, _ := edit["rc"].(map[string]any)
+		if resp.Verdict() != "invalid" || rc["name"] != "LY_EINVAL" || len(list(edit["diagnostics"])) != 0 {
+			t.Fatalf("opaque-first delete = %v, %v; want LY_EINVAL with no diagnostics", resp, err)
+		}
+	})
+}
+
 // TestXPathGateSelection: the M3 gate takes xpath, atoms and trim sequences, and allows only the
 // listed unsupported fixture with its deviation.
 func TestXPathGateSelection(t *testing.T) {
@@ -228,6 +765,30 @@ func TestXPathGateSelection(t *testing.T) {
 	}
 	if !xpathAllowed("ut-xpath/anydata-01", "not supported: anydata (deviations.md U-0043)") ||
 		xpathAllowed("ut-xpath/anydata-01", "some other reason") || xpathAllowed("ut-xpath/axes-01", "U-0043") {
+		t.Error("allowlist")
+	}
+}
+
+// TestValidationGateSelection: the M4 gate takes validation-area fixtures and operation fixtures
+// (by area, request data type or step data type), and allows only listed fixtures with their id.
+func TestValidationGateSelection(t *testing.T) {
+	for _, c := range []struct {
+		f    Fixture
+		want string
+	}{
+		{Fixture{Areas: []string{"validation"}, Request: map[string]any{"op": "data"}}, "validation"},
+		{Fixture{Areas: []string{"operations"}, Request: map[string]any{"op": "data"}}, "operation"},
+		{Fixture{Areas: []string{"codecs"}, Request: map[string]any{"op": "data", "data_type": "reply"}}, "operation"},
+		{Fixture{Areas: []string{"validation"}, Request: map[string]any{"op": "sequence",
+			"steps": []any{map[string]any{"do": "parse", "data_type": "notif"}}}}, "operation"},
+		{Fixture{Areas: []string{"codecs"}, Request: map[string]any{"op": "data", "data_type": "config"}}, ""},
+	} {
+		if got := validationKind(c.f); got != c.want {
+			t.Errorf("%v: %q, want %q", c.f, got, c.want)
+		}
+	}
+	if !validationAllowed("ut-parser/xml-rpc-01", "anyxml \"config\" instance (deviations.md U-0043)") ||
+		validationAllowed("ut-parser/xml-rpc-01", "some other reason") || validationAllowed("ops/parse-xml-reply-01", "U-0043") {
 		t.Error("allowlist")
 	}
 }
@@ -340,5 +901,303 @@ func TestOpMissingRPC(t *testing.T) {
 		if _, err := (Yang{}).Run(Request{ID: name, BaseDir: "corpus/ut-parser", Params: p}); err == nil {
 			t.Errorf("%s: no error", name)
 		}
+	}
+}
+
+// TestEngineRequestErrorsAsOracle covers representative requests the native oracle refuses at
+// the request layer (TestOracleRequestErrors), including checks inside parse_one and subtree
+// selection after a successful parse.
+func TestEngineRequestErrorsAsOracle(t *testing.T) {
+	base := func() map[string]any {
+		return map[string]any{"searchdirs": []any{"schemas"}, "modules": []any{map[string]any{"name": "pv2"}}}
+	}
+	seq := base()
+	seq["op"] = "sequence"
+	seq["steps"] = []any{
+		map[string]any{"do": "edit", "delete": "/missing:x"},
+		map[string]any{"do": "edit", "merge": "{}", "format": "bogus"},
+	}
+	dataReq := base()
+	dataReq["op"], dataReq["format"], dataReq["data_type"] = "data", "xml", "get"
+	nullReq := base()
+	nullReq["op"], nullReq["format"], nullReq["data_type"], nullReq["data"] = "data", "xml", "get", nil
+	xpathParent := base()
+	xpathParent["op"], xpathParent["data_type"], xpathParent["data"], xpathParent["parse_only"] = "xpath", "rpc", `{"pv2:ping":{"n":1}}`, true
+	xpathParent["rpc_parent"], xpathParent["xpath"] = "/pv2:ping", "/pv2:ping"
+	missingSubtree := base()
+	missingSubtree["op"], missingSubtree["data_type"], missingSubtree["data"], missingSubtree["parse_only"] = "data", "data", `{"pv2:c":{"mode":"on"}}`, true
+	missingSubtree["print_subtree"] = "grouped"
+	trimVars := base()
+	trimVars["op"] = "sequence"
+	trimVars["steps"] = []any{map[string]any{"do": "trim", "xpath": "/pv2:c", "vars": map[string]any{"b": false, "a": false, "c": 1}}}
+	for _, tc := range []struct {
+		name, want string
+		params     map[string]any
+	}{
+		{"merge after failing step", "unknown format bogus", seq},
+		{"data op without data", "missing data", dataReq},
+		{"data op with null data", "missing data", nullReq},
+		{"xpath rpc_parent without rpc source", "rpc_parent requires data_type rpc, rpc, and keep_input true", xpathParent},
+		{"relative print_subtree missing", `print_subtree "grouped" not found`, missingSubtree},
+		{"several invalid trim vars", "trim vars value of a must be a string", trimVars},
+	} {
+		_, err := (Yang{}).Run(Request{ID: tc.name, BaseDir: filepath.Join("corpus", "protocol-v2"), Params: tc.params})
+		if err == nil || errors.Is(err, ErrUnsupported) || !strings.Contains(err.Error(), "request-error") {
+			t.Errorf("%s: %v, want a request-error", tc.name, err)
+		} else if !strings.Contains(err.Error(), tc.want) {
+			t.Errorf("%s: %v, want text %q", tc.name, err, tc.want)
+		}
+	}
+}
+
+func TestEngineDupTermParent(t *testing.T) {
+	p := map[string]any{
+		"op": "sequence", "searchdirs": []any{"schemas"}, "modules": []any{map[string]any{"name": "pv2"}},
+		"steps": []any{
+			map[string]any{"do": "parse", "data": `{"pv2:c":{"mode":"on","l":[{"k":"a"}]}}`, "parse_only": true},
+			map[string]any{"do": "dup", "node": "/pv2:c", "parent": "/pv2:c/mode", "options": []any{"recursive"}},
+			map[string]any{"do": "dump"},
+		},
+	}
+	resp, err := (Yang{}).Run(Request{BaseDir: filepath.Join("corpus", "protocol-v2"), Params: p})
+	if err != nil {
+		t.Fatal(err)
+	}
+	steps, ok := resp["steps"].([]any)
+	if !ok || len(steps) != 3 {
+		t.Fatalf("steps = %v", resp["steps"])
+	}
+	dup := steps[1].(map[string]any)
+	if resp.Verdict() != "invalid" || fmt.Sprint(resp["failed_step"]) != "1" || inventoryRCName(resp["rc"]) != "LY_EINVAL" ||
+		inventoryRCName(dup["rc"]) != "LY_EINVAL" || !strings.Contains(fmt.Sprint(dup["diagnostics"]),
+		"Invalid argument parent (not an inner node) (lyd_dup_single()).") || !strings.Contains(fmt.Sprint(dup["diagnostics"]), "edit") {
+		t.Fatalf("dup failure shape = %v", resp)
+	}
+	if skipped, _ := steps[2].(map[string]any)["skipped"].(bool); !skipped {
+		t.Fatalf("dump was not skipped: %v", steps[2])
+	}
+}
+
+func TestEngineRelativeFindAndValidatedXPath(t *testing.T) {
+	base := func(op string) map[string]any {
+		return map[string]any{"op": op, "searchdirs": []any{"schemas"}, "modules": []any{map[string]any{"name": "pv2"}}}
+	}
+	run := func(t *testing.T, p map[string]any) Response {
+		t.Helper()
+		resp, err := (Yang{}).Run(Request{BaseDir: filepath.Join("corpus", "protocol-v2"), Params: p})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return resp
+	}
+
+	p := base("data")
+	p["data_type"], p["data"], p["parse_only"], p["print_subtree"] = "data", `{"pv2:c":{"mode":"on"}}`, true, "mode"
+	resp := run(t, p)
+	if resp.Verdict() != "valid" || !strings.Contains(fmt.Sprint(resp["subtree"]), `pv2:mode`) {
+		t.Fatalf("relative print_subtree response = %v", resp)
+	}
+
+	p = base("sequence")
+	p["steps"] = []any{
+		map[string]any{"do": "parse", "data": `{"pv2:c":{"mode":"on","l":[{"k":"a"}]}}`, "parse_only": true},
+		map[string]any{"do": "edit", "delete": "mode"}, map[string]any{"do": "dump"},
+	}
+	resp = run(t, p)
+	if resp.Verdict() != "valid" || strings.Contains(fmt.Sprint(resp["tree"]), `mode`) {
+		t.Fatalf("relative delete response = %v", resp)
+	}
+
+	p = base("xpath")
+	p["data_type"], p["data"], p["xpath"] = "rpc", `{"pv2:ping":{"n":1}}`, "/pv2:ping/n"
+	resp = run(t, p)
+	if resp.Verdict() != "valid" || !strings.Contains(fmt.Sprint(resp["result"]), "/pv2:ping/n") {
+		t.Fatalf("validated RPC XPath response = %v", resp)
+	}
+
+	p["data"] = `{"pv2:ping":{"n":10}}`
+	resp = run(t, p)
+	if resp.Verdict() != "data-error" || resp["rc"] != nil || !strings.Contains(fmt.Sprint(resp["diagnostics"]), "validate_op") {
+		t.Fatalf("invalid validated RPC XPath response = %v", resp)
+	}
+
+	p["data"], p["xpath"] = `{"pv2:c":{"l":[{"k":"a","reset":{"why":"x"}}]}}`, "/pv2:c/pv2:l/pv2:reset"
+	resp = run(t, p)
+	if resp.Verdict() != "data-error" || !strings.Contains(fmt.Sprint(resp["diagnostics"]), "operation_parent") {
+		t.Fatalf("missing operational parent XPath response = %v", resp)
+	}
+}
+
+// step_insert selects its source tree with input_of(data): absent and null inline/file inputs are
+// NULL, so the node lookup is against the retained tree and uses the non-data error text.
+func TestSequenceInsertNullInputUsesRetainedTree(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		key  string
+		null bool
+	}{
+		{"data absent", "data", false},
+		{"data null", "data", true},
+		{"data_file absent", "data_file", false},
+		{"data_file null", "data_file", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			insert := map[string]any{"do": "insert", "node": "/pv2:c/grouped"}
+			if tc.null {
+				insert[tc.key] = nil
+			}
+			p := map[string]any{
+				"op":         "sequence",
+				"searchdirs": []any{"schemas"},
+				"modules":    []any{map[string]any{"name": "pv2"}},
+				"steps": []any{
+					map[string]any{"do": "parse", "data": `{"pv2:c":{"mode":"on","l":[{"k":"a"}]}}`, "parse_only": true},
+					insert,
+				},
+			}
+			_, err := (Yang{}).Run(Request{ID: tc.name, BaseDir: filepath.Join("corpus", "protocol-v2"), Params: p})
+			want := "insert node /pv2:c/grouped not found (a request-error)"
+			if err == nil || err.Error() != want {
+				t.Fatalf("error = %v, want %q", err, want)
+			}
+		})
+	}
+}
+
+var (
+	yangOnce sync.Once
+	yangM    *Manifest
+	yangRep  Report
+	yangErr  error
+)
+
+// yangReport is the corpus run through the Yang engine, shared by the engine gates (schema,
+// XPath, validation): one run instead of one per gate, read-only afterwards.
+func yangReport(t *testing.T) (*Manifest, Report) {
+	t.Helper()
+	yangOnce.Do(func() {
+		if yangM, yangErr = LoadManifest(manifestPath); yangErr == nil {
+			if yangErr = yangM.CheckFiles(true); yangErr == nil {
+				yangRep, yangErr = yangM.Compare(Yang{})
+			}
+		}
+	})
+	if yangErr != nil {
+		t.Fatal(yangErr)
+	}
+	return yangM, yangRep
+}
+
+// lys_find_path skips XML whitespace around the atoms context_path, as lyxp does (the request
+// matrix's spaced-abs class: the oracle returns the atoms).
+func TestAtomsContextPathWhitespace(t *testing.T) {
+	for _, cp := range []string{" /pv2:c/mode", "/pv2:c/mode \t", "\n/pv2:c/mode"} {
+		p := map[string]any{"op": "atoms", "searchdirs": []any{"schemas"}, "modules": []any{map[string]any{"name": "pv2"}},
+			"context_options": []any{"no_yanglibrary"}, "xpath": "..", "context_path": cp}
+		r, err := (Yang{}).Run(Request{BaseDir: filepath.Join("corpus", "protocol-v2"), Params: p})
+		if err != nil || r["verdict"] != "valid" {
+			t.Errorf("context_path %q: %v, %v", cp, r["verdict"], err)
+		}
+	}
+}
+
+// lyd_new_path checks (path[0] == '/') || parent before tokenizing: with an empty retained tree
+// (no parent) a leading space is LY_EINVAL; with a retained parent the original path reaches
+// lyd_new_path_ with that parent, which Tree.NewPath cannot take: B relative-set-parent (#255).
+func TestSequenceSetLeadingSpace(t *testing.T) {
+	base := func(steps ...any) map[string]any {
+		return map[string]any{"op": "sequence", "searchdirs": []any{"schemas"}, "modules": []any{map[string]any{"name": "pv2"}},
+			"context_options": []any{"no_yanglibrary"}, "steps": append(steps, map[string]any{"do": "dump"})}
+	}
+	set := map[string]any{"do": "edit", "set": map[string]any{"path": " /pv2:c/mode", "value": "on"}}
+	r, err := (Yang{}).Run(Request{BaseDir: filepath.Join("corpus", "protocol-v2"), Params: base(set)})
+	if err != nil || r["verdict"] != "invalid" || fmt.Sprint(r["failed_step"]) != "0" {
+		t.Fatalf("empty tree: %v, %v; want the step to fail", r, err)
+	}
+	parse := map[string]any{"do": "parse", "data": `{"pv2:c":{"mode":"off"}}`, "parse_only": true}
+	if _, err := (Yang{}).Run(Request{BaseDir: filepath.Join("corpus", "protocol-v2"), Params: base(parse, set)}); inventoryGap(err) != "relative-set-parent" {
+		t.Fatalf("retained parent: %v; want B relative-set-parent", err)
+	}
+}
+
+// An explicit empty revision: a module that loads without diagnostics is rejected with the parsed module's revision
+// (an inline revision statement, a revision inside a comment ignored); a module whose load fails
+// in any phase is unsupported (U-0110 empty-revision-load-failure, #254), also from a
+// subdirectory of a search directory.
+func TestEmptyRevisionProbe(t *testing.T) {
+	dir := t.TempDir()
+	files := map[string]string{
+		"inline.yang": "module inline { yang-version 1.1; namespace \"urn:inline\"; prefix m; revision 2020-01-01;\n" +
+			"  /* revision 2099-01-01; */ leaf x { type string; } }\n",
+		"sub/nested.yang": "module nested { yang-version 1.1; namespace \"urn:nested\"; prefix n; leaf bad { type uint8; default 256; } }\n",
+		"warning.yang": "module warning { yang-version 1.1; namespace \"urn:w\"; prefix w;\n" +
+			"  container top { grouping g { leaf x { type string; } } leaf y { type string; } } }\n",
+		"missing-import.yang": "module missing-import { yang-version 1.1; namespace \"urn:mi\"; prefix mi; import nosuch { prefix ns; } }\n",
+	}
+	for name, src := range files {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(dir, name)), 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(src), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	run := func(name string) (Response, error) {
+		return (Yang{}).Run(Request{BaseDir: dir, Params: map[string]any{"op": "schema", "searchdirs": []any{"."},
+			"context_options": []any{"no_yanglibrary"}, "modules": []any{map[string]any{"name": name, "revision": ""}}}})
+	}
+	r, err := run("inline")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, _ := r["modules"].([]any)[0].(map[string]any)
+	ds, _ := m["diagnostics"].([]any)
+	if len(ds) != 2 || m["phase"] != "parse" || !strings.Contains(fmt.Sprint(ds[0]), `parsed with the wrong revision ("2020-01-01" instead "")`) {
+		t.Fatalf("inline module entry = %v", m)
+	}
+	// "warning" compiles with an unused-grouping warning that libyang never reaches.
+	for _, name := range []string{"nested", "missing-import", "nosuch", "warning"} {
+		if _, err := run(name); !errors.Is(err, ErrUnsupported) || inventoryGap(err) != "empty-revision-load-failure" ||
+			schemaLimit(err.Error()) != "U-0110" {
+			t.Errorf("%s: err = %v", name, err)
+		}
+	}
+}
+
+// A relative set under a retained parent is unsupported (U-0110 relative-set-parent, #255):
+// Tree.NewPath has no parent argument, and rewriting the path diverges from lyd_new_path's
+// diagnostics; a whitespace-led path too, since trimming it shifts libyang's positions. Without a
+// retained tree a relative path keeps lyd_new_path's LY_EINVAL argument check.
+func TestRelativeSetParent(t *testing.T) {
+	run := func(module string, steps ...any) (Response, error) {
+		return (Yang{}).Run(Request{BaseDir: filepath.Join("corpus", "protocol-v2"), Params: map[string]any{
+			"op": "sequence", "searchdirs": []any{"schemas"}, "modules": []any{map[string]any{"name": module}}, "steps": steps}})
+	}
+	set := func(path string) map[string]any {
+		return map[string]any{"do": "edit", "set": map[string]any{"path": path, "value": "on"}}
+	}
+	opaque := map[string]any{"do": "parse", "data": `{"pv2:nosuch":"x"}`, "unknown": "opaque", "parse_only": true}
+	for name, tc := range map[string]struct {
+		module string
+		steps  []any
+	}{
+		"quoted key parent": {"a", []any{map[string]any{"do": "parse", "data": `{"a:l1":[{"a":"x'y\"z","b":"b","c":"c"}]}`, "parse_only": true}, set("c")}},
+		"opaque parent":     {"pv2", []any{opaque, set("mode")}},
+		"opaque malformed":  {"pv2", []any{opaque, set("[")}},
+		"missing key":       {"pv2", []any{set("/pv2:c/mode"), set("l")}},
+		"empty path":        {"pv2", []any{set("/pv2:c/mode"), set("")}},
+		"spaced absolute":   {"pv2", []any{set("/pv2:c/mode"), set(" /pv2:c/x")}},
+		"spaced malformed":  {"pv2", []any{set("/pv2:c/mode"), set(" /pv2:c/#")}},
+	} {
+		if _, err := run(tc.module, tc.steps...); !errors.Is(err, ErrUnsupported) || inventoryGap(err) != "relative-set-parent" {
+			t.Errorf("%s: err = %v", name, err)
+		}
+	}
+	r, err := run("pv2", set("mode"))
+	if err != nil || r["rc"].(map[string]any)["name"] != "LY_EINVAL" {
+		t.Fatalf("relative set on an empty tree = %v, %v; want LY_EINVAL", r, err)
+	}
+	if r, err := run("pv2", set("/pv2:c/mode"), set("/pv2:c/x")); err != nil || r["verdict"] != "valid" {
+		t.Fatalf("absolute set under a parent = %v, %v", r, err)
 	}
 }

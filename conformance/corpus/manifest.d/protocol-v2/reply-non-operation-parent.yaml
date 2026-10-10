@@ -1,0 +1,15 @@
+fixtures:
+  - id: protocol-v2/reply-non-operation-parent
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # oracle protocol request ordering and operation construction
+    areas: [validation]
+    request:
+      searchdirs: [schemas]
+      context_options: [no_yanglibrary]
+      op: sequence
+      modules: [{name: pv2}]
+      steps:
+        - {do: parse, parse_only: true, data: '{"pv2:c":{}}'}
+        - {do: parse, data_type: reply, parse_only: true, parent: /pv2:c, data: '{}'}
+    golden: golden/reply-non-operation-parent.json

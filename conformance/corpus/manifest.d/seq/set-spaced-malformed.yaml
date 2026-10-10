@@ -1,0 +1,19 @@
+fixtures:
+  - id: seq/set-spaced-malformed
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # lyd_new_path parent handling is libyang-specific.
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      steps:
+        - {do: parse, data: '{"pv2:c":{"mode":"on"}}', parse_only: true}
+        # With the retained parent, lyd_new_path_ lexes the original path: the position of the
+        # invalid character counts the leading space. The engine reports a set path that does
+        # not start with '/' under a retained parent unsupported (U-0110 class
+        # relative-set-parent: Tree.NewPath has no parent argument, #255).
+        - {do: edit, set: {path: " /pv2:c/#", value: "x"}}
+        - {do: dump}
+    golden: golden/seq-set-spaced-malformed.json

@@ -1,0 +1,22 @@
+fixtures:
+  - id: protocol-v2/when-true-false-when
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.21.5"]
+    areas: [validation]
+    # LYD_PARSE_WHEN_TRUE seeds LYD_WHEN_TRUE on x. When validation finds its when false,
+    # libyang auto-deletes x and succeeds without a diagnostic; the output keeps mode only.
+    request:
+      op: data
+      searchdirs: [schemas]
+      context_options: [no_yanglibrary]
+      modules: [{name: pv2}]
+      format: json
+      data_type: data
+      parse_options: [when_true]
+      data: '{"pv2:c":{"mode":"off","x":"remove"}}'
+    golden: golden/when-true-false-when.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.21.5"]
+      deviation: null

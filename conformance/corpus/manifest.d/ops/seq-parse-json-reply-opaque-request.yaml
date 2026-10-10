@@ -1,0 +1,14 @@
+fixtures:
+  - id: ops/seq-parse-json-reply-opaque-request
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: a sequence parse step of a reply into a request parsed opaque (unknown: opaque); lyd_parse_op finds no operation in that parent and fails "Missing the operation node." (the engine: U-0106)
+    rfc: ["RFC7950#7.14"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      steps:
+        - {do: parse, format: json, data_type: reply, unknown: opaque, parse_only: true, rpc: '{"a:r1":42}', data: '{}'}
+        - {do: dump}
+    golden: golden/ops-seq-parse-json-reply-opaque-request.json

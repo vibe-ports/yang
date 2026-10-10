@@ -2,6 +2,14 @@
 
 // Package conformance is the Go side of the libyang oracle harness: fixture manifest (v2),
 // goldens, the Engine interface and the per-area comparison report.
+//
+// Scope: the M4 exit gate requires agreement for its validation and operation corpus fixtures,
+// subject only to registered deviations, unsupported fixtures and reported field exclusions.
+// Outside the corpus, the engine must map supported requests faithfully to library operations
+// and compare their observable results; a demonstrated envelope-only difference from lyoracle's
+// request validation may be deferred under a registered class with native evidence and a
+// follow-up issue, reported separately and never counted as a match. See
+// docs/conformance/request-differential.md (section "Scope").
 package conformance
 
 import (

@@ -9,8 +9,10 @@
 // Parse validates unless ParseOptions.ParseOnly is set, in libyang's order: every inner node when
 // it closes (its new-node checks and implicit defaults), then the when conditions, the values
 // that need the tree (leafref, instance-identifier) and the final checks (must, mandatory,
-// min/max-elements, unique). Tree.Validate runs the same checks over a whole tree, and
-// Tree.ValidateDiff also returns the implicit diff (the nodes the validation added or removed).
+// min/max-elements, unique). Tree.Validate runs the same checks over a whole tree,
+// Tree.ValidateModule over one implemented module's data, and Tree.ValidateDiff and
+// Tree.ValidateModuleDiff also return the implicit diff (the nodes the validation added or
+// removed).
 //
 // Tree.FindXPath, Tree.EvalXPath and Tree.EvalXPathAs query a tree with XPath 1.0 and the YANG
 // function library (RFC 7950 §10), as lyd_find_xpath and lyd_eval_xpath4: JSON-format expressions,
@@ -33,10 +35,11 @@
 // MergeDiff or MergeDiffTree (its src subtree). Every call that changes a tree is a mutation and
 // needs exclusive access to that tree, with no other call on it, read or write, at the same time:
 // NewPath, NewTerm, NewInner, NewList, Insert (also of the tree n leaves), SetValue (of n's
-// tree), NewMeta, Remove, Validate, ValidateDiff, TrimXPath, LinkLeafrefs, and Merge, ApplyDiff,
-// MergeDiff, MergeDiffTree, Dup and DupSiblings into it (Dup and DupSiblings only read the tree
-// they copy from); ParseOp with a Request (the request's tree); ValidateOp, which also changes
-// its Operational tree while it runs (the operation is linked into it and out again).
+// tree), NewMeta, Remove, Validate, ValidateModule, ValidateDiff, ValidateModuleDiff, TrimXPath,
+// LinkLeafrefs, and Merge, ApplyDiff, MergeDiff, MergeDiffTree, Dup and DupSiblings into it (Dup
+// and DupSiblings only read the tree they copy from); ParseOp with a Request (the request's tree);
+// ValidateOp, which also changes its Operational tree while it runs (the operation is linked into
+// it and out again).
 // LeafrefLinks is a read.
 //
 // Leafref link records (yang.Options.LeafrefLinking) join the trees whose nodes they link: once

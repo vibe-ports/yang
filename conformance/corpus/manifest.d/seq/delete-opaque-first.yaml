@@ -1,0 +1,18 @@
+fixtures:
+  - id: seq/delete-opaque-first
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # lyd_find_path rejects a schema-less context node with LY_EINVAL and no logged diagnostic.
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      steps:
+        - {do: parse, data: '{"pv2:nosuch":"x"}', unknown: opaque, parse_only: true}
+        - {do: edit, delete: "/pv2:c/mode"}
+        - {do: dump}
+    golden: golden/seq-delete-opaque-first.json
+    assert:
+      verdict: invalid
+      deviation: null

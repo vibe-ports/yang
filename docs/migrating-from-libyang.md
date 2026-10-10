@@ -63,7 +63,7 @@ it; the issue tracks the public API.
 | `lyd_dup_single`, `lyd_dup_siblings` | not public yet (#92, M4) |
 | `lyd_merge_siblings` (no options) | `Tree.Merge(src)`; the merge options are not public yet (#127, M6) |
 | `lyd_free_tree` | `Node.Remove()` |
-| `lyd_find_path(tree, path, 0, &node)` | `Tree.Find(path)`: absolute JSON paths from the top level; `nil, nil` when nothing matches |
+| `lyd_find_path(tree, path, 0, &node)` | `Tree.Find(path)`: absolute JSON paths from the document root, or relative paths from the first top-level node's children; `nil, nil` when nothing matches |
 | `lyd_find_xpath`, `lyd_find_xpath2/3` | `Tree.FindXPath(expr, XPathOptions{Node, Vars})`: JSON-format expressions; returns the nodes, the call's diagnostics and an error |
 | `lyd_eval_xpath4` (and `lyd_eval_xpath`/`2`/`3` for booleans) | `Tree.EvalXPath(expr, o)` returns the result in its own type; `Tree.EvalXPathAs(expr, typ, o)` converts it. `format`/`prefix_data`/`cur_mod` are not public yet (#171) |
 | `lyd_path(node, LYD_PATH_STD, NULL, 0)` | `Node.Path()` |

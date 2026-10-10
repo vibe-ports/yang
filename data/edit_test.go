@@ -216,6 +216,91 @@ func TestEditGoldens(t *testing.T) {
 	}
 }
 
+// TestFindPathRelative covers lyd_find_path's LY_PATH_BEGIN_EITHER lookup from the first
+// top-level node. Relative evaluation starts at that node's children, not at the node itself.
+func TestFindPathRelative(t *testing.T) {
+	f := newFixture()
+	tr := newTree(f.set)
+	c := newInner(f.c)
+	tr.insert(nil, c, insertDefault)
+	z := f.term(t, f.z, "value")
+	tr.insert(c, z, insertDefault)
+	f.list(t, tr, c, "a", "")
+
+	if got, err := tr.Find("z"); err != nil || got != z {
+		t.Fatalf("Find(relative) = %v, %v; want z", got, err)
+	}
+	if got, err := tr.Find("x"); err != nil || got != nil {
+		t.Fatalf("Find(missing relative) = %v, %v; want nil, nil", got, err)
+	}
+	if got, err := tr.findPath(&logger{set: f.set}, "l[k='a']/v"); got != nil || !errors.Is(err, errPartial) {
+		t.Fatalf("findPath(partial relative) = %v, %v; want errPartial", got, err)
+	}
+	if _, err := tr.Find("z["); err == nil || err.Error() != "Unexpected XPath expression end." {
+		t.Fatalf("Find(malformed relative) = %v; want LY_EVALID XPath parse error", err)
+	} else {
+		var ve *ValidationError
+		if !errors.As(err, &ve) || ve.RC() != "LY_EVALID" {
+			t.Fatalf("Find(malformed relative) = %T %v; want LY_EVALID", err, err)
+		}
+	}
+	// ly_path_parse logs at ctx_node (LOG_LOCSET, path.c:340): the first top-level node's schema.
+	for _, path := range []string{"z[", "/b:c["} {
+		var ve *ValidationError
+		if _, err := tr.Find(path); !errors.As(err, &ve) || len(ve.Diags) == 0 || ve.Diags[0].SchemaPath == "" {
+			t.Fatalf("Find(%q) = %v; want a parse item located at the context node", path, err)
+		}
+	}
+	// lyxp skips XML whitespace before the first token: still an absolute path.
+	if got, err := tr.Find(" \t/b:c/z"); err != nil || got != z {
+		t.Fatalf("Find(whitespace absolute) = %v, %v; want z", got, err)
+	}
+	if got, err := tr.Find(" z"); err != nil || got != z {
+		t.Fatalf("Find(whitespace relative) = %v, %v; want z", got, err)
+	}
+	for _, path := range []string{"/b:c/z \t\r\n", " /b:c / z "} {
+		if got, err := tr.Find(path); err != nil || got != z {
+			t.Fatalf("Find(%q) = %v, %v; want z", path, got, err)
+		}
+	}
+	if _, err := tr.Find(" \t\r\n"); err == nil {
+		t.Fatal("Find(whitespace only) succeeded; want LY_EVALID XPath parse error")
+	}
+	if _, err := tr.Find(""); err == nil || err.Error() != "Unexpected XPath expression end." {
+		t.Fatalf("Find(empty) = %v; want LY_EVALID XPath parse error", err)
+	}
+}
+
+func TestFindPathRelativeContextArguments(t *testing.T) {
+	f := newFixture()
+
+	empty := newTree(f.set)
+	if got, err := empty.Find("z"); err != nil || got != nil {
+		t.Fatalf("empty.Find(relative) = %v, %v; want nil, nil", got, err)
+	}
+
+	opaqueTree := newTree(f.set)
+	opaqueTree.insert(nil, newOpaque(opaque{Name: "unknown", ModuleNS: "urn:unknown", Format: types.FormatJSON}), insertDefault)
+	for _, path := range []string{"/b:c", "z"} {
+		_, err := opaqueTree.Find(path)
+		var ve *ValidationError
+		if !errors.As(err, &ve) || ve.RC() != "LY_EINVAL" || err.Error() != "Invalid argument ctx_node->schema (lyd_find_path())." || len(ve.Diags) != 0 {
+			t.Fatalf("opaque.Find(%q) = %v; want ctx_node->schema LY_EINVAL", path, err)
+		}
+	}
+
+	leaf := newTree(f.set)
+	top := f.term(t, f.top, "value")
+	leaf.insert(nil, top, insertDefault)
+	// ly_path_compile resolves a relative path against the leaf's schema: no child, LY_EVALID.
+	if _, err := leaf.Find("z"); err == nil {
+		t.Fatal("top-leaf.Find(relative) succeeded; want the compile error")
+	}
+	if _, err := leaf.Find("z["); err == nil || err.Error() != "Unexpected XPath expression end." {
+		t.Fatalf("top-leaf.Find(malformed relative) = %v; want XPath parse error", err)
+	}
+}
+
 // TestMerge merges the content of data/edit-merge.json, built with NewPath, as the seq/merge-basic
 // fixture does and compares the result with the oracle's.
 func TestMerge(t *testing.T) {

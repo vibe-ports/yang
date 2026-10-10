@@ -1,0 +1,24 @@
+fixtures:
+  # check_step uses the original context; step_validate uses the duplicated tree's context.
+  # validation.c:2304 checks the NULL module without a logging context.
+  - id: seq/module-missing-after-dup
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # libyang API argument check
+    areas: [validation, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2}, {name: pv2-dummy}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {do: parse, data_type: data, parse_only: true, data: '{"pv2:c":{"mode":"on"}}'}
+        - do: dup
+          node: /pv2:c
+          options: [recursive]
+          target:
+            searchdirs: [schemas]
+            modules: [{name: pv2}]
+            context_options: [no_yanglibrary]
+        - {do: validate, module: pv2-dummy}
+    golden: golden/seq-module-missing-after-dup.json

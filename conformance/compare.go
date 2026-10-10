@@ -20,6 +20,10 @@ type Request struct {
 	ID      string
 	BaseDir string
 	Params  map[string]any
+	// buildContext is set by the generated request differential so all of its
+	// independent runs can share immutable schema snapshots. Normal engine calls
+	// use buildContext directly.
+	buildContext contextBuilder
 }
 
 // Engine is a YANG implementation under test. Return ErrUnsupported for inputs it cannot handle.

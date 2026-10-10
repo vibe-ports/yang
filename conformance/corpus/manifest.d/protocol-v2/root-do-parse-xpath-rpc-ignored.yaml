@@ -1,0 +1,21 @@
+fixtures:
+  - id: protocol-v2/root-do-parse-xpath-rpc-ignored
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # lyoracle root-operation dispatch: step-only do and rpc are ignored
+    areas: [xpath, validation]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      context_options: [no_yanglibrary]
+      modules: [{name: pv2}]
+      format: json
+      data_type: data
+      do: parse
+      rpc: '{"pv2:ping":{"n":1}}'
+      data: '{"pv2:c":{"mode":"on"}}'
+      xpath: /pv2:c/mode
+    golden: golden/root-do-parse-xpath-rpc-ignored.json
+    assert:
+      verdict: valid
+      deviation: null

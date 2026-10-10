@@ -1,0 +1,15 @@
+fixtures:
+  - id: protocol-v2/seq-failed-delete-skipped-capability
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # Oracle protocol skips execution after a failed step.
+    areas: [validation]
+    request:
+      op: sequence
+      context_options: [no_yanglibrary]
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      steps:
+        - {do: edit, delete: "/missing:x"}
+        - {do: validate, module: pv2, final_only: true}
+    golden: golden/seq-failed-delete-skipped-capability.json

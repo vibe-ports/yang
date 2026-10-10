@@ -1,0 +1,21 @@
+fixtures:
+  - id: protocol-v2/sequence-rpc-not-final
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.14"]
+    areas: [codecs, validation]
+    request:
+      searchdirs: [../ut-parser/a.1]
+      modules: [{name: a}]
+      context_options: [no_yanglibrary]
+      op: sequence
+      steps:
+        - do: parse
+          data_type: rpc
+          parse_only: true
+          data: '{"a:r1":{"l1":"x"}}'
+          validate_options: [not_final]
+    golden: golden/sequence-rpc-not-final.json
+    assert:
+      verdict: valid
+      deviation: null

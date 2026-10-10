@@ -28,12 +28,52 @@ const diffReplace, diffNone diffOp = 2, 3
 
 func (op diffOp) String() string { return [...]string{"create", "delete", "replace", "none"}[op] }
 
-// ValidateDiff is Validate that also returns lyd_validate_all's diff: the nodes the validation
-// created (implicit defaults) and deleted (false when, auto-deleted cases) as a tree with
-// yang:operation metadata on them and "none" on their parents; nil when nothing changed.
+// ValidateDiff validates and mutates t and returns a diff describing the implicit nodes this call
+// creates and the nodes it deletes, including yang:key, yang:value, or yang:position metadata for
+// created user-ordered instances. The diff is a separate tree with its own data nodes; it shares
+// t's immutable schema snapshot, is garbage-collected, and needs no explicit free. A nil diff
+// means that no change was recorded, not that t is valid; callers must inspect err and the
+// diagnostics.
+//
+// On error, t may already be modified and diff may be non-nil and partial; validation does not
+// roll back. This matches libyang v5.8.6 validation.c: lyd_val_diff_add fills diff incrementally at
+// lines 174-230, lyd_validate passes it through the mutating phases at lines 2000-2045, and cleanup
+// at lines 2061-2068 reverts neither tree. ValidateOptions.Present is accepted and restricts
+// validation to modules present in t. Validation observes ctx cancellation and fixed default
+// implicit-node and XPath budgets.
 func (t *Tree) ValidateDiff(ctx context.Context, o ValidateOptions) (diff *Tree, d []yang.Diagnostic, err error) {
 	dt := newTree(t.set)
 	d, err = t.validateAll(ctx, o, Budget{}, dt.valDiffAdd)
+	if dt.top.len() == 0 {
+		dt = nil
+	}
+	return dt, d, err
+}
+
+// ValidateModuleDiff validates and mutates t for the implemented module named by module and
+// returns a diff describing the implicit nodes this call creates and the nodes it deletes,
+// including yang:key, yang:value, or yang:position metadata for created user-ordered instances. An
+// unknown or not implemented module, or ValidateOptions.Present, returns LY_EINVAL
+// without a diagnostic, matching libyang's NULL-context argument check. The diff is a
+// separate tree with its own data nodes; it shares t's immutable schema snapshot, is
+// garbage-collected, and needs no explicit free. A nil diff means that no change was recorded,
+// not that t is valid; callers must inspect err and the diagnostics.
+//
+// On error, t may already be modified and diff may be non-nil and partial; validation does not
+// roll back. This matches libyang v5.8.6 validation.c: lyd_val_diff_add fills diff incrementally at
+// lines 174-230, lyd_validate passes it through the mutating phases at lines 2000-2045, cleanup at
+// lines 2061-2068 reverts neither tree, and lyd_validate_module returns that result at lines
+// 2134-2142. Validation observes ctx cancellation and fixed default implicit-node and XPath
+// budgets. lyd_validate_module_final and LYD_VALIDATE_NOT_FINAL remain unexported under U-0106;
+// this is not split-module orchestration.
+func (t *Tree) ValidateModuleDiff(ctx context.Context, module string, o ValidateOptions) (diff *Tree,
+	d []yang.Diagnostic, err error) {
+	mod, d, err := t.validateModuleArgs(module, o)
+	if err != nil {
+		return nil, d, err
+	}
+	dt := newTree(t.set)
+	d, err = t.validateModule(ctx, mod, o, Budget{}, dt.valDiffAdd)
 	if dt.top.len() == 0 {
 		dt = nil
 	}

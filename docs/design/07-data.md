@@ -243,7 +243,8 @@ m1/invalid-key-value-type reports `/ietf-ip:address/ip` and `/ietf-ip:address`. 
 **1.11 Edits used by `sequence`** (design 04 §4): `lyd_new_path` with `LYD_NEW_PATH_UPDATE` (TDN:1865;
 creates missing parents, changes a term value through `lyd_change_term` which clears `Default` on it
 and its NP-container ancestors, `lyd_np_cont_dflt_del`; created/changed nodes get `New`),
-`lyd_find_path` (TD:3700), `lyd_free_tree` (TDF:265: a list key → `Cannot free a list key "%s", free
+`lyd_find_path` (TD:3700; absolute paths start at the document root, relative paths compile against
+the first top-level node and start at its children), `lyd_free_tree` (TDF:265: a list key → `Cannot free a list key "%s", free
 the list instance instead.` LY_EINVAL, LOGERR, nothing freed), `lyd_merge_siblings` (TD:2850, no
 options). Implicit diff: `lyd_val_diff_add` (VAL:188) → `lyd_diff_add` (DIFF:383) +
 `lyd_diff_merge_all` (DIFF:3034) restricted to create/delete/none (user-ordered `key`/`value`/
@@ -578,6 +579,7 @@ func (n *Node) LeafrefLinks() (leafrefs, targets []*Node)                 // lyd
 
 // validation and parse options (§6.1.4)
 func (t *Tree) ValidateModule(ctx context.Context, module string, o ValidateOptions) ([]yang.Diagnostic, error)
+func (t *Tree) ValidateModuleDiff(ctx context.Context, module string, o ValidateOptions) (*Tree, []yang.Diagnostic, error)
 // ParseOptions.WhenTrue bool                                             // LYD_PARSE_WHEN_TRUE
 
 // M5 (§6.1.5, envelopes): OpType values, OpResult.Envelope, NewOpaq, Node.Attrs
@@ -776,15 +778,18 @@ without changing this contract. doc.go states this rule when ValidateOp is expor
 | Go | libyang | class |
 |---|---|---|
 | `t.ValidateModule(ctx, module, o)` | `lyd_validate_module(&tree, module, val_opts, NULL)` (VAL:2302) | mutation of t |
+| `t.ValidateModuleDiff(ctx, module, o)` | `lyd_validate_module(&tree, module, val_opts, &diff)` | mutation of t; returns diff |
 | `ParseOptions.WhenTrue` | `LYD_PARSE_WHEN_TRUE` | — |
 | `LYD_PARSE_ORDERED` | not exported (D-0058) | — |
 
 - `ValidateModule` validates only the data of `module` (an implemented module's name, as
   `ApplyDiffOptions.Module`), its implicit nodes included (#100). `o.Present` is refused as libyang
   refuses it: LY_EINVAL "Invalid argument !(val_opts & LYD_VALIDATE_PRESENT)
-  (lyd_validate_module())." An unknown or not implemented module is LY_EINVAL `argErr("module",
-  "lyd_validate_module")`. Diagnostics as Validate. No diff variant until asked (ValidateDiff is
-  the precedent if one is).
+  (lyd_validate_module())." An unknown or not implemented module is LY_EINVAL without a diagnostic,
+  as in libyang's NULL-context argument check (validation.c:2304). `Present` likewise
+  returns no diagnostic. Other diagnostics are as for Validate. The requested diff variant is
+  `ValidateModuleDiff`, following the `ValidateDiff` shape; `seq/diff-defaults-module` records the
+  oracle's `lyd_validate_module` diff, including user-order anchors.
 - `WhenTrue`: the parsed nodes that depend on a when start with `FlagWhenTrue`, so a later
   Validate removes them silently when their when turns false instead of failing. This is how a
   server reloads a datastore it validated before and then applies edits. Already internal
@@ -885,7 +890,7 @@ of a registry entry. So #105 cannot pass with them unsupported; they must agree.
 | `LYD_DUP_NO_EXT`, `LYD_DUP_WITH_PRIV`, `lyd_dup_meta_single` | nothing to act on (no extension data, no private pointers); metadata copies come with Dup |
 | `struct lyd_leafref_links_rec`, LY_EDENIED/LY_ENOTFOUND of `lyd_leafref_get_links` | two slices carry the record; the error cases are "no links" |
 | `lyd_validate_module_final`, `LYD_VALIDATE_NOT_FINAL` | a split-validation speed path (sysrepo-style); #100 ports and tests it in Go, the engine refuses `final_only` under **U-0106** |
-| `lyd_validate_op`'s `diff`, `lyd_validate_module`'s `diff` | no user yet; ValidateDiff is the shape to copy |
+| `lyd_validate_op`'s `diff` | no user yet; ValidateDiff is the shape to copy |
 | `LYD_PARSE_ORDERED`, `LYD_PARSE_NO_NEW` | D-0058; NO_NEW is internal validation plumbing |
 | `lyd_parse_op` with a parent for `RPC_YANG`/`NOTIF_YANG` (a nested action or notification parsed into an existing parent) | no fixture or user; ParseOp returns the operation with its parents in a new tree instead. `Request` is refused with OpRPC/OpNotif (§6.1.1); allowing it later is additive |
 | `lyd_parser_find_operation`, `lyd_parser_notif_eventtime_validate` | parser internals (#93, #94) |

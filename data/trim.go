@@ -88,7 +88,15 @@ func (t *Tree) TrimXPath(expr string, o XPathOptions) ([]yang.Diagnostic, error)
 	for i, v := range o.Vars {
 		vars[i] = xpath.Var(v)
 	}
-	r, err := t.evalXPath4(l, top[0], expr, jsonNS{set: t.set}, vars, false, xpath.NodeSet)
+	// lyd_trim_xpath uses lyd_find_xpath: parsing has no context-node location,
+	// although evaluation starts at the first node of the retained tree.
+	ns := jsonNS{set: t.set}
+	compiled, err := xpath.Compile(expr, ns)
+	if err != nil {
+		err = l.done(queryErr(l, nil, err))
+		return l.diags, err
+	}
+	r, err := t.evalCompiledXPath4(l, top[0], compiled, expr, ns, vars, false, xpath.NodeSet)
 	if err != nil {
 		return l.diags, l.done(err)
 	}

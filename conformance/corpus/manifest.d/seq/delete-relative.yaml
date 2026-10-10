@@ -1,0 +1,18 @@
+fixtures:
+  - id: seq/delete-relative
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # lyd_find_path relative-path behavior is libyang-specific.
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      steps:
+        - {do: parse, data: '{"pv2:c":{"mode":"on","l":[{"k":"a"}]}}', parse_only: true}
+        - {do: edit, delete: mode}
+        - {do: dump}
+    golden: golden/seq-delete-relative.json
+    assert:
+      verdict: valid
+      deviation: null

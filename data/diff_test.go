@@ -8,8 +8,10 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/compile"
 	"github.com/vibe-ports/yang/internal/schema"
 )
@@ -202,5 +204,43 @@ func TestValidateDiffGoldens(t *testing.T) {
 				i++
 			}
 		})
+	}
+}
+
+func TestValidateModuleDiffUserOrderedDefaultAnchors(t *testing.T) {
+	set := pv2Set(t, "pv2-diff")
+	validated := func(t *testing.T, module string) string {
+		t.Helper()
+		tr := newTree(set)
+		if _, err := tr.NewPath("/pv2-diff:c/mode", "off", NewPathOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		var diff *Tree
+		var diags []yang.Diagnostic
+		var err error
+		if module == "" {
+			diff, diags, err = tr.ValidateDiff(context.Background(), ValidateOptions{NoState: true, MultiError: true})
+		} else {
+			diff, diags, err = tr.ValidateModuleDiff(context.Background(), module,
+				ValidateOptions{NoState: true, MultiError: true})
+		}
+		if err != nil || len(diags) != 0 {
+			t.Fatalf("validate %q = %v, %v", module, diags, err)
+		}
+		var b bytes.Buffer
+		if err := diff.PrintJSON(&b, PrintOptions{WithDefaults: WDAll}); err != nil {
+			t.Fatal(err)
+		}
+		return b.String()
+	}
+
+	all, module := validated(t, ""), validated(t, "pv2-diff")
+	if module != all {
+		t.Fatalf("ValidateModuleDiff differs from ValidateDiff:\n%s\nwant:\n%s", module, all)
+	}
+	for _, anchor := range []string{`"yang:value": ""`, `"yang:value": "b"`} {
+		if !strings.Contains(module, anchor) {
+			t.Errorf("module diff does not contain anchor %s:\n%s", anchor, module)
+		}
 	}
 }

@@ -1,0 +1,16 @@
+fixtures:
+  # #235: a second lyd_validate_module call over already-valid data has no implicit diff
+  - id: seq/validate-module-diff-nochange
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang lyd_validate_module diff: no RFC behaviour
+    areas: [validation, diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-diff}]
+      steps:
+        - {"do": "parse", "format": "json", "data_type": "config", "parse_only": true, "data": "{\"pv2-diff:c\": {\"mode\": \"off\"}}"}
+        - {"do": "validate", "data_type": "config", "module": "pv2-diff"}
+        - {"do": "validate", "data_type": "config", "module": "pv2-diff"}
+    golden: golden/seq-validate-module-diff-nochange.json

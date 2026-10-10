@@ -1,0 +1,18 @@
+fixtures:
+  - id: seq/delete-spaced
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # lyd_find_path and ly_path_parse whitespace handling is libyang-specific.
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2}]
+      steps:
+        - {do: parse, data: '{"pv2:c":{"mode":"on"}}', parse_only: true}
+        - {do: edit, delete: " /pv2:c/mode"}
+        - {do: dump}
+    golden: golden/seq-delete-spaced.json
+    assert:
+      verdict: valid
+      deviation: null

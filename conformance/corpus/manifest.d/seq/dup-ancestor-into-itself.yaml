@@ -1,0 +1,22 @@
+fixtures:
+  # lyd_dup_single of /pv2-edit:c (not recursive) under its own instance (lyd_dup does not check
+  # the schema parent); lyd_insert_get_next_anchor (tree_data.c:503-588) without a children hash table: the walk in the top-level lys_getnext order finds c first, so c goes before the first child.
+  # The port refuses a parent that is not an instance of the schema parent (D-0124): the
+  # dup step fails with LY_EINVAL.
+  - id: seq/dup-ancestor-into-itself
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang API (lyd_dup_single): no RFC behaviour
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: parse, data: '{"pv2-edit:c":{"a":"x","np":{"d":7}}}', parse_only: true}
+        - {do: dup, node: "/pv2-edit:c", parent: "/pv2-edit:c"}
+        - {do: dump}
+    golden: golden/seq-dup-ancestor-into-itself.json
+    assert:
+      verdict: invalid
+      deviation: D-0124
