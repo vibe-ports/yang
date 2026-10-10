@@ -191,7 +191,7 @@ stays parse-only without STRICT) — what happens to data nodes the schema does 
 | unknown | flag | effect |
 |---|---|---|
 | `reject` (default) | `LYD_PARSE_STRICT` | error `LYVE_REFERENCE` (`Node "bogus" not found as a child of "c" node.`) |
-| `skip` | — | silently dropped (libyang default); request-error for `rpc`/`reply`/`notif` |
+| `skip` | — | silently dropped (libyang default; for `rpc`/`reply`/`notif` `lyd_parse_op` with neither STRICT nor OPAQ) |
 | `opaque` | `LYD_PARSE_OPAQ` | kept as opaque nodes (`kind: "opaque"` in `typed`) |
 
 Example (`protocol-v2/data/unknown.json` = `{"pv2:c": {"mode": "on", "bogus": 1}}`, `config`,
@@ -207,7 +207,7 @@ helper additionally requires its parent to exist in the operational tree (yangli
 `check_operation_parent`; libyang does not check it) → diagnostic `phase: operation_parent`.
 For `reply`, `rpc` / `rpc_file` is the request: it is parsed as RPC, its input is dropped and the
 reply (`data`, output children as top-level nodes, e.g. `{"ops:rtt": 5}`) is parsed under it.
-Without `rpc`, `data` must be the full reply (`{"ops:ping": {"rtt": 5}}`).
+Without `rpc`, `data` must be the full reply (`{"ops:ping": {"rtt": 5}}`). For `rpc` with `rpc` / `rpc_file`, `data` is parsed the same way under the request (`lyd_parse_op(ctx, op, in, …, LYD_TYPE_RPC_YANG, …)`), as an input with an existing RPC parent. `keep_input: true` keeps the request's parsed children instead of removing them. When the reply fails, `request_typed` is the typed dump of the request's tree after lyd_parse_op's cleanup (the nodes it frees again are gone).
 
 ### Typed tree (`typed`)
 

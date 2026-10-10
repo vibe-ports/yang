@@ -1,0 +1,21 @@
+fixtures:
+  - id: ops/parse-json-reply-parent-notop
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: a reply member that is no output node
+    rfc: ["RFC7950#7.14"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: json
+      data_type: reply
+      unknown: reject
+      parse_only: true
+      rpc: "{\"a:c\":{\"act\":{\"al\":\"v\"}}}"
+      data: "{\"a:x\":\"y\"}"
+    golden: golden/ops-parse-json-reply-parent-notop.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.14"]
+      deviation: null

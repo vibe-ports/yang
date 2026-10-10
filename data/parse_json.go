@@ -41,10 +41,11 @@ func (p *jsonParser) insertOpaq(parent, n *Node) {
 	}
 }
 
-// parseJSON is lyd_parse_json for datastore data (LYD_INTOPT_WITH_SIBLINGS, no parent, no bare
-// value): every top-level member, then the metadata that still wait for their node. Operations and
-// RESTCONF envelopes are design 07 M4; anydata/anyxml instances fail with yang.ErrUnsupported
-// (deviations.md U-0043).
+// parseJSON is lyd_parse_json without a bare value: every member of the top-level object (only
+// the first one under LYD_INTOPT_NO_SIBLINGS) as children of lc.parent (the top level when nil),
+// then the metadata that still wait for their node, and the operation checks of an operation
+// parse. RESTCONF envelopes are not ported; anydata/anyxml instances fail with
+// yang.ErrUnsupported (deviations.md U-0043).
 func parseJSON(lc *lydCtx, in []byte) error {
 	lx, err := lyjson.New(in)
 	if err != nil {
@@ -55,22 +56,47 @@ func parseJSON(lc *lydCtx, in []byte) error {
 	defer lc.log.popInput()
 	p := &jsonParser{lc: lc, lx: lx, strict: lc.opts.Unknown == Reject, opaq: lc.opts.Unknown == Opaque,
 		opqFirst: map[opqKey]*Node{}}
+	if lc.parent != nil {
+		// the parent's existing opaque children are found by name as libyang's sibling search
+		// finds them: the first one of each name and module
+		for _, n := range lc.parent.kids.opq {
+			if k := (opqKey{lc.parent, n.opaq.Name, n.opaq.ModuleNS}); p.opqFirst[k] == nil {
+				p.opqFirst[k] = n
+			}
+		}
+	}
+	if err := lc.findOperation(); err != nil {
+		return errLoggedFatal
+	}
 	if st := lx.Status(); st != lyjson.TokenObject {
 		_ = lc.log.val(nil, "", ly.SyntaxJSON, "Expected top-level JSON object or correct bare value, but %s found.", st)
 		return errLoggedFatal
 	}
 	var rc error
+	var status lyjson.Token
 	for {
-		if r := p.subtree(nil); r != nil {
+		if r := p.subtree(lc.parent); r != nil {
 			if rc = r; lc.fatal(r) {
 				return rc
 			}
 		}
-		if lx.Status() != lyjson.TokenObjectNext {
+		if status = lx.Status(); lc.op.noSiblings || status != lyjson.TokenObjectNext {
 			break
 		}
 	}
-	if r := p.metadataFinish(nil); r != nil {
+	if lc.op.noSiblings && lx.Offset() < len(in) && status != lyjson.TokenObjectClosed {
+		r := lc.log.val(nil, "", ly.Syntax, "Unexpected sibling node.")
+		if rc = r; lc.fatal(r) {
+			return rc
+		}
+	}
+	if lc.op.any() && lc.opNode == nil {
+		r := lc.log.val(nil, "", ly.Data, "Missing the operation node.")
+		if rc = r; lc.fatal(r) {
+			return rc
+		}
+	}
+	if r := p.metadataFinish(lc.parent); r != nil {
 		rc = r
 	}
 	return rc
@@ -168,7 +194,7 @@ func (p *jsonParser) getSnode(isAttr bool, prefix, name string, parent *Node) (*
 		mod = sparent.Module
 	}
 	if mod != nil {
-		if sn := schema.FindChild(sparent, mod.Top, mod, name, 0); sn != nil {
+		if sn := schema.FindChild(sparent, mod.Top, mod, name, lc.getnextOpts()); sn != nil {
 			return sn, lc.checkSchema(sn)
 		}
 		if err := extData(sparent, mod, name); err != nil {
@@ -909,8 +935,14 @@ func (p *jsonParser) parseInstance(parent *Node, sn *schema.Node, name, prefix s
 
 // subtree is lydjson_subtree_r: one member of the object the lexer is in (all instances of a
 // list or leaf-list), as data nodes under parent (the top level when nil).
-func (p *jsonParser) subtree(parent *Node) error {
+func (p *jsonParser) subtree(parent *Node) (err error) {
 	lc := p.lc
+	var node *Node // the node of the member, its last instance for an array (lydjson_subtree_r's node)
+	defer func() {
+		if err != nil && lc.fatal(err) && node != nil {
+			lc.nodeFree(node) // lydjson_subtree_r's cleanup: lyd_parser_node_free
+		}
+	}()
 	status := p.lx.Status()
 	if err := p.next(&status); err != nil {
 		return err
@@ -952,7 +984,8 @@ func (p *jsonParser) subtree(parent *Node) error {
 		case name == "" && prefix == "":
 			attrNode, sn = parent, parent.schema // the parent's own metadata
 		}
-		if _, err := p.parseAttribute(attrNode, sn, name, prefix, hasPrefix, parent, &status); err != nil {
+		var err error
+		if node, err = p.parseAttribute(attrNode, sn, name, prefix, hasPrefix, parent, &status); err != nil {
 			return err
 		}
 	case sn == nil && !p.opaq:
@@ -966,7 +999,8 @@ func (p *jsonParser) subtree(parent *Node) error {
 				return rc
 			}
 		}
-		if _, err := p.ctxNextParseOpaq(name, prefix, parent, &status); err != nil {
+		var err error
+		if node, err = p.ctxNextParseOpaq(name, prefix, parent, &status); err != nil {
 			return err
 		}
 	default:
@@ -992,7 +1026,7 @@ func (p *jsonParser) subtree(parent *Node) error {
 			}
 		}
 		instance := func() (repr bool, stop error) {
-			_, r := p.parseInstance(parent, sn, name, prefix, &status)
+			n, r := p.parseInstance(parent, sn, name, prefix, &status)
 			switch {
 			case errors.Is(r, errNot):
 				return true, nil
@@ -1000,6 +1034,10 @@ func (p *jsonParser) subtree(parent *Node) error {
 				if rc = r; lc.fatal(r) {
 					return false, rc
 				}
+			}
+			node = n
+			if n != nil && (sn.Kind == schema.RPC || sn.Kind == schema.Action || sn.Kind == schema.Notification) {
+				lc.opNode = n // remember the operation, also an opaque one of the operation's name
 			}
 			return false, nil
 		}
@@ -1045,6 +1083,9 @@ func (p *jsonParser) subtree(parent *Node) error {
 			}
 			return rc
 		}
+	}
+	if node != nil && parent == lc.parent && lc.op.any() {
+		lc.parsed = append(lc.parsed, node) // lyd_parse_op's parsed set: the member's last node
 	}
 	if err := p.next(&status); err != nil { // after the item(s)
 		return err

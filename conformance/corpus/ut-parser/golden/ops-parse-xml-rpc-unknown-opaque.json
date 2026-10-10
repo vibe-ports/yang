@@ -1,0 +1,87 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"a:r1\": {\n    \"l1\": \"x\",\n    \"zz\": 1\n  }\n}\n",
+    "xml": "<r1 xmlns=\"urn:tests:a\">\n  <l1>x</l1>\n  <zz>1</zz>\n</r1>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "rpc",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:r1",
+      "schema": "/a:r1",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:r1/l1",
+      "schema": "/a:r1/input/l1",
+      "value": {
+        "canonical": "x",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "zz",
+        "namespace": "urn:tests:a",
+        "prefix": null
+      },
+      "path": "/a:r1/zz",
+      "schema": null,
+      "value": {
+        "canonical": "1",
+        "hints": [
+          "decnum"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

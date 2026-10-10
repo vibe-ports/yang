@@ -50,6 +50,8 @@ func typedLine(set *schema.Set, n *Node) string {
 	s := lydPath(set, n, false) + " " + strings.Join(fl, ",")
 	if n.isTerm() {
 		s += " = " + n.value.Canonical()
+	} else if n.opaq != nil {
+		s += " = " + n.opaq.Value // the oracle's canonical of an opaque node: its text
 	}
 	return s
 }
