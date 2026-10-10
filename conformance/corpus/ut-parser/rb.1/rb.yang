@@ -9,6 +9,9 @@ module rb {
     }
     output {
       leaf-list v { type uint8; }
+      container oc {
+        leaf n { type uint8; }
+      }
     }
   }
 }

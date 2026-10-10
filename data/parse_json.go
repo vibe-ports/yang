@@ -1031,13 +1031,14 @@ func (p *jsonParser) subtree(parent *Node) (err error) {
 			case errors.Is(r, errNot):
 				return true, nil
 			case r != nil:
+				node = n // lydjson_subtree_r frees the failed node (an output container with a bad child)
 				if rc = r; lc.fatal(r) {
 					return false, rc
 				}
 			}
 			node = n
 			if n != nil && (sn.Kind == schema.RPC || sn.Kind == schema.Action || sn.Kind == schema.Notification) {
-				lc.opNode = n // remember the operation, also an opaque one of the operation's name
+				lc.opNode, lc.opSchema = n, sn // remember the operation, also an opaque one of the operation's name
 			}
 			return false, nil
 		}

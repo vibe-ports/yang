@@ -121,10 +121,12 @@ type lydCtx struct {
 	validate func(lc *lydCtx) error
 	// op is the operation part of the internal options (LYD_INTOPT_*), zero for datastore data;
 	// parent is the node parsed into (nil: the top level) and opNode the operation node
-	// (lyd_ctx.op_node).
-	op     opOpts
-	parent *Node
-	opNode *Node
+	// (lyd_ctx.op_node), opSchema its schema node: the JSON parser also records an opaque node
+	// parsed for an operation member (D-0110).
+	op       opOpts
+	parent   *Node
+	opNode   *Node
+	opSchema *schema.Node
 	// rcOnly is lyd_parse_op's result rule: the format parser's return code is the result, so an
 	// error it logged and went past (the YANG action element, lydxml_envelope) does not fail it
 	rcOnly bool
@@ -233,7 +235,7 @@ func (lc *lydCtx) findOperation() error {
 		return lc.log.logErr("LY_EINVAL", "Invalid parent notification \"%s\" node when not parsing a notification.",
 			sn.Name)
 	}
-	lc.opNode = it
+	lc.opNode, lc.opSchema = it, it.schema
 	return nil
 }
 
@@ -249,7 +251,7 @@ func (lc *lydCtx) getnextOpts() schema.GetNextOpt {
 func (lc *lydCtx) opParsed(n *Node) {
 	if n != nil && n.schema != nil && (n.schema.Kind == schema.RPC || n.schema.Kind == schema.Action ||
 		n.schema.Kind == schema.Notification) {
-		lc.opNode = n // remember the RPC/action/notification
+		lc.opNode, lc.opSchema = n, n.schema // remember the RPC/action/notification
 	}
 }
 
@@ -500,9 +502,10 @@ func (lc *lydCtx) checkSchema(sn *schema.Node) error {
 	if !ok {
 		return lc.log.val(nil, "", ly.Data, "Unexpected %s element \"%s\".", nodetypeStr(sn.Kind), sn.Name)
 	}
-	if op := lc.opNode; op != nil {
+	if op := lc.opSchema; lc.opNode != nil {
+		// libyang reads op_node->schema, NULL for an opaque operation node: SIGSEGV (D-0110)
 		return lc.log.val(nil, "", ly.Data, "Unexpected %s element \"%s\", %s \"%s\" already parsed.",
-			nodetypeStr(sn.Kind), sn.Name, nodetypeStr(op.schema.Kind), op.schema.Name)
+			nodetypeStr(sn.Kind), sn.Name, nodetypeStr(op.Kind), op.Name)
 	}
 	return nil
 }

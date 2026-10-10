@@ -1,0 +1,21 @@
+fixtures:
+  - id: ops/parse-xml-reply-rollback-container
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: a failed reply into its rpc, XML: the output container whose child fails is freed with every parsed element
+    rfc: ["RFC7950#7.14"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [rb.1]
+      modules: [{name: rb}]
+      format: xml
+      data_type: reply
+      unknown: reject
+      parse_only: true
+      rpc: "<r xmlns=\"urn:rb\"><in>keep</in></r>"
+      data: "<v xmlns=\"urn:rb\">1</v><v xmlns=\"urn:rb\">2</v><oc xmlns=\"urn:rb\"><n>x</n></oc>"
+    golden: golden/ops-parse-xml-reply-rollback-container.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.14"]
+      deviation: null

@@ -249,6 +249,17 @@ func TestParseOpSkip(t *testing.T) {
 	}
 }
 
+// TestParseOpOpaqueOperation: an action member parsed as an opaque node is the operation node,
+// and a second one fails with libyang's message instead of its crash (D-0110).
+func TestParseOpOpaqueOperation(t *testing.T) {
+	set := opsSet(t, readOpsFixture(t, filepath.Join(opsManifest, "parse-xml-rpc-input.yaml")))
+	_, _, diags, err := parseOp(context.Background(), strings.NewReader(`{"a:c":{"act":42,"act":{}}}`), set,
+		FormatJSON, opRPC, nil, Opaque)
+	if err == nil || len(diags) == 0 || diags[len(diags)-1].Msg != `Unexpected action element "act", action "act" already parsed.` {
+		t.Fatal(err, diags)
+	}
+}
+
 // errReader fails every read.
 type errReader struct{ err error }
 
