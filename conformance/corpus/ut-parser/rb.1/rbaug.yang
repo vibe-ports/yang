@@ -1,0 +1,14 @@
+module rbaug {
+  yang-version 1.1;
+  namespace "urn:rbaug";
+  prefix ra;
+
+  import rb { prefix rb; }
+
+  augment "/rb:r/rb:input" {
+    leaf y { type string; }
+  }
+  augment "/rb:r/rb:output" {
+    leaf z { type string; }
+  }
+}

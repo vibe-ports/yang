@@ -1,0 +1,16 @@
+fixtures:
+  - id: ops/parse-xml-rpc-augment
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: an input leaf augmented from another module, XML
+    rfc: ["RFC7950#7.14", "RFC7950#7.17"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [rb.1]
+      modules: [{name: rb}, {name: rbaug}]
+      format: xml
+      data_type: rpc
+      unknown: reject
+      parse_only: true
+      data: "<r xmlns=\"urn:rb\"><in>x</in><y xmlns=\"urn:rbaug\">y</y></r>"
+    golden: golden/ops-parse-xml-rpc-augment.json

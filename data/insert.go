@@ -194,11 +194,9 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 func (t *Tree) runBounds(sib *siblings, n *Node) (lo, hi int) {
 	l := sib.list
 	if opChild(n.schema) {
-		if lo = slices.IndexFunc(l, func(a *Node) bool { return a.schema == n.schema }); lo < 0 {
+		if lo, hi = t.opRun(l, n.schema); lo < 0 {
 			at := t.opAnchor(sib, n)
 			return at, at
-		}
-		for hi = lo; hi < len(l) && l[hi].schema == n.schema; hi++ {
 		}
 		return lo, hi
 	}
@@ -209,13 +207,41 @@ func (t *Tree) runBounds(sib *siblings, n *Node) (lo, hi int) {
 // opChild reports whether s is a child of an rpc or action's input or output. Such siblings are
 // ordered by lyd_insert_get_next_anchor, which walks only the new node's own input or output
 // schema list, so input and output instances interleave and are not monotone in schema order:
-// they are placed by opAnchor and searched linearly (an operation has few children).
+// they are placed by opAnchor and searched run by run (runEnd).
 func opChild(s *schema.Node) bool {
 	if s == nil {
 		return false
 	}
 	dp := s.DataParent()
 	return dp != nil && (dp.Kind == schema.RPC || dp.Kind == schema.Action)
+}
+
+// runEnd is the end of the run of l[i]'s schema node that starts at i: instances of one schema
+// node are contiguous, so a galloping search finds it in O(log run) counted steps.
+func (t *Tree) runEnd(l []*Node, i int) int {
+	s := l[i].schema
+	step, j := 1, i // l[j] is in the run
+	for j+step < len(l) && l[j+step].schema == s {
+		t.work.Add(1)
+		j += step
+		step *= 2
+	}
+	hi := min(j+step, len(l)) // l[hi] is past the run, or the end
+	return j + 1 + t.upper(l[j+1:hi], 0, func(a *Node) bool { return a.schema != s })
+}
+
+// opRun is the run of s among an operation's children l, (-1, -1) if there is none; it visits
+// the runs, not the instances.
+func (t *Tree) opRun(l []*Node, s *schema.Node) (lo, hi int) {
+	for i := 0; i < len(l); {
+		t.work.Add(1)
+		j := t.runEnd(l, i)
+		if l[i].schema == s {
+			return i, j
+		}
+		i = j
+	}
+	return -1, -1
 }
 
 // opAnchor is lyd_insert_get_next_anchor for an operation's child n: the index of the sibling n
@@ -225,7 +251,8 @@ func opChild(s *schema.Node) bool {
 //   - without it: the siblings walked against n's input or output schema list, the anchor being
 //     the first sibling past n's schema node there; a sibling of the other direction is never in
 //     that list, so an output node goes before the first input node that does not precede it in
-//     the walk, and an input node before such an output node.
+//     the walk, and an input node before such an output node. The walk goes run by run: the
+//     siblings of one run decide alike.
 func (t *Tree) opAnchor(sib *siblings, n *Node) int {
 	l := sib.list
 	var opts schema.GetNextOpt
@@ -235,17 +262,18 @@ func (t *Tree) opAnchor(sib *siblings, n *Node) int {
 	order := slices.Collect(schema.GetNext(n.schema.DataParent(), nil, opts))
 	if sib.ht != nil {
 		for _, s := range order[slices.Index(order, n.schema)+1:] {
-			t.work.Add(1)
-			if j := slices.IndexFunc(l, func(a *Node) bool { return a.schema == s }); j >= 0 {
+			if j, _ := t.opRun(l, s); j >= 0 {
 				return j
 			}
 		}
 		return len(l)
 	}
+	own := ownerModule(t.set, n)
 	k, found := 0, false
-	for m, a := range l {
+	for m := 0; m < len(l); m = t.runEnd(l, m) {
 		t.work.Add(1)
-		if a.schema.Module != n.schema.Module {
+		a := l[m]
+		if ownerModule(t.set, a) != own {
 			return m // lyd_owner_module differs: the data of the next module
 		}
 		for !found {

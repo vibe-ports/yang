@@ -173,7 +173,8 @@ func (t *Tree) schemaIndex(s *siblings, sn *schema.Node) int {
 		return -1
 	}
 	if opChild(sn) {
-		return slices.IndexFunc(s.list, func(a *Node) bool { return a.schema == sn })
+		lo, _ := t.opRun(s.list, sn)
+		return lo
 	}
 	probe := &Node{schema: sn, parent: s.list[0].parent} // top level or not decides the module order
 	i, _ := slices.BinarySearchFunc(s.list, probe, func(a, n *Node) int {

@@ -13,6 +13,7 @@ module rb {
     output {
       leaf before { type string; }
       leaf-list v { type uint8; }
+      leaf-list s { type string; }
       container oc {
         leaf n { type uint8; }
       }

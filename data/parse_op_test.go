@@ -309,6 +309,28 @@ func TestParseOpMixedInputOutput(t *testing.T) {
 	}
 }
 
+// TestParseOpLinear: a large sorted leaf-list of an rpc output costs counted work linear in its
+// size (the run of an operation's child is found run by run, appends take the fast path), with
+// the other output nodes before and after it.
+func TestParseOpLinear(t *testing.T) {
+	set := opsSet(t, readOpsFixture(t, filepath.Join(opsManifest, "parse-json-reply-keep-order.yaml")))
+	work := func(n int) int64 {
+		vals := make([]string, n)
+		for i := range vals {
+			vals[i] = fmt.Sprintf(`"v%07d"`, i)
+		}
+		in := `{"rb:r":{"before":"b","s":[` + strings.Join(vals, ",") + `],"oc":{"n":1}}}`
+		tree, _, diags, err := parseOp(context.Background(), strings.NewReader(in), set, FormatJSON, opReply, nil, Reject)
+		if err != nil {
+			t.Fatal(err, diags)
+		}
+		return tree.work.Load()
+	}
+	if w1, w4 := work(1000), work(4000); w4 > 5*w1 {
+		t.Fatalf("work %d for 1000 values, %d for 4000: not linear", w1, w4)
+	}
+}
+
 // errReader fails every read.
 type errReader struct{ err error }
 
