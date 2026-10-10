@@ -1,0 +1,15 @@
+fixtures:
+  - id: ops/validate-json-reply-shared-name-ok
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: a reply validated against the output must "v = 'ok'" where input and output both have leaf v: the step matches by name (eval_name_test_with_predicate_get_scnode)
+    rfc: ["RFC7950#7.14.3", "RFC7950#7.5.3"]
+    areas: [validation, operations]
+    request:
+      op: data
+      searchdirs: [rb.1]
+      modules: [{name: rbm}]
+      format: json
+      data_type: reply
+      unknown: reject
+      data: "{\"rbm:r2\":{\"v\":\"ok\"}}"
+    golden: golden/ops-validate-json-reply-shared-name-ok.json

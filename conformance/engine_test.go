@@ -3,6 +3,7 @@
 package conformance
 
 import (
+	"maps"
 	"regexp"
 	"strings"
 	"testing"
@@ -10,7 +11,7 @@ import (
 
 // agreeFloor is the number of fixtures that agree (with or without skipped fields) on main; a
 // change that lowers it is a regression.
-const agreeFloor = 2256
+const agreeFloor = 2323
 
 // TestYangEngineSchema runs every fixture through package yang and logs the tally. No fixture may
 // differ: a disagreement is either fixed or recorded as a deviation (deviations.md) or as
@@ -204,6 +205,23 @@ func TestSchemaLimit(t *testing.T) {
 	} {
 		if got := schemaLimit(reason); got != want {
 			t.Errorf("schemaLimit(%q) = %q, want %q", reason, got, want)
+		}
+	}
+}
+
+// TestOpMissingRPC: a reply whose rpc or rpc_file was given but cannot be read fails the request;
+// it is never parsed as a standalone reply.
+func TestOpMissingRPC(t *testing.T) {
+	base := map[string]any{"op": "data", "searchdirs": []any{"rb.1"}, "modules": []any{map[string]any{"name": "rb"}},
+		"format": "json", "data_type": "reply", "parse_only": true, "data": `{"rb:r":{}}`}
+	for name, extra := range map[string]map[string]any{
+		"unreadable rpc_file": {"rpc_file": "no-such-file.json"},
+		"rpc not a string":    {"rpc": 42.0},
+	} {
+		p := maps.Clone(base)
+		maps.Copy(p, extra)
+		if _, err := (Yang{}).Run(Request{ID: name, BaseDir: "corpus/ut-parser", Params: p}); err == nil {
+			t.Errorf("%s: no error", name)
 		}
 	}
 }

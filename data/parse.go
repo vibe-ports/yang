@@ -158,6 +158,12 @@ const (
 // parsed are removed again (from parent's tree) and the tree is nil.
 func parseOp(ctx context.Context, r io.Reader, s *schema.Set, f Format, t opType, parent *Node,
 	unknown UnknownPolicy) (tree *Tree, op *Node, diags []yang.Diagnostic, err error) {
+	return parseOpWith(ctx, r, s, f, t, parent, unknown, Budget{})
+}
+
+// parseOpWith is parseOp with the resource limits b.
+func parseOpWith(ctx context.Context, r io.Reader, s *schema.Set, f Format, t opType, parent *Node,
+	unknown UnknownPolicy, b Budget) (tree *Tree, op *Node, diags []yang.Diagnostic, err error) {
 	var oo opOpts
 	switch t {
 	case opRPC:
@@ -175,7 +181,7 @@ func parseOp(ctx context.Context, r io.Reader, s *schema.Set, f Format, t opType
 		fp = parseXML
 	}
 	var lc *lydCtx
-	o := parseOpts{ParseOptions: ParseOptions{Unknown: unknown, ParseOnly: true}}
+	o := parseOpts{ParseOptions: ParseOptions{Unknown: unknown, ParseOnly: true, Budget: b}}
 	tree, diags, err = parseWith(ctx, r, s, o, fp, func(c *lydCtx) {
 		lc, c.op, c.parent, c.rcOnly = c, oo, parent, true
 		if parent != nil {

@@ -33,5 +33,8 @@
 // MergeDiff or MergeDiffTree (its src subtree). Every call that changes a tree is a mutation and
 // needs exclusive access to that tree, with no other call on it, read or write, at the same time:
 // NewPath, NewMeta, Remove, Validate, ValidateDiff, TrimXPath, and Merge, ApplyDiff, MergeDiff and
-// MergeDiffTree into it.
+// MergeDiffTree into it; ParseOp with a Request (the request's tree); ValidateOp, which also
+// changes its Operational tree while it runs (the operation is linked into it and out again).
+// Trees joined by leafref links (yang.Options.LeafrefLinking) are one domain: a mutation of one
+// needs exclusive access to all of them.
 package data
