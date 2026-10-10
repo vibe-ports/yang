@@ -1,0 +1,17 @@
+fixtures:
+  - id: ut-xpath/rpc-02
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # hand-written query over the test_rpc schema: the rpc input, same path
+    rfc: ["XPath1.0#2", "RFC7950#7.14", "RFC7950#6.4.1"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1, if.1]
+      modules: [{name: a}, {name: ietf-interfaces}]
+      format: xml
+      data_type: rpc
+      unknown: reject
+      parse_only: true
+      data: "<r xmlns=\"urn:tests:a\"><l>in</l></r>"
+      xpath: "/a:r/l"
+    golden: golden/rpc-02.json

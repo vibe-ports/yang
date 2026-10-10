@@ -1,0 +1,17 @@
+fixtures:
+  - id: ut-xpath/rpc-03
+    dir: ut-xpath
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/basic/test_xpath.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # hand-written query over the test_rpc schema: a JSON reply, the output leaf compared by value
+    rfc: ["XPath1.0#2", "RFC7950#7.14", "RFC7950#6.4.1"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [a.1, if.1]
+      modules: [{name: a}, {name: ietf-interfaces}]
+      format: json
+      data_type: reply
+      unknown: reject
+      parse_only: true
+      data: "{\"a:r\":{\"l\":\"val\"}}"
+      xpath: "/a:r/l = 'val'"
+    golden: golden/rpc-03.json
