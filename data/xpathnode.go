@@ -247,22 +247,28 @@ func (x xs) Children() []xpath.SchemaNode      { return x.wrapAll(x.s.Children) 
 func (x xs) Actions() []xpath.SchemaNode       { return x.wrapAll(x.s.Actions) }
 func (x xs) Notifications() []xpath.SchemaNode { return x.wrapAll(x.s.Notifs) }
 
-// Child is lys_find_child through choice and case; an operation's child from its input, else its
-// output.
+// Child is lys_find_child through choice and case; an operation's child from its input or its
+// output, nil when both have one (eval_name_test_with_predicate_get_scnode: a name in both may be
+// either, so the evaluator scans by name instead of looking the instance up).
 func (x xs) Child(module, name string) xpath.SchemaNode {
 	mod := x.set.Implemented(module)
 	if mod == nil {
 		return nil
 	}
-	if c := schema.FindChild(x.s, nil, mod, name, 0); c != nil {
-		return xs{c, x.set}
-	}
+	c := schema.FindChild(x.s, nil, mod, name, 0)
 	if x.s.Kind == schema.RPC || x.s.Kind == schema.Action {
-		if c := schema.FindChild(x.s, nil, mod, name, schema.GetNextOutput); c != nil {
-			return xs{c, x.set}
+		out := schema.FindChild(x.s, nil, mod, name, schema.GetNextOutput)
+		switch {
+		case c != nil && out != nil:
+			return nil
+		case out != nil:
+			c = out
 		}
 	}
-	return nil
+	if c == nil {
+		return nil
+	}
+	return xs{c, x.set}
 }
 
 // Canonical is set_comp_canonize with the schema node's type: built-in string, boolean and

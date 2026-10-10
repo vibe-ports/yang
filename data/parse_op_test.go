@@ -392,6 +392,25 @@ func TestParseOpDupKeepsOrder(t *testing.T) {
 	}
 }
 
+// TestParseOpSharedName: an output leaf named like an input leaf is found by XPath in a reply
+// (eval_name_test_with_predicate_get_scnode: a name in both input and output is matched by name).
+func TestParseOpSharedName(t *testing.T) {
+	f := readOpsFixture(t, filepath.Join(opsManifest, "parse-json-reply-keep-order.yaml"))
+	f.modules = append(f.modules, struct {
+		name, revision string
+		features       []string
+	}{name: "rbm"})
+	set := opsSet(t, f)
+	tree, _, diags, err := parseOp(context.Background(), strings.NewReader(`{"rbm:r2":{"v":"ok"}}`), set,
+		FormatJSON, opReply, nil, Reject)
+	if err != nil {
+		t.Fatal(err, diags)
+	}
+	if ns, _, err := tree.FindXPath("/rbm:r2/v", XPathOptions{}); len(ns) != 1 || err != nil {
+		t.Errorf("FindXPath: %v %v", ns, err)
+	}
+}
+
 // TestParseOpManyParameters: an rpc with many distinct input leaves costs counted work linear in
 // their count (n log n with headroom), given in schema order (each appends) or in reverse (each
 // lands at the front, before the next rank).
