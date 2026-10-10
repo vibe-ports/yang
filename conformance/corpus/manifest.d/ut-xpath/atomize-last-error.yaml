@@ -1,0 +1,18 @@
+fixtures:
+  - id: ut-xpath/atomize-last-error
+    dir: ut-xpath
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["XPath1.0#3.3", "XPath1.0#3.5"]
+    areas: [xpath]
+    request:
+      op: atoms
+      searchdirs: [m209.1]
+      modules: [{name: m}]
+      atom_options: [no_match_error]
+      xpath: "/m:missing + /m:c"
+    golden: golden/atomize-last-error.json
+    assert:
+      verdict: invalid
+      rfc: ["XPath1.0#3.3", "XPath1.0#3.5"]
+      diagnostics: [{level: error, vecode_name: LYVE_SUCCESS}]
+      deviation: null

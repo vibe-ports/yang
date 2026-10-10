@@ -37,8 +37,13 @@ func FindXPathAtoms(set *schema.Set, node *schema.Node, src string, o AtomOption
 		var xe *xpath.Error
 		switch {
 		case errors.Is(err, xpath.ErrNoMatch):
-			d := diags[len(diags)-1] // the last no-match message is the error
-			return nil, diags, &d
+			for i := len(diags) - 1; i >= 0; i-- {
+				if diags[i].Level == LevelError {
+					d := diags[i] // later warnings do not replace the failing no-match diagnostic
+					return nil, diags, &d
+				}
+			}
+			return nil, diags, err
 		case errors.Is(err, xpath.ErrBudget):
 			return nil, diags, fmt.Errorf("%w: the atom query needs more than %d XPath steps", ErrBudget, xpath.DefaultMaxSteps)
 		case errors.As(err, &xe):
@@ -48,9 +53,15 @@ func FindXPathAtoms(set *schema.Set, node *schema.Node, src string, o AtomOption
 					code = k
 				}
 			}
-			diags = append(diags, Diagnostic{Level: LevelError, Err: xe.Err, Code: code, Msg: xe.Msg})
-			d := diags[len(diags)-1]
-			return nil, diags, &d
+			d := Diagnostic{Level: LevelError, Err: xe.Err, Code: code, Msg: xe.Msg}
+			// Validation errors from lexing/evaluation use the query context
+			// (LOGVAL_SXPATH); reparse and plain LOGERR errors have no location.
+			if node != nil && xe.VECode != "" && xe.Origin != xpath.OriginReparse {
+				d.SchemaPath = node.LogPath()
+			}
+			diags = append(diags, d)
+			last := diags[len(diags)-1]
+			return nil, diags, &last
 		}
 		return nil, diags, err
 	}

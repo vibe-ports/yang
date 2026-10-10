@@ -459,13 +459,15 @@ func (s snode) Type() xpath.SchemaType {
 	return stype{s.n.Type}
 }
 
-// CheckValue stores lexical with the prefixes of the when/must being checked (compile.CheckValue).
+// CheckValue stores lexical in the format and prefixes of the expression being checked.
 func (s snode) CheckValue(lexical string, pc xpath.NamespaceCtx) (string, bool) {
-	var ns schema.NSCtx
-	if x, ok := pc.(xpathNS); ok {
-		ns = x.ctx
+	switch x := pc.(type) {
+	case xpathNS:
+		return CheckValue(s.n, lexical, x.ctx)
+	case jsonNames:
+		return checkValue(s.n, lexical, types.FormatJSON, types.ModuleNames{Set: x.set})
 	}
-	return CheckValue(s.n, lexical, ns)
+	return CheckValue(s.n, lexical, nil)
 }
 
 // stype adapts a compiled type (xpath.BaseType has schema.BaseType's values).

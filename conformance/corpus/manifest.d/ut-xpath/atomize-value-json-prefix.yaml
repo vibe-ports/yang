@@ -1,0 +1,16 @@
+fixtures:
+  - id: ut-xpath/atomize-value-json-prefix
+    dir: ut-xpath
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.13", "RFC7951#6.11", "XPath1.0#3.2"]
+    areas: [schema, types, xpath]
+    request:
+      op: atoms
+      searchdirs: [m209.1]
+      modules: [{name: m}]
+      xpath: "/m:ref = '/m:target'"
+    golden: golden/atomize-value-json-prefix.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.13", "RFC7951#6.11", "XPath1.0#3.2"]
+      deviation: null

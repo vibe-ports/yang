@@ -1,0 +1,18 @@
+fixtures:
+  - id: ut-xpath/atomize-context-error-path
+    dir: ut-xpath
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#6.4.1", "XPath1.0#2.3"]
+    areas: [schema, xpath]
+    request:
+      op: atoms
+      searchdirs: [m209.1]
+      modules: [{name: m}]
+      context_path: "/m:c"
+      xpath: "unknown:x"
+    golden: golden/atomize-context-error-path.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#6.4.1", "XPath1.0#2.3"]
+      diagnostics: [{vecode_name: LYVE_XPATH, schema_path: "/m:c"}]
+      deviation: null

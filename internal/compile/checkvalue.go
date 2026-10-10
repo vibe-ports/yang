@@ -16,7 +16,11 @@ import (
 // prefixes, data hints). A value that needs the data tree to be complete (leafref,
 // instance-identifier) fits. ok=false carries the store's message.
 func CheckValue(n *schema.Node, lex string, ns schema.NSCtx) (msg string, ok bool) {
-	if _, d := types.Store(n.Type, lex, types.FormatSchemaResolved, types.HintData, ns, n); d != nil {
+	return checkValue(n, lex, types.FormatSchemaResolved, ns)
+}
+
+func checkValue(n *schema.Node, lex string, format types.Format, prefixes types.PrefixCtx) (msg string, ok bool) {
+	if _, d := types.Store(n.Type, lex, format, types.HintData, prefixes, n); d != nil {
 		return d.Msg, false
 	}
 	return "", true
