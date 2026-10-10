@@ -1,0 +1,8 @@
+fixtures:
+  - id: ut-new/change-05
+    dir: ut-new
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # module d (a default leaf); a default leaf set to its value (LY_EEXIST), then unchanged (LY_ENOT), then changed (#98)
+    rfc: []   # libyang API (lyd_change_term): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["d.1"], "modules": [{"name": "d"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "parse", "format": "json", "data_type": "data", "data": "{}"}, {"do": "change_term", "node": "/d:c/x", "value": "dflt"}, {"do": "change_term", "node": "/d:c/x", "value": "dflt"}, {"do": "change_term", "node": "/d:c/x", "value": "z"}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/change-05.json

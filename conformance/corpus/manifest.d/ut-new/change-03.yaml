@@ -1,0 +1,8 @@
+fixtures:
+  - id: ut-new/change-03
+    dir: ut-new
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # module a of libyang's tests/utests/data/test_new.c; an invalid canonical value (#98)
+    rfc: []   # libyang API (lyd_change_term): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["a.1"], "modules": [{"name": "a"}], "steps": [{"do": "edit", "insert_term": {"module": "a", "name": "foo", "value": "1"}}, {"do": "change_term", "node": "/a:foo", "value": "0x10", "canon": true}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/change-03.json

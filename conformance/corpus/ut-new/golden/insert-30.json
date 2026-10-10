@@ -1,0 +1,51 @@
+{
+  "context_diagnostics": [],
+  "failed_step": 0,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 7,
+    "name": "LY_EVALID"
+  },
+  "steps": [
+    {
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Predicate missing for a key of list \"l1\" in path.",
+          "phase": "edit",
+          "schema_path": "/a:l1",
+          "vecode": 5,
+          "vecode_name": "LYVE_XPATH"
+        }
+      ],
+      "do": "edit",
+      "rc": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "typed": []
+    },
+    {
+      "do": "dump",
+      "skipped": true
+    }
+  ],
+  "verdict": "invalid"
+}

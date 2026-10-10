@@ -5,6 +5,8 @@
 package types
 
 import (
+	"strings"
+
 	"github.com/vibe-ports/yang/internal/lyxp"
 	"github.com/vibe-ports/yang/internal/schema"
 )
@@ -14,11 +16,35 @@ import (
 // key value stored with LYD_HINT_DATA in the JSON format. It returns libyang's message (LOGVAL,
 // LYVE_XPATH, or the type's) when they do not parse, compile or store.
 func CompileKeys(set *schema.Set, list *schema.Node, keys string) ([]PathPred, string) {
+	preds, d := CompileKeysDiag(set, list, keys)
+	if d != nil {
+		return nil, d.Msg
+	}
+	return preds, ""
+}
+
+// CompileKeysDiag is CompileKeys with libyang's error item: the type's own item when a key value
+// does not store (located at the key: At), else LYVE_XPATH, with LY_ENOTFOUND for a key or
+// module ly_path_compile_snode does not find and LY_EVALID otherwise. The key values are stored
+// and validated as ly_path_compile_predicate does; LYD_NEW_VAL_STORE_ONLY does not reach them.
+func CompileKeysDiag(set *schema.Set, list *schema.Node, keys string) ([]PathPred, *Diag) {
 	e, msg := lyxp.ParsePredicate(keys, lyxp.PrefixOptional, lyxp.PredKeys)
 	if msg != "" {
-		return nil, msg
+		return nil, &Diag{Code: "LYVE_XPATH", Msg: msg}
 	}
 	a := &storeArgs{f: FormatJSON, pc: ModuleNames{set}, ctx: list}
 	preds, _, msg := compilePredicate(a, list, e, 0)
-	return preds, msg
+	switch {
+	case msg == "":
+		return preds, nil
+	case a.keyErr != nil:
+		return nil, a.keyErr
+	}
+	d := &Diag{Code: "LYVE_XPATH", Msg: msg}
+	for _, p := range []string{"Not found node ", "Not implemented module ", "No module connected "} {
+		if strings.HasPrefix(msg, p) { // ly_path_compile_snode's LY_ENOTFOUND
+			d.Err = "LY_ENOTFOUND"
+		}
+	}
+	return nil, d
 }
