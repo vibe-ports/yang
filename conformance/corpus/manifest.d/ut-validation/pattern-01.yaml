@@ -1,0 +1,19 @@
+fixtures:
+  - id: ut-validation/pattern-01
+    dir: ut-validation
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_validation.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_pattern:1594 (ly_pattern_match("a.b.c", "abc") = LY_ENOT: no match), as a leaf with that pattern; pat.yang hand-written
+    rfc: ["RFC7950#9.4.5"]
+    areas: [validation, types]
+    request:
+      op: data
+      searchdirs: [pat.1]
+      modules: [{name: pat}]
+      format: xml
+      data_type: config
+      unknown: reject
+      data: "<l xmlns=\"urn:tests:pat\">abc</l>"
+    golden: golden/pattern-01.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#9.4.5"]
+      deviation: null
