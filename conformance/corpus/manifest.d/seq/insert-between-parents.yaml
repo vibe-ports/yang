@@ -1,0 +1,9 @@
+fixtures:
+  # a leaf moved from one list instance to another (lyd_insert_child unlinks it first) (design 07 §6.1.2, Tree.Insert)
+  - id: seq/insert-between-parents
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang API (lyd_insert_child, lyd_insert_sibling): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["schemas"], "modules": [{"name": "pv2-edit"}], "steps": [{"do": "parse", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"pv2-edit:c\": {\"a\": \"x\", \"l\": [{\"k\": \"a\", \"v\": 1}, {\"k\": \"b\"}]}}"}, {"do": "insert", "node": "/pv2-edit:c/l[k='a']/v", "parent": "/pv2-edit:c/l[k='b']"}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/seq-insert-between-parents.json

@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"iter"
+	"slices"
 	"strings"
 
 	"github.com/vibe-ports/yang"
@@ -23,7 +24,9 @@ var seqKeys = map[string]map[string]bool{
 	"link":        set("do"),
 	"links":       set("do"),
 	"change_term": set("do", "node", "value", "canon"),
-	"dump":        set("do", "with_defaults"),
+	"insert": set("do", "node", "parent", "format", "data_type", "data", "data_file", "unknown", "parse_only",
+		"parse_options", "validate_options"),
+	"dump": set("do", "with_defaults"),
 	"compare": set("do", "format", "data_type", "data", "data_file", "unknown", "parse_only", "parse_options",
 		"validate_options", "first", "second", "options"),
 	"diff": set("do", "format", "data_type", "data", "data_file", "unknown", "parse_only", "parse_options",
@@ -156,6 +159,8 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any) error {
 		case "change_term":
 			phase = "edit"
 			diags, err = stepChange(st, tree, so)
+		case "insert":
+			tree, diags, phase, err = stepMove(r, s, st, tree)
 		case "compare":
 			phase = "parse"
 			diags, err = stepCompare(r, s, st, tree, so)
@@ -723,4 +728,57 @@ func onlyPredicates(keys string) bool {
 		}
 	}
 	return true
+}
+
+// stepMove is step_insert: Tree.Insert of the node at "node" under the node at "parent", or at the
+// top level without one. With "data" the node comes from a second tree parsed as by a parse step
+// ("node" a path in it, omitted: its first top-level node, which moves with its siblings); what is
+// left of that tree is then freed, as the oracle frees it (lyd_free_all: link records to it go).
+// The parse's diagnostics (phase parse, its warnings too) come before the insert's (phase edit).
+// lyd_insert_child's and lyd_insert_sibling's argument checks log without a context: those items
+// are not reported.
+func stepMove(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*data.Tree, []yang.Diagnostic, string,
+	error) {
+	var err error
+	if tree == nil {
+		if tree, err = emptyTree(s); err != nil {
+			return nil, nil, "", err
+		}
+	}
+	src, path := tree, str(st, "node", "")
+	var diags []yang.Diagnostic
+	if _, ok := st["data"]; ok || st["data_file"] != nil {
+		if src, diags, err = stepParse(r, s, st, nil); err != nil {
+			return tree, diags, "parse", err
+		}
+		for i := range diags {
+			diags[i].Phase = "parse"
+		}
+	}
+	n, _ := nodeAt(src, path)
+	if n == nil {
+		return nil, nil, "", fmt.Errorf("insert node %q not found (a request-error)", path)
+	}
+	var parent *data.Node
+	if p := str(st, "parent", ""); p != "" {
+		if parent, _ = tree.Find(p); parent == nil {
+			return nil, nil, "", fmt.Errorf("insert parent %s not found (a request-error)", p)
+		}
+	}
+	err = tree.Insert(parent, n)
+	ins := diagsOf(err)
+	if len(ins) == 1 && strings.HasPrefix(ins[0].Msg, "Invalid argument ") {
+		ins = nil
+	}
+	for i := range ins {
+		ins[i].Phase = "edit"
+	}
+	if src != tree {
+		for _, rest := range slices.Collect(src.Top()) {
+			if rerr := rest.Remove(); rerr != nil {
+				return nil, nil, "", rerr
+			}
+		}
+	}
+	return tree, append(diags, ins...), "", err
 }

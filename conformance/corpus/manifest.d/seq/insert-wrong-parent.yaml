@@ -1,0 +1,9 @@
+fixtures:
+  # lyd_insert_check_schema: the parent's schema node is not the node's parent (design 07 §6.1.2, Tree.Insert)
+  - id: seq/insert-wrong-parent
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang API (lyd_insert_child, lyd_insert_sibling): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["schemas"], "modules": [{"name": "pv2-edit"}], "steps": [{"do": "parse", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"pv2-edit:c\": {\"a\": \"x\", \"l\": [{\"k\": \"a\", \"v\": 1}, {\"k\": \"b\"}]}}"}, {"do": "insert", "node": "/pv2-edit:c/a", "parent": "/pv2-edit:c/l[k='a']"}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/seq-insert-wrong-parent.json

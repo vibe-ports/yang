@@ -1608,6 +1608,8 @@ check_step(const cJSON *step)
             !strcmp(what, "edit") ? "do merge merge_file set delete insert_term insert_inner insert_list insert_list2 "
             "insert_opaq new_meta free_meta format data_type unknown parse_options" :
             !strcmp(what, "change_term") ? "do node value canon" :
+            !strcmp(what, "insert") ? "do node parent format data_type data data_file unknown parse_only parse_options "
+            "validate_options" :
             !strcmp(what, "dump") ? "do with_defaults" : !strcmp(what, "dup") ? "do node parent options siblings target" :
             !strcmp(what, "compare") ? "do format data_type data data_file unknown parse_only parse_options "
             "validate_options first second options" :
@@ -1761,6 +1763,17 @@ check_step(const cJSON *step)
             }
             keys_only(tg, "searchdirs modules context_options", "unknown key \"%s\" in a dup target");
         }
+    } else if (!strcmp(what, "insert")) {
+        str_of(step, "node");
+        str_of(step, "parent");
+        if (input_of(step, "data")) {
+            dparams_of(step, &p);
+            if (p.optype != LYD_TYPE_DATA_YANG) {
+                die("sequence supports datastore data types only%s", NULL);
+            }
+        } else if (!str_of(step, "node")) {
+            die("insert step needs a node or data%s", NULL);
+        }
     } else if (!strcmp(what, "compare")) {
         dparams_of(step, &p);
         if (p.optype != LYD_TYPE_DATA_YANG) {
@@ -1871,6 +1884,64 @@ step_dup(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *d
         *tree = lyd_first_sibling(dup);
     }
     /* tctx stays: the tree may now live in it, and the process ends after the response */
+    return rc;
+}
+
+/* lyd_insert_child of the node at "node" under the node at "parent" in the tree, or without a parent
+ * lyd_insert_sibling(tree, node, &tree). With "data" the node comes from a second tree parsed as by a
+ * parse step ("node": a path in it, omitted: its first top-level node, which moves with its siblings
+ * as lyd_move_nodes moves them); what is left of the second tree is freed. The step's rc is the
+ * parse's, else the insert's (diagnostics phases parse and edit) */
+static LY_ERR
+step_insert(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *diag)
+{
+    const char *npath = str_of(step, "node"), *ppath = str_of(step, "parent"), *data = input_of(step, "data");
+    struct lyd_node *other = NULL, *node = NULL, *parent = NULL, *top;
+    struct dparams p;
+    LY_ERR rc;
+
+    if (data) {
+        dparams_of(step, &p);
+        rc = parse_one(ctx, &p, data, NULL, &other, diag, "parse");
+        if (rc) {
+            return rc;
+        }
+        node = other;
+        if (npath && (!other || lyd_find_path(other, npath, 0, &node))) {
+            die("insert node %s not found in the data", npath);
+        }
+        if (!node) {
+            die("insert data is empty%s", NULL);
+        }
+    } else if (!*tree || lyd_find_path(*tree, npath, 0, &node)) {
+        die("insert node %s not found", npath);
+    }
+    if (ppath && (!*tree || lyd_find_path(*tree, ppath, 0, &parent))) {
+        die("insert parent %s not found", ppath);
+    }
+    /* libyang links a node into its own subtree without a check (D-0112): refuse the request */
+    for (top = parent; top; top = top->parent) {
+        /* the node, or the sibling list it starts when it moves whole (lyd_move_nodes) */
+        if ((top == node) || (!top->parent && !node->parent && !node->prev->next && node->next &&
+                (lyd_first_sibling(top) == node))) {
+            die("insert parent %s is inside the moved node", ppath);
+        }
+    }
+    if (parent) {
+        rc = lyd_insert_child(parent, node);
+        for (top = parent; top->parent; top = top->parent) {}
+        *tree = lyd_first_sibling(top);
+    } else {
+        rc = lyd_insert_sibling(*tree, node, tree);
+    }
+    collect(ctx, diag, "edit");
+    if (*tree) {
+        *tree = lyd_first_sibling(*tree);
+    }
+    /* the rest of the second tree: all of it on failure, none when its first node moved */
+    if (other && (rc || (node != other))) {
+        lyd_free_all(other);
+    }
     return rc;
 }
 
@@ -2273,6 +2344,8 @@ op_sequence(const cJSON *req)
             rc = step_dup(sctx, step, &tree, diag);
         } else if (!strcmp(what, "compare")) {
             rc = step_compare(sctx, step, tree, diag, s);
+        } else if (!strcmp(what, "insert")) {
+            rc = step_insert(sctx, step, &tree, diag);
         } else if (!strcmp(what, "change_term")) {
             /* lyd_change_term(_canon) of the node at "node": "change" is its rc; LY_EEXIST (only the default
              * flag changed) and LY_ENOT (nothing changed) are results, not failures */

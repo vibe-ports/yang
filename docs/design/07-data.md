@@ -645,9 +645,9 @@ without changing this contract. doc.go states this rule when ValidateOp is expor
 - `NewOptions.Output` is `LYD_NEW_VAL_OUTPUT` / `lyd_new_inner`'s `output`: below an rpc/action,
   look the node up in output instead of input. That is what a server needs to build a reply under
   the request node.
-- `Insert` has no oracle fixture yet (the `insert_term`/`insert_inner` steps reach only a fresh
-  top-level node): one that moves an existing node, between parents and from another tree, must
-  exist and agree before the M4 gate #105.
+- `Insert`'s oracle fixtures are seq/insert-* (the lyoracle step `insert`): moves between parents
+  and from another tree, a whole sibling list, an empty tree, and the schema, key and argument
+  refusals.
 - `Insert`: n leaves the tree it is in (libyang unlinks it). If n is the first top-level node of
   another tree, all that tree's top-level nodes move (libyang inserts a whole unlinked sibling
   list; data/move.go `sibList`). n over another snapshot than t is a port refusal (lyd_insert_child
