@@ -48,7 +48,10 @@ type OpResult struct {
 // parents); with it, the input holds only the output parameters, parsed as children of Request.
 // The diagnostics are returned in log order, warnings included; err is nil when the parse
 // succeeded, else a *ValidationError, or an error wrapping yang.ErrBudget or ctx.Err(). A failed
-// parse returns no result and, with Request, removes the nodes it added.
+// parse returns no result. With Request it removes what libyang's cleanup removes, not
+// necessarily all it added: lyd_parse_op frees its parsed set, which for JSON holds only the last
+// instance of each member (earlier instances of a leaf-list or list stay in Request's tree) and
+// for XML each top-level element, so Request's tree may stay modified after a failure.
 func ParseOp(ctx context.Context, r io.Reader, f Format, s *yang.Schema, typ OpType, o ParseOpOptions) (OpResult, []yang.Diagnostic, error) {
 	fail := func(set *schema.Set, err error) (OpResult, []yang.Diagnostic, error) {
 		lg := &logger{set: set}
@@ -113,6 +116,10 @@ type ValidateOpOptions struct {
 // unlinked again): it needs exclusive access to both.
 func (t *Tree) ValidateOp(ctx context.Context, typ OpType, o ValidateOpOptions) ([]yang.Diagnostic, error) {
 	lg := &logger{set: t.set}
+	fail := func(err error) ([]yang.Diagnostic, error) {
+		err = lg.done(err) // logs the argument error first
+		return lg.diags, err
+	}
 	var vt opType
 	switch typ {
 	case OpRPC:
@@ -122,11 +129,11 @@ func (t *Tree) ValidateOp(ctx context.Context, typ OpType, o ValidateOpOptions) 
 	case OpReply:
 		vt = opReply
 	default:
-		return nil, lg.done(argErr("(data_type == LYD_TYPE_RPC_YANG) || (data_type == LYD_TYPE_NOTIF_YANG) || "+
+		return fail(argErr("(data_type == LYD_TYPE_RPC_YANG) || (data_type == LYD_TYPE_NOTIF_YANG) || "+
 			"(data_type == LYD_TYPE_REPLY_YANG)", "lyd_validate_op"))
 	}
 	if o.Operational != nil && o.Operational.set != t.set {
-		return nil, lg.done(argErr("dep_tree (another schema snapshot)", "lyd_validate_op"))
+		return fail(argErr("dep_tree (another schema snapshot)", "lyd_validate_op"))
 	}
 	var first *Node
 	for n := range t.Top() {
@@ -134,7 +141,7 @@ func (t *Tree) ValidateOp(ctx context.Context, typ OpType, o ValidateOpOptions) 
 		break
 	}
 	if first == nil {
-		return nil, lg.done(argErr("op_tree", "lyd_validate_op"))
+		return fail(argErr("op_tree", "lyd_validate_op"))
 	}
 	if o.Operational == t {
 		o.Operational = nil // op_tree == dep_tree: a redundant dependency

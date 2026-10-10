@@ -307,13 +307,23 @@ func runOp(r Request, s *yang.Schema, resp map[string]any, typ data.OpType) erro
 	var res data.OpResult
 	var d []yang.Diagnostic
 	var perr error
-	rpcIn, rpcErr := inputOf(r, p, "rpc")
-	if typ != data.OpReply && rpcErr == nil {
+	_, hasRPC := p["rpc"]
+	_, hasRPCFile := p["rpc_file"]
+	given := hasRPC || hasRPCFile
+	var rpcIn string
+	if given {
+		// an rpc that is missing or unreadable fails the request; it never falls back to a
+		// standalone reply
+		if rpcIn, err = inputOf(r, p, "rpc"); err != nil {
+			return err
+		}
+	}
+	if typ != data.OpReply && given {
 		return fmt.Errorf("%w: an rpc request with data_type %v (ParseOpOptions.Request is for replies only, design 07 §6.1.1)",
 			ErrUnsupported, p["data_type"])
 	}
 	keep, _ := p["keep_input"].(bool)
-	if typ == data.OpReply && rpcErr == nil {
+	if typ == data.OpReply && given {
 		req, rd, rerr := data.ParseOp(ctx, strings.NewReader(rpcIn), f, s, data.OpRPC, data.ParseOpOptions{Unknown: unknown})
 		diags = append(diags, diagsJSON(rd, "rpc")...)
 		perr = rerr

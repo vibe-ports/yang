@@ -59,12 +59,14 @@ func TestOpArgs(t *testing.T) {
 			t.Errorf("%s: %s, want %s", tc.name, got, tc.want)
 		}
 	}
-	if _, err := req.Tree.ValidateOp(ctx, 9, data.ValidateOpOptions{}); !strings.Contains(msg(err), "(lyd_validate_op())") {
-		t.Errorf("bad type: %s", msg(err))
+	// argument errors come back as the error and as the logged diagnostic
+	if d, err := req.Tree.ValidateOp(ctx, 9, data.ValidateOpOptions{}); !strings.Contains(msg(err), "(lyd_validate_op())") ||
+		len(d) != 1 || d[0].Msg != msg(err) {
+		t.Errorf("bad type: %s %v", msg(err), d)
 	}
-	if _, err := req.Tree.ValidateOp(ctx, data.OpRPC, data.ValidateOpOptions{Operational: oper}); msg(err) !=
-		"Invalid argument dep_tree (another schema snapshot) (lyd_validate_op())." {
-		t.Errorf("other snapshot: %s", msg(err))
+	if d, err := req.Tree.ValidateOp(ctx, data.OpRPC, data.ValidateOpOptions{Operational: oper}); msg(err) !=
+		"Invalid argument dep_tree (another schema snapshot) (lyd_validate_op())." || len(d) != 1 || d[0].Msg != msg(err) {
+		t.Errorf("other snapshot: %s %v", msg(err), d)
 	}
 	if _, err := req.Tree.ValidateOp(ctx, data.OpNotif, data.ValidateOpOptions{}); msg(err) != "No notification to validate found." {
 		t.Errorf("wrong type: %s", msg(err))
