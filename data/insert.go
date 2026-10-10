@@ -235,6 +235,13 @@ func (t *Tree) insertLazy(parent, n *Node) {
 		t.insert(parent, n, insertDefault) // the first instance
 		return
 	}
+	if !sib.lazy[s] && compareSorted(sib.list[hi-1], n) <= 0 {
+		// a clean run that n extends in order stays clean: the eager append (no sort pending, so
+		// a read before the next insertion costs nothing)
+		t.work.Add(1)
+		t.insert(parent, n, insertDefault)
+		return
+	}
 	if sib.lazy == nil {
 		sib.lazy = map[*schema.Node]bool{}
 	}

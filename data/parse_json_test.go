@@ -344,6 +344,10 @@ func TestParseJSONLinear(t *testing.T) {
 		in      func(n int) string
 	}{
 		{"leaf-list-after", Reject, func(n int) string { return values(n) + ", " + metas(n) }},
+		{"leaf-list-singleton-members", Reject, func(n int) string {
+			// one member per value, each followed by its metadata: every "@ls" reads the run
+			return join(n, func(i int) string { return fmt.Sprintf(`"ls": ["v%07d"], "@ls": [null]`, i) })
+		}},
 		{"leaf-list-shuffled", Reject, func(n int) string {
 			p := rand.New(rand.NewSource(1)).Perm(n)
 			return `"ls": [` + join(n, func(i int) string { return fmt.Sprintf(`"v%07d"`, p[i]) }) + `], ` + metas(n)
