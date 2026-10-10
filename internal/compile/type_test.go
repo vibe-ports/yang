@@ -10,7 +10,6 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
-	"time"
 
 	"github.com/vibe-ports/yang/internal/parser"
 	"github.com/vibe-ports/yang/internal/schema"
@@ -163,7 +162,8 @@ func TestTypedefCacheRecompile(t *testing.T) {
 	}
 }
 
-// TestUnionBudget: union flattening doubles per typedef; the chain fails with ErrBudget fast.
+// TestUnionBudget: union flattening doubles per typedef; the chain reaches ErrBudget within the
+// configured type-work limit.
 func TestUnionBudget(t *testing.T) {
 	var b strings.Builder
 	b.WriteString("module u {namespace urn:u;prefix u;typedef u0 {type union {type int8; type string;}}\n")
@@ -171,22 +171,18 @@ func TestUnionBudget(t *testing.T) {
 		fmt.Fprintf(&b, "typedef u%d {type union {type u%d; type u%[2]d;}}\n", i, i-1)
 	}
 	b.WriteString("leaf l {type u30;}}")
-	// the work is linear in MaxTypes: the defaults stop it after at most 1<<20 units (~0.3 s,
-	// several s under -race on CI); a 1<<16 budget stops it well within a second
+	// The work is linear in MaxTypes: each compiled type and union member slot is charged.
 	h := newHarness(t)
 	h.add(b.String())
 	if _, err := h.compile("u"); !errors.Is(err, ErrBudget) || h.last.types > DefaultMaxTypes {
 		t.Fatalf("defaults: got %v after %d types, want ErrBudget", err, h.last.types)
 	}
 	h = newHarness(t)
-	h.budget = Budget{MaxTypes: 1 << 16}
+	const maxTypes = 1 << 16
+	h.budget = Budget{MaxTypes: maxTypes}
 	h.add(b.String())
-	start := time.Now()
-	if _, err := h.compile("u"); !errors.Is(err, ErrBudget) {
-		t.Fatalf("got %v, want ErrBudget", err)
-	}
-	if d := time.Since(start); d > time.Second {
-		t.Errorf("took %v", d)
+	if _, err := h.compile("u"); !errors.Is(err, ErrBudget) || h.last.types > maxTypes {
+		t.Fatalf("got %v after %d types, want ErrBudget within %d", err, h.last.types, maxTypes)
 	}
 	// below the budget the same shape compiles, flattened
 	ls, _, err := compileOne(t, strings.Replace(b.String(), "leaf l {type u30;}", "leaf l {type u3;}", 1))
