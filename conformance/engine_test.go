@@ -198,6 +198,10 @@ var validationUnsupported = map[string]string{
 	"ut-parser/xml-rpc-01":         "U-0043",
 	"protocol-v2/sequence-edits":   "U-0043",
 	"protocol-v2/when-auto-delete": "U-0043",
+	// an rpc input parsed into an existing request (ParseOpOptions.Request is for replies only)
+	"ops/parse-json-rpc-parent-opaque-meta":   "U-0106",
+	"ops/parse-xml-rpc-parent-envelope-value": "U-0106",
+	"ops/parse-xml-rpc-parent-input":          "U-0106",
 }
 
 // validationAllowed reports whether fixture id may be unsupported with this reason.
