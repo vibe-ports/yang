@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -337,6 +338,60 @@ func TestMergeWork(t *testing.T) {
 	}
 	if limit := 8 * n; int(tr.work.Load()) > limit {
 		t.Fatalf("merging %d equal instances: %d units of work, limit %d", n, int(tr.work.Load()), limit)
+	}
+}
+
+// TestInsertScaling: single edits at either end of a sorted run and merges of interleaved sorted
+// runs cost amortized O(1) shifted slots per instance (design 07 §4 Ordering).
+func TestInsertScaling(t *testing.T) {
+	set := editSet(t)
+	measured := func(tr *Tree) *Tree {
+		tr.work.Store(0)
+		tr.work.visits, tr.work.shifts = true, true
+		return tr
+	}
+	build := func(n int, val func(i int) int) *Tree {
+		tr := newTree(set)
+		for i := range n {
+			if _, err := tr.NewPath("/pv2-edit:c/ll", fmt.Sprintf("v%07d", val(i)), NewPathOptions{}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return tr
+	}
+	cases := []struct {
+		name string
+		work func(n int) int64
+	}{
+		{"new-path-reversed", func(n int) int64 {
+			tr := measured(newTree(set))
+			for i := range n {
+				if _, err := tr.NewPath("/pv2-edit:c/ll", fmt.Sprintf("v%07d", n-i), NewPathOptions{}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			return tr.work.Load()
+		}},
+		{"merge-interleaved", func(n int) int64 {
+			tr := measured(build(n, func(i int) int { return 2 * i }))
+			if err := tr.Merge(build(n, func(i int) int { return 2*i + 1 })); err != nil {
+				t.Fatal(err)
+			}
+			if got := len(tr.top.list[0].kids.list); got != 2*n {
+				t.Fatalf("%d instances after the merge, want %d", got, 2*n)
+			}
+			if !slices.IsSortedFunc(tr.top.list[0].kids.list, compareSorted) {
+				t.Fatal("merged run not sorted")
+			}
+			return tr.work.Load()
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if w1, w4 := tc.work(1000), tc.work(4000); w4 > 5*w1 {
+				t.Fatalf("work %d for 1000 values, %d for 4000: not linear", w1, w4)
+			}
+		})
 	}
 }
 
