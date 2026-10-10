@@ -1,0 +1,16 @@
+fixtures:
+  - id: ops/eventtime-env-xml-04
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # the eventTime branch of the notif-netconf envelope parse: eventTime with a child element
+    rfc: ["RFC5277#4", "RFC8040#6.4"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: xml
+      data_type: notif-netconf
+      unknown: reject
+      parse_only: true
+      data: "<notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"><eventTime>2013-12-21T00:01:00Z<x/></eventTime><n2 xmlns=\"urn:tests:a\"/></notification>"
+    golden: golden/ops-eventtime-env-xml-04.json

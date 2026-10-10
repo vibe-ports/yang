@@ -956,6 +956,9 @@ func (p *jsonParser) subtree(parent *Node) (err error) {
 		return nil // empty object
 	}
 	name, prefix, hasPrefix, isMeta := parseName(p.lx.Value())
+	if lc.op.eventTime && parent == nil && !isMeta && name == "eventTime" && prefix == "" {
+		return p.eventTimeJSON(&status)
+	}
 	var sn *schema.Node
 	var rc error
 	if !isMeta || name != "" || prefix != "" {

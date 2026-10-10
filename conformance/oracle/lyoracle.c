@@ -1209,11 +1209,19 @@ dparams_of(const cJSON *req, struct dparams *p)
         p->optype = LYD_TYPE_REPLY_YANG;
     } else if (!strcmp(p->type, "notif")) {
         p->optype = LYD_TYPE_NOTIF_YANG;
+    } else if (!strcmp(p->type, "notif-netconf")) {
+        p->optype = LYD_TYPE_NOTIF_NETCONF;
+    } else if (!strcmp(p->type, "notif-restconf")) {
+        p->optype = LYD_TYPE_NOTIF_RESTCONF;
     } else {
         die("unknown data_type %s", p->type);
     }
     if (p->parse_only) {
         p->popts |= LYD_PARSE_ONLY;
+    }
+    if (((p->optype == LYD_TYPE_NOTIF_NETCONF) || (p->optype == LYD_TYPE_NOTIF_RESTCONF)) && !p->parse_only) {
+        /* lyd_validate_op takes the YANG types only */
+        die("data_type %s needs parse_only", p->type);
     }
     extra = flags_of(req, "parse_options", parse_flags);
     if (extra & (LYD_PARSE_STRICT | LYD_PARSE_OPAQ)) {
@@ -1229,6 +1237,9 @@ dparams_of(const cJSON *req, struct dparams *p)
  */
 /* the request's tree after a failed reply parsed into it (what lyd_parse_op's cleanup left) */
 static cJSON *req_typed;
+
+/* the operation of an envelope parse (lyd_parse_op's op), reported as op_typed by op_data */
+static struct lyd_node *env_op;
 
 static LY_ERR
 parse_one(struct ly_ctx *ctx, const struct dparams *p, const char *data, const char *rpc_src,
@@ -1268,6 +1279,9 @@ parse_one(struct ly_ctx *ctx, const struct dparams *p, const char *data, const c
         }
     } else {
         rc = lyd_parse_op(ctx, NULL, in, p->fmt, p->optype, p->popts & (LYD_PARSE_STRICT | LYD_PARSE_OPAQ), tree, &op);
+        if (!rc && ((p->optype == LYD_TYPE_NOTIF_NETCONF) || (p->optype == LYD_TYPE_NOTIF_RESTCONF))) {
+            env_op = op; /* *tree is the envelope, the notification a tree of its own */
+        }
     }
     if (!rc && !p->parse_only) {
         collect(ctx, diag, phase);
@@ -1403,6 +1417,14 @@ op_data(const cJSON *req)
     if (tree) {
         cJSON_AddItemToObject(resp, "tree", print_tree(tree, popts, p.optype == LYD_TYPE_DATA_YANG));
         cJSON_AddItemToObject(resp, "typed", typed_json(tree));
+        if (env_op) {
+            struct lyd_node *top = env_op;
+
+            while (top->parent) {
+                top = lyd_parent(top);
+            }
+            cJSON_AddItemToObject(resp, "op_typed", typed_json(top));
+        }
         if (subpath) {
             /* lyd_print_tree: the node and its descendants, without its siblings */
             sub = NULL;
