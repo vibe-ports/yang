@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module diff-apply-meta {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:diff-apply-meta";
+  prefix diff-apply-meta;
+
+  import ietf-yang-metadata { prefix md; }
+
+  md:annotation limited {
+    type uint8 {
+      range "0..10" {
+        error-app-tag "limited-value";
+      }
+    }
+  }
+
+  container root {
+    leaf value { type string; }
+  }
+}

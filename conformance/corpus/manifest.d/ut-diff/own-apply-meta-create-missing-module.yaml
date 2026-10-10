@@ -1,0 +1,15 @@
+fixtures:
+  - id: ut-diff/own-apply-meta-create-missing-module
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang diff API mechanics (yang:meta-create), no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: diff-apply-meta}]
+      steps:
+        - {"do": "parse", "format": "xml", "data_type": "data", "parse_only": true, "unknown": "skip", "data": "<root xmlns=\"urn:vibe-ports:yang:diff-apply-meta\"/>"}
+        - {"do": "diff_parse", "format": "xml", "data_type": "data", "unknown": "skip", "data": "<root xmlns=\"urn:vibe-ports:yang:diff-apply-meta\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\" yang:meta-create=\"missing:a=x\"/>"}
+        - {"do": "diff_apply"}
+    golden: golden/own-apply-meta-create-missing-module.json

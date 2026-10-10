@@ -1,0 +1,172 @@
+{
+  "context_diagnostics": [],
+  "failed_step": 2,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "diff-apply-meta",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 5,
+    "name": "LY_ENOTFOUND"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-apply-meta:root",
+          "schema": "/diff-apply-meta:root",
+          "value": null
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n\n}\n",
+        "xml": ""
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            },
+            {
+              "module": "yang",
+              "name": "meta-create",
+              "value": "missing:a=x"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-apply-meta:root",
+          "schema": "/diff-apply-meta:root",
+          "value": null
+        }
+      ],
+      "do": "diff_parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-apply-meta:root",
+          "schema": "/diff-apply-meta:root",
+          "value": null
+        }
+      ]
+    },
+    {
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 3,
+            "name": "LY_EINVAL"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Module \"missing\" not found.",
+          "phase": "diff",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "diff": {
+        "json": "{\n\n}\n",
+        "xml": ""
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            },
+            {
+              "module": "yang",
+              "name": "meta-create",
+              "value": "missing:a=x"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-apply-meta:root",
+          "schema": "/diff-apply-meta:root",
+          "value": null
+        }
+      ],
+      "do": "diff_apply",
+      "rc": {
+        "err": 5,
+        "name": "LY_ENOTFOUND"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-apply-meta:root",
+          "schema": "/diff-apply-meta:root",
+          "value": null
+        }
+      ]
+    }
+  ],
+  "verdict": "invalid"
+}

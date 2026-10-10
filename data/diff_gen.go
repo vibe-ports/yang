@@ -31,8 +31,9 @@ type DiffOptions struct {
 // first into second, as a tree whose nodes carry the yang:operation metadata (create, delete,
 // replace, none) with yang:orig-value and yang:orig-default on a changed leaf, and the anchors
 // yang:key, yang:value or yang:position (and their orig- counterparts) on a created or moved
-// user-ordered instance. Either tree may be nil (no data). The result is nil when the trees are
-// equal. Errors are a *ValidationError with libyang's diagnostics.
+// user-ordered instance. Either tree may be nil or empty (no data). The result is nil when the
+// trees are equal. When both trees contain nodes, they must use the same schema snapshot (D-0069). Errors
+// are a *ValidationError with libyang's diagnostics.
 func Diff(first, second *Tree, o DiffOptions) (*Tree, error) {
 	var a, b *Node
 	if first != nil {
@@ -57,21 +58,24 @@ func DiffTree(first, second *Node, o DiffOptions) (*Tree, error) {
 	return diffNodes(first, second, o, true, nil, nil)
 }
 
-// diffNodes is lyd_diff; ft and st are the trees of first and second when known (an empty tree
-// still names its schema set).
+// diffNodes is lyd_diff; ft and st are the trees of first and second when known.
 func diffNodes(first, second *Node, o DiffOptions, nosiblings bool, ft, st *Tree) (*Tree, error) {
+	fs, ss := setOf(first), setOf(second)
 	var set *schema.Set
 	switch {
-	case first != nil:
-		set = setOf(first)
-	case second != nil:
-		set = setOf(second)
+	case fs != nil:
+		set = fs
+	case ss != nil:
+		set = ss
 	case ft != nil:
 		set = ft.set
 	case st != nil:
 		set = st.set
 	}
 	lg := &logger{set: set}
+	if fs != nil && ss != nil && fs != ss { // D-0069: cross-context matching not ported yet (#236)
+		return nil, lg.done(lg.logErr("LY_EINVAL", "Invalid arguments - cannot create diff for unrelated data (lyd_diff())."))
+	}
 	dataParent := func(n *Node) *schema.Node { // lysc_data_parent(n->schema), NULL for an opaque node
 		if n.schema == nil {
 			return nil
