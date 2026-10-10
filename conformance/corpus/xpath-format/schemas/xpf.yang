@@ -1,0 +1,35 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo): XPath query formats (#171). Its prefixes differ
+// from the module names, so the JSON, XML and schema formats resolve them differently.
+module xpf {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:xpf";
+  prefix x;
+
+  import xpf-base {
+    prefix b;
+  }
+  import xpf-imp {
+    prefix i;
+  }
+
+  identity fish {
+    base b:animal;
+  }
+  container c {
+    leaf a {
+      type identityref {
+        base b:animal;
+      }
+    }
+    leaf-list l {
+      type string;
+    }
+    list k {
+      key "n";
+      leaf n {
+        type string;
+      }
+    }
+  }
+}

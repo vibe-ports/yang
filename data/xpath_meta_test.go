@@ -161,7 +161,7 @@ func TestXPathMeta(t *testing.T) {
 			ctxNode = nodes[0]
 		}
 		l := &logger{set: set}
-		r, err := tr.evalXPath4(l, ctxNode, tc[1], nil, false, 0)
+		r, err := tr.evalXPath4(l, ctxNode, tc[1], jsonNS{set: tr.set}, nil, false, 0)
 		got := resultJSON(r, err)
 		for _, d := range l.diags {
 			got += " | " + d.Err + " " + d.Msg

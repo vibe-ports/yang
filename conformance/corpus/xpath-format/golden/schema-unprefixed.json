@@ -1,0 +1,33 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "xpf",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "xpf-base",
+      "revision": null
+    }
+  ],
+  "op": "xpath",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "result": {
+    "nodes": [
+      "/xpf:c/l[.='p']",
+      "/xpf:c/l[.='q']"
+    ],
+    "type": "node-set"
+  },
+  "verdict": "valid"
+}

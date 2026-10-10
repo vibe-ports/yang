@@ -276,10 +276,7 @@ func (x xs) Canonical(lex string, pc xpath.NamespaceCtx) (string, bool) {
 	if t == nil || types.Plugin(t) == nil && (t.Base == schema.String || t.Base == schema.Bool || t.Base == schema.Enumeration) {
 		return "", false
 	}
-	f, p := types.FormatJSON, types.PrefixCtx(types.ModuleNames{Set: x.set})
-	if pc != nil && pc.Default() != "" {
-		f, p = types.FormatSchemaResolved, nsPrefixes{x.set, pc}
-	}
+	f, p := valueFormat(x.set, pc)
 	v, d := types.Store(t, lex, f, types.HintData, p, x.s)
 	if d != nil {
 		return "", false
@@ -287,8 +284,25 @@ func (x xs) Canonical(lex string, pc xpath.NamespaceCtx) (string, bool) {
 	return v.Canonical(), true
 }
 
+// valueFormat is the format and prefixes of a value in an expression with prefix context pc
+// (set->format, set->prefix_data): JSON module names, XML namespaces (LY_VALUE_XML, an unprefixed
+// value in the default namespace), or a module's prefixes (schema formats).
+func valueFormat(set *schema.Set, pc xpath.NamespaceCtx) (types.Format, types.PrefixCtx) {
+	if _, xml := pc.(xpath.PrefixedOnly); xml {
+		return types.FormatXML, nsPrefixes{set, pc}
+	}
+	if pc != nil && pc.Default() != "" {
+		return types.FormatSchemaResolved, nsPrefixes{set, pc}
+	}
+	return types.FormatJSON, types.ModuleNames{Set: set}
+}
+
 func (x xs) CheckValue(lex string, pc xpath.NamespaceCtx) (string, bool) {
-	if _, d := types.Store(x.s.Type, lex, types.FormatJSON, types.HintData, nsPrefixes{x.set, pc}, x.s); d != nil {
+	f := types.FormatJSON
+	if _, xml := pc.(xpath.PrefixedOnly); xml {
+		f = types.FormatXML
+	}
+	if _, d := types.Store(x.s.Type, lex, f, types.HintData, nsPrefixes{x.set, pc}, x.s); d != nil {
 		return d.Msg, false
 	}
 	return "", true

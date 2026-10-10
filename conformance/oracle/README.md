@@ -265,7 +265,11 @@ matches. Examples (`pv2` `u2`: `percent | leafref ../l/k`): `"a"` → {"index": 
 (`verdict: "data-error"` if that fails). `context_path` is an XPath that must select exactly one
 node; omitted = document root. `vars` (optional) binds XPath variables: each member goes to
 `lyxp_vars_set` in member order (the value is an XPath expression, `"'x'"` for a string) and the
-list to `lyd_eval_xpath4`.
+list to `lyd_eval_xpath4`. `cur_module` (an implemented module) is `cur_mod`. `xpath_format`
+(`json`, the default, `xml`, `schema`) is the expression's format, with its `prefix_data`: for
+`xml` the `namespaces` list of `{"prefix", "uri"}` declarations in order (`prefix` "" or absent:
+the default namespace), passed as a set of `struct lyxml_ns` (an empty set when there are none:
+libyang dereferences it); for `schema` the parsed `cur_module` (NULL without one).
 
 ## op: atoms
 
