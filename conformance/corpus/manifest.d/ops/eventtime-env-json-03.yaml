@@ -1,0 +1,16 @@
+fixtures:
+  - id: ops/eventtime-env-json-03
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # the eventTime branch of the notif-restconf envelope parse: eventTime after the notification (test_restconf_notification, wrong order)
+    rfc: ["RFC5277#4", "RFC8040#6.4"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: json
+      data_type: notif-restconf
+      unknown: reject
+      parse_only: true
+      data: "{\"ietf-restconf:notification\":{\"a:n2\":{},\"eventTime\":\"2013-12-21T00:01:00Z\"}}"
+    golden: golden/ops-eventtime-env-json-03.json

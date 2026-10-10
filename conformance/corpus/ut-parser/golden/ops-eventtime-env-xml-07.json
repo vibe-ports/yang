@@ -1,0 +1,104 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "op_typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "notif",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:n2",
+      "schema": "/a:n2",
+      "value": null
+    }
+  ],
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"notification\": {\n    \"eventTime\": \"2013-12-21T00:01:00Z\"\n  }\n}\n",
+    "xml": "<notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\">\n  <eventTime>2013-12-21T00:01:00Z</eventTime>\n</notification>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "notification",
+        "namespace": "urn:ietf:params:xml:ns:netconf:notification:1.0",
+        "prefix": null
+      },
+      "path": "/notification",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "eventTime",
+        "namespace": "urn:ietf:params:xml:ns:netconf:notification:1.0",
+        "prefix": null
+      },
+      "path": "/notification/eventTime",
+      "schema": null,
+      "value": {
+        "canonical": "2013-12-21T00:01:00Z",
+        "hints": [
+          "string",
+          "decnum",
+          "num64",
+          "boolean",
+          "empty",
+          "string_datatypes",
+          "list",
+          "leaflist",
+          "container"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

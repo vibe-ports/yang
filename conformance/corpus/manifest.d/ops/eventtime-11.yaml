@@ -1,0 +1,19 @@
+fixtures:
+  - id: ops/eventtime-11
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # the yang:date-and-time leaf lyd_parser_notif_eventtime_validate stores an eventTime value as
+    rfc: ["RFC5277#4", "RFC6991#3"]
+    areas: [types]
+    request:
+      op: data
+      modules: []
+      format: json
+      data_type: data
+      unknown: reject
+      parse_only: true
+      data: "{\"yang:date-and-time\": \"2010-02-30T08:00:01Z\"}"
+    golden: golden/ops-eventtime-11.json
+    assert:
+      verdict: valid
+      rfc: ["RFC5277#4", "RFC6991#3"]
+      deviation: null
