@@ -14,8 +14,12 @@ import (
 )
 
 // jsonNS binds the prefixes of an LY_VALUE_JSON expression: implemented module names;
-// unprefixed names match any module (the evaluator restricts them to the context node's).
-type jsonNS struct{ set *schema.Set }
+// unprefixed names match any module (the evaluator restricts them to the context node's), and an
+// unprefixed derived-from() identity without a current node is in cur, lyxp_eval's cur_mod.
+type jsonNS struct {
+	set *schema.Set
+	cur string
+}
 
 func (j jsonNS) Resolve(prefix string) (string, bool) {
 	if m := j.set.Implemented(prefix); m != nil {
@@ -26,14 +30,99 @@ func (j jsonNS) Resolve(prefix string) (string, bool) {
 
 func (jsonNS) Prefix(module string) string { return module }
 func (jsonNS) Default() string             { return "" }
+func (j jsonNS) CurModule() string         { return j.cur }
+
+// xmlPrefixes binds the prefixes of an LY_VALUE_XML expression through its namespace declarations
+// (ly_xml_resolve_prefix, lyxml_ns_get: the last declaration of a prefix wins, prefix "" is the
+// default namespace) to the implemented module of the namespace. Node names need a prefix; an
+// unprefixed value (an identityref) is in the default namespace.
+// ponytail: libyang falls back to the latest non-implemented module of a namespace, which matters
+// only to values; node tests refuse it either way.
+type xmlPrefixes struct {
+	set *schema.Set
+	nss []XPathNamespace
+}
+
+func (x xmlPrefixes) Resolve(prefix string) (string, bool) {
+	for i := len(x.nss) - 1; i >= 0; i-- {
+		if x.nss[i].Prefix == prefix {
+			if m := x.set.ByNamespace(x.nss[i].URI); m != nil {
+				return m.Name, true
+			}
+			return "", false
+		}
+	}
+	return "", false
+}
+
+// Prefix is ly_xml_get_prefix: the module's own prefix. libyang reads the namespace set as a set of
+// modules there (it is one when printing), so name() in an XML query is not well defined in libyang.
+func (x xmlPrefixes) Prefix(module string) string {
+	if m := x.set.Module(module, ""); m != nil {
+		return m.Prefix
+	}
+	return module
+}
+func (xmlPrefixes) Default() string { return "" }
+func (xmlPrefixes) PrefixedOnly()   {}
+
+// schemaNS binds the prefixes of an LY_VALUE_SCHEMA expression in the text of module cur (its
+// prefix_data, the parsed module, and its cur_mod): cur's own prefix and its import prefixes, to
+// implemented modules; unprefixed names are cur's.
+type schemaNS struct{ cur *schema.Module }
+
+func (s schemaNS) Resolve(prefix string) (string, bool) {
+	if m := s.cur.Import(prefix); m != nil && m.Implemented {
+		return m.Name, true
+	}
+	return "", false
+}
+
+// Prefix is ly_schema_get_prefix; a module cur does not import has none, which libyang's
+// asprintf("%s:%s") prints as glibc does a NULL string.
+func (s schemaNS) Prefix(module string) string {
+	if module == s.cur.Name {
+		return s.cur.Prefix
+	}
+	for _, im := range s.cur.Imports {
+		if im.Module.Name == module {
+			return im.Prefix
+		}
+	}
+	return "(null)"
+}
+func (s schemaNS) Default() string { return s.cur.Name }
+
+// queryNS is the namespace context of a query's options (lyd_eval_xpath4's format, prefix_data
+// and cur_mod), or the argument refusal of a bad one.
+func (t *Tree) queryNS(l *logger, o XPathOptions, fn string) (xpath.NamespaceCtx, error) {
+	var cur *schema.Module
+	if o.Module != "" {
+		if cur = t.set.Implemented(o.Module); cur == nil {
+			return nil, l.logErr("LY_EINVAL", "Invalid argument %s (%s()).", "cur_mod (not implemented)", fn)
+		}
+	}
+	switch o.Format {
+	case XPathJSON:
+		return jsonNS{set: t.set, cur: o.Module}, nil
+	case XPathXML:
+		return xmlPrefixes{t.set, o.Namespaces}, nil
+	case XPathSchema:
+		if cur == nil {
+			return nil, l.logErr("LY_EINVAL", "Current module must be set if schema format is used.")
+		}
+		return schemaNS{cur}, nil
+	}
+	return nil, l.logErr("LY_EINVAL", "Invalid argument %s (%s()).", "format (unknown)", fn)
+}
 
 // evalXPath4 is lyd_eval_xpath4 for a JSON expression over t, from ctxNode (nil: the document
 // root), when conditions ignored (LYXP_IGNORE_WHEN). With single false the result is returned as
 // it is (the ret_type form); with single true only one type is asked for: a node set must be
 // one, and the other types are cast to.
-func (t *Tree) evalXPath4(l *logger, ctxNode *Node, src string, vars []xpath.Var, single bool,
+func (t *Tree) evalXPath4(l *logger, ctxNode *Node, src string, ns xpath.NamespaceCtx, vars []xpath.Var, single bool,
 	to xpath.ResultType) (xpath.Result, error) {
-	e, err := xpath.Compile(src, jsonNS{t.set})
+	e, err := xpath.Compile(src, ns)
 	if err != nil {
 		return xpath.Result{}, queryErr(l, ctxNode, err)
 	}
@@ -118,6 +207,28 @@ func (t XPathType) String() string {
 // with concat()), or the caller is open to XPath injection.
 type XPathVar struct{ Name, Value string }
 
+// XPathFormat is the format of an XPath expression (lyd_eval_xpath4's LY_VALUE_FORMAT): how its
+// prefixes, in node names and in values compared with nodes, name modules.
+type XPathFormat uint8
+
+// XPath formats.
+const (
+	// XPathJSON is LY_VALUE_JSON: a prefix is the name of an implemented module, and an unprefixed
+	// name is in the module of its context node or, at the document root, in any module.
+	XPathJSON XPathFormat = iota
+	// XPathXML is LY_VALUE_XML: a prefix is bound by XPathOptions.Namespaces to the implemented
+	// module with that namespace. Every node name needs a prefix; an unprefixed value is in the
+	// default namespace (the binding of prefix "").
+	XPathXML
+	// XPathSchema is LY_VALUE_SCHEMA: the expression is written in the text of the module
+	// XPathOptions.Module, so a prefix is that module's own or one of its import prefixes, and an
+	// unprefixed name is in that module, as in a must or when statement.
+	XPathSchema
+)
+
+// XPathNamespace is an XML namespace declaration (xmlns:Prefix="URI"; Prefix "" for xmlns="URI").
+type XPathNamespace struct{ Prefix, URI string }
+
 // XPathOptions are the inputs of an XPath query besides the expression.
 type XPathOptions struct {
 	// Node is the context node, also the node current() returns; nil is the document root.
@@ -126,6 +237,15 @@ type XPathOptions struct {
 	// Vars bind the $name references. As lyxp_vars_find, a reference takes the first variable
 	// whose name starts with it, so $ab finds a variable "abc" listed before "ab".
 	Vars []XPathVar
+	// Format is the expression's format (prefix_data comes from Namespaces or Module).
+	Format XPathFormat
+	// Namespaces are the declarations in scope of an XPathXML expression, the outermost first:
+	// for a prefix declared twice the last one counts.
+	Namespaces []XPathNamespace
+	// Module is lyxp_eval's cur_mod, an implemented module: the module of an XPathSchema
+	// expression (required there), and in XPathJSON the module of an unprefixed derived-from()
+	// identity when the query has no context node ("" there is none: the identity is not found).
+	Module string
 }
 
 // XPathResult is a typed XPath result: Nodes for a node set (in document order, element nodes
@@ -188,11 +308,15 @@ func (t *Tree) evalXPath(expr string, o XPathOptions, single bool, to xpath.Resu
 			return XPathResult{}, l.diags, err
 		}
 	}
+	ns, err := t.queryNS(l, o, "lyd_eval_xpath4")
+	if err != nil {
+		return XPathResult{}, l.diags, l.done(err)
+	}
 	vars := make([]xpath.Var, len(o.Vars))
 	for i, v := range o.Vars {
 		vars[i] = xpath.Var(v)
 	}
-	r, err := t.evalXPath4(l, o.Node, expr, vars, single, to)
+	r, err := t.evalXPath4(l, o.Node, expr, ns, vars, single, to)
 	if err != nil {
 		err = l.done(err)
 		return XPathResult{}, l.diags, err

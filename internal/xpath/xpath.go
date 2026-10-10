@@ -229,6 +229,25 @@ type NamespaceCtx interface {
 	Default() string
 }
 
+// PrefixedOnly is implemented by a NamespaceCtx whose node names need a prefix (LY_VALUE_XML): an
+// unprefixed name test, or derived-from() identity, is an error ("Non-prefixed node … in XML xpath
+// found.", moveto_resolve_module).
+type PrefixedOnly interface{ PrefixedOnly() }
+
+// CurModule is implemented by a NamespaceCtx with a current module (lyxp_eval's cur_mod): an
+// unprefixed derived-from() identity of a JSON expression is in it when there is no current
+// node (xpath_derived_ident_module).
+type CurModule interface{ CurModule() string }
+
+// unprefixed is moveto_resolve_module for an unprefixed name: the module to match, or the error
+// of a NamespaceCtx that needs prefixes.
+func unprefixed(ns NamespaceCtx, name string) (string, error) {
+	if _, ok := ns.(PrefixedOnly); ok {
+		return "", &Error{Err: "LY_EVALID", VECode: "LYVE_DATA", Msg: fmt.Sprintf("Non-prefixed node \"%s\" in XML xpath found.", name)}
+	}
+	return ns.Default(), nil
+}
+
 // RootKind selects the accessible tree.
 type RootKind uint8
 

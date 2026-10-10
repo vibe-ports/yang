@@ -492,7 +492,10 @@ func (ev *evaluator) resolveName(qname string) (nameTest, error) {
 		}
 		nt.mod, qname = mod, local
 	} else {
-		nt.mod = ev.ns.Default()
+		var err error
+		if nt.mod, err = unprefixed(ev.ns, qname); err != nil {
+			return nt, err
+		}
 	}
 	if qname != "*" {
 		nt.name = qname

@@ -28,11 +28,15 @@ func (t *Tree) TrimXPath(expr string, o XPathOptions) ([]yang.Diagnostic, error)
 	if len(top) == 0 {
 		return nil, nil // nothing to do
 	}
+	if o.Format != XPathJSON || o.Namespaces != nil || o.Module != "" {
+		err := l.done(l.logErr("LY_EINVAL", "Invalid argument %s (%s()).", "XPathOptions.Format, Namespaces, Module (JSON only)", "lyd_trim_xpath"))
+		return l.diags, err
+	}
 	vars := make([]xpath.Var, len(o.Vars))
 	for i, v := range o.Vars {
 		vars[i] = xpath.Var(v)
 	}
-	r, err := t.evalXPath4(l, top[0], expr, vars, false, xpath.NodeSet)
+	r, err := t.evalXPath4(l, top[0], expr, jsonNS{set: t.set}, vars, false, xpath.NodeSet)
 	if err != nil {
 		return l.diags, l.done(err)
 	}

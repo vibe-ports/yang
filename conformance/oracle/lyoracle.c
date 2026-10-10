@@ -1408,6 +1408,14 @@ op_data(const cJSON *req)
     }
 }
 
+/* struct lyxml_ns of libyang v5.8.6 src/xml.h (not installed): an XML namespace declaration, the
+ * prefix_data of an LY_VALUE_XML expression is a set of them (lyxml_ns_get searches it from the end) */
+struct oracle_xml_ns {
+    char *prefix; /* NULL for the default namespace */
+    char *uri;
+    uint32_t depth;
+};
+
 static void
 op_xpath(const cJSON *req)
 {
@@ -1417,7 +1425,11 @@ op_xpath(const cJSON *req)
     struct ly_ctx *ctx = data_prelude(req, &p, &diag);
     const char *expr = str_of(req, "xpath"), *cpath = str_of(req, "context_path"), *cm = str_of(req, "cur_module");
     const struct lys_module *cur = NULL;
-    struct ly_set *set = NULL;
+    struct ly_set *set = NULL, *nsset = NULL;
+    const char *fmt = str_of(req, "xpath_format");
+    LY_VALUE_FORMAT xformat = LY_VALUE_JSON;
+    void *prefix_data = NULL;
+    const cJSON *jns = cJSON_GetObjectItemCaseSensitive(req, "namespaces"), *n;
     char *str = NULL;
     long double num = 0;
     ly_bool b = 0;
@@ -1451,6 +1463,32 @@ op_xpath(const cJSON *req)
     if (cm && !(cur = ly_ctx_get_module_implemented(ctx, cm))) {
         die("cur_module %s not implemented", cm);
     }
+    /* the expression's format and prefix_data: XML namespace declarations ("namespaces", in order;
+     * an empty set without them, libyang dereferences it), or the parsed cur_module (schema) */
+    if (fmt && !strcmp(fmt, "xml")) {
+        xformat = LY_VALUE_XML;
+        ly_set_new(&nsset);
+        cJSON_ArrayForEach(n, jns) {
+            struct oracle_xml_ns *ns = calloc(1, sizeof *ns);
+            const char *pfx = str_of(n, "prefix"), *uri = str_of(n, "uri");
+
+            if (!uri) {
+                die("namespaces need a uri%s", NULL);
+            }
+            ns->prefix = (pfx && pfx[0]) ? strdup(pfx) : NULL;
+            ns->uri = strdup(uri);
+            ly_set_add(nsset, ns, 1, NULL);
+        }
+        prefix_data = nsset;
+    } else if (fmt && !strcmp(fmt, "schema")) {
+        xformat = LY_VALUE_SCHEMA;
+        prefix_data = cur ? cur->parsed : NULL;
+    } else if (fmt && strcmp(fmt, "json")) {
+        die("unknown xpath_format %s", fmt);
+    }
+    if (jns && !nsset) {
+        die("namespaces need xpath_format xml%s", NULL);
+    }
     if (cpath) {
         rc = lyd_find_xpath(tree, cpath, &set);
         collect(ctx, diag, "context_path");
@@ -1462,8 +1500,18 @@ op_xpath(const cJSON *req)
         set = NULL;
     }
 
-    rc = lyd_eval_xpath4(cnode, tree, cur, expr, LY_VALUE_JSON, NULL, vars, &t, &set, &str, &num, &b);
+    rc = lyd_eval_xpath4(cnode, tree, cur, expr, xformat, prefix_data, vars, &t, &set, &str, &num, &b);
     lyxp_vars_free(vars);
+    if (nsset) {
+        for (uint32_t i = 0; i < nsset->count; i++) {
+            struct oracle_xml_ns *ns = nsset->objs[i];
+
+            free(ns->prefix);
+            free(ns->uri);
+            free(ns);
+        }
+        ly_set_free(nsset, NULL);
+    }
     collect(ctx, diag, "xpath");
     set_verdict(rc);
     if (rc) {
