@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2016 # check/bash -c bodies are evaluated later, on purpose
+# Self-test of scripts/goldens-remote against a stubbed `gh` (no network): request matching and
+# that nothing is written outside the corpus.   scripts/test-goldens-remote   (part of `make test-gates`)
+set -uo pipefail
+src=$(cd "$(dirname "$0")" && pwd)
+t=$(mktemp -d); trap 'rm -rf "$t"' EXIT
+fails=0
+ok() { echo "ok   $1"; }
+no() { echo "FAIL $1"; fails=$((fails + 1)); }
+# expect <exit code> <name> <stderr ERE or -> <cmd...>
+expect() {
+  local want=$1 name=$2 why=$3; shift 3
+  "$@" >"$t/out" 2>"$t/err"; local got=$?
+  if [[ $got != "$want" ]]; then no "$name (exit $got, want $want)"; sed 's/^/     /' "$t/err" | tail -5
+  elif [[ $why != - ]] && ! grep -qE -- "$why" "$t/err"; then no "$name (wrong reason)"; sed 's/^/     /' "$t/err" | tail -5
+  else ok "$name"; fi
+}
+check() { if eval "$2"; then ok "$1"; else no "$1"; fi; }
+
+# Stub gh. $FX/sha: branch head; $FX/members: archive members (paths under $FX/src);
+# $FX/badreq: if present, the manifest names another request.
+mkdir -p "$t/bin" "$t/fx/src" "$t/outside"
+cat >"$t/bin/gh" <<'EOF'
+#!/usr/bin/env bash
+case "$1 $2" in
+  "api repos/o/r/branches/b") cat "$FX/sha" ;;
+  "api user") echo me ;;
+  "workflow run") for a; do case $a in request_id=*) echo "${a#request_id=}" >"$FX/req" ;; esac; done ;;
+  "run list") echo 42 ;;
+  "run watch") ;;
+  "run download")
+    d=${*: -1}
+    (cd "$FX/src" && tar -cf "$d/goldens.tar" $(cat "$FX/members"))
+    req=$(cat "$FX/req"); [[ -f $FX/badreq ]] && req=other
+    printf 'request: %s\nref: b\ncommit: %s\nrun: ^basic/x$\n--- changed\n' "$req" "$(cat "$FX/sha")" >"$d/manifest.txt" ;;
+  *) echo "stub gh: unexpected $*" >&2; exit 1 ;;
+esac
+EOF
+chmod +x "$t/bin/gh"
+export FX=$t/fx GH_REPO=o/r PATH=$t/bin:$PATH
+
+r=$t/repo; mkdir -p "$r/scripts" "$r/conformance/corpus/basic/golden" "$r/conformance/corpus/evil"
+cp "$src/goldens-remote" "$r/scripts/"
+echo old >"$r/conformance/corpus/basic/golden/x.json"
+git -C "$r" init -q && git -C "$r" add -A && git -C "$r" -c user.name=t -c user.email=t@t commit -qm init
+git -C "$r" rev-parse HEAD >"$FX/sha"
+mkdir -p "$FX/src/conformance/corpus/basic/golden" "$FX/src/conformance/corpus/evil/golden"
+echo new >"$FX/src/conformance/corpus/basic/golden/x.json"
+echo pwn >"$FX/src/conformance/corpus/evil/golden/y.json"
+gr() { (cd "$r" && scripts/goldens-remote b '^basic/x$'); }
+golden=$r/conformance/corpus/basic/golden/x.json
+
+echo conformance/corpus/basic/golden/x.json >"$FX/members"
+touch "$FX/badreq"
+expect 1 "artifact for another request is refused" 'not for this request' gr
+check "  ...and nothing copied" '[[ $(cat "$golden") == old ]]'
+rm "$FX/badreq"
+
+expect 0 "matching artifact is copied" - gr
+check "  ...golden updated" '[[ $(cat "$golden") == new ]]'
+
+# A symlink pre-planted at the temp path the old code used (.goldens-remote.<pid>; exec keeps the pid).
+echo old >"$golden"
+expect 0 "pre-planted temp-path symlink is not followed" - \
+  bash -c 'cd "$1" && ln -s "$2/planted" conformance/corpus/basic/golden/.goldens-remote.$$ && exec scripts/goldens-remote b "^basic/x$"' _ "$r" "$t/outside"
+check "  ...nothing written outside" '[[ ! -e $t/outside/planted ]]'
+check "  ...golden updated" '[[ $(cat "$golden") == new ]]'
+check "  ...no temp file left" '[[ -z $(find "$r/conformance" -name ".goldens-remote.*" ! -type l) ]]'
+
+echo conformance/corpus/evil/golden/y.json >"$FX/members"
+ln -s "$t/outside" "$r/conformance/corpus/evil/golden"
+expect 1 "symlinked golden/ dir is refused" 'not a plain directory' gr
+rm "$r/conformance/corpus/evil/golden"; mkdir "$r/conformance/corpus/evil/golden"
+ln -s "$t/outside/y" "$r/conformance/corpus/evil/golden/y.json"
+expect 1 "symlinked target file is refused" 'not a regular file' gr
+check "  ...nothing written outside" '[[ -z $(ls -A "$t/outside") ]]'
+
+(cd "$FX/src" && ln -s /etc/passwd conformance/corpus/evil/golden/z.json)
+echo conformance/corpus/evil/golden/z.json >"$FX/members"
+expect 1 "symlink archive member is refused" 'non-regular file' gr
+
+# goldens.yml's change detection (awk over sha256sum listings), run as written in the workflow.
+prog=$(sed -n "s/^ *changed=\$(awk '\(.*\)' \\\\$/\1/p" "$src/../.github/workflows/goldens.yml")
+check "goldens.yml change-detection program found" '[[ -n $prog ]]'
+diffs() { awk "$prog" "$t/before" "$t/after"; }
+: >"$t/before"; printf '%s  %s\n' aaa c/x.json bbb c/y.json >"$t/after"
+check "empty baseline: every generated golden is new" '[[ $(diffs) == $'"'"'A c/x.json\nA c/y.json'"'"' ]]'
+printf '%s  %s\n' aaa c/x.json ccc c/y.json >"$t/before"; printf '%s  %s\n' aaa c/x.json bbb c/y.json ddd c/z.json >"$t/after"
+check "changed and new goldens, unchanged skipped" '[[ $(diffs) == $'"'"'M c/y.json\nA c/z.json'"'"' ]]'
+cp "$t/after" "$t/before"
+check "nothing changed: empty" '[[ -z $(diffs) ]]'
+
+((fails == 0)) || { echo "test-goldens-remote: $fails failure(s)"; exit 1; }
+echo "test-goldens-remote: all passed"

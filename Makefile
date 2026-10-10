@@ -11,6 +11,7 @@ test-gates:
 	scripts/test-gates
 	scripts/test-claim
 	scripts/test-lyfn
+	scripts/test-goldens-remote
 
 # Duplicate ids/rows left by the union merge driver in the append-only registries.
 registries:

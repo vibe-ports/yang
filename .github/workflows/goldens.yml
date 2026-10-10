@@ -1,0 +1,124 @@
+name: goldens
+# Regenerate oracle goldens on a GitHub-hosted linux/amd64 runner (the canonical oracle
+# architecture) for anyone without an amd64 machine. Driven by scripts/goldens-remote.
+# Output is an artifact only (changed/new golden JSON files in a tarball + a manifest); nothing
+# is pushed: the author reviews and commits the goldens.
+# Who can run it: workflow_dispatch needs write access to this repository (GitHub refuses the
+# dispatch otherwise; forks can't dispatch it), so no extra actor check is done here.
+# The job holds a read-only token, no persisted git credentials and no secrets; the branch's code
+# runs in the published dev image (pulled anonymously, the package is public). Inputs reach shells
+# only through env and are validated against strict character classes first.
+# Branch code never sees the checkout: the commit and the goldens' hashes are recorded first, the
+# committed tree is exported (git archive, no .git) to a separate directory, and only that is
+# mounted. Results are found by comparing hashes in that copy; no git command runs over a tree
+# branch code wrote to.
+# No caches: the job runs the input branch's code in main's cache scope, so anything it saved could
+# be restored by later runs for other branches.
+run-name: goldens ${{ inputs.ref }} ${{ inputs.request_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch of this repository to check out"
+        required: true
+        type: string
+      run:
+        description: "Fixture id regexp (cmd/golden -run), e.g. ^basic/(diff|leafref)$"
+        required: true
+        type: string
+      request_id:
+        description: "Optional caller id (scripts/goldens-remote), echoed into the run name and manifest"
+        required: false
+        type: string
+        default: ""
+permissions: {}
+jobs:
+  goldens:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash # -eo pipefail: a failing generator fails the step despite `| tee`
+    env:
+      REF: ${{ inputs.ref }}
+      RUN: ${{ inputs.run }}
+      REQUEST_ID: ${{ inputs.request_id }}
+      IMAGE: ghcr.io/vibe-ports/yang-dev:latest
+      # sha256 of every golden file under the current directory, sorted by path.
+      GOLDENS: >-
+        find conformance/corpus -mindepth 3 -maxdepth 3 -type f -path 'conformance/corpus/*/golden/*.json' -print0 |
+        LC_ALL=C sort -z | xargs -0 -r sha256sum
+    steps:
+      - name: Validate inputs
+        run: |
+          ref_re='^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$'
+          run_re='^[]A-Za-z0-9._/|^$*+?()[-]{1,200}$'
+          [[ $REF =~ $ref_re && $REF != *..* && $REF != *//* && $REF != */ && $REF != *. && $REF != *.lock ]] ||
+            { echo "::error::ref must be a branch name of [A-Za-z0-9._/-]"; exit 1; }
+          [[ $RUN =~ $run_re ]] ||
+            { echo "::error::run may contain only letters, digits and ._/|^\$*+?()[]-"; exit 1; }
+          [[ $REQUEST_ID =~ ^[A-Za-z0-9-]{0,64}$ ]] || { echo "::error::request_id may contain only [A-Za-z0-9-]"; exit 1; }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/heads/${{ inputs.ref }}
+          persist-credentials: false
+      - name: Record the commit and the goldens, export the tree for the branch's code
+        id: src
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          src="$RUNNER_TEMP/src"; mkdir "$src"
+          git archive HEAD | tar -x -C "$src"
+          cd "$src" && eval "$GOLDENS" > "$RUNNER_TEMP/before"
+      - name: Generate goldens (linux/amd64, published dev image)
+        run: |
+          docker pull -q --platform linux/amd64 "$IMAGE"
+          docker image inspect --format '{{index .RepoDigests 0}}' "$IMAGE" > "$RUNNER_TEMP/image"
+          # Only the exported tree is mounted; runner uid so it stays writable; Go caches in /tmp.
+          docker run --rm --platform linux/amd64 --user "$(id -u):$(id -g)" \
+            -v "$RUNNER_TEMP/src":/workspaces/yang \
+            -e HOME=/tmp -e GOMODCACHE=/tmp/go/mod -e GOCACHE=/tmp/go/build -e TZ=UTC -e RUN \
+            "$IMAGE" bash -c 'make oracle && cd conformance && go run ./cmd/golden -require-protocol -run="$RUN"' |
+            tee "$RUNNER_TEMP/golden.log"
+      - name: Collect changed goldens
+        env:
+          SHA: ${{ steps.src.outputs.sha }}
+        run: |
+          out="$RUNNER_TEMP/out"; mkdir -p "$out"
+          matched=$(grep -c '^wrote ' "$RUNNER_TEMP/golden.log" || true)
+          [[ $matched -gt 0 ]] || { echo "::error::no fixture id matches the regexp"; exit 1; }
+          cd "$RUNNER_TEMP/src"
+          eval "$GOLDENS" > "$RUNNER_TEMP/after"
+          # New or changed: lines of `after` not in `before`; M if the path existed before, else A.
+          # (FILENAME, not NR == FNR: `before` is empty when the branch has no goldens yet.)
+          changed=$(awk 'FILENAME == ARGV[1] {old[$2] = $1; next} !($2 in old) {print "A", $2; next} old[$2] != $1 {print "M", $2}' \
+            "$RUNNER_TEMP/before" "$RUNNER_TEMP/after")
+          awk 'NF {printf "%s%c", $2, 0}' <<<"$changed" | tar --null -T - -cf "$out/goldens.tar"
+          {
+            echo "request: $REQUEST_ID"
+            echo "ref: $REF"
+            echo "commit: $SHA"
+            echo "run: $RUN"
+            echo "image: $(cat "$RUNNER_TEMP/image")"
+            echo "matched: $matched"
+            echo "changed: $(grep -c . <<<"$changed" || true)"
+            echo "--- changed (M modified, A new)"
+            [[ -z $changed ]] || echo "$changed"
+            echo "--- generator log"
+            cat "$RUNNER_TEMP/golden.log"
+          } > "$out/manifest.txt"
+          {
+            echo "### goldens for \`$REF\`"
+            echo "Regexp \`$RUN\`: $matched fixture(s) regenerated on linux/amd64."
+            if [[ -z $changed ]]; then echo "All byte-identical to the branch: nothing to commit."
+            else echo '```'; echo "$changed"; echo '```'; fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: goldens-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/out/goldens.tar
+            ${{ runner.temp }}/out/manifest.txt
+          if-no-files-found: error
+          retention-days: 7
