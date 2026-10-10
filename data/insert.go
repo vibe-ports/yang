@@ -225,7 +225,7 @@ func (t *Tree) insert(parent, n *Node, order insertOrder) {
 func (t *Tree) insertLazy(parent, n *Node) {
 	sib := t.childrenOf(parent)
 	s := n.schema
-	if s == nil || !sortedSupported(n) || sib.unsorted[s] {
+	if s == nil || !sortedSupported(n) || sib.unsorted[s] || inOpNode(s) {
 		t.insert(parent, n, insertDefault)
 		return
 	}
@@ -243,6 +243,15 @@ func (t *Tree) insertLazy(parent, n *Node) {
 	}
 	sib.lazy[s] = true
 	t.link(parent, sib, n, hi)
+}
+
+// inOpNode reports whether s is a child of an rpc, action or notification node. Those children
+// take the eager insert: an operation's input and output siblings are not monotone in schema
+// order (lyd_insert_get_next_anchor walks only the new node's own input or output), so their
+// place is the eager path's anchor, not the end of a run found by binary search.
+func inOpNode(s *schema.Node) bool {
+	dp := s.DataParent()
+	return dp != nil && (dp.Kind == schema.RPC || dp.Kind == schema.Action || dp.Kind == schema.Notification)
 }
 
 // sortLazy sorts the runs of sib that insertLazy appended to, as libyang's RB insert orders them:
