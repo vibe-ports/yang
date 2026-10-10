@@ -299,17 +299,18 @@ func (t *Tree) merge(parent *Node, dst *siblings, src *Tree, run []*Node) {
 			dst.list[hi].inRB = true
 			hi++
 		}
-		d := slices.Clone(dst.list[lo:hi])
-		at, j := lo, 0
-		for _, n := range members {
-			for j < len(d) && t.less(d[j], n) {
-				j++
-				at++
-			}
-			t.link(parent, dst, n, at)
-			at++
-		}
+		t.splice(parent, dst, lo, hi, members, true)
 		markRB(dst, s)
+		members = nil
+	}
+	if len(members) > 1 && !dst.unsorted[s] {
+		// lyds_merge_nodes3 into a sorted run: one pass, each after the equal values
+		lo := t.schemaIndex(dst, s)
+		hi := lo
+		for hi < len(dst.list) && dst.list[hi].schema == s {
+			hi++
+		}
+		t.splice(parent, dst, lo, hi, members, false)
 		members = nil
 	}
 	for _, n := range append(members, rest...) {

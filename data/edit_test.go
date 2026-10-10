@@ -3,12 +3,14 @@
 package data
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -339,6 +341,117 @@ func TestMergeWork(t *testing.T) {
 	}
 	if limit := 8 * n; int(tr.work.Load()) > limit {
 		t.Fatalf("merging %d equal instances: %d units of work, limit %d", n, int(tr.work.Load()), limit)
+	}
+}
+
+// TestInsertScaling: single edits at either end of a sorted run and merges of interleaved sorted
+// runs cost amortized O(1) shifted slots per instance (design 07 §4 Ordering).
+func TestInsertScaling(t *testing.T) {
+	set := editSet(t)
+	measured := func(tr *Tree) *Tree {
+		tr.work.Store(0)
+		tr.work.visits, tr.work.shifts = true, true
+		return tr
+	}
+	build := func(n int, val func(i int) int) *Tree {
+		tr := newTree(set)
+		for i := range n {
+			if _, err := tr.NewPath("/pv2-edit:c/ll", fmt.Sprintf("v%07d", val(i)), NewPathOptions{}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return tr
+	}
+	cases := []struct {
+		name string
+		work func(n int) int64
+	}{
+		{"new-path-reversed", func(n int) int64 {
+			tr := measured(newTree(set))
+			for i := range n {
+				if _, err := tr.NewPath("/pv2-edit:c/ll", fmt.Sprintf("v%07d", n-i), NewPathOptions{}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			return tr.work.Load()
+		}},
+		{"merge-interleaved", func(n int) int64 {
+			tr := measured(build(n, func(i int) int { return 2 * i }))
+			if err := tr.Merge(build(n, func(i int) int { return 2*i + 1 })); err != nil {
+				t.Fatal(err)
+			}
+			if got := len(tr.top.list[0].kids.list); got != 2*n {
+				t.Fatalf("%d instances after the merge, want %d", got, 2*n)
+			}
+			if !slices.IsSortedFunc(tr.top.list[0].kids.list, compareSorted) {
+				t.Fatal("merged run not sorted")
+			}
+			return tr.work.Load()
+		}},
+		{"merge-duplicate-pairs", func(n int) int64 {
+			// a parse-only source [v1, v1, v3, v3, ...] into [v0, v2, ...]: one batch, the equal
+			// instance matches the pending copy
+			vals := make([]string, 0, 2*n)
+			for i := range n {
+				v := fmt.Sprintf(`"v%07d"`, 2*i+1)
+				vals = append(vals, v, v)
+			}
+			in := `{"pv2-edit:c":{"ll":[` + strings.Join(vals, ",") + `]}}`
+			src, diags, err := parseWith(context.Background(), strings.NewReader(in), set,
+				parseOpts{ParseOptions: ParseOptions{ParseOnly: true}}, parseJSON, nil)
+			if err != nil {
+				t.Fatal(err, diags)
+			}
+			tr := measured(build(n, func(i int) int { return 2 * i }))
+			if err := tr.Merge(src); err != nil {
+				t.Fatal(err)
+			}
+			if l := tr.top.list[0].kids.list; len(l) != 2*n || !slices.IsSortedFunc(l, compareSorted) {
+				t.Fatalf("%d instances after the merge, want %d, sorted", len(l), 2*n)
+			}
+			return tr.work.Load()
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if w1, w4 := tc.work(1000), tc.work(4000); w4 > 5*w1 {
+				t.Fatalf("work %d for 1000 values, %d for 4000: not linear", w1, w4)
+			}
+		})
+	}
+}
+
+// TestMergeSpliceHash: a splice that brings a level to htMinItems indexes each node once, so a
+// key stays unique in the children table and the XPath looks it up there.
+func TestMergeSpliceHash(t *testing.T) {
+	set := editSet(t)
+	tree := func(keys ...string) *Tree {
+		tr := newTree(set)
+		for _, k := range keys {
+			if _, err := tr.NewPath(fmt.Sprintf("/pv2-edit:c/l[k='%s']", k), "", NewPathOptions{}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return tr
+	}
+	tr := tree("a", "b")
+	if err := tr.Merge(tree("c", "d")); err != nil {
+		t.Fatal(err)
+	}
+	c := tr.top.list[0]
+	if c.kids.ht == nil {
+		t.Fatal("no children table")
+	}
+	for k, b := range c.kids.ht {
+		if len(b) != 1 {
+			t.Errorf("bucket %v holds %d nodes", k, len(b))
+		}
+	}
+	if hit, ok := (xn{c, tr.set}).LookupChild(wrapSchema(tr.set, c.kids.list[0].schema), []string{"d"}); !ok || len(hit) != 1 {
+		t.Errorf("indexed lookup: %v %v", hit, ok)
+	}
+	if ns, _, err := tr.FindXPath("/pv2-edit:c/l[k='d']", XPathOptions{}); err != nil || len(ns) != 1 {
+		t.Errorf("FindXPath: %v %v", ns, err)
 	}
 }
 

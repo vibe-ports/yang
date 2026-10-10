@@ -1,0 +1,19 @@
+module pv2-ida {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-ida";
+  prefix ia;
+
+  identity base;
+  identity x { base base; }
+  identity y { base base; }
+  identity z { base base; }
+
+  container c {
+    leaf-list ids { type identityref { base base; } }
+    list l {
+      key k;
+      leaf k { type identityref { base base; } }
+      leaf v { type string; }
+    }
+  }
+}

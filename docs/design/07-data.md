@@ -157,7 +157,29 @@ subset:
    (reviewer probe: `{"zz:x":1}` with `unknown: opaque`, config → 8 identical LYVE_REFERENCE errors;
    once schema data exists, 1) — D-0057 candidate.
 
-**1.6 `when`.** Queue = `node_when`: parse post-order plus implicit nodes in creation order.
+**1.6 `when`.** Queue = `node_when`, a plain `ly_set` that keeps duplicates. A node is added by
+every `lyd_parser_set_data_flags` call on it (PC, `ly_set_add(&lydctx->node_when, node, 1, NULL)`
+with `list` true: no duplicate check), not once per node:
+- every instance, after its children (post-order), when the parse is validating;
+- JSON only: once more for each metadata member that names it. `lydjson_metadata`
+  (PJ:878, the `"@name"` member parsed after its node, `jsonParser.metaAttr`) and
+  `lydjson_metadata_finish` (PJ:701, a member parsed before its node, `jsonParser.metadataFinish`)
+  each call `lyd_parser_set_data_flags` again after attaching the metadata. XML attaches metadata
+  before `set_data_flags` and queues once;
+- implicit nodes in creation order (`lyd_new_implicit`).
+
+The duplicates are kept, and they change the result: each entry is evaluated, so a false `when` is
+reported once per entry (under multi-error), and the removal order follows the entries.
+protocol-v2/when-meta-requeue pins it: `s` and `w` carry one metadata member each and are reported
+twice, `w/u` once, in libyang's order. Removal also works on entries, not nodes: a resolved entry
+leaves with `ly_set_rm_index_ordered` (order kept), and when a when-false node's descendants left
+the queue (`lyd_validate_when_false`, one entry each), the pass index is re-found with
+`ly_set_contains`, which returns the node's **first** entry. The entries between it and the old
+index wait for the next pass. The port mirrors all of it: `lydCtx.setDataFlags` at the three sites,
+`nodeSet.add` keeping duplicates, and `whenPass` (unres.go) with tombstoned entries in order,
+per-node entry lists, the first entry of each descendant dropped, and the first entry of the node
+resumed (`whenPass.whenFalse`). An autodeleted node queued twice is deleted once (`whenPass.del`).
+Unchanged from there:
 `lyd_validate_unres_when` (VAL:462) walks it **from the end**, per node `lyd_validate_node_when`
 (VAL:270): the node's own whens and those of its choice/case ancestors, context node = the node or
 its parent (`when->context`), `lyxp_eval(..., LYXP_SCHEMA)` with the root type taken from the context
@@ -284,8 +306,21 @@ func (t *Tree) MergeDiff(src *Tree, o MergeDiffOptions) error          // lyd_di
 func (t *Tree) MergeDiffTree(parent, src *Node, o MergeDiffOptions) error // lyd_diff_merge_tree
 func (t *Tree) ReverseDiff() (*Tree, error)                            // lyd_diff_reverse_all
 func (t *Tree) Top() iter.Seq[*Node]   // + Node: Schema(), Value(), Name(), Children(), All() (pre-order), Parent(), Path(), Flags()
-func (e *ValidationError) RC() string // the call's LY_ERR name (LY_EVALID, LY_EINVAL, LY_ENOTFOUND, ...): that of the last error logged
+func (e *ValidationError) RC() string // the call's LY_ERR name (LY_EVALID, LY_EINVAL, LY_ENOTFOUND, ...): the code the call returned, see below
 ```
+**Return code ≠ last diagnostic.** A libyang call returns its own `LY_ERR`, which need not be the
+code of the last message it logged. ut-parser/json-leaf-10 logs `LY_EVALID`/`LYVE_REFERENCE`
+(`Annotation definition for attribute … not found.`) and returns `LY_EINVAL`
+(`lyd_create_meta` TD:1397: no annotation of that name is `ret = LY_EINVAL` after the LOGVAL). So the port carries the returned code
+apart from the diagnostics: a logged error whose code differs from its message's is `rcErr{rc}`
+(wrapping `errLoggedFatal`), and `ValidationError.RC()` reports that code; the diagnostics only
+default it (the last failing one, `LY_EVALID` when none). Continuation follows the carried code too,
+as `LY_DPARSER_ERR_GOTO` and `LY_VAL_ERR_GOTO` do: parsing goes on under multi-error only for
+`LY_EVALID` (`lydCtx.isEValid`: never for `errLoggedFatal`), and only when the last message is not
+`LYVE_SYNTAX`; validation goes on only for a logged `LY_EVALID` (`valCtx.stop`). json-leaf-10
+(`assert: rc`) pins both: the parse stops at the `LY_EINVAL` although multi-error is on, and the
+call returns `LY_EINVAL`.
+
 `ValidateDiff` is the second Validate method because the implicit diff is libyang's out-parameter
 (the oracle and NETCONF servers need it); PLAN §2's `Validate` shape stays, with `context.Context` as
 the first parameter (cancellation checked every 1k nodes and between XPath evaluations), never in an
@@ -414,10 +449,17 @@ Single-error mode stops at the first item of this sequence.
 - **Ordering**: sibling order must be libyang's whenever anything reads it — JSON metadata
   attachment (`lydjson_parse_attribute` PJ:1166 and `lydjson_metadata_finish` PJ:583 attach `@ll` entries by position to the already
   sorted instances), the parent's close, the end of parse (parse-only too), XML key-position checks.
-  A run of system-ordered instances is appended during parse and stably sorted **before the first such
-  read** (metadata finish, parent close, end of parse); equal to libyang's incremental RB insert except
-  the order of equal values — duplicates, errors anyway: VERIFY(order/sorted-dup). `NewPath`/`Merge`
-  insert with binary search (append fast path). No quadratic insertion on reversed input.
+  So it is kept at every insertion, like libyang's RB insert: a system-ordered instance goes to its
+  sorted place by binary search (append fast path), after the equal values. `sib.list` is one
+  slice: an insertion moves its shorter side, the front into headroom kept before the list, so
+  appending and prepending are amortized O(1) (sorted or reversed `NewPath` input is linear) and an
+  insertion in the middle moves at most half the list. Batches are spliced in one pass,
+  O(list + batch): `Merge` collects a level's consecutive new instances of a sorted run (source runs
+  are sorted) and splices them when the run ends, and `lyds_merge` (moving nodes) splices the source run. Pinned by `TestInsertScaling` (moved
+  slots counted) and `TestMergeWork`. Ceiling: a run filled in random order, by the parsers or
+  `NewPath`, still moves O(n²) slots (memmove; 100k shuffled XML leaf-list values parse in 0.4 s,
+  4·10⁶ would take about ten minutes) — a per-run ordered structure or a sort before the first read
+  if that input matters.
 - Fuzz targets: `FuzzJSONLex`, `FuzzXMLLex`, `FuzzParseJSON`, `FuzzParseXML` (over a fixed m1-like
   hand-built schema), round-trip property parse → print → parse.
 

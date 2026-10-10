@@ -24,6 +24,7 @@ const htMinItems = 4
 // returns colliding records. It is written only by insertions and removals; lookups read.
 type siblings struct {
 	list     []*Node // schema nodes, in order
+	base     []*Node // list's whole backing array when list leaves headroom before it (insertAt)
 	opq      []*Node // opaque nodes, after all schema nodes (libyang keeps them last)
 	ht       map[idxKey][]*Node
 	unsorted map[*schema.Node]bool // runs appended out of value order
@@ -126,7 +127,9 @@ func (s *siblings) hashAdd(parent, n *Node) {
 		return
 	}
 	if s.ht != nil {
-		s.hashPut(n)
+		if !n.hashed { // a splice publishes its batch first: the table built for one has the rest
+			s.hashPut(n)
+		}
 		return
 	}
 	if len(s.list) < htMinItems {

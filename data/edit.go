@@ -88,10 +88,11 @@ func (t *Tree) Merge(src *Tree) error {
 	if src.set != t.set {
 		return lg.done(lg.logErr("LY_EINVAL", "Different contexts mixed in a \"lyd_merge\" function call."))
 	}
-	cache := &dupCache{}
+	lv := &mergeLevel{cache: &dupCache{}}
 	for _, n := range src.top.nodes() {
-		t.mergeSibling(nil, n, cache)
+		t.mergeSibling(lv, n)
 	}
+	t.flushMerge(lv)
 	return nil
 }
 
@@ -514,9 +515,39 @@ func (t *Tree) dupInstNext(inst *Node, c *dupCache) *Node {
 	return d.set[d.used-1]
 }
 
-// mergeSibling is lyd_merge_sibling_r without options: src merged into the children of parent
+// mergeLevel is one sibling level of Merge: its duplicate cache and the new instances of a
+// system-ordered run waiting to be spliced in (src runs are sorted, so linking them one by one
+// would shift the destination run once per instance).
+type mergeLevel struct {
+	parent *Node
+	cache  *dupCache
+	pend   []*Node // ascending, strictly: none matches another
+	first  []bool  // pend[i] matched no instance (lyd_merge_sibling_r's first_inst)
+}
+
+// mergeSibling is lyd_merge_sibling_r without options: src merged into the children of lv.parent
 // (nil: the top level of t).
-func (t *Tree) mergeSibling(parent, src *Node, cache *dupCache) {
+func (t *Tree) mergeSibling(lv *mergeLevel, src *Node) {
+	if len(lv.pend) > 0 {
+		last := lv.pend[len(lv.pend)-1]
+		c := 1
+		if src.schema == last.schema {
+			c = compareSorted(last, src)
+		}
+		switch {
+		case c == 0 && !isDupInstList(src.schema) && compareSingle(t, last, src, false):
+			// equal in sort order is not equal (identityrefs sort by local name only): only an
+			// equal instance matches, an unequal one flushes and is looked up as usual
+			// a source with duplicate instances (parsed only): the equal one matches the pending
+			// copy, the first instance of its value (none was in the destination), as it would
+			// once linked; the batch goes on
+			t.mergeMatch(last, src)
+			return
+		case c >= 0:
+			t.flushMerge(lv)
+		}
+	}
+	parent, cache := lv.parent, lv.cache
 	sib := t.childrenOf(parent)
 	var match *Node
 	switch {
@@ -534,15 +565,21 @@ func (t *Tree) mergeSibling(parent, src *Node, cache *dupCache) {
 		for e := range d.All() {
 			e.flags |= FlagNew // required for validation
 		}
+		if sortedSupported(d) && sib.rbTree[d.schema] && !sib.unsorted[d.schema] {
+			// the run is sorted: lyd_insert_node puts d after its equal values, as splice does
+			lv.pend, lv.first = append(lv.pend, d), append(lv.first, firstInst)
+			return
+		}
 		t.insert(parent, d, insertDefault)
-		if d.schema != nil {
-			cache.added(d)
-		}
-		if firstInst {
-			t.dupInstNext(d, cache) // do not match this instance next time
-		}
+		t.mergeAdded(cache, d, firstInst)
 		return
 	}
+	t.mergeMatch(match, src)
+}
+
+// mergeMatch is lyd_merge_sibling_r for src matched by match: a leaf takes src's value, children
+// are merged recursively.
+func (t *Tree) mergeMatch(match, src *Node) {
 	switch {
 	case match.schema == nil:
 		if !compareSingle(t, src, match, false) {
@@ -553,12 +590,51 @@ func (t *Tree) mergeSibling(parent, src *Node, cache *dupCache) {
 	case match.schema.Kind == schema.Leaf && src.flags&FlagDefault == 0:
 		t.changeTermVal(match, src.value, false)
 	}
-	childCache := &dupCache{}
+	child := &mergeLevel{parent: match, cache: &dupCache{}}
 	for _, c := range src.kids.nodes() {
 		if !c.isKey() { // lyd_child_no_keys
-			t.mergeSibling(match, c, childCache)
+			t.mergeSibling(child, c)
 		}
 	}
+	t.flushMerge(child)
+}
+
+// mergeAdded records the new instance d in the level's duplicate cache.
+func (t *Tree) mergeAdded(cache *dupCache, d *Node, firstInst bool) {
+	if d.schema != nil {
+		cache.added(d)
+	}
+	if firstInst {
+		t.dupInstNext(d, cache) // do not match this instance next time
+	}
+}
+
+// flushMerge links the pending instances of lv.
+func (t *Tree) flushMerge(lv *mergeLevel) {
+	if len(lv.pend) == 0 {
+		return
+	}
+	if len(lv.pend) == 1 {
+		// one instance: the ordinary insertion (append fast path), not a pass over the level
+		t.insert(lv.parent, lv.pend[0], insertDefault)
+		t.mergeAdded(lv.cache, lv.pend[0], lv.first[0])
+		lv.pend, lv.first = lv.pend[:0], lv.first[:0]
+		return
+	}
+	sib := t.childrenOf(lv.parent)
+	lo := t.schemaIndex(sib, lv.pend[0].schema)
+	hi := lo
+	for hi < len(sib.list) && sib.list[hi].schema == lv.pend[0].schema {
+		hi++
+	}
+	for _, d := range lv.pend {
+		d.inRB = true
+	}
+	t.splice(lv.parent, sib, lo, hi, lv.pend, false)
+	for i, d := range lv.pend {
+		t.mergeAdded(lv.cache, d, lv.first[i])
+	}
+	lv.pend, lv.first = lv.pend[:0], lv.first[:0]
 }
 
 // opaqNext is lyd_find_sibling_opaq_next from the first opaque sibling: the first opaque node
