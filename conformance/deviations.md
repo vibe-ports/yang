@@ -56,7 +56,7 @@ questionable. Format: id · area · libyang behaviour · ours · RFC reference �
 | D-0100 | xpath: internal `yang:lyds_tree` metadata | the first instance of a system-ordered list or leaf-list run with an RB tree (two or more instances) carries libyang's internal `yang:lyds_tree` metadata (value `""`), which the attribute axis returns: `count(//@*)` and `@yang:*` count it, `name(//@*)` can be `yang:lyds_tree` (oracle probe: two `ll2` instances, `count(//@*)` = 1) | the port keeps no `lyds_tree` metadata (port-map, tree_data_sorted.c rows), so the attribute axis sees only the metadata of the data | RFC 7952 §3 (metadata are the annotations instantiated in the data) | ut-xpath/meta-lyds (`waive: [result]`) |
 | D-0101 | data: `lyd_trim_xpath` after an attribute step | `lyd_trim_xpath` decides which nodes are results by looking them up in the xpath set's own hash table whenever the set has one (`lyxp_set.ht`, built once a set holds four items). `moveto_attr` replaces elements by their metadata in place without updating that table, so the table still lists replaced elements: their subtrees are kept as if they were selected. Over the ut-xpath/meta-* data, `//*/@*` keeps `l1/c` | the port's results are the element items of the final set; metadata items are never results, as the set loop of `lyd_trim_xpath` has it | not mirrored: the stale membership is internal state of libyang's set hash table, which the port does not keep, and modelling it would mean tracking that table through every set operation of the evaluator (#190 review) | seq/trim-zm-00 (`waive: [typed]`: the trim step's typed dump) |
 
-## libyang crash cases (D-0012; the diff API rows: no id, no verdict to compare)
+## libyang crash cases (D-0012; the non-XPath API rows: no id, no verdict to compare)
 
 | Input | libyang v5.8.6 | Ours |
 |---|---|---|
@@ -68,6 +68,7 @@ questionable. Format: id · area · libyang behaviour · ours · RFC reference �
 | `string()` of a subtree containing an action node | `LOGINT` (internal error) in `cast_string_recursive` (from the source; lyoracle cannot load an action without its operational parent) | the action is dumped like a container (TestActionStringValue) |
 | `lyd_diff_siblings` / `lyd_diff_tree` of a list key node | `assert(!(schema->flags & LYS_KEY))` in `lyd_diff_siblings_r` (abort in a debug build, undefined otherwise) | LY_EINVAL `Invalid argument a list key "…" (lyd_diff()).` (data/TestDiffKeyRefused) |
 | `lyd_diff_apply_all` of a diff with an opaque node carrying its own `yang:operation="create"` (`<df yang:operation="none"><zz yang:operation="create">1</zz></df>` parsed with unknown opaque) | segmentation fault (oracle exit 139, so no fixture) | the port reads no operation from opaque nodes (port-map), takes the parent's `none` and fails: LY_EINVAL `Failed to find node "/defaults:df/zz" instance in data.` (data/TestApplyOpaqueCreate) |
+| `lyd_validate_all` after loading a base module before another module that augments one of its cases with a default leaf, then removing the case's explicit data | the orphan augmented default causes a segmentation fault (oracle exit 139); `lyd_validate_module` on the same tree succeeds | the orphan default is removed (data/TestValidateAllDropsOrphanAugmentDefault; no golden because the oracle crashes) |
 
 ## Known libyang behaviour (mirrored)
 
