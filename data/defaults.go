@@ -66,6 +66,9 @@ type valCtx struct {
 	// modFirst is lyd_validate's *first2 when it is &first: the first top-level node of the
 	// module being validated when that is not the tree's first node, else nil (see modInsert).
 	modFirst *Node
+	// module is the module of lyd_validate_module: only its data is validated (nil: every
+	// module, lyd_validate_all)
+	module *schema.Module
 }
 
 type getnextKey struct {

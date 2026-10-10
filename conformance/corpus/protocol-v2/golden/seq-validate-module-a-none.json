@@ -1,0 +1,160 @@
+{
+  "context_diagnostics": [],
+  "failed_step": 1,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "vm-a",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "vm-b",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 7,
+    "name": "LY_EVALID"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "opaque",
+          "meta": [],
+          "opaque": {
+            "format": "json",
+            "module": "vm-b",
+            "name": "unknown",
+            "namespace": null,
+            "prefix": "vm-b"
+          },
+          "path": "/vm-b:unknown",
+          "schema": null,
+          "value": {
+            "canonical": "x",
+            "hints": [
+              "string",
+              "num64"
+            ],
+            "type": null,
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Node \"unknown\" not found in the \"vm-b\" module.",
+          "phase": "validate",
+          "schema_path": null,
+          "vecode": 4,
+          "vecode_name": "LYVE_REFERENCE"
+        }
+      ],
+      "do": "validate",
+      "implicit_diff": "{\n  \"vm-a:top\": {\n    \"@\": {\n      \"yang:operation\": \"create\"\n    },\n    \"dflt\": \"a-default\",\n    \"@dflt\": {\n      \"yang:operation\": \"create\"\n    }\n  }\n}\n",
+      "rc": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/vm-a:top",
+          "schema": "/vm-a:top",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/vm-a:top/dflt",
+          "schema": "/vm-a:top/dflt",
+          "value": {
+            "canonical": "a-default",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "opaque",
+          "meta": [],
+          "opaque": {
+            "format": "json",
+            "module": "vm-b",
+            "name": "unknown",
+            "namespace": null,
+            "prefix": "vm-b"
+          },
+          "path": "/vm-b:unknown",
+          "schema": null,
+          "value": {
+            "canonical": "x",
+            "hints": [
+              "string",
+              "num64"
+            ],
+            "type": null,
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "do": "dump",
+      "skipped": true
+    }
+  ],
+  "verdict": "invalid"
+}

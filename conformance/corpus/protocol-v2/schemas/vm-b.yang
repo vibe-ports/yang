@@ -1,0 +1,14 @@
+module vm-b {
+  yang-version 1.1;
+  namespace "urn:vm-b";
+  prefix vb;
+
+  container top {
+    presence "b";
+    leaf need { type string; mandatory true; }
+    leaf dflt { type string; default "b-default"; }
+  }
+  container np {
+    leaf d { type string; default "b-np"; }
+  }
+}

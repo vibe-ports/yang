@@ -84,7 +84,7 @@ parse options, `set` and `delete` nothing else — does not take, and for empty 
 JSON with `yang:operation`), for every step the resulting `typed` dump. The sequence stops at the
 first failing step — rc not LY_SUCCESS or an error-level diagnostic logged (e.g. `lyd_free_tree`
 refusing a list key) — later steps are `{"do", "skipped": true}`; the response adds `failed_step`
-(index or null). `set` is `lyd_new_path` with `LYD_NEW_PATH_UPDATE` only. This is what makes
+(index or null). `set` is `lyd_new_path` with `LYD_NEW_PATH_UPDATE` only. A `validate` step with `module` (an implemented module) is `lyd_validate_module` instead of `lyd_validate_all`; with `final_only` too, `lyd_validate_module_final` (no implicit diff). This is what makes
 `WhenTrue`/`Default`/`New` history observable.
 Steps `diff`, `diff_parse`, `diff_merge`, `diff_apply` and `diff_reverse` work on a second register,
 the diff: `lyd_diff_siblings`/`lyd_diff_tree` of the tree and parsed data, a parse-only diff,

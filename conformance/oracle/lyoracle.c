@@ -1572,7 +1572,7 @@ keys_only(const cJSON *o, const char *allowed, const char *what)
  * sequence never stops at a failing step before a later malformed one is noticed.
  */
 static const char *
-check_step(const cJSON *step)
+check_step(const struct ly_ctx *ctx, const cJSON *step)
 {
     const char *what = str_of(step, "do");
     struct dparams p;
@@ -1581,7 +1581,7 @@ check_step(const cJSON *step)
         die("step without \"do\"%s", NULL);
     }
     keys_only(step, !strcmp(what, "parse") ? "do format data_type data data_file unknown parse_only "
-            "parse_options validate_options" : !strcmp(what, "validate") ? "do data_type validate_options" :
+            "parse_options validate_options" : !strcmp(what, "validate") ? "do data_type validate_options module final_only" :
             !strcmp(what, "edit") ? "do merge merge_file set delete insert_term insert_inner new_meta free_meta format data_type "
             "unknown parse_options" :
             !strcmp(what, "dump") ? "do with_defaults" : !strcmp(what, "dup") ? "do node parent options siblings" :
@@ -1614,7 +1614,19 @@ check_step(const cJSON *step)
             die("parse step needs data%s", NULL);
         }
     } else if (!strcmp(what, "validate")) {
+        const cJSON *fo = cJSON_GetObjectItemCaseSensitive(step, "final_only");
+        const char *mname = str_of(step, "module"); /* request-error unless a string */
+
         dparams_of(step, &p);
+        if (fo && !cJSON_IsBool(fo)) {
+            die("final_only must be a boolean%s", NULL);
+        }
+        if (cJSON_IsTrue(fo) && !mname) {
+            die("final_only needs module%s", NULL);
+        }
+        if (mname && !ly_ctx_get_module_implemented(ctx, mname)) {
+            die("validate module %s not implemented", mname);
+        }
     } else if (!strcmp(what, "edit")) {
         const char *merge = input_of(step, "merge"), *del = str_of(step, "delete");
         const cJSON *set = cJSON_GetObjectItemCaseSensitive(step, "set");
@@ -1815,12 +1827,25 @@ static LY_ERR
 step_validate(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *diag, cJSON *s)
 {
     struct dparams p;
+    const char *mname = str_of(step, "module");
+    int final = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(step, "final_only"));
     struct lyd_node *diff = NULL;
     char *str = NULL;
     LY_ERR rc;
 
     dparams_of(step, &p);
-    rc = lyd_validate_all(tree, ctx, p.vopts, &diff);
+    if (mname) {
+        /* lyd_validate_module, or lyd_validate_module_final with final_only */
+        const struct lys_module *mod = ly_ctx_get_module_implemented(ctx, mname);
+
+        if (final) {
+            rc = lyd_validate_module_final(*tree, mod, p.vopts);
+        } else {
+            rc = lyd_validate_module(tree, mod, p.vopts, &diff);
+        }
+    } else {
+        rc = lyd_validate_all(tree, ctx, p.vopts, &diff);
+    }
     collect(ctx, diag, "validate");
     if (diff) {
         lyd_print_mem(&str, diff, LYD_JSON, LYD_PRINT_WD_ALL | LYD_PRINT_SIBLINGS);
@@ -2094,7 +2119,7 @@ op_sequence(const cJSON *req)
         die("sequence needs a steps array%s", NULL);
     }
     cJSON_ArrayForEach(step, steps) {
-        check_step(step);
+        check_step(ctx, step);
     }
     out = cJSON_AddArrayToObject(resp, "steps");
     cJSON_ArrayForEach(step, steps) {

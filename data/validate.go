@@ -12,6 +12,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/vibe-ports/yang"
@@ -89,10 +90,14 @@ func (vc *valCtx) firstModuleSibling(top []*Node, start int, mod *schema.Module)
 }
 
 // modules lists the modules lyd_validate traverses: the implemented ones in context order
-// (lyd_mod_next_module), or with Present those of the top-level data in tree order
-// (lyd_data_next_module, which stops at a top-level node of no module).
+// (lyd_mod_next_module), only vc.module for lyd_validate_module, or with Present those of the
+// top-level data in tree order (lyd_data_next_module, which stops at a top-level node of no
+// module).
 func (vc *valCtx) modules() []*schema.Module {
 	var out []*schema.Module
+	if vc.module != nil {
+		return []*schema.Module{vc.module}
+	}
 	if !vc.opts.Present {
 		for _, m := range vc.t.set.Modules {
 			if m.Implemented {
@@ -164,7 +169,9 @@ func (vc *valCtx) validate(validateSubtree bool) error {
 			top := vc.topList()
 			start := vc.firstModuleSibling(top, 0, mod)
 			if vc.modFirst != nil {
-				start = vc.modStart() // LY_LIST_FOR(*first2): a node misplaced before it is not walked
+				// first = *first2; lyd_first_module_sibling(&first, mod): an implicit node put right
+				// before first is found again, one behind data of another module is not walked
+				start = vc.firstModuleSibling(top, vc.modStart(), mod)
 			}
 			for i := start; i < len(top) && ownerModule(vc.t.set, top[i]) == mod; i++ {
 				if err := vc.validateTree(top[i]); err != nil {
@@ -707,12 +714,57 @@ func (lc *lydCtx) validateParsed() error { return lc.valCtx().validate(false) }
 // validateAll is lyd_validate_all over the tree t (validate_subtree): the queues are its own.
 // diff receives the implicit diff (design 07 D8b), nil for none.
 func (t *Tree) validateAll(ctx context.Context, o ValidateOptions, b Budget, diff func(*Node, diffOp) error) ([]yang.Diagnostic, error) {
+	return t.validateWith(ctx, nil, o, b, diff)
+}
+
+// validateModule is lyd_validate_module: lyd_validate_all for the data of the implemented module
+// mod only (its top-level nodes, their implicit nodes and descendants, its final checks).
+// LYD_VALIDATE_PRESENT is refused as libyang refuses it (LY_EINVAL).
+func (t *Tree) validateModule(ctx context.Context, mod *schema.Module, o ValidateOptions, b Budget,
+	diff func(*Node, diffOp) error) ([]yang.Diagnostic, error) {
+	if o.Present {
+		return nil, argErr("!(val_opts & LYD_VALIDATE_PRESENT)", "lyd_validate_module")
+	}
+	return t.validateWith(ctx, mod, o, b, diff)
+}
+
+// validateModuleFinal is lyd_validate_module_final: only the final checks (lyd_validate_final_r)
+// of the top-level data of mod, on a tree that is final. LYD_VALIDATE_PRESENT is refused.
+func (t *Tree) validateModuleFinal(ctx context.Context, mod *schema.Module, o ValidateOptions, b Budget) ([]yang.Diagnostic, error) {
+	if o.Present {
+		return nil, argErr("!(val_opts & (LYD_VALIDATE_PRESENT | LYD_VALIDATE_NOT_FINAL))", "lyd_validate_module_final")
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	vc := &valCtx{t: t, log: &logger{set: t.set}, opts: o, module: mod, budget: xpathBudget{ctx: ctx, max: b.MaxXPathSteps}}
+	// lyd_mod_next_module: the first top-level node of mod, none (an empty sibling set, so
+	// only mod's schema-level checks run) when mod has no data
+	top := vc.topList()
+	first := slices.IndexFunc(top, func(n *Node) bool { return ownerModule(t.set, n) == mod })
+	if first < 0 {
+		// no data of mod: libyang's siblings are NULL, so the whens of absent mandatory and
+		// min-elements nodes are evaluated over their temporary node alone, without the other
+		// modules' data
+		vc.t = newTree(t.set)
+		top, first = nil, 0
+	}
+	err := vc.finalR(nil, top[first:], nil, mod)
+	if err == nil || errors.Is(err, errLogged) {
+		err = vc.log.result()
+	}
+	return vc.log.diags, err
+}
+
+// validateWith is lyd_validate with validate_subtree over every module (mod nil) or mod only.
+func (t *Tree) validateWith(ctx context.Context, mod *schema.Module, o ValidateOptions, b Budget,
+	diff func(*Node, diffOp) error) ([]yang.Diagnostic, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	charged := 0 // implicit nodes created by this validation (Budget.MaxNodes)
 	vc := &valCtx{t: t, log: &logger{set: t.set}, opts: o, nodeWhen: &nodeSet{}, nodeTypes: &nodeSet{}, metaTypes: &[]*meta{}, diff: diff,
-		budget: xpathBudget{ctx: ctx, max: b.MaxXPathSteps}}
+		budget: xpathBudget{ctx: ctx, max: b.MaxXPathSteps}, module: mod}
 	vc.charge = func() error {
 		charged++
 		if limit := orDefault(b.MaxNodes, DefaultMaxNodes); charged > limit {

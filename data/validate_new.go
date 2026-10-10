@@ -34,7 +34,8 @@ func (vc *valCtx) validateNew(parent *Node, sparent *schema.Node, mod *schema.Mo
 	}
 	nodes := slices.Clone(sib.list) // autodelete only removes; removed nodes are skipped below
 	if mod != nil {
-		nodes = slices.DeleteFunc(nodes, func(n *Node) bool { return n.schema.Module != mod })
+		// lyd_owner_module: an augment's node in mod's top-level choice is mod's data
+		nodes = slices.DeleteFunc(nodes, func(n *Node) bool { return ownerModule(vc.t.set, n) != mod })
 	}
 	dups := dupIndex{sib: sib}
 	explicit := map[*schema.Node]bool{}

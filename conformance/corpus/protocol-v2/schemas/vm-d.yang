@@ -1,0 +1,11 @@
+module vm-d {
+  yang-version 1.1;
+  namespace "urn:vm-d";
+  prefix vd;
+
+  import vm-c { prefix vc; }
+
+  augment "/vc:ch/vc:c1" {
+    leaf b1 { type string; default "bd"; }
+  }
+}

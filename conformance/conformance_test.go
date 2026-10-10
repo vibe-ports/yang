@@ -458,6 +458,10 @@ func TestOracleRequestErrors(t *testing.T) {
 		{"merge option on set", `{"do":"edit","set":{"path":"/pv2:c/mode","value":"on"},"format":"garbage"}`, `key "format" not allowed`},
 		{"merge option on delete", `{"do":"edit","delete":"/pv2:c/mode","data_type":"config"}`, `key "data_type" not allowed`},
 		{"malformed step after a failing one", `{"do":"edit","delete":"/pv2:c/nope"},{"do":"dump","with_defaults":"bogus"}`, `unknown with_defaults mode`},
+		{"final_only without module after a failing step", `{"do":"edit","delete":"/pv2:c/nope"},{"do":"validate","final_only":true}`, `final_only needs module`},
+		{"non-string module after a failing step", `{"do":"edit","delete":"/pv2:c/nope"},{"do":"validate","module":5}`, `field "module" must be a string`},
+		{"non-boolean final_only after a failing step", `{"do":"edit","delete":"/pv2:c/nope"},{"do":"validate","module":"pv2","final_only":"yes"}`, `final_only must be a boolean`},
+		{"unknown module after a failing step", `{"do":"edit","delete":"/pv2:c/nope"},{"do":"validate","module":"nope"}`, `validate module nope not implemented`},
 	} {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		cmd := exec.CommandContext(ctx, oracle) //nolint:gosec // test runs the repo's own oracle binary

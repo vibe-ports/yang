@@ -1,0 +1,16 @@
+fixtures:
+  - id: seq/validate-module-a-leafref
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # lyd_validate_module: module vm-a alone with its own leafref broken
+    rfc: []   # libyang lyd_validate_module / lyd_validate_module_final: no RFC behaviour
+    areas: [validation]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: vm-a}, {name: vm-b}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {"do": "parse", "format": "json", "data_type": "config", "parse_only": true, "data": "{\"vm-a:top\": {\"x\": \"1\"}, \"vm-a:ref\": \"2\", \"vm-b:top\": {\"need\": \"ok\"}}"}
+        - {"do": "validate", "data_type": "config", "module": "vm-a"}
+        - {"do": "dump"}
+    golden: golden/seq-validate-module-a-leafref.json

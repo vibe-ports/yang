@@ -1,0 +1,18 @@
+fixtures:
+  - id: seq/validate-module-case-augment
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # lyd_validate_module: the default an augment adds to a case is deleted with the case data, by owner module
+    rfc: []   # libyang lyd_validate_module / lyd_validate_module_final: no RFC behaviour
+    areas: [validation]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: vm-c}, {name: vm-d}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {"do": "parse", "format": "json", "data_type": "config", "parse_only": true, "data": "{\"vm-c:a1\": \"x\"}"}
+        - {"do": "validate", "data_type": "config"}
+        - {"do": "edit", "delete": "/vm-c:a1"}
+        - {"do": "validate", "data_type": "config", "module": "vm-c"}
+        - {"do": "dump"}
+    golden: golden/seq-validate-module-case-augment.json

@@ -1,0 +1,13 @@
+module vm-a {
+  yang-version 1.1;
+  namespace "urn:vm-a";
+  prefix va;
+
+  container top {
+    leaf x { type string; }
+    leaf dflt { type string; default "a-default"; }
+  }
+  leaf ref {
+    type leafref { path "/va:top/va:x"; }
+  }
+}

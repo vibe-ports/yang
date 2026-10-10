@@ -1,0 +1,16 @@
+fixtures:
+  - id: seq/validate-module-final-a
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # lyd_validate_module: final checks only for vm-a: no implicit nodes
+    rfc: []   # libyang lyd_validate_module / lyd_validate_module_final: no RFC behaviour
+    areas: [validation]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: vm-a}, {name: vm-b}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {"do": "parse", "format": "json", "data_type": "config", "parse_only": true, "data": "{\"vm-a:top\": {\"x\": \"1\"}, \"vm-a:ref\": \"1\", \"vm-b:top\": {\"dflt\": \"set\"}}"}
+        - {"do": "validate", "data_type": "config", "module": "vm-a", "final_only": true}
+        - {"do": "dump"}
+    golden: golden/seq-validate-module-final-a.json

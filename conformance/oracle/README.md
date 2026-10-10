@@ -318,7 +318,7 @@ becomes observable. Context fields as in `schema`; step fields are per step (not
 | do | fields | libyang |
 |---|---|---|
 | `parse` | `format`, `data_type` (datastore types only), `data`/`data_file`, `unknown`, `parse_only`, `parse_options`, `validate_options` | as op `data`; on success replaces the tree |
-| `validate` | `data_type`, `validate_options` (validate flags of the preset) | `lyd_validate_all(&tree, ctx, opts, &diff)` |
+| `validate` | `data_type`, `validate_options` (validate flags of the preset), `module`, `final_only` | `lyd_validate_all(&tree, ctx, opts, &diff)`; with `module` (an implemented module name) `lyd_validate_module(&tree, mod, opts, &diff)`, with `final_only` too `lyd_validate_module_final(tree, mod, opts)` (no diff) |
 | `edit` | exactly one of `merge` / `merge_file` (+ `format`, `data_type`, `unknown`, `parse_options`, merge only) | `lyd_parse_data(… LYD_PARSE_ONLY …)` + `lyd_merge_siblings(LYD_MERGE_DESTRUCT)` |
 | | `set: {"path", "value"}` only (value in JSON format, omit for containers/lists) | `lyd_new_path(tree, ctx, path, value, LYD_NEW_PATH_UPDATE)` (an existing default leaf-list instance is left untouched: use `insert_term` to make it explicit) |
 | | `delete: "<path>"` only | `lyd_find_path` + `lyd_free_tree` (`LY_EINCOMPLETE` if only a parent exists; a list key is refused, see below) |

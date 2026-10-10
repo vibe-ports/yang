@@ -1,0 +1,18 @@
+module vm-e {
+  yang-version 1.1;
+  namespace "urn:vm-e";
+  prefix ve;
+
+  import vm-f { prefix vf; }
+
+  leaf m {
+    when "/vf:flag";
+    type string;
+    mandatory true;
+  }
+  leaf-list ml {
+    when "/vf:flag";
+    type string;
+    min-elements 1;
+  }
+}

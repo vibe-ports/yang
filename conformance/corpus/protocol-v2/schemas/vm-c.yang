@@ -1,0 +1,14 @@
+module vm-c {
+  yang-version 1.1;
+  namespace "urn:vm-c";
+  prefix vc;
+
+  choice ch {
+    case c1 {
+      leaf a1 { type string; }
+    }
+    case c2 {
+      leaf a2 { type string; }
+    }
+  }
+}

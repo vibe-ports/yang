@@ -1,0 +1,16 @@
+fixtures:
+  - id: seq/validate-module-when-absent
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # lyd_validate_module: the same module validated in full
+    rfc: []   # libyang lyd_validate_module / lyd_validate_module_final: no RFC behaviour
+    areas: [validation]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: vm-f}, {name: vm-e}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {"do": "parse", "format": "json", "data_type": "config", "parse_only": true, "data": "{\"vm-f:flag\": \"x\"}"}
+        - {"do": "validate", "data_type": "config", "module": "vm-e"}
+        - {"do": "dump"}
+    golden: golden/seq-validate-module-when-absent.json
