@@ -1,0 +1,21 @@
+fixtures:
+  - id: nmda/min-elements-config-invalid
+    dir: nmda
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # PLAN §1 Datastores: min-elements under config, invalid
+    rfc: ["RFC7950#7.7.5"]
+    areas: [validation, nmda]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: nm}]
+      context_options: [no_yanglibrary]
+      format: json
+      data_type: config
+      unknown: reject
+      data: "{\"nm:mn\": {\"v\": [\"a\"]}}"
+    golden: golden/min-elements-config-invalid.json
+    assert:
+      verdict: invalid
+      diagnostics: [{level: error, vecode_name: LYVE_DATA}]
+      rfc: ["RFC7950#7.7.5"]
+      deviation: null

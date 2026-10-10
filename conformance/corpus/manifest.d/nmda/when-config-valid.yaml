@@ -1,0 +1,20 @@
+fixtures:
+  - id: nmda/when-config-valid
+    dir: nmda
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # PLAN §1 Datastores: when under config, valid
+    rfc: ["RFC7950#8.3.3"]
+    areas: [validation, nmda]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: nm}]
+      context_options: [no_yanglibrary]
+      format: json
+      data_type: config
+      unknown: reject
+      data: "{\"nm:c\": {\"flag\": true, \"w\": \"x\"}}"
+    golden: golden/when-config-valid.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#8.3.3"]
+      deviation: null

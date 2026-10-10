@@ -1,0 +1,106 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "nm",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"nm:c\": {\n    \"ref\": [\n      {\n        \"k\": \"a\"\n      }\n    ],\n    \"ii\": \"/nm:c/ref[k='a']\"\n  }\n}\n",
+    "xml": "<c xmlns=\"urn:tests:nm\">\n  <ref>\n    <k>a</k>\n  </ref>\n  <ii xmlns:nm=\"urn:tests:nm\">/nm:c/nm:ref[nm:k='a']</ii>\n</c>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-yang-schema-mount:schema-mounts",
+      "schema": "/ietf-yang-schema-mount:schema-mounts",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/nm:c",
+      "schema": "/nm:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/nm:c/ref[k='a']",
+      "schema": "/nm:c/ref",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/nm:c/ref[k='a']/k",
+      "schema": "/nm:c/ref/k",
+      "value": {
+        "canonical": "a",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/nm:c/ii",
+      "schema": "/nm:c/ii",
+      "value": {
+        "canonical": "/nm:c/ref[k='a']",
+        "type": "instance-identifier",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

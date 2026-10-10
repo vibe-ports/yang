@@ -1,0 +1,21 @@
+fixtures:
+  - id: nmda/unique-oper-invalid
+    dir: nmda
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # PLAN §1 Datastores: unique under data-operational, invalid
+    rfc: ["RFC7950#7.8.3", "RFC8342#5.3"]
+    areas: [validation, nmda]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: nm}]
+      context_options: [no_yanglibrary]
+      format: json
+      data_type: data-operational
+      unknown: reject
+      data: "{\"nm:un\": {\"e\": [{\"k\": \"1\", \"u\": \"a\"}, {\"k\": \"2\", \"u\": \"a\"}]}}"
+    golden: golden/unique-oper-invalid.json
+    assert:
+      verdict: valid
+      diagnostics: [{level: warning, vecode_name: LYVE_SUCCESS}]
+      rfc: ["RFC7950#7.8.3", "RFC8342#5.3"]
+      deviation: null

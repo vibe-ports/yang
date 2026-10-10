@@ -1,0 +1,165 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [
+    {
+      "apptag": null,
+      "code": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "data_path": null,
+      "level": "warning",
+      "line": 0,
+      "msg": "Duplicate instance of \"e\".",
+      "phase": "data",
+      "schema_path": null,
+      "vecode": 0,
+      "vecode_name": "LYVE_SUCCESS"
+    },
+    {
+      "apptag": null,
+      "code": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "data_path": null,
+      "level": "warning",
+      "line": 0,
+      "msg": "Duplicate instance of \"e\".",
+      "phase": "data",
+      "schema_path": null,
+      "vecode": 0,
+      "vecode_name": "LYVE_SUCCESS"
+    }
+  ],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "nm",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"nm:dk\": {\n    \"e\": [\n      {\n        \"k\": \"1\"\n      },\n      {\n        \"k\": \"1\"\n      }\n    ]\n  }\n}\n",
+    "xml": "<dk xmlns=\"urn:tests:nm\">\n  <e>\n    <k>1</k>\n  </e>\n  <e>\n    <k>1</k>\n  </e>\n</dk>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-yang-schema-mount:schema-mounts",
+      "schema": "/ietf-yang-schema-mount:schema-mounts",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/nm:c",
+      "schema": "/nm:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/nm:dk",
+      "schema": "/nm:dk",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/nm:dk/e[k='1']",
+      "schema": "/nm:dk/e",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/nm:dk/e[k='1']/k",
+      "schema": "/nm:dk/e/k",
+      "value": {
+        "canonical": "1",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/nm:dk/e[k='1']",
+      "schema": "/nm:dk/e",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/nm:dk/e[k='1']/k",
+      "schema": "/nm:dk/e/k",
+      "value": {
+        "canonical": "1",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

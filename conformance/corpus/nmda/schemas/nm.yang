@@ -1,0 +1,61 @@
+module nm {
+  yang-version 1.1;
+  namespace "urn:tests:nm";
+  prefix nm;
+
+  container c {
+    leaf flag { type boolean; }
+    leaf m {
+      must "../flag = 'true'";
+      type string;
+    }
+    leaf w {
+      when "../flag = 'true'";
+      type string;
+    }
+    list ref {
+      key "k";
+      leaf k { type string; }
+    }
+    leaf lr {
+      type leafref { path "../ref/k"; }
+    }
+    leaf ii { type instance-identifier; }
+  }
+  container md {
+    presence "mandatory leaf";
+    leaf x { type string; mandatory true; }
+  }
+  container mn {
+    presence "min-elements";
+    leaf-list v { type string; min-elements 2; }
+  }
+  container mx {
+    presence "max-elements";
+    leaf-list v { type string; max-elements 1; }
+  }
+  container un {
+    presence "unique";
+    list e {
+      key "k";
+      unique "u";
+      leaf k { type string; }
+      leaf u { type string; }
+    }
+  }
+  container dk {
+    presence "duplicate key";
+    list e {
+      key "k";
+      leaf k { type string; }
+    }
+  }
+  container ch {
+    presence "mandatory choice";
+    choice c {
+      mandatory true;
+      leaf a { type string; }
+      leaf b { type string; }
+    }
+  }
+}

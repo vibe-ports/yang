@@ -1,0 +1,21 @@
+fixtures:
+  - id: nmda/leafref-oper-invalid
+    dir: nmda
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # PLAN §1 Datastores: leafref under data-operational, invalid
+    rfc: ["RFC7950#9.9", "RFC8342#5.3"]
+    areas: [validation, nmda]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: nm}]
+      context_options: [no_yanglibrary]
+      format: json
+      data_type: data-operational
+      unknown: reject
+      data: "{\"nm:c\": {\"ref\": [{\"k\": \"a\"}], \"lr\": \"b\"}}"
+    golden: golden/leafref-oper-invalid.json
+    assert:
+      verdict: invalid
+      diagnostics: [{level: error, vecode_name: LYVE_DATA}]
+      rfc: ["RFC7950#9.9", "RFC8342#5.3"]
+      deviation: null

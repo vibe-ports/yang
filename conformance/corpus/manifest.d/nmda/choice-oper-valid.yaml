@@ -1,0 +1,20 @@
+fixtures:
+  - id: nmda/choice-oper-valid
+    dir: nmda
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # PLAN §1 Datastores: choice under data-operational, valid
+    rfc: ["RFC7950#7.9.4", "RFC8342#5.3"]
+    areas: [validation, nmda]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: nm}]
+      context_options: [no_yanglibrary]
+      format: json
+      data_type: data-operational
+      unknown: reject
+      data: "{\"nm:ch\": {\"a\": \"x\"}}"
+    golden: golden/choice-oper-valid.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.9.4", "RFC8342#5.3"]
+      deviation: null

@@ -1,0 +1,37 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [
+    {
+      "apptag": "instance-required",
+      "code": {
+        "err": 5,
+        "name": "LY_ENOTFOUND"
+      },
+      "data_path": "/nm:c/ii",
+      "level": "error",
+      "line": 0,
+      "msg": "Invalid instance-identifier \"/nm:c/ref[k='b']\" value - required instance not found.",
+      "phase": "data",
+      "schema_path": null,
+      "vecode": 9,
+      "vecode_name": "LYVE_DATA"
+    }
+  ],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "nm",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 5,
+    "name": "LY_ENOTFOUND"
+  },
+  "tree": null,
+  "verdict": "invalid"
+}

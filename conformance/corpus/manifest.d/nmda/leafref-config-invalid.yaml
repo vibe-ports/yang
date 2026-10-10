@@ -1,0 +1,21 @@
+fixtures:
+  - id: nmda/leafref-config-invalid
+    dir: nmda
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # PLAN §1 Datastores: leafref under config, invalid
+    rfc: ["RFC7950#9.9"]
+    areas: [validation, nmda]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: nm}]
+      context_options: [no_yanglibrary]
+      format: json
+      data_type: config
+      unknown: reject
+      data: "{\"nm:c\": {\"ref\": [{\"k\": \"a\"}], \"lr\": \"b\"}}"
+    golden: golden/leafref-config-invalid.json
+    assert:
+      verdict: invalid
+      diagnostics: [{level: error, vecode_name: LYVE_DATA}]
+      rfc: ["RFC7950#9.9"]
+      deviation: null

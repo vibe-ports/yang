@@ -1,0 +1,21 @@
+fixtures:
+  - id: nmda/unique-config-invalid
+    dir: nmda
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # PLAN §1 Datastores: unique under config, invalid
+    rfc: ["RFC7950#7.8.3"]
+    areas: [validation, nmda]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: nm}]
+      context_options: [no_yanglibrary]
+      format: json
+      data_type: config
+      unknown: reject
+      data: "{\"nm:un\": {\"e\": [{\"k\": \"1\", \"u\": \"a\"}, {\"k\": \"2\", \"u\": \"a\"}]}}"
+    golden: golden/unique-config-invalid.json
+    assert:
+      verdict: invalid
+      diagnostics: [{level: error, vecode_name: LYVE_DATA}]
+      rfc: ["RFC7950#7.8.3"]
+      deviation: null

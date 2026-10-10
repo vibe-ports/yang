@@ -1,0 +1,21 @@
+fixtures:
+  - id: nmda/mandatory-oper-invalid
+    dir: nmda
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # PLAN §1 Datastores: mandatory under data-operational, invalid
+    rfc: ["RFC7950#7.6.5", "RFC8342#5.3"]
+    areas: [validation, nmda]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: nm}]
+      context_options: [no_yanglibrary]
+      format: json
+      data_type: data-operational
+      unknown: reject
+      data: "{\"nm:md\": {}}"
+    golden: golden/mandatory-oper-invalid.json
+    assert:
+      verdict: valid
+      diagnostics: [{level: warning, vecode_name: LYVE_SUCCESS}]
+      rfc: ["RFC7950#7.6.5", "RFC8342#5.3"]
+      deviation: null

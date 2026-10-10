@@ -1,0 +1,20 @@
+fixtures:
+  - id: nmda/min-elements-config-valid
+    dir: nmda
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # PLAN §1 Datastores: min-elements under config, valid
+    rfc: ["RFC7950#7.7.5"]
+    areas: [validation, nmda]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: nm}]
+      context_options: [no_yanglibrary]
+      format: json
+      data_type: config
+      unknown: reject
+      data: "{\"nm:mn\": {\"v\": [\"a\", \"b\"]}}"
+    golden: golden/min-elements-config-valid.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.7.5"]
+      deviation: null

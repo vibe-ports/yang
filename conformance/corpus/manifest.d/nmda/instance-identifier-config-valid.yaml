@@ -1,0 +1,20 @@
+fixtures:
+  - id: nmda/instance-identifier-config-valid
+    dir: nmda
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # PLAN §1 Datastores: instance-identifier under config, valid
+    rfc: ["RFC7950#9.13"]
+    areas: [validation, nmda]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: nm}]
+      context_options: [no_yanglibrary]
+      format: json
+      data_type: config
+      unknown: reject
+      data: "{\"nm:c\": {\"ref\": [{\"k\": \"a\"}], \"ii\": \"/nm:c/ref[k='a']\"}}"
+    golden: golden/instance-identifier-config-valid.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.13"]
+      deviation: null
