@@ -1,0 +1,51 @@
+{
+  "context_diagnostics": [],
+  "failed_step": 0,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 3,
+    "name": "LY_EINVAL"
+  },
+  "steps": [
+    {
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 3,
+            "name": "LY_EINVAL"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Missing list \"l1\" keys.",
+          "phase": "edit",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "do": "edit",
+      "rc": {
+        "err": 3,
+        "name": "LY_EINVAL"
+      },
+      "typed": []
+    },
+    {
+      "do": "dump",
+      "skipped": true
+    }
+  ],
+  "verdict": "invalid"
+}

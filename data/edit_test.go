@@ -48,8 +48,11 @@ func typedLine(set *schema.Set, n *Node) string {
 		}
 	}
 	s := lydPath(set, n, false) + " " + strings.Join(fl, ",")
-	if n.isTerm() {
+	switch {
+	case n.isTerm():
 		s += " = " + n.value.Canonical()
+	case n.opaq != nil:
+		s += " = " + n.opaq.Value // the oracle's typed dump gives an opaque node's value too
 	}
 	return s
 }
@@ -65,11 +68,13 @@ func typedDump(tr *Tree) []string {
 }
 
 type goldenStep struct {
+	Skipped     bool `json:"skipped"`
 	Diagnostics []struct {
-		Msg        string  `json:"msg"`
-		VecodeName string  `json:"vecode_name"`
-		DataPath   *string `json:"data_path"`
-		SchemaPath *string `json:"schema_path"`
+		Code       struct{ Name string } `json:"code"`
+		Msg        string                `json:"msg"`
+		VecodeName string                `json:"vecode_name"`
+		DataPath   *string               `json:"data_path"`
+		SchemaPath *string               `json:"schema_path"`
 	} `json:"diagnostics"`
 	RC    struct{ Name string } `json:"rc"`
 	Typed []struct {
@@ -79,6 +84,8 @@ type goldenStep struct {
 			Canonical string `json:"canonical"`
 		} `json:"value"`
 	} `json:"typed"`
+	Tree   struct{ JSON, XML string } `json:"tree"`
+	Change struct{ Name string }      `json:"change"`
 }
 
 func (g goldenStep) dump() []string {

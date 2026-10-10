@@ -322,10 +322,14 @@ becomes observable. Context fields as in `schema`; step fields are per step (not
 | `edit` | exactly one of `merge` / `merge_file` (+ `format`, `data_type`, `unknown`, `parse_options`, merge only) | `lyd_parse_data(… LYD_PARSE_ONLY …)` + `lyd_merge_siblings(LYD_MERGE_DESTRUCT)` |
 | | `set: {"path", "value"}` only (value in JSON format, omit for containers/lists) | `lyd_new_path(tree, ctx, path, value, LYD_NEW_PATH_UPDATE)` (an existing default leaf-list instance is left untouched: use `insert_term` to make it explicit) |
 | | `delete: "<path>"` only | `lyd_find_path` + `lyd_free_tree` (`LY_EINCOMPLETE` if only a parent exists; a list key is refused, see below) |
-| | `insert_term: {"module" \| "parent", "name", "value"}` only | `lyd_new_term` (`module`: top level, then `lyd_insert_sibling`; `parent`: path of an existing node, new child) |
-| | `insert_inner: {"module" \| "parent", "name"}` only | `lyd_new_inner` (container/list without keys), inserted like `insert_term` |
+| | `insert_term: {"module", "parent" \| "parent_opaq", "name", "value", "options"}` only | `lyd_new_term` with `options` (`output store_only canon`: LYD_NEW_VAL_*); a module and/or a parent: `parent` is the path of an existing node, `parent_opaq` the name of a top-level opaque node (with a module: libyang searches its top level); without a parent the node is inserted with `lyd_insert_sibling` |
+| | `insert_inner: {"module", "parent" \| "parent_opaq", "name", "options"}` only | `lyd_new_inner` (`options`: `output`), inserted like `insert_term` |
+| | `insert_list: {"module", "parent" \| "parent_opaq", "name", "keys", "options"}` only | `lyd_new_list3` (`keys`: array of strings or nulls, at most 16; absent: a NULL array; fewer values than the list's keys: request-error), inserted like `insert_term` |
+| | `insert_list2: {"module", "parent" \| "parent_opaq", "name", "keys", "options"}` only | `lyd_new_list2` (`keys`: the predicates string, absent: NULL), inserted like `insert_term` |
+| | `insert_opaq: {"parent" \| "parent_opaq", "name", "value", "prefix", "module", "xml"}` only | `lyd_new_opaq` (`module`: the module name), with `xml: true` `lyd_new_opaq2` (`module`: the namespace); top level: `lyd_insert_sibling` |
 | | `new_meta: {"node", "name", "value"}` only (`name` = `module:name`, value in JSON format) | `lyd_find_path` + `lyd_new_meta(NULL, node, NULL, name, value, 0, NULL)` |
 | | `free_meta: {"node", "name"}` only (`name` = `module:name`) | `lyd_find_path` + `lyd_free_meta_single(lyd_find_meta(node->meta, NULL, name))` (nothing found: nothing freed) |
+| `change_term` | `node` (path), `value`, `canon` (bool) | `lyd_change_term` (`canon`: `lyd_change_term_canon`) of the node; `change` = its rc, where `LY_EEXIST` (only the default flag changed) and `LY_ENOT` (no change) are results and the step succeeds (diagnostics phase `edit`) |
 | `dump` | `with_defaults` | `tree` = `{"json", "xml"}` as op `data` |
 | `link` | — | `lyd_leafref_link_node_tree(tree)` (`LY_EDENIED` without the `leafref_linking` context option) |
 | `links` | — | `leafref_links`: the record of every term node that has one (`lyd_leafref_get_links`), in DFS order: `{"node", "leafref_nodes", "target_nodes"}` as `lyd_path(LYD_PATH_STD)` lists in record order |
@@ -344,7 +348,7 @@ executed `diff*` step reports it after the call as `diff` (`{"json", "xml"}` pri
 `LYD_PRINT_WD_ALL`, as op `diff`, or null) and `diff_typed` (its typed dump). A `node`, `data_node`,
 `src_node` or `parent` path that selects nothing is a request-error raised when the step runs.
 
-`insert_term` / `insert_inner` with a `parent` path, and `new_meta` / `free_meta` with a `node` path, that does not exist in the tree is a request-error raised when the step runs (not in the pre-check).
+An `insert_*` edit with a `parent` path or a `parent_opaq` name, and `new_meta` / `free_meta` with a `node` path, that does not exist in the tree is a request-error raised when the step runs (not in the pre-check).
 
 All steps are checked before the first runs (unknown `do`, keys not listed in the table for that
 step or edit kind or in `set` — matched as whole names, an empty key never matches — missing/extra

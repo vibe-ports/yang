@@ -39,6 +39,10 @@ var seqUnsupported = map[string]string{
 	"links":        "(leafref links, LY_CTX_LEAFREF_LINKING, are not exported by package data)",
 	"insert_term":  "(lyd_new_term + lyd_insert_sibling: package data exports only NewPath)",
 	"insert_inner": "(lyd_new_inner + lyd_insert_sibling: package data exports only NewPath)",
+	"insert_list":  "(lyd_new_list3 + lyd_insert_sibling: package data exports only NewPath)",
+	"insert_list2": "(lyd_new_list2 + lyd_insert_sibling: package data exports only NewPath)",
+	"insert_opaq":  "(lyd_new_opaq / lyd_new_opaq2 + lyd_insert_sibling: not exported by package data)",
+	"change_term":  "(lyd_change_term / lyd_change_term_canon are not exported by package data)",
 }
 
 func set(keys ...string) map[string]bool {
