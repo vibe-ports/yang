@@ -529,7 +529,19 @@ type mergeLevel struct {
 // (nil: the top level of t).
 func (t *Tree) mergeSibling(lv *mergeLevel, src *Node) {
 	if len(lv.pend) > 0 {
-		if last := lv.pend[len(lv.pend)-1]; src.schema != last.schema || compareSorted(last, src) >= 0 {
+		last := lv.pend[len(lv.pend)-1]
+		c := 1
+		if src.schema == last.schema {
+			c = compareSorted(last, src)
+		}
+		switch {
+		case c == 0 && !isDupInstList(src.schema):
+			// a source with duplicate instances (parsed only): the equal one matches the pending
+			// copy, the first instance of its value (none was in the destination), as it would
+			// once linked; the batch goes on
+			t.mergeMatch(last, src)
+			return
+		case c >= 0:
 			t.flushMerge(lv)
 		}
 	}
@@ -560,6 +572,12 @@ func (t *Tree) mergeSibling(lv *mergeLevel, src *Node) {
 		t.mergeAdded(cache, d, firstInst)
 		return
 	}
+	t.mergeMatch(match, src)
+}
+
+// mergeMatch is lyd_merge_sibling_r for src matched by match: a leaf takes src's value, children
+// are merged recursively.
+func (t *Tree) mergeMatch(match, src *Node) {
 	switch {
 	case match.schema == nil:
 		if !compareSingle(t, src, match, false) {
@@ -592,6 +610,13 @@ func (t *Tree) mergeAdded(cache *dupCache, d *Node, firstInst bool) {
 // flushMerge links the pending instances of lv.
 func (t *Tree) flushMerge(lv *mergeLevel) {
 	if len(lv.pend) == 0 {
+		return
+	}
+	if len(lv.pend) == 1 {
+		// one instance: the ordinary insertion (append fast path), not a pass over the level
+		t.insert(lv.parent, lv.pend[0], insertDefault)
+		t.mergeAdded(lv.cache, lv.pend[0], lv.first[0])
+		lv.pend, lv.first = lv.pend[:0], lv.first[:0]
 		return
 	}
 	sib := t.childrenOf(lv.parent)
