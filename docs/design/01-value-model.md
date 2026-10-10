@@ -66,7 +66,7 @@ type UnionValue struct {
   Ported: the `ietf-inet-types` address/prefix plugins, the `ietf-yang-types` `date-and-time`,
   `date`/`date-no-zone`, `time`/`time-no-zone`, hex-string family and `xpath1.0` plugins,
   `yang:instance-identifier-keys`, libnetconf2 `time-period` and ietf-netconf-acm
-  `node-instance-identifier` (U-0010 is closed).
+  `node-instance-identifier` (all listed handlers are ported).
 
 ## Revised after M1
 What the slice changed, and why:
@@ -79,8 +79,8 @@ What the slice changed, and why:
 - **Leafref stores as its target type** (the realtype), and `needsTree` replaces the M0 idea that
   every reference value is resolved in a later pass: only values whose store returned
   `LY_EINCOMPLETE` are queued for `ValidateTree`.
-- **Bits keep a bitmap** besides the item list: libyang orders bits by `memcmp` of the bitmap, and the
-  highest position bounds its size (`MaxBitPosition`, U-0031).
+- **Bits keep a bitmap** besides the item list: libyang orders bits by `memcmp` of the bitmap. The
+  highest position 4294967295 is handled sparsely (D-0029).
 - **Host-dependent outputs are pinned**: `date-and-time` prints UTC (D-0025, libyang uses `TZ`);
   IPv6 canonical form is glibc `inet_ntop` (design 04 §7); a NUL in an address is rejected (D-0027);
   wide date gaps order as on the amd64 oracle (D-0028).

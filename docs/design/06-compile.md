@@ -10,12 +10,9 @@ registry keyed by (module, revision, typedef)), `internal/xpath` (`Compile`, `Ev
 `SchemaNode`, `Value`, `NamespaceCtx`).
 
 Scope M1: everything below except deviations, the extension plugins listed as unsupported in §2.17 and
-YIN. Deviations are parsed but applied in M2. libyang applies a module's deviations only when that
+YIN. Deviations are parsed and applied in M2. libyang applies a module's deviations only when that
 module becomes **implemented** (`lys_implement` → `lys_precompile_augments_deviations`, SC:2098,
-SCA:2526-2541); an import-only module with `deviation` statements is harmless. So `Load` returns
-`ErrUnsupported` exactly when a module that has deviations (module or submodule) becomes implemented,
-explicitly or implicitly (§1.5); the PR that adds this check records it as **U-0020** (deviations not
-applied until M2) in deviations.md "Unsupported". A `.yin` file chosen by the search (§1.2) is `ErrUnsupported` too
+SCA:2526-2541); an import-only module with `deviation` statements is harmless. A `.yin` file chosen by the search (§1.2) is `ErrUnsupported` too
 (**U-0021**), never skipped in favour of a `.yang` file, because skipping would change which revision
 is loaded. "VERIFY(x)" = behaviour read from source but not yet pinned by a golden; fixture `x` must
 exist (and agree) before the code relying on it merges. All fixture ids are collected in §6.
@@ -513,7 +510,7 @@ Definitions alone (the internal modules define `mount-point`, `structure`, `anno
 only instances trigger the rule. Fixtures ext/annotation-no-type (implemented),
 ext/annotation-no-type-import-only (the error still fails the load: parse phase),
 ext/annotation-not-top-level, ext/annotation-twice, ext/nacm-placement-warning,
-ext/nacm-twice; engine-only (no golden comparison of the Go error): ext/yang-data-unsupported.
+ext/nacm-twice, ext/yang-data; all have golden comparisons.
 
 ## 3. Error reporting
 
@@ -590,7 +587,7 @@ readers during `Load`.
 ## 5. Budgets / DoS (`compile.Budget`, zero = default; exceeding → error wrapping `ErrBudget`)
 
 libyang has none of these limits, so each becomes a `U-00xx` entry in deviations.md
-("Unsupported") in the PR that implements it — not before (same for U-0020/U-0021).
+("Unsupported") in the PR that implements it — not before.
 The compile limits are one struct, `compile.Options.Budget` (`MaxTypes`, `MaxUnionMembers`;
 later `MaxNodes`, `MaxDepth`), next to the loader's `Options.MaxSearchDirs` and
 `Options.Parse`; every limit wraps the package's single `ErrBudget`.
@@ -639,7 +636,7 @@ otherwise negative; most are new and owned by stream F):
 | defaults (§2.12) | m1, protocol-v2/schema-limits | dflt/invalid, dflt/union-leafref + , dflt/llist-dup-noncanon (VERIFY) |
 | must/when (§2.13-2.14) | m1 `boost`/`mtu-limit`, protocol-v2 | when/cycle (design 03), when/own-children, when/invalid-condition, when/func-arg-warning, must/unknown-node-warning, must/value-not-fit-warning |
 | leafref (§2.15) | m1 `peer`, ietf `interface-ref` | lref/path-syntax-parse-phase (U-0005), lref/non-leaf-target, lref/config-to-state, lref/circular, lref/disabled-target |
-| extension plugins (§2.17) | — | ext/annotation-no-type, ext/annotation-no-type-import-only, ext/annotation-not-top-level, ext/annotation-twice, ext/nacm-placement-warning, ext/nacm-twice, ext/yang-data-unsupported (engine-only) |
+| extension plugins (§2.17) | — | ext/annotation-no-type, ext/annotation-no-type-import-only, ext/annotation-not-top-level, ext/annotation-twice, ext/nacm-placement-warning, ext/nacm-twice, ext/yang-data |
 | data `when` order (design 03 rule 5, op `sequence`) | — | when/order-a-after-b, when/order-b-after-a |
 | errors (§3) | — | errpath/uses, errpath/augment, errpath/refine, errpath/grouping, errpath/ext-inst, errpath/unres-node |
 
@@ -704,7 +701,7 @@ total ≈ 15k incl. tests (sum of the table: 14.95k).
 |---|---|---|---|---|
 | C0 | `internal/schema` additions (§4) + invariant comments | 250 | — | Sonnet |
 | C1a | loader I: `yang.Context` skeleton, embedded internal modules, symlink-aware fs.FS search (+ `.yin` → U-0021, `MaxSearchDirs`), revision selection + `IMPORTED_REV`, imports/includes + cycles + submodule injection, filename warnings, dup checks | 1.4k | parser #13/#14 | Opus |
-| C1b | loader II: ext-instance records, P0 (feature if-features + cycles, identities + derived), `lys_implement` (features, augment-target implementation, deviation → U-0020), phase tagging, dep sets + `lys_compile_depset_r` restart, snapshot/revert | 1.4k | C0, C1a | Opus |
+| C1b | loader II: ext-instance records, P0 (feature if-features + cycles, identities + derived), `lys_implement` (features, augment-target implementation, deviation application), phase tagging, dep sets + `lys_compile_depset_r` restart, snapshot/revert | 1.4k | C0, C1a | Opus |
 | C2a | xpath `Atomize` core (+ `SchemaNode` extension, walkAtoms/atomsOK rebased on it), including the node-not-found warning and the skip of the rest of the path | 1.3k | xpath-eval | Opus |
 | C2b | xpath compile warnings, in five PRs: operands + type predicates + subexpression trailer (1/5), `warn_equality_value` + `SchemaNode.CheckValue` (2/5), 42 string-argument sites (3/5), 28 node-set/numeric/YANG function sites (4/5), the end-to-end replay of the warning fixtures (5/5) | 0.9k | C2a | Sonnet (mechanical, port map per site) |
 | C3 | `internal/lyxp` leaf package: tokenizer + `ly_path_parse` (all modes) + `ly_path_check_predicate`; hook in `parser.Build`; types/xpath switched to it | 1.1k | parser-build #14 | Sonnet |

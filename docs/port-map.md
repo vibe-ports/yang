@@ -272,7 +272,7 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 | src/tree_schema.c | lysp_resolve_ext_instance_records (parse callback loop) | compile.Context.parseExtPlugins | ported | compile/ext-annotation-*, compile/ext-nacm-* | LY_ENOT removal swaps in the last instance |
 | src/plugins_exts/metadata.c | annotation_parse, annotation_compile | compile.annotationParse, compile.annotationCompile | ported | compile/ext-annotation-*, compile/errpath-ext-inst | substatements through parser.ParseExtInstance |
 | src/plugins_exts/nacm.c | nacm_parse, nacm_compile, nacm_inherit_clb | compile.nacmParse, compile.nacmCompile | ported | compile/ext-nacm-* | |
-| src/plugins_exts/yangdata.c | yangdata_parse, yangdata_compile | compile.yangDataParse, compile.yangDataCompile, compile.extDuplicate | ported | ut-ext/test_yangdata-*, ext/yang-data-unsupported, ext/yang-data-dup-ident | substatements through parser.ParseExtInstance and nodeCtx.compileExtInstance; Go test TestYangDataTree |
+| src/plugins_exts/yangdata.c | yangdata_parse, yangdata_compile | compile.yangDataParse, compile.yangDataCompile, compile.extDuplicate | ported | ut-ext/test_yangdata-*, ext/yang-data, ext/yang-data-dup-ident | substatements through parser.ParseExtInstance and nodeCtx.compileExtInstance; Go test TestYangDataTree |
 | src/plugins_exts/yangdata.c | yangdata_snode_xpath, yangdata_snode | schema.ExtInstance.findNode | ported | — | through schema.FindExtNode; Go tests TestFindExtNode, TestYangDataRestconf |
 | src/plugins_exts/yangdata.c | yangdata_validate | — | skipped | — | data trees in extension instances: M4/M5 |
 | src/plugins_exts/yangdata.c | yangdata_printer_info | — | skipped | — | schema printers, not in v1 |

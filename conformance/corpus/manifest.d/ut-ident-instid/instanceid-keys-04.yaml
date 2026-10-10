@@ -1,7 +1,7 @@
 fixtures:
   - id: ut-ident-instid/instanceid-keys-04
     dir: ut-ident-instid
-    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid_keys.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:61 (libyang-specific type yang:instance-identifier-keys, no RFC counterpart; the engine reports it unsupported, U-0010)
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/types/instanceid_keys.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_data_xml:61 (libyang-specific type yang:instance-identifier-keys, no RFC counterpart; the handler is ported)
     rfc: []
     areas: [types]
     request:

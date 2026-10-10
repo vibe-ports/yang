@@ -34,7 +34,7 @@ func TestXPathStepsRealModels(t *testing.T) {
 			continue
 		}
 		_, _, err := c.Load(name, "", []string{"*"})
-		if errors.Is(err, ErrUnsupported) { // U-0023 yang-data, U-0024 schema-mount
+		if errors.Is(err, ErrUnsupported) { // U-0024 schema-mount, U-0025 openconfig POSIX patterns
 			continue
 		}
 		if err != nil {
