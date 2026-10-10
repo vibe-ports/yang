@@ -1,0 +1,220 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-sorted",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"pv2-sorted:c\": {\n    \"ll\": [\n      \"a\",\n      \"b\",\n      \"b\",\n      \"c\",\n      \"d\"\n    ],\n    \"l\": [\n      {\n        \"k\": \"x\"\n      },\n      {\n        \"k\": \"y\"\n      }\n    ],\n    \"z\": \"mid\"\n  }\n}\n",
+    "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-sorted\">\n  <ll>a</ll>\n  <ll>b</ll>\n  <ll>b</ll>\n  <ll>c</ll>\n  <ll>d</ll>\n  <l>\n    <k>x</k>\n  </l>\n  <l>\n    <k>y</k>\n  </l>\n  <z>mid</z>\n</c>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sorted:c",
+      "schema": "/pv2-sorted:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sorted:c/ll[.='a']",
+      "schema": "/pv2-sorted:c/ll",
+      "value": {
+        "canonical": "a",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sorted:c/ll[.='b']",
+      "schema": "/pv2-sorted:c/ll",
+      "value": {
+        "canonical": "b",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sorted:c/ll[.='b']",
+      "schema": "/pv2-sorted:c/ll",
+      "value": {
+        "canonical": "b",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sorted:c/ll[.='c']",
+      "schema": "/pv2-sorted:c/ll",
+      "value": {
+        "canonical": "c",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sorted:c/ll[.='d']",
+      "schema": "/pv2-sorted:c/ll",
+      "value": {
+        "canonical": "d",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sorted:c/l[k='x']",
+      "schema": "/pv2-sorted:c/l",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sorted:c/l[k='x']/k",
+      "schema": "/pv2-sorted:c/l/k",
+      "value": {
+        "canonical": "x",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sorted:c/l[k='y']",
+      "schema": "/pv2-sorted:c/l",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sorted:c/l[k='y']/k",
+      "schema": "/pv2-sorted:c/l/k",
+      "value": {
+        "canonical": "y",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-sorted:c/z",
+      "schema": "/pv2-sorted:c/z",
+      "value": {
+        "canonical": "mid",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

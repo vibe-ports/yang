@@ -598,3 +598,22 @@ func TestRBTreeRun(t *testing.T) {
 		t.Fatalf("%v", got)
 	}
 }
+
+// TestInsertLazyOperationEager: the parsers' lazy run insert leaves the children of an operation
+// to the eager insert, so they are placed (and sorted) at once.
+func TestInsertLazyOperationEager(t *testing.T) {
+	f := newFixture()
+	rpc := &schema.Node{Kind: schema.RPC, Name: "r", Module: f.a}
+	out := &schema.Node{Kind: schema.Output, Name: "output", Module: f.a, Parent: rpc}
+	ll := &schema.Node{Kind: schema.LeafList, Name: "v", Module: f.a, Parent: out, Type: f.str}
+	rpc.Children, out.Children = []*schema.Node{out}, []*schema.Node{ll}
+	tr := newTree(f.set)
+	r := newInner(rpc)
+	tr.insert(nil, r, insertDefault)
+	for _, v := range []string{"c", "b", "a"} {
+		tr.insertLazy(r, f.term(t, ll, v))
+	}
+	if len(r.kids.lazy) != 0 || names(r.Children()) == nil || !slices.IsSortedFunc(r.kids.list, compareSorted) {
+		t.Fatalf("lazy %v, children %v", r.kids.lazy, names(r.Children()))
+	}
+}

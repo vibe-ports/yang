@@ -29,6 +29,7 @@ type xmlParser struct {
 // top-level element. Operations and NETCONF envelopes are design 07 M4; anydata/anyxml instances
 // fail with yang.ErrUnsupported (deviations.md U-0043).
 func parseXML(lc *lydCtx, in []byte) error {
+	defer lc.tree.sortAllLazy() // also after an error: the multi-error validation reads the tree
 	x, err := lyxml.New(in)
 	if err != nil {
 		return lc.lexErr(err) // LYVE_SYNTAX or a limit: lyd_parse stops

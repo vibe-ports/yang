@@ -46,6 +46,7 @@ func (p *jsonParser) insertOpaq(parent, n *Node) {
 // RESTCONF envelopes are design 07 M4; anydata/anyxml instances fail with yang.ErrUnsupported
 // (deviations.md U-0043).
 func parseJSON(lc *lydCtx, in []byte) error {
+	defer lc.tree.sortAllLazy() // also after an error: the multi-error validation reads the tree
 	lx, err := lyjson.New(in)
 	if err != nil {
 		_ = lc.lexErr(err)
@@ -355,6 +356,7 @@ func (p *jsonParser) checkOpaq(sn *schema.Node) (h types.Hints, err error) {
 func (p *jsonParser) metadataFinish(parent *Node) error {
 	lc := p.lc
 	sib := lc.tree.childrenOf(parent)
+	lc.tree.sortLazy(sib) // the n-th "@name" goes to the n-th instance in sorted order
 	var ats []*Node
 	byName := map[string][]*Node{} // opaque siblings by name, in order
 	for _, n := range sib.opq {
@@ -772,6 +774,7 @@ func (p *jsonParser) parseAttribute(attrNode *Node, sn *schema.Node, name, prefi
 	if attrNode == nil {
 		lc.tree.work.Add(1)
 		sib := lc.tree.childrenOf(parent)
+		lc.tree.sortLazy(sib) // the first instance in sorted order, then the next ones (metaAttr)
 		mod := ""
 		if sn == nil {
 			// any node of that name and module (libyang compares them only when both are set)
