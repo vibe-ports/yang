@@ -53,6 +53,7 @@ with the libyang file, tag/commit and license):
   - conformance/corpus/ut-ext/ (tests/utests/extensions/test_metadata.c, test_structure.c, test_yangdata.c, schema/test_schema.c).
   - conformance/corpus/ut-int/ (tests/utests/types/int8.c … uint64.c).
   - conformance/corpus/ut-schema-load/ (tests/utests/schema/test_tree_schema_compile.c, test_schema.c).
+  - conformance/corpus/compile/ (tests/utests/schema/test_tree_schema_compile.c, test_schema.c; the schemas whose headers say "Adapted from libyang").
   - conformance/corpus/ut-bits-enum/ (tests/utests/types/bits.c, enumeration.c).
   - conformance/corpus/ut-xpath/ (tests/utests/basic/test_xpath.c; if.1/ is tests/modules/yang/ietf-interfaces@2014-05-08.yang, RFC 7223, BSD-2-Clause).
   - conformance/corpus/ut-compile-types/ (tests/utests/schema/test_tree_schema_compile.c, type compilation).
