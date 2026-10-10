@@ -69,6 +69,9 @@ func (t *Tree) applyR(parent, dn *Node, cb func(diff, node *Node) error, cache *
 	if err != nil {
 		return err
 	}
+	if dn.schema == nil && (op == diffCreate || op == diffReplace) {
+		return &opError{"LY_EINVAL", fmt.Sprintf("Operation \"%s\" is invalid for opaque node \"%s\".", op, dn.Name())}
+	}
 	sib := t.childrenOf(parent)
 	var match *Node
 	if isUserOrdered(dn.schema) && (op == diffCreate || op == diffReplace) {
@@ -131,7 +134,7 @@ func (t *Tree) applyR(parent, dn *Node, cb func(diff, node *Node) error, cache *
 			match.flags = dn.flags // with the flags
 		}
 	}
-	if err := t.applyMetadata(match, dn); err != nil {
+	if err := t.applyMetadata(match, dn, op); err != nil {
 		return err
 	}
 	if cb != nil {
@@ -294,21 +297,11 @@ func findMetaNamed(n *Node, name, val string) *meta {
 // findMetaVal is findMetaNamed of the diff metadata name of the module yang.
 func findMetaVal(n *Node, name, val string) *meta { return findMetaNamed(n, "yang:"+name, val) }
 
-// loggedErr is the first error item a helper logged into lg, as an *opError.
-func loggedErr(lg *logger, err error) error {
-	for _, d := range lg.diags {
-		if failing(d) {
-			return &opError{d.Err, d.Msg}
-		}
-	}
-	return err
-}
-
 // metaNew is lyd_new_meta(NULL, n, yang, name, val, 0).
 func (t *Tree) metaNew(n *Node, name, val string) error {
 	lg := &logger{set: t.set}
 	if _, err := lg.newMeta(n, nil, "yang:"+name, val, false); err != nil {
-		return loggedErr(lg, err)
+		return lg.done(err)
 	}
 	return nil
 }
@@ -317,7 +310,7 @@ func (t *Tree) metaNew(n *Node, name, val string) error {
 func (t *Tree) metaChange(n *Node, m *meta, val string) error {
 	lg := &logger{set: t.set}
 	if _, err := lg.changeMeta(n, m, val); err != nil {
-		return loggedErr(lg, err)
+		return lg.done(err)
 	}
 	return nil
 }
@@ -350,7 +343,12 @@ func alignReplaceOrig(repl, orig []*meta) error {
 
 // applyMetadata is lyd_diff_apply_metadata: the yang:meta-* operations of dn made to the
 // metadata of n, and those of a list's keys to its keys.
-func (t *Tree) applyMetadata(n, dn *Node) error {
+func (t *Tree) applyMetadata(n, dn *Node, op diffOp) error {
+	if dn.schema == nil {
+		// libyang dereferences match->schema for none before this function and crashes
+		// (deviations.md crash cases). Create and replace are rejected earlier; delete never reaches metadata.
+		return &opError{"LY_EINVAL", fmt.Sprintf("Operation \"%s\" is invalid for opaque node \"%s\".", op, dn.Name())}
+	}
 	var repl, orig []*meta
 	for _, m := range dn.meta {
 		if m.mod.Name != "yang" {
@@ -364,7 +362,7 @@ func (t *Tree) applyMetadata(n, dn *Node) error {
 			}
 			lg := &logger{set: t.set}
 			if _, err := lg.newMeta(n, nil, name, val, false); err != nil {
-				return loggedErr(lg, err)
+				return lg.done(err)
 			}
 		case "meta-delete":
 			name, val, err := splitMetaDiff(m)
@@ -410,7 +408,7 @@ func (t *Tree) applyMetadata(n, dn *Node) error {
 			if !k.isKey() {
 				break
 			}
-			if err := t.applyMetadata(n.kids.list[i], k); err != nil {
+			if err := t.applyMetadata(n.kids.list[i], k, op); err != nil {
 				return err
 			}
 		}

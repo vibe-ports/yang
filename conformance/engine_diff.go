@@ -134,7 +134,18 @@ func stepDiff(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, reg
 	var second *data.Node
 	var diags []yang.Diagnostic
 	if st["data"] != nil || st["data_file"] != nil {
-		t, d, perr := parseInput(r, s, st, "data")
+		secondSchema := s
+		if p, ok := st["target"].(map[string]any); ok {
+			ctx, _, _, verdict, cerr := buildContext(Request{BaseDir: r.BaseDir, Params: p})
+			if cerr != nil {
+				return nil, cerr
+			}
+			if verdict != "valid" {
+				return nil, fmt.Errorf("conformance: diff target context failed")
+			}
+			secondSchema = ctx.Schema()
+		}
+		t, d, perr := parseInput(r, secondSchema, st, "data")
 		diags = phased(diags, d, "parse")
 		if perr != nil {
 			return diags, perr

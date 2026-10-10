@@ -1058,13 +1058,22 @@ dump_schema(cJSON *m, const struct lys_module *mod)
  * phase is the following ly_ctx_compile(). A failed compile is reverted by libyang, so later
  * modules are still tried. Returns ctx and sets *ok to 1 if every module was accepted.
  */
+static struct ly_ctx *build_ctx_in(const cJSON *req, int *ok, int dump, cJSON *into);
+
 static struct ly_ctx *
 build_ctx(const cJSON *req, int *ok, int dump)
 {
+    return build_ctx_in(req, ok, dump, resp);
+}
+
+/* build_ctx with its "modules" and "context_diagnostics" reported into the object into */
+static struct ly_ctx *
+build_ctx_in(const cJSON *req, int *ok, int dump, cJSON *into)
+{
     struct ly_ctx *ctx;
     const cJSON *it, *mods = cJSON_GetObjectItemCaseSensitive(req, "modules");
-    cJSON *out = cJSON_AddArrayToObject(resp, "modules");
-    cJSON *cdiag = cJSON_AddArrayToObject(resp, "context_diagnostics");
+    cJSON *out = cJSON_AddArrayToObject(into, "modules");
+    cJSON *cdiag = cJSON_AddArrayToObject(into, "context_diagnostics");
     uint32_t opts = flags_of(req, "context_options", ctx_flags);
 
     *ok = 1;
@@ -1588,7 +1597,7 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
             !strcmp(what, "compare") ? "do format data_type data data_file unknown parse_only parse_options "
             "validate_options first second options" :
             !strcmp(what, "diff") ? "do format data_type data data_file unknown parse_only parse_options validate_options "
-            "node data_node single options merge merge_options" :
+            "node data_node single options merge merge_options target" :
             !strcmp(what, "diff_parse") ? "do format data_type data data_file unknown parse_options" :
             !strcmp(what, "diff_merge") ? "do format data_type data data_file unknown parse_options options module "
             "src_node parent" :
@@ -1707,10 +1716,21 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
             die("%s step needs data", what);
         }
         if (!strcmp(what, "diff")) {
+            const cJSON *target = cJSON_GetObjectItemCaseSensitive(step, "target");
+
             flags_of(step, "options", diff_flags);
             flags_of(step, "merge_options", diff_merge_flags);
             str_of(step, "node");
             str_of(step, "data_node");
+            if (target) {
+                if (!cJSON_IsObject(target)) {
+                    die("diff target must be a context object%s", NULL);
+                }
+                if (!input_of(step, "data")) {
+                    die("diff target needs data%s", NULL);
+                }
+                keys_only(target, "searchdirs modules context_options", "unknown key \"%s\" in a diff target");
+            }
             if (((b = cJSON_GetObjectItemCaseSensitive(step, "single")) && !cJSON_IsBool(b)) ||
                     ((b = cJSON_GetObjectItemCaseSensitive(step, "merge")) && !cJSON_IsBool(b))) {
                 die("diff single and merge must be booleans%s", NULL);
@@ -1978,17 +1998,29 @@ step_diff(struct ly_ctx *ctx, const cJSON *step, struct lyd_node *tree, struct l
         cJSON *s)
 {
     struct dparams p;
+    const cJSON *target = cJSON_GetObjectItemCaseSensitive(step, "target");
     const char *data = input_of(step, "data"), *npath = str_of(step, "node"), *dpath = str_of(step, "data_node");
     struct lyd_node *second = NULL, *first = tree, *snode, *res = NULL;
+    struct ly_ctx *second_ctx = ctx;
     uint16_t opts = flags_of(step, "options", diff_flags);
+    int ok;
     LY_ERR rc = LY_SUCCESS;
 
     if (npath) {
         first = node_at(tree, npath, "diff node %s not found");
     }
     if (data) {
+        if (target) {
+            cJSON *scratch = cJSON_CreateObject();
+
+            second_ctx = build_ctx_in(target, &ok, 0, scratch);
+            cJSON_Delete(scratch);
+            if (!ok) {
+                die("diff target context failed%s", NULL);
+            }
+        }
         dparams_of(step, &p);
-        rc = parse_one(ctx, &p, data, NULL, &second, diag, "parse");
+        rc = parse_one(second_ctx, &p, data, NULL, &second, diag, "parse");
         if (rc) {
             return rc;
         }
@@ -2000,6 +2032,9 @@ step_diff(struct ly_ctx *ctx, const cJSON *step, struct lyd_node *tree, struct l
         rc = lyd_diff_siblings(first, snode, opts, &res);
     }
     collect(ctx, diag, "diff");
+    if (second_ctx != ctx) {
+        collect(second_ctx, diag, "diff");
+    }
     if (!rc && cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(step, "merge"))) {
         cJSON_AddItemToObject(s, "new_diff", res ? print_tree(res, LYD_PRINT_WD_ALL, 1) : cJSON_CreateNull());
         rc = lyd_diff_merge_all(diff, res, flags_of(step, "merge_options", diff_merge_flags));
@@ -2010,6 +2045,7 @@ step_diff(struct ly_ctx *ctx, const cJSON *step, struct lyd_node *tree, struct l
         *diff = res;
     }
     lyd_free_all(second);
+    /* A retained diff may use second_ctx; like op_sequence's primary context, keep it until exit. */
     return rc;
 }
 

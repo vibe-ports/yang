@@ -22,7 +22,7 @@ var seqKeys = map[string]map[string]bool{
 	"compare": set("do", "format", "data_type", "data", "data_file", "unknown", "parse_only", "parse_options",
 		"validate_options", "first", "second", "options"),
 	"diff": set("do", "format", "data_type", "data", "data_file", "unknown", "parse_only", "parse_options",
-		"validate_options", "node", "data_node", "single", "options", "merge", "merge_options"),
+		"validate_options", "node", "data_node", "single", "options", "merge", "merge_options", "target"),
 	"diff_parse":   set("do", "format", "data_type", "data", "data_file", "unknown", "parse_options"),
 	"diff_merge":   set("do", "format", "data_type", "data", "data_file", "unknown", "parse_options", "options", "module", "src_node", "parent"),
 	"diff_apply":   set("do", "module"),
@@ -31,6 +31,8 @@ var seqKeys = map[string]map[string]bool{
 }
 
 var seqRequestKeys = set("op", "base_dir", "searchdirs", "modules", "context_options", "steps")
+
+var seqContextKeys = set("searchdirs", "modules", "context_options")
 
 // seqUnsupported are the oracle's step kinds and edits package data has no public API for.
 var seqUnsupported = map[string]string{
@@ -75,6 +77,20 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any) error {
 			}
 			if !keys[k] {
 				return fmt.Errorf("%w: %s step field %s", ErrUnsupported, what, k)
+			}
+		}
+		if what == "diff" && st["target"] != nil {
+			target, ok := st["target"].(map[string]any)
+			if !ok {
+				return fmt.Errorf("%w: diff target must be a context object", ErrUnsupported)
+			}
+			if st["data"] == nil && st["data_file"] == nil {
+				return fmt.Errorf("%w: diff target needs data", ErrUnsupported)
+			}
+			for k := range target {
+				if !seqContextKeys[k] {
+					return fmt.Errorf("%w: diff target context field %s", ErrUnsupported, k)
+				}
 			}
 		}
 		steps = append(steps, st)

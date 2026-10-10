@@ -1,0 +1,24 @@
+fixtures:
+  - id: ut-diff/cross-context-refused
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # D-0069: identical populated trees in two contexts; libyang diffs them (null diff), the port refuses
+    rfc: []   # libyang diff API mechanics, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: defaults}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<df xmlns="urn:libyang:tests:defaults"><foo>1</foo></df>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<df xmlns="urn:libyang:tests:defaults"><foo>1</foo></df>'
+          target: {searchdirs: [schemas], modules: [{name: defaults}]}
+    golden: golden/cross-context-refused.json
+    assert:
+      verdict: invalid
+      diagnostics:
+        - {msg: "Invalid arguments - cannot create diff for unrelated data (lyd_diff())."}
+      deviation: D-0069
