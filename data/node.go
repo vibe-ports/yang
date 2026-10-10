@@ -77,6 +77,8 @@ type Tree struct {
 	rankMu sync.Mutex
 	rank   map[*schema.Node]int
 	work   workCounter
+	// lazy are the sibling sets with runs the parser appended to unsorted (insertLazy)
+	lazy []*siblings
 }
 
 // workCounter counts the work of a tree for tests (work, not time): comparisons made by

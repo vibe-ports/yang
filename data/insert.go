@@ -216,6 +216,70 @@ func (t *Tree) insert(parent, n *Node, order insertOrder) {
 	t.link(parent, sib, n, at)
 }
 
+// insertLazy is insert for the parsers: a system-ordered instance joining a run with libyang's
+// order (nothing appended outside its RB tree) goes to the end of the run, and the run is
+// stably sorted once, before the parser or anyone else reads it (sortLazy). libyang's
+// incremental RB insert puts every instance after its equal values, which is the stable sort of
+// the insertion order, so the order is the same; the parser then costs O(n log n), not one shift
+// of the run per instance.
+func (t *Tree) insertLazy(parent, n *Node) {
+	sib := t.childrenOf(parent)
+	s := n.schema
+	if s == nil || !sortedSupported(n) || sib.unsorted[s] {
+		t.insert(parent, n, insertDefault)
+		return
+	}
+	lo := t.upper(sib.list, 0, func(a *Node) bool { return t.sameOrAfter(a, n) })
+	hi := t.upper(sib.list, lo, func(a *Node) bool { return t.after(a, n) })
+	if lo == hi {
+		t.insert(parent, n, insertDefault) // the first instance
+		return
+	}
+	if sib.lazy == nil {
+		sib.lazy = map[*schema.Node]bool{}
+	}
+	if len(sib.lazy) == 0 {
+		t.lazy = append(t.lazy, sib)
+	}
+	sib.lazy[s] = true
+	t.link(parent, sib, n, hi)
+}
+
+// sortLazy sorts the runs of sib that insertLazy appended to, as libyang's RB insert orders them:
+// a run of two or more instances gets its RB tree.
+func (t *Tree) sortLazy(sib *siblings) {
+	for s := range sib.lazy {
+		lo := t.schemaIndex(sib, s)
+		if lo < 0 {
+			continue // freed after an error
+		}
+		hi := lo
+		for hi < len(sib.list) && sib.list[hi].schema == s {
+			hi++
+		}
+		slices.SortStableFunc(sib.list[lo:hi], func(a, b *Node) int {
+			t.work.Add(1)
+			return compareSorted(a, b)
+		})
+		if hi-lo > 1 {
+			for _, a := range sib.list[lo:hi] {
+				a.inRB = true
+			}
+			markRB(sib, s)
+		}
+		sib.gen++
+	}
+	clear(sib.lazy)
+}
+
+// sortAllLazy sorts every run the parser left unsorted.
+func (t *Tree) sortAllLazy() {
+	for _, sib := range t.lazy {
+		t.sortLazy(sib)
+	}
+	t.lazy = nil
+}
+
 // insertBefore is lyd_insert_before for a user-ordered instance: n goes right before anchor,
 // an instance of the same schema node.
 func (t *Tree) insertBefore(anchor, n *Node) {

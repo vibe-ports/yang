@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"reflect"
 	"strings"
 	"testing"
@@ -316,6 +317,14 @@ func TestParseXMLLinear(t *testing.T) {
 		{"terms", Reject, func(n int) string {
 			return `<c xmlns="urn:pj"` + decls(n) + `>` + rep(n, func(i int) string { return fmt.Sprintf(`<ls>v%07d</ls>`, i) }) + `</c>`
 		}},
+		{"shuffled-terms", Reject, func(n int) string {
+			var b strings.Builder
+			b.WriteString(`<c xmlns="urn:pj">`)
+			for _, i := range rand.New(rand.NewSource(1)).Perm(n) {
+				fmt.Fprintf(&b, `<ls>v%07d</ls>`, i)
+			}
+			return b.String() + `</c>`
+		}},
 		{"prefixed-terms", Reject, func(n int) string {
 			return `<c xmlns="urn:pj"` + decls(n) + `>` + rep(n, func(i int) string { return fmt.Sprintf(`<ls>p%d:v</ls>`, i) }) + `</c>`
 		}},
@@ -337,7 +346,7 @@ func TestParseXMLLinear(t *testing.T) {
 				var lc *lydCtx
 				o := parseOpts{ParseOptions: ParseOptions{Unknown: tc.unknown, ParseOnly: true}}
 				if _, diags, err := parseWith(context.Background(), strings.NewReader(tc.in(n)), set, o, parseXML,
-					func(l *lydCtx) { lc = l; l.tree.work.visits = true }); err != nil {
+					func(l *lydCtx) { lc = l; l.tree.work.visits, l.tree.work.shifts = true, true }); err != nil {
 					t.Fatalf("%v %v", err, diags)
 				}
 				return int(lc.tree.work.Load())

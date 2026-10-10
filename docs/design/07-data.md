@@ -449,17 +449,26 @@ Single-error mode stops at the first item of this sequence.
 - **Ordering**: sibling order must be libyang's whenever anything reads it — JSON metadata
   attachment (`lydjson_parse_attribute` PJ:1166 and `lydjson_metadata_finish` PJ:583 attach `@ll` entries by position to the already
   sorted instances), the parent's close, the end of parse (parse-only too), XML key-position checks.
-  So it is kept at every insertion, like libyang's RB insert: a system-ordered instance goes to its
-  sorted place by binary search (append fast path), after the equal values. `sib.list` is one
-  slice: an insertion moves its shorter side, the front into headroom kept before the list, so
-  appending and prepending are amortized O(1) (sorted or reversed `NewPath` input is linear) and an
-  insertion in the middle moves at most half the list. Batches are spliced in one pass,
-  O(list + batch): `Merge` collects a level's consecutive new instances of a sorted run (source runs
-  are sorted) and splices them when the run ends, and `lyds_merge` (moving nodes) splices the source run. Pinned by `TestInsertScaling` (moved
-  slots counted) and `TestMergeWork`. Ceiling: a run filled in random order, by the parsers or
-  `NewPath`, still moves O(n²) slots (memmove; 100k shuffled XML leaf-list values parse in 0.4 s,
-  4·10⁶ would take about ten minutes) — a per-run ordered structure or a sort before the first read
-  if that input matters.
+  The parsers append each system-ordered instance to the end of its run (when the run keeps
+  libyang's order: no instance appended outside its RB tree) and stably sort the run once, before
+  the first such read (`sortLazy`: metadata attachment, the parent's close, the end of the parse,
+  also after an error); a run of two or more instances then has its RB tree. libyang's
+  incremental RB insert puts each instance after its equal values, which is the stable sort of the
+  insertion order, so the order is the same, equal values and state-data duplicates included
+  (protocol-v2/sorted-*: shuffled values with equal values and positional `@ll` metadata before and
+  after, equal list keys, one leaf-list in two JSON members, duplicate errors, state leaf-lists
+  kept in input order). Every other insertion keeps the order at once: a system-ordered instance
+  goes to its sorted place by binary search (append fast path), after the equal values. `sib.list`
+  is one slice: an insertion moves its shorter side, the front into headroom kept before the list,
+  so appending and prepending are amortized O(1) (sorted or reversed `NewPath` input is linear)
+  and an insertion in the middle moves at most half the list. Batches are spliced in one pass,
+  O(list + batch): `Merge` collects a level's consecutive new instances of a sorted run (source
+  runs are sorted) and splices them when the run ends, and `lyds_merge` (moving nodes) splices the
+  source run. Pinned by `TestParseXMLLinear`/`TestParseJSONLinear` (shuffled values),
+  `TestInsertScaling` (moved slots counted) and `TestMergeWork`; 10⁶ shuffled XML leaf-list
+  values parse in 2.4 s. Ceiling: API edits (`NewPath`, insertions) of one run in random order
+  still move O(n²) slots (memmove, half the run per edit); the caller controls that input — a
+  per-run ordered structure if it matters.
 - Fuzz targets: `FuzzJSONLex`, `FuzzXMLLex`, `FuzzParseJSON`, `FuzzParseXML` (over a fixed m1-like
   hand-built schema), round-trip property parse → print → parse.
 

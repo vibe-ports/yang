@@ -1,0 +1,15 @@
+fixtures:
+  - id: protocol-v2/sorted-xml-dup-invalid
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: validated: duplicate config leaf-list values reported after the run is sorted
+    rfc: ["RFC7950#7.7.7"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2-sorted}]
+      format: xml
+      data_type: data
+      unknown: reject
+      data: '<c xmlns="urn:vibe-ports:yang:conformance:pv2-sorted"><ll>c</ll><ll>a</ll><ll>c</ll><ll>b</ll><ll>a</ll></c>'
+    golden: golden/sorted-xml-dup-invalid.json

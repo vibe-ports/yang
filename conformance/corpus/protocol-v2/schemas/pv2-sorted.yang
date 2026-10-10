@@ -1,0 +1,20 @@
+module pv2-sorted {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-sorted";
+  prefix so;
+
+  import ietf-yang-metadata { prefix md; }
+
+  md:annotation a { type string; }
+
+  container c {
+    leaf-list ll { type string; }
+    leaf-list st { type string; config false; }
+    list l {
+      key k;
+      leaf k { type string; }
+      leaf v { type string; }
+    }
+    leaf z { type string; }
+  }
+}

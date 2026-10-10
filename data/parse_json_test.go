@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"reflect"
 	"strings"
 	"testing"
@@ -343,6 +344,10 @@ func TestParseJSONLinear(t *testing.T) {
 		in      func(n int) string
 	}{
 		{"leaf-list-after", Reject, func(n int) string { return values(n) + ", " + metas(n) }},
+		{"leaf-list-shuffled", Reject, func(n int) string {
+			p := rand.New(rand.NewSource(1)).Perm(n)
+			return `"ls": [` + join(n, func(i int) string { return fmt.Sprintf(`"v%07d"`, p[i]) }) + `], ` + metas(n)
+		}},
 		{"leaf-list-before", Reject, func(n int) string { return metas(n) + ", " + values(n) }},
 		{"opaque-after", Opaque, func(n int) string { return opaq(n) + ", " + attrs(n) }},
 		{"opaque-before", Opaque, func(n int) string { return attrs(n) + ", " + opaq(n) }},
@@ -354,7 +359,7 @@ func TestParseJSONLinear(t *testing.T) {
 				o := parseOpts{ParseOptions: ParseOptions{Unknown: tc.unknown, ParseOnly: true}}
 				in := `{"pj:c": {` + tc.in(n) + `}}`
 				if _, diags, err := parseWith(context.Background(), strings.NewReader(in), set, o, parseJSON,
-					func(l *lydCtx) { lc = l; l.tree.work.visits = true }); err != nil {
+					func(l *lydCtx) { lc = l; l.tree.work.visits, l.tree.work.shifts = true, true }); err != nil {
 					t.Fatalf("%v %v", err, diags)
 				}
 				return int(lc.tree.work.Load())

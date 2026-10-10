@@ -428,6 +428,7 @@ func hasWhen(sn *schema.Node) bool {
 // the key check of a list, then, only if nothing inside the node failed (rc of the node, the
 // missing key included: design 07 §0.1), the new-node validation and implicit nodes.
 func (lc *lydCtx) closeInner(n *Node, rc error) error {
+	lc.tree.sortLazy(&n.kids)
 	if n.schema.Kind == schema.List {
 		if err := lc.checkKeys(n); err != nil && rc == nil {
 			rc = err
@@ -463,7 +464,7 @@ func (lc *lydCtx) nodeInsert(parent, anchor, n *Node) {
 	case lc.opts.ordered:
 		lc.tree.insert(parent, n, insertLast)
 	default:
-		lc.tree.insert(parent, n, insertDefault)
+		lc.tree.insertLazy(parent, n)
 	}
 }
 
