@@ -3,11 +3,13 @@
 package conformance
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"maps"
 	"math"
 	"slices"
+	"strings"
 
 	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/data"
@@ -40,7 +42,7 @@ func runXPath(r Request, s *yang.Schema, resp map[string]any) error {
 	if o.Vars, err = xpathVars(p); err != nil {
 		return err
 	}
-	tree, pd, err := parseInput(r, s, p, "data")
+	tree, pd, err := parseXPathData(r, s, p)
 	rc, err := rcOf(err)
 	if err != nil {
 		return err
@@ -103,6 +105,35 @@ func runXPath(r Request, s *yang.Schema, resp map[string]any) error {
 	}
 	resp["result"] = out
 	return nil
+}
+
+// parseXPathData is op_xpath's parse_one with no rpc request: the data, or for the operation data
+// types the operation parsed alone (lyd_parse_op without a parent). Validating an operation also
+// needs yanglint's operation-parent check against an operational tree, which op xpath has no
+// field for, so an operation must be parse_only.
+func parseXPathData(r Request, s *yang.Schema, p map[string]any) (*data.Tree, []yang.Diagnostic, error) {
+	typ, ok := opTypes[str(p, "data_type", "")]
+	if !ok {
+		return parseInput(r, s, p, "data")
+	}
+	if po, _ := p["parse_only"].(bool); !po {
+		return nil, nil, fmt.Errorf("%w: xpath over a validated operation (data_type %v without parse_only)",
+			ErrUnsupported, p["data_type"])
+	}
+	unknown, ok := unknownPolicies[str(p, "unknown", "reject")]
+	if !ok {
+		return nil, nil, fmt.Errorf("%w: unknown %v", ErrUnsupported, p["unknown"])
+	}
+	f, err := formatOf(p)
+	if err != nil {
+		return nil, nil, err
+	}
+	in, err := inputOf(r, p, "data")
+	if err != nil {
+		return nil, nil, err
+	}
+	res, d, err := data.ParseOp(context.Background(), strings.NewReader(in), f, s, typ, data.ParseOpOptions{Unknown: unknown})
+	return res.Tree, d, err
 }
 
 // xpathVars is the "vars" object of a request or step, in the order lyoracle sets them (sorted
