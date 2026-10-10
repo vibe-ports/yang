@@ -101,6 +101,11 @@ func xpathKind(req map[string]any) string {
 // deviations.md id its reason must name.
 var xpathUnsupported = map[string]string{
 	"ut-xpath/anydata-01": "U-0043", // anydata/anyxml data instances (M5)
+	// native evidence for TrimXPath's run and link cleanup; the Go side is TestRBTreeRunEmptied
+	// and the Go-expressible seq/trim-lyds-all-indexed, seq/trim-links-lkorder-* fixtures
+	"seq/trim-lyds-emptied-run":     "U-0105", // LYD_DUP_NO_LYDS builds the unindexed instances
+	"seq/trim-lyds-partial-run":     "U-0105",
+	"seq/trim-links-referrer-first": "D-0058", // LYD_PARSE_ORDERED puts referrers first
 }
 
 // xpathAllowed reports whether fixture id may be unsupported with this reason.

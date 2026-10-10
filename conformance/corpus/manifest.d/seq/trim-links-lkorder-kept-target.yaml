@@ -1,0 +1,20 @@
+# libyang v5.8.6: lyd_trim_xpath records and frees r2,r4,t[.='y'] in DFS order (src/tree_data.c:3633-3689); lyd_free_leafref_nodes removes reciprocal links (src/tree_data_free.c:145-205,251), and LY_ARRAY_REMOVE_VALUE swap-removes them (src/tree_edit.h:240-249). After trim, native links are r1/r3/r5.target_nodes=[/pv2-lkorder:c/b/t[.='x']] and t[.='x'].leafref_nodes=[/pv2-lkorder:c/a/r1,/pv2-lkorder:c/a/r5,/pv2-lkorder:c/a/r3], not stable-filter order [r1,r3,r5].
+fixtures:
+  - id: seq/trim-links-lkorder-kept-target
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang leafref-link bookkeeping during lyd_trim_xpath, no RFC behaviour
+    areas: [types, xpath, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-lkorder}]
+      context_options: [leafref_linking, no_yanglibrary]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, data: '{"pv2-lkorder:c":{"a":{"r1":"x","r2":"x","r3":"x","r4":"x","r5":"x"},"b":{"t":["x","y"]}}}'}
+        - {do: link}
+        - {do: links}
+        - {do: trim, xpath: "/pv2-lkorder:c/a/r1 | /pv2-lkorder:c/a/r3 | /pv2-lkorder:c/a/r5 | /pv2-lkorder:c/b/t[.='x']"}
+        - {do: links}
+        - {do: dump}
+    golden: golden/seq-trim-links-lkorder-kept-target.json

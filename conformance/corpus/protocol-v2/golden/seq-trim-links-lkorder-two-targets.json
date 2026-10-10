@@ -1,0 +1,917 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-lkorder",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c",
+          "schema": "/pv2-lkorder:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/a",
+          "schema": "/pv2-lkorder:c/a",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/a/r1",
+          "schema": "/pv2-lkorder:c/a/r1",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/a/r2",
+          "schema": "/pv2-lkorder:c/a/r2",
+          "value": {
+            "canonical": "y",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/a/r3",
+          "schema": "/pv2-lkorder:c/a/r3",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/a/r4",
+          "schema": "/pv2-lkorder:c/a/r4",
+          "value": {
+            "canonical": "y",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/a/r5",
+          "schema": "/pv2-lkorder:c/a/r5",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/b",
+          "schema": "/pv2-lkorder:c/b",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/b/t[.='x']",
+          "schema": "/pv2-lkorder:c/b/t",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/b/t[.='y']",
+          "schema": "/pv2-lkorder:c/b/t",
+          "value": {
+            "canonical": "y",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "link",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c",
+          "schema": "/pv2-lkorder:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/a",
+          "schema": "/pv2-lkorder:c/a",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/a/r1",
+          "schema": "/pv2-lkorder:c/a/r1",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/a/r2",
+          "schema": "/pv2-lkorder:c/a/r2",
+          "value": {
+            "canonical": "y",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/a/r3",
+          "schema": "/pv2-lkorder:c/a/r3",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/a/r4",
+          "schema": "/pv2-lkorder:c/a/r4",
+          "value": {
+            "canonical": "y",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/a/r5",
+          "schema": "/pv2-lkorder:c/a/r5",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/b",
+          "schema": "/pv2-lkorder:c/b",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/b/t[.='x']",
+          "schema": "/pv2-lkorder:c/b/t",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/b/t[.='y']",
+          "schema": "/pv2-lkorder:c/b/t",
+          "value": {
+            "canonical": "y",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "links",
+      "leafref_links": [
+        {
+          "leafref_nodes": [],
+          "node": "/pv2-lkorder:c/a/r1",
+          "target_nodes": [
+            "/pv2-lkorder:c/b/t[.='x']"
+          ]
+        },
+        {
+          "leafref_nodes": [],
+          "node": "/pv2-lkorder:c/a/r2",
+          "target_nodes": [
+            "/pv2-lkorder:c/b/t[.='y']"
+          ]
+        },
+        {
+          "leafref_nodes": [],
+          "node": "/pv2-lkorder:c/a/r3",
+          "target_nodes": [
+            "/pv2-lkorder:c/b/t[.='x']"
+          ]
+        },
+        {
+          "leafref_nodes": [],
+          "node": "/pv2-lkorder:c/a/r4",
+          "target_nodes": [
+            "/pv2-lkorder:c/b/t[.='y']"
+          ]
+        },
+        {
+          "leafref_nodes": [],
+          "node": "/pv2-lkorder:c/a/r5",
+          "target_nodes": [
+            "/pv2-lkorder:c/b/t[.='x']"
+          ]
+        },
+        {
+          "leafref_nodes": [
+            "/pv2-lkorder:c/a/r1",
+            "/pv2-lkorder:c/a/r3",
+            "/pv2-lkorder:c/a/r5"
+          ],
+          "node": "/pv2-lkorder:c/b/t[.='x']",
+          "target_nodes": []
+        },
+        {
+          "leafref_nodes": [
+            "/pv2-lkorder:c/a/r2",
+            "/pv2-lkorder:c/a/r4"
+          ],
+          "node": "/pv2-lkorder:c/b/t[.='y']",
+          "target_nodes": []
+        }
+      ],
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c",
+          "schema": "/pv2-lkorder:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/a",
+          "schema": "/pv2-lkorder:c/a",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/a/r1",
+          "schema": "/pv2-lkorder:c/a/r1",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/a/r2",
+          "schema": "/pv2-lkorder:c/a/r2",
+          "value": {
+            "canonical": "y",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/a/r3",
+          "schema": "/pv2-lkorder:c/a/r3",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/a/r4",
+          "schema": "/pv2-lkorder:c/a/r4",
+          "value": {
+            "canonical": "y",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/a/r5",
+          "schema": "/pv2-lkorder:c/a/r5",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/b",
+          "schema": "/pv2-lkorder:c/b",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/b/t[.='x']",
+          "schema": "/pv2-lkorder:c/b/t",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/b/t[.='y']",
+          "schema": "/pv2-lkorder:c/b/t",
+          "value": {
+            "canonical": "y",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "trim",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c",
+          "schema": "/pv2-lkorder:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/a",
+          "schema": "/pv2-lkorder:c/a",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/a/r2",
+          "schema": "/pv2-lkorder:c/a/r2",
+          "value": {
+            "canonical": "y",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/a/r5",
+          "schema": "/pv2-lkorder:c/a/r5",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/b",
+          "schema": "/pv2-lkorder:c/b",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/b/t[.='x']",
+          "schema": "/pv2-lkorder:c/b/t",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/b/t[.='y']",
+          "schema": "/pv2-lkorder:c/b/t",
+          "value": {
+            "canonical": "y",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "links",
+      "leafref_links": [
+        {
+          "leafref_nodes": [],
+          "node": "/pv2-lkorder:c/a/r2",
+          "target_nodes": [
+            "/pv2-lkorder:c/b/t[.='y']"
+          ]
+        },
+        {
+          "leafref_nodes": [],
+          "node": "/pv2-lkorder:c/a/r5",
+          "target_nodes": [
+            "/pv2-lkorder:c/b/t[.='x']"
+          ]
+        },
+        {
+          "leafref_nodes": [
+            "/pv2-lkorder:c/a/r5"
+          ],
+          "node": "/pv2-lkorder:c/b/t[.='x']",
+          "target_nodes": []
+        },
+        {
+          "leafref_nodes": [
+            "/pv2-lkorder:c/a/r2"
+          ],
+          "node": "/pv2-lkorder:c/b/t[.='y']",
+          "target_nodes": []
+        }
+      ],
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c",
+          "schema": "/pv2-lkorder:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/a",
+          "schema": "/pv2-lkorder:c/a",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/a/r2",
+          "schema": "/pv2-lkorder:c/a/r2",
+          "value": {
+            "canonical": "y",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/a/r5",
+          "schema": "/pv2-lkorder:c/a/r5",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/b",
+          "schema": "/pv2-lkorder:c/b",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/b/t[.='x']",
+          "schema": "/pv2-lkorder:c/b/t",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-lkorder:c/b/t[.='y']",
+          "schema": "/pv2-lkorder:c/b/t",
+          "value": {
+            "canonical": "y",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

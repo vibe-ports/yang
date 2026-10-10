@@ -555,34 +555,141 @@ func TestBulkWork(t *testing.T) {
 	}
 }
 
-// TestRBTreeRun: instances appended to a run after its RB tree exists stay outside it; the next
-// sorted insertion goes right after its RB predecessor (lyds_link_data_node), the run is not
-// re-sorted: [3,4,5] sorted, 1 appended by schema, then 6 → 3,4,5,6,1.
-func TestRBTreeRunEmptied(t *testing.T) {
-	// issue #101: 5,3 sorted (RB tree 3,5), 9 and 1 appended by schema outside the tree, 5 and 3
-	// unlinked (the tree is empty), then 4 sorted → libyang 1,4,9 (the run is re-sorted).
-	f := newFixture()
-	tr := newTree(f.set)
-	c := newInner(f.c)
-	tr.insert(nil, c, insertDefault)
-	var inTree []*Node
-	for _, v := range []string{"5", "3"} {
-		n := f.term(t, f.ll, v)
-		tr.insert(c, n, insertDefault)
-		inTree = append(inTree, n)
+// TestUnlinkAllWorkScaling checks one-pass batch removal for insertion orders that exercise
+// sorted runs and large duplicate buckets. Quadrupling N must not approach quadratic growth.
+func TestUnlinkAllWorkScaling(t *testing.T) {
+	modes := []struct {
+		name  string
+		value func(int, int) int
+	}{
+		{"sorted", func(i, _ int) int { return i }},
+		{"reverse", func(i, n int) int { return n - i }},
+		{"shuffled", func(i, n int) int { return i * 73 % n }},
+		{"duplicate-heavy", func(i, _ int) int { return i * 73 % 8 }},
 	}
-	for _, v := range []string{"9", "1"} {
-		tr.insert(c, f.term(t, f.ll, v), insertLastBySchema)
-	}
-	for _, n := range inTree {
-		unlink(n)
-	}
-	tr.insert(c, f.term(t, f.ll, "4"), insertDefault)
-	if got := names(c.Children()); !reflect.DeepEqual(got, []string{"ll=1", "ll=4", "ll=9"}) {
-		t.Fatalf("%v", got)
+	for _, mode := range modes {
+		t.Run(mode.name, func(t *testing.T) {
+			work := func(count int) int64 {
+				t.Helper()
+				f := newFixture()
+				f.ll.Type = &schema.Type{Base: schema.Uint32}
+				tr := newTree(f.set)
+				c := newInner(f.c)
+				tr.insert(nil, c, insertDefault)
+				all := make([]*Node, 0, count)
+				for i := range count {
+					n := f.term(t, f.ll, fmt.Sprint(mode.value(i, count)))
+					tr.insert(c, n, insertDefault)
+					all = append(all, n)
+				}
+				tr.work.Store(0)
+				tr.work.visits = true
+				if err := tr.unlinkAll(all); err != nil {
+					t.Fatal(err)
+				}
+				if c.kids.len() != 0 {
+					t.Fatalf("%d siblings remain", c.kids.len())
+				}
+				return tr.work.Load()
+			}
+
+			const n = 64
+			wN, w4N := work(n), work(4*n)
+			if w4N > 6*wN {
+				t.Fatalf("work(4N) = %d, want <= 6 * work(N) = %d", w4N, 6*wN)
+			}
+		})
 	}
 }
 
+// TestRBTreeRunEmptied checks that removing the last indexed members resets a run even when
+// appended members remain, so the next sorted insertion rebuilds and re-sorts it.
+func TestRBTreeRunEmptied(t *testing.T) {
+	// issue #101/#208: 3,5 are indexed, 9 and 1 are appended outside the tree (LYD_DUP_NO_LYDS),
+	// then a bulk trim removes indexed nodes and 4 is inserted sorted. The native orders are the
+	// goldens of seq/trim-lyds-emptied-run and seq/trim-lyds-partial-run, which the conformance
+	// engine reports unsupported (no_lyds is not exported, U-0105): when the last indexed instance
+	// goes, the next sorted insertion rebuilds and re-sorts the run; while one survives, 4 goes
+	// into the remaining index and the appended instances stay where they are.
+	for _, tc := range []struct {
+		keep  string
+		empty bool
+		want  []string
+	}{
+		{"/b:c/ll[. = 9 or . = 1]", true, []string{"ll=1", "ll=4", "ll=9"}},                   // seq/trim-lyds-emptied-run
+		{"/b:c/ll[. = 5 or . = 9 or . = 1]", false, []string{"ll=4", "ll=5", "ll=9", "ll=1"}}, // seq/trim-lyds-partial-run
+	} {
+		f := newFixture()
+		tr := newTree(f.set)
+		c := newInner(f.c)
+		tr.insert(nil, c, insertDefault)
+		for _, v := range []string{"3", "5"} {
+			tr.insert(c, f.term(t, f.ll, v), insertDefault)
+		}
+		if !c.kids.rbTree[f.ll] || !c.kids.list[0].inRB || !c.kids.list[1].inRB {
+			t.Fatal("sorted instances did not build the run index")
+		}
+		for _, v := range []string{"9", "1"} {
+			tr.insert(c, f.term(t, f.ll, v), insertLastBySchema)
+		}
+		if !c.kids.unsorted[f.ll] || c.kids.list[2].inRB || c.kids.list[3].inRB {
+			t.Fatal("appended instances unexpectedly joined the run index")
+		}
+		if diags, err := tr.TrimXPath(tc.keep, XPathOptions{}); err != nil {
+			t.Fatal(err, diags)
+		}
+		if tc.empty && (c.kids.rbTree[f.ll] || c.kids.unsorted[f.ll]) {
+			t.Fatal("empty run index state survived bulk removal")
+		}
+		tr.insert(c, f.term(t, f.ll, "4"), insertDefault)
+		if got := names(c.Children()); !reflect.DeepEqual(got, tc.want) {
+			t.Fatalf("%s: %v, want %v", tc.keep, got, tc.want)
+		}
+	}
+}
+
+// TestRBTreeBulkUnlinkMatchesSequential checks that unlinkAll applies the same run-state rule as
+// unlink after each node, both before and after the next sorted insertion.
+func TestRBTreeBulkUnlinkMatchesSequential(t *testing.T) {
+	makeRun := func() (*fixture, *Tree, *Node, []*Node) {
+		f := newFixture()
+		tr := newTree(f.set)
+		c := newInner(f.c)
+		tr.insert(nil, c, insertDefault)
+		var indexed []*Node
+		for _, v := range []string{"3", "5"} {
+			n := f.term(t, f.ll, v)
+			tr.insert(c, n, insertDefault)
+			indexed = append(indexed, n)
+		}
+		for _, v := range []string{"9", "1"} {
+			tr.insert(c, f.term(t, f.ll, v), insertLastBySchema)
+		}
+		return f, tr, c, indexed
+	}
+
+	bulkFixture, bulk, bulkParent, bulkIndexed := makeRun()
+	sequentialFixture, sequential, sequentialParent, sequentialIndexed := makeRun()
+	if err := bulk.unlinkAll(bulkIndexed); err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range sequentialIndexed {
+		unlink(n)
+	}
+	if got, want := names(bulkParent.Children()), names(sequentialParent.Children()); !reflect.DeepEqual(got, want) || !reflect.DeepEqual(got, []string{"ll=9", "ll=1"}) {
+		t.Fatalf("after removal: bulk %v, sequential %v", got, want)
+	}
+
+	bulk.insert(bulkParent, bulkFixture.term(t, bulkFixture.ll, "4"), insertDefault)
+	sequential.insert(sequentialParent, sequentialFixture.term(t, sequentialFixture.ll, "4"), insertDefault)
+	if got, want := names(bulkParent.Children()), names(sequentialParent.Children()); !reflect.DeepEqual(got, want) || !reflect.DeepEqual(got, []string{"ll=1", "ll=4", "ll=9"}) {
+		t.Fatalf("after sorted insert: bulk %v, sequential %v", got, want)
+	}
+}
+
+// TestRBTreeRun: instances appended to a run after its RB tree exists stay outside it; the next
+// sorted insertion goes right after its RB predecessor (lyds_link_data_node), the run is not
+// re-sorted: [3,4,5] sorted, 1 appended by schema, then 6 → 3,4,5,6,1.
 func TestRBTreeRun(t *testing.T) {
 	f := newFixture()
 	tr := newTree(f.set)

@@ -108,6 +108,222 @@ func freeLinks(n *Node) {
 	n.links = nil
 }
 
+// bulkLinkCleaner is freeLinks with lazy indexes for the large counterpart arrays a batch may
+// repeatedly shrink. It is used only by TrimXPath; single-node callers keep freeLinks' smaller
+// linear scans. remove still swaps in the last item, exactly like removeValue.
+type bulkLinkCleaner struct {
+	indexes map[*leafrefLinks]*bulkLinkIndexes
+	work    *workCounter
+}
+
+type bulkLinkIndexes struct {
+	leafrefs bulkLinkIndex
+	targets  bulkLinkIndex
+}
+
+type bulkLinkIndex struct {
+	positions map[*Node]int
+	hits      uint8
+}
+
+const bulkLinkIndexMin = 8
+
+func (c *bulkLinkCleaner) visit() {
+	if c.work != nil && c.work.visits { // tests only
+		c.work.Add(1)
+	}
+}
+
+func (c *bulkLinkCleaner) remove(rec *leafrefLinks, leafrefs bool, n *Node) {
+	a := rec.targets
+	if leafrefs {
+		a = rec.leafrefs
+	}
+	var index map[*Node]int
+	if x := c.indexes[rec]; x != nil {
+		if leafrefs {
+			index = x.leafrefs.positions
+		} else {
+			index = x.targets.positions
+		}
+	}
+	if index == nil && len(a) > bulkLinkIndexMin {
+		if c.indexes == nil {
+			c.indexes = map[*leafrefLinks]*bulkLinkIndexes{}
+		}
+		x := c.indexes[rec]
+		if x == nil {
+			x = &bulkLinkIndexes{}
+			c.indexes[rec] = x
+		}
+		side := &x.targets
+		if leafrefs {
+			side = &x.leafrefs
+		}
+		if side.hits < 2 { // saturate; once indexed this branch is not reached again
+			side.hits++
+		}
+		// Keep isolated front removals cheap, but bound repeated removals by indexing the side
+		// on its second hit. The preflight charges a full scan for this first removal.
+		if side.hits >= 2 {
+			index = make(map[*Node]int, len(a))
+			for i, x := range a {
+				c.visit()
+				index[x] = i
+			}
+			side.positions = index
+		}
+	}
+	if index != nil {
+		c.visit()
+		i, ok := index[n]
+		if !ok {
+			return
+		}
+		last := len(a) - 1
+		delete(index, n)
+		if i != last {
+			a[i] = a[last]
+			index[a[i]] = i
+		}
+		a = a[:last]
+	} else {
+		for i, x := range a {
+			c.visit()
+			if x == n {
+				last := len(a) - 1
+				a[i] = a[last]
+				a = a[:last]
+				break
+			}
+		}
+	}
+	if leafrefs {
+		rec.leafrefs = a
+	} else {
+		rec.targets = a
+	}
+}
+
+type bulkLinkChargeKey struct {
+	rec      *leafrefLinks
+	leafrefs bool
+}
+
+// chargeBulkFreeLinks plans the counterpart deletions made by freeing nodes, charging the plan as
+// it is traversed and the cleanup it describes. It only reads records, so TrimXPath can reject the
+// whole operation before any links or tree nodes have been changed.
+func chargeBulkFreeLinks(nodes []*Node, charge func(int64) bool, work *workCounter) bool {
+	visit := func() {
+		if work != nil && work.visits { // tests only
+			work.Add(1)
+		}
+	}
+	order := make(map[*Node]int, len(nodes))
+	for i, n := range nodes {
+		visit()
+		if !charge(1) { // order-map insertion
+			return false
+		}
+		order[n] = i
+	}
+	hits := map[bulkLinkChargeKey]uint8{}
+	plan := func(key bulkLinkChargeKey, length int) bool {
+		if key.rec == nil {
+			return true
+		}
+		// The cleanup visits the link in the freed record and then removes it from the
+		// counterpart. Large sides scan once and build an index on their second removal;
+		// small sides keep the linear scan. Charge each scan or index at its worst-case length.
+		if !charge(2) {
+			return false
+		}
+		if length > bulkLinkIndexMin+1 {
+			if hits[key] < 3 { // saturate: only the first two hits are charged a scan
+				hits[key]++
+			}
+			// The first hit may scan the whole side. The second builds the index from the
+			// remaining side; charging the original length is a safe bound for both.
+			if hits[key] > 2 {
+				return true
+			}
+		} else if length == 0 {
+			return true
+		}
+		return charge(int64(length))
+	}
+	for i, n := range nodes {
+		visit()
+		if !charge(1) { // node visit in this planning pass
+			return false
+		}
+		rec := n.links
+		if rec == nil {
+			continue
+		}
+		for _, l := range rec.leafrefs {
+			visit()
+			if !charge(1) { // link visit in this planning pass
+				return false
+			}
+			if j, ok := order[l]; ok && j < i {
+				continue // the earlier endpoint plans this link
+			}
+			if r2 := l.links; r2 != nil {
+				if !plan(bulkLinkChargeKey{rec: r2}, len(r2.targets)) {
+					return false
+				}
+			}
+		}
+		for _, t := range rec.targets {
+			visit()
+			if !charge(1) { // link visit in this planning pass
+				return false
+			}
+			if j, ok := order[t]; ok && j < i {
+				continue // the earlier endpoint plans this link
+			}
+			if r2 := t.links; r2 != nil {
+				if !plan(bulkLinkChargeKey{rec: r2, leafrefs: true}, len(r2.leafrefs)) {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
+func (c *bulkLinkCleaner) free(n *Node) {
+	rec := n.links
+	if rec == nil {
+		return
+	}
+	for i := 0; i < len(rec.leafrefs); i++ {
+		c.visit()
+		l := rec.leafrefs[i]
+		if r2 := l.links; r2 != nil {
+			c.remove(r2, false, n)
+			if len(r2.leafrefs) == 0 && len(r2.targets) == 0 {
+				c.free(l)
+			}
+		}
+	}
+	rec.leafrefs = nil
+	for i := 0; i < len(rec.targets); i++ {
+		c.visit()
+		t := rec.targets[i]
+		if r2 := t.links; r2 != nil {
+			c.remove(r2, true, n)
+			if len(r2.leafrefs) == 0 && len(r2.targets) == 0 {
+				c.free(t)
+			}
+		}
+	}
+	rec.targets = nil
+	n.links = nil
+	delete(c.indexes, rec)
+}
+
 // freeSubtreeLinks is the leafref part of lyd_free_subtree: every term node of the subtree of n
 // loses its record (lyd_free_tree), where an unlink frees only n's own (lyd_unlink).
 func freeSubtreeLinks(set *schema.Set, n *Node) {

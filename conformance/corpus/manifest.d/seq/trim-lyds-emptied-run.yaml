@@ -1,0 +1,22 @@
+# libyang v5.8.6: diff.c:312-319 is only diff-tree insertion, while diff.c:1865-1874 and tree_data.c:1114-1129 make diff_apply use DEFAULT; the expressible substitute is LYD_DUP_NO_LYDS at tree_data.c:2461-2478. tree_data.c:801-832 and tree_data_sorted.c:1086-1103,1213-1250 then make native bucket dst orders [3,5,9,1], [9,1], and [1,4,9].
+fixtures:
+  - id: seq/trim-lyds-emptied-run
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang sorting-tree and insertion API mechanics, no RFC behaviour
+    areas: [xpath, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-lyds}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, data: '{"pv2-lyds:bucket":[{"name":"dst","ll":[3,5]}]}'}
+        - {do: insert, format: json, data_type: data, parse_only: true, parse_options: [ordered], data: '{"pv2-lyds:bucket":[{"name":"src","ll":[9,1]}]}'}
+        - {do: dup, node: "/pv2-lyds:bucket[name='src']/ll[.='9']", parent: "/pv2-lyds:bucket[name='dst']", siblings: true, options: [no_lyds]}
+        - {do: dump}
+        - {do: trim, xpath: "/pv2-lyds:bucket[name='dst']/ll[.='9' or .='1']"}
+        - {do: dump}
+        - {do: insert, node: "/pv2-lyds:bucket[name='new']/ll[.='4']", parent: "/pv2-lyds:bucket[name='dst']", format: json, data_type: data, parse_only: true, data: '{"pv2-lyds:bucket":[{"name":"new","ll":[4]}]}'}
+        - {do: dump}
+    golden: golden/seq-trim-lyds-emptied-run.json

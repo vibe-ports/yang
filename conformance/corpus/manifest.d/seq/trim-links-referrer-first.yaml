@@ -1,0 +1,20 @@
+# libyang v5.8.6: lyd_leafref_link_node_tree follows data DFS order at tree_data.c:3904-3927, so ordered r,nr,nx,u,un precede target k and form k's array in that order. lyd_trim_xpath frees nr,u,v in document order at tree_data.c:3633-3689; tree_data_free.c:145-205 plus tree_edit.h:240-249 yield k.leafref_nodes=[/pv2-links:c/r,/pv2-links:c/un,/pv2-links:c/nx] (not stable-filter order [r,nx,un]); each surviving referrer has target_nodes=[/pv2-links:c/l[k='a']/k].
+fixtures:
+  - id: seq/trim-links-referrer-first
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang ordered parsing and leafref-link bookkeeping, no RFC behaviour
+    areas: [types, xpath, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-links}]
+      context_options: [leafref_linking, no_yanglibrary]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, parse_options: [ordered], data: '{"pv2-links:c":{"r":"a","nr":"a","nx":"a","u":"a","un":"a","v":"a","l":[{"k":"a"}]}}'}
+        - {do: link}
+        - {do: links}
+        - {do: trim, xpath: "/pv2-links:c/r | /pv2-links:c/nx | /pv2-links:c/un | /pv2-links:c/l[k='a']"}
+        - {do: links}
+        - {do: dump}
+    golden: golden/seq-trim-links-referrer-first.json

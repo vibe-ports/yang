@@ -5,9 +5,51 @@
 package data
 
 import (
+	"fmt"
+
 	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/xpath"
 )
+
+// trimStepBudget is the step budget one TrimXPath evaluation and its trim share; tests lower it.
+var trimStepBudget = int64(xpath.DefaultMaxSteps)
+
+// appendTrimSubtree appends root and its descendants in pre-order, charging each node before
+// looking at its children. The stack is bounded by tree depth: wide sibling lists are read one
+// element at a time instead of being copied into Node.All's stack before the next charge.
+func appendTrimSubtree(dst *[]*Node, root *Node, charge func(int64) bool) bool {
+	type frame struct {
+		n    *Node
+		next int
+	}
+	if !charge(1) {
+		return false
+	}
+	*dst = append(*dst, root)
+	stack := []frame{{n: root}}
+	for len(stack) > 0 {
+		f := &stack[len(stack)-1]
+		if f.next == f.n.kids.len() {
+			stack = stack[:len(stack)-1]
+			continue
+		}
+		if !charge(1) {
+			return false
+		}
+		i := f.next
+		f.next++
+		var child *Node
+		if i < len(f.n.kids.list) {
+			child = f.n.kids.list[i]
+		} else {
+			child = f.n.kids.opq[i-len(f.n.kids.list)]
+		}
+		f.n.kids.visit()
+		*dst = append(*dst, child)
+		stack = append(stack, frame{n: child})
+	}
+	return true
+}
 
 // TrimXPath is lyd_trim_xpath: the expression is evaluated over t with the first top-level node
 // as the context and current node (as libyang does; a non-nil o.Node is an LY_EINVAL
@@ -24,14 +66,24 @@ func (t *Tree) TrimXPath(expr string, o XPathOptions) ([]yang.Diagnostic, error)
 		err := l.done(l.logErr("LY_EINVAL", "Invalid argument %s (%s()).", "XPathOptions.Node (always the first top-level node)", "lyd_trim_xpath"))
 		return l.diags, err
 	}
-	top := t.top.nodes()
-	if len(top) == 0 {
+	topLen := t.top.len()
+	if topLen == 0 {
 		return nil, nil // nothing to do
 	}
 	if o.Format != XPathJSON || o.Namespaces != nil || o.Module != "" {
 		err := l.done(l.logErr("LY_EINVAL", "Invalid argument %s (%s()).", "XPathOptions.Format, Namespaces, Module (JSON only)", "lyd_trim_xpath"))
 		return l.diags, err
 	}
+	budgetErr := func() ([]yang.Diagnostic, error) {
+		err := fmt.Errorf("%w: XPath step budget (%d per evaluation, %d per operation): %w",
+			yang.ErrBudget, xpath.DefaultMaxSteps, DefaultMaxXPathSteps, xpath.ErrBudget)
+		return l.diags, l.done(err)
+	}
+	// Do not even materialize an input view larger than one evaluation can inspect.
+	if topLen > xpath.DefaultMaxSteps {
+		return budgetErr()
+	}
+	top := t.top.nodes()
 	vars := make([]xpath.Var, len(o.Vars))
 	for i, v := range o.Vars {
 		vars[i] = xpath.Var(v)
@@ -39,6 +91,20 @@ func (t *Tree) TrimXPath(expr string, o XPathOptions) ([]yang.Diagnostic, error)
 	r, err := t.evalXPath4(l, top[0], expr, jsonNS{set: t.set}, vars, false, xpath.NodeSet)
 	if err != nil {
 		return l.diags, l.done(err)
+	}
+	// The evaluation and the trim are one bounded operation. Everything below is read-only until
+	// the final link cleanup and unlinkAll, so exhausting the remaining per-evaluation budget still
+	// leaves the tree intact.
+	left := trimStepBudget - r.Steps
+	charge := func(n int64) bool {
+		if n > left {
+			return false
+		}
+		left -= n
+		return true
+	}
+	if !charge(2*int64(topLen) + 1) { // top and evaluator views, plus their setup
+		return budgetErr()
 	}
 	// the selected element nodes and every parent of one (libyang's parent_ht; a map stands for
 	// lyd_trim_equal_cb's pointer equality). libyang looks results up in the set's own hash table,
@@ -49,8 +115,14 @@ func (t *Tree) TrimXPath(expr string, o XPathOptions) ([]yang.Diagnostic, error)
 	exists := false
 	if r.Type == xpath.NodeSet {
 		for _, n := range nodesOf(r) {
+			if !charge(1) { // result map insertion
+				return budgetErr()
+			}
 			results[n] = true
 			for p := n.parent; p != nil; p = p.parent {
+				if !charge(1) { // parent map lookup/insertion
+					return budgetErr()
+				}
 				if exists = parents[p]; exists {
 					break // shared parent, done
 				}
@@ -59,30 +131,55 @@ func (t *Tree) TrimXPath(expr string, o XPathOptions) ([]yang.Diagnostic, error)
 		}
 	}
 	var free []*Node
-	var dfs func(n *Node)
-	dfs = func(n *Node) {
+	var freeNodes []*Node
+	var dfs func(n *Node) bool
+	dfs = func(n *Node) bool {
+		if !charge(2) { // this walk and the later sibling-list compaction
+			return false
+		}
 		switch {
 		case n.isKey():
 		case results[n]: // the whole subtree stays
-			return
+			return true
 		case !parents[n]: // neither selected nor above a selected node
 			free = append(free, n)
-			return
+			if !appendTrimSubtree(&freeNodes, n, charge) { // freeTree's subtree link cleanup
+				return false
+			}
+			return true
 		}
 		for c := range n.kids.all() {
-			dfs(c)
+			if !dfs(c) {
+				return false
+			}
 		}
+		return true
 	}
 	for _, n := range top {
-		dfs(n)
+		if !dfs(n) {
+			return budgetErr()
+		}
 	}
 	if len(free) == 0 && exists {
 		return l.diags, l.done(rcError("LY_EEXIST")) // libyang returns it without a message
 	}
-	for _, n := range free {
-		if err := freeTree(n); err != nil {
-			return l.diags, l.done(err)
+	if !chargeBulkFreeLinks(freeNodes, charge, &t.work) {
+		return budgetErr()
+	}
+	defaults := npContDfltAffected(free)
+	for _, p := range defaults {
+		// One ancestor-plan entry and at most one visit of every current child. Removed
+		// children make the eventual post-unlink scan no larger than this preflight bound.
+		if !charge(1 + int64(p.kids.len())) {
+			return budgetErr()
 		}
+	}
+	cleaner := bulkLinkCleaner{work: &t.work}
+	for _, n := range freeNodes {
+		cleaner.free(n)
+	}
+	if err := t.unlinkAllDefaults(free, defaults); err != nil {
+		return l.diags, l.done(err)
 	}
 	return l.diags, nil
 }

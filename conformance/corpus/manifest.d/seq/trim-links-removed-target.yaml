@@ -1,0 +1,20 @@
+# libyang v5.8.6: lyd_trim_xpath frees l (and k) before nx and un by tree_data.c:3633-3689 and tree_data_free.c:214-252; lyd_free_leafref_nodes at tree_data_free.c:145-205 clears k from every referrer. Native arrays are r.leafref_nodes=[/pv2-links:c/v] and v.target_nodes=[/pv2-links:c/r] (their opposite arrays are empty); surviving nr and u have no record.
+fixtures:
+  - id: seq/trim-links-removed-target
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang leafref-link bookkeeping during lyd_trim_xpath, no RFC behaviour
+    areas: [types, xpath, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-links}]
+      context_options: [leafref_linking, no_yanglibrary]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, data: '{"pv2-links:c":{"l":[{"k":"a"}],"r":"a","nr":"a","nx":"a","u":"a","un":"a","v":"a"}}'}
+        - {do: link}
+        - {do: links}
+        - {do: trim, xpath: "/pv2-links:c/r | /pv2-links:c/nr | /pv2-links:c/u | /pv2-links:c/v"}
+        - {do: links}
+        - {do: dump}
+    golden: golden/seq-trim-links-removed-target.json

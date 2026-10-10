@@ -1,0 +1,41 @@
+// SPDX-License-Identifier: BSD-3-Clause
+module pv2-lkorder {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-lkorder";
+  prefix plo;
+
+  container c {
+    container a {
+      leaf r1 {
+        type leafref {
+          path "../../b/t";
+        }
+      }
+      leaf r2 {
+        type leafref {
+          path "../../b/t";
+        }
+      }
+      leaf r3 {
+        type leafref {
+          path "../../b/t";
+        }
+      }
+      leaf r4 {
+        type leafref {
+          path "../../b/t";
+        }
+      }
+      leaf r5 {
+        type leafref {
+          path "../../b/t";
+        }
+      }
+    }
+    container b {
+      leaf-list t {
+        type string;
+      }
+    }
+  }
+}

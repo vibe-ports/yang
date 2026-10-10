@@ -1,0 +1,20 @@
+# libyang v5.8.6: lyd_insert_node DEFAULT enters system-ordered leaf-list instances through lyds_insert at tree_data.c:801-832 and tree_data_sorted.c:1213-1250; lyd_trim_xpath frees 3 then 5 at tree_data.c:3633-3689. Native bucket dst orders are therefore [1,3,5,9], [1,9], and [1,4,9].
+fixtures:
+  - id: seq/trim-lyds-all-indexed
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang sorting-tree and insertion API mechanics, no RFC behaviour
+    areas: [xpath, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-lyds}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, data: '{"pv2-lyds:bucket":[{"name":"dst","ll":[3,5,9,1]}]}'}
+        - {do: dump}
+        - {do: trim, xpath: "/pv2-lyds:bucket[name='dst']/ll[.='9' or .='1']"}
+        - {do: dump}
+        - {do: insert, node: "/pv2-lyds:bucket[name='new']/ll[.='4']", parent: "/pv2-lyds:bucket[name='dst']", format: json, data_type: data, parse_only: true, data: '{"pv2-lyds:bucket":[{"name":"new","ll":[4]}]}'}
+        - {do: dump}
+    golden: golden/seq-trim-lyds-all-indexed.json

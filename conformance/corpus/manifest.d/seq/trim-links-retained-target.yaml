@@ -1,0 +1,20 @@
+# libyang v5.8.6: lyd_trim_xpath records/frees nr,nx,u,v in DFS order at tree_data.c:3633-3689; lyd_free_leafref_nodes removes reciprocal entries at tree_data_free.c:145-205 using swap removal from tree_edit.h:240-249. Native arrays are k.leafref_nodes=[/pv2-links:c/r,/pv2-links:c/un], r.target_nodes=[/pv2-links:c/l[k='a']/k], and un.target_nodes=[/pv2-links:c/l[k='a']/k] (their opposite arrays are empty).
+fixtures:
+  - id: seq/trim-links-retained-target
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang leafref-link bookkeeping during lyd_trim_xpath, no RFC behaviour
+    areas: [types, xpath, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-links}]
+      context_options: [leafref_linking, no_yanglibrary]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, data: '{"pv2-links:c":{"l":[{"k":"a"}],"r":"a","nr":"a","nx":"a","u":"a","un":"a","v":"a"}}'}
+        - {do: link}
+        - {do: links}
+        - {do: trim, xpath: "/pv2-links:c/l[k='a'] | /pv2-links:c/r | /pv2-links:c/un"}
+        - {do: links}
+        - {do: dump}
+    golden: golden/seq-trim-links-retained-target.json

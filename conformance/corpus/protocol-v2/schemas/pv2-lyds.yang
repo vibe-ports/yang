@@ -1,0 +1,27 @@
+// SPDX-License-Identifier: BSD-3-Clause
+module pv2-lyds {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-lyds";
+  prefix pl;
+
+  description
+    "Hand-written sorting-tree fixtures. The top-level leaf-list covers the
+     originally proposed shape; buckets let the native LYD_DUP_NO_LYDS API
+     construct a mixed indexed/unindexed run through the sequence protocol.";
+
+  leaf-list ll {
+    type uint8;
+  }
+
+  list bucket {
+    key "name";
+
+    leaf name {
+      type string;
+    }
+
+    leaf-list ll {
+      type uint8;
+    }
+  }
+}

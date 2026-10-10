@@ -354,6 +354,15 @@ func unlinkTree(n *Node) error {
 	return nil
 }
 
+// afterRemove applies rb_remove_node's run-state rule after instances of sn have left s. The
+// surviving flags may be computed while compacting a batch so unlinkAll does not rescan s once
+// per affected schema node.
+func (s *siblings) afterRemove(sn *schema.Node, wasInRB, survives, survivesInRB bool) {
+	if !survives || wasInRB && !survivesInRB {
+		s.runGone(sn)
+	}
+}
+
 // unlink is lyd_unlink (without the key check); n's own leafref links go
 // (lyd_unlink_ignore_lyds).
 func unlink(n *Node) {
@@ -371,13 +380,12 @@ func unlink(n *Node) {
 	}
 	sib.hashRemove(n)
 	sib.gen++
-	if n.schema != nil && !sib.has(n.schema) {
-		sib.runGone(n.schema)
-	} else if n.inRB && !slices.ContainsFunc(sib.list, func(x *Node) bool { return x.schema == n.schema && x.inRB }) {
-		// the last RB-tree member left while instances appended outside the tree remain:
-		// rb_remove_node empties the tree, so the next sorted insertion builds it again from the
-		// whole run and re-sorts it (lyds_additionally_create_rb_tree)
-		sib.runGone(n.schema)
+	if n.schema != nil {
+		survives := sib.has(n.schema)
+		survivesInRB := !n.inRB || slices.ContainsFunc(sib.list, func(x *Node) bool {
+			return x.schema == n.schema && x.inRB
+		})
+		sib.afterRemove(n.schema, n.inRB, survives, survivesInRB)
 	}
 	npContDfltSet(detach(n)) // the last non-default node may be gone
 }
@@ -411,13 +419,21 @@ func freeTree(n *Node) error {
 // removals of validation (auto-deleted nodes) and lyd_free_siblings. A list key is refused
 // before anything is unlinked.
 func (t *Tree) unlinkAll(ns []*Node) error {
+	return t.unlinkAllDefaults(ns, npContDfltAffected(ns))
+}
+
+// unlinkAllDefaults is unlinkAll with the non-presence-container ancestors whose default flags
+// may change already collected. TrimXPath supplies them from its read-only preflight so their
+// later scans can be charged before any mutation.
+func (t *Tree) unlinkAllDefaults(ns, defaults []*Node) error {
 	for _, n := range ns {
 		if err := unlinkCheck(n); err != nil {
 			return err
 		}
 	}
 	gone := map[*Node]bool{}
-	sibs := map[*siblings]map[idxKey]bool{} // touched lists and their touched buckets
+	sibs := map[*siblings]map[idxKey]bool{}              // touched lists and their touched buckets
+	removedRuns := map[*siblings]map[*schema.Node]bool{} // affected schemas; value: any removed node was inRB
 	var order []*siblings
 	for _, n := range ns {
 		sib := n.siblingsOf()
@@ -429,6 +445,12 @@ func (t *Tree) unlinkAll(ns []*Node) error {
 		if sibs[sib] == nil {
 			sibs[sib] = map[idxKey]bool{}
 			order = append(order, sib)
+		}
+		if n.schema != nil {
+			if removedRuns[sib] == nil {
+				removedRuns[sib] = map[*schema.Node]bool{}
+			}
+			removedRuns[sib][n.schema] = removedRuns[sib][n.schema] || n.inRB
 		}
 		if n.hashed {
 			sibs[sib][n.hkey] = true
@@ -450,35 +472,105 @@ func (t *Tree) unlinkAll(ns []*Node) error {
 	}
 	for _, sib := range order {
 		present := map[*schema.Node]bool{}
+		indexed := map[*schema.Node]bool{}
 		for _, n := range sib.list {
 			present[n.schema] = true
-		}
-		for s := range sib.rbTree {
-			if !present[s] {
-				sib.runGone(s)
+			if n.inRB {
+				indexed[n.schema] = true
 			}
 		}
-		for s := range sib.unsorted {
-			if !present[s] {
-				sib.runGone(s)
-			}
+		for s, wasInRB := range removedRuns[sib] {
+			sib.afterRemove(s, wasInRB, present[s], indexed[s])
 		}
 	}
-	var parents []*Node
-	seen := map[*Node]bool{}
 	for _, n := range ns {
 		if gone[n] {
 			delete(gone, n)
-			if p := detach(n); p != nil && !seen[p] {
-				seen[p] = true
-				parents = append(parents, p)
-			}
+			detach(n)
 		}
 	}
-	for _, p := range parents { // once per parent, not per removed child
-		npContDfltSet(p)
-	}
+	npContDfltSetAll(defaults)
 	return nil
+}
+
+// npContDfltAffected returns the retained non-presence-container ancestors whose default flags
+// may change when ns are removed, deepest first. Each ancestor is returned once so a wide batch
+// cannot repeatedly scan a shared parent's growing prefix.
+func npContDfltAffected(ns []*Node) []*Node {
+	gone := make(map[*Node]bool, len(ns))
+	for _, n := range ns {
+		gone[n] = true
+	}
+	seen := map[*Node]bool{}
+	var affected []*Node
+	for _, n := range ns {
+		p := n.parent
+		for p != nil && gone[p] {
+			p = p.parent
+		}
+		for p != nil && p.flags&FlagDefault == 0 && isNPCont(p.schema) {
+			if seen[p] {
+				break
+			}
+			seen[p] = true
+			affected = append(affected, p)
+			p = p.parent
+		}
+	}
+
+	// Bucket by tree depth instead of sorting with repeated ancestor walks. The memoized depth
+	// calculation visits every ancestor chain only once.
+	depths := map[*Node]int{}
+	maxDepth := 0
+	for _, n := range affected {
+		path := []*Node{}
+		p := n
+		base := 0
+		for p != nil {
+			if d, ok := depths[p]; ok {
+				base = d
+				break
+			}
+			path = append(path, p)
+			p = p.parent
+		}
+		for i := len(path) - 1; i >= 0; i-- {
+			base++
+			depths[path[i]] = base
+		}
+		if depths[n] > maxDepth {
+			maxDepth = depths[n]
+		}
+	}
+	buckets := make([][]*Node, maxDepth+1)
+	for _, n := range affected {
+		buckets[depths[n]] = append(buckets[depths[n]], n)
+	}
+	affected = affected[:0]
+	for depth := maxDepth; depth > 0; depth-- {
+		affected = append(affected, buckets[depth]...)
+	}
+	return affected
+}
+
+// npContDfltSetAll recomputes each affected container once. Children precede parents, so a
+// parent observes the final default flags of all of its affected children.
+func npContDfltSetAll(affected []*Node) {
+	for _, p := range affected {
+		if p.flags&FlagDefault != 0 {
+			continue
+		}
+		allDefault := true
+		for c := range p.kids.all() {
+			if c.flags&FlagDefault == 0 {
+				allDefault = false
+				break
+			}
+		}
+		if allDefault {
+			p.flags |= FlagDefault
+		}
+	}
 }
 
 // isNPCont is lysc_is_np_cont.

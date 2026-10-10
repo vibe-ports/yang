@@ -1,0 +1,20 @@
+# libyang v5.8.6: lyd_trim_xpath frees r,nx,un in DFS order at tree_data.c:3633-3689. lyd_free_leafref_links_rec processes r's leafref side (v) before its target side (k) at tree_data_free.c:145-175, then swap-removes nx and un (tree_edit.h:240-249), so native v has no record, k.leafref_nodes=[/pv2-links:c/u,/pv2-links:c/nr] (not [nr,u]), and each surviving referrer has target_nodes=[/pv2-links:c/l[k='a']/k].
+fixtures:
+  - id: seq/trim-links-chain
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang leafref-link bookkeeping during lyd_trim_xpath, no RFC behaviour
+    areas: [types, xpath, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-links}]
+      context_options: [leafref_linking, no_yanglibrary]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, data: '{"pv2-links:c":{"l":[{"k":"a"}],"r":"a","nr":"a","nx":"a","u":"a","un":"a","v":"a"}}'}
+        - {do: link}
+        - {do: links}
+        - {do: trim, xpath: "/pv2-links:c/l[k='a'] | /pv2-links:c/nr | /pv2-links:c/u | /pv2-links:c/v"}
+        - {do: links}
+        - {do: dump}
+    golden: golden/seq-trim-links-chain.json
