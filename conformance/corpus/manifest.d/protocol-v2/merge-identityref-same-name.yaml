@@ -1,0 +1,18 @@
+fixtures:
+  - id: protocol-v2/merge-identityref-same-name
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: merging, into runs built by NewPath (sorted, with their RB tree), identities of the same name from two modules into sorted runs; they sort alike but are different instances, both are added
+    rfc: ["RFC7950#9.10", "RFC7950#7.7.7"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-ida}, {name: pv2-idb}]
+      steps:
+        - {do: edit, set: {path: "/pv2-ida:c/ids", value: "pv2-ida:z"}}
+        - {do: edit, set: {path: "/pv2-ida:c/ids", value: "pv2-ida:y"}}
+        - {do: edit, set: {path: "/pv2-ida:c/l[k='pv2-ida:z']/v", value: "2"}}
+        - {do: edit, set: {path: "/pv2-ida:c/l[k='pv2-ida:y']/v", value: "1"}}
+        - {do: edit, merge: '{"pv2-ida:c": {"ids": ["x", "pv2-idb:x"], "l": [{"k": "x", "v": "3"}, {"k": "pv2-idb:x", "v": "4"}]}}', data_type: config}
+        - {do: dump, with_defaults: all}
+    golden: golden/merge-identityref-same-name.json

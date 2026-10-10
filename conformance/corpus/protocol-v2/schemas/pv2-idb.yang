@@ -1,0 +1,9 @@
+module pv2-idb {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-idb";
+  prefix ib;
+
+  import pv2-ida { prefix ia; }
+
+  identity x { base ia:base; }
+}
