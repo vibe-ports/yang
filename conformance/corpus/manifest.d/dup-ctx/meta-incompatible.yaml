@@ -1,0 +1,9 @@
+fixtures:
+  # metadata whose value the target annotation's type rejects: the store's items and "Value duplication failed.", the node copied without it (lyd_dup_single_to_ctx; #99)
+  - id: dup-ctx/meta-incompatible
+    dir: dup-ctx
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang API (lyd_dup_single_to_ctx): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["schemas-a"], "modules": [{"name": "dc"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "parse", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"dc:c\": {\"id\": \"dc:one\", \"@id\": {\"dc:tag\": \"dc:one\"}}}"}, {"do": "dup", "node": "/dc:c", "options": ["recursive"], "target": {"searchdirs": ["schemas-c"], "modules": [{"name": "dc"}], "context_options": ["no_yanglibrary"]}}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/meta-incompatible.json

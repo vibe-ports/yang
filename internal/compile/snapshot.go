@@ -21,7 +21,7 @@ import (
 func (c *Context) Snapshot() *schema.Set {
 	cp := &snapCopy{mods: map[*schema.Module]*schema.Module{}, nodes: map[*schema.Node]*schema.Node{},
 		idents: map[*schema.Identity]*schema.Identity{}, types: map[*schema.Type]*schema.Type{}}
-	set := &schema.Set{}
+	set := &schema.Set{LeafrefLinking: c.opts.LeafrefLinking}
 	for _, m := range c.Modules { // shells first: everything below may point to any module
 		if m.Schema == nil {
 			continue
