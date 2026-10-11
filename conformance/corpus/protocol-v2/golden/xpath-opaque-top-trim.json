@@ -1,0 +1,110 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-links",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "opaque",
+          "meta": [],
+          "opaque": {
+            "format": "json",
+            "module": "pv2-links",
+            "name": "zz",
+            "namespace": null,
+            "prefix": "pv2-links"
+          },
+          "path": "/pv2-links:zz",
+          "schema": null,
+          "value": {
+            "canonical": "",
+            "hints": [
+              "container"
+            ],
+            "type": null,
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "opaque",
+          "meta": [],
+          "opaque": {
+            "format": "json",
+            "module": "pv2-links",
+            "name": "q",
+            "namespace": null,
+            "prefix": null
+          },
+          "path": "/pv2-links:zz/q",
+          "schema": null,
+          "value": {
+            "canonical": "1",
+            "hints": [
+              "decnum"
+            ],
+            "type": null,
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "trim",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": []
+    },
+    {
+      "diagnostics": [],
+      "do": "dump",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "tree": {
+        "json": "{}\n",
+        "xml": ""
+      },
+      "typed": []
+    }
+  ],
+  "verdict": "valid"
+}

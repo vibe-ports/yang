@@ -3,7 +3,7 @@
 // lyd_validate_unres_when, lyd_validate_unres (when and type parts), lyd_validate_dummy_when,
 // lyd_validate_must), src/tree_data_common.c (lyd_value_validate_incomplete),
 // src/plugins_types.c (lyplg_type_resolve_leafref, _get_target_path) and src/path.c
-// (ly_path_eval_partial) (BSD-3-Clause, © CESNET).
+// (ly_path_eval_partial), and src/xpath.c (lyxp_eval: the tree check) (BSD-3-Clause, © CESNET).
 
 package data
 
@@ -43,6 +43,12 @@ func (vc *valCtx) eval(e *xpath.Expr, ctx *Node, root xpath.RootKind, ignoreWhen
 		if err := b.ctx.Err(); err != nil {
 			return xpath.Result{}, err
 		}
+	}
+	// lyxp_eval's tree check, xpath.c:9947-9960; an opaque first node passes
+	// (lysc_data_parent(NULL)).
+	if first := vc.t.top.first(); first != nil && first.schema != nil && first.schema.DataParent() != nil {
+		return xpath.Result{}, &xpath.Error{Err: "LY_EINVAL", Msg: fmt.Sprintf(
+			"Data node \"%s\" has no parent but is not instance of a top-level schema node.", first.Name())}
 	}
 	limit := b.max
 	if limit <= 0 {

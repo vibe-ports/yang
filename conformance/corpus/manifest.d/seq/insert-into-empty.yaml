@@ -1,0 +1,9 @@
+fixtures:
+  # a second tree's top-level node into an empty tree (lyd_insert_sibling with a NULL sibling) (design 07 §6.1.2, Tree.Insert)
+  - id: seq/insert-into-empty
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang API (lyd_insert_child, lyd_insert_sibling): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["schemas"], "modules": [{"name": "pv2-edit"}], "steps": [{"do": "insert", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"pv2-edit:c\": {\"a\": \"y\"}}"}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/seq-insert-into-empty.json

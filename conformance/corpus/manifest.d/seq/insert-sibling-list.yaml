@@ -1,0 +1,9 @@
+fixtures:
+  # the first top-level node of a second tree moves with its siblings (lyd_move_nodes), an opaque one included (design 07 §6.1.2, Tree.Insert)
+  - id: seq/insert-sibling-list
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang API (lyd_insert_child, lyd_insert_sibling): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["schemas"], "modules": [{"name": "pv2-edit"}], "steps": [{"do": "parse", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"pv2-edit:c\": {\"a\": \"x\", \"l\": [{\"k\": \"a\", \"v\": 1}, {\"k\": \"b\"}]}}"}, {"do": "insert", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"pv2-edit:c\": {\"b\": 3}, \"pv2-edit:zz\": 1}", "unknown": "opaque"}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/seq-insert-sibling-list.json

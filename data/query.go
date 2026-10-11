@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Ported from libyang v5.8.6 src/tree_data.c (lyd_find_xpath, lyd_find_xpath2, lyd_find_xpath3,
-// lyd_eval_xpath4), src/xpath.c (lyxp_eval: the tree and current-module checks), src/xml.c
+// lyd_eval_xpath4), src/xpath.c (lyxp_eval: the current-module check), src/xml.c
 // (lyxml_ns_get), src/tree_schema.c (ly_resolve_prefix, ly_xml_resolve_prefix,
 // ly_schema_resolve_prefix) and src/plugins_types.c (ly_get_prefix, ly_xml_get_prefix,
 // ly_schema_get_prefix) (BSD-3-Clause, © CESNET).
@@ -241,14 +241,6 @@ func (t *Tree) evalXPath4(l *logger, ctxNode *Node, src string, ns xpath.Namespa
 	}
 	if s, ok := ns.(schemaNS); ok && s.cur == nil { // lyxp_eval's first check
 		return xpath.Result{}, l.logErr("LY_EINVAL", "Current module must be set if schema format is used.")
-	}
-	// lyxp_eval's tree check of the first top-level sibling (opaque ones are last and have no
-	// schema node). The public API cannot build such a tree (insertions check the parent), so this
-	// is reached only by trees the package builds by hand: it stays for parity with libyang.
-	if l0 := t.top.list; len(l0) > 0 && l0[0].schema.DataParent() != nil {
-		first := l0[0]
-		return xpath.Result{}, l.logErr("LY_EINVAL",
-			"Data node \"%s\" has no parent but is not instance of a top-level schema node.", first.Name())
 	}
 	vc := &valCtx{t: t, log: l, vars: vars}
 	if single {

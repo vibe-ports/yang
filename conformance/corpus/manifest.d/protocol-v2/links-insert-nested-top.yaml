@@ -1,0 +1,17 @@
+fixtures:
+  # insert into an empty tree exposes lyxp_eval's nested-schema-node tree check (#99)
+  - id: protocol-v2/links-insert-nested-top
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang data-tree/XPath API behaviour: no RFC behaviour
+    areas: [types, xpath, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-links}]
+      context_options: [leafref_linking]
+      steps:
+        - {do: insert, node: /pv2-links:c/r, format: json, data_type: config, parse_only: true, data_file: data/links.json}
+        - {do: link}
+        - {do: links}
+    golden: golden/links-insert-nested-top.json

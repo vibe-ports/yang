@@ -1,0 +1,17 @@
+fixtures:
+  # lyxp_eval's nested-schema-node tree check accepts a schema-less opaque first node (#99)
+  - id: protocol-v2/xpath-opaque-top-trim
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang data-tree/XPath API behaviour: no RFC behaviour
+    areas: [xpath, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-links}]
+      context_options: [leafref_linking]
+      steps:
+        - {do: parse, format: json, data_type: config, unknown: opaque, parse_only: true, data: '{"pv2-links:zz": {"q": 1}}'}
+        - {do: trim, xpath: /pv2-links:c}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/xpath-opaque-top-trim.json

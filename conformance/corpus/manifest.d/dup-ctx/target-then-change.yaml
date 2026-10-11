@@ -1,0 +1,9 @@
+fixtures:
+  # after a duplicate into another context, a failing change_term logs in that context (lyd_dup_single_to_ctx; #99)
+  - id: dup-ctx/target-then-change
+    dir: dup-ctx
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang API (lyd_dup_single_to_ctx): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["schemas-a"], "modules": [{"name": "dc"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "parse", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"dc:c\": {\"x\": \"7\"}}"}, {"do": "dup", "node": "/dc:c", "options": ["recursive"], "target": {"searchdirs": ["schemas-b"], "modules": [{"name": "dc"}], "context_options": ["no_yanglibrary"]}}, {"do": "change_term", "node": "/dc:c/x", "value": "300"}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/target-then-change.json

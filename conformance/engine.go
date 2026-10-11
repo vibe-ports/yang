@@ -59,6 +59,7 @@ var ctxOptions = map[string]func(*yang.Options){
 	"compile_obsolete":     func(o *yang.Options) { o.CompileObsolete = true },
 	"ref_implemented":      func(o *yang.Options) { o.RefImplemented = true },
 	"leafref_extended":     func(o *yang.Options) { o.LeafrefExtended = true },
+	"leafref_linking":      func(o *yang.Options) { o.LeafrefLinking = true },
 	"builtin_plugins_only": func(o *yang.Options) { o.BuiltinPluginsOnly = true },
 	"pattern_compat":       func(o *yang.Options) { o.PatternCompat = true },
 }

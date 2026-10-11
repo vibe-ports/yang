@@ -1,0 +1,8 @@
+fixtures:
+  - id: ut-new/insert-59
+    dir: ut-new
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # module e; lyd_new_list2 with LYD_NEW_VAL_OUTPUT in an operation whose input and output lists share a name: the output list's uint8 key rejects the value (#99)
+    rfc: []   # libyang API (lyd_new_list2): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["e.1"], "modules": [{"name": "e"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "edit", "insert_inner": {"module": "e", "name": "op2"}}, {"do": "edit", "insert_list2": {"parent": "/e:op2", "name": "li2", "keys": "[k='abc']", "options": ["output"]}}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/insert-59.json

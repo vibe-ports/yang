@@ -1,0 +1,18 @@
+fixtures:
+  # leafref validation reaches lyxp_eval's nested-schema-node tree check (#99)
+  - id: protocol-v2/xpath-nested-top-validate
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang data-tree/XPath API behaviour: no RFC behaviour
+    areas: [types, validation, xpath]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-links}]
+      context_options: [leafref_linking]
+      steps:
+        - {do: parse, format: json, data_type: config, data_file: data/links.json}
+        - {do: dup, node: /pv2-links:c/r}
+        - {do: validate, data_type: config}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/xpath-nested-top-validate.json

@@ -1,0 +1,9 @@
+fixtures:
+  # a list instance moved out of a validated second tree whose leafref to its key stays behind: freeing the rest of that tree drops the link (design 07 §6.1.2, Tree.Insert)
+  - id: seq/insert-then-links
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang API (lyd_insert_child, lyd_insert_sibling): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["schemas"], "modules": [{"name": "pv2-links"}], "context_options": ["leafref_linking", "no_yanglibrary"], "steps": [{"do": "parse", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"pv2-links:c\": {\"t\": [\"x\"]}}"}, {"do": "insert", "node": "/pv2-links:c/l[k='a']", "parent": "/pv2-links:c", "format": "json", "data_type": "data", "data": "{\"pv2-links:c\": {\"l\": [{\"k\": \"a\"}], \"r\": \"a\"}}"}, {"do": "links"}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/seq-insert-then-links.json

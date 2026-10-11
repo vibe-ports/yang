@@ -1,0 +1,41 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo): duplication into another context (#99). The
+// schemas-a and schemas-b copies differ only in the type of leaf x (string here).
+module dc {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:dc";
+  prefix dc;
+
+  import ietf-yang-metadata {
+    prefix md;
+  }
+
+  md:annotation tag {
+    type identityref {
+      base base;
+    }
+  }
+  md:annotation where {
+    type instance-identifier;
+  }
+  identity base;
+  identity one {
+    base base;
+  }
+  container c {
+    leaf id {
+      type identityref {
+        base base;
+      }
+    }
+    leaf ref {
+      type instance-identifier;
+    }
+    leaf x {
+      type string;
+    }
+    leaf y {
+      type string;
+    }
+  }
+}
