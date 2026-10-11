@@ -1,0 +1,323 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "d",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/d:c",
+          "schema": "/d:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/d:c/x",
+          "schema": "/d:c/x",
+          "value": {
+            "canonical": "dflt",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/ietf-yang-schema-mount:schema-mounts",
+          "schema": "/ietf-yang-schema-mount:schema-mounts",
+          "value": null
+        }
+      ]
+    },
+    {
+      "change": {
+        "err": 4,
+        "name": "LY_EEXIST"
+      },
+      "diagnostics": [],
+      "do": "change_term",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/d:c",
+          "schema": "/d:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/d:c/x",
+          "schema": "/d:c/x",
+          "value": {
+            "canonical": "dflt",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/ietf-yang-schema-mount:schema-mounts",
+          "schema": "/ietf-yang-schema-mount:schema-mounts",
+          "value": null
+        }
+      ]
+    },
+    {
+      "change": {
+        "err": 11,
+        "name": "LY_ENOT"
+      },
+      "diagnostics": [],
+      "do": "change_term",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/d:c",
+          "schema": "/d:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/d:c/x",
+          "schema": "/d:c/x",
+          "value": {
+            "canonical": "dflt",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/ietf-yang-schema-mount:schema-mounts",
+          "schema": "/ietf-yang-schema-mount:schema-mounts",
+          "value": null
+        }
+      ]
+    },
+    {
+      "change": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "diagnostics": [],
+      "do": "change_term",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/d:c",
+          "schema": "/d:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/d:c/x",
+          "schema": "/d:c/x",
+          "value": {
+            "canonical": "z",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/ietf-yang-schema-mount:schema-mounts",
+          "schema": "/ietf-yang-schema-mount:schema-mounts",
+          "value": null
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "dump",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "tree": {
+        "json": "{\n  \"d:c\": {\n    \"x\": \"z\"\n  }\n}\n",
+        "xml": "<c xmlns=\"urn:vibe-ports:yang:ut-new:d\">\n  <x>z</x>\n</c>\n"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/d:c",
+          "schema": "/d:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/d:c/x",
+          "schema": "/d:c/x",
+          "value": {
+            "canonical": "z",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/ietf-yang-schema-mount:schema-mounts",
+          "schema": "/ietf-yang-schema-mount:schema-mounts",
+          "value": null
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

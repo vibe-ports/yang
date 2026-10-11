@@ -63,6 +63,9 @@ func (c *Context) Snapshot() *schema.Set {
 	for o, n := range cp.nodes { // references to other nodes, once all are copied
 		cp.refs(o, n)
 	}
+	for _, m := range set.Modules {
+		m.Owner = set
+	}
 	return set
 }
 

@@ -1,0 +1,8 @@
+fixtures:
+  - id: ut-new/path-07
+    dir: ut-new
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # modules e and f; the same key in lyd_new_path creation (#98)
+    rfc: []   # libyang API (lyd_find_path, lyd_new_path, lyd_validate_all): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["e.1", "f.1"], "modules": [{"name": "e"}, {"name": "f"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "edit", "set": {"path": "/e:li[id=\"/f:lp[p='2001:0db8::/64']\"]"}}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/path-07.json

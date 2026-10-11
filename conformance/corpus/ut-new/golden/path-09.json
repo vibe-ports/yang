@@ -1,0 +1,287 @@
+{
+  "context_diagnostics": [],
+  "failed_step": 2,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "e",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "f",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 7,
+    "name": "LY_EVALID"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:lu2[id=\"/e:lk[k='1']\"]",
+          "schema": "/f:lu2",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:lu2[id=\"/e:lk[k='1']\"]/id",
+          "schema": "/f:lu2/id",
+          "value": {
+            "canonical": "/e:lk[k='1']",
+            "type": "instance-identifier",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"f:lu2\": [\n    {\n      \"@\": {\n        \"yang:operation\": \"create\",\n        \"yang:insert\": \"after\",\n        \"yang:key\": \"[id=\\\"/f:lp[p='2001:0db8::/64']\\\"]\"\n      },\n      \"id\": \"/e:lk[k='2']\"\n    }\n  ]\n}\n",
+        "xml": "<lu2 xmlns=\"urn:vibe-ports:yang:ut-new:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\" yang:insert=\"after\" xmlns:f=\"urn:vibe-ports:yang:ut-new:f\" yang:key=\"[id=&quot;/f:lp[p='2001:0db8::/64']&quot;]\">\n  <id xmlns:e=\"urn:vibe-ports:yang:ut-new:e\">/e:lk[e:k='2']</id>\n</lu2>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            },
+            {
+              "module": "yang",
+              "name": "insert",
+              "value": "after"
+            },
+            {
+              "module": "yang",
+              "name": "key",
+              "value": "[id=\"/f:lp[p='2001:0db8::/64']\"]"
+            }
+          ],
+          "opaque": null,
+          "path": "/f:lu2[id=\"/e:lk[k='2']\"]",
+          "schema": "/f:lu2",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:lu2[id=\"/e:lk[k='2']\"]/id",
+          "schema": "/f:lu2/id",
+          "value": {
+            "canonical": "/e:lk[k='2']",
+            "type": "instance-identifier",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff_parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:lu2[id=\"/e:lk[k='1']\"]",
+          "schema": "/f:lu2",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:lu2[id=\"/e:lk[k='1']\"]/id",
+          "schema": "/f:lu2/id",
+          "value": {
+            "canonical": "/e:lk[k='1']",
+            "type": "instance-identifier",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Invalid instance-identifier \"/f:lp[p='2001:db8::/64']\" value - semantic error: Unsatisfied pattern - \"2001:db8::/64\" does not match \".*0db8.*\".",
+          "phase": "diff",
+          "schema_path": "/f:lu2/id",
+          "vecode": 9,
+          "vecode_name": "LYVE_DATA"
+        }
+      ],
+      "diff": {
+        "json": "{\n  \"f:lu2\": [\n    {\n      \"@\": {\n        \"yang:operation\": \"create\",\n        \"yang:insert\": \"after\",\n        \"yang:key\": \"[id=\\\"/f:lp[p='2001:0db8::/64']\\\"]\"\n      },\n      \"id\": \"/e:lk[k='2']\"\n    }\n  ]\n}\n",
+        "xml": "<lu2 xmlns=\"urn:vibe-ports:yang:ut-new:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\" yang:insert=\"after\" xmlns:f=\"urn:vibe-ports:yang:ut-new:f\" yang:key=\"[id=&quot;/f:lp[p='2001:0db8::/64']&quot;]\">\n  <id xmlns:e=\"urn:vibe-ports:yang:ut-new:e\">/e:lk[e:k='2']</id>\n</lu2>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            },
+            {
+              "module": "yang",
+              "name": "insert",
+              "value": "after"
+            },
+            {
+              "module": "yang",
+              "name": "key",
+              "value": "[id=\"/f:lp[p='2001:0db8::/64']\"]"
+            }
+          ],
+          "opaque": null,
+          "path": "/f:lu2[id=\"/e:lk[k='2']\"]",
+          "schema": "/f:lu2",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:lu2[id=\"/e:lk[k='2']\"]/id",
+          "schema": "/f:lu2/id",
+          "value": {
+            "canonical": "/e:lk[k='2']",
+            "type": "instance-identifier",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff_apply",
+      "rc": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:lu2[id=\"/e:lk[k='1']\"]",
+          "schema": "/f:lu2",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/f:lu2[id=\"/e:lk[k='1']\"]/id",
+          "schema": "/f:lu2/id",
+          "value": {
+            "canonical": "/e:lk[k='1']",
+            "type": "instance-identifier",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "do": "dump",
+      "skipped": true
+    }
+  ],
+  "verdict": "invalid"
+}

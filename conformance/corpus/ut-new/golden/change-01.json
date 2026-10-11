@@ -1,0 +1,302 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "edit",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:foo",
+          "schema": "/a:foo",
+          "value": {
+            "canonical": "1",
+            "type": "uint16",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "change": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "diagnostics": [],
+      "do": "change_term",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:foo",
+          "schema": "/a:foo",
+          "value": {
+            "canonical": "2",
+            "type": "uint16",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "change": {
+        "err": 11,
+        "name": "LY_ENOT"
+      },
+      "diagnostics": [],
+      "do": "change_term",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:foo",
+          "schema": "/a:foo",
+          "value": {
+            "canonical": "2",
+            "type": "uint16",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "change": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "diagnostics": [],
+      "do": "change_term",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:foo",
+          "schema": "/a:foo",
+          "value": {
+            "canonical": "3",
+            "type": "uint16",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "edit",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:foo",
+          "schema": "/a:foo",
+          "value": {
+            "canonical": "3",
+            "type": "uint16",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:ll[.='q']",
+          "schema": "/a:ll",
+          "value": {
+            "canonical": "q",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "change": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "diagnostics": [],
+      "do": "change_term",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:foo",
+          "schema": "/a:foo",
+          "value": {
+            "canonical": "3",
+            "type": "uint16",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:ll[.='r']",
+          "schema": "/a:ll",
+          "value": {
+            "canonical": "r",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "dump",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "tree": {
+        "json": "{\n  \"a:foo\": 3,\n  \"a:ll\": [\n    \"r\"\n  ]\n}\n",
+        "xml": "<foo xmlns=\"urn:tests:a\">3</foo>\n<ll xmlns=\"urn:tests:a\">r</ll>\n"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:foo",
+          "schema": "/a:foo",
+          "value": {
+            "canonical": "3",
+            "type": "uint16",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:ll[.='r']",
+          "schema": "/a:ll",
+          "value": {
+            "canonical": "r",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

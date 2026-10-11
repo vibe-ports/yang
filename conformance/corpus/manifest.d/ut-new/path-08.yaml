@@ -1,0 +1,8 @@
+fixtures:
+  - id: ut-new/path-08
+    dir: ut-new
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # modules e and f; an instance-identifier whose target's key re-stores to a value its pattern rejects: validation finds no instance (#98)
+    rfc: []   # libyang API (lyd_find_path, lyd_new_path, lyd_validate_all): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["e.1", "f.1"], "modules": [{"name": "e"}, {"name": "f"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "parse", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"f:ir\": \"/f:lp[p='2001:0db8::/64']\"}"}, {"do": "validate", "data_type": "data"}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/path-08.json

@@ -1,0 +1,51 @@
+{
+  "context_diagnostics": [],
+  "failed_step": 0,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "e",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 7,
+    "name": "LY_EVALID"
+  },
+  "steps": [
+    {
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Unsatisfied length - string \"abcd\" length is not allowed.",
+          "phase": "edit",
+          "schema_path": "/e:s",
+          "vecode": 9,
+          "vecode_name": "LYVE_DATA"
+        }
+      ],
+      "do": "edit",
+      "rc": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "typed": []
+    },
+    {
+      "do": "dump",
+      "skipped": true
+    }
+  ],
+  "verdict": "invalid"
+}

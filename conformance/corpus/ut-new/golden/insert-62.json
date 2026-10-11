@@ -1,0 +1,98 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "edit",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "opaque",
+          "meta": [],
+          "opaque": {
+            "format": "xml",
+            "module": null,
+            "name": "n",
+            "namespace": "urn:tests:a",
+            "prefix": null
+          },
+          "path": "/a:n",
+          "schema": null,
+          "value": {
+            "canonical": "v",
+            "hints": [],
+            "type": null,
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "dump",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "tree": {
+        "json": "{\n  \"a:n\": \"v\"\n}\n",
+        "xml": "<n xmlns=\"urn:tests:a\">v</n>\n"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "opaque",
+          "meta": [],
+          "opaque": {
+            "format": "xml",
+            "module": null,
+            "name": "n",
+            "namespace": "urn:tests:a",
+            "prefix": null
+          },
+          "path": "/a:n",
+          "schema": null,
+          "value": {
+            "canonical": "v",
+            "hints": [],
+            "type": null,
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

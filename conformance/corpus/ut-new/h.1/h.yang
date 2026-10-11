@@ -1,0 +1,32 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo): an instance-identifier whose target list is keyed
+// by a node-instance-identifier; re-storing that key's canonical text fails a nested predicate,
+// and every error logged on the way is printed (#98).
+module h {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:ut-new:h";
+  prefix h;
+
+  import ietf-netconf-acm {
+    prefix nacm;
+  }
+
+  list ln {
+    key "id";
+    leaf id {
+      type nacm:node-instance-identifier;
+    }
+  }
+  leaf ih {
+    type instance-identifier {
+      require-instance false;
+    }
+  }
+  leaf uh {
+    type union {
+      type instance-identifier {
+        require-instance false;
+      }
+    }
+  }
+}

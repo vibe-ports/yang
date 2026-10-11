@@ -1,0 +1,754 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l1[a='p'][b='q']",
+          "schema": "/a:l1",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l1[a='p'][b='q']/a",
+          "schema": "/a:l1/a",
+          "value": {
+            "canonical": "p",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l1[a='p'][b='q']/b",
+          "schema": "/a:l1/b",
+          "value": {
+            "canonical": "q",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l1[a='x'][b='y']",
+          "schema": "/a:l1",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l1[a='x'][b='y']/a",
+          "schema": "/a:l1/a",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l1[a='x'][b='y']/b",
+          "schema": "/a:l1/b",
+          "value": {
+            "canonical": "y",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l11[a='1']",
+          "schema": "/a:l11",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l11[a='1']/a",
+          "schema": "/a:l11/a",
+          "value": {
+            "canonical": "1",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l11[a='2']",
+          "schema": "/a:l11",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l11[a='2']/a",
+          "schema": "/a:l11/a",
+          "value": {
+            "canonical": "2",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "change": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "diagnostics": [],
+      "do": "change_term",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l1[a='p'][b='q']",
+          "schema": "/a:l1",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l1[a='p'][b='q']/a",
+          "schema": "/a:l1/a",
+          "value": {
+            "canonical": "p",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l1[a='p'][b='q']/b",
+          "schema": "/a:l1/b",
+          "value": {
+            "canonical": "q",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l1[a='x'][b='y']",
+          "schema": "/a:l1",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l1[a='x'][b='y']/a",
+          "schema": "/a:l1/a",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l1[a='x'][b='y']/b",
+          "schema": "/a:l1/b",
+          "value": {
+            "canonical": "y",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l11[a='2']",
+          "schema": "/a:l11",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l11[a='2']/a",
+          "schema": "/a:l11/a",
+          "value": {
+            "canonical": "2",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l11[a='3']",
+          "schema": "/a:l11",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l11[a='3']/a",
+          "schema": "/a:l11/a",
+          "value": {
+            "canonical": "3",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "change": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "diagnostics": [],
+      "do": "change_term",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l1[a='x'][b='y']",
+          "schema": "/a:l1",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l1[a='x'][b='y']/a",
+          "schema": "/a:l1/a",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l1[a='x'][b='y']/b",
+          "schema": "/a:l1/b",
+          "value": {
+            "canonical": "y",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l1[a='z'][b='q']",
+          "schema": "/a:l1",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l1[a='z'][b='q']/a",
+          "schema": "/a:l1/a",
+          "value": {
+            "canonical": "z",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l1[a='z'][b='q']/b",
+          "schema": "/a:l1/b",
+          "value": {
+            "canonical": "q",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l11[a='2']",
+          "schema": "/a:l11",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l11[a='2']/a",
+          "schema": "/a:l11/a",
+          "value": {
+            "canonical": "2",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l11[a='3']",
+          "schema": "/a:l11",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l11[a='3']/a",
+          "schema": "/a:l11/a",
+          "value": {
+            "canonical": "3",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "dump",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "tree": {
+        "json": "{\n  \"a:l1\": [\n    {\n      \"a\": \"x\",\n      \"b\": \"y\"\n    },\n    {\n      \"a\": \"z\",\n      \"b\": \"q\"\n    }\n  ],\n  \"a:l11\": [\n    {\n      \"a\": 2\n    },\n    {\n      \"a\": 3\n    }\n  ]\n}\n",
+        "xml": "<l1 xmlns=\"urn:tests:a\">\n  <a>x</a>\n  <b>y</b>\n</l1>\n<l1 xmlns=\"urn:tests:a\">\n  <a>z</a>\n  <b>q</b>\n</l1>\n<l11 xmlns=\"urn:tests:a\">\n  <a>2</a>\n</l11>\n<l11 xmlns=\"urn:tests:a\">\n  <a>3</a>\n</l11>\n"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l1[a='x'][b='y']",
+          "schema": "/a:l1",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l1[a='x'][b='y']/a",
+          "schema": "/a:l1/a",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l1[a='x'][b='y']/b",
+          "schema": "/a:l1/b",
+          "value": {
+            "canonical": "y",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l1[a='z'][b='q']",
+          "schema": "/a:l1",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l1[a='z'][b='q']/a",
+          "schema": "/a:l1/a",
+          "value": {
+            "canonical": "z",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l1[a='z'][b='q']/b",
+          "schema": "/a:l1/b",
+          "value": {
+            "canonical": "q",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l11[a='2']",
+          "schema": "/a:l11",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l11[a='2']/a",
+          "schema": "/a:l11/a",
+          "value": {
+            "canonical": "2",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l11[a='3']",
+          "schema": "/a:l11",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:l11[a='3']/a",
+          "schema": "/a:l11/a",
+          "value": {
+            "canonical": "3",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

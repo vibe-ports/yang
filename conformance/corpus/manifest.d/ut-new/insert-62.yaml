@@ -1,0 +1,8 @@
+fixtures:
+  - id: ut-new/insert-62
+    dir: ut-new
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_new.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # module a of libyang's tests/utests/data/test_new.c; lyd_new_opaq2 with a given, empty prefix: no check, printed as without one (#98)
+    rfc: []   # libyang API (lyd_new_term, lyd_change_term, lyd_new_opaq/2): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["a.1"], "modules": [{"name": "a"}], "steps": [{"do": "edit", "insert_opaq": {"name": "n", "module": "urn:tests:a", "prefix": "", "value": "v", "xml": true}}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/insert-62.json

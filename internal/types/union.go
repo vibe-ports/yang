@@ -58,6 +58,9 @@ func unionFind(t *schema.Type, u *UnionValue, only bool, tree Tree) *Diag {
 	fmt.Fprintf(&b, "Invalid union value \"%s\" - no matching subtype found:\n", u.orig)
 	appTag, useAppTag := "", false
 	for i, d := range errs {
+		if d.NoItem {
+			continue // no error item: no line and no app-tag (union_find_type skips !errs[u])
+		}
 		if d.AppTag != "" {
 			if appTag == "" {
 				appTag, useAppTag = d.AppTag, true
@@ -78,7 +81,9 @@ func unionStoreType(mt *schema.Type, u *UnionValue, only bool, tree Tree) (Value
 	a := &storeArgs{t: mt, lex: u.orig, f: u.f, h: u.h, pc: u.pc, ctx: u.ctx, only: only, quiet: true}
 	v, d := storeArgsDispatch(a)
 	if d != nil {
-		if mt.Base == schema.Leafref { // report the reference, not the target type's complaint
+		// report the reference, not the target type's complaint; union_update_lref_err leaves a
+		// failure without an error item alone (ut-new/path-16)
+		if mt.Base == schema.Leafref && !d.NoItem {
 			d = &Diag{Code: CodeData, AppTag: "instance-required", Msg: noLeafrefMsg(u.orig, mt.Path)}
 		}
 		return Value{}, d

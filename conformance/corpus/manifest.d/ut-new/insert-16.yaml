@@ -1,0 +1,8 @@
+fixtures:
+  - id: ut-new/insert-16
+    dir: ut-new
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_new.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # module a of libyang's tests/utests/data/test_new.c; a node the opaque parent's module lacks (#98)
+    rfc: []   # libyang API (lyd_new_* and lyd_insert_sibling): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["a.1"], "modules": [{"name": "a"}], "steps": [{"do": "edit", "insert_opaq": {"name": "op", "module": "a", "value": ""}}, {"do": "edit", "insert_term": {"parent_opaq": "op", "module": "a", "name": "x", "value": "1"}}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/insert-16.json

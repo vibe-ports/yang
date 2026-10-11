@@ -173,6 +173,18 @@ func (e *diffError) Error() string { return e.items[0].Msg }
 // diffDone is the error of a public diff call: the items of a *diffError logged (done logs an
 // *opError).
 func diffDone(lg *logger, err error) error {
+	if sf := (*storeFailure)(nil); errors.As(err, &sf) {
+		return lg.done(lg.storeErr(nil, sf.at, sf.d))
+	}
+	if am := (*anchorMissing)(nil); errors.As(err, &am) {
+		if am.at != nil {
+			_ = lg.item(nil, am.at, false, "LY_EVALID", codeOf(am.first.Code), "", am.first.Msg)
+		} else {
+			_ = lg.logErr(am.first.RC(), "%s", am.first.Msg)
+		}
+		_ = lg.logErr("LY_EINVAL", "Node \"%s\" instance to insert next to not found.", am.name)
+		return lg.done(rcError("LY_EINVAL"))
+	}
 	var de *diffError
 	if !errors.As(err, &de) {
 		return lg.done(err)

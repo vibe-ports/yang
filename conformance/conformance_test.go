@@ -462,6 +462,8 @@ func TestOracleRequestErrors(t *testing.T) {
 		{"non-string module after a failing step", `{"do":"edit","delete":"/pv2:c/nope"},{"do":"validate","module":5}`, `field "module" must be a string`},
 		{"non-boolean final_only after a failing step", `{"do":"edit","delete":"/pv2:c/nope"},{"do":"validate","module":"pv2","final_only":"yes"}`, `final_only must be a boolean`},
 		{"unknown module after a failing step", `{"do":"edit","delete":"/pv2:c/nope"},{"do":"validate","module":"nope"}`, `validate module nope not implemented`},
+		{"insert options not an array", `{"do":"edit","insert_term":{"module":"pv2","name":"mode","value":"on","options":"canon"}}`, `"options" must be an array`},
+		{"malformed insert after a failing one", `{"do":"edit","delete":"/pv2:c/nope"},{"do":"edit","insert_term":{"module":"pv2","name":"mode","value":"on","parent_opaq":5}}`, `"parent_opaq" must be a string`},
 	} {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		cmd := exec.CommandContext(ctx, oracle) //nolint:gosec // test runs the repo's own oracle binary

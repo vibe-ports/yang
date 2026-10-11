@@ -86,6 +86,10 @@ func (s *Set) ByPrefix(prefix string) *Module {
 
 // Module is a compiled module (lys_module + lysc_module).
 type Module struct {
+	// Owner is the set the module belongs to (a snapshot's own copy of the module): the context of
+	// a data node whatever its tree (LYD_CTX: the schema node's module context), nil for modules of
+	// hand-built sets.
+	Owner                             *Set
 	Name, Revision, Namespace, Prefix string
 	Version                           uint8 // Version1 (also when yang-version is absent) or Version11
 	Implemented                       bool

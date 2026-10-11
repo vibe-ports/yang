@@ -233,6 +233,27 @@ func (t *Tree) diffInsert(parent, n *Node, anchor string) error {
 	return t.insertAfter(at, n)
 }
 
+// anchorMissing is lyd_diff_insert's missing anchor after lyd_find_sibling_val's LY_ENOTFOUND:
+// the item that lookup logged (first, located at at when set), then LY_EINVAL "Node … instance
+// to insert next to not found.".
+type anchorMissing struct {
+	name  string
+	first *types.Diag
+	at    *schema.Node
+}
+
+func (e *anchorMissing) Error() string { return e.first.Msg }
+
+// storeFailure is a type plugin's error for a value of the schema node at, which the call's
+// logger reports with its location and nested items (ly_err_print, lyd_create_term without a
+// parent).
+type storeFailure struct {
+	d  *types.Diag
+	at *schema.Node
+}
+
+func (e *storeFailure) Error() string { return e.d.Msg }
+
 // findAnchor is lyd_find_sibling_val of a leaf-list value or a list key predicate: the instance
 // of sn among sib equal to the instance the anchor describes, its value or keys stored through
 // their types (lyd_create_term, lyd_create_list2), nil if none. An anchor that does not parse or
@@ -242,15 +263,38 @@ func (t *Tree) findAnchor(sib *siblings, sn *schema.Node, anchor string) (*Node,
 	if sn.Kind == schema.LeafList {
 		v, d := types.Store(sn.Type, anchor, types.FormatJSON, types.HintData, types.ModuleNames{Set: t.set}, sn)
 		if d != nil {
-			return nil, &opError{d.RC(), d.Msg}
+			return nil, &storeFailure{d, sn}
 		}
 		target = newTerm(sn, v)
 	} else {
-		preds, msg := types.CompileKeys(t.set, sn, anchor)
-		if msg != "" {
-			return nil, &opError{"LY_EVALID", msg}
+		// lyd_find_sibling_val returning LY_ENOTFOUND is a missing anchor to lyd_diff_insert
+		// (src/diff.c: "if (ret == LY_ENOTFOUND) { LOGERR(... "instance to insert next to not
+		// found." ...); return LY_EINVAL; }"), after what lyd_create_list2 logged: an unknown key
+		// or module (ly_path_compile_snode's LY_ENOTFOUND, its LYVE_XPATH item at the list,
+		// ut-new/path-12) or a variable lyd_create_list cannot find (lyxp_vars_find without
+		// variables: LOGERR LY_ENOTFOUND, ut-new/path-11)
+		preds, cd := types.CompileKeysDiag(t.set, sn, anchor)
+		switch {
+		case cd != nil && cd.RC() == "LY_ENOTFOUND":
+			return nil, &anchorMissing{name: sn.Name, first: cd, at: sn}
+		case cd != nil: // a key value's own error at the key, a syntax error at the list
+			at := sn
+			if cd.At != nil {
+				at = cd.At
+			}
+			return nil, &storeFailure{cd, at}
 		}
-		target = t.createList(types.PathSegment{Node: sn, Preds: preds})
+		// lyd_create_list, key by key in libyang's order: a variable it cannot find (LY_ENOTFOUND,
+		// a missing anchor, ut-new/path-11) or a key value that does not store again (its error at
+		// the key, path-09), whichever key comes first (path-14)
+		var d *types.Diag
+		var key *schema.Node
+		if target, d, key = t.lookupList(types.PathSegment{Node: sn, Preds: preds}); d != nil {
+			if key == nil { // the variable
+				return nil, &anchorMissing{name: sn.Name, first: d}
+			}
+			return nil, &storeFailure{d, key}
+		}
 	}
 	return t.findFirst(sib, target), nil
 }

@@ -1,0 +1,136 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "edit",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:c",
+          "schema": "/a:c",
+          "value": null
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "edit",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:c",
+          "schema": "/a:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:c/x[.='v1']",
+          "schema": "/a:c/x",
+          "value": {
+            "canonical": "v1",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "dump",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "tree": {
+        "json": "{\n  \"a:c\": {\n    \"x\": [\n      \"v1\"\n    ]\n  }\n}\n",
+        "xml": "<c xmlns=\"urn:tests:a\">\n  <x>v1</x>\n</c>\n"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:c",
+          "schema": "/a:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:c/x[.='v1']",
+          "schema": "/a:c/x",
+          "value": {
+            "canonical": "v1",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

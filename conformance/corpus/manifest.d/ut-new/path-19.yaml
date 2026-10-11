@@ -1,0 +1,8 @@
+fixtures:
+  - id: ut-new/path-19
+    dir: ut-new
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # modules e, f, h, and ietf-netconf-acm copied from libyang v5.8.6 tests/modules/yang; path-18 inside a union: the member stores quietly, so only the union error is logged (#98)
+    rfc: []   # libyang API (lyd_parse_data): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["e.1", "f.1", "h.1"], "modules": [{"name": "e"}, {"name": "f"}, {"name": "h"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "parse", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"h:uh\": \"/h:ln[id=\\\"/f:lp[p='2001:0db8::/64']\\\"]\"}"}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/path-19.json

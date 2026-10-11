@@ -118,6 +118,7 @@ const (
 	CodeData      = "LYVE_DATA"
 	CodeReference = "LYVE_REFERENCE"
 	CodeNone      = "LYVE_SUCCESS" // plain errors without a validation code (ly_err_new with vecode 0)
+	CodeOther     = "LYVE_OTHER"
 )
 
 // Diag is a rejected value: libyang's ly_err_item without the data path, which the caller adds.
@@ -132,6 +133,10 @@ type Diag struct {
 	Logged *Diag
 	// At is the schema node a Logged error is located at (nil: the value's schema node).
 	At *schema.Node
+	// NoItem: the plugin failed without an error item of its own (err NULL); Msg is what
+	// lyd_value_store logs then ("Storing value failed."), and a union lists no line for the
+	// member (union_find_type: "if (!errs[u]) continue;", src/plugins_types/union.c:369)
+	NoItem bool
 }
 
 func (d *Diag) Error() string { return d.Msg }
@@ -195,6 +200,9 @@ type storeArgs struct {
 	// keyErr is the error item of the last path predicate value that failed to store, which
 	// lyd_value_validate3 logs at the key or leaf-list node (ly_path_compile_predicate).
 	keyErr *Diag
+	// vars lets key predicates hold variable references (ly_path_compile_predicate stores them as
+	// LY_PATH_PREDTYPE_LIST_VAR; lyd_create_list resolves them): lyd_create_list2's keys.
+	vars bool
 }
 
 func store(t *schema.Type, lex string, f Format, h Hints, pc PrefixCtx, ctx *schema.Node, only bool) (Value, *Diag) {

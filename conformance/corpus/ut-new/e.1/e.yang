@@ -1,0 +1,67 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo): restrictions that LYD_NEW_VAL_STORE_ONLY skips
+// (range, length, pattern), on leaves and on a list key; a union key whose canonical text another
+// member takes when lyd_create_list stores it again (also as a user-ordered list's diff anchor); an instance-identifier key (#98).
+module e {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:ut-new:e";
+  prefix e;
+
+  leaf r {
+    type uint8 {
+      range "1..10";
+    }
+  }
+  leaf s {
+    type string {
+      length "2..3";
+    }
+  }
+  leaf p {
+    type string {
+      pattern "[a-z]+";
+    }
+  }
+  list lk {
+    key "k";
+    leaf k {
+      type uint8 {
+        range "1..10";
+      }
+    }
+  }
+  list lu {
+    key "k";
+    leaf k {
+      type union {
+        type enumeration {
+          enum "1";
+        }
+        type uint8;
+      }
+    }
+    leaf v {
+      type string;
+    }
+  }
+  list lo {
+    key "k";
+    ordered-by user;
+    leaf k {
+      type union {
+        type enumeration {
+          enum "1";
+        }
+        type uint8;
+      }
+    }
+  }
+  list li {
+    key "id";
+    leaf id {
+      type instance-identifier {
+        require-instance false;
+      }
+    }
+  }
+}

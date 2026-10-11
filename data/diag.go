@@ -143,14 +143,24 @@ func (l *logger) item(lnode *Node, sn *schema.Node, warning bool, err string, co
 // storeErr is ly_err_print of a type plugin's error item d for a value of the schema node sn
 // stored under lnode, after the errors the plugin left in the context log (located at sn).
 func (l *logger) storeErr(lnode *Node, sn *schema.Node, d *types.Diag) error {
-	if e := d.Logged; e != nil {
-		at := sn
-		if e.At != nil {
-			at = e.At
-		}
-		_ = l.item(nil, at, false, e.RC(), codeOf(e.Code), e.AppTag, e.Msg)
-	}
+	l.logged(sn, d.Logged)
 	return l.item(lnode, sn, false, d.RC(), codeOf(d.Code), d.AppTag, d.Msg)
+}
+
+// logged prints a chain of errors left in the context log, innermost first, as libyang logs
+// them while the nested stores fail: an instance-identifier reprint (instanceid.go) wraps a key
+// store error that may wrap a node-instance-identifier's predicate error (ut-new/path-18). Each
+// is located at its At, else at the schema node of the value it was logged for (sn).
+func (l *logger) logged(sn *schema.Node, e *types.Diag) {
+	if e == nil {
+		return
+	}
+	at := sn
+	if e.At != nil {
+		at = e.At
+	}
+	l.logged(at, e.Logged)
+	_ = l.item(nil, at, false, e.RC(), codeOf(e.Code), e.AppTag, e.Msg)
 }
 
 // warn is LOGWRN: a warning without location.

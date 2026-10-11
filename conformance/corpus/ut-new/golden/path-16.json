@@ -1,0 +1,63 @@
+{
+  "context_diagnostics": [],
+  "failed_step": 0,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "e",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "f",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "g",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 7,
+    "name": "LY_EVALID"
+  },
+  "steps": [
+    {
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 1,
+          "msg": "Invalid union value \"/e:li[id=\"/f:lp[p='2001:0db8::/64']\"]\" - no matching subtype found:\n",
+          "phase": "parse",
+          "schema_path": "/g:iul",
+          "vecode": 9,
+          "vecode_name": "LYVE_DATA"
+        }
+      ],
+      "do": "parse",
+      "rc": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "typed": []
+    },
+    {
+      "do": "dump",
+      "skipped": true
+    }
+  ],
+  "verdict": "invalid"
+}

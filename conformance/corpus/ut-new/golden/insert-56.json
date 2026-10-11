@@ -1,0 +1,271 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "e",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "edit",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "opaque",
+          "meta": [],
+          "opaque": {
+            "format": "json",
+            "module": "a",
+            "name": "op",
+            "namespace": null,
+            "prefix": null
+          },
+          "path": "/a:op",
+          "schema": null,
+          "value": {
+            "canonical": "",
+            "hints": [],
+            "type": null,
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "edit",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "opaque",
+          "meta": [],
+          "opaque": {
+            "format": "json",
+            "module": "a",
+            "name": "op",
+            "namespace": null,
+            "prefix": null
+          },
+          "path": "/a:op",
+          "schema": null,
+          "value": {
+            "canonical": "",
+            "hints": [],
+            "type": null,
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:op/e:r",
+          "schema": "/e:r",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "edit",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "opaque",
+          "meta": [],
+          "opaque": {
+            "format": "json",
+            "module": "a",
+            "name": "op",
+            "namespace": null,
+            "prefix": null
+          },
+          "path": "/a:op",
+          "schema": null,
+          "value": {
+            "canonical": "",
+            "hints": [],
+            "type": null,
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:op/foo",
+          "schema": "/a:foo",
+          "value": {
+            "canonical": "2",
+            "type": "uint16",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:op/e:r",
+          "schema": "/e:r",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "dump",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "tree": {
+        "json": "{\n  \"a:op\": {\n    \"foo\": 2,\n    \"e:r\": 1\n  }\n}\n",
+        "xml": "<op xmlns=\"urn:tests:a\">\n  <foo>2</foo>\n  <r xmlns=\"urn:vibe-ports:yang:ut-new:e\">1</r>\n</op>\n"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "opaque",
+          "meta": [],
+          "opaque": {
+            "format": "json",
+            "module": "a",
+            "name": "op",
+            "namespace": null,
+            "prefix": null
+          },
+          "path": "/a:op",
+          "schema": null,
+          "value": {
+            "canonical": "",
+            "hints": [],
+            "type": null,
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:op/foo",
+          "schema": "/a:foo",
+          "value": {
+            "canonical": "2",
+            "type": "uint16",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:op/e:r",
+          "schema": "/e:r",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

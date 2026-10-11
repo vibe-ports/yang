@@ -1,0 +1,342 @@
+{
+  "context_diagnostics": [],
+  "failed_step": 2,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "e",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "f",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 3,
+    "name": "LY_EINVAL"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/e:lo[k='1']",
+          "schema": "/e:lo",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/e:lo[k='1']/k",
+          "schema": "/e:lo/k",
+          "value": {
+            "canonical": "1",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "enumeration",
+                "typedef": null
+              },
+              "type": "enumeration",
+              "typedef": null
+            }
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"e:lo\": [\n    {\n      \"@\": {\n        \"yang:operation\": \"create\",\n        \"yang:insert\": \"after\",\n        \"yang:key\": \"[k=$v]\"\n      },\n      \"k\": 3\n    }\n  ]\n}\n",
+        "xml": "<lo xmlns=\"urn:vibe-ports:yang:ut-new:e\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\" yang:insert=\"after\" yang:key=\"[k=v]\">\n  <k>3</k>\n</lo>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            },
+            {
+              "module": "yang",
+              "name": "insert",
+              "value": "after"
+            },
+            {
+              "module": "yang",
+              "name": "key",
+              "value": "[k=$v]"
+            }
+          ],
+          "opaque": null,
+          "path": "/e:lo[k='3']",
+          "schema": "/e:lo",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/e:lo[k='3']/k",
+          "schema": "/e:lo/k",
+          "value": {
+            "canonical": "3",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "uint8",
+                "typedef": null
+              },
+              "type": "uint8",
+              "typedef": null
+            }
+          }
+        }
+      ],
+      "do": "diff_parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/e:lo[k='1']",
+          "schema": "/e:lo",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/e:lo[k='1']/k",
+          "schema": "/e:lo/k",
+          "value": {
+            "canonical": "1",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "enumeration",
+                "typedef": null
+              },
+              "type": "enumeration",
+              "typedef": null
+            }
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 5,
+            "name": "LY_ENOTFOUND"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Variable \"v\" not defined.",
+          "phase": "diff",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        },
+        {
+          "apptag": null,
+          "code": {
+            "err": 3,
+            "name": "LY_EINVAL"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Node \"lo\" instance to insert next to not found.",
+          "phase": "diff",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "diff": {
+        "json": "{\n  \"e:lo\": [\n    {\n      \"@\": {\n        \"yang:operation\": \"create\",\n        \"yang:insert\": \"after\",\n        \"yang:key\": \"[k=$v]\"\n      },\n      \"k\": 3\n    }\n  ]\n}\n",
+        "xml": "<lo xmlns=\"urn:vibe-ports:yang:ut-new:e\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\" yang:insert=\"after\" yang:key=\"[k=v]\">\n  <k>3</k>\n</lo>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            },
+            {
+              "module": "yang",
+              "name": "insert",
+              "value": "after"
+            },
+            {
+              "module": "yang",
+              "name": "key",
+              "value": "[k=$v]"
+            }
+          ],
+          "opaque": null,
+          "path": "/e:lo[k='3']",
+          "schema": "/e:lo",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/e:lo[k='3']/k",
+          "schema": "/e:lo/k",
+          "value": {
+            "canonical": "3",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "uint8",
+                "typedef": null
+              },
+              "type": "uint8",
+              "typedef": null
+            }
+          }
+        }
+      ],
+      "do": "diff_apply",
+      "rc": {
+        "err": 3,
+        "name": "LY_EINVAL"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/e:lo[k='1']",
+          "schema": "/e:lo",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/e:lo[k='1']/k",
+          "schema": "/e:lo/k",
+          "value": {
+            "canonical": "1",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "enumeration",
+                "typedef": null
+              },
+              "type": "enumeration",
+              "typedef": null
+            }
+          }
+        }
+      ]
+    },
+    {
+      "do": "dump",
+      "skipped": true
+    }
+  ],
+  "verdict": "invalid"
+}

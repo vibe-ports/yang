@@ -40,6 +40,9 @@ type PathPred struct {
 	Key      *schema.Node // PredKey
 	Value    Value        // PredKey, PredLeafList
 	Position uint64       // PredPosition
+	// Var is the variable of a key predicate [k=$var] (LY_PATH_PREDTYPE_LIST_VAR), its token
+	// text; only lyd_create_list2's predicates take one (storeArgs.vars).
+	Var string
 }
 
 // String prints the path in JSON form (libyang instanceid_path2str with LY_VALUE_JSON), which is
@@ -102,8 +105,54 @@ func storeInstanceID(a *storeArgs) (Value, *Diag) {
 	v := Value{typ: a.t, path: p, canon: p.String(), needsTree: a.t.RequireInstance}
 	if a.f == FormatCanon {
 		v.canon = a.lex
+	} else if d := reprintPreds(a, p); d != nil {
+		return Value{}, d
 	}
 	return v, nil
+}
+
+// reprintPreds is the printing half of instanceid_path2str (src/plugins_types/instanceid.c): each
+// key and leaf-list predicate value is printed through lyplg_type_print_val, which stores its
+// canonical text again, store-only in LY_VALUE_CANON, through the predicate node's declared type.
+// That fails only for a value holding a path itself (an instance-identifier, also inside a union
+// or behind a leafref), whose predicates are validated anew: the failure is
+// logged at the predicate's node (ly_err_print) and the store fails without an item of its own,
+// so lyd_value_store reports "Storing value failed." (ut-new/path-10).
+// The canonical text's prefixes are module names of the store's context: the snapshot the
+// context node's module belongs to, else the store's own module-name resolver.
+// ponytail: a hand-built set (no schema.Module.Owner) with another prefix format skips the re-print.
+func reprintPreds(a *storeArgs, p Path) *Diag {
+	var names PrefixCtx
+	switch mn, ok := a.pc.(ModuleNames); {
+	case a.ctx != nil && a.ctx.Module != nil && a.ctx.Module.Owner != nil:
+		names = ModuleNames{a.ctx.Module.Owner}
+	case ok:
+		names = mn
+	default:
+		return nil
+	}
+	for _, seg := range p {
+		for _, pr := range seg.Preds {
+			node := pr.Key
+			if pr.Kind == PredLeafList {
+				node = seg.Node
+			} else if pr.Kind != PredKey {
+				continue
+			}
+			if node == nil || node.Type == nil {
+				continue
+			}
+			// through the declared type, as lyplg_type_print_val stores with the node's type
+			// plugin: a union or leafref wrapping an instance-identifier re-validates it too
+			// (ut-new/path-13)
+			if _, d := StoreOnly(node.Type, pr.Value.Canonical(), FormatCanon, HintData, names, node); d != nil {
+				in := *d
+				in.At = node
+				return &Diag{Code: CodeOther, Msg: "Storing value failed.", Logged: &in, NoItem: true}
+			}
+		}
+	}
+	return nil
 }
 
 // lypathNew ports lyplg_type_lypath_new: parse, then resolve on the schema.
@@ -324,7 +373,16 @@ func compilePredicate(a *storeArgs, node *schema.Node, e *lyxp.Expr, i int) ([]P
 			}
 			i += 2 // key, '='
 			if e.Toks[i] == lyxp.TokVarRef {
-				return nil, i, "Variable reference not allowed in an instance-identifier."
+				if !a.vars {
+					return nil, i, "Variable reference not allowed in an instance-identifier."
+				}
+				preds = append(preds, PathPred{Kind: PredKey, Key: key, Var: e.Text(i)}) // resolved at creation
+				i += 2                                                                   // variable, ']'
+				if !e.Is(i, lyxp.TokBrack1) {
+					break
+				}
+				i++
+				continue
 			}
 			v, d := storeKey(a, key, literal(e, i))
 			if d != nil {
@@ -368,6 +426,12 @@ func compilePredicate(a *storeArgs, node *schema.Node, e *lyxp.Expr, i int) ([]P
 func storeKey(a *storeArgs, node *schema.Node, lex string) (Value, *Diag) {
 	b := *a
 	b.t, b.lex, b.h, b.ctx, b.only = node.Type, lex, HintData, node, false
+	// Only the outer key predicates of lyd_create_list2 take variables. A variable inside an
+	// instance-identifier value is refused (D-0114): libyang compiles it, then instanceid_path2str
+	// hits "case LY_PATH_PREDTYPE_LIST_VAR: LOGINT(...); ret = LY_EINT;"
+	// (src/plugins_types/instanceid.c:134), "Internal error" plus "Storing value failed.".
+	// Go test data.TestNewVarInInstanceID.
+	b.vars = false
 	v, d := storeArgsDispatch(&b)
 	if d != nil {
 		k := *d

@@ -1,0 +1,51 @@
+{
+  "context_diagnostics": [],
+  "failed_step": 0,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "e",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 5,
+    "name": "LY_ENOTFOUND"
+  },
+  "steps": [
+    {
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 5,
+            "name": "LY_ENOTFOUND"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Variable \"v\" not defined.",
+          "phase": "edit",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "do": "edit",
+      "rc": {
+        "err": 5,
+        "name": "LY_ENOTFOUND"
+      },
+      "typed": []
+    },
+    {
+      "do": "dump",
+      "skipped": true
+    }
+  ],
+  "verdict": "invalid"
+}

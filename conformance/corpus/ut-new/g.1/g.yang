@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo): a leafref to an instance-identifier inside a
+// union; the target type's store fails without an error item, so union_store_type keeps it
+// without one (union_update_lref_err skips a NULL err) (#98).
+module g {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:ut-new:g";
+  prefix g;
+
+  leaf t {
+    type instance-identifier {
+      require-instance false;
+    }
+  }
+  leaf iul {
+    type union {
+      type leafref {
+        path "/g:t";
+        require-instance false;
+      }
+    }
+  }
+}

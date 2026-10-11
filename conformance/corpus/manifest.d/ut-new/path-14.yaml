@@ -1,0 +1,8 @@
+fixtures:
+  - id: ut-new/path-14
+    dir: ut-new
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # modules e and f; a diff anchor whose first key re-stores to a value its inner pattern rejects and whose second key is an undefined variable: lyd_create_list handles the keys in order, so the first key's error wins (#98)
+    rfc: []   # libyang API (lyd_diff_apply_all): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["e.1", "f.1"], "modules": [{"name": "e"}, {"name": "f"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "parse", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"f:lu3\": [{\"id\": \"/e:lk[k='1']\", \"k\": \"a\"}]}"}, {"do": "diff_parse", "format": "json", "data_type": "data", "data": "{\"f:lu3\": [{\"@\": {\"yang:operation\": \"create\", \"yang:insert\": \"after\", \"yang:key\": \"[id=\\\"/f:lp[p='2001:0db8::/64']\\\"][k=$v]\"}, \"id\": \"/e:lk[k='2']\", \"k\": \"b\"}]}"}, {"do": "diff_apply"}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/path-14.json

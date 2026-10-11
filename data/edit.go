@@ -123,8 +123,10 @@ func (t *Tree) findPath(lg *logger, path string) (*Node, error) {
 	if len(t.top.list) == 0 {
 		return nil, errNotFound
 	}
-	n, idx := t.evalPartial(p)
+	n, idx, err := t.evalPartial(lg, p)
 	switch {
+	case err != nil:
+		return nil, err
 	case idx == len(p):
 		return n, nil
 	case n != nil:
@@ -135,7 +137,7 @@ func (t *Tree) findPath(lg *logger, path string) (*Node, error) {
 
 // evalPartial is ly_path_eval_partial from the top level: the last node matched and the number
 // of path segments matched (len(p) for a full match).
-func (t *Tree) evalPartial(p types.Path) (*Node, int) {
+func (t *Tree) evalPartial(lg *logger, p types.Path) (*Node, int, error) {
 	sib := &t.top
 	var prev *Node
 	for u, seg := range p {
@@ -155,14 +157,18 @@ func (t *Tree) evalPartial(p types.Path) (*Node, int) {
 		case seg.Preds[0].Kind == types.PredLeafList:
 			n = t.findFirst(sib, newTerm(seg.Node, seg.Preds[0].Value))
 		default:
-			n = t.findFirst(sib, t.createList(seg))
+			target, d, key := t.lookupList(seg) // ly_path_eval_partial: lyd_create_list, store-only
+			if d != nil {
+				return nil, u, lg.storeErr(nil, key, d) // LY_CHECK_RET: logged at the key
+			}
+			n = t.findFirst(sib, target)
 		}
 		if n == nil {
-			return prev, u
+			return prev, u, nil
 		}
 		prev, sib = n, &n.kids
 	}
-	return prev, len(p)
+	return prev, len(p), nil
 }
 
 // instances yields the instances of sn in s (LYD_LIST_FOR_INST).
@@ -180,16 +186,41 @@ func (t *Tree) instances(s *siblings, sn *schema.Node) func(func(*Node) bool) {
 	}
 }
 
-// createList is lyd_create_list: an unlinked list instance with the predicate's keys.
-func (t *Tree) createList(seg types.PathSegment) *Node {
+// createList is lyd_create_list: an unlinked list instance with the predicate's keys, each stored
+// again from its canonical text in the JSON format, so a union may take another member
+// (enumeration "1" before uint8 for '01'); store-only for the lookups (ly_path_eval_partial, also
+// under ly_path_eval, and lyd_find_sibling_val pass it), lyd_new_path its own option, which the
+// port does not take. A key the re-store refuses (a canonical text its restriction rejects) fails
+// with the store's diagnostic and that key's schema node.
+func (t *Tree) createList(seg types.PathSegment, storeOnly bool) (*Node, *types.Diag, *schema.Node) {
 	l := newInner(seg.Node)
 	l.flags = FlagNew
+	store := types.Store
+	if storeOnly {
+		store = types.StoreOnly
+	}
 	for _, pr := range seg.Preds {
-		k := newTerm(pr.Key, pr.Value)
+		if pr.Var != "" { // lyxp_vars_find without variables: LOGERR LY_ENOTFOUND, key by key
+			return nil, &types.Diag{Code: types.CodeNone, Err: "LY_ENOTFOUND", Msg: fmt.Sprintf("Variable \"%s\" not defined.", pr.Var)}, nil
+		}
+		v, d := store(pr.Key.Type, pr.Value.Canonical(), types.FormatJSON, types.HintData,
+			types.ModuleNames{Set: t.set}, pr.Key)
+		if d != nil {
+			return nil, d, pr.Key
+		}
+		k := newTerm(pr.Key, v)
 		k.flags = FlagNew
 		t.insert(l, k, insertDefault)
 	}
-	return l
+	return l, nil, nil
+}
+
+// lookupList is createList for a lookup (store-only). Store-only still validates what a value
+// holds itself: an instance-identifier key re-stored from its canonical text checks its own
+// predicates, which a restriction may now reject (ut-new/path-06); the diagnostic and the key's
+// schema node are returned, as ly_path_eval_partial returns lyd_create_list's error.
+func (t *Tree) lookupList(seg types.PathSegment) (*Node, *types.Diag, *schema.Node) {
+	return t.createList(seg, true)
 }
 
 // newPath is lyd_new_path_ with lyd_new_path_create (no parent node, absolute path; the top
@@ -214,7 +245,9 @@ func (t *Tree) newPath(lg *logger, path, value string, o NewPathOptions) (*Node,
 	idx := 0
 	if t.top.len() > 0 {
 		var n *Node
-		n, idx = t.evalPartial(search)
+		if n, idx, err = t.evalPartial(lg, search); err != nil {
+			return nil, err
+		}
 		if idx == len(search) && len(search) == len(p) {
 			// the node exists: update it or, a default node, set it
 			if !o.Update && n.flags&FlagDefault == 0 {
@@ -242,7 +275,11 @@ func (t *Tree) newPath(lg *logger, path, value string, o NewPathOptions) (*Node,
 				node = newInner(seg.Node)
 				node.flags = FlagNew
 			} else {
-				node = t.createList(seg)
+				var d *types.Diag
+				var key *schema.Node
+				if node, d, key = t.createList(seg, false); d != nil {
+					err = lg.storeErr(nil, key, d) // lyd_create_term(key, NULL parent): at the key
+				}
 			}
 		case schema.Container:
 			node = newInner(seg.Node)

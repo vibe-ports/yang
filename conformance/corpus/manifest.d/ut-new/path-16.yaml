@@ -1,0 +1,8 @@
+fixtures:
+  - id: ut-new/path-16
+    dir: ut-new
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # modules e, f and g; path-13 with the instance-identifier behind a leafref union member: the target's store fails without an error item, and union_update_lref_err leaves a NULL item alone, so no leafref line and no app-tag (#98)
+    rfc: []   # libyang API (lyd_parse_data): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["e.1", "f.1", "g.1"], "modules": [{"name": "e"}, {"name": "f"}, {"name": "g"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "parse", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"g:iul\": \"/e:li[id=\\\"/f:lp[p='2001:0db8::/64']\\\"]\"}"}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/path-16.json

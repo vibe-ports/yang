@@ -48,6 +48,9 @@ type opaque struct {
 	Prefixes types.PrefixCtx
 	Hints    types.Hints
 	Attrs    []attr // generic attributes (lyd_node_opaq.attr), in order
+	// set is the node's context (lyd_node_opaq.ctx): an opaque node has no schema node to tell it,
+	// and it keeps its context when detached
+	set *schema.Set
 }
 
 // Node is a data node (lyd_node and its subtypes). A term (leaf, leaf-list instance) holds a

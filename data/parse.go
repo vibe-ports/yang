@@ -340,6 +340,7 @@ func (lc *lydCtx) createOpaq(o opaque) (*Node, error) {
 	if err := lc.countNode(); err != nil {
 		return nil, err
 	}
+	o.set = lc.tree.set
 	return newOpaque(o), nil // lyd_create_opaq sets no flag (no LYD_NEW)
 }
 

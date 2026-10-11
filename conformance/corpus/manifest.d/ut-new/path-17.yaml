@@ -1,0 +1,8 @@
+fixtures:
+  - id: ut-new/path-17
+    dir: ut-new
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # modules e, f and g; a leafref union member whose target store fails with an error item: union_update_lref_err rewrites it to the leafref message and instance-required (#98)
+    rfc: []   # libyang API (lyd_parse_data): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["e.1", "f.1", "g.1"], "modules": [{"name": "e"}, {"name": "f"}, {"name": "g"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "parse", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"g:iul\": \"/e:nope\"}"}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/path-17.json

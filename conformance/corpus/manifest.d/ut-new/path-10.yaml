@@ -1,0 +1,8 @@
+fixtures:
+  - id: ut-new/path-10
+    dir: ut-new
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # modules e and f; an instance-identifier whose predicate holds such a key fails when stored (the nested value re-validates), so instance-identifier validation never re-stores a failing key (#98)
+    rfc: []   # libyang API (lyd_diff_apply_all, lyd_parse_data): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["e.1", "f.1"], "modules": [{"name": "e"}, {"name": "f"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "parse", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"e:li\": [{\"id\": \"/f:lp[p='2001:0db8::/64']\"}], \"f:ir\": \"/e:li[id=\\\"/f:lp[p='2001:0db8::/64']\\\"]\"}"}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/path-10.json
