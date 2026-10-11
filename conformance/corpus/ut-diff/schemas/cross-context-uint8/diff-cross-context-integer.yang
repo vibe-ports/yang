@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module diff-cross-context-integer {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:diff-cross-context-integer";
+  prefix dcci;
+
+  typedef number { type uint8; }
+
+  container top {
+    leaf-list value { type number; }
+  }
+}

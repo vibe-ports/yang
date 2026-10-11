@@ -1,0 +1,19 @@
+fixtures:
+  - id: ut-diff/cross-context-integer-realtypes
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang lyd_hash/lyd_compare_single mechanics, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas/cross-context-int8]
+      modules: [{name: diff-cross-context-integer}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-integer"><value>1</value></top>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-integer"><value>1</value></top>'
+          target: {searchdirs: [schemas/cross-context-uint8], modules: [{name: diff-cross-context-integer}]}
+    golden: golden/cross-context-integer-realtypes.json

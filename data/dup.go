@@ -24,11 +24,16 @@ const (
 	dupWithParents                     // LYD_DUP_WITH_PARENTS: the parents too, up to parent or the top
 	dupWithFlags                       // LYD_DUP_WITH_FLAGS: all the flags, not only the default flag (+ new)
 	dupNoLyds                          // LYD_DUP_NO_LYDS: no value order for (leaf-)list instances
+	dupKeepContext                     // diff.c duplicates into no target context, retaining foreign schema/value objects
 )
 
-// setOf is LYD_CTX: the schema set of the tree n is in, nil for a node not in a tree.
+// setOf is LYD_CTX: a node keeps the context of its schema even when it is unlinked or linked into
+// a mixed-context diff tree.
 func setOf(n *Node) *schema.Set {
 	for ; n != nil; n = n.parent {
+		if n.ctx != nil {
+			return n.ctx
+		}
 		if n.parent == nil && n.tree != nil {
 			return n.tree.set
 		}
@@ -144,11 +149,14 @@ func findSchemaCtx(sn *schema.Node, trg *schema.Set, parent *Node) (*schema.Node
 // neither it stays unlinked.
 func (t *Tree) dupR(n, parent *Node, top bool, order insertOrder, opts dupOpts) (*Node, error) {
 	d := &Node{flags: n.flags&FlagDefault | FlagNew}
+	if opts&dupKeepContext != 0 {
+		d.ctx = setOf(n)
+	}
 	if opts&dupWithFlags != 0 {
 		d.flags = n.flags
 	}
 	d.schema = n.schema
-	cross := !sameSet(setOf(n), t.set)
+	cross := !sameSet(setOf(n), t.set) && opts&dupKeepContext == 0
 	if cross {
 		sn, err := findSchemaCtx(n.schema, t.set, parent)
 		if err != nil {

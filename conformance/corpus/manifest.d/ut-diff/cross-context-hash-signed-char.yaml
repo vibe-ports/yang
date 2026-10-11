@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-diff/cross-context-hash-signed-char
+    dir: ut-diff
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/src/hash_table.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # lyht_hash_multi: linux/amd64 signed-char addition; enumeration.c emits the 4-byte little-endian enum value
+    rfc: []   # libyang hash implementation detail, no RFC
+    areas: [diff, types]
+    host: amd64
+    # Signed-char lyht_hash_multi over "e", "v", and LYB 31bb0c14 / 68b15e3c gives
+    # 0x56935e3d for both; canonical "same" values therefore produce an empty diff.
+    request:
+      op: sequence
+      searchdirs: [schemas/cross-context-hash-signed-char-a]
+      modules: [{name: e}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<v xmlns="urn:vibe-ports:yang:cross-context-hash-signed-char">same</v>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<v xmlns="urn:vibe-ports:yang:cross-context-hash-signed-char">same</v>'
+          target: {searchdirs: [schemas/cross-context-hash-signed-char-b], modules: [{name: e}]}
+    golden: golden/cross-context-hash-signed-char.json

@@ -1,0 +1,582 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "diff-cross-context-lyb-families",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb-families:top",
+          "schema": "/diff-cross-context-lyb-families:top",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb-families:top/binary-value[.='AQID']",
+          "schema": "/diff-cross-context-lyb-families:top/binary-value",
+          "value": {
+            "canonical": "AQID",
+            "type": "binary",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb-families:top/boolean-value[.='true']",
+          "schema": "/diff-cross-context-lyb-families:top/boolean-value",
+          "value": {
+            "canonical": "true",
+            "type": "boolean",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb-families:top/decimal-value[.='12.34']",
+          "schema": "/diff-cross-context-lyb-families:top/decimal-value",
+          "value": {
+            "canonical": "12.34",
+            "type": "decimal64",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb-families:top/empty-value[.='']",
+          "schema": "/diff-cross-context-lyb-families:top/empty-value",
+          "value": {
+            "canonical": "",
+            "type": "empty",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb-families:top/ipv4-zone[.='192.0.2.1%z']",
+          "schema": "/diff-cross-context-lyb-families:top/ipv4-zone",
+          "value": {
+            "canonical": "192.0.2.1%z",
+            "type": "string",
+            "typedef": "ipv4-address",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb-families:top/ipv4-no-zone[.='192.0.2.2']",
+          "schema": "/diff-cross-context-lyb-families:top/ipv4-no-zone",
+          "value": {
+            "canonical": "192.0.2.2",
+            "type": "string",
+            "typedef": "ipv4-address-no-zone",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb-families:top/ipv4-prefix[.='192.0.2.0/24']",
+          "schema": "/diff-cross-context-lyb-families:top/ipv4-prefix",
+          "value": {
+            "canonical": "192.0.2.0/24",
+            "type": "string",
+            "typedef": "ipv4-prefix",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb-families:top/ipv6-zone[.='2001:db8::1%z']",
+          "schema": "/diff-cross-context-lyb-families:top/ipv6-zone",
+          "value": {
+            "canonical": "2001:db8::1%z",
+            "type": "string",
+            "typedef": "ipv6-address",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb-families:top/ipv6-no-zone[.='2001:db8::2']",
+          "schema": "/diff-cross-context-lyb-families:top/ipv6-no-zone",
+          "value": {
+            "canonical": "2001:db8::2",
+            "type": "string",
+            "typedef": "ipv6-address-no-zone",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb-families:top/ipv6-prefix[.='2001:db8::/64']",
+          "schema": "/diff-cross-context-lyb-families:top/ipv6-prefix",
+          "value": {
+            "canonical": "2001:db8::/64",
+            "type": "string",
+            "typedef": "ipv6-prefix",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb-families:top/hex-value[.='0a:0b:0c']",
+          "schema": "/diff-cross-context-lyb-families:top/hex-value",
+          "value": {
+            "canonical": "0a:0b:0c",
+            "type": "string",
+            "typedef": "hex-string",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb-families:top/time-period[.='2w']",
+          "schema": "/diff-cross-context-lyb-families:top/time-period",
+          "value": {
+            "canonical": "2w",
+            "type": "string",
+            "typedef": "time-period",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb-families:top/union-value[.='7']",
+          "schema": "/diff-cross-context-lyb-families:top/union-value",
+          "value": {
+            "canonical": "7",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "uint16",
+                "typedef": null
+              },
+              "type": "uint16",
+              "typedef": null
+            }
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": null,
+      "diff_typed": [],
+      "do": "diff",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb-families:top",
+          "schema": "/diff-cross-context-lyb-families:top",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb-families:top/binary-value[.='AQID']",
+          "schema": "/diff-cross-context-lyb-families:top/binary-value",
+          "value": {
+            "canonical": "AQID",
+            "type": "binary",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb-families:top/boolean-value[.='true']",
+          "schema": "/diff-cross-context-lyb-families:top/boolean-value",
+          "value": {
+            "canonical": "true",
+            "type": "boolean",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb-families:top/decimal-value[.='12.34']",
+          "schema": "/diff-cross-context-lyb-families:top/decimal-value",
+          "value": {
+            "canonical": "12.34",
+            "type": "decimal64",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb-families:top/empty-value[.='']",
+          "schema": "/diff-cross-context-lyb-families:top/empty-value",
+          "value": {
+            "canonical": "",
+            "type": "empty",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb-families:top/ipv4-zone[.='192.0.2.1%z']",
+          "schema": "/diff-cross-context-lyb-families:top/ipv4-zone",
+          "value": {
+            "canonical": "192.0.2.1%z",
+            "type": "string",
+            "typedef": "ipv4-address",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb-families:top/ipv4-no-zone[.='192.0.2.2']",
+          "schema": "/diff-cross-context-lyb-families:top/ipv4-no-zone",
+          "value": {
+            "canonical": "192.0.2.2",
+            "type": "string",
+            "typedef": "ipv4-address-no-zone",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb-families:top/ipv4-prefix[.='192.0.2.0/24']",
+          "schema": "/diff-cross-context-lyb-families:top/ipv4-prefix",
+          "value": {
+            "canonical": "192.0.2.0/24",
+            "type": "string",
+            "typedef": "ipv4-prefix",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb-families:top/ipv6-zone[.='2001:db8::1%z']",
+          "schema": "/diff-cross-context-lyb-families:top/ipv6-zone",
+          "value": {
+            "canonical": "2001:db8::1%z",
+            "type": "string",
+            "typedef": "ipv6-address",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb-families:top/ipv6-no-zone[.='2001:db8::2']",
+          "schema": "/diff-cross-context-lyb-families:top/ipv6-no-zone",
+          "value": {
+            "canonical": "2001:db8::2",
+            "type": "string",
+            "typedef": "ipv6-address-no-zone",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb-families:top/ipv6-prefix[.='2001:db8::/64']",
+          "schema": "/diff-cross-context-lyb-families:top/ipv6-prefix",
+          "value": {
+            "canonical": "2001:db8::/64",
+            "type": "string",
+            "typedef": "ipv6-prefix",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb-families:top/hex-value[.='0a:0b:0c']",
+          "schema": "/diff-cross-context-lyb-families:top/hex-value",
+          "value": {
+            "canonical": "0a:0b:0c",
+            "type": "string",
+            "typedef": "hex-string",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb-families:top/time-period[.='2w']",
+          "schema": "/diff-cross-context-lyb-families:top/time-period",
+          "value": {
+            "canonical": "2w",
+            "type": "string",
+            "typedef": "time-period",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-lyb-families:top/union-value[.='7']",
+          "schema": "/diff-cross-context-lyb-families:top/union-value",
+          "value": {
+            "canonical": "7",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "uint16",
+                "typedef": null
+              },
+              "type": "uint16",
+              "typedef": null
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

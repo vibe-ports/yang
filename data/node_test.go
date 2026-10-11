@@ -183,6 +183,76 @@ func TestInsertWork(t *testing.T) {
 	}
 }
 
+func crossContextInsertWork(t *testing.T, n int, pattern string) int64 {
+	t.Helper()
+	makeSchema := func() (*schema.Set, *schema.Node, []*schema.Node) {
+		m := &schema.Module{Name: "work", Namespace: "urn:work", Prefix: "w", Implemented: true}
+		set := &schema.Set{Modules: []*schema.Module{m}}
+		parent := &schema.Node{Kind: schema.Container, Name: "top", Module: m, Config: true}
+		m.Top = []*schema.Node{parent}
+		nodes := make([]*schema.Node, n)
+		for i := range nodes {
+			nodes[i] = &schema.Node{Kind: schema.LeafList, Name: fmt.Sprintf("v%06d", i),
+				Module: m, Parent: parent, Type: &schema.Type{Base: schema.String}, Config: true}
+			parent.Children = append(parent.Children, nodes[i])
+		}
+		return set, parent, nodes
+	}
+	setA, parentA, nodesA := makeSchema()
+	setB, _, nodesB := makeSchema()
+	tr := newTree(setA)
+	parent := newInner(parentA)
+	tr.insert(nil, parent, insertDefault)
+	term := func(sn *schema.Node, lex string, set *schema.Set) *Node {
+		v, d := types.StoreOnly(sn.Type, lex, types.FormatJSON, types.HintString, nil, sn)
+		if d != nil {
+			t.Fatal(d.Msg)
+		}
+		node := newTerm(sn, v)
+		node.ctx = set
+		return node
+	}
+	for _, sn := range nodesA {
+		tr.insert(parent, term(sn, "v000000", setA), insertDefault)
+	}
+	order := make([]int, n)
+	for i := range order {
+		order[i] = i
+	}
+	switch pattern {
+	case "reverse":
+		slices.Reverse(order)
+	case "shuffled", "duplicate-heavy":
+		for i := range order {
+			j := (i*37 + 11) % n
+			order[i], order[j] = order[j], order[i]
+		}
+	}
+	tr.work.Store(0)
+	tr.work.visits = true
+	for _, i := range order {
+		lex := fmt.Sprintf("v%06d", i)
+		if pattern == "duplicate-heavy" {
+			lex = fmt.Sprintf("v%06d", i%4)
+		}
+		tr.insert(parent, term(nodesB[len(nodesB)-1], lex, setB), insertDefault)
+	}
+	return tr.work.Load()
+}
+
+func TestCrossContextInsertWork(t *testing.T) {
+	for _, pattern := range []string{"sorted", "reverse", "shuffled", "duplicate-heavy"} {
+		t.Run(pattern, func(t *testing.T) {
+			const n = 64
+			small := crossContextInsertWork(t, n, pattern)
+			large := crossContextInsertWork(t, 4*n, pattern)
+			if small == 0 || large > 6*small {
+				t.Fatalf("work(%d) = %d, work(%d) = %d; want work(4N) <= 6*work(N)", n, small, 4*n, large)
+			}
+		})
+	}
+}
+
 // TestResortRun: a run appended out of value order (no RB tree in libyang) is sorted by the next
 // sorted insertion (lyds_additionally_create_rb_tree): [9,1,5,7] + 6 = 1,5,6,7,9.
 func TestResortRun(t *testing.T) {

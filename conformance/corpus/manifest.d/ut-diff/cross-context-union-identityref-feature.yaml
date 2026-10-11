@@ -1,0 +1,19 @@
+fixtures:
+  - id: ut-diff/cross-context-union-identityref-feature
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang cross-context stored-value comparison, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: diff-cross-context-union, features: [derived]}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-union"><value>d</value></top>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-union"><value>d</value></top>'
+          target: {searchdirs: [schemas], modules: [{name: diff-cross-context-union}]}
+    golden: golden/cross-context-union-identityref-feature.json

@@ -1,0 +1,19 @@
+fixtures:
+  - id: ut-diff/cross-context-ipv4-string
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang LY_VALUE_LYB hashing across contexts, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas/cross-context-lyb-a]
+      modules: [{name: diff-cross-context-lyb}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-lyb"><address>1.2.3.4</address></top>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-lyb"><address>1.2.3.4</address></top>'
+          target: {searchdirs: [schemas/cross-context-lyb-b], modules: [{name: diff-cross-context-lyb}]}
+    golden: golden/cross-context-ipv4-string.json

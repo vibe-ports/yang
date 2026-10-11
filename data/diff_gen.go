@@ -32,10 +32,10 @@ type DiffOptions struct {
 // replace, none) with yang:orig-value and yang:orig-default on a changed leaf, and the anchors
 // yang:key, yang:value or yang:position (and their orig- counterparts) on a created or moved
 // user-ordered instance. Either tree may be nil or empty (no data). The result is nil when the
-// trees are equal. When both trees contain nodes, they must use the same schema snapshot (D-0069).
-// Operation data with a child schema run split by another child is refused with LY_EINVAL
-// (D-0116), including when an input node is only a subtree of the operation. Errors are a
-// *ValidationError with libyang's diagnostics.
+// trees are equal. The trees may use different schema snapshots; sibling schema nodes then match
+// by module and node-name ancestry as in libyang. Operation data with a child schema run split
+// by another child is refused with LY_EINVAL (D-0116), including when an input node is only a
+// subtree of the operation. Errors are a *ValidationError with libyang's diagnostics.
 func Diff(first, second *Tree, o DiffOptions) (*Tree, error) {
 	var a, b *Node
 	if first != nil {
@@ -85,12 +85,6 @@ func diffNodes(first, second *Node, o DiffOptions, nosiblings bool, ft, st *Tree
 			return nil, splitOpRefusal(lg, split, op, "lyd_diff")
 		}
 	}
-	// D-0069: cross-context matching is not ported yet (#236). Without this refusal the
-	// pointer-based schema matching below treats equal nodes from two snapshots as unmatched and
-	// silently emits create diffs, even for identical trees (df create, foo none), so refuse.
-	if fs != nil && ss != nil && fs != ss {
-		return nil, lg.done(lg.logErr("LY_EINVAL", "Invalid arguments - cannot create diff for unrelated data (lyd_diff())."))
-	}
 	dataParent := func(n *Node) *schema.Node { // lysc_data_parent(n->schema), NULL for an opaque node
 		if n.schema == nil {
 			return nil
@@ -110,7 +104,12 @@ func diffNodes(first, second *Node, o DiffOptions, nosiblings bool, ft, st *Tree
 		return nil, nil
 	}
 	d := newTree(set)
-	if err := d.diffSiblingsR(first, second, o, nosiblings); err != nil {
+	// Inputs are immutable during Diff. Cache node hashes for this operation only,
+	// matching libyang's stored node->hash (tree_data_hash.c:44-81) without retaining
+	// per-value state or repeating sparse hashes for every duplicate-instance pair.
+	d.diffHashes = make(map[*Node]lydHashResult)
+	defer func() { d.diffHashes = nil }()
+	if err := d.diffSiblingsR(first, second, o, nosiblings, &diffIndex{}); err != nil {
 		return nil, lg.done(err)
 	}
 	if d.top.len() == 0 {
@@ -209,6 +208,99 @@ func splitOpRefusal(lg *logger, split, op *Node, fn string) error {
 		split.Name(), lydPath(lg.set, op, false), fn))
 }
 
+// diffSchemaEqual is the full-ancestry schema comparison used by
+// lyd_hash_table_schema_val_equal (tree_data.c:1509-1543): pointer identity in one compiled
+// context, or the same node type, module, and name at every schema-ancestor level across contexts.
+func diffSchemaEqual(a, b *schema.Node) bool {
+	switch {
+	case a == b:
+		return true
+	case a == nil || b == nil || a.Module == b.Module:
+		return false
+	default:
+		return compareSchemaEqual(a, b, true)
+	}
+}
+
+// diffIndex is the per-operation lyd_find_sibling_schema lookup for another context. Without a
+// children_ht, libyang scans for the first equal LYD_NAME and module name
+// (tree_data_common.c:1124-1137). With one, lyd_hash_table_schema_val_equal compares the complete
+// schema ancestry (tree_data.c:1509-1543). The operation-local index avoids input caches.
+type diffIndex struct {
+	bySiblings map[*siblings]map[diffSchemaName]*schema.Node
+	keys       map[*schema.Node]uint64
+	parts      map[diffSchemaPart]uint64
+	nextID     uint64
+}
+
+type diffSchemaName struct {
+	module string
+	name   string
+}
+
+type diffSchemaPart struct {
+	parent uint64
+	kind   schema.Kind
+	module string
+	name   string
+}
+
+func (x *diffIndex) key(sn *schema.Node, work *siblings) uint64 {
+	if sn == nil {
+		return 0
+	}
+	if k := x.keys[sn]; k != 0 {
+		return k
+	}
+	if x.keys == nil {
+		x.keys = map[*schema.Node]uint64{}
+		x.parts = map[diffSchemaPart]uint64{}
+	}
+	work.visit() // charge each schema-ancestry link the operation interns
+	p := diffSchemaPart{parent: x.key(sn.Parent, work), kind: sn.Kind, module: sn.Module.Name, name: sn.Name}
+	k := x.parts[p]
+	if k == 0 {
+		x.nextID++
+		k = x.nextID
+		x.parts[p] = k
+	}
+	x.keys[sn] = k
+	return k
+}
+
+// findSchema is lyd_find_sibling_schema for diff generation: module/name scan semantics
+// without children_ht, full ancestry through lyd_hash_table_schema_val_equal with children_ht
+// (tree_data_common.c:1124-1137; tree_data.c:1509-1543).
+func (x *diffIndex) findSchema(t *Tree, sib *siblings, sn *schema.Node) *Node {
+	if n := t.findSchema(sib, sn); n != nil {
+		return n
+	}
+	if x.bySiblings == nil {
+		x.bySiblings = map[*siblings]map[diffSchemaName]*schema.Node{}
+	}
+	idx := x.bySiblings[sib]
+	if idx == nil {
+		idx = map[diffSchemaName]*schema.Node{}
+		for _, n := range sib.list {
+			sib.visit()
+			k := diffSchemaName{module: n.schema.Module.Name, name: n.schema.Name}
+			if idx[k] == nil {
+				idx[k] = n.schema
+			}
+		}
+		x.bySiblings[sib] = idx
+	}
+	local := idx[diffSchemaName{module: sn.Module.Name, name: sn.Name}]
+	if local == nil {
+		return nil
+	}
+	if sib.ht != nil && x.key(local, sib) != x.key(sn, sib) {
+		// Not lyd_find_schema_ctx: that is lyd_dup's lookup (tree_data.c:2235).
+		return nil
+	}
+	return t.findSchema(sib, local)
+}
+
 // fromNode is n and the siblings after it, schema nodes then opaque ones; nil for nil.
 func fromNode(n *Node) []*Node {
 	if n == nil {
@@ -246,6 +338,10 @@ func firstNoKeys(n *Node) *Node {
 // findMatch is lyd_diff_find_match: the instance of target among sib (nil: none), the next equal
 // one on every call for duplicate instances; a default node does not count without defaults.
 func (t *Tree) findMatch(sib *siblings, target *Node, defaults bool, cache *dupCache) *Node {
+	return t.findMatchIndexed(sib, target, defaults, cache, nil)
+}
+
+func (t *Tree) findMatchIndexed(sib *siblings, target *Node, defaults bool, cache *dupCache, index *diffIndex) *Node {
 	if sib == nil || sib.len() == 0 {
 		return nil
 	}
@@ -256,7 +352,11 @@ func (t *Tree) findMatch(sib *siblings, target *Node, defaults bool, cache *dupC
 	case target.schema.Kind == schema.List || target.schema.Kind == schema.LeafList:
 		m = t.findFirst(sib, target)
 	default:
-		m = t.findSchema(sib, target.schema)
+		if index != nil {
+			m = index.findSchema(t, sib, target.schema)
+		} else {
+			m = t.findSchema(sib, target.schema)
+		}
 	}
 	m = t.dupInstNext(m, cache)
 	if m != nil && m.flags&FlagDefault != 0 && !defaults {
@@ -278,7 +378,7 @@ type userord struct {
 // siblings in their order (none for a nil first).
 func (t *Tree) userordGet(first *Node, sn *schema.Node, items *[]*userord) *userord {
 	for _, u := range *items {
-		if u.schema == sn {
+		if u.schema == sn { // by schema pointer (diff.c:546-547): one entry per context
 			return u
 		}
 	}
@@ -305,6 +405,20 @@ func (t *Tree) userordAttrs(first, second *Node, o DiffOptions, u *userord) (dif
 		firstPos = slices.Index(u.inst, first)
 	}
 	secondPos := u.pos
+	// D-0121: entries are keyed by schema pointer (diff.c:546-547), so across contexts the
+	// virtual order can lack first or end before second_pos. lyd_diff_userord_attrs then asserts
+	// (first not in the entry) or reads and writes past the array (inst[second_pos],
+	// inst[second_pos - 1], the create insertion). Refuse exactly those states, before anything
+	// is read out of range.
+	refuse := func() error {
+		return &opError{"LY_EINVAL", fmt.Sprintf("Invalid arguments - the user-ordered instances of \"%s\" "+
+			"in two schema contexts leave libyang's diff bookkeeping out of range, a diff of such data is not "+
+			"supported (D-0121) (lyd_diff()).", sn.Name)}
+	}
+	if firstPos < 0 || first != nil && second != nil && secondPos >= len(u.inst) ||
+		second != nil && secondPos > len(u.inst) {
+		return 0, a, refuse()
+	}
 	u.pos++
 	var op diffOp
 	switch {
@@ -312,7 +426,7 @@ func (t *Tree) userordAttrs(first, second *Node, o DiffOptions, u *userord) (dif
 		op = diffDelete
 	case first == nil:
 		op = diffCreate
-	case secondPos >= len(u.inst) || !compareSingle(t, second, u.inst[secondPos], isDupInstList(second.schema)):
+	case !compareSingle(t, second, u.inst[secondPos], isDupInstList(second.schema)):
 		op = diffReplace // another instance on this position in first: first is moved here
 	case o.Defaults && first.flags&FlagDefault != second.flags&FlagDefault:
 		op = diffNone
@@ -320,6 +434,9 @@ func (t *Tree) userordAttrs(first, second *Node, o DiffOptions, u *userord) (dif
 		op = diffNone
 	default:
 		return 0, a, errNoChange
+	}
+	if op == diffReplace && firstPos < secondPos {
+		return 0, a, refuse() // the replace memmove's size first_pos - second_pos would be negative
 	}
 	str := func(s string) *string { return &s }
 	pred := func(pos int) *string { // the anchor: the instance before pos, "" for the first
@@ -366,7 +483,7 @@ func (t *Tree) userordAttrs(first, second *Node, o DiffOptions, u *userord) (dif
 	}
 	switch op { // the change applied to the virtual order
 	case diffCreate:
-		u.inst = slices.Insert(u.inst, min(secondPos, len(u.inst)), second)
+		u.inst = slices.Insert(u.inst, secondPos, second)
 	case diffDelete:
 		u.inst = slices.Delete(u.inst, firstPos, firstPos+1)
 	case diffReplace:
@@ -556,7 +673,7 @@ func (t *Tree) nodeMetaR(first, second *Node, keysOnly bool, n *Node) error {
 // from first's side; then creates and user-ordered moves, from second's side, with each move
 // applied to the virtual order of the first tree so that the anchors of the later operations
 // are final (see diff.c for the whole argument).
-func (t *Tree) diffSiblingsR(first, second *Node, o DiffOptions, nosiblings bool) error {
+func (t *Tree) diffSiblingsR(first, second *Node, o DiffOptions, nosiblings bool, index *diffIndex) error {
 	var items []*userord
 	firstCache, secondCache := &dupCache{}, &dupCache{}
 	fs, ss := sibsOf(first), sibsOf(second)
@@ -567,7 +684,7 @@ func (t *Tree) diffSiblingsR(first, second *Node, o DiffOptions, nosiblings bool
 		if f.flags&FlagDefault != 0 && !o.Defaults {
 			continue // default nodes skipped
 		}
-		m := t.findMatch(ss, f, o.Defaults, secondCache)
+		m := t.findMatchIndexed(ss, f, o.Defaults, secondCache, index)
 		var dn *Node
 		if isUserOrdered(f.schema) {
 			u := t.userordGet(f, f.schema, &items)
@@ -601,7 +718,7 @@ func (t *Tree) diffSiblingsR(first, second *Node, o DiffOptions, nosiblings bool
 					return err
 				}
 			}
-			if err := t.diffSiblingsR(firstNoKeys(f), firstNoKeys(m), o, false); err != nil {
+			if err := t.diffSiblingsR(firstNoKeys(f), firstNoKeys(m), o, false, index); err != nil {
 				return err
 			}
 		} else if o.Meta && dn != nil {
@@ -623,7 +740,7 @@ func (t *Tree) diffSiblingsR(first, second *Node, o DiffOptions, nosiblings bool
 		if s.flags&FlagDefault != 0 && !o.Defaults {
 			continue
 		}
-		m := t.findMatch(fs, s, o.Defaults, firstCache)
+		m := t.findMatchIndexed(fs, s, o.Defaults, firstCache, index)
 		var dn *Node
 		switch {
 		case isUserOrdered(s.schema):

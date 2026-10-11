@@ -113,11 +113,17 @@ func (t *Tree) findPath(lg *logger, path string) (*Node, error) {
 	if path == "" || path[0] != '/' {
 		return nil, argErr("path (not absolute)", "lyd_find_path") // libyang takes it relative to ctx_node
 	}
+	pathSet := t.set
 	var ctxNode *schema.Node // ctx_node->schema: the first top-level node
 	if len(t.top.list) > 0 {
 		ctxNode = t.top.list[0].schema
+		if s := setOf(t.top.list[0]); s != nil {
+			// A diff can retain another context on its first top-level node. libyang compiles the
+			// path in that node's context, not in the context used to allocate the Go Tree.
+			pathSet = s
+		}
 	}
-	p, msg, at := types.CompilePath(t.set, ctxNode, path, false, false)
+	p, msg, at := types.CompilePath(pathSet, ctxNode, path, false, false)
 	if msg != "" {
 		return nil, lg.item(nil, at, false, "LY_EVALID", ly.XPath, "", msg)
 	}

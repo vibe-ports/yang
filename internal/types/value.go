@@ -147,6 +147,42 @@ func Compare(a, b Value) int {
 	return strings.Compare(a.canon, b.canon) // lyplg_type_sort_simple
 }
 
+// CompareCompatible orders values from possibly different schema contexts when their real types
+// use the same libyang sort callback. The result is valid only when compatible is true.
+func CompareCompatible(a, b Value) (order int, compatible bool) {
+	if a.typ == nil || b.typ == nil {
+		return 0, false
+	}
+	ap, bp := pluginFor(a.typ), pluginFor(b.typ)
+	if ap != nil || bp != nil {
+		if ap == nil || bp == nil || ap.id != bp.id {
+			return 0, false
+		}
+		if ap.compare == nil {
+			return strings.Compare(a.canon, b.canon), true
+		}
+		return ap.compare(a, b), true
+	}
+	if a.typ.Base != b.typ.Base {
+		return 0, false
+	}
+	return Compare(a, b), true
+}
+
+// SortCompatible reports whether two values use the same libyang sort callback. It matters for
+// system-ordered instances retained from different contexts: equal built-in real types can share
+// one sorted run, while a type plugin and its plain base type cannot.
+func SortCompatible(a, b Value) bool {
+	if a.typ == nil || b.typ == nil {
+		return false
+	}
+	ap, bp := pluginFor(a.typ), pluginFor(b.typ)
+	if ap != nil || bp != nil {
+		return ap != nil && bp != nil && ap.id == bp.id
+	}
+	return a.typ.Base == b.typ.Base
+}
+
 func cmp3(less, greater bool) int {
 	switch {
 	case less:

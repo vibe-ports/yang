@@ -1,0 +1,26 @@
+fixtures:
+  - id: ut-diff/cross-context-apply-user-create
+    dir: ut-diff
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/src/diff.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    rfc: []   # diff.c:1821,1474; tree_data.c:1074-1081 checks schema-parent pointers
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: diff-cross-context-empty}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-empty"/>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-empty"><user>new</user></top>'
+          target: {searchdirs: [schemas], modules: [{name: diff-cross-context-empty}]}
+        - {do: diff_apply}
+        - {do: dump}
+    golden: golden/cross-context-apply-user-create.json
+    assert:
+      verdict: invalid
+      rc: LY_EINVAL
+      diagnostics: [{level: error, vecode_name: LYVE_SUCCESS}]
+      deviation: "D-0122"
