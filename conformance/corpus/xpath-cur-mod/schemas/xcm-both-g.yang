@@ -1,0 +1,22 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module xcm-both-g {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:xpath-cur-mod:both-g";
+  prefix xbg;
+
+  import xcm-base { prefix xb; }
+
+  identity local { base xb:g-branch; }
+  identity g-child { base local; }
+
+  grouping both-modules-grouping {
+    leaf id {
+      type identityref { base xb:root; }
+      must "derived-from(., 'local')" {
+        error-message "the identity must derive from local in the instantiated schema module";
+        error-app-tag "xcm-both-module";
+      }
+    }
+  }
+}

@@ -3,7 +3,11 @@
 package data
 
 import (
+	"fmt"
+	"math/rand/v2"
 	"reflect"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/vibe-ports/yang/internal/xpath"
@@ -68,7 +72,7 @@ func TestFindXPath(t *testing.T) {
 		{false, xpath.NodeSet, xpath.Result{Type: xpath.NodeSet, Nodes: []xpath.Node{xn{c.kids.list[0], f.set}}}},
 	} {
 		src := "/b:c/ll"
-		r, err := tr.evalXPath4(&logger{set: f.set}, nil, src, nil, tc.single, tc.to)
+		r, err := tr.evalXPath4(&logger{set: f.set}, nil, src, jsonNS{set: f.set}, nil, tc.single, tc.to)
 		r.Steps = 0
 		if err != nil || !reflect.DeepEqual(r.Type, tc.want.Type) || r.Bool != tc.want.Bool || r.Str != tc.want.Str ||
 			r.Num != tc.want.Num || tc.want.Type == xpath.NodeSet && len(r.Nodes) != 3 {
@@ -88,6 +92,58 @@ func TestFindXPath(t *testing.T) {
 
 // findXPath is FindXPath over the internal twin, so the tests see the logger.
 func findXPath(t *Tree, l *logger, ctxNode *Node, src string, vars []xpath.Var) ([]*Node, error) {
-	r, err := t.evalXPath4(l, ctxNode, src, vars, true, xpath.NodeSet)
+	r, err := t.evalXPath4(l, ctxNode, src, jsonNS{set: t.set}, vars, true, xpath.NodeSet)
 	return nodesOf(r), err
+}
+
+// TestXMLPrefixWork: XML prefix resolution indexes the declarations once per query, so a query
+// with n declarations and n prefixed steps does work linear in n: work(4n) <= 6 x work(n), for
+// declarations in sorted, reverse, shuffled and duplicate-heavy order.
+func TestXMLPrefixWork(t *testing.T) {
+	f := newFixture()
+	work := func(n int, order string) int64 {
+		tr := newTree(f.set)
+		nss := make([]XPathNamespace, n)
+		for i := range nss {
+			nss[i] = XPathNamespace{Prefix: fmt.Sprintf("p%d", i), URI: f.set.Modules[0].Namespace}
+		}
+		switch order {
+		case "reverse":
+			slices.Reverse(nss)
+		case "shuffled":
+			r := rand.New(rand.NewPCG(3, 4)) //nolint:gosec // deterministic test order
+			r.Shuffle(len(nss), func(i, j int) { nss[i], nss[j] = nss[j], nss[i] })
+		case "duplicates":
+			for i := range nss {
+				nss[i].Prefix = fmt.Sprintf("p%d", i%3)
+			}
+		}
+		parts := make([]string, n)
+		for i := range parts {
+			parts[i] = fmt.Sprintf("/p%d:c", i%len(nss)%max(1, n))
+			if order == "duplicates" {
+				parts[i] = fmt.Sprintf("/p%d:c", i%3)
+			}
+		}
+		tr.work.Store(0)
+		tr.work.visits = true
+		if _, _, err := tr.EvalXPath(strings.Join(parts, " | "), XPathOptions{Format: XPathXML, Namespaces: nss}); err != nil {
+			t.Fatal(err)
+		}
+		// Include the identity resolver used by derived-from, with the same declaration orders.
+		ns := newXMLPrefixes(f.set, nss, &tr.work)
+		for _, decl := range nss {
+			if _, ok := ns.ResolveIdentity(decl.Prefix); !ok {
+				t.Fatal("identity module not resolved")
+			}
+		}
+		return tr.work.Load()
+	}
+	const n = 400
+	for _, order := range []string{"sorted", "reverse", "shuffled", "duplicates"} {
+		w1, w4 := work(n, order), work(4*n, order)
+		if w1 < n || w4 > 6*w1 {
+			t.Errorf("%s: work(%d) = %d, work(%d) = %d: more than 6x", order, n, w1, 4*n, w4)
+		}
+	}
 }

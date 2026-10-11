@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo): XPath query formats (#171); imported only, never
+// implemented.
+module xpf-imp {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:xpf-imp";
+  prefix xi;
+
+  identity bird;
+}

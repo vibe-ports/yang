@@ -20,8 +20,11 @@ import (
 type testNS string
 
 func (n testNS) Resolve(p string) (string, bool) { return string(n), p == string(n) }
-func (n testNS) Prefix(string) string            { return string(n) }
-func (n testNS) Default() string                 { return string(n) }
+func (n testNS) ResolveIdentity(p string) (xpath.Ident, bool) {
+	return xpath.Ident{Module: string(n)}, p == string(n) || p == ""
+}
+func (n testNS) Prefix(string) string { return string(n) }
+func (n testNS) Default() string      { return string(n) }
 
 // unresFixture is
 //

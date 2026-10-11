@@ -1,0 +1,9 @@
+fixtures:
+  # derived-from must reject an import-only identity module even when its XML prefix is declared.
+  - id: xpath-format/xml-derived-not-implemented
+    dir: xpath-format
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#6.4.1", "RFC7950#10.4.1"]
+    areas: [xpath]
+    request: {"op": "xpath", "context_options": ["no_yanglibrary"], "searchdirs": ["schemas"], "modules": [{"name": "xpf"}, {"name": "xpf-base"}], "format": "json", "data_type": "data", "data": "{\"xpf:c\": {\"a\": \"xpf-base:dog\"}}", "xpath": "derived-from(/p:c/p:a, 'i:bird')", "xpath_format": "xml", "namespaces": [{"prefix": "p", "uri": "urn:vibe-ports:yang:conformance:xpf"}, {"prefix": "i", "uri": "urn:vibe-ports:yang:conformance:xpf-imp"}]}
+    golden: golden/xml-derived-not-implemented.json

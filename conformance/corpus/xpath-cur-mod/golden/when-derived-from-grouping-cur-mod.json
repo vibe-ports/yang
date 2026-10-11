@@ -1,0 +1,90 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "xcm-base",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "xcm-when-g",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "xcm-when-m",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"xcm-when-m:guarded-case\": {\n    \"id\": \"local\",\n    \"guarded\": \"present\"\n  }\n}\n",
+    "xml": "<guarded-case xmlns=\"urn:vibe-ports:yang:xpath-cur-mod:when-m\">\n  <id>local</id>\n  <guarded>present</guarded>\n</guarded-case>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/xcm-when-m:guarded-case",
+      "schema": "/xcm-when-m:guarded-case",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/xcm-when-m:guarded-case/id",
+      "schema": "/xcm-when-m:guarded-case/id",
+      "value": {
+        "canonical": "xcm-when-m:local",
+        "type": "identityref",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": true
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/xcm-when-m:guarded-case/guarded",
+      "schema": "/xcm-when-m:guarded-case/guarded",
+      "value": {
+        "canonical": "present",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

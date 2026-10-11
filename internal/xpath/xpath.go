@@ -50,8 +50,13 @@ const (
 	WhenFalse                       // when evaluated false: the node is invisible to XPath
 )
 
-// Ident names an identity.
-type Ident struct{ Module, Name string }
+// Ident names an identity. Revision is the exact module revision when Exact is true; this keeps
+// identities from distinct revisions separate even though XPath node tests use module names.
+type Ident struct {
+	Module, Name string
+	Revision     string
+	Exact        bool
+}
 
 // Value is read-only access to a term node's STORED value. YANG functions use
 // the typed accessors, never the string: an identityref and a string union
@@ -59,7 +64,7 @@ type Ident struct{ Module, Name string }
 type Value interface {
 	String() string // canonical value (anydata/anyxml: serialized content)
 	// Identity: ok only when the stored value (the selected union member) is an identityref.
-	Identity() (module, name string, ok bool)
+	Identity() (id Ident, ok bool)
 	// Enum: ok only when the leaf's schema type is an enumeration (libyang checks
 	// the schema type, so an enum union member gives ok=false).
 	Enum() (int, bool)
@@ -223,10 +228,37 @@ type SchemaInfo interface {
 type NamespaceCtx interface {
 	// Resolve maps a prefix to an implemented module name.
 	Resolve(prefix string) (module string, ok bool)
+	// ResolveIdentity maps a prefix to the exact module used for an identity value. Unlike node
+	// names, schema and XML values may name an import-only module or a specific revision.
+	ResolveIdentity(prefix string) (module Ident, ok bool)
 	// Prefix is the prefix name() prints for module.
 	Prefix(module string) string
 	// Default is the module of unprefixed names; "" matches any module (JSON format).
 	Default() string
+}
+
+// PrefixedOnly is implemented by a NamespaceCtx whose node names need a prefix (LY_VALUE_XML): an
+// unprefixed name test, or derived-from() identity, is an error ("Non-prefixed node … in XML xpath
+// found.", moveto_resolve_module).
+type PrefixedOnly interface{ PrefixedOnly() }
+
+// KeyValue is implemented by the NamespaceCtx of a hashed key-predicate value (the predicate
+// ly_path_compile_predicate stores with the key's type, plugin normalization included), unlike a
+// compared value, which set_comp_canonize leaves alone for string, boolean and enumeration types.
+type KeyValue interface{ KeyValue() }
+
+// CurModule is implemented by a NamespaceCtx with a current module (lyxp_eval's cur_mod): an
+// unprefixed derived-from() identity of a JSON expression is in it when there is no current
+// node (xpath_derived_ident_module).
+type CurModule interface{ CurModule() (Ident, bool) }
+
+// unprefixed is moveto_resolve_module for an unprefixed name: the module to match, or the error
+// of a NamespaceCtx that needs prefixes.
+func unprefixed(ns NamespaceCtx, name string) (string, error) {
+	if _, ok := ns.(PrefixedOnly); ok {
+		return "", &Error{Err: "LY_EVALID", VECode: "LYVE_DATA", Msg: fmt.Sprintf("Non-prefixed node \"%s\" in XML xpath found.", name)}
+	}
+	return ns.Default(), nil
 }
 
 // RootKind selects the accessible tree.

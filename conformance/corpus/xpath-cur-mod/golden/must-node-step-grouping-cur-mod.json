@@ -1,0 +1,84 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "xcm-node-g",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "xcm-node-m",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"xcm-node-m:node-step\": {\n    \"sibling\": \"ok\",\n    \"probe\": \"present\"\n  }\n}\n",
+    "xml": "<node-step xmlns=\"urn:vibe-ports:yang:xpath-cur-mod:node-m\">\n  <sibling>ok</sibling>\n  <probe>present</probe>\n</node-step>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/xcm-node-m:node-step",
+      "schema": "/xcm-node-m:node-step",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/xcm-node-m:node-step/sibling",
+      "schema": "/xcm-node-m:node-step/sibling",
+      "value": {
+        "canonical": "ok",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/xcm-node-m:node-step/probe",
+      "schema": "/xcm-node-m:node-step/probe",
+      "value": {
+        "canonical": "present",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

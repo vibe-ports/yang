@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module xcm-when-m {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:xpath-cur-mod:when-m";
+  prefix xwm;
+
+  import xcm-base { prefix xb; }
+  import xcm-when-g { prefix xwg; }
+
+  identity local { base xb:root; }
+
+  container guarded-case {
+    uses xwg:current-module-when-grouping;
+  }
+}

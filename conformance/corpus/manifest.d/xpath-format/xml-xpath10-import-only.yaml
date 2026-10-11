@@ -1,0 +1,9 @@
+fixtures:
+  # an xpath1.0 value naming an import-only module compared in XML: libyang does not canonicalize the literal, false (lyd_eval_xpath4 format, prefix_data, cur_mod; #171)
+  - id: xpath-format/xml-xpath10-import-only
+    dir: xpath-format
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#6.4.1"]
+    areas: [xpath]
+    request: {"op": "xpath", "context_options": ["no_yanglibrary"], "searchdirs": ["schemas"], "modules": [{"name": "xpf"}, {"name": "xpf-base"}], "format": "json", "data_type": "data", "data": "{\"xpf:c\": {\"xp\": \"/xpf-imp:z\"}}", "xpath": "/p:c/p:xp = '/r:z'", "xpath_format": "xml", "namespaces": [{"prefix": "p", "uri": "urn:vibe-ports:yang:conformance:xpf"}, {"prefix": "q", "uri": "urn:vibe-ports:yang:conformance:xpf-base"}, {"prefix": "r", "uri": "urn:vibe-ports:yang:conformance:xpf-imp"}]}
+    golden: golden/xml-xpath10-import-only.json

@@ -541,7 +541,7 @@ func (si schemaInfo) mod(name string) *schema.Module {
 
 func (si schemaInfo) ident(id xpath.Ident) *schema.Identity {
 	for _, lm := range si.c.Modules {
-		if lm.mod != nil && lm.Name == id.Module {
+		if lm.mod != nil && lm.Name == id.Module && (!id.Exact || lm.mod.Revision == id.Revision) {
 			if x := lm.mod.Identity(id.Name); x != nil {
 				return x
 			}

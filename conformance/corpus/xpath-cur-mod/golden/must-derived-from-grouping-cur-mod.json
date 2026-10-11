@@ -1,0 +1,71 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "xcm-base",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "xcm-cur-g",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "xcm-cur-m",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"xcm-cur-m:current\": {\n    \"id\": \"local\"\n  }\n}\n",
+    "xml": "<current xmlns=\"urn:vibe-ports:yang:xpath-cur-mod:cur-m\">\n  <id>local</id>\n</current>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/xcm-cur-m:current",
+      "schema": "/xcm-cur-m:current",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/xcm-cur-m:current/id",
+      "schema": "/xcm-cur-m:current/id",
+      "value": {
+        "canonical": "xcm-cur-m:local",
+        "type": "identityref",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

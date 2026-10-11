@@ -656,6 +656,7 @@ type xpathNS struct {
 	ctx  schema.NSCtx
 	def  string
 	used []string // valuePrefixes of the source
+	rev  string   // def's revision: def is ctx->cur_mod, the compiled (implemented) module
 }
 
 func (x xpathNS) Resolve(prefix string) (string, bool) {
@@ -663,6 +664,14 @@ func (x xpathNS) Resolve(prefix string) (string, bool) {
 		return m.Name, true
 	}
 	return "", false
+}
+
+func (x xpathNS) ResolveIdentity(prefix string) (xpath.Ident, bool) {
+	m := x.ctx[prefix]
+	if m == nil || prefix != "" && !slices.Contains(x.used, prefix) {
+		return xpath.Ident{}, false
+	}
+	return xpath.Ident{Module: m.Name, Revision: m.Revision, Exact: true}, true
 }
 
 func (x xpathNS) Prefix(module string) string {
@@ -680,9 +689,16 @@ func (x xpathNS) Prefix(module string) string {
 
 func (x xpathNS) Default() string { return x.def }
 
+// CurModule is the evaluation's cur_mod: validation evaluates a must with node->schema->module
+// and a when with schema->module (validation.c:1745, 299), the module the node was compiled into.
+// In a grouping that is the module using it, not the grouping's (ctx[""]).
+func (x xpathNS) CurModule() (xpath.Ident, bool) {
+	return xpath.Ident{Module: x.def, Revision: x.rev, Exact: true}, true
+}
+
 // xpathCompile is lyxp_expr_parse with its error logged at the current path.
 func (w *nodeCtx) xpathCompile(src string, ns schema.NSCtx) (*xpath.Expr, error) {
-	e, err := xpath.Compile(src, xpathNS{ns, w.cur.Name, valuePrefixes(src)})
+	e, err := xpath.Compile(src, xpathNS{ns, w.cur.Name, valuePrefixes(src), w.cur.Revision})
 	if err != nil {
 		var xe *xpath.Error
 		if !errors.As(err, &xe) {

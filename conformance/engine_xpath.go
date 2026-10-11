@@ -13,12 +13,12 @@ import (
 	"github.com/vibe-ports/yang/data"
 )
 
-// xpathKeys are the op xpath request fields runXPath handles; any other (cur_module, operations)
-// makes the fixture unsupported rather than silently ignored.
+// xpathKeys are the op xpath request fields runXPath handles; any other (operations) makes the
+// fixture unsupported rather than silently ignored.
 var xpathKeys = map[string]bool{"op": true, "base_dir": true, "searchdirs": true, "modules": true,
 	"context_options": true, "format": true, "data_type": true, "data": true, "data_file": true, "unknown": true,
 	"parse_only": true, "parse_options": true, "validate_options": true, "xpath": true, "context_path": true,
-	"vars": true}
+	"vars": true, "cur_module": true, "xpath_format": true, "namespaces": true}
 
 // runXPath is lyoracle.c op_xpath: the data parsed as op data parses it, the context node
 // selected by context_path (lyd_find_xpath from the first top-level node), then lyd_eval_xpath4
@@ -40,6 +40,16 @@ func runXPath(r Request, s *yang.Schema, resp map[string]any) error {
 	if o.Vars, err = xpathVars(p); err != nil {
 		return err
 	}
+	// str_of is called while op_xpath initializes its locals, before it parses the data. Keep these
+	// type checks here, but defer the option semantics until after parse_one, in oracle order.
+	var hasCur bool
+	if o.Module, hasCur, err = strField(p, "cur_module"); err != nil {
+		return err
+	}
+	f, hasF, err := strField(p, "xpath_format")
+	if err != nil {
+		return err
+	}
 	tree, pd, err := parseInput(r, s, p, "data")
 	rc, err := rcOf(err)
 	if err != nil {
@@ -54,6 +64,46 @@ func runXPath(r Request, s *yang.Schema, resp map[string]any) error {
 			resp["verdict"] = "data-error"
 		}
 		return nil
+	}
+	// op_xpath, once the data parsed: a given cur_module ("" included) must be implemented
+	// ("cur_module %s not implemented", a request-error)
+	if hasCur && s.Implemented(o.Module) == nil {
+		return fmt.Errorf("cur_module %s not implemented (a request-error)", o.Module)
+	}
+	// The remaining request checks follow cur_module: namespaces is a list, the format is known,
+	// and namespace entries are accepted only for XML and need a URI.
+	ns, hasNS := p["namespaces"]
+	if hasNS {
+		if _, isList := ns.([]any); !isList {
+			return errors.New("namespaces must be a list (a request-error)")
+		}
+	}
+	switch {
+	case !hasF || f == "json":
+	case f == "xml":
+		o.Format = data.XPathXML
+		for _, x := range list(ns) {
+			n, _ := x.(map[string]any)
+			uri, hasURI, err := strField(n, "uri")
+			if err != nil {
+				return err
+			}
+			if !hasURI {
+				return errors.New("namespaces need a uri (a request-error)")
+			}
+			pfx, _, err := strField(n, "prefix")
+			if err != nil {
+				return err
+			}
+			o.Namespaces = append(o.Namespaces, data.XPathNamespace{Prefix: pfx, URI: uri})
+		}
+	case f == "schema":
+		o.Format = data.XPathSchema
+	default:
+		return fmt.Errorf("unknown xpath_format %s (a request-error)", f)
+	}
+	if hasNS && o.Format != data.XPathXML {
+		return errors.New("namespaces need xpath_format xml (a request-error)")
 	}
 	if cpath, ok := p["context_path"].(string); ok {
 		nodes, cd, err := tree.FindXPath(cpath, data.XPathOptions{Node: top})
@@ -125,4 +175,16 @@ func xpathVars(p map[string]any) ([]data.XPathVar, error) {
 		out = append(out, data.XPathVar{Name: k, Value: val})
 	}
 	return out, nil
+}
+
+// strField is lyoracle.c str_of: the string field k of m and whether it is given; absent or null
+// is not given, any other non-string a request-error.
+func strField(m map[string]any, k string) (string, bool, error) {
+	switch v := m[k].(type) {
+	case nil:
+		return "", false, nil
+	case string:
+		return v, true, nil
+	}
+	return "", false, fmt.Errorf("field %q must be a string (a request-error)", k)
 }

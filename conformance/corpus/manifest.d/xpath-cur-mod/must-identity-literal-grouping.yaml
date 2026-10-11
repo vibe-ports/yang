@@ -1,0 +1,17 @@
+fixtures:
+  - id: xpath-cur-mod/must-identity-literal-grouping
+    dir: xpath-cur-mod
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # libyang v5.8.6 tree_data_common.c ly_store_prefix_data; tree_schema.c lys_find_module
+    rfc: ["RFC7950#7.5.3", "RFC7950#7.12", "RFC7950#9.10.3"]
+    areas: [xpath, validation]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: xcm-base}, {name: xcm-literal-g}, {name: xcm-literal-m}]
+      format: json
+      data_type: config
+      data: '{"xcm-literal-m:literal":{"id":"xcm-literal-g:local"}}'
+    golden: golden/must-identity-literal-grouping.json
+    assert:
+      verdict: valid
+      deviation: null

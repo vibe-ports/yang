@@ -13,8 +13,12 @@ import (
 type schemaNS map[string]string
 
 func (m schemaNS) Resolve(p string) (string, bool) { mod, ok := m[p]; return mod, ok && p != "" }
-func (m schemaNS) Prefix(mod string) string        { return mod }
-func (m schemaNS) Default() string                 { return m[""] }
+func (m schemaNS) ResolveIdentity(p string) (Ident, bool) {
+	mod, ok := m[p]
+	return Ident{Module: mod}, ok
+}
+func (m schemaNS) Prefix(mod string) string { return mod }
+func (m schemaNS) Default() string          { return m[""] }
 
 const maMod = "must-atomize-axes"
 

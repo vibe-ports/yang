@@ -1,0 +1,9 @@
+fixtures:
+  # Data parsing precedes validation of the XML namespace declarations in op_xpath (#171).
+  - id: xpath-format/data-error-before-namespaces
+    dir: xpath-format
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#6.4.1"]
+    areas: [xpath]
+    request: {"op": "xpath", "context_options": ["no_yanglibrary"], "searchdirs": ["schemas"], "modules": [{"name": "xpf"}], "format": "json", "data_type": "data", "data": "[", "xpath": "1", "xpath_format": "xml", "namespaces": {}}
+    golden: golden/data-error-before-namespaces.json

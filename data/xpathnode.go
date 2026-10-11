@@ -136,10 +136,10 @@ func (x xn) Meta() []xpath.Meta {
 // opqVal is the value of an opaque node: text only, no typed value behind it.
 type opqVal string
 
-func (v opqVal) String() string                 { return string(v) }
-func (opqVal) Identity() (string, string, bool) { return "", "", false }
-func (opqVal) Enum() (int, bool)                { return 0, false }
-func (opqVal) Bits() ([]string, bool)           { return nil, false }
+func (v opqVal) String() string              { return string(v) }
+func (opqVal) Identity() (xpath.Ident, bool) { return xpath.Ident{}, false }
+func (opqVal) Enum() (int, bool)             { return 0, false }
+func (opqVal) Bits() ([]string, bool)        { return nil, false }
 
 // When is the when state the evaluator reads (xpath.c moveto checks): false when flagged
 // WhenFalse; unresolved when the node or a choice/case ancestor has a when and the node was not
@@ -171,12 +171,13 @@ func (v xval) selected() types.Value {
 	return v.v
 }
 
-func (v xval) Identity() (string, string, bool) {
+func (v xval) Identity() (xpath.Ident, bool) {
 	s := v.selected()
 	if s.Type() == nil || s.Type().Base != schema.IdentityRef || s.Ident() == nil {
-		return "", "", false
+		return xpath.Ident{}, false
 	}
-	return s.Ident().Module.Name, s.Ident().Name, true
+	m := s.Ident().Module
+	return xpath.Ident{Module: m.Name, Name: s.Ident().Name, Revision: m.Revision, Exact: true}, true
 }
 
 // Enum: libyang checks the leaf's schema type, so an enum union member does not count.
@@ -266,20 +267,29 @@ func (x xs) Child(module, name string) xpath.SchemaNode {
 	return nil
 }
 
-// Canonical is set_comp_canonize with the schema node's type: built-in string, boolean and
-// enumeration need nothing; an invalid value is left as it is. The value's prefixes are the
+// Canonical is set_comp_canonize with the schema node's type: a compared string, boolean or
+// enumeration based value needs nothing, whatever its type plugin (libyang skips every "ly2"
+// plugin, which all built-in ones are, of these base types: xpath1.0, ipv4-address, …); a hashed
+// key value (pc an xpath.KeyValue) is stored with its type, plugin normalization included. An
+// invalid value is left as it is. The value's prefixes are the
 // expression's: module names in a JSON expression (a query, pc.Default() ""), the module's own and
 // import prefixes in a schema one (must, when, leafref path: LY_VALUE_SCHEMA_RESOLVED, an
 // unprefixed name in the expression's module).
 func (x xs) Canonical(lex string, pc xpath.NamespaceCtx) (string, bool) {
 	t := x.s.Type
-	if t == nil || types.Plugin(t) == nil && (t.Base == schema.String || t.Base == schema.Bool || t.Base == schema.Enumeration) {
+	if t == nil {
 		return "", false
 	}
-	f, p := types.FormatJSON, types.PrefixCtx(types.ModuleNames{Set: x.set})
-	if pc != nil && pc.Default() != "" {
-		f, p = types.FormatSchemaResolved, nsPrefixes{x.set, pc}
+	// set_comp_canonize checks the stored value's realtype (a leafref's target type), not the
+	// declared one (src/xpath.c: "type = ((struct lyd_node_term *)xp_node->node)->value.realtype")
+	rt := t
+	if t.Base == schema.Leafref && t.Realtype != nil {
+		rt = t.Realtype
 	}
+	if _, key := pc.(xpath.KeyValue); !key && (rt.Base == schema.String || rt.Base == schema.Bool || rt.Base == schema.Enumeration) {
+		return "", false
+	}
+	f, p := valueFormat(x.set, pc)
 	v, d := types.Store(t, lex, f, types.HintData, p, x.s)
 	if d != nil {
 		return "", false
@@ -287,8 +297,28 @@ func (x xs) Canonical(lex string, pc xpath.NamespaceCtx) (string, bool) {
 	return v.Canonical(), true
 }
 
+// valueFormat is the format and prefixes of a value in an expression with prefix context pc
+// (set->format, set->prefix_data): JSON module names, XML namespaces (LY_VALUE_XML, an unprefixed
+// value in the default namespace), or a module's prefixes (schema formats).
+func valueFormat(set *schema.Set, pc xpath.NamespaceCtx) (types.Format, types.PrefixCtx) {
+	if _, xml := pc.(xpath.PrefixedOnly); xml {
+		return types.FormatXML, nsPrefixes{set, pc}
+	}
+	if _, schemaText := pc.(schemaNS); schemaText { // LY_VALUE_SCHEMA: with the status checks
+		return types.FormatSchema, nsPrefixes{set, pc}
+	}
+	if pc != nil && pc.Default() != "" {
+		return types.FormatSchemaResolved, nsPrefixes{set, pc}
+	}
+	return types.FormatJSON, types.ModuleNames{Set: set}
+}
+
 func (x xs) CheckValue(lex string, pc xpath.NamespaceCtx) (string, bool) {
-	if _, d := types.Store(x.s.Type, lex, types.FormatJSON, types.HintData, nsPrefixes{x.set, pc}, x.s); d != nil {
+	f := types.FormatJSON
+	if _, xml := pc.(xpath.PrefixedOnly); xml {
+		f = types.FormatXML
+	}
+	if _, d := types.Store(x.s.Type, lex, f, types.HintData, nsPrefixes{x.set, pc}, x.s); d != nil {
 		return d.Msg, false
 	}
 	return "", true
@@ -344,6 +374,13 @@ func (x xt) Realtype() xpath.SchemaType {
 	return xt{x.t.Realtype}
 }
 
+// valuePrefixes is implemented by the namespace contexts whose value prefixes resolve differently
+// from node names: ly_resolve_prefix gives a value any module (an import-only one, the exact
+// imported revision), where a node test needs an implemented one (moveto_resolve_module).
+type valuePrefixes interface {
+	valueModule(prefix string) *schema.Module
+}
+
 // nsPrefixes turns an expression's xpath.NamespaceCtx into the types.PrefixCtx of a stored value.
 type nsPrefixes struct {
 	set *schema.Set
@@ -353,6 +390,9 @@ type nsPrefixes struct {
 func (p nsPrefixes) Resolve(prefix string) *schema.Module {
 	if p.ns == nil {
 		return nil
+	}
+	if v, ok := p.ns.(valuePrefixes); ok { // the query formats: import-only modules count for values
+		return v.valueModule(prefix)
 	}
 	name, ok := p.ns.Resolve(prefix) // "": the expression's own module where it has one
 	if prefix == "" && !ok {
@@ -368,6 +408,14 @@ func (p nsPrefixes) Resolve(prefix string) *schema.Module {
 type info struct{ set *schema.Set }
 
 func (i info) ident(id xpath.Ident) *schema.Identity {
+	if id.Exact {
+		for m := range i.set.All(id.Module) {
+			if m.Revision == id.Revision {
+				return m.Identity(id.Name)
+			}
+		}
+		return nil
+	}
 	for m := range i.set.All(id.Module) {
 		if d := m.Identity(id.Name); d != nil {
 			return d

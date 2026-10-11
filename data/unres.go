@@ -551,6 +551,14 @@ func (l lrefNS) Resolve(prefix string) (string, bool) {
 	return "", false
 }
 
+func (l lrefNS) ResolveIdentity(prefix string) (xpath.Ident, bool) {
+	m := l.p[prefix]
+	if m == nil {
+		return xpath.Ident{}, false
+	}
+	return xpath.Ident{Module: m.Name, Revision: m.Revision, Exact: true}, true
+}
+
 func (l lrefNS) Prefix(module string) string { return module }
 func (l lrefNS) Default() string             { return l.def }
 

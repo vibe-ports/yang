@@ -1,0 +1,17 @@
+fixtures:
+  - id: xpath-cur-mod/must-node-step-grouping-cur-mod
+    dir: xpath-cur-mod
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # libyang v5.8.6 xpath.c moveto_resolve_module; validation.c lyd_validate_must
+    rfc: ["RFC7950#6.4.1", "RFC7950#7.5.3", "RFC7950#7.12"]
+    areas: [xpath, validation]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: xcm-node-g}, {name: xcm-node-m}]
+      format: json
+      data_type: config
+      data: '{"xcm-node-m:node-step":{"sibling":"ok","probe":"present"}}'
+    golden: golden/must-node-step-grouping-cur-mod.json
+    assert:
+      verdict: valid
+      deviation: null

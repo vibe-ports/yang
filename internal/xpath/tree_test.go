@@ -154,11 +154,11 @@ func (s *tschema) Canonical(v string, _ NamespaceCtx) (string, bool) {
 }
 
 func (v *tval) String() string { return v.str }
-func (v *tval) Identity() (string, string, bool) {
+func (v *tval) Identity() (Ident, bool) {
 	if v.ident == nil {
-		return "", "", false
+		return Ident{}, false
 	}
-	return v.ident.Module, v.ident.Name, true
+	return *v.ident, true
 }
 func (v *tval) Enum() (int, bool) {
 	if v.enum == nil {
@@ -284,8 +284,11 @@ func path(n Node) string {
 type jsonNS map[string]bool
 
 func (m jsonNS) Resolve(p string) (string, bool) { return p, m[p] }
-func (m jsonNS) Prefix(mod string) string        { return mod }
-func (m jsonNS) Default() string                 { return "" }
+func (m jsonNS) ResolveIdentity(p string) (Ident, bool) {
+	return Ident{Module: p}, m[p]
+}
+func (m jsonNS) Prefix(mod string) string { return mod }
+func (m jsonNS) Default() string          { return "" }
 
 // tinfo is SchemaInfo over the pv2 identities and the tree's top-level nodes.
 type tinfo struct {
@@ -293,7 +296,11 @@ type tinfo struct {
 	schema []SchemaNode // top-level schema nodes (Atomize tests); nil = those of tree
 }
 
-var pv2Idents = map[Ident]Ident{{"pv2", "base-id"}: {}, {"pv2", "one"}: {"pv2", "base-id"}, {"pv2", "two"}: {"pv2", "one"}}
+var pv2Idents = map[Ident]Ident{
+	{Module: "pv2", Name: "base-id"}: {},
+	{Module: "pv2", Name: "one"}:     {Module: "pv2", Name: "base-id"},
+	{Module: "pv2", Name: "two"}:     {Module: "pv2", Name: "one"},
+}
 
 func (tinfo) HasIdentity(id Ident) bool { _, ok := pv2Idents[id]; return ok }
 func (tinfo) IsDerived(base, id Ident) bool {
@@ -369,7 +376,7 @@ func pv2Tree() []Node {
 	mode := leaf("mode", "on")
 	mode.val.enum = pintp(0)
 	id := leaf("id", "pv2:two")
-	id.val.ident = &Ident{"pv2", "two"}
+	id.val.ident = &Ident{Module: "pv2", Name: "two"}
 	id.sch.canon = func(s string) (string, bool) {
 		if !strings.Contains(s, ":") {
 			s = "pv2:" + s
@@ -406,7 +413,7 @@ func pv2Tree() []Node {
 // union members with identical canonical text.
 func unionTree() []Node {
 	idFirst := leaf("id-first", "pv2:two")
-	idFirst.val.ident = &Ident{"pv2", "two"}
+	idFirst.val.ident = &Ident{Module: "pv2", Name: "two"}
 	strFirst := leaf("str-first", "pv2:two") // string member, same text
 	en := leaf("en", "red")                  // enum member of a union
 	bi := leaf("bi", "red")

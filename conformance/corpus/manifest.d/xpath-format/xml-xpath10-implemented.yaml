@@ -1,0 +1,9 @@
+fixtures:
+  # the same with an implemented module: false as well, so the import-only case changes nothing (lyd_eval_xpath4 format, prefix_data, cur_mod; #171)
+  - id: xpath-format/xml-xpath10-implemented
+    dir: xpath-format
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#6.4.1"]
+    areas: [xpath]
+    request: {"op": "xpath", "context_options": ["no_yanglibrary"], "searchdirs": ["schemas"], "modules": [{"name": "xpf"}, {"name": "xpf-base"}], "format": "json", "data_type": "data", "data": "{\"xpf:c\": {\"xp\": \"/xpf-base:zoo\"}}", "xpath": "/p:c/p:xp = '/q:zoo'", "xpath_format": "xml", "namespaces": [{"prefix": "p", "uri": "urn:vibe-ports:yang:conformance:xpf"}, {"prefix": "q", "uri": "urn:vibe-ports:yang:conformance:xpf-base"}, {"prefix": "r", "uri": "urn:vibe-ports:yang:conformance:xpf-imp"}]}
+    golden: golden/xml-xpath10-implemented.json

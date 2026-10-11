@@ -1,0 +1,71 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "xcm-base",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "xcm-both-g",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "xcm-both-m",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"xcm-both-m:both\": {\n    \"id\": \"m-child\"\n  }\n}\n",
+    "xml": "<both xmlns=\"urn:vibe-ports:yang:xpath-cur-mod:both-m\">\n  <id>m-child</id>\n</both>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/xcm-both-m:both",
+      "schema": "/xcm-both-m:both",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/xcm-both-m:both/id",
+      "schema": "/xcm-both-m:both/id",
+      "value": {
+        "canonical": "xcm-both-m:m-child",
+        "type": "identityref",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

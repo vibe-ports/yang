@@ -148,6 +148,13 @@ func (j jsonNames) Resolve(prefix string) (string, bool) {
 	return "", false
 }
 
+func (j jsonNames) ResolveIdentity(prefix string) (xpath.Ident, bool) {
+	if m := j.set.Implemented(prefix); m != nil {
+		return xpath.Ident{Module: m.Name, Revision: m.Revision, Exact: true}, true
+	}
+	return xpath.Ident{}, false
+}
+
 func (jsonNames) Prefix(module string) string { return module }
 func (jsonNames) Default() string             { return "" }
 
@@ -155,6 +162,14 @@ func (jsonNames) Default() string             { return "" }
 type setInfo struct{ set *schema.Set }
 
 func (si setInfo) ident(id xpath.Ident) *schema.Identity {
+	if id.Exact {
+		for m := range si.set.All(id.Module) {
+			if m.Revision == id.Revision {
+				return m.Identity(id.Name)
+			}
+		}
+		return nil
+	}
 	for m := range si.set.All(id.Module) {
 		if x := m.Identity(id.Name); x != nil {
 			return x

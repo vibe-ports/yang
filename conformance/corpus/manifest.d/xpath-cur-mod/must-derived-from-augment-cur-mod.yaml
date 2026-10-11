@@ -1,0 +1,17 @@
+fixtures:
+  - id: xpath-cur-mod/must-derived-from-augment-cur-mod
+    dir: xpath-cur-mod
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # libyang v5.8.6 xpath.c xpath_derived_ident_module; validation.c lyd_validate_must
+    rfc: ["RFC7950#7.5.3", "RFC7950#7.17", "RFC7950#10.4.2"]
+    areas: [xpath, validation]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: xcm-base}, {name: xcm-augment-m}, {name: xcm-augment-a}]
+      format: json
+      data_type: config
+      data: '{"xcm-augment-m:target":{"xcm-augment-a:id":"xcm-augment-a:x"}}'
+    golden: golden/must-derived-from-augment-cur-mod.json
+    assert:
+      verdict: valid
+      deviation: null

@@ -152,15 +152,41 @@ func derived(ev *evaluator, a []value, orSelf bool) (value, error) {
 		if pref == "" {
 			return value{}, &Error{Err: "LY_EINVAL", Msg: "Invalid argument prefix_len (ly_resolve_prefix())."}
 		}
-		mod, ok := ev.ns.Resolve(pref)
+		mod, ok := ev.ns.ResolveIdentity(pref)
 		if !ok {
 			return value{}, xpErr("Unknown/non-implemented module \"%s\".", pref)
 		}
-		id = Ident{mod, local}
+		id = mod
+		id.Name = local
 	} else {
-		id = Ident{ev.ns.Default(), name}
-		if id.Module == "" && ev.cur.t == itElem { // JSON: the module of the current node
-			id.Module = ev.cur.n.Module()
+		mod, err := unprefixed(ev.ns, name)
+		if err != nil {
+			return value{}, err
+		}
+		if mod != "" {
+			// LY_VALUE_SCHEMA(_RESOLVED): moveto_resolve_module gives cur_mod (xpath.c
+			// xpath_derived_ident_module), not the prefix data's module of the text, which an
+			// identity literal compared with a value uses (ResolveIdentity(""))
+			id = Ident{Module: mod}
+			if cm, ok := ev.ns.(CurModule); ok {
+				id, _ = cm.CurModule()
+			}
+		}
+		id.Name = name
+		// JSON: the module of the current node's schema node (moveto_resolve_module with
+		// "set->cur_node ? set->cur_node->schema : NULL"); an opaque current node has none, so
+		// cur_mod is used (xpath_derived_ident_module), as without a current node
+		if id.Module == "" && ev.cur.t == itElem && ev.cur.n.Schema() != nil {
+			if mod, ok := ev.ns.ResolveIdentity(ev.cur.n.Module()); ok {
+				id = mod
+			} else {
+				id.Module = ev.cur.n.Module()
+				id.Revision, id.Exact = "", false
+			}
+			id.Name = name
+		} else if cm, ok := ev.ns.(CurModule); ok && id.Module == "" { // else cur_mod
+			id, _ = cm.CurModule()
+			id.Name = name
 		}
 	}
 	if ev.ec.Schema == nil || !ev.ec.Schema.HasIdentity(id) {
@@ -176,8 +202,8 @@ func derived(ev *evaluator, a []value, orSelf bool) (value, error) {
 		default:
 			continue
 		}
-		mod, name, ok := v.Identity()
-		if v := (Ident{mod, name}); ok && (orSelf && v == id || ev.ec.Schema.IsDerived(id, v)) {
+		vid, ok := v.Identity()
+		if ok && (orSelf && vid == id || ev.ec.Schema.IsDerived(id, vid)) {
 			return boolV(true), nil
 		}
 	}
@@ -490,10 +516,10 @@ func fnTranslate(ev *evaluator, a []value, _ value) (value, error) {
 // noValue stands in for a missing Value.
 type noValue struct{}
 
-func (noValue) String() string                   { return "" }
-func (noValue) Identity() (string, string, bool) { return "", "", false }
-func (noValue) Enum() (int, bool)                { return 0, false }
-func (noValue) Bits() ([]string, bool)           { return nil, false }
+func (noValue) String() string          { return "" }
+func (noValue) Identity() (Ident, bool) { return Ident{}, false }
+func (noValue) Enum() (int, bool)       { return 0, false }
+func (noValue) Bits() ([]string, bool)  { return nil, false }
 
 func valueOf(n Node) Value { return orNoValue(n.Value()) }
 

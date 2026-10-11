@@ -1,0 +1,71 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "xcm-base",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "xcm-augment-m",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "xcm-augment-a",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"xcm-augment-m:target\": {\n    \"xcm-augment-a:id\": \"x\"\n  }\n}\n",
+    "xml": "<target xmlns=\"urn:vibe-ports:yang:xpath-cur-mod:augment-m\">\n  <id xmlns=\"urn:vibe-ports:yang:xpath-cur-mod:augment-a\">x</id>\n</target>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/xcm-augment-m:target",
+      "schema": "/xcm-augment-m:target",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/xcm-augment-m:target/xcm-augment-a:id",
+      "schema": "/xcm-augment-m:target/xcm-augment-a:id",
+      "value": {
+        "canonical": "xcm-augment-a:x",
+        "type": "identityref",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

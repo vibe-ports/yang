@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module xcm-literal-g {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:xpath-cur-mod:literal-g";
+  prefix xlg;
+
+  import xcm-base { prefix xb; }
+
+  identity local { base xb:root; }
+
+  grouping identity-literal-grouping {
+    leaf id {
+      type identityref { base xb:root; }
+      must ". = 'local'" {
+        error-message "the identity must equal local in the grouping module";
+        error-app-tag "xcm-literal-module";
+      }
+    }
+  }
+}

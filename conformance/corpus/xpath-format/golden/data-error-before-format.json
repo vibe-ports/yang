@@ -1,0 +1,32 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [
+    {
+      "apptag": null,
+      "code": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "data_path": null,
+      "level": "error",
+      "line": 1,
+      "msg": "Expected top-level JSON object or correct bare value, but array found.",
+      "phase": "data",
+      "schema_path": null,
+      "vecode": 8,
+      "vecode_name": "LYVE_SYNTAX_JSON"
+    }
+  ],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "xpf",
+      "revision": null
+    }
+  ],
+  "op": "xpath",
+  "protocol": 2,
+  "verdict": "data-error"
+}

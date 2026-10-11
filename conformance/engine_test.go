@@ -3,6 +3,9 @@
 package conformance
 
 import (
+	"errors"
+	"maps"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -207,5 +210,83 @@ func TestSchemaLimit(t *testing.T) {
 		if got := schemaLimit(reason); got != want {
 			t.Errorf("schemaLimit(%q) = %q, want %q", reason, got, want)
 		}
+	}
+}
+
+// TestXPathRequestChecks: the engine refuses the xpath requests lyoracle.c op_xpath refuses (an
+// unknown or non-string xpath_format, namespaces outside XML, not a list, without a uri) instead
+// of running another query.
+func TestXPathRequestChecks(t *testing.T) {
+	base := map[string]any{"op": "xpath", "searchdirs": []any{"schemas"}, "modules": []any{map[string]any{"name": "xpf"}},
+		"context_options": []any{"no_yanglibrary"}, "format": "json", "data_type": "data", "data": `{"xpf:c": {}}`, "xpath": "1"}
+	for name, extra := range map[string]map[string]any{
+		"unknown format":          {"xpath_format": "yaml"},
+		"format not a string":     {"xpath_format": 1.0},
+		"namespaces with json":    {"namespaces": []any{}},
+		"namespaces not list":     {"xpath_format": "xml", "namespaces": map[string]any{}},
+		"namespace no uri":        {"xpath_format": "xml", "namespaces": []any{map[string]any{"prefix": "p"}}},
+		"cur_module not a string": {"cur_module": 1.0},
+		"namespaces null":         {"xpath_format": "xml", "namespaces": nil},
+		"prefix not a string":     {"xpath_format": "xml", "namespaces": []any{map[string]any{"prefix": 1.0, "uri": "urn:x"}}},
+		"uri not a string":        {"xpath_format": "xml", "namespaces": []any{map[string]any{"uri": 1.0}}},
+		"empty format":            {"xpath_format": ""},
+		"cur_module unknown":      {"cur_module": "nope"},
+		"cur_module import-only":  {"cur_module": "xpf-imp"},
+		"cur_module empty":        {"cur_module": ""},
+	} {
+		p := map[string]any{}
+		maps.Copy(p, base)
+		maps.Copy(p, extra)
+		r := Request{ID: name, BaseDir: filepath.Join("corpus", "xpath-format"), Params: p}
+		if _, err := (Yang{}).Run(r); err == nil || errors.Is(err, ErrUnsupported) {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+}
+
+// TestXPathRequestCheckOrder covers combined failures: op_xpath parses data before interpreting
+// format/namespaces, then validates cur_module before either of them.
+func TestXPathRequestCheckOrder(t *testing.T) {
+	base := map[string]any{"op": "xpath", "searchdirs": []any{"schemas"}, "modules": []any{map[string]any{"name": "xpf"}},
+		"context_options": []any{"no_yanglibrary"}, "format": "json", "data_type": "data", "xpath": "1"}
+	for name, extra := range map[string]map[string]any{
+		"data before format":     {"data": "[", "xpath_format": "yaml"},
+		"data before namespaces": {"data": "[", "xpath_format": "xml", "namespaces": map[string]any{}},
+	} {
+		p := map[string]any{}
+		maps.Copy(p, base)
+		maps.Copy(p, extra)
+		r, err := (Yang{}).Run(Request{ID: name, BaseDir: filepath.Join("corpus", "xpath-format"), Params: p})
+		if err != nil || r["verdict"] != "data-error" {
+			t.Errorf("%s: verdict %v, error %v", name, r["verdict"], err)
+		}
+	}
+	p := map[string]any{}
+	maps.Copy(p, base)
+	maps.Copy(p, map[string]any{"data": `{"xpf:c": {}}`, "cur_module": "nope", "xpath_format": "yaml",
+		"namespaces": map[string]any{}})
+	_, err := (Yang{}).Run(Request{ID: "cur module first", BaseDir: filepath.Join("corpus", "xpath-format"), Params: p})
+	if err == nil || !strings.Contains(err.Error(), "cur_module nope not implemented") {
+		t.Errorf("cur module first: %v", err)
+	}
+}
+
+// TestXPathIdentityExactRevision keeps the old import-only revision ahead of the implemented one
+// in context order. The base identity in a schema-format expression and the stored derived value
+// must nevertheless both resolve in the implemented revision.
+func TestXPathIdentityExactRevision(t *testing.T) {
+	p := map[string]any{
+		"op": "xpath", "searchdirs": []any{"schemas"}, "context_options": []any{"no_yanglibrary"},
+		"modules": []any{map[string]any{"name": "xpf-user"}, map[string]any{"name": "xpf-rev", "revision": "2021-01-01"}},
+		"format":  "json", "data_type": "data", "data": `{"xpf-rev:id": "xpf-rev:added"}`,
+		"xpath": "derived-from(/id, 'base')", "xpath_format": "schema", "cur_module": "xpf-rev",
+	}
+	r, err := (Yang{}).Run(Request{ID: "exact revision", BaseDir: filepath.Join("corpus", "xpath-format"), Params: p})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, _ := r["result"].(map[string]any)
+	if r["verdict"] != "valid" || result["value"] != true {
+		t.Fatalf("verdict %v, result %v", r["verdict"], result)
 	}
 }

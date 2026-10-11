@@ -1,0 +1,19 @@
+fixtures:
+  - id: xpath-cur-mod/must-derived-from-grouping-both-origin
+    dir: xpath-cur-mod
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # libyang v5.8.6 xpath.c xpath_derived_ident_module; validation.c lyd_validate_must
+    rfc: ["RFC7950#7.5.3", "RFC7950#7.12", "RFC7950#10.4.1"]
+    areas: [xpath, validation]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: xcm-base}, {name: xcm-both-g}, {name: xcm-both-m}]
+      format: json
+      data_type: config
+      data: '{"xcm-both-m:both":{"id":"xcm-both-g:g-child"}}'
+    golden: golden/must-derived-from-grouping-both-origin.json
+    assert:
+      verdict: invalid
+      diagnostics:
+        - {vecode_name: LYVE_DATA, data_path: /xcm-both-m:both/id, apptag: xcm-both-module}
+      deviation: null

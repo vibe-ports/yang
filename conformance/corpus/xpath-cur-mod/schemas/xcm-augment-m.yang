@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module xcm-augment-m {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:xpath-cur-mod:augment-m";
+  prefix xam;
+
+  import xcm-base { prefix xb; }
+
+  identity x { base xb:root; }
+
+  container target;
+}
