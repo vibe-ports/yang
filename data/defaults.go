@@ -41,9 +41,12 @@ type valCtx struct {
 	nodeWhen  *nodeSet // node_when
 	nodeTypes *nodeSet // node_types
 	metaTypes *[]*meta // meta_types: metadata values that need the tree
-	// output is LYD_INTOPT_REPLY: the output of an operation is validated (operations are M4;
-	// datastore data passes false)
-	output bool
+	// output is LYD_INTOPT_REPLY: the output of an operation is validated (datastore data passes
+	// false); op are the operation options of lyd_validate_op (zero for datastore data) and
+	// ignoreWhen its LYXP_IGNORE_WHEN of the when and must evaluations after the subtree walk
+	output     bool
+	op         opOpts
+	ignoreWhen bool
 	// charge counts an implicit node against the parser's Budget.MaxNodes (U-0041); nil when
 	// the caller does not count
 	charge func() error

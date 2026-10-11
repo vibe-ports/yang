@@ -1,0 +1,20 @@
+module opw {
+  yang-version 1.1;
+  namespace "urn:opw";
+  prefix w;
+
+  leaf mode { type string; }
+  leaf gate {
+    when "../mode = 'on'";
+    type string;
+  }
+  rpc run {
+    input {
+      leaf m {
+        when "/w:gate = 'x'";
+        type string;
+        mandatory true;
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+fixtures:
+  - id: ops/validate-action-leafref-missing
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # lyd_validate_op: action input leafref without its target
+    rfc: ["RFC7950#7.14", "RFC7950#7.15", "RFC7950#7.16"]
+    areas: [operations]
+    request:
+      op: data
+      searchdirs: [opv.1]
+      modules: [{name: opv}]
+      format: json
+      data_type: rpc
+      unknown: reject
+      operational: "{\"opv:item\":[{\"name\":\"a\"},{\"name\":\"b\"}]}"
+      data: "{\"opv:item\":[{\"name\":\"a\",\"reset\":{\"to\":\"c\"}}]}"
+    golden: golden/ops-validate-action-leafref-missing.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.14", "RFC7950#7.15", "RFC7950#7.16"]
+      deviation: null

@@ -1,0 +1,20 @@
+fixtures:
+  - id: ops/validate-notif-must-false
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # lyd_validate_op: notification must over the operational tree, false
+    rfc: ["RFC7950#7.14", "RFC7950#7.15", "RFC7950#7.16"]
+    areas: [operations]
+    request:
+      op: data
+      searchdirs: [opv.1]
+      modules: [{name: opv}]
+      format: json
+      data_type: notif
+      unknown: reject
+      operational: "{\"opv:mode\":\"off\"}"
+      data: "{\"opv:alarm\":{\"level\":1}}"
+    golden: golden/ops-validate-notif-must-false.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.14", "RFC7950#7.15", "RFC7950#7.16"]
+      deviation: null

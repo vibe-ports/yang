@@ -1,0 +1,20 @@
+fixtures:
+  - id: ops/validate-reply-parent
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # lyd_validate_op: reply into its rpc: output defaults
+    rfc: ["RFC7950#7.14", "RFC7950#7.15", "RFC7950#7.16"]
+    areas: [operations]
+    request:
+      op: data
+      searchdirs: [opv.1]
+      modules: [{name: opv}]
+      format: json
+      data_type: reply
+      unknown: reject
+      rpc: "{\"opv:run\":{\"fast\":[null]}}"
+      data: "{\"opv:result\":\"ok\"}"
+    golden: golden/ops-validate-reply-parent.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.14", "RFC7950#7.15", "RFC7950#7.16"]
+      deviation: null

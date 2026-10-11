@@ -1,0 +1,37 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [
+    {
+      "apptag": null,
+      "code": {
+        "err": 6,
+        "name": "LY_EINT"
+      },
+      "data_path": null,
+      "level": "error",
+      "line": 0,
+      "msg": "Internal error (/src/libyang/src/validation.c:1132).",
+      "phase": "validate_op",
+      "schema_path": null,
+      "vecode": 0,
+      "vecode_name": "LYVE_SUCCESS"
+    }
+  ],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "opw",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 6,
+    "name": "LY_EINT"
+  },
+  "tree": null,
+  "verdict": "invalid"
+}

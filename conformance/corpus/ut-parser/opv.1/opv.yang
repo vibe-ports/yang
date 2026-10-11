@@ -1,0 +1,41 @@
+module opv {
+  yang-version 1.1;
+  namespace "urn:opv";
+  prefix o;
+
+  leaf mode { type string; }
+  list item {
+    key "name";
+    leaf name { type string; }
+    action reset {
+      input {
+        leaf to { type leafref { path "/o:item/o:name"; } }
+      }
+      output {
+        leaf done { type boolean; default "true"; }
+      }
+    }
+  }
+  rpc run {
+    input {
+      leaf speed { type uint8; default "5"; }
+      leaf extra {
+        when "../speed > 10";
+        type string;
+      }
+      choice how {
+        mandatory true;
+        leaf fast { type empty; }
+        leaf slow { type empty; }
+      }
+    }
+    output {
+      leaf result { type string; mandatory true; }
+      leaf code { type int8; default "0"; }
+    }
+  }
+  notification alarm {
+    must "/o:mode = 'on'";
+    leaf level { type uint8; }
+  }
+}
