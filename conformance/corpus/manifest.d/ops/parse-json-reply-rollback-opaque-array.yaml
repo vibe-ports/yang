@@ -1,0 +1,21 @@
+fixtures:
+  - id: ops/parse-json-reply-rollback-opaque-array
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: a failed reply into its rpc, JSON, unknown nodes kept opaque: the second item of an opaque array is not a value, so the first opaque instance is freed (lydjson_parse_opaq keeps its node pointer)
+    rfc: ["RFC7950#7.14"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [rb.1]
+      modules: [{name: rb}]
+      format: json
+      data_type: reply
+      unknown: opaque
+      parse_only: true
+      rpc: "{\"rb:r\":{\"in\":\"keep\"}}"
+      data: "{\"rb:unknown\":[1,[true]]}"
+    golden: golden/ops-parse-json-reply-rollback-opaque-array.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC7950#7.14"]
+      deviation: null

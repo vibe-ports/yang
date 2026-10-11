@@ -1,0 +1,15 @@
+fixtures:
+  - id: ops/dup-json-reply-keep-order-split
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: lyd_dup_single (recursive) of an rpc whose reply was parsed into it with keep_input, the anchor having split v around the input ([before, v1, v2, in, v3]); the copies are inserted with LYD_INSERT_NODE_LAST and keep that order
+    rfc: ["RFC7950#7.14"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [rb.1]
+      modules: [{name: rb}]
+      steps:
+        - {do: parse, format: json, data_type: reply, unknown: reject, parse_only: true, keep_input: true, rpc: '{"rb:r":{"in":"keep"}}', data: '{"rb:before":"b","rb:v":[1,2,3]}'}
+        - {do: dup, node: "/rb:r", options: [recursive]}
+        - {do: dump}
+    golden: golden/ops-dup-json-reply-keep-order-split.json

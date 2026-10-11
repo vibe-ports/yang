@@ -1,0 +1,16 @@
+fixtures:
+  - id: ops/diff-json-reply-keep-input-delete
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: lyd_diff_siblings of two replies parsed into their requests with the input kept (unsplit, outputs after the four inputs) where an input changes and every output is deleted; lyd_diff_dup links the diff nodes with LYD_INSERT_NODE_DEFAULT, so the anchor rule orders the diff's operation children; then lyd_diff_apply_all
+    rfc: ["RFC7950#7.14"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [rb.1]
+      modules: [{name: rb}]
+      steps:
+        - {"do":"parse","format":"json","data_type":"reply","unknown":"reject","parse_only":true,"keep_input":true,"rpc":"{\"rb:r\":{\"in\":\"a\",\"in2\":\"x\",\"in3\":\"y\",\"in4\":\"z\"}}","data":"{\"rb:v\":[1,2,3,4]}"}
+        - {"do":"diff","format":"json","data_type":"reply","unknown":"reject","parse_only":true,"keep_input":true,"rpc":"{\"rb:r\":{\"in\":\"b\",\"in2\":\"x\",\"in3\":\"y\",\"in4\":\"z\"}}","data":"{}"}
+        - {"do":"diff_apply"}
+        - {"do":"dump"}
+    golden: golden/ops-diff-json-reply-keep-input-delete.json

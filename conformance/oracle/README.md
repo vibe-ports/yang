@@ -211,7 +211,7 @@ stays parse-only without STRICT) — what happens to data nodes the schema does 
 | unknown | flag | effect |
 |---|---|---|
 | `reject` (default) | `LYD_PARSE_STRICT` | error `LYVE_REFERENCE` (`Node "bogus" not found as a child of "c" node.`) |
-| `skip` | — | silently dropped (libyang default); request-error for `rpc`/`reply`/`notif` |
+| `skip` | — | silently dropped (libyang default; for `rpc`/`reply`/`notif` `lyd_parse_op` with neither STRICT nor OPAQ) |
 | `opaque` | `LYD_PARSE_OPAQ` | kept as opaque nodes (`kind: "opaque"` in `typed`) |
 
 Example (`protocol-v2/data/unknown.json` = `{"pv2:c": {"mode": "on", "bogus": 1}}`, `config`,
@@ -227,7 +227,14 @@ helper additionally requires its parent to exist in the operational tree (yangli
 `check_operation_parent`; libyang does not check it) → diagnostic `phase: operation_parent`.
 For `reply`, `rpc` / `rpc_file` is the request: it is parsed as RPC, its input is dropped and the
 reply (`data`, output children as top-level nodes, e.g. `{"ops:rtt": 5}`) is parsed under it.
-Without `rpc`, `data` must be the full reply (`{"ops:ping": {"rtt": 5}}`).
+Without `rpc`, `data` must be the full reply (`{"ops:ping": {"rtt": 5}}`). For `rpc` with `rpc` / `rpc_file`, `data` is parsed the same way under the request (`lyd_parse_op(ctx, op, in, …, LYD_TYPE_RPC_YANG, …)`), as an input with an existing RPC parent. `keep_input: true` keeps the request's parsed children instead of removing them. When the reply fails, `request_typed` is the typed dump of the request's tree after lyd_parse_op's cleanup (the nodes it frees again are gone).
+For `op: data`, optional `rpc_parent` selects the parent of the second parse by absolute data
+path in the parsed `rpc` tree (`lyd_find_path`), instead of the operation node. It requires
+`data_type: rpc`, `rpc` / `rpc_file`, and `keep_input: true`; a missing path is a request-error.
+This can select an existing keyed list containing an action, to observe operation parse cleanup
+of newly parsed keys. On failure, `request_typed` includes the retained keys and diagnostics
+include `lyd_free_tree`'s refusals after the original parse error.
+
 
 ### Typed tree (`typed`)
 
@@ -341,7 +348,7 @@ becomes observable. Context fields as in `schema`; step fields are per step (not
 
 | do | fields | libyang |
 |---|---|---|
-| `parse` | `format`, `data_type` (datastore types only), `data`/`data_file`, `unknown`, `parse_only`, `parse_options`, `validate_options` | as op `data`; on success replaces the tree |
+| `parse` | `format`, `data_type`, `data`/`data_file`, `unknown`, `parse_only`, `parse_options`, `validate_options`; operation types (`rpc`, `reply`, `notif`) with `parse_only` only, a reply also with `rpc` and `keep_input` | as op `data` (operations: `lyd_parse_op`, a reply into its `rpc` request); on success replaces the tree |
 | `validate` | `data_type`, `validate_options` (validate flags of the preset), `module`, `final_only` | `lyd_validate_all(&tree, ctx, opts, &diff)`; with `module` (an implemented module name) `lyd_validate_module(&tree, mod, opts, &diff)`, with `final_only` too `lyd_validate_module_final(tree, mod, opts)` (no diff) |
 | `edit` | exactly one of `merge` / `merge_file` (+ `format`, `data_type`, `unknown`, `parse_options`, merge only) | `lyd_parse_data(… LYD_PARSE_ONLY …)` + `lyd_merge_siblings(LYD_MERGE_DESTRUCT)` |
 | | `set: {"path", "value"}` only (value in JSON format, omit for containers/lists) | `lyd_new_path(tree, ctx, path, value, LYD_NEW_PATH_UPDATE)` (an existing default leaf-list instance is left untouched: use `insert_term` to make it explicit) |
@@ -360,7 +367,7 @@ becomes observable. Context fields as in `schema`; step fields are per step (not
 | `links` | — | `leafref_links`: the record of every term node that has one (`lyd_leafref_get_links`), in DFS order: `{"node", "leafref_nodes", "target_nodes"}` as `lyd_path(LYD_PATH_STD)` lists in record order |
 | `dup` | `node` (path), `parent` (path, optional), `options` (`recursive no_meta with_parents with_flags no_lyds`), `siblings` (bool) | `lyd_dup_siblings` (`siblings: true`) or `lyd_dup_single` of `node` into `parent`; without `parent` the duplicate, from its top duplicated parent, replaces the tree (diagnostics phase `edit`); with `target` (`searchdirs`, `modules`, `context_options`, no `parent`) `lyd_dup_single_to_ctx` / `lyd_dup_siblings_to_ctx` into a second context built like the request's, the duplicate replacing the tree (its diagnostics: the request context's, then the target's). Every step runs in the retained tree's context, the target's after such a dup |
 | `compare` | the fields of `parse` for a second tree, `first` / `second` (paths in the retained / second tree, omitted: its first top-level node), `options` (`full_recursion defaults opaq`) | `lyd_compare_single(first, second, options)`; `compare` = its rc (`LY_SUCCESS` equal, `LY_ENOT` not); the step's rc is the second parse's, the retained tree is unchanged |
-| `diff` | the parse fields of `parse` (`data`/`data_file` optional: none is a NULL tree), `node` (path in the tree), `data_node` (path in the parsed data), `single` (bool), `options` (`defaults meta`), `merge` (bool), `merge_options` (`defaults`), `target` (`searchdirs`, `modules`, `context_options`; requires data) | `lyd_diff_siblings` (`single`: `lyd_diff_tree`) of the tree (or its node at `node`) and the parsed data (or its node at `data_node`); with `target`, the data is parsed in that separate context. The diff replaces the diff register, or with `merge` is merged into it (`lyd_diff_merge_all` with `merge_options`) and reported as `new_diff` (diagnostics phases `parse`, `diff`) |
+| `diff` | the parse fields of `parse` (`data`/`data_file` optional: none is a NULL tree), including operation types (`rpc`, `reply`, `notif`) with `parse_only` only and a reply also with `rpc` and `keep_input`; `node` (path in the tree), `data_node` (path in the parsed data), `single` (bool), `options` (`defaults meta`), `merge` (bool), `merge_options` (`defaults`), `target` (`searchdirs`, `modules`, `context_options`; requires datastore data) | `lyd_diff_siblings` (`single`: `lyd_diff_tree`) of the tree (or its node at `node`) and the parsed data (or its node at `data_node`); operation data is parsed with `lyd_parse_op` as for `parse`. With `target`, datastore data is parsed in that separate context. The diff replaces the diff register, or with `merge` is merged into it (`lyd_diff_merge_all` with `merge_options`) and reported as `new_diff` (diagnostics phases `parse`, `diff`) |
 | `diff_parse` | `format`, `data_type`, `data`/`data_file`, `unknown`, `parse_options` | the data, parsed with `LYD_PARSE_ONLY` as test_diff.c parses diffs, replaces the diff register |
 | `diff_merge` | as `diff_parse`, plus `options` (`defaults`), and `module` or `src_node` (path in the parsed source) with an optional `parent` (path in the register) | `lyd_diff_merge_module` (`lyd_diff_merge_all` without `module`) of the parsed source into the register; with `src_node` `lyd_diff_merge_tree` of that subtree under `parent` (none: the top level) |
 | `diff_apply` | `module` (optional) | `lyd_diff_apply_module(&tree, register, module)` (`lyd_diff_apply_all` without `module`) |
@@ -414,8 +421,8 @@ The Go harness (`conformance/`) reads `steps[].diagnostics` for asserts, ignores
 - `with_defaults: all-tagged|implicit-tagged` emit `default` metadata only if
   `ietf-netconf-with-defaults` is in the context — add it to `searchdirs` + `modules`.
 - No NETCONF/RESTCONF envelopes (`nc-rpc`, ...), LYB, yang-library contexts, merged multi-file
-  input, extension-instance data, `lyd_validate_module`, sequences over operations
-  (rpc/reply/notif), insert/move edits — add when a fixture needs them.
+  input, extension-instance data, operation validation steps, insert/move edits — add when a
+  fixture needs them.
 - `typed`: xpath responses carry none; libyang v5 anydata holds only a data tree or a string, so
   `value_type` is never `xml`/`json`/`lyb`; `with_defaults` tagging is printer-only, not tree
   metadata. Schema dumps skip parsed-only facts (typedef chains, original range text, `units`,

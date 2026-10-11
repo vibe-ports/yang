@@ -1,0 +1,20 @@
+fixtures:
+  - id: ops/parse-xml-action-envelope-rpc
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written over the test_parser_*.c module a: an rpc inside the YANG action element
+    rfc: ["RFC7950#7.14"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: xml
+      data_type: rpc
+      unknown: reject
+      parse_only: true
+      data: "<action xmlns=\"urn:ietf:params:xml:ns:yang:1\"><r1 xmlns=\"urn:tests:a\"><l1>a</l1></r1></action>"
+    golden: golden/ops-parse-xml-action-envelope-rpc.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.14"]
+      deviation: null

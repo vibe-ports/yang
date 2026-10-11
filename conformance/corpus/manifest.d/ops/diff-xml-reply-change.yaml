@@ -1,0 +1,16 @@
+fixtures:
+  - id: ops/diff-xml-reply-change
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: lyd_diff_siblings and lyd_diff_apply_all on changed, ordinary unsplit XML RPC reply data
+    rfc: ["RFC7950#7.14"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [rb.1]
+      modules: [{name: rb}]
+      steps:
+        - {"do":"parse","format":"xml","data_type":"reply","unknown":"reject","parse_only":true,"rpc":"<r xmlns=\"urn:rb\"/>","data":"<before xmlns=\"urn:rb\">b</before><v xmlns=\"urn:rb\">1</v><v xmlns=\"urn:rb\">2</v><v xmlns=\"urn:rb\">3</v><s xmlns=\"urn:rb\">x</s><s xmlns=\"urn:rb\">y</s><oc xmlns=\"urn:rb\"><n>1</n></oc>"}
+        - {"do":"diff","format":"xml","data_type":"reply","unknown":"reject","parse_only":true,"rpc":"<r xmlns=\"urn:rb\"/>","data":"<before xmlns=\"urn:rb\">c</before><v xmlns=\"urn:rb\">1</v><v xmlns=\"urn:rb\">3</v><v xmlns=\"urn:rb\">4</v><s xmlns=\"urn:rb\">y</s><oc xmlns=\"urn:rb\"><n>2</n></oc>"}
+        - {"do":"diff_apply"}
+        - {"do":"dump"}
+    golden: golden/ops-diff-xml-reply-change.json

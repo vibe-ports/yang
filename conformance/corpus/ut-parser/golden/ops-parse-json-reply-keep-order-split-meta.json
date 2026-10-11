@@ -1,0 +1,159 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "rb",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "rbaug",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"rb:r\": {\n    \"before\": \"b\",\n    \"v\": [\n      1,\n      2\n    ],\n    \"@v\": [\n      {\n        \"rbaug:a\": \"1\"\n      },\n      {\n        \"rbaug:a\": \"2\"\n      }\n    ],\n    \"in\": \"keep\",\n    \"v\": [\n      3\n    ],\n    \"@v\": [\n      {\n        \"rbaug:a\": \"3\"\n      }\n    ]\n  }\n}\n",
+    "xml": "<r xmlns=\"urn:rb\">\n  <before>b</before>\n  <v xmlns:ra=\"urn:rbaug\" ra:a=\"1\">1</v>\n  <v xmlns:ra=\"urn:rbaug\" ra:a=\"2\">2</v>\n  <in>keep</in>\n  <v xmlns:ra=\"urn:rbaug\" ra:a=\"3\">3</v>\n</r>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "rpc",
+      "meta": [],
+      "opaque": null,
+      "path": "/rb:r",
+      "schema": "/rb:r",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/rb:r/before",
+      "schema": "/rb:r/output/before",
+      "value": {
+        "canonical": "b",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [
+        {
+          "module": "rbaug",
+          "name": "a",
+          "value": "1"
+        }
+      ],
+      "opaque": null,
+      "path": "/rb:r/v[1]",
+      "schema": "/rb:r/output/v",
+      "value": {
+        "canonical": "1",
+        "type": "uint8",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [
+        {
+          "module": "rbaug",
+          "name": "a",
+          "value": "2"
+        }
+      ],
+      "opaque": null,
+      "path": "/rb:r/v[2]",
+      "schema": "/rb:r/output/v",
+      "value": {
+        "canonical": "2",
+        "type": "uint8",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/rb:r/in",
+      "schema": "/rb:r/input/in",
+      "value": {
+        "canonical": "keep",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [
+        {
+          "module": "rbaug",
+          "name": "a",
+          "value": "3"
+        }
+      ],
+      "opaque": null,
+      "path": "/rb:r/v[1]",
+      "schema": "/rb:r/output/v",
+      "value": {
+        "canonical": "3",
+        "type": "uint8",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

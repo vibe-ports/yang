@@ -30,12 +30,22 @@ type ApplyDiffOptions struct {
 // (user-ordered instances after their yang:key, yang:value or yang:position anchor), a delete
 // removes it with its subtree, a replace changes a leaf's value or moves a user-ordered
 // instance, a none only descends (and sets a term's default flag); yang:meta-* metadata
-// operations change the metadata. A nil diff changes nothing. A diff that does not fit t (a node
-// to change or delete that t lacks, a missing anchor) is an LY_EINVAL *ValidationError; t keeps
-// the changes made before it. A diff made without DiffOptions.Defaults may leave duplicate
-// default values until t is validated again.
+// operations change the metadata. A nil diff normally changes nothing. A diff that does not fit
+// t (a node to change or delete that t lacks, a missing anchor) is an LY_EINVAL *ValidationError;
+// t keeps the changes made before it. A diff made without DiffOptions.Defaults may leave
+// duplicate default values until t is validated again. A split operation-child run in t is
+// refused with LY_EINVAL before t is changed, including when diff is nil (D-0116). A diff tree
+// may itself have such a split because libyang inserts generated diff nodes by their schema
+// anchors; it is accepted and walked in its stored order.
 func (t *Tree) ApplyDiff(diff *Tree, o ApplyDiffOptions) error {
 	lg := &logger{set: t.set}
+	if split, op := splitOpRun(t.top.first(), true); split != nil {
+		fn := "lyd_diff_apply_all"
+		if o.Module != "" {
+			fn = "lyd_diff_apply_module"
+		}
+		return splitOpRefusal(lg, split, op, fn)
+	}
 	if diff == nil {
 		return nil
 	}

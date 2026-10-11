@@ -40,6 +40,11 @@ func runXPath(r Request, s *yang.Schema, resp map[string]any) error {
 	if o.Vars, err = xpathVars(p); err != nil {
 		return err
 	}
+	switch str(p, "data_type", "") {
+	case "rpc", "reply", "notif":
+		return fmt.Errorf("%w: xpath over operation data (data_type %v): the engine parses operations once ParseOp is exported (#97)",
+			ErrUnsupported, p["data_type"])
+	}
 	// str_of is called while op_xpath initializes its locals, before it parses the data. Keep these
 	// type checks here, but defer the option semantics until after parse_one, in oracle order.
 	var hasCur bool

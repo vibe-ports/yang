@@ -81,11 +81,11 @@ func (x xn) FirstChild(sn xpath.SchemaNode) (xpath.Node, bool) {
 	if !ok || t == nil || x.n.flags&flagDead != 0 {
 		return nil, false
 	}
-	i := t.schemaIndex(&x.n.kids, s.s)
-	if i < 0 {
+	c := t.findSchema(&x.n.kids, s.s) // an operation's children: the instance index, no scan
+	if c == nil {
 		return nil, true
 	}
-	if c := x.n.kids.list[i]; c.flags&flagDead == 0 {
+	if c.flags&flagDead == 0 {
 		return xn{c, x.set}, true
 	}
 	return nil, false
@@ -249,22 +249,35 @@ func (x xs) Children() []xpath.SchemaNode      { return x.wrapAll(x.s.Children) 
 func (x xs) Actions() []xpath.SchemaNode       { return x.wrapAll(x.s.Actions) }
 func (x xs) Notifications() []xpath.SchemaNode { return x.wrapAll(x.s.Notifs) }
 
-// Child is lys_find_child through choice and case; an operation's child from its input, else its
-// output.
+// Child is lys_find_child through choice and case; an operation's child from its input or its
+// output, nil when both have one (eval_name_test_with_predicate_get_scnode: a name in both may be
+// either, so the evaluator scans by name instead of looking the instance up).
 func (x xs) Child(module, name string) xpath.SchemaNode {
 	mod := x.set.Implemented(module)
 	if mod == nil {
 		return nil
 	}
-	if c := schema.FindChild(x.s, nil, mod, name, 0); c != nil {
-		return xs{c, x.set}
-	}
+	c := schema.FindChild(x.s, nil, mod, name, 0)
 	if x.s.Kind == schema.RPC || x.s.Kind == schema.Action {
-		if c := schema.FindChild(x.s, nil, mod, name, schema.GetNextOutput); c != nil {
-			return xs{c, x.set}
+		out := schema.FindChild(x.s, nil, mod, name, schema.GetNextOutput)
+		switch {
+		case c != nil && out != nil:
+			// nil as libyang's conflict: eval_name_test_with_predicate_get_scnode (xpath.c
+			// L8246-8258) sets scnode NULL and leaves *found untouched, it does not return
+			// LY_ENOT, so eval_name_test_with_predicate (L8384-8399) goes on with the next
+			// context node and a schema node found there decides the step: (/r3 | /r3/c)/v
+			// returns only c/v (oracle: ops/xpath-json-reply-shared-name-union,
+			// TestXPathOracleOps). Only when no context node gives one is the step matched
+			// by name.
+			return nil
+		case out != nil:
+			c = out
 		}
 	}
-	return nil
+	if c == nil {
+		return nil
+	}
+	return xs{c, x.set}
 }
 
 // Canonical is set_comp_canonize with the schema node's type: a compared string, boolean or

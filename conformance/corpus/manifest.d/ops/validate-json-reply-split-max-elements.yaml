@@ -1,0 +1,17 @@
+fixtures:
+  - id: ops/validate-json-reply-split-max-elements
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: a reply whose output leaf-list v (max-elements 2) the anchor splits around the kept input ([before, v1, v2, in, v3]); lyd_validate_minmax counts with LYD_LIST_FOR_INST, from the first instance while the schema holds
+    rfc: ["RFC7950#7.7.6", "RFC7950#7.14"]
+    areas: [validation, operations]
+    request:
+      op: data
+      searchdirs: [rb.1]
+      modules: [{name: rbs}]
+      format: json
+      data_type: reply
+      unknown: reject
+      rpc: "{\"rbs:r4\":{\"in\":\"keep\"}}"
+      keep_input: true
+      data: "{\"rbs:before\":\"b\",\"rbs:v\":[1,2,3]}"
+    golden: golden/ops-validate-json-reply-split-max-elements.json

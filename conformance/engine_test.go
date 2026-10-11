@@ -15,6 +15,21 @@ import (
 // change that lowers it is a regression.
 const agreeFloor = 2256
 
+func TestSequenceDiffOperationFieldsRemainUnsupportedByDataType(t *testing.T) {
+	step := map[string]any{
+		"do":         "diff",
+		"data_type":  "reply",
+		"parse_only": true,
+		"data":       `{}`,
+		"rpc":        `{}`,
+		"keep_input": true,
+	}
+	err := runSequence(Request{Params: map[string]any{"steps": []any{step}}}, nil, map[string]any{})
+	if !errors.Is(err, ErrUnsupported) || !strings.Contains(err.Error(), "data_type reply") {
+		t.Fatalf("runSequence operation diff error = %v, want unsupported data_type reply", err)
+	}
+}
+
 // TestYangEngineSchema runs every fixture through package yang and logs the tally. No fixture may
 // differ: a disagreement is either fixed or recorded as a deviation (deviations.md) or as
 // unsupported, never absorbed by new agreements under the floor. M2 exit gate (#43): an op schema
@@ -82,10 +97,13 @@ func TestYangEngineXPath(t *testing.T) {
 var xpathFloors = map[string]int{"xpath": 268, "atoms": 44, "trim": 30}
 
 // xpathKind is the M3 gate kind of a request: "xpath", "atoms", "trim" (a sequence with a trim
-// step) or "" for a fixture outside the gate.
+// step) or "" for a fixture outside the gate (also XPath over operation data, an M4 fixture).
 func xpathKind(req map[string]any) string {
 	switch op, _ := req["op"].(string); op {
 	case "xpath", "atoms":
+		if dt, _ := req["data_type"].(string); dt == "rpc" || dt == "reply" || dt == "notif" {
+			return "" // XPath over operation data: an M4 operation fixture (#105), not M3
+		}
 		return op
 	case "sequence":
 		for _, st := range list(req["steps"]) {
@@ -192,6 +210,9 @@ func TestPathPrefixes(t *testing.T) {
 func TestXPathGateSelection(t *testing.T) {
 	trim := map[string]any{"op": "sequence", "steps": []any{map[string]any{"do": "parse"}, map[string]any{"do": "trim"}}}
 	other := map[string]any{"op": "sequence", "steps": []any{map[string]any{"do": "parse"}}}
+	if xpathKind(map[string]any{"op": "xpath", "data_type": "reply"}) != "" {
+		t.Error("xpath over operation data is not M3")
+	}
 	if xpathKind(map[string]any{"op": "xpath"}) != "xpath" || xpathKind(map[string]any{"op": "atoms"}) != "atoms" ||
 		xpathKind(trim) != "trim" || xpathKind(other) != "" || xpathKind(map[string]any{"op": "data"}) != "" {
 		t.Error("gate selection")

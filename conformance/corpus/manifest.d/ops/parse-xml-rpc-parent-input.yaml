@@ -1,0 +1,21 @@
+fixtures:
+  - id: ops/parse-xml-rpc-parent-input
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: input parsed under its existing rpc
+    rfc: ["RFC7950#7.14"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: xml
+      data_type: rpc
+      unknown: reject
+      parse_only: true
+      rpc: "<r1 xmlns=\"urn:tests:a\"><l1>a</l1></r1>"
+      data: "<l2 xmlns=\"urn:tests:a\">b</l2>"
+    golden: golden/ops-parse-xml-rpc-parent-input.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.14"]
+      deviation: null

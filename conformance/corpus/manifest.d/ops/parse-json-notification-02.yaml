@@ -1,0 +1,20 @@
+fixtures:
+  - id: ops/parse-json-notification-02
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_notification:880; parse only (lyd_parse_op)
+    rfc: ["RFC7950#7.16"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: json
+      data_type: notif
+      unknown: reject
+      parse_only: true
+      data: "{\"a:n2\":{}}"
+    golden: golden/ops-parse-json-notification-02.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.16"]
+      deviation: null

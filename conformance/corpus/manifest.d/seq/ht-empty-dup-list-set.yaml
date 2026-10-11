@@ -1,0 +1,20 @@
+fixtures:
+  - id: seq/ht-empty-dup-list-set
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: recursive lyd_dup_single copies an empty children table before lyd_new_path misses and creates the list
+    rfc: []   # libyang data-tree API state and lookup behaviour, not protocol-visible RFC behaviour
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-edit}]
+      steps:
+        - {do: parse, format: json, data_type: data, unknown: opaque, parse_only: true, data: '{"pv2-edit:c":{"a":"x","b":1,"l":[{"k":"old","v":2}],"ll":["old"],"unknown":"opaque"}}'}
+        - {do: edit, delete: "/pv2-edit:c/a"}
+        - {do: edit, delete: "/pv2-edit:c/b"}
+        - {do: edit, delete: "/pv2-edit:c/l[k='old']"}
+        - {do: edit, delete: "/pv2-edit:c/ll[.='old']"}
+        - {do: dup, node: "/pv2-edit:c", options: [recursive]}
+        - {do: edit, set: {path: "/pv2-edit:c/l[k='new']/v", value: "3"}}
+        - {do: dump}
+    golden: golden/seq-ht-empty-dup-list-set.json

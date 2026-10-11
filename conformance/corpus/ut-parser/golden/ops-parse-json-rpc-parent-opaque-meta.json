@@ -1,0 +1,74 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"a:r1\": {\n    \"zz\": 1,\n    \"@zz\": {\n      \"hint\": 1\n    }\n  }\n}\n",
+    "xml": "<r1 xmlns=\"urn:tests:a\">\n  <zz xmlns:a=\"urn:tests:a\" a:hint=\"1\">1</zz>\n</r1>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "rpc",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:r1",
+      "schema": "/a:r1",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [
+        {
+          "module": "a",
+          "name": "hint",
+          "value": "1"
+        }
+      ],
+      "opaque": {
+        "format": "json",
+        "module": "a",
+        "name": "zz",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/a:r1/zz",
+      "schema": null,
+      "value": {
+        "canonical": "1",
+        "hints": [
+          "decnum"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

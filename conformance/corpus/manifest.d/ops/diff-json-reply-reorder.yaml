@@ -1,0 +1,16 @@
+fixtures:
+  - id: ops/diff-json-reply-reorder
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: lyd_diff_siblings and lyd_diff_apply_all on reordered, ordinary unsplit RPC reply leaf-lists
+    rfc: ["RFC7950#7.14"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [rb.1]
+      modules: [{name: rb}]
+      steps:
+        - {"do":"parse","format":"json","data_type":"reply","unknown":"reject","parse_only":true,"rpc":"{\"rb:r\":{}}","data":"{\"rb:before\":\"b\",\"rb:v\":[1,2,3],\"rb:s\":[\"x\",\"y\"],\"rb:oc\":{\"n\":1}}"}
+        - {"do":"diff","format":"json","data_type":"reply","unknown":"reject","parse_only":true,"rpc":"{\"rb:r\":{}}","data":"{\"rb:before\":\"b\",\"rb:v\":[3,1,2],\"rb:s\":[\"y\",\"x\"],\"rb:oc\":{\"n\":1}}"}
+        - {"do":"diff_apply"}
+        - {"do":"dump"}
+    golden: golden/ops-diff-json-reply-reorder.json

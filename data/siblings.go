@@ -23,14 +23,15 @@ const htMinItems = 4
 // index: buckets of instances per hash key, each bucket in insertion order like lyht_find
 // returns colliding records. It is written only by insertions and removals; lookups read.
 type siblings struct {
-	list     []*Node // schema nodes, in order
-	base     []*Node // list's whole backing array when list leaves headroom before it (insertAt)
-	opq      []*Node // opaque nodes, after all schema nodes (libyang keeps them last)
-	ht       map[idxKey][]*Node
-	unsorted map[*schema.Node]bool // runs appended out of value order
-	rbTree   map[*schema.Node]bool // runs that have libyang's RB tree (lyds)
-	gen      uint64                // changes with every insertion and removal
-	work     *workCounter          // the tree's work counter once a node was linked: all and indexOf count visits
+	nodeDeque         // schema nodes, in order, with front headroom for insertAt
+	opq       []*Node // opaque nodes, after all schema nodes (libyang keeps them last)
+	ht        map[idxKey][]*Node
+	unsorted  map[*schema.Node]bool     // runs appended out of value order
+	rbTree    map[*schema.Node]bool     // runs that have libyang's RB tree (lyds)
+	opIdx     map[*schema.Node]*opEntry // an operation's children by schema node (opInst), nil: not built
+	opRanks   [2]rankBits               // occupied input/output schema ranks, for the next anchor
+	gen       uint64                    // changes with every insertion and removal
+	work      *workCounter              // the tree's work counter once a node was linked: all and indexOf count visits
 }
 
 // visit counts one sibling visit in the tree's work counter.
@@ -122,6 +123,25 @@ func hashOf(n *Node) (k idxKey, ok bool) {
 
 // hashAdd is lyd_insert_hash: create the parent's table once it has htMinItems schema children
 // (from all children, in order), else add n to the existing one.
+//
+// Whether a parent has the table is state of its own, observable through the order of an rpc's
+// or action's children (lyd_insert_get_next_anchor, tree_data.c:522: with the table the anchor
+// search, without it the walk), so it is kept in siblings.ht and never derived from the child
+// count. libyang v5.8.6 lifecycle:
+//   - created by lyd_insert_hash (tree_data_hash.c:181-197) when, after an insertion, the parent
+//     (an inner schema node, not anydata/anyxml) has at least LYD_HT_MIN_ITEMS schema children;
+//   - never freed while the parent lives: lyd_unlink_hash (tree_data_hash.c:207-245) only
+//     removes entries, so a table outlives a shrink below the threshold (lyd_free_tree frees it
+//     with its node only, tree_data_free.c:236);
+//   - copied by lyd_dup_r with LYD_DUP_RECURSIVE (tree_data.c:2300-2305), empty, before the
+//     children are copied into it (dupR), so a copy of a shrunk parent has the table; a
+//     non-recursive copy (keys only) gets it only by reaching the threshold; lyd_merge copies
+//     source subtrees with lyd_dup_single recursive and so the same way;
+//   - a node moved to another parent keeps its own children (and their table).
+//
+// Every reader checks ht != nil: opAnchor, findFirst, the XPath and validation lookups.
+// Fixtures ops/ht-* (create, none, shrink, grow after shrink, dup of a shrunk, of a small and
+// non-recursive copy, each followed by an output insertion) pin it.
 func (s *siblings) hashAdd(parent, n *Node) {
 	if parent == nil || parent.schema == nil || n.schema == nil {
 		return
@@ -164,6 +184,12 @@ func (s *siblings) hashRemove(n *Node) {
 
 // findSchema is lyd_find_sibling_schema: the first instance of the schema node.
 func (t *Tree) findSchema(s *siblings, sn *schema.Node) *Node {
+	if opChild(sn) {
+		if inst := s.opInst(sn); len(inst) > 0 {
+			return inst[0]
+		}
+		return nil
+	}
 	if i := t.schemaIndex(s, sn); i >= 0 {
 		return s.list[i]
 	}
@@ -171,8 +197,16 @@ func (t *Tree) findSchema(s *siblings, sn *schema.Node) *Node {
 }
 
 // schemaIndex is the index of the first instance of sn in s, -1 if there is none.
+// Operation callers must need a position for a mutation or metadata walk; first-instance
+// and run-only lookups use findSchema and opRun without a position scan.
 func (t *Tree) schemaIndex(s *siblings, sn *schema.Node) int {
 	if len(s.list) == 0 {
+		return -1
+	}
+	if opChild(sn) {
+		if inst := s.opInst(sn); len(inst) > 0 {
+			return t.opFirstFrom(s.list, inst)
+		}
 		return -1
 	}
 	probe := &Node{schema: sn, parent: s.list[0].parent} // top level or not decides the module order
@@ -211,6 +245,12 @@ func (t *Tree) findFirst(s *siblings, target *Node) *Node {
 	}
 	dup := isDupInstList(target.schema)
 	if target.schema != nil && s.ht != nil {
+		if len(s.list) == 0 {
+			// a table kept after its schema children left (lyd_unlink_hash never frees it) or
+			// copied by a recursive dup: lyht_find misses, opaque nodes are not in it
+			// (tree_data.c:3210-3237)
+			return nil
+		}
 		// the target's schema node in the siblings' context (libyang hashes module and node
 		// names, so a target of another context finds its instances)
 		sn := target.schema
@@ -221,15 +261,8 @@ func (t *Tree) findFirst(s *siblings, target *Node) *Node {
 			}
 		}
 		if dup {
-			i := t.schemaIndex(s, sn)
-			if i < 0 {
-				return nil
-			}
-			for _, n := range s.list[i:] {
+			for n := range t.instances(s, sn) {
 				s.visit()
-				if n.schema != sn {
-					break
-				}
 				if compareSingle(t, n, target, true) {
 					return n
 				}

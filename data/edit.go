@@ -8,6 +8,7 @@ package data
 import (
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/vibe-ports/yang/internal/ly"
 	"github.com/vibe-ports/yang/internal/schema"
@@ -171,14 +172,21 @@ func (t *Tree) evalPartial(lg *logger, p types.Path) (*Node, int, error) {
 	return prev, len(p), nil
 }
 
-// instances yields the instances of sn in s (LYD_LIST_FOR_INST).
+// instances yields the instances of sn in s as LYD_LIST_FOR_INST does: from the first one while
+// the schema node holds. Among an operation's children an output run split by the kept input
+// ([v1, v2, in, v3]) thus yields v1 and v2, as libyang's walks do (lyd_validate_minmax,
+// ly_path_eval positions; both unreachable on such a run, see
+// ops/validate-json-reply-split-max-elements and ops/find-json-reply-split-position); the
+// hash-bucket lookups for non-duplicate instances take their bucket instead.
 func (t *Tree) instances(s *siblings, sn *schema.Node) func(func(*Node) bool) {
 	return func(yield func(*Node) bool) {
-		i := t.schemaIndex(s, sn)
-		if i < 0 {
-			return
+		var run []*Node
+		if opChild(sn) {
+			run = t.opRun(s, sn)
+		} else if i := t.schemaIndex(s, sn); i >= 0 {
+			run = s.list[i:]
 		}
-		for _, n := range s.list[i:] {
+		for _, n := range run {
 			if n.schema != sn || !yield(n) {
 				return
 			}
@@ -488,7 +496,7 @@ type dupCache struct {
 // siblings). A key-less list hashes by schema node only, so its run is all its instances,
 // compared whole (libyang parity).
 func (t *Tree) run(c *dupCache, inst *Node) []*Node {
-	sib := inst.siblingsOf()
+	sib := sibsOf(inst) // a detached node: its singleton sibling set
 	if inst.schema == nil {
 		return sib.opq
 	}
@@ -498,7 +506,13 @@ func (t *Tree) run(c *dupCache, inst *Node) []*Node {
 	idx := c.runs[inst.schema]
 	if idx == nil {
 		idx = map[idxKey][]*Node{}
-		for n := range t.instances(sib, inst.schema) {
+		all := t.instances(sib, inst.schema)
+		if opChild(inst.schema) {
+			// Ordinary data Merge also uses this cache and must find every operation-child
+			// instance through the operation index, including runs split by kept input.
+			all = slices.Values(sib.opInst(inst.schema))
+		}
+		for n := range all {
 			t.work.Add(1)
 			if k, ok := hashOf(n); ok {
 				idx[k] = append(idx[k], n)
@@ -659,6 +673,7 @@ func (t *Tree) flushMerge(lv *mergeLevel) {
 		return
 	}
 	sib := t.childrenOf(lv.parent)
+	// Splice needs positions; it already walks/copies the sibling slice once.
 	lo := t.schemaIndex(sib, lv.pend[0].schema)
 	hi := lo
 	for hi < len(sib.list) && sib.list[hi].schema == lv.pend[0].schema {

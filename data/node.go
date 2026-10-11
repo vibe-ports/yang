@@ -79,6 +79,7 @@ type Tree struct {
 	// order); lookups only read the tree otherwise, so the cache has its own lock.
 	rankMu sync.Mutex
 	rank   map[*schema.Node]int
+	orders map[orderKey][]*schema.Node // an operation's input or output children (opOrder)
 	work   workCounter
 	// dupLog is the logger of an exported Dup or DupSiblings while it runs: the metadata values
 	// the target snapshot rejects are logged there (lyd_dup_meta_single_to_ctx).

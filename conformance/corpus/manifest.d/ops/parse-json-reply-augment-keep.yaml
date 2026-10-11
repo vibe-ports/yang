@@ -1,0 +1,18 @@
+fixtures:
+  - id: ops/parse-json-reply-augment-keep
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: output parameters, one augmented, into a kept input with an augmented leaf
+    rfc: ["RFC7950#7.14", "RFC7950#7.17"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [rb.1]
+      modules: [{name: rb}, {name: rbaug}]
+      format: json
+      data_type: reply
+      unknown: reject
+      parse_only: true
+      rpc: "{\"rb:r\":{\"in\":\"x\",\"rbaug:y\":\"y\"}}"
+      keep_input: true
+      data: "{\"rbaug:z\":\"z\",\"rb:oc\":{\"n\":1}}"
+    golden: golden/ops-parse-json-reply-augment-keep.json

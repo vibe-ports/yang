@@ -1,0 +1,17 @@
+fixtures:
+  - id: ops/ht-dup-nonrecursive-insert-output
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: lyd_insert_hash, lyd_dup_r without LYD_DUP_RECURSIVE, and lyd_insert_get_next_anchor on a childless copy
+    rfc: ["RFC7950#7.14"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [rb.1]
+      modules: [{name: rb}]
+      steps:
+        - {do: parse, format: json, data_type: rpc, unknown: reject, parse_only: true, data: '{"rb:r":{"in":"a","in2":"b","in3":"c","in4":"d"}}'}
+        - {do: dup, node: "/rb:r", options: []}
+        - {do: edit, insert_term: {module: rb, parent: "/rb:r", name: in, value: "x"}}
+        - {do: edit, insert_inner: {module: rb, parent: "/rb:r", name: oc, options: [output]}}
+        - {do: dump}
+    golden: golden/ops-ht-dup-nonrecursive-insert-output.json

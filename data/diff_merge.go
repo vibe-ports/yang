@@ -32,7 +32,7 @@ type MergeDiffOptions struct {
 // the diff t, so that t turns the data t applied to into the data src applied to. Operations on
 // the same node combine (create then delete is no change, delete then create a replace or none,
 // replace then replace one replace, user-ordered moves fold into one move), nodes left without a
-// change are removed, and src is not changed. A nil src merges nothing. Errors are a
+// change are removed, and src is not changed. A nil src normally merges nothing. Errors are a
 // *ValidationError with libyang's diagnostics; t may be partly merged then.
 //
 // Limitations inherited from libyang (mirrored on purpose, not port bugs): merging diffs that
@@ -51,7 +51,8 @@ type MergeDiffOptions struct {
 //
 // Workaround: keep the original tree and diff it against the final one instead of merging the
 // intermediate diffs: Diff(first, last, DiffOptions{Defaults: true}), with Defaults for the reason
-// given at ReverseDiff.
+// given at ReverseDiff. An operation's children in a diff tree may be split by schema-anchor
+// insertion; MergeDiff accepts that order, as libyang does.
 func (t *Tree) MergeDiff(src *Tree, o MergeDiffOptions) error {
 	lg := &logger{set: t.set}
 	if src == nil {
@@ -68,8 +69,9 @@ func (t *Tree) MergeDiff(src *Tree, o MergeDiffOptions) error {
 
 // MergeDiffTree is lyd_diff_merge_tree: the subtree src of a source diff merged into the diff t
 // under parent, a node of t (nil: the top level of t; another tree's node is LY_EINVAL); see
-// MergeDiff, whose limitations for user-ordered instances apply here too. A nil src merges
-// nothing.
+// MergeDiff, whose limitations for user-ordered instances apply here too. A nil src normally
+// merges nothing. Operation-child runs in either diff may be split by schema-anchor insertion
+// and are accepted in that stored order, as in libyang.
 func (t *Tree) MergeDiffTree(parent, src *Node, o MergeDiffOptions) error {
 	lg := &logger{set: t.set}
 	if src == nil {

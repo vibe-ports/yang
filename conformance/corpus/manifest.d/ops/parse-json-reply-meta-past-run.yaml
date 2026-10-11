@@ -1,0 +1,17 @@
+fixtures:
+  - id: ops/parse-json-reply-meta-past-run
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: lydjson_meta_attr walks node->next past the last v instance onto s, so the representation error of the second @v item names s (parser_json.c:791,915)
+    rfc: ["RFC7952#5.2"]
+    areas: [operations]
+    request:
+      op: data
+      searchdirs: [rb.1]
+      modules: [{name: rb}]
+      format: json
+      data_type: reply
+      unknown: reject
+      parse_only: true
+      rpc: "{\"rb:r\":{}}"
+      data: "{\"rb:v\":[1],\"rb:s\":[\"x\"],\"@rb:v\":[null,42]}"
+    golden: golden/ops-parse-json-reply-meta-past-run.json

@@ -1,0 +1,19 @@
+fixtures:
+  - id: ops/diff-merge-json-reply-keep-input
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: lyd_diff_merge_all of the diffs A->B and B->C of replies parsed into their requests with the input kept (the first diff's operation children ordered by the anchor rule), then lyd_diff_apply_all of the merged diff to A
+    rfc: ["RFC7950#7.14"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [rb.1]
+      modules: [{name: rb}]
+      steps:
+        - {"do":"parse","format":"json","data_type":"reply","unknown":"reject","parse_only":true,"keep_input":true,"rpc":"{\"rb:r\":{\"in\":\"a\",\"in2\":\"x\",\"in3\":\"y\",\"in4\":\"z\"}}","data":"{\"rb:v\":[1,2,3,4]}"}
+        - {"do":"diff","format":"json","data_type":"reply","unknown":"reject","parse_only":true,"keep_input":true,"rpc":"{\"rb:r\":{\"in\":\"b\",\"in2\":\"x\",\"in3\":\"y\",\"in4\":\"z\"}}","data":"{}"}
+        - {"do":"parse","format":"json","data_type":"reply","unknown":"reject","parse_only":true,"keep_input":true,"rpc":"{\"rb:r\":{\"in\":\"b\",\"in2\":\"x\",\"in3\":\"y\",\"in4\":\"z\"}}","data":"{}"}
+        - {"do":"diff","format":"json","data_type":"reply","unknown":"reject","parse_only":true,"keep_input":true,"rpc":"{\"rb:r\":{\"in\":\"b\",\"in2\":\"x\",\"in3\":\"y\",\"in4\":\"z\"}}","data":"{\"rb:v\":[5]}","merge":true}
+        - {"do":"parse","format":"json","data_type":"reply","unknown":"reject","parse_only":true,"keep_input":true,"rpc":"{\"rb:r\":{\"in\":\"a\",\"in2\":\"x\",\"in3\":\"y\",\"in4\":\"z\"}}","data":"{\"rb:v\":[1,2,3,4]}"}
+        - {"do":"diff_apply"}
+        - {"do":"dump"}
+    golden: golden/ops-diff-merge-json-reply-keep-input.json

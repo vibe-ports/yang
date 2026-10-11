@@ -1,0 +1,18 @@
+fixtures:
+  - id: ops/parse-json-reply-keep-order-two
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: a reply parsed into its rpc with keep_input, two outputs into two kept inputs: each output goes before the first input
+    rfc: ["RFC7950#7.14"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [rb.1]
+      modules: [{name: rb}]
+      format: json
+      data_type: reply
+      unknown: reject
+      parse_only: true
+      rpc: "{\"rb:r\":{\"in\":\"keep\",\"in2\":\"k2\"}}"
+      keep_input: true
+      data: "{\"rb:before\":\"b\",\"rb:v\":[2,1]}"
+    golden: golden/ops-parse-json-reply-keep-order-two.json

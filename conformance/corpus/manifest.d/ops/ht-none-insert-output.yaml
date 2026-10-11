@@ -1,0 +1,15 @@
+fixtures:
+  - id: ops/ht-none-insert-output
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: lyd_insert_hash and lyd_insert_get_next_anchor without a children hash table
+    rfc: ["RFC7950#7.14"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [rb.1]
+      modules: [{name: rb}]
+      steps:
+        - {do: parse, format: json, data_type: rpc, unknown: reject, parse_only: true, data: '{"rb:r":{"in":"a"}}'}
+        - {do: edit, insert_inner: {module: rb, parent: "/rb:r", name: oc, options: [output]}}
+        - {do: dump}
+    golden: golden/ops-ht-none-insert-output.json

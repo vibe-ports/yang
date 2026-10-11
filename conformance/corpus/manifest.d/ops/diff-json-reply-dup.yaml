@@ -1,0 +1,16 @@
+fixtures:
+  - id: ops/diff-json-reply-dup
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: lyd_diff_siblings and lyd_diff_apply_all on duplicate state leaf-list values in ordinary unsplit RPC replies
+    rfc: ["RFC7950#7.14"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [rb.1]
+      modules: [{name: rb}]
+      steps:
+        - {"do":"parse","format":"json","data_type":"reply","unknown":"reject","parse_only":true,"rpc":"{\"rb:r\":{}}","data":"{\"rb:v\":[1,1,2]}"}
+        - {"do":"diff","format":"json","data_type":"reply","unknown":"reject","parse_only":true,"rpc":"{\"rb:r\":{}}","data":"{\"rb:v\":[1,2,2]}"}
+        - {"do":"diff_apply"}
+        - {"do":"dump"}
+    golden: golden/ops-diff-json-reply-dup.json

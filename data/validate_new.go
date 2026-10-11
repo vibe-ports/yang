@@ -157,15 +157,7 @@ func hasDefault(sn *schema.Node) bool {
 
 // instances returns the instances of sn among sib.
 func (vc *valCtx) instances(sib *siblings, sn *schema.Node) []*Node {
-	i := vc.t.schemaIndex(sib, sn)
-	if i < 0 {
-		return nil
-	}
-	j := i
-	for j < len(sib.list) && sib.list[j].schema == sn {
-		j++
-	}
-	return slices.Clone(sib.list[i:j])
+	return slices.Collect(vc.t.instances(sib, sn))
 }
 
 // autodelLeafListDflt is lyd_validate_autodel_leaflist_dflt: with an explicit instance, every

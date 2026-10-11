@@ -1,0 +1,53 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [
+    {
+      "apptag": null,
+      "code": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "data_path": "/rb:r",
+      "level": "error",
+      "line": 1,
+      "msg": "Node \"bad\" not found as a child of \"r\" node.",
+      "phase": "data",
+      "schema_path": null,
+      "vecode": 4,
+      "vecode_name": "LYVE_REFERENCE"
+    }
+  ],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "rb",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 7,
+    "name": "LY_EVALID"
+  },
+  "request_typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "rpc",
+      "meta": [],
+      "opaque": null,
+      "path": "/rb:r",
+      "schema": "/rb:r",
+      "value": null
+    }
+  ],
+  "tree": null,
+  "verdict": "invalid"
+}

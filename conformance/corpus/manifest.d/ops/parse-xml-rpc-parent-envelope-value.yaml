@@ -1,0 +1,21 @@
+fixtures:
+  - id: ops/parse-xml-rpc-parent-envelope-value
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: a YANG action element with a value under an existing rpc: logged, not a failure
+    rfc: ["RFC7950#7.14"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: xml
+      data_type: rpc
+      unknown: reject
+      parse_only: true
+      rpc: "<r1 xmlns=\"urn:tests:a\"><l1>a</l1></r1>"
+      data: "<action xmlns=\"urn:ietf:params:xml:ns:yang:1\">x</action>"
+    golden: golden/ops-parse-xml-rpc-parent-envelope-value.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.14"]
+      deviation: null

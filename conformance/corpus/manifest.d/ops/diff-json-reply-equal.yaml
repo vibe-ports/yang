@@ -1,0 +1,14 @@
+fixtures:
+  - id: ops/diff-json-reply-equal
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: lyd_diff_siblings on equal, ordinary unsplit RPC reply data
+    rfc: ["RFC7950#7.14"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [rb.1]
+      modules: [{name: rb}]
+      steps:
+        - {"do":"parse","format":"json","data_type":"reply","unknown":"reject","parse_only":true,"rpc":"{\"rb:r\":{}}","data":"{\"rb:before\":\"b\",\"rb:v\":[1,2,3],\"rb:s\":[\"x\",\"y\"],\"rb:oc\":{\"n\":1}}"}
+        - {"do":"diff","format":"json","data_type":"reply","unknown":"reject","parse_only":true,"rpc":"{\"rb:r\":{}}","data":"{\"rb:before\":\"b\",\"rb:v\":[1,2,3],\"rb:s\":[\"x\",\"y\"],\"rb:oc\":{\"n\":1}}"}
+    golden: golden/ops-diff-json-reply-equal.json

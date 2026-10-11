@@ -32,8 +32,10 @@ type DiffOptions struct {
 // replace, none) with yang:orig-value and yang:orig-default on a changed leaf, and the anchors
 // yang:key, yang:value or yang:position (and their orig- counterparts) on a created or moved
 // user-ordered instance. Either tree may be nil or empty (no data). The result is nil when the
-// trees are equal. When both trees contain nodes, they must use the same schema snapshot (D-0069). Errors
-// are a *ValidationError with libyang's diagnostics.
+// trees are equal. When both trees contain nodes, they must use the same schema snapshot (D-0069).
+// Operation data with a child schema run split by another child is refused with LY_EINVAL
+// (D-0116), including when an input node is only a subtree of the operation. Errors are a
+// *ValidationError with libyang's diagnostics.
 func Diff(first, second *Tree, o DiffOptions) (*Tree, error) {
 	var a, b *Node
 	if first != nil {
@@ -47,13 +49,15 @@ func Diff(first, second *Tree, o DiffOptions) (*Tree, error) {
 
 // DiffSiblings is lyd_diff_siblings: the diff of first and the siblings after it with second and
 // the siblings after it (either nil: no nodes), siblings in the same schema parent; see Diff. A
-// list key is an LY_EINVAL error (libyang asserts it is none).
+// list key is an LY_EINVAL error (libyang asserts it is none). Split operation-child runs are
+// refused with LY_EINVAL (D-0116).
 func DiffSiblings(first, second *Node, o DiffOptions) (*Tree, error) {
 	return diffNodes(first, second, o, false, nil, nil)
 }
 
 // DiffTree is lyd_diff_tree: the diff of the subtrees first and second only, without their
-// siblings; see DiffSiblings.
+// siblings; see DiffSiblings. When either subtree is a direct operation child, the complete
+// operation parent's child runs are checked and a split run is refused with LY_EINVAL (D-0116).
 func DiffTree(first, second *Node, o DiffOptions) (*Tree, error) {
 	return diffNodes(first, second, o, true, nil, nil)
 }
@@ -73,6 +77,14 @@ func diffNodes(first, second *Node, o DiffOptions, nosiblings bool, ft, st *Tree
 		set = st.set
 	}
 	lg := &logger{set: set}
+	for _, in := range []struct {
+		first    *Node
+		siblings bool
+	}{{first, !nosiblings}, {second, !nosiblings}} {
+		if split, op := splitOpRun(in.first, in.siblings); split != nil {
+			return nil, splitOpRefusal(lg, split, op, "lyd_diff")
+		}
+	}
 	// D-0069: cross-context matching is not ported yet (#236). Without this refusal the
 	// pointer-based schema matching below treats equal nodes from two snapshots as unmatched and
 	// silently emits create diffs, even for identical trees (df create, foo none), so refuse.
@@ -107,6 +119,96 @@ func diffNodes(first, second *Node, o DiffOptions, nosiblings bool, ft, st *Tree
 	return d, nil
 }
 
+// splitOpRun returns the first child whose schema node reappears after another child, and its
+// rpc or action. It scans each input node once and charges that visit to the node's tree. An
+// operation parent is checked as well because both lyd_diff_siblings and lyd_diff_tree can
+// receive one of its children without receiving the operation node itself.
+func splitOpRun(first *Node, withSiblings bool) (split, op *Node) {
+	if first == nil {
+		return nil, nil
+	}
+	t := treeOf(first)
+	count := func() {
+		if t != nil {
+			t.work.Add(1)
+		}
+	}
+	check := func(n *Node, enqueue func(*Node)) *Node {
+		isOp := n.schema != nil && (n.schema.Kind == schema.RPC || n.schema.Kind == schema.Action)
+		var closed map[*schema.Node]bool
+		if isOp {
+			closed = map[*schema.Node]bool{}
+		}
+		var prev *schema.Node
+		havePrev := false
+		visit := func(c *Node) *Node {
+			count()
+			enqueue(c)
+			if !isOp {
+				return nil
+			}
+			if !havePrev {
+				prev, havePrev = c.schema, true
+				return nil
+			}
+			if c.schema == prev {
+				return nil
+			}
+			if prev != nil {
+				closed[prev] = true
+			}
+			prev = c.schema
+			if c.schema != nil && closed[c.schema] {
+				return c
+			}
+			return nil
+		}
+		for _, c := range n.kids.list {
+			if found := visit(c); found != nil {
+				return found
+			}
+		}
+		for _, c := range n.kids.opq {
+			if found := visit(c); found != nil {
+				return found
+			}
+		}
+		return nil
+	}
+
+	// An input can start at a child of the operation whose complete child list is split. Check
+	// that list even for DiffTree, but enqueue only the nodes that are actually an input.
+	if first.parent != nil && first.parent.schema != nil &&
+		(first.parent.schema.Kind == schema.RPC || first.parent.schema.Kind == schema.Action) {
+		if found := check(first.parent, func(*Node) {}); found != nil {
+			return found, first.parent
+		}
+	}
+
+	queue := fromNode(first)
+	if !withSiblings {
+		queue = []*Node{first}
+	}
+	for range queue {
+		count()
+	}
+	for i := 0; i < len(queue); i++ {
+		n := queue[i]
+		if found := check(n, func(c *Node) { queue = append(queue, c) }); found != nil {
+			return found, n
+		}
+	}
+	return nil, nil
+}
+
+// splitOpRefusal logs D-0116 in the shape of the public diff entry point's other argument
+// errors. The operation path is stable even when the split instance itself has a predicate.
+func splitOpRefusal(lg *logger, split, op *Node, fn string) error {
+	return lg.done(lg.logErr("LY_EINVAL",
+		"Invalid arguments - the instances of \"%s\" in operation \"%s\" are split by its input, a diff of such data is not supported (D-0116) (%s()).",
+		split.Name(), lydPath(lg.set, op, false), fn))
+}
+
 // fromNode is n and the siblings after it, schema nodes then opaque ones; nil for nil.
 func fromNode(n *Node) []*Node {
 	if n == nil {
@@ -128,7 +230,7 @@ func sibsOf(n *Node) *siblings {
 	if sib := n.siblingsOf(); sib != nil {
 		return sib
 	}
-	return &siblings{list: []*Node{n}}
+	return &siblings{nodeDeque: nodeDeque{list: []*Node{n}}}
 }
 
 // firstNoKeys is lyd_child_no_keys: the first child of n that is not a list key, nil if none.

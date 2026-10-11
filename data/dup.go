@@ -194,6 +194,11 @@ func (t *Tree) dupR(n, parent *Node, top bool, order insertOrder, opts dupOpts) 
 		}
 	default: // inner nodes; anydata/anyxml (no value of their own until M5, U-0043) as they are
 		d.value = n.value
+		if opts&dupRecursive != 0 && n.kids.ht != nil && !isAny(d.schema) {
+			// lyd_dup_r (tree_data.c:2300-2305): a recursive copy gets the children table before
+			// its children when the original has one, whatever their number (see siblings.ht)
+			d.kids.ht = map[idxKey][]*Node{}
+		}
 		for _, c := range n.kids.nodes() {
 			if opts&dupRecursive == 0 && (d.schema.Kind != schema.List || d.schema.Keyless() || !c.isKey()) {
 				break // always the keys of a list

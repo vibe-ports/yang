@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: BSD-3-Clause
+module rollback-key {
+  yang-version 1.1;
+  namespace "urn:rollback-key";
+  prefix rk;
+
+  list l {
+    key "k j";
+    leaf k { type string; }
+    leaf j { type string; }
+    action a { input { leaf arg { type string; } } }
+  }
+}

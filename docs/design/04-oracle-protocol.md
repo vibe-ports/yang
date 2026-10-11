@@ -7,7 +7,7 @@ Status: contract for M1-pre. v1 = conformance/oracle/README.md. Every response g
 Request field `unknown`: `reject` (default → `LYD_PARSE_STRICT`), `skip` (no STRICT: unknown
 data silently dropped, libyang default), `opaque` (`LYD_PARSE_OPAQ`: kept as opaque nodes).
 `parse_options` may no longer contain `strict`/`opaq` (request-error) — `unknown` is the only knob.
-Operations (`lyd_parse_op`) accept `reject` and `opaque` only. `opaque` only keeps the nodes:
+Operations (`lyd_parse_op`) take all three: `skip` is parse options 0 there. `opaque` only keeps the nodes:
 libyang validation rejects them (datastore data and operations alike).
 
 ## 2. Typed tree dump (all ops that produce a data tree)
@@ -92,6 +92,13 @@ the diff: `lyd_diff_siblings`/`lyd_diff_tree` of the tree and parsed data, a par
 `lyd_diff_reverse_all`; each reports the register after the call (`diff`, `diff_typed`), so the
 chains of test_diff.c (diff, apply, merge, reverse) run in one request. Step `trim` is
 `lyd_trim_xpath` of the tree (test_xpath.c test_trim). Fields: oracle/README.md.
+A `parse` step may take operation data (`data_type` `rpc`, `reply`, `notif`) with `parse_only`:
+`lyd_parse_op`, a reply with `rpc` (and `keep_input`) parsed into that request, as op `data`
+does; the retained tree is then the operation's tree, so `dup` and `dump` see it (#198:
+ops/dup-json-reply-keep-order-split).
+A `diff` step accepts the same operation parse fields and uses `lyd_parse_op` for its second tree;
+an operation reply may use `rpc` and `keep_input`. A separate `target` context remains limited to
+datastore data.
 
 ## 4a. op `atoms` (M3) — schema atoms of an expression or a path
 `{"op": "atoms", "searchdirs", "modules", "context_options", "xpath" | "path", "context_path",

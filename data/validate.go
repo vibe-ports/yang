@@ -445,22 +445,17 @@ func (vc *valCtx) minmax(parent *Node, sib *siblings, sn *schema.Node) error {
 	lo, hi := sn.Min, sn.Max
 	var count uint32
 	var last *Node
-	if i := vc.t.schemaIndex(sib, sn); i >= 0 {
-		for _, n := range sib.list[i:] {
-			if n.schema != sn {
+	for n := range vc.t.instances(sib, sn) {
+		last = n
+		count++
+		if lo > 0 && count == lo {
+			lo = 0 // satisfied
+			if hi == 0 {
 				break
 			}
-			last = n
-			count++
-			if lo > 0 && count == lo {
-				lo = 0 // satisfied
-				if hi == 0 {
-					break
-				}
-			}
-			if hi > 0 && count > hi {
-				break
-			}
+		}
+		if hi > 0 && count > hi {
+			break
 		}
 	}
 	if lo > 0 && hasWhen(sn) {

@@ -134,14 +134,7 @@ func (vc *valCtx) stop(err error) bool {
 // parent (lys_getnext with no options: choices and cases entered), in schema order.
 func (vc *valCtx) getnextData(sib *siblings, parent *schema.Node, yield func(*Node) bool) {
 	for sn := range schema.GetNext(parent, nil, 0) {
-		i := vc.t.schemaIndex(sib, sn)
-		if i < 0 {
-			continue
-		}
-		for _, n := range sib.list[i:] {
-			if n.schema != sn {
-				break
-			}
+		for n := range vc.t.instances(sib, sn) {
 			if !yield(n) {
 				return
 			}

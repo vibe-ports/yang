@@ -1,0 +1,17 @@
+fixtures:
+  - id: ops/xpath-json-reply-shared-name-union
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: the step v from the reply node (v in both input and output: no schema node) and from c (c/v): eval_name_test_with_predicate_get_scnode keeps the schema node c/v found at the second parent, so the step matches by that schema node
+    rfc: ["XPath1.0#2", "RFC7950#7.14"]
+    areas: [operations]
+    request:
+      op: xpath
+      searchdirs: [rb.1]
+      modules: [{name: rbn}]
+      format: json
+      data_type: reply
+      unknown: reject
+      parse_only: true
+      data: "{\"rbn:r3\":{\"v\":\"ok\",\"c\":{\"v\":\"x\"}}}"
+      xpath: "(/rbn:r3 | /rbn:r3/c)/v"
+    golden: golden/ops-xpath-json-reply-shared-name-union.json

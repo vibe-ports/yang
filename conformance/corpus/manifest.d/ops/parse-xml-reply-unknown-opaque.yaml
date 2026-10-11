@@ -1,0 +1,20 @@
+fixtures:
+  - id: ops/parse-xml-reply-unknown-opaque
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: an unknown output node, unknown: opaque
+    rfc: ["RFC7950#7.14"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: xml
+      data_type: reply
+      unknown: opaque
+      parse_only: true
+      data: "<c xmlns=\"urn:tests:a\"><act><al>25</al><zz>q</zz></act></c>"
+    golden: golden/ops-parse-xml-reply-unknown-opaque.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.14"]
+      deviation: null

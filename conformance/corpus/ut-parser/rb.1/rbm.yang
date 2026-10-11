@@ -1,0 +1,15 @@
+module rbm {
+  yang-version 1.1;
+  namespace "urn:rbm";
+  prefix rm;
+
+  rpc r2 {
+    input {
+      leaf v { type string; }
+    }
+    output {
+      must "v = 'ok'";
+      leaf v { type string; }
+    }
+  }
+}

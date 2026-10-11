@@ -1,0 +1,16 @@
+fixtures:
+  - id: ops/parse-json-rpc-augment
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: an input leaf augmented from another module: its owner module is the rpc's, so it goes by the input order
+    rfc: ["RFC7950#7.14", "RFC7950#7.17"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [rb.1]
+      modules: [{name: rb}, {name: rbaug}]
+      format: json
+      data_type: rpc
+      unknown: reject
+      parse_only: true
+      data: "{\"rb:r\":{\"in\":\"x\",\"rbaug:y\":\"y\"}}"
+    golden: golden/ops-parse-json-rpc-augment.json

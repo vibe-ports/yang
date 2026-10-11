@@ -1,0 +1,16 @@
+fixtures:
+  - id: ops/find-json-reply-split-position
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: positional paths into an output leaf-list split around the kept input ([before, v1, v2, in, v3]); lyd_find_path walks a position with LYD_LIST_FOR_INST (path.c), so v[2] is found and v[3] is not
+    rfc: ["RFC7950#7.14"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [rb.1]
+      modules: [{name: rbs}]
+      steps:
+        - {do: parse, format: json, data_type: reply, unknown: reject, parse_only: true, keep_input: true, rpc: '{"rbs:r4":{"in":"keep"}}', data: '{"rbs:before":"b","rbs:v":[1,2,3]}'}
+        - {do: edit, delete: "/rbs:r4/v[3]"}
+        - {do: edit, delete: "/rbs:r4/v[2]"}
+        - {do: dump}
+    golden: golden/ops-find-json-reply-split-position.json

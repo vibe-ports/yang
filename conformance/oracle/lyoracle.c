@@ -1187,6 +1187,8 @@ struct dparams {
     uint32_t popts, vopts;
     int parse_only;
     struct lyd_node *oper;  /* external operational tree for operations */
+    int keep_input;         /* rpc kept with its parsed children (keep_input) */
+    const char *rpc_parent; /* optional parent path in the parsed request tree */
 };
 
 static LYD_FORMAT
@@ -1215,6 +1217,8 @@ dparams_of(const cJSON *req, struct dparams *p)
     p->vopts = LYD_VALIDATE_MULTI_ERROR;
     p->optype = LYD_TYPE_DATA_YANG;
     p->parse_only = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(req, "parse_only"));
+    p->keep_input = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(req, "keep_input"));
+    p->rpc_parent = str_of(req, "rpc_parent");
 
     if (!strcmp(p->type, "config")) {
         p->popts |= LYD_PARSE_NO_STATE;
@@ -1239,9 +1243,6 @@ dparams_of(const cJSON *req, struct dparams *p)
     if (p->parse_only) {
         p->popts |= LYD_PARSE_ONLY;
     }
-    if ((p->optype != LYD_TYPE_DATA_YANG) && u && !strcmp(u, "skip")) {
-        die("unknown \"skip\" is not supported for operations%s", NULL);
-    }
     extra = flags_of(req, "parse_options", parse_flags);
     if (extra & (LYD_PARSE_STRICT | LYD_PARSE_OPAQ)) {
         die("parse_options strict/opaq are replaced by \"unknown\"%s", NULL);
@@ -1254,6 +1255,9 @@ dparams_of(const cJSON *req, struct dparams *p)
  * Parse (and unless parse-only, validate) one input. Returns rc; *tree is the top-level tree
  * (NULL on failure). For "reply", rpc_src is the request whose output is being parsed.
  */
+/* the request's tree after a failed reply parsed into it (what lyd_parse_op's cleanup left) */
+static cJSON *req_typed;
+
 static LY_ERR
 parse_one(struct ly_ctx *ctx, const struct dparams *p, const char *data, const char *rpc_src,
         struct lyd_node **tree, cJSON *diag, const char *phase)
@@ -1263,6 +1267,9 @@ parse_one(struct ly_ctx *ctx, const struct dparams *p, const char *data, const c
     LY_ERR rc;
 
     *tree = NULL;
+    if (p->rpc_parent && (!rpc_src || !p->keep_input || (p->optype != LYD_TYPE_RPC_YANG))) {
+        die("rpc_parent requires data_type rpc, rpc, and keep_input true%s", NULL);
+    }
     ly_in_new_memory(data, &in);
     if (p->optype == LYD_TYPE_DATA_YANG) {
         rc = lyd_parse_data(ctx, NULL, in, p->fmt, p->popts, p->popts & LYD_PARSE_ONLY ? 0 : p->vopts, tree);
@@ -1270,7 +1277,7 @@ parse_one(struct ly_ctx *ctx, const struct dparams *p, const char *data, const c
     }
 
     /* operations: lyd_parse_op accepts only STRICT/OPAQ */
-    if ((p->optype == LYD_TYPE_REPLY_YANG) && rpc_src) {
+    if (((p->optype == LYD_TYPE_REPLY_YANG) || (p->optype == LYD_TYPE_RPC_YANG)) && rpc_src) {
         struct ly_in *rin = NULL;
 
         ly_in_new_memory(rpc_src, &rin);
@@ -1281,9 +1288,20 @@ parse_one(struct ly_ctx *ctx, const struct dparams *p, const char *data, const c
         if (rc) {
             goto done;
         }
-        lyd_free_siblings(lyd_child(op));
-        rc = lyd_parse_op(ctx, op, in, p->fmt, LYD_TYPE_REPLY_YANG, p->popts & (LYD_PARSE_STRICT | LYD_PARSE_OPAQ),
+        if (!p->keep_input) {
+            lyd_free_siblings(lyd_child(op));
+        }
+        /* A selected request ancestor allows cleanup probes under a keyed list parent. */
+        struct lyd_node *parent = op;
+        if (p->rpc_parent && (lyd_find_path(*tree, p->rpc_parent, 0, &parent) || !parent)) {
+            die("rpc_parent %s not found", p->rpc_parent);
+        }
+        /* the reply, or (data_type rpc) the input again, parsed under the request */
+        rc = lyd_parse_op(ctx, parent, in, p->fmt, p->optype, p->popts & (LYD_PARSE_STRICT | LYD_PARSE_OPAQ),
                 NULL, NULL);
+        if (rc) {
+            req_typed = typed_json(*tree);
+        }
     } else {
         rc = lyd_parse_op(ctx, NULL, in, p->fmt, p->optype, p->popts & (LYD_PARSE_STRICT | LYD_PARSE_OPAQ), tree, &op);
     }
@@ -1431,6 +1449,9 @@ op_data(const cJSON *req)
         }
     } else {
         cJSON_AddNullToObject(resp, "tree");
+    }
+    if (req_typed) {
+        cJSON_AddItemToObject(resp, "request_typed", req_typed);
     }
 }
 
@@ -1661,7 +1682,7 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
         die("step without \"do\"%s", NULL);
     }
     keys_only(step, !strcmp(what, "parse") ? "do format data_type data data_file unknown parse_only "
-            "parse_options validate_options" : !strcmp(what, "validate") ? "do data_type validate_options module final_only" :
+            "parse_options validate_options rpc keep_input" : !strcmp(what, "validate") ? "do data_type validate_options module final_only" :
             !strcmp(what, "edit") ? "do merge merge_file set delete insert_term insert_inner insert_list insert_list2 "
             "insert_opaq new_meta free_meta format data_type unknown parse_options" :
             !strcmp(what, "change_term") ? "do node value canon" :
@@ -1671,7 +1692,7 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
             !strcmp(what, "compare") ? "do format data_type data data_file unknown parse_only parse_options "
             "validate_options first second options" :
             !strcmp(what, "diff") ? "do format data_type data data_file unknown parse_only parse_options validate_options "
-            "node data_node single options merge merge_options target" :
+            "rpc keep_input node data_node single options merge merge_options target" :
             !strcmp(what, "diff_parse") ? "do format data_type data data_file unknown parse_options" :
             !strcmp(what, "diff_merge") ? "do format data_type data data_file unknown parse_options options module "
             "src_node parent" :
@@ -1693,8 +1714,12 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
     }
     if (!strcmp(what, "parse")) {
         dparams_of(step, &p);
-        if (p.optype != LYD_TYPE_DATA_YANG) {
-            die("sequence supports datastore data types only%s", NULL);
+        if ((p.optype != LYD_TYPE_DATA_YANG) && !p.parse_only) {
+            /* an operation is parsed only: ValidateOp is a step of its own (none yet) */
+            die("sequence parses operation data with parse_only only%s", NULL);
+        }
+        if (input_of(step, "rpc") && (p.optype != LYD_TYPE_REPLY_YANG)) {
+            die("parse step: rpc only with data_type reply%s", NULL);
         }
         if (!input_of(step, "data")) {
             die("parse step needs data%s", NULL);
@@ -1860,7 +1885,7 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
         const cJSON *b;
 
         dparams_of(step, &p);
-        if (p.optype != LYD_TYPE_DATA_YANG) {
+        if (strcmp(what, "diff") && (p.optype != LYD_TYPE_DATA_YANG)) {
             die("sequence supports datastore data types only%s", NULL);
         }
         if (strcmp(what, "diff") && !input_of(step, "data")) {
@@ -1868,6 +1893,19 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
         }
         if (!strcmp(what, "diff")) {
             const cJSON *target = cJSON_GetObjectItemCaseSensitive(step, "target");
+            const cJSON *keep_input = cJSON_GetObjectItemCaseSensitive(step, "keep_input");
+            const char *rpc = input_of(step, "rpc");
+
+            if ((p.optype != LYD_TYPE_DATA_YANG) && !p.parse_only) {
+                /* an operation is parsed only: ValidateOp is a step of its own (none yet) */
+                die("sequence diffs operation data with parse_only only%s", NULL);
+            }
+            if (rpc && (p.optype != LYD_TYPE_REPLY_YANG)) {
+                die("diff step: rpc only with data_type reply%s", NULL);
+            }
+            if (keep_input && !rpc) {
+                die("diff step: keep_input only with rpc%s", NULL);
+            }
 
             flags_of(step, "options", diff_flags);
             flags_of(step, "merge_options", diff_merge_flags);
@@ -1876,6 +1914,9 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
             if (target) {
                 if (!cJSON_IsObject(target)) {
                     die("diff target must be a context object%s", NULL);
+                }
+                if (p.optype != LYD_TYPE_DATA_YANG) {
+                    die("diff target with operation data%s", NULL);
                 }
                 if (!input_of(step, "data")) {
                     die("diff target needs data%s", NULL);
@@ -2063,7 +2104,8 @@ step_parse(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON 
     LY_ERR rc;
 
     dparams_of(step, &p);
-    rc = parse_one(ctx, &p, input_of(step, "data"), NULL, &t, diag, "parse");
+    /* operation data: lyd_parse_op, a reply into its "rpc" request (parse_one) */
+    rc = parse_one(ctx, &p, input_of(step, "data"), input_of(step, "rpc"), &t, diag, "parse");
     if (!rc) {
         lyd_free_all(*tree);
         *tree = t;
@@ -2288,9 +2330,10 @@ step_diff(struct ly_ctx *ctx, const cJSON *step, struct lyd_node *tree, struct l
             }
         }
         dparams_of(step, &p);
-        rc = parse_one(second_ctx, &p, data, NULL, &second, diag, "parse");
+        /* operation data: lyd_parse_op, a reply into its "rpc" request (parse_one) */
+        rc = parse_one(second_ctx, &p, data, input_of(step, "rpc"), &second, diag, "parse");
         if (rc) {
-            return rc;
+            goto cleanup;
         }
     }
     snode = dpath ? node_at(second, dpath, "diff data_node %s not found") : second;
@@ -2312,6 +2355,7 @@ step_diff(struct ly_ctx *ctx, const cJSON *step, struct lyd_node *tree, struct l
         lyd_free_all(*diff);
         *diff = res;
     }
+cleanup:
     lyd_free_all(second);
     /* A retained diff may use second_ctx; like op_sequence's primary context, keep it until exit. */
     return rc;

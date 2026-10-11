@@ -581,7 +581,14 @@ func (vc *valCtx) pathEval(p types.Path) *Node {
 			case types.PredPosition:
 				// the instance at that position; a position beyond the instances (strtoull
 				// saturates huge numbers, as ParseUint does) selects nothing
-				if i := vc.t.schemaIndex(sib, seg.Node); i >= 0 && pr.Position > 0 && pr.Position <= uint64(len(sib.list)-i) { //nolint:gosec // i < len
+				if opChild(seg.Node) {
+					run := vc.t.opRun(sib, seg.Node)
+					if pr.Position > 0 && pr.Position <= uint64(len(run)) {
+						node = run[pr.Position-1]
+					}
+				} else if i := vc.t.schemaIndex(sib, seg.Node); i >= 0 && pr.Position > 0 && pr.Position <= uint64(len(sib.list)-i) { //nolint:gosec // i < len
+					// A positional predicate needs the slot; non-operation schemaIndex is
+					// logarithmic, followed by this constant-time instance check.
 					if c := sib.list[i+int(pr.Position)-1]; c.schema == seg.Node { //nolint:gosec // bounded above
 						node = c
 					}

@@ -1,0 +1,17 @@
+fixtures:
+  - id: ops/xpath-json-reply-shared-name
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: XPath over a reply whose output leaf v shares its name with an input leaf (eval_name_test_with_predicate_get_scnode gives up the schema lookup and matches by name)
+    rfc: ["XPath1.0#2", "RFC7950#7.14"]
+    areas: [operations]
+    request:
+      op: xpath
+      searchdirs: [rb.1]
+      modules: [{name: rbm}]
+      format: json
+      data_type: reply
+      unknown: reject
+      parse_only: true
+      data: "{\"rbm:r2\":{\"v\":\"ok\"}}"
+      xpath: "/rbm:r2/v"
+    golden: golden/ops-xpath-json-reply-shared-name.json

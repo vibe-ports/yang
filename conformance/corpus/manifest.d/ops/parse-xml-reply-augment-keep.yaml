@@ -1,0 +1,18 @@
+fixtures:
+  - id: ops/parse-xml-reply-augment-keep
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: output parameters, one augmented, into a kept input with an augmented leaf, XML
+    rfc: ["RFC7950#7.14", "RFC7950#7.17"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [rb.1]
+      modules: [{name: rb}, {name: rbaug}]
+      format: xml
+      data_type: reply
+      unknown: reject
+      parse_only: true
+      rpc: "<r xmlns=\"urn:rb\"><in>x</in><y xmlns=\"urn:rbaug\">y</y></r>"
+      keep_input: true
+      data: "<z xmlns=\"urn:rbaug\">z</z><oc xmlns=\"urn:rb\"><n>1</n></oc>"
+    golden: golden/ops-parse-xml-reply-augment-keep.json

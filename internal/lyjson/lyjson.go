@@ -128,6 +128,10 @@ func (l *Lexer) Line() uint64 { return l.line }
 // Offset is the number of input bytes consumed so far.
 func (l *Lexer) Offset() int { return l.pos }
 
+// AtEnd reports whether the input is consumed: the next byte is the end of the input or the NUL
+// that ends it (libyang tests in->current[0]).
+func (l *Lexer) AtEnd() bool { return l.pos >= len(l.in) }
+
 // AfterString is what a C "%.<n>s" of the end of the last string value reads: libyang's value
 // points into the input when the string had no escapes, so the input from its closing quote on,
 // else at the end of a NUL-terminated copy, "".

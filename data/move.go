@@ -343,6 +343,7 @@ func (t *Tree) merge(parent *Node, dst *siblings, src *Tree, run []*Node) {
 	take(src, run)
 	if len(members) > 0 && !dst.rbTree[s] {
 		// lyds_merge_nodes2_front/_among/_back: a stable merge, source first on equal values
+		// Splice needs positions; its sibling copy already bounds this scan.
 		lo := t.schemaIndex(dst, s)
 		hi := lo
 		for hi < len(dst.list) && dst.list[hi].schema == s {
@@ -355,6 +356,7 @@ func (t *Tree) merge(parent *Node, dst *siblings, src *Tree, run []*Node) {
 	}
 	if len(members) > 1 && !dst.unsorted[s] {
 		// lyds_merge_nodes3 into a sorted run: one pass, each after the equal values
+		// Splice needs positions; its sibling copy already bounds this scan.
 		lo := t.schemaIndex(dst, s)
 		hi := lo
 		for hi < len(dst.list) && dst.list[hi].schema == s {

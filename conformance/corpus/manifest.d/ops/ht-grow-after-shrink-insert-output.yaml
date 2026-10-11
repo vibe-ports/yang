@@ -1,0 +1,19 @@
+fixtures:
+  - id: ops/ht-grow-after-shrink-insert-output
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: lyd_insert_hash, lyd_unlink_hash, and lyd_insert_get_next_anchor after a shrunk hashed parent grows again
+    rfc: ["RFC7950#7.14"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [rb.1]
+      modules: [{name: rb}]
+      steps:
+        - {do: parse, format: json, data_type: rpc, unknown: reject, parse_only: true, data: '{"rb:r":{"in":"a","in2":"b","in3":"c","in4":"d"}}'}
+        - {do: edit, delete: "/rb:r/in2"}
+        - {do: edit, delete: "/rb:r/in3"}
+        - {do: edit, delete: "/rb:r/in4"}
+        - {do: edit, insert_term: {module: rb, parent: "/rb:r", name: in2, value: "x"}}
+        - {do: edit, insert_inner: {module: rb, parent: "/rb:r", name: oc, options: [output]}}
+        - {do: dump}
+    golden: golden/ops-ht-grow-after-shrink-insert-output.json

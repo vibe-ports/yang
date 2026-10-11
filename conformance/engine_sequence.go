@@ -30,7 +30,7 @@ var seqKeys = map[string]map[string]bool{
 	"compare": set("do", "format", "data_type", "data", "data_file", "unknown", "parse_only", "parse_options",
 		"validate_options", "first", "second", "options"),
 	"diff": set("do", "format", "data_type", "data", "data_file", "unknown", "parse_only", "parse_options",
-		"validate_options", "node", "data_node", "single", "options", "merge", "merge_options", "target"),
+		"validate_options", "rpc", "keep_input", "node", "data_node", "single", "options", "merge", "merge_options", "target"),
 	"diff_parse":   set("do", "format", "data_type", "data", "data_file", "unknown", "parse_options"),
 	"diff_merge":   set("do", "format", "data_type", "data", "data_file", "unknown", "parse_options", "options", "module", "src_node", "parent"),
 	"diff_apply":   set("do", "module"),

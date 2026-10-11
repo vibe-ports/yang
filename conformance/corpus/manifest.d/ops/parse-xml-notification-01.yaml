@@ -1,0 +1,20 @@
+fixtures:
+  - id: ops/parse-xml-notification-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_notification:565; parse only (lyd_parse_op)
+    rfc: ["RFC7950#7.16"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: xml
+      data_type: notif
+      unknown: reject
+      parse_only: true
+      data: "<c xmlns=\"urn:tests:a\">\n  <n1>\n    <nl>value</nl>\n  </n1>\n</c>\n"
+    golden: golden/ops-parse-xml-notification-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.16"]
+      deviation: null

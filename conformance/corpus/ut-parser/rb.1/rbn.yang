@@ -1,0 +1,17 @@
+module rbn {
+  yang-version 1.1;
+  namespace "urn:rbn";
+  prefix rn;
+
+  rpc r3 {
+    input {
+      leaf v { type string; }
+    }
+    output {
+      leaf v { type string; }
+      container c {
+        leaf v { type string; }
+      }
+    }
+  }
+}

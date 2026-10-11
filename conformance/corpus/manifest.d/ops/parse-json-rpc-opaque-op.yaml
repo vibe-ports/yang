@@ -1,0 +1,20 @@
+fixtures:
+  - id: ops/parse-json-rpc-opaque-op
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: an rpc given a string value, unknown opaque
+    rfc: ["RFC7950#7.14"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: json
+      data_type: rpc
+      unknown: opaque
+      parse_only: true
+      data: "{\"a:r1\":\"x\"}"
+    golden: golden/ops-parse-json-rpc-opaque-op.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.14"]
+      deviation: null

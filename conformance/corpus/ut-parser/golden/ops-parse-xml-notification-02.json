@@ -1,0 +1,40 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"a:n2\": {}\n}\n",
+    "xml": "<n2 xmlns=\"urn:tests:a\"/>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "notif",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:n2",
+      "schema": "/a:n2",
+      "value": null
+    }
+  ],
+  "verdict": "valid"
+}
