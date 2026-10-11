@@ -1,0 +1,9 @@
+fixtures:
+  # a nested node of a second tree into an empty tree: lyd_insert_sibling checks no schema without a sibling (design 07 §6.1.2, Tree.Insert)
+  - id: seq/insert-nested-into-empty
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang API (lyd_insert_child, lyd_insert_sibling): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["schemas"], "modules": [{"name": "pv2-edit"}], "steps": [{"do": "insert", "node": "/pv2-edit:c/a", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"pv2-edit:c\": {\"a\": \"y\"}}"}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/seq-insert-nested-into-empty.json

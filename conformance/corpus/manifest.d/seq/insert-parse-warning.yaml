@@ -1,0 +1,9 @@
+fixtures:
+  # the second tree's parse warns (a duplicate leaf-list instance under operational validation); its warning precedes the insert (design 07 §6.1.2, Tree.Insert)
+  - id: seq/insert-parse-warning
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang API (lyd_insert_child, lyd_insert_sibling): no RFC behaviour
+    areas: [operations]
+    request: {"op": "sequence", "searchdirs": ["schemas"], "modules": [{"name": "pv2-edit"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "insert", "format": "json", "data_type": "data", "validate_options": ["operational"], "data": "{\"pv2-edit:c\": {\"ll\": [\"a\", \"a\"]}}"}, {"do": "dump", "with_defaults": "all-tagged"}]}
+    golden: golden/seq-insert-parse-warning.json
