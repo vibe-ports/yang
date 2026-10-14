@@ -52,7 +52,8 @@ type MergeDiffOptions struct {
 // Workaround: keep the original tree and diff it against the final one instead of merging the
 // intermediate diffs: Diff(first, last, DiffOptions{Defaults: true}), with Defaults for the reason
 // given at ReverseDiff. An operation's children in a diff tree may be split by schema-anchor
-// insertion; MergeDiff accepts that order, as libyang does.
+// insertion; MergeDiff accepts that order, as libyang does. A source containing any node from
+// another schema context is refused before t is changed (D-0122).
 func (t *Tree) MergeDiff(src *Tree, o MergeDiffOptions) error {
 	lg := &logger{set: t.set}
 	if src == nil {
@@ -71,7 +72,8 @@ func (t *Tree) MergeDiff(src *Tree, o MergeDiffOptions) error {
 // under parent, a node of t (nil: the top level of t; another tree's node is LY_EINVAL); see
 // MergeDiff, whose limitations for user-ordered instances apply here too. A nil src normally
 // merges nothing. Operation-child runs in either diff may be split by schema-anchor insertion
-// and are accepted in that stored order, as in libyang.
+// and are accepted in that stored order, as in libyang. A source subtree containing any node
+// from another schema context is refused before t is changed (D-0122).
 func (t *Tree) MergeDiffTree(parent, src *Node, o MergeDiffOptions) error {
 	lg := &logger{set: t.set}
 	if src == nil {
@@ -79,6 +81,13 @@ func (t *Tree) MergeDiffTree(parent, src *Node, o MergeDiffOptions) error {
 	}
 	if parent != nil && treeOf(parent) != t {
 		return diffDone(lg, argErr("parent (not a node of the diff)", "lyd_diff_merge_tree"))
+	}
+	source := treeOf(src)
+	if source == nil {
+		source = &Tree{}
+	}
+	if source.hasForeignDiffContext([]*Node{src}, t.set) {
+		return diffDone(lg, foreignDiffContextErr())
 	}
 	err := t.diffMergeR(src, parent, &dupCache{}, mergeOpts{defaults: o.Defaults, cb: o.Callback})
 	return diffDone(lg, err)

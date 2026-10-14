@@ -1,0 +1,196 @@
+{
+  "context_diagnostics": [],
+  "failed_step": 2,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "diff-cross-context-apply-create",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 3,
+    "name": "LY_EINVAL"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-apply-create:parent",
+          "schema": "/diff-cross-context-apply-create:parent",
+          "value": null
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"diff-cross-context-apply-create:parent\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"child\": \"new\",\n    \"@child\": {\n      \"yang:operation\": \"create\"\n    }\n  }\n}\n",
+        "xml": "<parent xmlns=\"urn:vibe-ports:yang:diff-cross-context-apply-create\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <child yang:operation=\"create\">new</child>\n</parent>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-cross-context-apply-create:parent",
+          "schema": "/diff-cross-context-apply-create:parent",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-cross-context-apply-create:parent/child",
+          "schema": "/diff-cross-context-apply-create:parent/child",
+          "value": {
+            "canonical": "new",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-apply-create:parent",
+          "schema": "/diff-cross-context-apply-create:parent",
+          "value": null
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"diff-cross-context-apply-create:parent\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"child\": \"new\",\n    \"@child\": {\n      \"yang:operation\": \"create\"\n    }\n  }\n}\n",
+        "xml": "<parent xmlns=\"urn:vibe-ports:yang:diff-cross-context-apply-create\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <child yang:operation=\"create\">new</child>\n</parent>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-cross-context-apply-create:parent",
+          "schema": "/diff-cross-context-apply-create:parent",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-cross-context-apply-create:parent/child",
+          "schema": "/diff-cross-context-apply-create:parent/child",
+          "value": {
+            "canonical": "new",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff_apply",
+      "rc": {
+        "err": 3,
+        "name": "LY_EINVAL"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-apply-create:parent",
+          "schema": "/diff-cross-context-apply-create:parent",
+          "value": null
+        }
+      ]
+    }
+  ],
+  "verdict": "invalid"
+}

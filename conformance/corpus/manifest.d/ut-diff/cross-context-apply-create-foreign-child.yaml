@@ -1,0 +1,25 @@
+fixtures:
+  - id: ut-diff/cross-context-apply-create-foreign-child
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # src/diff.c:1865-1877 calls lyd_dup_single then lyd_insert_child; src/tree_data.c:2510-2518 keeps the diff node's context, and 1073-1081,1095-1101 rejects its foreign schema-parent pointer with LY_EINVAL
+    rfc: []   # libyang cross-context diff-apply mechanics, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas/cross-context-apply-create]
+      modules: [{name: diff-cross-context-apply-create}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<parent xmlns="urn:vibe-ports:yang:diff-cross-context-apply-create"/>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<parent xmlns="urn:vibe-ports:yang:diff-cross-context-apply-create"><child>new</child></parent>'
+          target: {searchdirs: [schemas/cross-context-apply-create], modules: [{name: diff-cross-context-apply-create}]}
+        - {do: diff_apply}
+    golden: golden/cross-context-apply-create-foreign-child.json
+    assert:
+      verdict: invalid
+      rc: LY_EINVAL
+      diagnostics: [{level: error, vecode_name: LYVE_SUCCESS}]
+      deviation: "D-0122"

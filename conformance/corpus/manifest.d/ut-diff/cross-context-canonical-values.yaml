@@ -1,0 +1,19 @@
+fixtures:
+  - id: ut-diff/cross-context-canonical-values
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang cross-context canonical-value matching, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: diff-cross-context}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context" xmlns:d="urn:vibe-ports:yang:diff-cross-context"><identity>derived</identity><identities>derived</identities><instance>/d:top/d:x/d:x/d:a</instance><instances>/d:top/d:x/d:x/d:b</instances></top>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context" xmlns:d="urn:vibe-ports:yang:diff-cross-context"><identity>derived</identity><identities>derived</identities><instance>/d:top/d:x/d:x/d:a</instance><instances>/d:top/d:x/d:x/d:b</instances></top>'
+          target: {searchdirs: [schemas], modules: [{name: diff-cross-context}]}
+    golden: golden/cross-context-canonical-values.json

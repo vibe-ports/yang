@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Ported from libyang v5.8.6 src/tree_data.c (lyd_find_sibling_first, lyd_find_sibling_schema,
-// lyd_compare_single, lyd_compare_single_value, lyd_compare_siblings_) and src/tree_data_hash.c
-// (lyd_hash, lyd_insert_hash, lyd_unlink_hash, lyd_hash_table_val_equal) (BSD-3-Clause,
-// © CESNET).
+// lyd_compare_single, lyd_compare_single_value, lyd_compare_siblings_), src/tree_data_hash.c
+// (lyd_hash, lyd_insert_hash, lyd_unlink_hash, lyd_hash_table_val_equal), and
+// src/plugins_types/integer.c (lyplg_type_print_u_int), and src/plugins_types/union.c
+// (lyplg_type_print_union) (BSD-3-Clause, © CESNET).
 
 package data
 
@@ -12,7 +13,6 @@ import (
 	"strings"
 
 	"github.com/vibe-ports/yang/internal/schema"
-	"github.com/vibe-ports/yang/internal/types"
 )
 
 // htMinItems is LYD_HT_MIN_ITEMS: an inner node gets its children hash table once it has this
@@ -228,22 +228,41 @@ func isDupInstList(s *schema.Node) bool {
 	return s != nil && s.IsDupInstList()
 }
 
-// findFirst is lyd_find_sibling_first. With a children hash table: the first record of the
-// target's bucket that lyd_hash_table_val_equal accepts (instances by their keys or value,
-// anything else by schema node alone), in table insertion order; dup-inst lists are scanned from
-// their first instance comparing whole subtrees. Without a table: the first sibling equal to the
-// target (lyd_compare_single, whole subtrees for dup-inst lists).
+// findFirst is lyd_find_sibling_first. A target from another context keeps its original values and
+// subtree; only its schema is mapped to the siblings' context for indexed lookup. With a children
+// hash table: the first record of the target's bucket that lyd_hash_table_val_equal accepts
+// (instances by their keys or value, anything else by schema node alone), in table insertion
+// order; dup-inst lists are scanned from their first instance comparing whole subtrees. Without a
+// table: the first sibling equal to the target (lyd_compare_single, whole subtrees for dup-inst
+// lists).
 // ponytail: keyless lists compare whole subtrees per instance (O(n·subtree), libyang parity);
 // parsers and validation never search them, Merge/diff must run under a step budget.
 func (t *Tree) findFirst(s *siblings, target *Node) *Node {
 	if s.len() == 0 {
 		return nil
 	}
-	if len(s.list) > 0 && target.schema != nil &&
-		!compareSchemaEqual(s.list[0].schema.DataParent(), target.schema.DataParent(), true) {
-		return nil // schema mismatch
+	var first *Node
+	if len(s.list) > 0 {
+		first = s.list[0]
+	} else {
+		first = s.opq[0]
 	}
-	dup := isDupInstList(target.schema)
+	cross := !sameSet(setOf(first), setOf(target))
+	lookupSchema := target.schema
+	if cross && target.schema != nil {
+		var err error
+		lookupSchema, err = findSchemaCtx(target.schema, setOf(first), first.parent)
+		if err != nil {
+			return nil
+		}
+	}
+	if len(s.list) > 0 && target.schema != nil {
+		a, b := s.list[0].schema.DataParent(), target.schema.DataParent()
+		if (!cross && a != b) || (cross && !diffSchemaEqual(a, b)) {
+			return nil // schema mismatch
+		}
+	}
+	dup := isDupInstList(lookupSchema)
 	if target.schema != nil && s.ht != nil {
 		if len(s.list) == 0 {
 			// a table kept after its schema children left (lyd_unlink_hash never frees it) or
@@ -251,17 +270,8 @@ func (t *Tree) findFirst(s *siblings, target *Node) *Node {
 			// (tree_data.c:3210-3237)
 			return nil
 		}
-		// the target's schema node in the siblings' context (libyang hashes module and node
-		// names, so a target of another context finds its instances)
-		sn := target.schema
-		if first := s.list[0]; !sameSet(setOf(first), setOf(target)) {
-			var err error
-			if sn, err = findSchemaCtx(target.schema, setOf(first), first.parent); err != nil {
-				return nil
-			}
-		}
 		if dup {
-			for n := range t.instances(s, sn) {
+			for n := range t.instances(s, lookupSchema) {
 				s.visit()
 				if compareSingle(t, n, target, true) {
 					return n
@@ -273,7 +283,7 @@ func (t *Tree) findFirst(s *siblings, target *Node) *Node {
 		if !ok {
 			return nil
 		}
-		k.s = sn
+		k.s = lookupSchema
 		for _, n := range s.ht[k] {
 			s.visit()
 			if htValEqual(t, n, target) {
@@ -296,35 +306,33 @@ func htValEqual(t *Tree, a, b *Node) bool {
 	if a.schema.Kind == schema.List || a.schema.Kind == schema.LeafList {
 		return compareSingle(t, a, b, false)
 	}
-	return compareSchemaEqual(a.schema, b.schema, true)
+	return compareSingleSchema(a, b, false, false)
 }
 
-// hashEqual is the hash comparison of lyd_compare_single_data: lyd_hash covers the schema node
-// and the LYB form of a leaf-list value or of the list keys, which types.Equal stands for; values
-// of two contexts (types of different sets) by their canonical text, which lyd_hash hashes.
-func hashEqual(a, b *Node) bool {
-	eq := func(x, y types.Value) bool {
-		if x.Type() != y.Type() {
-			return x.Canonical() == y.Canonical()
-		}
-		return types.Equal(x, y)
+// canonicalStoredValue is lyd_get_value for a stored schema value. In particular, it retains
+// module names in identityrefs and instance-identifiers; local JSON spelling is not comparable
+// across contexts.
+func canonicalStoredValue(n *Node) string {
+	if n.schema == nil {
+		return n.Value()
 	}
-	switch {
-	case a.schema == nil:
-		return true // opaque nodes are not hashed
-	case a.schema.Kind == schema.LeafList:
-		return eq(a.value, b.value)
-	case a.schema.Kind == schema.List && !a.schema.Keyless():
-		for i := range a.schema.Keys {
-			if i >= len(a.kids.list) || i >= len(b.kids.list) {
-				return len(a.kids.list) == len(b.kids.list)
-			}
-			if !eq(a.kids.list[i].value, b.kids.list[i].value) {
-				return false
-			}
-		}
+	return n.value.Canonical()
+}
+
+// hashEqual is the 32-bit node-hash comparison of lyd_compare_single_data. Equal hashes are only
+// a gate: compareSingleData still compares canonical values explicitly because collisions are
+// permitted by libyang.
+func hashEqual(t *Tree, a, b *Node) bool {
+	if lydHashInputsEqual(t, a, b) {
+		return true
 	}
-	return true
+	return differingHashInputsEqual(t, a, b)
+}
+
+func differingHashInputsEqual(t *Tree, a, b *Node) bool {
+	ah, aok := lydHash(t, a)
+	bh, bok := lydHash(t, b)
+	return aok && bok && ah == bh
 }
 
 // compareSingle is lyd_compare_single; full is LYD_COMPARE_FULL_RECURSION (Node.Equal for all
@@ -337,54 +345,75 @@ func compareSingle(t *Tree, a, b *Node, full bool) bool {
 // lyd_compare_single_data. Values compare by canonical text (lyd_compare_single_value: a plain
 // leaf's union "1" as int and as string are equal, VERIFY(cmp/union-leaf-text)); opaque nodes by
 // value only, not by name (VERIFY(cmp/opaque-value-only); the XML prefix rewrite of opaque values
-// is not ported). Nodes of two contexts compare by their schema nodes' names (compareSingleSchema).
+// is not ported). Nodes of two contexts compare by complete schema ancestry (compareSingleSchema).
 func compareSingleChecked(t *Tree, a, b *Node, o CompareOptions, parentsChecked bool) bool {
 	return compareSingleSchema(a, b, o.Opaque, parentsChecked) && compareSingleData(t, a, b, o)
 }
 
 // compareSingleData is lyd_compare_single_data (any nodes come with M5).
 func compareSingleData(t *Tree, a, b *Node, o CompareOptions) bool {
-	if !o.Opaque && !hashEqual(a, b) {
-		return false
-	}
-	if a.schema == nil || b.schema == nil {
-		if !o.Opaque && (a.schema == nil) != (b.schema == nil) {
+	deferSparseHash := false
+	if !o.Opaque && !lydHashInputsEqual(t, a, b) {
+		deferSparseHash = lydHashHasSparseBits(t, a) || lydHashHasSparseBits(t, b)
+		if !deferSparseHash && !differingHashInputsEqual(t, a, b) {
 			return false
 		}
-		// compare values only if there are any to compare
-		if a.schema == nil && b.schema == nil || a.isTerm() || b.isTerm() {
-			if a.Value() != b.Value() {
+	}
+
+	equal := func() bool {
+		if a.schema == nil || b.schema == nil {
+			if !o.Opaque && (a.schema == nil) != (b.schema == nil) {
 				return false
 			}
+			// compare values only if there are any to compare
+			if a.schema == nil && b.schema == nil || a.isTerm() || b.isTerm() {
+				if a.Value() != b.Value() {
+					return false
+				}
+			}
+			return !o.FullRecursion || compareSiblings(t, &a.kids, &b.kids, o)
 		}
-		return !o.FullRecursion || compareSiblings(t, &a.kids, &b.kids, o)
-	}
-	switch a.schema.Kind {
-	case schema.Leaf, schema.LeafList:
-		if o.Defaults && a.flags&FlagDefault != b.flags&FlagDefault {
-			return false
-		}
-		return a.value.Canonical() == b.value.Canonical()
-	case schema.List:
-		if o.FullRecursion {
-			return compareSiblings(t, &a.kids, &b.kids, o)
-		}
-		if a.schema.Keyless() {
+		switch a.schema.Kind {
+		case schema.Leaf, schema.LeafList:
+			if o.Defaults && a.flags&FlagDefault != b.flags&FlagDefault {
+				return false
+			}
+			if a.schema != b.schema {
+				return canonicalStoredValue(a) == canonicalStoredValue(b)
+			}
+			return a.value.Canonical() == b.value.Canonical()
+		case schema.List:
+			if o.FullRecursion {
+				return compareSiblings(t, &a.kids, &b.kids, o)
+			}
+			if a.schema.Keyless() {
+				return true
+			}
+			for i := range a.schema.Keys {
+				if i >= len(a.kids.list) || i >= len(b.kids.list) {
+					return len(a.kids.list) == len(b.kids.list)
+				}
+				if !compareSingleChecked(t, a.kids.list[i], b.kids.list[i], o, true) {
+					return false
+				}
+			}
 			return true
 		}
-		for i := range a.schema.Keys {
-			if i >= len(a.kids.list) || i >= len(b.kids.list) {
-				return len(a.kids.list) == len(b.kids.list)
-			}
-			if !compareSingleChecked(t, a.kids.list[i], b.kids.list[i], o, true) {
-				return false
-			}
-		}
-		return true
+		// container, rpc, action, notification: an implicit container equals one with explicit
+		// descendants
+		return !o.FullRecursion || compareSiblings(t, &a.kids, &b.kids, o)
+	}()
+	if !equal {
+		return false
 	}
-	// container, rpc, action, notification: an implicit container equals one with explicit
-	// descendants
-	return !o.FullRecursion || compareSiblings(t, &a.kids, &b.kids, o)
+	if deferSparseHash {
+		// bits.c:328 allocates the whole bitmap and tree_data_hash.c:61-74 hashes it once when
+		// libyang inserts a node. This residual walk is only for canonically equal values whose
+		// LYB payloads differ (for example, one bit name at different positions in two contexts);
+		// the port generates the bytes without allocating the bitmap.
+		return differingHashInputsEqual(t, a, b)
+	}
+	return true
 }
 
 // compareSiblings is lyd_compare_siblings_: pairwise in order, except that a system-ordered

@@ -1,0 +1,19 @@
+fixtures:
+  - id: ut-diff/cross-context-choice-toplevel
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang data diff lookup mechanics, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas/cross-context-choice-a]
+      modules: [{name: diff-cross-context-choice}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<x xmlns="urn:vibe-ports:yang:diff-cross-context-choice">1</x>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<x xmlns="urn:vibe-ports:yang:diff-cross-context-choice">1</x>'
+          target: {searchdirs: [schemas/cross-context-choice-b], modules: [{name: diff-cross-context-choice}]}
+    golden: golden/cross-context-choice-toplevel.json

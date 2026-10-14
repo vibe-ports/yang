@@ -1,0 +1,19 @@
+fixtures:
+  - id: ut-diff/cross-context-bits-max-position
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # src/plugins_types/bits.c:393-407 exposes the last-position-sized bitmap, src/tree_data_hash.c:68-81 hashes all of it, and src/tree_data.c:1714-1748 rejects unequal hashes before comparing values; positions 4294967294 vs 4294967293 (512 MiB bitmaps; 4294967295 itself crashes libyang, D-0120)
+    rfc: []   # libyang bits LYB hashing at uint32 maximum positions, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas/cross-context-bits-max-a]
+      modules: [{name: diff-cross-context-bits-max}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-bits-max"><v>hi</v></top>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-bits-max"><v>hi</v></top>'
+          target: {searchdirs: [schemas/cross-context-bits-max-b], modules: [{name: diff-cross-context-bits-max}]}
+    golden: golden/cross-context-bits-max-position.json

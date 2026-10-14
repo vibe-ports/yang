@@ -58,6 +58,7 @@ type opaque struct {
 // (schema order, sorted system-ordered instances, opaque nodes last).
 type Node struct {
 	schema *schema.Node // nil for an opaque node
+	ctx    *schema.Set  // schema context retained even in a mixed-context diff tree
 	parent *Node
 	tree   *Tree // set for top-level nodes linked into a tree
 	kids   siblings
@@ -84,6 +85,8 @@ type Tree struct {
 	// dupLog is the logger of an exported Dup or DupSiblings while it runs: the metadata values
 	// the target snapshot rejects are logged there (lyd_dup_meta_single_to_ctx).
 	dupLog *logger
+	// diffHashes exists only while generating a diff of immutable input trees.
+	diffHashes map[*Node]lydHashResult
 }
 
 // workCounter counts the work of a tree for tests (work, not time): comparisons made by

@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module diff-cross-context-empty-union-key {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:diff-cross-context-empty-union-key";
+  prefix dceuk;
+
+  list l {
+    key "a b";
+    leaf a {
+      type union {
+        type string;
+        type int8;
+      }
+    }
+    leaf b { type string; }
+  }
+}

@@ -1,0 +1,27 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module diff-cross-context-plugins {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:diff-cross-context-plugins";
+  prefix dcp;
+
+  import ietf-inet-types { prefix inet; }
+  import ietf-yang-types { prefix yang-types; }
+  import ietf-netconf-acm { prefix nacm; }
+  import yang { prefix yang; }
+
+  container top {
+    list target {
+      key "id";
+      leaf id { type string; }
+    }
+
+    leaf-list ipv4 { type inet:ipv4-address; }
+    leaf-list date-time { type yang-types:date-and-time; }
+    leaf-list date { type yang-types:date; }
+    leaf-list time { type yang-types:time; }
+    leaf-list xpath { type yang-types:xpath1.0; }
+    leaf-list node-instance-id { type nacm:node-instance-identifier; }
+    leaf-list instance-id-keys { type yang:instance-identifier-keys; }
+  }
+}

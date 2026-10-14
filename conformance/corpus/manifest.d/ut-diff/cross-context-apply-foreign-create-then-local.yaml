@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-diff/cross-context-apply-foreign-create-then-local
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # diff.c lyd_diff_apply_r first creates foreign-context z before local x; with no parent/children table, tree_data_common.c lyd_find_sibling_schema then scans linearly and matches x by node name plus module name across contexts, so x is replaced and the result is z=9,x=2
+    rfc: []   # libyang cross-context diff-apply mechanics, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas/cross-context-apply-foreign-create-then-local]
+      modules: [{name: diff-cross-context-apply-foreign-create-then-local}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<x xmlns="urn:vibe-ports:yang:diff-cross-context-apply-foreign-create-then-local">1</x>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<z xmlns="urn:vibe-ports:yang:diff-cross-context-apply-foreign-create-then-local">9</z><x xmlns="urn:vibe-ports:yang:diff-cross-context-apply-foreign-create-then-local">2</x>'
+          target: {searchdirs: [schemas/cross-context-apply-foreign-create-then-local], modules: [{name: diff-cross-context-apply-foreign-create-then-local}]}
+        - {do: diff_apply}
+        - {do: dump}
+    golden: golden/cross-context-apply-foreign-create-then-local.json
+    assert: {verdict: invalid, rc: LY_EINVAL, deviation: "D-0122"}

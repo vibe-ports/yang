@@ -1,0 +1,254 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "diff-cross-context-apply-foreign-create-then-local",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-apply-foreign-create-then-local:x",
+          "schema": "/diff-cross-context-apply-foreign-create-then-local:x",
+          "value": {
+            "canonical": "1",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"diff-cross-context-apply-foreign-create-then-local:z\": \"9\",\n  \"@diff-cross-context-apply-foreign-create-then-local:z\": {\n    \"yang:operation\": \"create\"\n  },\n  \"diff-cross-context-apply-foreign-create-then-local:x\": \"1\",\n  \"@diff-cross-context-apply-foreign-create-then-local:x\": {\n    \"yang:operation\": \"delete\"\n  }\n}\n",
+        "xml": "<z xmlns=\"urn:vibe-ports:yang:diff-cross-context-apply-foreign-create-then-local\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">9</z>\n<x xmlns=\"urn:vibe-ports:yang:diff-cross-context-apply-foreign-create-then-local\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">1</x>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-cross-context-apply-foreign-create-then-local:z",
+          "schema": "/diff-cross-context-apply-foreign-create-then-local:z",
+          "value": {
+            "canonical": "9",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-cross-context-apply-foreign-create-then-local:x",
+          "schema": "/diff-cross-context-apply-foreign-create-then-local:x",
+          "value": {
+            "canonical": "1",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-apply-foreign-create-then-local:x",
+          "schema": "/diff-cross-context-apply-foreign-create-then-local:x",
+          "value": {
+            "canonical": "1",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"diff-cross-context-apply-foreign-create-then-local:z\": \"9\",\n  \"@diff-cross-context-apply-foreign-create-then-local:z\": {\n    \"yang:operation\": \"create\"\n  },\n  \"diff-cross-context-apply-foreign-create-then-local:x\": \"1\",\n  \"@diff-cross-context-apply-foreign-create-then-local:x\": {\n    \"yang:operation\": \"delete\"\n  }\n}\n",
+        "xml": "<z xmlns=\"urn:vibe-ports:yang:diff-cross-context-apply-foreign-create-then-local\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">9</z>\n<x xmlns=\"urn:vibe-ports:yang:diff-cross-context-apply-foreign-create-then-local\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">1</x>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-cross-context-apply-foreign-create-then-local:z",
+          "schema": "/diff-cross-context-apply-foreign-create-then-local:z",
+          "value": {
+            "canonical": "9",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            }
+          ],
+          "opaque": null,
+          "path": "/diff-cross-context-apply-foreign-create-then-local:x",
+          "schema": "/diff-cross-context-apply-foreign-create-then-local:x",
+          "value": {
+            "canonical": "1",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff_apply",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-apply-foreign-create-then-local:z",
+          "schema": "/diff-cross-context-apply-foreign-create-then-local:z",
+          "value": {
+            "canonical": "9",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "dump",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "tree": {
+        "json": "{\n  \"diff-cross-context-apply-foreign-create-then-local:z\": \"9\"\n}\n",
+        "xml": "<z xmlns=\"urn:vibe-ports:yang:diff-cross-context-apply-foreign-create-then-local\">9</z>\n"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/diff-cross-context-apply-foreign-create-then-local:z",
+          "schema": "/diff-cross-context-apply-foreign-create-then-local:z",
+          "value": {
+            "canonical": "9",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

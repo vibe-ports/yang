@@ -170,6 +170,31 @@ type diffError struct {
 
 func (e *diffError) Error() string { return e.items[0].Msg }
 
+// hasForeignDiffContext reports whether roots contain a node outside set. The explicit stack
+// keeps input-controlled depth off the Go stack; each visited source node is charged to the
+// source diff's work counter when visit counting is enabled.
+func (t *Tree) hasForeignDiffContext(roots []*Node, set *schema.Set) bool {
+	stack := slices.Clone(roots)
+	foreign := false
+	for len(stack) > 0 {
+		n := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		if t.work.visits {
+			t.work.Add(1)
+		}
+		if setOf(n) != set {
+			foreign = true
+		}
+		stack = append(stack, n.kids.opq...)
+		stack = append(stack, n.kids.list...)
+	}
+	return foreign
+}
+
+func foreignDiffContextErr() error {
+	return &opError{"LY_EINVAL", "Invalid arguments - the diff has nodes of another schema context, applying it is not supported (D-0122) (lyd_diff_merge_all())."}
+}
+
 // diffDone is the error of a public diff call: the items of a *diffError logged (done logs an
 // *opError).
 func diffDone(lg *logger, err error) error {
@@ -208,7 +233,10 @@ func (t *Tree) diffChangeOp(n *Node, op diffOp) error {
 // user-ordered instance) and its parents up to the schema child of parent, connected to parent
 // or, without one, at the top of t; the topmost duplicated parent gets the operation none.
 func (t *Tree) diffDup(n *Node, op diffOp, parent *Node) (*Node, error) {
-	opts := dupNoMeta | dupWithFlags
+	// lyd_diff_dup calls lyd_dup_single() without a target context, so every duplicated node
+	// retains its source context. Besides duplicate-instance creates, this determines which side
+	// owns a replaced ancestor chain and qualifies cross-context create/delete JSON names.
+	opts := dupNoMeta | dupWithFlags | dupKeepContext
 	if isUserOrdered(n.schema) {
 		opts |= dupNoLyds
 	}
@@ -224,9 +252,10 @@ func (t *Tree) diffDup(n *Node, op diffOp, parent *Node) (*Node, error) {
 		sparent = parent.schema
 	}
 	top, orig := dup, n
+	parentOpts := dupNoMeta | dupWithFlags | opts&dupKeepContext
 	for top.schema.DataParent() != nil && !compareSchemaEqual(top.schema.DataParent(), sparent, false) {
 		orig = orig.parent
-		d, err := t.dupR(orig, nil, false, insertDefault, dupNoMeta|dupWithFlags)
+		d, err := t.dupR(orig, nil, false, insertDefault, parentOpts)
 		if err != nil {
 			return nil, err
 		}
@@ -260,6 +289,8 @@ func (t *Tree) diffAdd(n *Node, op diffOp, a diffAttrs) (*Node, error) {
 	var diffParent, match, parent *Node
 	for {
 		parent = n
+		// schema pointers, as lyd_diff_add (diff.c): a parent of another context is never this
+		// diff parent, so its subtree is duplicated with its own parents (cross-context-apply-nested-create)
 		for parent.parent != nil && (diffParent == nil || parent.parent.schema != diffParent.schema) {
 			parent = parent.parent
 		}
@@ -372,6 +403,9 @@ type mergeOpts struct {
 // diffMergeModule is lyd_diff_merge_module: the top-level subtrees of src (of o.mod only, when
 // set) merged into the diff t.
 func (t *Tree) diffMergeModule(src *Tree, o mergeOpts) error {
+	if src.hasForeignDiffContext(src.top.nodes(), t.set) {
+		return foreignDiffContextErr()
+	}
 	cache := &dupCache{}
 	for _, n := range src.top.nodes() {
 		if o.mod != nil && nodeModule(t.set, n) != o.mod {

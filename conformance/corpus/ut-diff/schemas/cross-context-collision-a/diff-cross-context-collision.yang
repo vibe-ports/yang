@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module diff-cross-context-collision {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:diff-cross-context-collision";
+  prefix dccc;
+
+  container top {
+    leaf-list collision {
+      type enumeration {
+        enum same { value 4134; }
+        enum force-32-bits { value -1; }
+      }
+    }
+  }
+}

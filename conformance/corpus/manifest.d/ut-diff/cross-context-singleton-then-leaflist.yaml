@@ -1,0 +1,19 @@
+fixtures:
+  - id: ut-diff/cross-context-singleton-then-leaflist
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # src/diff.c:1238-1295 emits a-delete before 1325-1375 emits b-create, but src/tree_data.c:522-592 returns foreign-context a as b's next anchor, so insertion produces [b create, a delete]
+    rfc: []   # libyang mixed-context diff ordering, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas/cross-context-singleton-leaflist]
+      modules: [{name: diff-cross-context-singleton-leaflist}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-singleton-leaflist"><a>old</a></top>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-singleton-leaflist"><b>new</b></top>'
+          target: {searchdirs: [schemas/cross-context-singleton-leaflist], modules: [{name: diff-cross-context-singleton-leaflist}]}
+    golden: golden/cross-context-singleton-then-leaflist.json

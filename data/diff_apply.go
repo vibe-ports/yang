@@ -36,7 +36,8 @@ type ApplyDiffOptions struct {
 // duplicate default values until t is validated again. A split operation-child run in t is
 // refused with LY_EINVAL before t is changed, including when diff is nil (D-0116). A diff tree
 // may itself have such a split because libyang inserts generated diff nodes by their schema
-// anchors; it is accepted and walked in its stored order.
+// anchors; it is accepted and walked in its stored order. A diff containing any node from
+// another schema context is refused before t is changed (D-0122).
 func (t *Tree) ApplyDiff(diff *Tree, o ApplyDiffOptions) error {
 	lg := &logger{set: t.set}
 	if split, op := splitOpRun(t.top.first(), true); split != nil {
@@ -55,10 +56,15 @@ func (t *Tree) ApplyDiff(diff *Tree, o ApplyDiffOptions) error {
 			return lg.done(lg.logErr("LY_EINVAL", "Module \"%s\" not found.", o.Module))
 		}
 	}
+	if diff.hasForeignDiffContext(diff.top.nodes(), t.set) {
+		return lg.done(lg.logErr("LY_EINVAL", "Invalid arguments - the diff has nodes of another schema context, applying it is not supported (D-0122) (lyd_diff_apply_all())."))
+	}
 	cache := &dupCache{}
 	for _, root := range diff.top.nodes() {
 		if mod != nil && nodeModule(diff.set, root) != mod {
-			continue // data of another module
+			// lyd_owner_module(root) != mod compares module pointers (diff.c:1954), so a diff of
+			// another context matches no module of t (ut-diff/cross-context-apply-module).
+			continue
 		}
 		if err := t.applyR(nil, root, o.Callback, cache); err != nil {
 			return diffDone(lg, err)
