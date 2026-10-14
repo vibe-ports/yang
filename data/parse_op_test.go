@@ -401,8 +401,8 @@ func TestParseOpSplitRun(t *testing.T) {
 	if ns, _, err := tree.FindXPath("/rb:r/v", XPathOptions{}); len(ns) != 3 || err != nil {
 		t.Errorf("FindXPath(/rb:r/v): %d nodes, %v", len(ns), err)
 	}
-	if n := tree.findSchema(&op.kids, op.kids.list[0].schema); n == nil || n.schema.Name != "before" {
-		t.Errorf("findSchema(before): %v", n)
+	if n := tree.schemaLookup(&op.kids, op.kids.list[0].schema); n == nil || n.schema.Name != "before" {
+		t.Errorf("schemaLookup(before): %v", n)
 	}
 }
 
@@ -1026,7 +1026,7 @@ func TestParseOpConcurrentFind(t *testing.T) {
 		wg.Wait()
 	}
 	find("/rb:r/in", true)
-	if err := tree.findSchema(&op.kids, op.kids.list[1].schema).Remove(); err != nil {
+	if err := tree.schemaLookup(&op.kids, op.kids.list[1].schema).Remove(); err != nil {
 		t.Fatal(err)
 	}
 	find("/rb:r/in", true)

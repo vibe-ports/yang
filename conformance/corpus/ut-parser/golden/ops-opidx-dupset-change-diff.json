@@ -1,0 +1,1035 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "opidx239",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "rpc",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidx239:r",
+          "schema": "/opidx239:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "opidx239",
+              "name": "id",
+              "value": "a"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[1]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "opidx239",
+              "name": "id",
+              "value": "b"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[2]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "2",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "opidx239",
+              "name": "id",
+              "value": "c"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[3]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "opidx239",
+              "name": "id",
+              "value": "d"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[4]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "change": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "diagnostics": [],
+      "do": "change_term",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "rpc",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidx239:r",
+          "schema": "/opidx239:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "opidx239",
+              "name": "id",
+              "value": "a"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[1]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "opidx239",
+              "name": "id",
+              "value": "b"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[2]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "opidx239",
+              "name": "id",
+              "value": "c"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[3]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "opidx239",
+              "name": "id",
+              "value": "d"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[4]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"opidx239:r\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"u\": [\n      1,\n      1,\n      1\n    ],\n    \"@u\": [\n      {\n        \"yang:orig-default\": false,\n        \"yang:meta-replace\": \"opidx239:id=b\",\n        \"yang:meta-orig\": \"opidx239:id=c\"\n      },\n      {\n        \"yang:orig-default\": false,\n        \"yang:meta-replace\": \"opidx239:id=c\",\n        \"yang:meta-orig\": \"opidx239:id=d\"\n      },\n      {\n        \"yang:orig-default\": false,\n        \"yang:meta-replace\": \"opidx239:id=d\",\n        \"yang:meta-orig\": \"opidx239:id=b\"\n      }\n    ]\n  }\n}\n",
+        "xml": "<r xmlns=\"urn:opidx239\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <u yang:orig-default=\"false\" yang:meta-replace=\"opidx239:id=b\" yang:meta-orig=\"opidx239:id=c\">1</u>\n  <u yang:orig-default=\"false\" yang:meta-replace=\"opidx239:id=c\" yang:meta-orig=\"opidx239:id=d\">1</u>\n  <u yang:orig-default=\"false\" yang:meta-replace=\"opidx239:id=d\" yang:meta-orig=\"opidx239:id=b\">1</u>\n</r>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "rpc",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r",
+          "schema": "/opidx239:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "orig-default",
+              "value": "false"
+            },
+            {
+              "module": "yang",
+              "name": "meta-replace",
+              "value": "opidx239:id=b"
+            },
+            {
+              "module": "yang",
+              "name": "meta-orig",
+              "value": "opidx239:id=c"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[1]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "orig-default",
+              "value": "false"
+            },
+            {
+              "module": "yang",
+              "name": "meta-replace",
+              "value": "opidx239:id=c"
+            },
+            {
+              "module": "yang",
+              "name": "meta-orig",
+              "value": "opidx239:id=d"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[2]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "orig-default",
+              "value": "false"
+            },
+            {
+              "module": "yang",
+              "name": "meta-replace",
+              "value": "opidx239:id=d"
+            },
+            {
+              "module": "yang",
+              "name": "meta-orig",
+              "value": "opidx239:id=b"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[3]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "rpc",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidx239:r",
+          "schema": "/opidx239:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "opidx239",
+              "name": "id",
+              "value": "a"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[1]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "opidx239",
+              "name": "id",
+              "value": "b"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[2]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "opidx239",
+              "name": "id",
+              "value": "c"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[3]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "opidx239",
+              "name": "id",
+              "value": "d"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[4]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "dump",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "tree": {
+        "json": "{\n  \"opidx239:r\": {\n    \"u\": [\n      1,\n      1,\n      1,\n      1\n    ],\n    \"@u\": [\n      {\n        \"opidx239:id\": \"a\"\n      },\n      {\n        \"opidx239:id\": \"b\"\n      },\n      {\n        \"opidx239:id\": \"c\"\n      },\n      {\n        \"opidx239:id\": \"d\"\n      }\n    ]\n  }\n}\n",
+        "xml": "<r xmlns=\"urn:opidx239\">\n  <u xmlns:oi=\"urn:opidx239\" oi:id=\"a\">1</u>\n  <u xmlns:oi=\"urn:opidx239\" oi:id=\"b\">1</u>\n  <u xmlns:oi=\"urn:opidx239\" oi:id=\"c\">1</u>\n  <u xmlns:oi=\"urn:opidx239\" oi:id=\"d\">1</u>\n</r>\n"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "rpc",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidx239:r",
+          "schema": "/opidx239:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "opidx239",
+              "name": "id",
+              "value": "a"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[1]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "opidx239",
+              "name": "id",
+              "value": "b"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[2]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "opidx239",
+              "name": "id",
+              "value": "c"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[3]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "opidx239",
+              "name": "id",
+              "value": "d"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[4]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "dup",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "rpc",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidx239:r",
+          "schema": "/opidx239:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "opidx239",
+              "name": "id",
+              "value": "a"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[1]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "opidx239",
+              "name": "id",
+              "value": "b"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[2]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "opidx239",
+              "name": "id",
+              "value": "c"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[3]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "opidx239",
+              "name": "id",
+              "value": "d"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[4]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": null,
+      "diff_typed": [],
+      "do": "diff",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "rpc",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidx239:r",
+          "schema": "/opidx239:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "opidx239",
+              "name": "id",
+              "value": "a"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[1]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "opidx239",
+              "name": "id",
+              "value": "b"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[2]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "opidx239",
+              "name": "id",
+              "value": "c"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[3]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "opidx239",
+              "name": "id",
+              "value": "d"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[4]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "dump",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "tree": {
+        "json": "{\n  \"opidx239:r\": {\n    \"u\": [\n      1,\n      1,\n      1,\n      1\n    ],\n    \"@u\": [\n      {\n        \"opidx239:id\": \"a\"\n      },\n      {\n        \"opidx239:id\": \"b\"\n      },\n      {\n        \"opidx239:id\": \"c\"\n      },\n      {\n        \"opidx239:id\": \"d\"\n      }\n    ]\n  }\n}\n",
+        "xml": "<r xmlns=\"urn:opidx239\">\n  <u xmlns:oi=\"urn:opidx239\" oi:id=\"a\">1</u>\n  <u xmlns:oi=\"urn:opidx239\" oi:id=\"b\">1</u>\n  <u xmlns:oi=\"urn:opidx239\" oi:id=\"c\">1</u>\n  <u xmlns:oi=\"urn:opidx239\" oi:id=\"d\">1</u>\n</r>\n"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "rpc",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidx239:r",
+          "schema": "/opidx239:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "opidx239",
+              "name": "id",
+              "value": "a"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[1]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "opidx239",
+              "name": "id",
+              "value": "b"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[2]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "opidx239",
+              "name": "id",
+              "value": "c"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[3]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "opidx239",
+              "name": "id",
+              "value": "d"
+            }
+          ],
+          "opaque": null,
+          "path": "/opidx239:r/u[4]",
+          "schema": "/opidx239:r/input/u",
+          "value": {
+            "canonical": "1",
+            "type": "uint8",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

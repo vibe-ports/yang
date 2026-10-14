@@ -1,0 +1,621 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "opidxs",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "rpc",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r",
+          "schema": "/opidxs:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r/s[1]",
+          "schema": "/opidxs:r/input/s",
+          "value": {
+            "canonical": "10",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r/s[2]",
+          "schema": "/opidxs:r/input/s",
+          "value": {
+            "canonical": "2",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r/s[3]",
+          "schema": "/opidxs:r/input/s",
+          "value": {
+            "canonical": "3",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r/s[4]",
+          "schema": "/opidxs:r/input/s",
+          "value": {
+            "canonical": "4",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "dup",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "rpc",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r",
+          "schema": "/opidxs:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r/s[1]",
+          "schema": "/opidxs:r/input/s",
+          "value": {
+            "canonical": "10",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r/s[2]",
+          "schema": "/opidxs:r/input/s",
+          "value": {
+            "canonical": "2",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r/s[3]",
+          "schema": "/opidxs:r/input/s",
+          "value": {
+            "canonical": "3",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r/s[4]",
+          "schema": "/opidxs:r/input/s",
+          "value": {
+            "canonical": "4",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "edit",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "rpc",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r",
+          "schema": "/opidxs:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r/s[1]",
+          "schema": "/opidxs:r/input/s",
+          "value": {
+            "canonical": "2",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r/s[2]",
+          "schema": "/opidxs:r/input/s",
+          "value": {
+            "canonical": "3",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r/s[3]",
+          "schema": "/opidxs:r/input/s",
+          "value": {
+            "canonical": "4",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r/s[4]",
+          "schema": "/opidxs:r/input/s",
+          "value": {
+            "canonical": "10",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r/s[5]",
+          "schema": "/opidxs:r/input/s",
+          "value": {
+            "canonical": "11",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "edit",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "rpc",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r",
+          "schema": "/opidxs:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r/pre",
+          "schema": "/opidxs:r/input/pre",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r/s[1]",
+          "schema": "/opidxs:r/input/s",
+          "value": {
+            "canonical": "2",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r/s[2]",
+          "schema": "/opidxs:r/input/s",
+          "value": {
+            "canonical": "3",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r/s[3]",
+          "schema": "/opidxs:r/input/s",
+          "value": {
+            "canonical": "4",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r/s[4]",
+          "schema": "/opidxs:r/input/s",
+          "value": {
+            "canonical": "10",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r/s[5]",
+          "schema": "/opidxs:r/input/s",
+          "value": {
+            "canonical": "11",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "dump",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "tree": {
+        "json": "{\n  \"opidxs:r\": {\n    \"pre\": \"x\",\n    \"s\": [\n      2,\n      3,\n      4,\n      10,\n      11\n    ]\n  }\n}\n",
+        "xml": "<r xmlns=\"urn:opidxs\">\n  <pre>x</pre>\n  <s>2</s>\n  <s>3</s>\n  <s>4</s>\n  <s>10</s>\n  <s>11</s>\n</r>\n"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "rpc",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r",
+          "schema": "/opidxs:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r/pre",
+          "schema": "/opidxs:r/input/pre",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r/s[1]",
+          "schema": "/opidxs:r/input/s",
+          "value": {
+            "canonical": "2",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r/s[2]",
+          "schema": "/opidxs:r/input/s",
+          "value": {
+            "canonical": "3",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r/s[3]",
+          "schema": "/opidxs:r/input/s",
+          "value": {
+            "canonical": "4",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r/s[4]",
+          "schema": "/opidxs:r/input/s",
+          "value": {
+            "canonical": "10",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/opidxs:r/s[5]",
+          "schema": "/opidxs:r/input/s",
+          "value": {
+            "canonical": "11",
+            "type": "uint32",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

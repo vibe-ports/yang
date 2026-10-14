@@ -1,0 +1,33 @@
+module opidx239 {
+  yang-version 1.1;
+  namespace "urn:opidx239";
+  prefix oi;
+
+  import ietf-yang-metadata { prefix md; }
+
+  md:annotation id { type string; }
+
+  rpc r {
+    input {
+      leaf-list u {
+        type uint8;
+        ordered-by user;
+      }
+    }
+  }
+
+  rpc l {
+    input {
+      leaf a { type string; }
+      leaf a2 { type string; }
+      leaf between { type string; }
+      leaf-list v {
+        type uint8;
+        ordered-by user;
+      }
+    }
+    output {
+      leaf o { type string; }
+    }
+  }
+}

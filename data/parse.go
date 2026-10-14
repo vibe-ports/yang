@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Ported from libyang v5.8.6 src/tree_data.c (lyd_parse, lyd_parse_op), src/parser_common.c (the
 // data parser helpers lyd_parser_*), src/parser_internal.h (struct lyd_ctx, LY_DPARSER_ERR_GOTO) and
-// src/tree_data_new.c (lyd_create_term, lyd_create_inner, lyd_create_opaq) (BSD-3-Clause,
-// © CESNET).
+// src/tree_data_new.c (lyd_create_term, lyd_create_inner, lyd_create_opaq),
+// src/tree_data_sorted.c (lyds_insert, lyds_additionally_create_rb_tree) (BSD-3-Clause, © CESNET).
 
 package data
 
@@ -131,6 +131,42 @@ type lydCtx struct {
 	// error it logged and went past (the YANG action element, lydxml_envelope) does not fail it
 	rcOnly bool
 	parsed []*Node // the nodes parsed directly under parent (lyd_parse_op's parsed set)
+	// dirty holds, per sibling set, the operation-child input runs appended in parser order after
+	// the first out-of-order value; dirtySibs is the order the sets first got one. Runs are stably
+	// sorted before any parser reader can observe their order; a flush touches only its own set.
+	dirty     map[*siblings][]*schema.Node
+	dirtySibs []*siblings
+	dirtySet  map[dirtyRun]bool // the runs pending in dirty, for a constant-time repeat mark
+	dirtyOrd  map[dirtyRun]*dirtyOrder
+	pos       struct { // position's cache: one sibling set at one generation
+		sib *siblings
+		gen uint64
+		at  map[*Node]int
+	}
+}
+
+// position is the index of n in sib.list for the parser's readers (metadata walks over split
+// runs), cached while sib does not change (sib.gen): repeated metadata members for one run cost
+// one scan. The cache belongs to this parse (a mutation), never to the shared sibling state that
+// concurrent readers use.
+func (lc *lydCtx) position(sib *siblings, n *Node) int {
+	if lc.pos.sib != sib || lc.pos.gen != sib.gen {
+		lc.pos.sib, lc.pos.gen, lc.pos.at = sib, sib.gen, nil
+	}
+	if at, ok := lc.pos.at[n]; ok {
+		return at
+	}
+	at := indexFromEnd(&lc.tree.work, sib.list, n)
+	if lc.pos.at == nil {
+		lc.pos.at = map[*Node]int{}
+	}
+	lc.pos.at[n] = at
+	return at
+}
+
+type dirtyRun struct {
+	sib *siblings
+	sn  *schema.Node
 }
 
 // opOpts are the LYD_INTOPT_* options of an operation parse.
@@ -303,12 +339,14 @@ func parseWith(ctx context.Context, r io.Reader, s *schema.Set, o parseOpts, fp 
 		return nil, nil, fmt.Errorf("%w: data input larger than %d bytes", yang.ErrBudget, maxBytes)
 	}
 	lc := &lydCtx{ctx: ctx, tree: newTree(s), log: &logger{set: s}, opts: o}
+	lc.log.beforePath = lc.flushPath
 	lc.validateNewImplicit = (*lydCtx).newImplicitClose
 	lc.validate = (*lydCtx).validateParsed
 	if setup != nil {
 		setup(lc)
 	}
 	err = fp(lc, in)
+	lc.flushDirtyAll() // every parse return path, before validation or the tree is returned/dropped
 	if err == nil || !lc.fatal(err) {
 		if !o.ParseOnly && lc.validate != nil {
 			// a budget or cancellation error of the validation outranks logged parse errors
@@ -605,6 +643,7 @@ func hasWhen(sn *schema.Node) bool {
 // the key check of a list, then, only if nothing inside the node failed (rc of the node, the
 // missing key included: design 07 §0.1), the new-node validation and implicit nodes.
 func (lc *lydCtx) closeInner(n *Node, rc error) error {
+	lc.flushDirty(&n.kids)
 	if n.schema.Kind == schema.List {
 		if err := lc.checkKeys(n); err != nil && rc == nil {
 			rc = err
@@ -639,15 +678,180 @@ func (lc *lydCtx) nodeInsert(parent, anchor, n *Node) {
 		panic("data: insert anchor of a schema node")
 	case lc.opts.ordered:
 		lc.tree.insert(parent, n, insertLast)
+	case lc.appendSortedOperation(parent, n):
 	default:
 		lc.tree.insert(parent, n, insertDefault)
 	}
+}
+
+// appendSortedOperation is the parser-only lyds insertion path for an existing system-ordered
+// operation input run. It appends in O(1) amortized work and defers the stable sort until a parser
+// reader needs the order. The ordinary insertion path still creates the first instance.
+func (lc *lydCtx) appendSortedOperation(parent, n *Node) bool {
+	if !opChild(n.schema) || !sortedSupported(n) {
+		return false
+	}
+	sib := lc.tree.childrenOf(parent)
+	if sib.unsorted[n.schema] {
+		return false
+	}
+	d := sib.opIdx[n.schema]
+	if d == nil || len(d.list) == 0 {
+		return false
+	}
+	// lyds_additionally_create_rb_tree sorts an existing run stably before inserting into it, so
+	// a run of several instances without an RB tree is sorted at the flush as well.
+	unsortedRun := !sib.rbTree[n.schema] && len(d.list) > 1
+	if !sib.rbTree[n.schema] {
+		lc.tree.applyRunReorderHash(sib, d.list, reorderExact)
+		for _, old := range d.list {
+			lc.tree.work.Add(1)
+			old.inRB = true
+		}
+		d.rb = len(d.list)
+		markRB(sib, n.schema)
+	}
+	last := d.list[len(d.list)-1]
+	lc.tree.work.Add(1)
+	dirty := unsortedRun || compareSorted(last, n) > 0
+	k := dirtyRun{sib, n.schema}
+	at := lc.tree.indexFromEnd(sib.list, last) + 1
+	n.inRB = true
+	lc.tree.link(parent, sib, n, at)
+	if ord := lc.dirtyOrd[k]; ord != nil {
+		ord.insert(n)
+	} else if dirty {
+		lc.markDirty(sib, n.schema)
+	}
+	return true
+}
+
+func (lc *lydCtx) markDirty(sib *siblings, sn *schema.Node) {
+	lc.tree.work.Add(1)
+	if lc.dirty == nil {
+		lc.dirty = map[*siblings][]*schema.Node{}
+	}
+	k := dirtyRun{sib, sn}
+	if lc.dirtySet[k] {
+		return
+	}
+	if lc.dirtySet == nil {
+		lc.dirtySet = map[dirtyRun]bool{}
+	}
+	lc.dirtySet[k] = true
+	if lc.dirtyOrd == nil {
+		lc.dirtyOrd = map[dirtyRun]*dirtyOrder{}
+	}
+	lc.dirtyOrd[k] = newDirtyOrder(&lc.tree.work, sib.opIdx[sn].list)
+	runs := lc.dirty[sib]
+	if len(runs) == 0 {
+		lc.dirtySibs = append(lc.dirtySibs, sib)
+	}
+	lc.dirty[sib] = append(runs, sn)
+}
+
+// flushDirty stably sorts the dirty runs of sib and forgets them; other sets are not looked at.
+// Parser insertPos/opAnchor only need the run boundary, which appending preserves; JSON metadata
+// and closeInner call this before reading instance order. Rollback can unlink dirty members in any
+// order because opIdx and the leader chain are maintained per mutation. XML opaque anchors only
+// distinguish schema-run boundaries, also unchanged.
+func (lc *lydCtx) flushDirty(sib *siblings) {
+	lc.tree.work.Add(1)
+	keys := lc.dirty[sib]
+	if len(keys) == 0 {
+		return
+	}
+	delete(lc.dirty, sib)
+	for _, sn := range keys {
+		lc.tree.work.Add(1)
+		delete(lc.dirtySet, dirtyRun{sib, sn})
+	}
+	if len(keys) == 1 {
+		lc.flushDirtyRun(dirtyRun{sib, keys[0]}, -1)
+		return
+	}
+	// Many small dirty runs are located by one sibling pass, not one endpoint scan per run.
+	starts := make(map[*schema.Node]int, len(keys))
+	for i, n := range sib.list {
+		lc.tree.work.Add(1)
+		if _, ok := starts[n.schema]; !ok {
+			starts[n.schema] = i
+		}
+	}
+	for _, sn := range keys {
+		lc.flushDirtyRun(dirtyRun{sib, sn}, starts[sn])
+	}
+}
+
+func (lc *lydCtx) flushDirtyAll() {
+	for _, sib := range lc.dirtySibs {
+		lc.flushDirty(sib)
+	}
+	lc.dirtySibs = nil
+}
+
+// flushPath gives lydPath the sorted positions of deferred-run nodes without publishing them.
+// During a parse, the work for the instances of a deferred (dirty) system-ordered operation run
+// is O(log n) per instance and per mid-parse order read, plus one O(n) or O(n log n) publication
+// per sibling set; no reader may force a whole-run re-sort.
+func (lc *lydCtx) flushPath(n *Node) map[*Node]int {
+	var positions map[*Node]int
+	for it := n; it != nil; it = it.parent {
+		if it.schema == nil || it.schema.Kind != schema.LeafList || it.schema.Config {
+			continue
+		}
+		sib := it.siblingsOf()
+		if sib == nil {
+			continue
+		}
+		if ord := lc.dirtyOrd[dirtyRun{sib, it.schema}]; ord != nil {
+			if rank, ok := ord.rank(it); ok {
+				if positions == nil {
+					positions = map[*Node]int{}
+				}
+				positions[it] = rank
+			}
+		}
+	}
+	return positions
+}
+
+func (lc *lydCtx) flushDirtyRun(k dirtyRun, lo int) {
+	d := k.sib.opIdx[k.sn]
+	if d == nil || len(d.list) < 2 {
+		delete(lc.dirtyOrd, k)
+		return
+	}
+	if lo < 0 {
+		lo = lc.tree.runFrom(k.sib.list, d.list[0], d.list[len(d.list)-1], len(d.list))
+	}
+	if lo < 0 {
+		delete(lc.dirtyOrd, k)
+		return
+	}
+	// the run in the order lyds_insert linked it, for the first-instance transitions
+	before := slices.Clone(k.sib.list[lo : lo+len(d.list)])
+	lc.tree.work.Add(int64(len(before)))
+	ordered := lc.dirtyOrd[k].ordered()
+	copy(k.sib.list[lo:lo+len(ordered)], ordered)
+	run := k.sib.list[lo : lo+len(d.list)]
+	for _, n := range run {
+		n.inRB = true
+	}
+	k.sib.opRebuild(lc.tree, k.sn, run)
+	lc.tree.applyRunReorderHash(k.sib, before, reorderFirst)
+	delete(lc.dirtyOrd, k)
 }
 
 // nodeFree is lyd_parser_node_free: a key is never freed (its list goes instead).
 func (lc *lydCtx) nodeFree(n *Node) {
 	if n == nil || n.schema != nil && n.schema.IsKey() {
 		return
+	}
+	if sib := n.siblingsOf(); sib != nil {
+		if ord := lc.dirtyOrd[dirtyRun{sib, n.schema}]; ord != nil {
+			ord.remove(n)
+		}
 	}
 	unlink(n)
 	freeSubtreeLinks(lc.tree.set, n)

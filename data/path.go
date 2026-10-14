@@ -63,6 +63,10 @@ func quoted(v string) string {
 // the position `[n]` of keyless list and state leaf-list instances. A list not linked to its
 // parent yet (keys incomplete) starts the path.
 func lydPath(set *schema.Set, n *Node, noLastPred bool) string {
+	return lydPathPositions(set, n, noLastPred, nil)
+}
+
+func lydPathPositions(set *schema.Set, n *Node, noLastPred bool, positions map[*Node]int) string {
 	var chain []*Node
 	for it := n; it != nil; it = it.parent {
 		chain = append(chain, it)
@@ -82,7 +86,11 @@ func lydPath(set *schema.Set, n *Node, noLastPred bool) string {
 		switch it.schema.Kind {
 		case schema.List:
 			if it.schema.Keyless() {
-				b.WriteString("[" + strconv.Itoa(listPos(it)) + "]")
+				pos := positions[it]
+				if pos == 0 {
+					pos = listPos(it)
+				}
+				b.WriteString("[" + strconv.Itoa(pos) + "]")
 				break
 			}
 			b.WriteString(listPredicate(it))
@@ -90,7 +98,11 @@ func lydPath(set *schema.Set, n *Node, noLastPred bool) string {
 			if it.schema.Config {
 				b.WriteString("[.=" + quoted(it.value.Canonical()) + "]")
 			} else {
-				b.WriteString("[" + strconv.Itoa(listPos(it)) + "]")
+				pos := positions[it]
+				if pos == 0 {
+					pos = listPos(it)
+				}
+				b.WriteString("[" + strconv.Itoa(pos) + "]")
 			}
 		}
 	}

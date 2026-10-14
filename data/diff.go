@@ -664,7 +664,7 @@ func (t *Tree) diffMergeDelete(dm *Node, cur diffOp, src *Node) error {
 		case c.schema.Kind == schema.List || c.schema.Kind == schema.LeafList:
 			found = t.findFirst(&src.kids, c)
 		default:
-			found = t.findSchema(&src.kids, c.schema)
+			found = t.schemaLookup(&src.kids, c.schema)
 		}
 		if found != nil {
 			if err := t.diffChangeOp(c, cur); err != nil {

@@ -1,0 +1,22 @@
+fixtures:
+  - id: ops/opidx-leader-replace-dup
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: [a,a2,v1,v2,o,v3] (values identify the instances; lyd_find_path cannot reach v3 here, the walk from the v1 record stops at o; the table exists before o and v3 are appended, v3 starts a second run); freeing v1 (lyd_unlink_hash) appends v2's first-instance record behind v3's, so lyd_find_sibling_schema returns v3 and lyd_insert_get_next_anchor puts between before v3; the recursive copy (LYD_INSERT_NODE_LAST into an empty table) registers v2 first, between goes before v2
+    rfc: ["RFC7950#7.14"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [rb.1]
+      modules: [{name: opidx239}]
+      steps:
+        - {do: parse, format: json, data_type: rpc, unknown: reject, parse_only: true, data: '{"opidx239:l":{"a":"1","a2":"2","@v":[{"opidx239:id":"v1"},{"opidx239:id":"v2"}],"v":[1,2]}}'}
+        - {do: edit, insert_term: {module: opidx239, parent: "/opidx239:l", name: o, value: "o", options: [output]}}
+        - {do: edit, insert_term: {module: opidx239, parent: "/opidx239:l", name: v, value: "3"}}
+        - {do: edit, delete: "/opidx239:l/v[.='1']"}
+        - {do: edit, insert_term: {module: opidx239, parent: "/opidx239:l", name: between, value: "x"}}
+        - {do: dump}
+        - {do: edit, delete: "/opidx239:l/between"}
+        - {do: dup, node: "/opidx239:l", options: [recursive]}
+        - {do: edit, insert_term: {module: opidx239, parent: "/opidx239:l", name: between, value: "x"}}
+        - {do: dump}
+    golden: golden/ops-opidx-leader-replace-dup.json

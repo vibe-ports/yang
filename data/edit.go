@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Ported from libyang v5.8.6 src/tree_data_new.c (lyd_new_path and its helpers, lyd_create_list,
 // lyd_change_term), src/tree_data.c (lyd_find_path, lyd_merge, lyd_dup_r), src/path.c
-// (ly_path_eval_partial) and src/tree_data_common.c (lyd_dup_inst_next) (BSD-3-Clause, © CESNET).
+// (ly_path_eval_partial) and src/tree_data_common.c (lyd_dup_inst_next,
+// lyd_find_sibling_dup_inst_set) (BSD-3-Clause, © CESNET).
 
 package data
 
@@ -145,7 +146,7 @@ func (t *Tree) evalPartial(lg *logger, p types.Path) (*Node, int, error) {
 		var n *Node
 		switch {
 		case len(seg.Preds) == 0:
-			n = t.findSchema(sib, seg.Node) // lyd_find_sibling_val without a value
+			n = t.schemaLookup(sib, seg.Node) // lyd_find_sibling_val without a value
 		case seg.Preds[0].Kind == types.PredPosition:
 			pos := uint64(1)
 			for inst := range t.instances(sib, seg.Node) {
@@ -303,7 +304,7 @@ func (t *Tree) newPath(lg *logger, path, value string, o NewPathOptions) (*Node,
 			node, err = t.createTerm(lg, last, seg.Node, val)
 		case schema.Leaf:
 			if seg.Node.IsKey() && parent != nil && parent.schema != nil {
-				node = t.findSchema(&parent.kids, seg.Node) // created with its list
+				node = t.schemaLookup(&parent.kids, seg.Node) // created with its list
 				if first == nil {
 					first = node
 				}
@@ -472,9 +473,26 @@ func (t *Tree) changeNodeValue(n *Node, v types.Value) {
 		t.insert(parent, target, insertDefault)
 		return
 	}
+	at := -1
+	var prev, next *Node
+	indexed := false
+	if opChild(target.schema) {
+		if prev, next, indexed = sib.opRehashNeighbours(target); indexed {
+			sib.leaderUnlinkBetween(target, prev, next, false)
+		} else {
+			// ponytail: split operation entries need the physical neighbours (#240).
+			at = t.indexFromEnd(sib.list, target)
+			sib.leaderUnlink(target, at, false)
+		}
+	}
 	sib.hashRemove(target)
 	n.value = v
 	sib.hashAdd(parent, target)
+	if indexed {
+		sib.leaderInsertBetween(target, prev, next)
+	} else if at >= 0 {
+		sib.leaderInsert(target, at)
+	}
 }
 
 // dupInst is a lyd_dup_inst cache entry: the equal instances of a first instance and how many
@@ -484,9 +502,9 @@ type dupInst struct {
 	used int
 }
 
-// dupCache is the duplicate instance cache of one sibling level (lyd_dup_inst_get's hash table),
-// with an index of the level's instances by lyd_hash key, built once per schema node, so that the
-// equal instances of a node are looked up among its equal-hash run only.
+// dupCache is the duplicate instance cache of one sibling level (lyd_dup_inst_get's hash table).
+// A level without a children table gets a document-order index built once per schema node; a
+// level with one reads the live lyd_hash bucket in registration order.
 type dupCache struct {
 	inst map[*Node]*dupInst
 	runs map[*schema.Node]map[idxKey][]*Node
@@ -499,6 +517,17 @@ func (t *Tree) run(c *dupCache, inst *Node) []*Node {
 	sib := sibsOf(inst) // a detached node: its singleton sibling set
 	if inst.schema == nil {
 		return sib.opq
+	}
+	k, ok := hashOf(inst)
+	if !ok {
+		return nil
+	}
+	if sib.ht != nil {
+		out := make([]*Node, 0)
+		for n := range sib.bucketNodes(k) {
+			out = append(out, n)
+		}
+		return out
 	}
 	if c.runs == nil {
 		c.runs = map[*schema.Node]map[idxKey][]*Node{}
@@ -514,13 +543,12 @@ func (t *Tree) run(c *dupCache, inst *Node) []*Node {
 		}
 		for n := range all {
 			t.work.Add(1)
-			if k, ok := hashOf(n); ok {
-				idx[k] = append(idx[k], n)
+			if nk, ok := hashOf(n); ok {
+				idx[nk] = append(idx[nk], n)
 			}
 		}
 		c.runs[inst.schema] = idx
 	}
-	k, _ := hashOf(inst)
 	return idx[k]
 }
 
@@ -536,7 +564,7 @@ func (c *dupCache) added(n *Node) {
 // dupInstNext is lyd_dup_inst_next: equal target instances are matched one by one; once all are
 // used, a key-less list, state leaf-list or user-ordered instance matches nothing more, others
 // keep matching the first one. The equal instances (lyd_find_sibling_dup_inst_set) come from
-// inst's equal-hash run, in sibling order (libyang: its hash bucket order).
+// inst's equal-hash run: hash registration order with a children table, sibling order without one.
 func (t *Tree) dupInstNext(inst *Node, c *dupCache) *Node {
 	if inst == nil {
 		return nil
@@ -607,7 +635,7 @@ func (t *Tree) mergeSibling(lv *mergeLevel, src *Node) {
 	case src.schema.Kind == schema.List || src.schema.Kind == schema.LeafList:
 		match = t.findFirst(sib, src)
 	default:
-		match = t.findSchema(sib, src.schema)
+		match = t.schemaLookup(sib, src.schema)
 	}
 	firstInst := match == nil
 	match = t.dupInstNext(match, cache)

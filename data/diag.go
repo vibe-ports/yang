@@ -67,11 +67,12 @@ func (e *ValidationError) Error() string {
 // (LY_LOSTORE) and the location stack of ly_log_location (LOG_LOCSET/LOG_LOCBACK), held per
 // operation instead of thread-local.
 type logger struct {
-	set     *schema.Set
-	diags   []yang.Diagnostic
-	scnodes []*schema.Node // log_location.scnodes
-	paths   []string       // log_location.paths
-	inputs  []func() int   // log_location.inputs: the current line of each input
+	set        *schema.Set
+	diags      []yang.Diagnostic
+	scnodes    []*schema.Node            // log_location.scnodes
+	paths      []string                  // log_location.paths
+	inputs     []func() int              // log_location.inputs: the current line of each input
+	beforePath func(*Node) map[*Node]int // parser-only: sorted positions of deferred-run nodes
 }
 
 // locSet is LOG_LOCSET(scnode).
@@ -96,7 +97,11 @@ func (l *logger) popInput()                 { l.inputs = l.inputs[:max(0, len(l.
 func (l *logger) location(lnode *Node, sn *schema.Node) (dataPath, schemaPath string, line int) {
 	switch {
 	case lnode != nil:
-		dataPath = lydPath(l.set, lnode, false)
+		var positions map[*Node]int
+		if l.beforePath != nil {
+			positions = l.beforePath(lnode)
+		}
+		dataPath = lydPathPositions(l.set, lnode, false, positions)
 		if sn == nil && len(l.scnodes) > 0 {
 			sn = l.scnodes[len(l.scnodes)-1]
 		}

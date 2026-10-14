@@ -1704,7 +1704,7 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
         die("step without \"do\"%s", NULL);
     }
     keys_only(step, !strcmp(what, "parse") ? "do format data_type data data_file unknown parse_only "
-            "parse_options validate_options rpc keep_input" : !strcmp(what, "validate") ? "do data_type validate_options module final_only" :
+            "parse_options validate_options rpc keep_input parent" : !strcmp(what, "validate") ? "do data_type validate_options module final_only" :
             !strcmp(what, "edit") ? "do merge merge_file set delete insert_term insert_inner insert_list insert_list2 "
             "insert_opaq new_meta free_meta format data_type unknown parse_options" :
             !strcmp(what, "change_term") ? "do node value canon" :
@@ -2126,6 +2126,27 @@ step_parse(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON 
     LY_ERR rc;
 
     dparams_of(step, &p);
+    if (str_of(step, "parent")) {
+        /* operation data parsed under a node of the retained tree: lyd_parse_op with that parent,
+         * the tree kept (and changed) whatever the result */
+        struct lyd_node *parent = NULL;
+        struct ly_in *in = NULL;
+
+        if ((p.optype != LYD_TYPE_RPC_YANG) && (p.optype != LYD_TYPE_REPLY_YANG) && (p.optype != LYD_TYPE_NOTIF_YANG)) {
+            die("parse parent requires data_type rpc, reply or notif%s", NULL);
+        }
+        if (input_of(step, "rpc") || !p.parse_only) {
+            die("parse parent excludes rpc and requires parse_only%s", NULL);
+        }
+        if (!*tree || lyd_find_path(*tree, str_of(step, "parent"), 0, &parent) || !parent) {
+            die("parse parent %s not found", str_of(step, "parent"));
+        }
+        ly_in_new_memory(input_of(step, "data"), &in);
+        rc = lyd_parse_op(ctx, parent, in, p.fmt, p.optype, p.popts & (LYD_PARSE_STRICT | LYD_PARSE_OPAQ), NULL, NULL);
+        ly_in_free(in, 0);
+        collect(ctx, diag, "parse");
+        return rc;
+    }
     /* operation data: lyd_parse_op, a reply into its "rpc" request (parse_one) */
     rc = parse_one(ctx, &p, input_of(step, "data"), input_of(step, "rpc"), &t, diag, "parse");
     if (!rc) {

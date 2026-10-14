@@ -575,7 +575,7 @@ func (vc *valCtx) pathEval(p types.Path) *Node {
 	for _, seg := range p {
 		node = nil
 		if len(seg.Preds) == 0 {
-			node = vc.t.findSchema(sib, seg.Node)
+			node = vc.t.schemaLookup(sib, seg.Node)
 		} else {
 			switch pr := seg.Preds[0]; pr.Kind {
 			case types.PredPosition:

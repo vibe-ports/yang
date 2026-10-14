@@ -1,0 +1,18 @@
+fixtures:
+  - id: ops/opidx-meta-doc-first
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: [a,a2,v2,o,v3] after freeing v1 (first-instance records v3,v2); JSON input parsed under the rpc (lyd_parse_op with a parent): lydjson_parse_attribute finds the instance for "@v" with LY_LIST_FOR in sibling order (parser_json.c:1166-1170), so the metadata goes to v2, not to the record-selected v3
+    rfc: ["RFC7950#7.14", "RFC7952#5.2"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [rb.1]
+      modules: [{name: opidx239}]
+      steps:
+        - {do: parse, format: json, data_type: rpc, unknown: reject, parse_only: true, data: '{"opidx239:l":{"a":"1","a2":"2","v":[1,2]}}'}
+        - {do: edit, insert_term: {module: opidx239, parent: "/opidx239:l", name: o, value: "o", options: [output]}}
+        - {do: edit, insert_term: {module: opidx239, parent: "/opidx239:l", name: v, value: "3"}}
+        - {do: edit, delete: "/opidx239:l/v[.='1']"}
+        - {do: parse, format: json, data_type: rpc, unknown: reject, parse_only: true, parent: "/opidx239:l", data: '{"@opidx239:v":[{"opidx239:id":"m"}]}'}
+        - {do: dump}
+    golden: golden/ops-opidx-meta-doc-first.json

@@ -1,0 +1,12 @@
+module opidxs {
+  yang-version 1.1;
+  namespace "urn:opidxs";
+  prefix os;
+
+  rpc r {
+    input {
+      leaf pre { type string; }
+      leaf-list s { type string; }
+    }
+  }
+}

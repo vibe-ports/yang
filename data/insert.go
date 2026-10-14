@@ -118,6 +118,57 @@ func compareSorted(a, b *Node) int {
 	return 0
 }
 
+type reorderHash uint8
+
+const (
+	reorderExact reorderHash = 1 << iota
+	reorderFirst
+)
+
+// applyRunReorderHash replays the hash side effects of libyang linking the instances of one run
+// in sibling order (before, the run before the port's stable sort):
+//   - reorderExact: lyds_additionally_create_rb_nodes (tree_data_sorted.c:1052-1073) relocates
+//     every instance that is not the running maximum (rb_insert_node puts equal values right, so
+//     an instance equal to the maximum is the maximum) with lyd_unlink_ignore_lyds +
+//     lyd_insert_hash: its exact-value record moves to the back of its bucket;
+//   - reorderFirst: each instance below the running minimum is linked before the leader
+//     (lyds_link_data_node, tree_data_sorted.c:1021-1040) and lyd_insert_hash_add
+//     (tree_data_hash.c:128-163) removes the old first's first-instance record and inserts the
+//     new one (refused when it already has one, D-0118). Every transition is replayed in order,
+//     not only old first → final first: the intermediate removals are observable.
+//
+// The parser defers the sort: appendSortedOperation applies reorderExact to the instances that
+// existed when the run got its RB tree, and flushDirtyRun applies reorderFirst to the whole run
+// in sibling order (those instances, then the parsed ones in parse order), which is the order
+// lyds_insert linked them in. One counted comparison per instance and mode.
+func (t *Tree) applyRunReorderHash(sib *siblings, before []*Node, mode reorderHash) {
+	if len(before) == 0 || sib.ht == nil {
+		return
+	}
+	if !firstRecordSchema(before[0].schema) {
+		mode &^= reorderFirst // only an operation's children keep first-instance records
+	}
+	maximum, minimum := before[0], before[0]
+	for _, n := range before[1:] {
+		if mode&reorderExact != 0 {
+			t.work.Add(1)
+			if compareSorted(maximum, n) <= 0 { // equal values extend the running maximum
+				maximum = n
+			} else {
+				sib.hashRemove(n)
+				sib.hashPut(n)
+			}
+		}
+		if mode&reorderFirst != 0 {
+			t.work.Add(1)
+			if compareSorted(n, minimum) < 0 {
+				sib.leaderReplace(n.schema, minimum, n)
+				minimum = n
+			}
+		}
+	}
+}
+
 // upper returns the first index of l[lo:] for which after holds (l is monotone in it), counting
 // the comparisons.
 func (t *Tree) upper(l []*Node, lo int, after func(*Node) bool) int {
@@ -153,12 +204,16 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 			// lyds_additionally_create_rb_tree: the run gets its RB tree from all its instances,
 			// inserted in order, so it is sorted stably (rb_insert_node puts equal values after
 			// the existing ones)
-			slices.SortStableFunc(l[lo:hi], compareSorted)
-			if sib.opIdx != nil {
-				sib.opRebuild(t, n.schema, l[lo:hi]) // only this run was reordered
-			}
+			t.applyRunReorderHash(sib, l[lo:hi], reorderExact|reorderFirst)
+			slices.SortStableFunc(l[lo:hi], func(a, b *Node) int {
+				t.work.Add(1)
+				return compareSorted(a, b)
+			})
 			for _, a := range l[lo:hi] {
 				a.inRB = true
+			}
+			if sib.opIdx != nil {
+				sib.opRebuild(t, n.schema, l[lo:hi]) // only this run was reordered
 			}
 			markRB(sib, n.schema)
 		} else if sib.unsorted[n.schema] {
@@ -204,9 +259,14 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 func (s *siblings) opRebuild(t *Tree, sn *schema.Node, run []*Node) {
 	d := s.opIdx[sn]
 	d.nodeDeque = nodeDeque{list: make([]*Node, len(run))}
+	s.gen++ // a physical reorder moves positions (lydCtx.position caches by gen)
+	d.rb = 0
 	for i, n := range run {
 		t.work.Add(1)
 		d.list[i] = n
+		if n.inRB {
+			d.rb++
+		}
 	}
 	s.opIdx[sn] = d
 }
@@ -285,17 +345,6 @@ func indexFromEnd(work *workCounter, l []*Node, n *Node) int {
 		}
 	}
 	return -1
-}
-
-// opFirstFrom returns the list position of the first indexed instance. System-ordered instances
-// are one contiguous run, so either endpoint locates it; user-ordered output may be split.
-// Callers need a mutation position (cost bounded by the shift/run), except opRun
-// at the bounded anchor-created split boundaries described there.
-func (t *Tree) opFirstFrom(l, inst []*Node) int {
-	if len(inst) == 1 || sortedSupported(inst[0]) {
-		return t.runFrom(l, inst[0], inst[len(inst)-1], len(inst))
-	}
-	return t.indexFromEnd(l, inst[0])
 }
 
 // orderKey is an operation's input (out false) or output children.
@@ -410,6 +459,7 @@ type opEntry struct {
 	rank      int
 	direction int
 	gaps      int // extra runs in sibling order; zero means every instance is adjacent
+	rb        int // instances in libyang's RB tree; exact through every index mutation
 }
 
 // opInst is the instances of the operation child sn in s.list, in list order. It only reads: the
@@ -434,19 +484,51 @@ func (s *siblings) opInst(sn *schema.Node) []*Node {
 	return nil
 }
 
+// schemaLookupOperation is lyd_find_sibling_schema's first hash record for an operation child. A (leaf-)list
+// uses the schema-only first-instance chain while the table exists, including its observable
+// absence. Other schema nodes use their ordinary schema-key bucket. Without a table libyang walks
+// siblings and finds the first indexed instance.
+func (t *Tree) schemaLookupOperation(s *siblings, sn *schema.Node) *Node {
+	if s.ht == nil {
+		if inst := s.opInst(sn); len(inst) > 0 {
+			return inst[0]
+		}
+		return nil
+	}
+	if firstRecordSchema(sn) {
+		return s.leaderFirst(sn)
+	}
+	if c := s.ht[idxKey{s: sn}]; c != nil && c.first != nil {
+		s.visit()
+		return c.first.node
+	}
+	return nil
+}
+
 // opRun is LYD_LIST_FOR_INST from the first instance: stop at the first other schema.
 // Most entries are contiguous, so their index slice is already the run and needs no position.
 // ponytail: anchor-created split entries arise only around the hash-table transition with
 // fewer than four kept input nodes; those boundaries bound the position lookups on replies.
 func (t *Tree) opRun(s *siblings, sn *schema.Node) []*Node {
-	if d := s.opIdx[sn]; d != nil && d.gaps == 0 {
-		return d.list
-	}
-	inst := s.opInst(sn)
-	if len(inst) == 0 {
+	leader := t.schemaLookupOperation(s, sn)
+	if leader == nil {
 		return nil
 	}
-	i := t.opFirstFrom(s.list, inst)
+	d := s.opIdx[sn]
+	if d != nil && d.gaps == 0 {
+		if d.list[0] == leader {
+			return d.list
+		}
+		// A gap-free entry has the same order as the sibling run: the leader's run is the rest
+		// of the entry (an interior leader only after a stale record, a counted scan).
+		if i := indexFromEnd(s.work, d.list, leader); i >= 0 {
+			return d.list[i:]
+		}
+	}
+	i := s.position(leader)
+	if i < 0 {
+		return nil
+	}
 	j := i
 	for j < len(s.list) && s.list[j].schema == sn {
 		t.work.Add(1)
@@ -484,17 +566,21 @@ func (s *siblings) opBuild(t *Tree) {
 			d.gaps++
 		}
 		d.list = append(d.list, a)
+		if a.inRB {
+			d.rb++
+		}
 	}
 }
 
-// opRemove drops n, being unlinked, from the instance index.
-func (s *siblings) opRemove(n *Node, at int) {
+// opRemove drops n, being unlinked, from the instance index and returns whether its schema and
+// any of its RB-tree members survive.
+func (s *siblings) opRemove(n *Node, at int) (survives, survivesInRB bool) {
 	if s.opIdx == nil {
-		return
+		return false, false
 	}
 	d := s.opIdx[n.schema]
 	if d == nil {
-		return
+		return false, false
 	}
 	left, right := s.opNeighbours(at)
 	if left != nil && left == right && left != n.schema {
@@ -507,7 +593,7 @@ func (s *siblings) opRemove(n *Node, at int) {
 	// compaction add no order of growth.
 	i := indexFromEnd(s.work, d.list, n)
 	if i < 0 {
-		return
+		return len(d.list) > 0, d.rb > 0
 	}
 	moved := d.deleteAt(i)
 	if s.work.shifts {
@@ -516,7 +602,12 @@ func (s *siblings) opRemove(n *Node, at int) {
 	if len(d.list) == 0 {
 		delete(s.opIdx, n.schema)
 		s.opRanks[d.direction].clear(s.work, d.rank)
+		return false, false
 	}
+	if n.inRB {
+		d.rb--
+	}
+	return true, d.rb > 0
 }
 
 // opNewEntry records the first instance of sn in the occupied-rank summary.
@@ -547,6 +638,9 @@ func (s *siblings) opIdxAdd(t *Tree, n *Node, at int) {
 	if d == nil {
 		d = s.opNewEntry(t, n.schema)
 		d.list = []*Node{n}
+		if n.inRB {
+			d.rb = 1
+		}
 		s.opIdx[n.schema] = d
 		return
 	}
@@ -555,6 +649,9 @@ func (s *siblings) opIdxAdd(t *Tree, n *Node, at int) {
 	}
 	add := func(i int) {
 		moved := d.insertAt(i, n)
+		if n.inRB {
+			d.rb++
+		}
 		if t.work.shifts {
 			t.work.Add(int64(moved))
 		}
@@ -576,6 +673,9 @@ func (s *siblings) opIdxAdd(t *Tree, n *Node, at int) {
 			t.work.Add(1)
 			if a.schema == n.schema {
 				d.list = append(d.list, a)
+				if a.inRB {
+					d.rb++
+				}
 			}
 		}
 		s.opIdx[n.schema] = d
@@ -605,13 +705,14 @@ func (t *Tree) opAnchor(sib *siblings, n *Node) int {
 		if opts == schema.GetNextOutput {
 			d = 1
 		}
-		r := sib.opRanks[d].next(t, t.schemaRank(n.schema))
-		if r < 0 || r >= len(order) {
-			return len(l)
+		for r := sib.opRanks[d].next(t, t.schemaRank(n.schema)); r >= 0 && r < len(order); r = sib.opRanks[d].next(t, r) {
+			leader := t.schemaLookupOperation(sib, order[r])
+			if leader != nil {
+				// The record, not the document-first instance, is the anchor.
+				return t.indexFromEnd(l, leader)
+			}
 		}
-		inst := sib.opInst(order[r])
-		// The anchor position scan is bounded by the ensuing insertion shift plus its run.
-		return t.opFirstFrom(l, inst)
+		return len(l)
 	}
 	own := ownerModule(t.set, n)
 	k, found := 0, false
@@ -688,6 +789,7 @@ func (t *Tree) childrenOf(parent *Node) *siblings {
 // ancestors.
 func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) {
 	sib.work = &t.work
+	hadHT := sib.ht != nil
 	switch {
 	case n.schema == nil && (at < 0 || at >= len(sib.opq)):
 		sib.opq = append(sib.opq, n)
@@ -707,6 +809,9 @@ func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) {
 		}
 	}
 	t.attach(parent, sib, n)
+	if hadHT && n.schema != nil {
+		sib.leaderInsert(n, at)
+	}
 }
 
 // nodeDeque is a node slice with its backing allocation retained for front headroom.
@@ -791,6 +896,7 @@ func (t *Tree) attach(parent *Node, sib *siblings, n *Node) {
 // shift the list once per node (quadratic for a merged run).
 func (t *Tree) splice(parent *Node, sib *siblings, lo, hi int, ns []*Node, first bool) {
 	sib.work = &t.work
+	hadHT := sib.ht != nil
 	old := sib.list
 	out := make([]*Node, 0, len(old)+len(ns))
 	out = append(out, old[:lo]...)
@@ -813,13 +919,45 @@ func (t *Tree) splice(parent *Node, sib *siblings, lo, hi int, ns []*Node, first
 	for _, n := range ns {
 		t.attach(parent, sib, n)
 	}
+	if hadHT && len(ns) > 0 {
+		// Sequential insertion can make only the first spliced node a run start. If it replaces
+		// an existing run's first instance, remove that record before appending the new one. A
+		// brand-new run has no successor record to remove (the following nodes are from this batch).
+		if at := t.indexFromEnd(sib.list, ns[0]); at >= 0 {
+			starts := at == 0 || sib.list[at-1].schema != ns[0].schema
+			switch {
+			case !starts || !firstRecordSchema(ns[0].schema):
+			case lo == hi:
+				sib.leaderAppend(ns[0].schema, ns[0])
+			default:
+				sib.leaderReplace(ns[0].schema, old[lo], ns[0])
+			}
+		}
+	}
 }
 
 // rehashParent moves the list instance l to the bucket of its current keys in its parent's index.
 func rehashParent(l *Node) {
 	if ls := l.siblingsOf(); ls != nil && l.parent != nil {
+		at := -1
+		var prev, next *Node
+		indexed := false
+		if ls.ht != nil && firstRecordSchema(l.schema) { // only operation children keep records
+			if prev, next, indexed = ls.opRehashNeighbours(l); indexed {
+				ls.leaderUnlinkBetween(l, prev, next, false)
+			} else {
+				// ponytail: split operation entries need the physical neighbours (#240).
+				at = indexFromEnd(ls.work, ls.list, l)
+				ls.leaderUnlink(l, at, false)
+			}
+		}
 		ls.hashRemove(l)
 		ls.hashAdd(l.parent, l)
+		if indexed {
+			ls.leaderInsertBetween(l, prev, next)
+		} else if at >= 0 {
+			ls.leaderInsert(l, at)
+		}
 	}
 }
 
@@ -858,22 +996,44 @@ func unlink(n *Node) {
 	}
 	freeLinks(n)
 	if n.schema == nil {
-		if i := slices.Index(sib.opq, n); i >= 0 {
-			sib.opq = slices.Delete(sib.opq, i, i+1)
+		if i := indexFromEnd(sib.work, sib.opq, n); i >= 0 {
+			d := nodeDeque{list: sib.opq}
+			moved := d.deleteAt(i)
+			sib.opq = d.list
+			if sib.work.shifts {
+				sib.work.Add(int64(moved))
+			}
 		}
-	} else if i := slices.Index(sib.list, n); i >= 0 {
-		sib.opRemove(n, i) // neighbours must still surround n
-		sib.list = slices.Delete(sib.list, i, i+1)
+	} else if i := indexFromEnd(sib.work, sib.list, n); i >= 0 {
+		sib.leaderUnlink(n, i, true) // lyd_unlink_hash observes n while it is still linked
+		survives, survivesInRB := false, false
+		if sib.opIdx != nil {
+			survives, survivesInRB = sib.opRemove(n, i) // neighbours still surround n
+		}
+		moved := sib.deleteAt(i)
+		if sib.work.shifts {
+			sib.work.Add(int64(moved))
+		}
+		if sib.opIdx == nil {
+			survives = sib.has(n.schema)
+			if !n.inRB {
+				survivesInRB = true
+			} else {
+				for _, x := range sib.list {
+					sib.visit()
+					if x.schema == n.schema && x.inRB {
+						survivesInRB = true
+						break
+					}
+				}
+			}
+		}
+		sib.afterRemove(n.schema, n.inRB, survives, survivesInRB)
 	}
 	sib.hashRemove(n)
 	sib.gen++
-	if n.schema != nil {
-		survives := sib.has(n.schema)
-		survivesInRB := !n.inRB || slices.ContainsFunc(sib.list, func(x *Node) bool {
-			return x.schema == n.schema && x.inRB
-		})
-		sib.afterRemove(n.schema, n.inRB, survives, survivesInRB)
-	}
+	// ponytail: repeatedly removing the middle of a large sibling list still moves O(n) slots
+	// per removal; the full indexed-sequence redesign is issue #240.
 	npContDfltSet(detach(n)) // the last non-default node may be gone
 }
 
@@ -919,8 +1079,9 @@ func (t *Tree) unlinkAllDefaults(ns, defaults []*Node) error {
 		}
 	}
 	gone := map[*Node]bool{}
-	sibs := map[*siblings]map[idxKey]bool{}              // touched lists and their touched buckets
+	sibs := map[*siblings]bool{}                         // touched sibling sets
 	removedRuns := map[*siblings]map[*schema.Node]bool{} // affected schemas; value: any removed node was inRB
+	groups := map[*siblings][]*Node{}                    // removals in ns order, grouped by sibling set
 	var order []*siblings
 	for _, n := range ns {
 		sib := n.siblingsOf()
@@ -929,9 +1090,13 @@ func (t *Tree) unlinkAllDefaults(ns, defaults []*Node) error {
 		}
 		gone[n] = true
 		freeLinks(n) // lyd_unlink_ignore_lyds
-		if sibs[sib] == nil {
-			sibs[sib] = map[idxKey]bool{}
+		if !sibs[sib] {
+			sibs[sib] = true
 			order = append(order, sib)
+		}
+		if sib.ht != nil && len(sib.list) != 0 && opChild(sib.list[0].schema) {
+			t.work.Add(1)
+			groups[sib] = append(groups[sib], n)
 		}
 		if n.schema != nil {
 			if removedRuns[sib] == nil {
@@ -939,12 +1104,50 @@ func (t *Tree) unlinkAllDefaults(ns, defaults []*Node) error {
 			}
 			removedRuns[sib][n.schema] = removedRuns[sib][n.schema] || n.inRB
 		}
-		if n.hashed {
-			sibs[sib][n.hkey] = true
-			n.hashed = false
-		}
+		sib.hashRemove(n)
 	}
 	isGone := func(n *Node) bool { t.work.Add(1); return gone[n] }
+	// First-instance records are changed as if each node were unlinked in ns order. The sibling
+	// order is represented once as a mutable linked list, avoiding a rescan for every removal.
+	for _, sib := range order {
+		if sib.ht == nil || len(sib.list) == 0 || !opChild(sib.list[0].schema) {
+			continue
+		}
+		pos := make(map[*Node]int, len(sib.list))
+		prev, next := make([]int, len(sib.list)), make([]int, len(sib.list))
+		for i, n := range sib.list {
+			t.work.Add(1)
+			pos[n], prev[i], next[i] = i, i-1, i+1
+		}
+		next[len(next)-1] = -1
+		active := make([]bool, len(sib.list))
+		for i := range active {
+			active[i] = true
+		}
+		for _, n := range groups[sib] {
+			t.work.Add(1)
+			i, ok := pos[n]
+			if !ok || !active[i] {
+				continue
+			}
+			pi, ni := prev[i], next[i]
+			var pn, nn *Node
+			if pi >= 0 {
+				pn = sib.list[pi]
+			}
+			if ni >= 0 {
+				nn = sib.list[ni]
+			}
+			sib.leaderUnlinkBetween(n, pn, nn, true)
+			active[i] = false
+			if pi >= 0 {
+				next[pi] = ni
+			}
+			if ni >= 0 {
+				prev[ni] = pi
+			}
+		}
+	}
 	for _, sib := range order {
 		sib.gen++
 		sib.list = slices.DeleteFunc(sib.list, isGone)
@@ -952,18 +1155,12 @@ func (t *Tree) unlinkAllDefaults(ns, defaults []*Node) error {
 			sib.opBuild(t)
 		}
 		sib.opq = slices.DeleteFunc(sib.opq, isGone)
-		for k := range sibs[sib] { // each bucket compacted once
-			if b := slices.DeleteFunc(sib.ht[k], isGone); len(b) > 0 {
-				sib.ht[k] = b
-			} else {
-				delete(sib.ht, k)
-			}
-		}
 	}
 	for _, sib := range order {
 		present := map[*schema.Node]bool{}
 		indexed := map[*schema.Node]bool{}
 		for _, n := range sib.list {
+			t.work.Add(1)
 			present[n.schema] = true
 			if n.inRB {
 				indexed[n.schema] = true

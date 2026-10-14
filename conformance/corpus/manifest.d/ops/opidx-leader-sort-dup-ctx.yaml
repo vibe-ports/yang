@@ -1,0 +1,17 @@
+fixtures:
+  - id: ops/opidx-leader-sort-dup-ctx
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: input leaf-list s ["10","2","3","4"] sorted as strings, copied recursively into a context where s is uint32 (LYD_INSERT_NODE_LAST: no RB tree, first-instance record 10); inserting 11 makes lyds_insert build the tree (lyds_additionally_create_rb_nodes relocates 2,3,4 with lyd_unlink_ignore_lyds + lyd_insert_hash, tree_data_sorted.c:1052-1073), so 2 takes the record and pre goes before 2
+    rfc: ["RFC7950#7.14"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [opidxs.1]
+      modules: [{name: opidxs}]
+      steps:
+        - {do: parse, format: json, data_type: rpc, unknown: reject, parse_only: true, data: '{"opidxs:r":{"s":["10","2","3","4"]}}'}
+        - {do: dup, node: "/opidxs:r", options: [recursive], target: {searchdirs: [opidxs.2], modules: [{name: opidxs}]}}
+        - {do: edit, insert_term: {module: opidxs, parent: "/opidxs:r", name: s, value: "11"}}
+        - {do: edit, insert_term: {module: opidxs, parent: "/opidxs:r", name: pre, value: "x"}}
+        - {do: dump}
+    golden: golden/ops-opidx-leader-sort-dup-ctx.json

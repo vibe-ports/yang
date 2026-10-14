@@ -423,7 +423,7 @@ func (vc *valCtx) mandatory(parent *Node, sib *siblings, sn *schema.Node) error 
 		if vc.firstData(sib, sn) != nil {
 			return nil
 		}
-	} else if vc.t.findSchema(sib, sn) != nil {
+	} else if vc.t.schemaLookup(sib, sn) != nil {
 		return nil
 	}
 	if hasWhen(sn) {
@@ -513,7 +513,7 @@ func (vc *valCtx) uniqFindLeaf(leaf *schema.Node, list *Node) *Node {
 	}
 	n := list
 	for i := len(chain) - 1; i >= 0 && n != nil; i-- {
-		n = vc.t.findSchema(&n.kids, chain[i])
+		n = vc.t.schemaLookup(&n.kids, chain[i])
 	}
 	return n
 }

@@ -256,7 +256,7 @@ func (t *Tree) findMatch(sib *siblings, target *Node, defaults bool, cache *dupC
 	case target.schema.Kind == schema.List || target.schema.Kind == schema.LeafList:
 		m = t.findFirst(sib, target)
 	default:
-		m = t.findSchema(sib, target.schema)
+		m = t.schemaLookup(sib, target.schema)
 	}
 	m = t.dupInstNext(m, cache)
 	if m != nil && m.flags&FlagDefault != 0 && !defaults {

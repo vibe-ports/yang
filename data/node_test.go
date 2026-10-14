@@ -135,7 +135,7 @@ func TestInsertOrder(t *testing.T) {
 		t.Fatalf("children:\n got  %v\n want %v", got, want)
 	}
 	// the key is moved first even when inserted after another child
-	if got := names(tr.findSchema(&c.kids, f.l).Children()); !reflect.DeepEqual(got, []string{"k=eth0", "v=x"}) {
+	if got := names(tr.schemaLookup(&c.kids, f.l).Children()); !reflect.DeepEqual(got, []string{"k=eth0", "v=x"}) {
 		t.Fatalf("list children %v", got)
 	}
 	// equal values: the new instance goes after the existing ones
@@ -343,8 +343,8 @@ func TestFindSibling(t *testing.T) {
 	if tr.findFirst(&c.kids, probe) != nil {
 		t.Fatal("unlinked instance still indexed")
 	}
-	if tr.findSchema(&c.kids, f.l) != l1 || tr.findSchema(&c.kids, f.z) != nil {
-		t.Fatal("findSchema")
+	if tr.schemaLookup(&c.kids, f.l) != l1 || tr.schemaLookup(&c.kids, f.z) != nil {
+		t.Fatal("schemaLookup")
 	}
 	// state leaf-list: equal instances allowed, the first in order is found
 	s1, s2 := f.term(t, f.sl, "4"), f.term(t, f.sl, "4")
@@ -516,7 +516,7 @@ func TestConcurrentReads(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for range 100 {
-				if tr.findFirst(&c.kids, probe) == nil || tr.findSchema(&c.kids, f.z) != nil || !compareSingle(tr, c, c, true) {
+				if tr.findFirst(&c.kids, probe) == nil || tr.schemaLookup(&c.kids, f.z) != nil || !compareSingle(tr, c, c, true) {
 					t.Error("lookup failed")
 					return
 				}

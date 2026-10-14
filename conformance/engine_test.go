@@ -106,11 +106,20 @@ func xpathKind(req map[string]any) string {
 		}
 		return op
 	case "sequence":
+		kind := ""
 		for _, st := range list(req["steps"]) {
-			if s, ok := st.(map[string]any); ok && s["do"] == "trim" {
-				return "trim"
+			s, ok := st.(map[string]any)
+			if !ok {
+				continue
+			}
+			if dt, _ := s["data_type"].(string); s["do"] == "parse" && (dt == "rpc" || dt == "reply" || dt == "notif") {
+				return "" // a trim of operation data, like XPath over it: an M4 operation fixture
+			}
+			if s["do"] == "trim" {
+				kind = "trim"
 			}
 		}
+		return kind
 	}
 	return ""
 }

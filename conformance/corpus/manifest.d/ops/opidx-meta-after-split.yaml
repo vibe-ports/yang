@@ -1,0 +1,18 @@
+fixtures:
+  - id: ops/opidx-meta-after-split
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: "@v" after "v" for a leaf-list the anchor splits around the kept input ([before, v1, v2, in, v3]): lydjson_parse_attribute finds v1 in sibling order and lydjson_meta_attr advances with node->next, so the third metadata item reaches "in", not v3
+    rfc: ["RFC7950#7.14", "RFC7952#5.2"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [rb.1]
+      modules: [{name: rb}, {name: rbaug}]
+      format: json
+      data_type: reply
+      unknown: reject
+      parse_only: true
+      rpc: "{\"rb:r\":{\"in\":\"keep\"}}"
+      keep_input: true
+      data: "{\"rb:before\":\"b\",\"rb:v\":[1,2,3],\"@rb:v\":[null,null,null]}"
+    golden: golden/ops-opidx-meta-after-split.json

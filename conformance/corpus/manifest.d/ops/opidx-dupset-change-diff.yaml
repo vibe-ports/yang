@@ -1,0 +1,19 @@
+fixtures:
+  - id: ops/opidx-dupset-change-diff
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: user-ordered input leaf-list [1,2,1,1] (a,b,c,d); lyd_change_term of b to 1 re-registers its hash last (lyd_unlink_hash + lyd_insert_hash), so lyd_find_sibling_dup_inst_set yields a,c,d,b while the document stays a,b,c,d; lyd_diff_siblings (LYD_DIFF_META) pairs the second tree's equal instances with it in its second loop (lyd_diff_userord_attrs metadata replace); after a recursive dup the order is a,b,c,d again
+    rfc: ["RFC7950#7.14"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [rb.1]
+      modules: [{name: opidx239}]
+      steps:
+        - {do: parse, format: json, data_type: rpc, unknown: reject, parse_only: true, data: '{"opidx239:r":{"@u":[{"opidx239:id":"a"},{"opidx239:id":"b"},{"opidx239:id":"c"},{"opidx239:id":"d"}],"u":[1,2,1,1]}}'}
+        - {do: change_term, node: "/opidx239:r/u[.='2']", value: "1"}
+        - {do: diff, format: json, data_type: rpc, unknown: reject, parse_only: true, data: '{"opidx239:r":{"@u":[{"opidx239:id":"a"},{"opidx239:id":"b"},{"opidx239:id":"c"},{"opidx239:id":"d"}],"u":[1,1,1,1]}}', options: [meta]}
+        - {do: dump}
+        - {do: dup, node: "/opidx239:r", options: [recursive]}
+        - {do: diff, format: json, data_type: rpc, unknown: reject, parse_only: true, data: '{"opidx239:r":{"@u":[{"opidx239:id":"a"},{"opidx239:id":"b"},{"opidx239:id":"c"},{"opidx239:id":"d"}],"u":[1,1,1,1]}}', options: [meta]}
+        - {do: dump}
+    golden: golden/ops-opidx-dupset-change-diff.json

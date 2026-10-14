@@ -1,0 +1,20 @@
+fixtures:
+  - id: ops/opidx-leader-unlink-registered
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: [a,a2,v1,v2,o,v3] (records v1,v3); freeing o (lyd_trim_xpath) leaves v3's record, freeing v2 touches no first-instance record, freeing v1 makes lyd_unlink_hash register its successor v3, which already has a record: lyht_insert fails, LOGINT (tree_data_hash.c:240-242, LY_EINT); v1 is still freed
+    rfc: ["RFC7950#7.14"]
+    areas: [operations]
+    assert: {verdict: valid, deviation: D-0118}
+    request:
+      op: sequence
+      searchdirs: [rb.1]
+      modules: [{name: opidx239}]
+      steps:
+        - {do: parse, format: json, data_type: rpc, unknown: reject, parse_only: true, data: '{"opidx239:l":{"a":"1","a2":"2","v":[1,2]}}'}
+        - {do: edit, insert_term: {module: opidx239, parent: "/opidx239:l", name: o, value: "o", options: [output]}}
+        - {do: edit, insert_term: {module: opidx239, parent: "/opidx239:l", name: v, value: "3"}}
+        - {do: trim, xpath: "/opidx239:l/a | /opidx239:l/a2 | /opidx239:l/v"}
+        - {do: edit, delete: "/opidx239:l/v[.='2']"}
+        - {do: edit, delete: "/opidx239:l/v[.='1']"}
+        - {do: dump}
+    golden: golden/ops-opidx-leader-unlink-registered.json

@@ -1,0 +1,16 @@
+fixtures:
+  - id: ops/opidx-xml-deferred-sort-path
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: system-ordered input leaf-list il parsed 2 then 1; lyds_insert sorts each instance on insertion (tree_data_sorted.c lyds_insert), so the second il is already il[1] when its unexpected child element fails, and the error path names il[1]
+    rfc: ["RFC7950#7.14"]
+    areas: [operations]
+    request:
+      op: data
+      searchdirs: [rb.1]
+      modules: [{name: rb}]
+      format: xml
+      data_type: rpc
+      unknown: reject
+      parse_only: true
+      data: "<r xmlns=\"urn:rb\"><il>2</il><il>1<x/></il></r>"
+    golden: golden/ops-opidx-xml-deferred-sort-path.json

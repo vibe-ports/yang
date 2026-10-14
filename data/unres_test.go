@@ -170,10 +170,10 @@ func TestWhenQueue(t *testing.T) {
 	if err := vc.newImplicitR(c, nil, nil, 0); err != nil {
 		t.Fatal(err)
 	}
-	if vc.t.findSchema(&c.kids, f.d) == nil {
+	if vc.t.schemaLookup(&c.kids, f.d) == nil {
 		t.Fatal("implicit d missing")
 	}
-	if err := vc.unres(); err != nil || vc.t.findSchema(&c.kids, f.d) != nil || !reflect.DeepEqual(deleted, []string{"d"}) {
+	if err := vc.unres(); err != nil || vc.t.schemaLookup(&c.kids, f.d) != nil || !reflect.DeepEqual(deleted, []string{"d"}) {
 		t.Fatalf("autodelete: %v %v", err, deleted)
 	}
 
@@ -569,7 +569,7 @@ func TestWhenTwiceQueued(t *testing.T) {
 		}
 		return nil
 	}
-	if err := vc.unres(); err != nil || deletes != 1 || vc.t.findSchema(&c.kids, f.b) != nil {
+	if err := vc.unres(); err != nil || deletes != 1 || vc.t.schemaLookup(&c.kids, f.b) != nil {
 		t.Fatalf("%v: %d deletes", err, deletes)
 	}
 }

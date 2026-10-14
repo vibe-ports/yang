@@ -206,7 +206,7 @@ func (t *Tree) diffInsert(parent, n *Node, anchor string) error {
 		return t.insertSibling(sib.first(), n)
 	}
 	if anchor == "" { // before the first instance
-		first := t.findSchema(sib, n.schema)
+		first := t.schemaLookup(sib, n.schema)
 		switch {
 		case first == n:
 			return argErr("sibling != node", "lyd_insert_before")

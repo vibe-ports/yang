@@ -1,0 +1,21 @@
+module opidxu {
+  yang-version 1.1;
+  namespace "urn:opidxu";
+  prefix ou;
+
+  rpc l {
+    input {
+      leaf a { type string; }
+      leaf a2 { type string; }
+      leaf a3 { type string; }
+      leaf pre { type string; }
+      leaf-list s {
+        type uint32;
+        ordered-by user;
+      }
+    }
+    output {
+      leaf o { type string; }
+    }
+  }
+}

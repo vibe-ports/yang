@@ -167,6 +167,25 @@ func (t *Tree) TrimXPath(expr string, o XPathOptions) ([]yang.Diagnostic, error)
 		return budgetErr()
 	}
 	defaults := npContDfltAffected(free)
+	// unlinkAllDefaults groups its first-instance simulation by sibling set. Preflight the
+	// grouping, each set's position table, and its own removal walk before any mutation.
+	groups := map[*siblings]int{}
+	for _, n := range free {
+		if sib := n.siblingsOf(); sib != nil && sib.ht != nil && len(sib.list) != 0 && opChild(sib.list[0].schema) {
+			if !charge(1) { // group lookup/append
+				return budgetErr()
+			}
+			groups[sib]++
+		}
+	}
+	for sib, count := range groups {
+		// Each removal may also remove a first-instance record, test its successor, and append
+		// that successor. Reserve all three constant-time record operations as well as the
+		// set-local removal walk.
+		if !charge(int64(len(sib.list) + 4*count)) { // position table, removal walk, record updates
+			return budgetErr()
+		}
+	}
 	for _, p := range defaults {
 		// One ancestor-plan entry and at most one visit of every current child. Removed
 		// children make the eventual post-unlink scan no larger than this preflight bound.

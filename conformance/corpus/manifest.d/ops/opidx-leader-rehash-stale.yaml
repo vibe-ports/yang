@@ -1,0 +1,20 @@
+fixtures:
+  - id: ops/opidx-leader-rehash-stale
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: [a,a2,v1,v2,o,v3] (records v1,v3); freeing o (lyd_trim_xpath) leaves v3's record although v3 no longer starts a run; lyd_change_term of v3 (user-ordered: lyd_unlink_hash + lyd_insert_hash, tree_data_new.c:1177-1194) touches only its exact-hash record, so the first-instance record survives; freeing v1 appends v2's behind it and lyd_insert_get_next_anchor puts between before v3
+    rfc: ["RFC7950#7.14"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [rb.1]
+      modules: [{name: opidx239}]
+      steps:
+        - {do: parse, format: json, data_type: rpc, unknown: reject, parse_only: true, data: '{"opidx239:l":{"a":"1","a2":"2","v":[1,2]}}'}
+        - {do: edit, insert_term: {module: opidx239, parent: "/opidx239:l", name: o, value: "o", options: [output]}}
+        - {do: edit, insert_term: {module: opidx239, parent: "/opidx239:l", name: v, value: "3"}}
+        - {do: trim, xpath: "/opidx239:l/a | /opidx239:l/a2 | /opidx239:l/v"}
+        - {do: change_term, node: "/opidx239:l/v[.='3']", value: "5"}
+        - {do: edit, delete: "/opidx239:l/v[.='1']"}
+        - {do: edit, insert_term: {module: opidx239, parent: "/opidx239:l", name: between, value: "x"}}
+        - {do: dump}
+    golden: golden/ops-opidx-leader-rehash-stale.json

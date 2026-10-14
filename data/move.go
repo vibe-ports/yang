@@ -290,7 +290,7 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) {
 	// lyd_move_nodes_by_schema
 	for _, run := range rs {
 		s := run[0].schema
-		if sortedSupported(run[0]) && t.findSchema(dst, s) != nil {
+		if sortedSupported(run[0]) && t.schemaLookup(dst, s) != nil {
 			t.merge(parent, dst, src, run)
 			continue
 		}

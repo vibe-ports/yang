@@ -61,13 +61,18 @@ func (x xn) LookupChild(sn xpath.SchemaNode, vals []string) ([]xpath.Node, bool)
 	} else if vals != nil {
 		k.key = strings.Join(vals, "\x00") + "\x00" // hashOf of a list
 	}
-	b := sib.ht[k]
-	live := len(b) == 1 && b[0].flags&flagDead == 0
+	c := sib.ht[k]
+	var first *Node
+	if c != nil && c.first != nil {
+		sib.visit()
+		first = c.first.node
+	}
+	live := c != nil && c.count == 1 && first.flags&flagDead == 0
 	switch {
-	case len(b) > 1, !live && len(sib.opq) > 0:
+	case c != nil && c.count > 1, !live && len(sib.opq) > 0:
 		return nil, false
 	case live:
-		return []xpath.Node{xn{b[0], x.set}}, true
+		return []xpath.Node{xn{first, x.set}}, true
 	}
 	return nil, true
 }
@@ -81,7 +86,7 @@ func (x xn) FirstChild(sn xpath.SchemaNode) (xpath.Node, bool) {
 	if !ok || t == nil || x.n.flags&flagDead != 0 {
 		return nil, false
 	}
-	c := t.findSchema(&x.n.kids, s.s) // an operation's children: the instance index, no scan
+	c := t.schemaLookup(&x.n.kids, s.s) // an operation's children: the instance index, no scan
 	if c == nil {
 		return nil, true
 	}

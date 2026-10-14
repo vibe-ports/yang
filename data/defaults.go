@@ -199,13 +199,13 @@ func (vc *valCtx) newImplicit(parent *Node, sparent *schema.Node, mod *schema.Mo
 		}
 		switch sn.Kind {
 		case schema.Container:
-			if !sn.Presence && vc.t.findSchema(sib, sn) == nil {
+			if !sn.Presence && vc.t.schemaLookup(sib, sn) == nil {
 				if err := vc.addImplicit(parent, newInner(sn)); err != nil {
 					return err
 				}
 			}
 		case schema.Leaf, schema.LeafList:
-			if o&implNoDefaults != 0 || len(sn.Default) == 0 || vc.t.findSchema(sib, sn) != nil {
+			if o&implNoDefaults != 0 || len(sn.Default) == 0 || vc.t.schemaLookup(sib, sn) != nil {
 				break
 			}
 			for _, d := range sn.Default { // a leaf has one, a leaf-list all of them

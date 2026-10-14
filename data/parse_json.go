@@ -376,11 +376,12 @@ func (p *jsonParser) checkOpaq(sn *schema.Node) (h types.Hints, err error) {
 // parent (the top level when nil) become metadata of the instance they precede in the input; the
 // n-th "@name" in a run of them goes to the n-th instance in sibling order (system-ordered
 // instances are already sorted, design 07 §4). libyang scans all siblings per "@name"; the
-// instances are looked up instead (the run of a schema node by binary search, opaque nodes by
-// name), so the work is linear.
+// instances are collected in that same document order from the operation index or an ordinary
+// contiguous schema run, and opaque nodes by name, so the work is linear.
 func (p *jsonParser) metadataFinish(parent *Node) error {
 	lc := p.lc
 	sib := lc.tree.childrenOf(parent)
+	lc.flushDirty(sib)
 	var ats []*Node
 	byName := map[string][]*Node{} // opaque siblings by name, in order
 	for _, n := range sib.opq {
@@ -550,22 +551,50 @@ func (p *jsonParser) metaAttr(node *Node, idx int) (rc error) {
 	}
 	prev, instance := node, 0
 	next := func(i int) *Node { return sibAt(prev.siblingsOf(), i) }
+	var pastRun func() *Node // the sibling after a contiguous operation run, located on demand
 	if nodetype == schema.LeafList && opChild(node.schema) {
-		// Metadata walks this first run only. Use its index slice, avoiding a sibling
-		// position scan for every distinct output leaf-list's metadata array.
+		// parseAttribute found the first instance in document order. lydjson_meta_attr then uses
+		// node->next, so a different schema node ends the metadata-to-instance coupling even when
+		// more instances of this operation child occur after it.
 		sib := node.siblingsOf()
-		run := lc.tree.opRun(sib, node.schema)
-		idx = 0
-		next = func(i int) *Node {
-			if i < len(run) {
-				return run[i]
-			}
-			// past the run libyang's node->next is the following sibling (parser_json.c:791,
-			// 915 name it in the errors): located once, on that error path only
-			if len(run) == 0 {
+		if ord := lc.dirtyOrd[dirtyRun{sib, node.schema}]; ord != nil {
+			// The deferred run's AVL order is the node->next order libyang's already-linked
+			// RB tree exposes. The physical sibling after the run is needed only to name a
+			// representation error.
+			d := sib.opIdx[node.schema]
+			current := node
+			idx = 0
+			next = func(_ int) *Node {
+				current = ord.successor(current)
+				if current != nil {
+					return current
+				}
+				pastRun = func() *Node {
+					return sibAt(sib, lc.position(sib, d.list[len(d.list)-1])+1)
+				}
 				return nil
 			}
-			return sibAt(sib, lc.tree.indexFromEnd(sib.list, run[len(run)-1])+1+i-len(run))
+		} else if d := sib.opIdx[node.schema]; d != nil && d.gaps == 0 && d.list[0] == node {
+			// A contiguous run is its index entry: node->next stays inside it until the run
+			// ends, so the start needs no sibling scan. Past the run node->next is the following
+			// sibling, of another schema node (the entry holds every instance). It ends the
+			// coupling, and only the representation error names it, so it is located on that
+			// error path alone (pastRun).
+			run := d.list
+			idx = 0
+			next = func(i int) *Node {
+				if i < len(run) {
+					return run[i]
+				}
+				pastRun = func() *Node {
+					return sibAt(sib, lc.tree.indexFromEnd(sib.list, run[len(run)-1])+1+i-len(run))
+				}
+				return nil
+			}
+		} else {
+			// ponytail: a run split by the anchor (bounded split boundaries, #240) is located by
+			// a counted scan from the nearer end.
+			idx = lc.position(sib, node)
 		}
 	}
 	var status lyjson.Token
@@ -579,6 +608,9 @@ func (p *jsonParser) metaAttr(node *Node, idx int) (rc error) {
 		}
 	}()
 	reprErr := func() error {
+		if node == nil && pastRun != nil {
+			node = pastRun() // parser_json.c:791,915 name node->next
+		}
 		name := prev.Name()
 		if node != nil {
 			name = node.Name()
@@ -818,9 +850,9 @@ func (p *jsonParser) ctxNextParseOpaq(name, prefix string, parent *Node, status 
 
 // parseAttribute is lydjson_parse_attribute: the "@name" member of attrNode, else of the sibling
 // it names; a member whose node is not parsed yet (or unknown) is kept as an opaque "@name" node
-// for metadataFinish. libyang scans the siblings for the first match; schema nodes come first, so
-// the first instance of the schema node (binary search), else the first opaque node of the name
-// and module (opqFirst) is that match.
+// for metadataFinish. libyang scans the siblings for the first match, so schema nodes use
+// documentFirst rather than lyd_find_sibling_schema's possibly different first hash record; an
+// opaque node uses the first input occurrence of the name and module (opqFirst).
 func (p *jsonParser) parseAttribute(attrNode *Node, sn *schema.Node, name, prefix string, hasPrefix bool,
 	parent *Node, status *lyjson.Token) (*Node, error) {
 	lc := p.lc
@@ -845,10 +877,12 @@ func (p *jsonParser) parseAttribute(attrNode *Node, sn *schema.Node, name, prefi
 			mod, name = sn.Module.Name, sn.Name
 		}
 		if sn != nil {
-			attrNode = lc.tree.findSchema(sib, sn)
+			if ord := lc.dirtyOrd[dirtyRun{sib, sn}]; ord != nil {
+				attrNode = ord.first()
+			} else {
+				attrNode = lc.tree.documentFirst(sib, sn)
+			}
 			if attrNode != nil && sn.Kind == schema.LeafList && !opChild(sn) {
-				// Metadata needs successive sibling positions; non-operation schemas use
-				// binary search, followed by the run walk in metaAttr.
 				idx = lc.tree.schemaIndex(sib, sn)
 			}
 		}

@@ -349,7 +349,7 @@ becomes observable. Context fields as in `schema`; step fields are per step (not
 
 | do | fields | libyang |
 |---|---|---|
-| `parse` | `format`, `data_type`, `data`/`data_file`, `unknown`, `parse_only`, `parse_options`, `validate_options`; operation types (`rpc`, `reply`, `notif`) with `parse_only` only, a reply also with `rpc` and `keep_input` | as op `data` (operations: `lyd_parse_op`, a reply into its `rpc` request); on success replaces the tree |
+| `parse` | `format`, `data_type`, `data`/`data_file`, `unknown`, `parse_only`, `parse_options`, `validate_options`; operation types (`rpc`, `reply`, `notif`) with `parse_only` only, a reply also with `rpc` and `keep_input`; `parent` (path in the retained tree, operation types with `parse_only`, no `rpc`) | as op `data` (operations: `lyd_parse_op`, a reply into its `rpc` request); on success replaces the tree. With `parent`: `lyd_parse_op(ctx, parent, …)` under that node of the retained tree, which is kept (and changed) whatever the result |
 | `validate` | `data_type`, `validate_options` (validate flags of the preset), `module`, `final_only` | `lyd_validate_all(&tree, ctx, opts, &diff)`; with `module` (an implemented module name) `lyd_validate_module(&tree, mod, opts, &diff)`, with `final_only` too `lyd_validate_module_final(tree, mod, opts)` (no diff) |
 | `edit` | exactly one of `merge` / `merge_file` (+ `format`, `data_type`, `unknown`, `parse_options`, merge only) | `lyd_parse_data(… LYD_PARSE_ONLY …)` + `lyd_merge_siblings(LYD_MERGE_DESTRUCT)` |
 | | `set: {"path", "value"}` only (value in JSON format, omit for containers/lists) | `lyd_new_path(tree, ctx, path, value, LYD_NEW_PATH_UPDATE)` (an existing default leaf-list instance is left untouched: use `insert_term` to make it explicit) |

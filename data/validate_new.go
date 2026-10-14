@@ -6,6 +6,7 @@
 package data
 
 import (
+	"iter"
 	"slices"
 
 	"github.com/vibe-ports/yang/internal/ly"
@@ -277,9 +278,11 @@ type dupIndex struct {
 	tmp map[idxKey][]*Node
 }
 
-func (d *dupIndex) bucket(k idxKey) []*Node {
+// bucket iterates the instances that hash like k, the children table's chain in registration
+// order when the parent has one (lazily: duplicates stops at the first equal instance).
+func (d *dupIndex) bucket(k idxKey) iter.Seq[*Node] {
 	if d.sib.ht != nil {
-		return d.sib.ht[k]
+		return d.sib.bucketNodes(k)
 	}
 	if d.tmp == nil {
 		d.tmp = map[idxKey][]*Node{}
@@ -289,7 +292,7 @@ func (d *dupIndex) bucket(k idxKey) []*Node {
 			}
 		}
 	}
-	return d.tmp[k]
+	return slices.Values(d.tmp[k])
 }
 
 // duplicates is lyd_validate_duplicates: another instance equal to the new node n (by keys or
@@ -303,7 +306,7 @@ func (vc *valCtx) duplicates(d *dupIndex, n *Node) error {
 	if !ok {
 		return nil
 	}
-	for _, m := range d.bucket(k) {
+	for m := range d.bucket(k) {
 		vc.t.work.Add(1)
 		if m == n || !vc.linkedIn(m, d.sib) || !htValEqual(vc.t, m, n) {
 			continue

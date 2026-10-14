@@ -449,8 +449,8 @@ func TestMergeSpliceHash(t *testing.T) {
 		t.Fatal("no children table")
 	}
 	for k, b := range c.kids.ht {
-		if len(b) != 1 {
-			t.Errorf("bucket %v holds %d nodes", k, len(b))
+		if b.count != 1 {
+			t.Errorf("bucket %v holds %d nodes", k, b.count)
 		}
 	}
 	if hit, ok := (xn{c, tr.set}).LookupChild(wrapSchema(tr.set, c.kids.list[0].schema), []string{"d"}); !ok || len(hit) != 1 {

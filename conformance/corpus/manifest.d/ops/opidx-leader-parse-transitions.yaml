@@ -1,0 +1,20 @@
+fixtures:
+  - id: ops/opidx-leader-parse-transitions
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: native evidence that the state behind the parse-time first-record transitions ([5,o,3] copied LAST into a context where s is system-ordered: records [5,3], no RB tree) is not reachable through the API: lyd_dup_single_to_ctx refuses the output node ("Schema node \"/opidxu:l/output/o\" not found in the target context.", LY_ENOTFOUND); the transitions themselves (lyds_insert + lyd_insert_hash_add for each new first) are covered by data/TestOpIndexParseLeaderTransitions on an internally built copy
+    rfc: ["RFC7950#7.14"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [opidxu.1]
+      modules: [{name: opidxu}]
+      steps:
+        - {do: parse, format: json, data_type: rpc, unknown: reject, parse_only: true, data: '{"opidxu:l":{"a":"1","a2":"2","a3":"3","s":[5]}}'}
+        - {do: edit, insert_term: {module: opidxu, parent: "/opidxu:l", name: o, value: "o", options: [output]}}
+        - {do: edit, insert_term: {module: opidxu, parent: "/opidxu:l", name: s, value: "3"}}
+        - {do: dup, node: "/opidxu:l", options: [recursive], target: {searchdirs: [opidxu.2], modules: [{name: opidxu}]}}
+        - {do: trim, xpath: "/opidxu:l/a | /opidxu:l/a2 | /opidxu:l/a3 | /opidxu:l/s"}
+        - {do: parse, format: json, data_type: rpc, unknown: reject, parse_only: true, parent: "/opidxu:l", data: '{"opidxu:s":[3,1]}'}
+        - {do: edit, insert_term: {module: opidxu, parent: "/opidxu:l", name: pre, value: "x"}}
+        - {do: dump}
+    golden: golden/ops-opidx-leader-parse-transitions.json
