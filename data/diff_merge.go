@@ -89,6 +89,7 @@ func (t *Tree) MergeDiffTree(parent, src *Node, o MergeDiffOptions) error {
 	if source.hasForeignDiffContext([]*Node{src}, t.set) {
 		return diffDone(lg, foreignDiffContextErr())
 	}
+	t.mixedDiff = t.mixedDiff || source.mixedDiff
 	err := t.diffMergeR(src, parent, &dupCache{}, mergeOpts{defaults: o.Defaults, cb: o.Callback})
 	return diffDone(lg, err)
 }

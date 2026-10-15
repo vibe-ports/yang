@@ -406,6 +406,7 @@ func (t *Tree) diffMergeModule(src *Tree, o mergeOpts) error {
 	if src.hasForeignDiffContext(src.top.nodes(), t.set) {
 		return foreignDiffContextErr()
 	}
+	t.mixedDiff = t.mixedDiff || src.mixedDiff
 	cache := &dupCache{}
 	for _, n := range src.top.nodes() {
 		if o.mod != nil && nodeModule(t.set, n) != o.mod {

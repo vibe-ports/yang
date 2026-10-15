@@ -104,6 +104,13 @@ func diffNodes(first, second *Node, o DiffOptions, nosiblings bool, ft, st *Tree
 		return nil, nil
 	}
 	d := newTree(set)
+	if fs == nil && ft != nil {
+		fs = ft.set
+	}
+	if ss == nil && st != nil {
+		ss = st.set
+	}
+	d.mixedDiff = fs != nil && ss != nil && fs != ss
 	// Inputs are immutable during Diff. Cache node hashes for this operation only,
 	// matching libyang's stored node->hash (tree_data_hash.c:44-81) without retaining
 	// per-value state or repeating sparse hashes for every duplicate-instance pair.

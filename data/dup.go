@@ -292,6 +292,9 @@ func (t *Tree) dupLocalParent(n, parent *Node, opts dupOpts) (top, local *Node, 
 // duplicated parents); it returns the first copy. On an error the copies made so far are removed,
 // not the parent's other children as libyang frees them (D-0065).
 func (t *Tree) dupNodes(n, parent *Node, opts dupOpts, siblings bool) (*Node, error) {
+	if source := treeOf(n); opts&dupKeepContext != 0 && source != nil && source.mixedDiff {
+		t.mixedDiff = true
+	}
 	local := parent
 	var top *Node
 	if opts&dupWithParents != 0 {

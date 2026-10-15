@@ -34,8 +34,18 @@ func (t *Tree) ReverseDiff() (*Tree, error) {
 	if t == nil || t.top.len() == 0 {
 		return nil, nil
 	}
-	lg := &logger{set: t.set}
-	d := newTree(t.set)
+	// lyd_diff_reverse_all uses LYD_CTX(src_diff), not the context of the
+	// original first input (libyang v5.8.6 src/diff.c:3485-3496).
+	set := setOf(t.top.first())
+	if set == nil {
+		set = t.set
+	}
+	lg := &logger{set: set}
+	d := newTree(set)
+	d.mixedDiff = t.mixedDiff
+	// lyd_dup_siblings supplies this one target context for every node;
+	// lyd_dup_r remaps foreign schemas and values (tree_data.c:2231-2241,
+	// 2285-2295, 2482-2484, 2535-2543), rather than retaining their contexts.
 	if _, err := d.dupNodes(t.top.first(), nil, dupRecursive, true); err != nil {
 		return nil, diffDone(lg, err)
 	}

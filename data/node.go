@@ -87,6 +87,8 @@ type Tree struct {
 	dupLog *logger
 	// diffHashes exists only while generating a diff of immutable input trees.
 	diffHashes map[*Node]lydHashResult
+	// mixedDiff enables libyang insertion scans for a diff retaining multiple contexts.
+	mixedDiff bool
 }
 
 // workCounter counts the work of a tree for tests (work, not time): comparisons made by

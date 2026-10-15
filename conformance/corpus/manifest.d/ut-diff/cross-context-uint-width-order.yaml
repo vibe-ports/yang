@@ -1,0 +1,21 @@
+fixtures:
+  - id: ut-diff/cross-context-uint-width-order
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    # Ordering rests on libyang v5.8.6 src/plugins_types/integer.c:472-514 and :593-651:
+    # every unsigned integer width installs lyplg_type_sort_uint as its system-order callback.
+    rfc: []   # libyang cross-context typed-value sorting mechanics, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas/cross-context-uint-width-order-a]
+      modules: [{name: diff-cross-context-uint-width-order}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-uint-width-order"><v>1</v></top>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<top xmlns="urn:vibe-ports:yang:diff-cross-context-uint-width-order"><v>2</v></top>'
+          target: {searchdirs: [schemas/cross-context-uint-width-order-b], modules: [{name: diff-cross-context-uint-width-order}]}
+    golden: golden/cross-context-uint-width-order.json

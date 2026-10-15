@@ -1,0 +1,21 @@
+fixtures:
+  - id: ut-diff/cross-context-foreign-creates-toplevel
+    dir: ut-diff
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    # Expected ordering rests on libyang v5.8.6 src/diff.c:332-376,383-527,1225-1375 and
+    # src/tree_data.c:503-592,712-730,778-835 (including the top-level non-hash module scan).
+    rfc: []   # libyang data diff construction and insertion order, no RFC
+    areas: [diff]
+    request:
+      op: sequence
+      searchdirs: [schemas/cross-context-foreign-creates-toplevel-a]
+      modules: [{name: diff-cross-context-foreign-creates-toplevel}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<a xmlns="urn:vibe-ports:yang:diff-cross-context-foreign-creates-toplevel">A</a><b xmlns="urn:vibe-ports:yang:diff-cross-context-foreign-creates-toplevel">B</b>'}
+        - do: diff
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<c xmlns="urn:vibe-ports:yang:diff-cross-context-foreign-creates-toplevel">C</c><d xmlns="urn:vibe-ports:yang:diff-cross-context-foreign-creates-toplevel">D</d>'
+          target: {searchdirs: [schemas/cross-context-foreign-creates-toplevel-b], modules: [{name: diff-cross-context-foreign-creates-toplevel}]}
+    golden: golden/cross-context-foreign-creates-toplevel.json

@@ -8,6 +8,7 @@ package data
 
 import (
 	"fmt"
+	"iter"
 	"math/bits"
 	"slices"
 	"strings"
@@ -89,91 +90,173 @@ func (t *Tree) after(a, n *Node) bool {
 	return ar > nr || (ar == nr && a.schema != n.schema)
 }
 
-// crossContextInsertPos is lyd_insert_get_next_anchor's non-hash placement when the first sibling
-// and new node have different contexts. An owner-module pointer change is normally the anchor;
-// default insertion of a system-ordered node first reaches its schema run so compatible values
-// from both contexts can be sorted together.
-func (t *Tree) crossContextInsertPos(l []*Node, n *Node, order insertOrder) (int, bool) {
-	ctxOf := func(x *Node) *schema.Set {
-		if s := setOf(x); s != nil {
-			return s
+// crossContextSchemaIndex follows lyd_find_sibling_schema (libyang v5.8.6
+// src/tree_data_common.c:1093-1146). The hash path compares complete schema ancestry;
+// the manual path compares pointers within a context and names across contexts.
+func (t *Tree) crossContextSchemaIndex(sib *siblings, sn *schema.Node, ctx *schema.Set) int {
+	for i, a := range sib.list {
+		t.work.Add(1)
+		if sib.ht != nil {
+			if compareSchemaEqual(a.schema, sn, true) {
+				return i
+			}
+		} else if setOf(a) == ctx {
+			if a.schema == sn {
+				return i
+			}
+		} else if a.schema.Name == sn.Name && a.schema.Module.Name == sn.Module.Name {
+			return i
 		}
-		return t.set
 	}
-	if ctxOf(l[0]) == ctxOf(n) {
-		// one context: the ordinary placement, value-sorted runs included (two modules of one
-		// context differ in owner module, not in LYD_CTX)
-		return 0, false
+	return -1
+}
+
+// crossContextInsertPos follows lyd_insert_node and lyd_insert_get_next_anchor
+// (libyang v5.8.6 src/tree_data.c:506-593, 801-834). Schema ranks are not monotone
+// in a sibling list retaining nodes from different contexts.
+// ponytail: flagged trees pay libyang's O(siblings) scan per insertion. For the
+// hash path, a temporary name index avoids rescanning siblings for each schema;
+// the persistent Go children index uses schema pointers.
+func (t *Tree) crossContextInsertPos(sib *siblings, n *Node, order insertOrder) int {
+	l := sib.list
+	ctx := setOf(n)
+	if ctx == nil {
+		ctx = t.set
 	}
-	nOwner := ownerModule(t.set, n)
-	if ownerModule(t.set, l[0]) == nOwner {
-		return 0, false
+	if order == insertLast {
+		return len(l)
+	}
+	if order == insertDefault && sortedSupported(n) {
+		if leader := t.crossContextSchemaIndex(sib, n.schema, ctx); leader >= 0 {
+			if at, ok := t.crossContextSortedPos(sib, n, leader); ok {
+				return at
+			}
+		}
+	}
+	if order != insertDefault && sortedSupported(n) && sib.rbTree[n.schema] {
+		markUnsorted(sib, n.schema)
+	}
+	var opts schema.GetNextOpt
+	if n.schema.InOutput() {
+		opts = schema.GetNextOutput
+	}
+	parent := n.schema.DataParent()
+	if setOf(l[0]) == ctx && l[0].parent != nil && l[0].parent.schema != nil && sib.ht != nil {
+		// lys_getnext starts after new_node->schema, then probes each following
+		// schema with lyd_find_sibling_schema (tree_data.c:526-538).
+		byName := make(map[diffSchemaName][]int)
+		for i, a := range l {
+			t.work.Add(1)
+			key := diffSchemaName{module: a.schema.Module.Name, name: a.schema.Name}
+			byName[key] = append(byName[key], i)
+		}
+		found := false
+		for sn := range schema.GetNext(parent, n.schema.Module.Top, opts) {
+			if found {
+				for _, at := range byName[diffSchemaName{module: sn.Module.Name, name: sn.Name}] {
+					t.work.Add(1)
+					if compareSchemaEqual(l[at].schema, sn, true) {
+						return at
+					}
+				}
+			}
+			found = found || sn == n.schema
+		}
+		return len(l)
 	}
 
 	i := 0
-	if n.parent == nil {
-		// At the top level libyang first skips data of lexically preceding modules.
-		i = t.upper(l, 0, func(a *Node) bool {
-			aOwner := ownerModule(t.set, a)
-			return a.schema == nil || aOwner == nil || strings.Compare(aOwner.Name, nOwner.Name) >= 0
-		})
-		if i == len(l) {
-			return i, true
-		}
-	}
-	a := l[i]
-	if ownerModule(t.set, a) != nOwner {
-		if order == insertDefault && sortedSupported(n) {
-			// lyd_insert_node sorts only after lyd_find_sibling_schema finds an existing instance
-			// (tree_data.c:807-808); across contexts that is the manual scan by node and module
-			// name (tree_data_common.c:1124-1137). Otherwise the non-hash anchor stops at the
-			// foreign owner-module boundary (tree_data.c:556-562), regardless of schema rank.
-			if !t.hasSchemaNamed(l, i, n.schema) {
-				return i, true
+	owner := ownerModule(t.set, n)
+	if parent == nil {
+		for i < len(l) {
+			t.work.Add(1)
+			if strings.Compare(ownerModule(t.set, l[i]).Name, owner.Name) >= 0 {
+				break
 			}
-			nRank := t.schemaRank(n.schema)
-			return t.upper(l, i, func(a *Node) bool {
-				aRank := t.schemaRank(a.schema)
-				if aRank != nRank {
-					return aRank > nRank
-				}
-				if !compareSchemaEqual(a.schema, n.schema, false) {
-					return true
-				}
-				if c, compatible := t.compareSortedCompatible(a, n); compatible {
-					// lyds_insert shares a sorted run across equivalent schemas when both real
-					// types use the same sort callback. A plugin/base-type change instead uses
-					// the context boundary.
-					return c > 0
-				}
-				return ownerModule(t.set, a) != nOwner
-			}), true
+			i++
 		}
-		return i, true
 	}
-	afterN := func(a *Node) bool { return t.after(a, n) }
-	return t.upper(l, i, afterN), true
+	next, stop := iter.Pull(schema.GetNext(parent, n.schema.Module.Top, opts))
+	defer stop()
+	sn, ok := next()
+	if !ok {
+		return len(l)
+	}
+	found := false
+	for ; i < len(l); i++ {
+		t.work.Add(1)
+		if ownerModule(t.set, l[i]) != owner {
+			break
+		}
+		for !found {
+			if sn == n.schema {
+				found = true
+				break
+			}
+			if sn == l[i].schema {
+				break
+			}
+			sn, ok = next()
+			if !ok {
+				return len(l)
+			}
+		}
+		if found && l[i].schema != n.schema {
+			break
+		}
+	}
+	// Opaque siblings are stored separately after l; len(l) anchors before them
+	// (tree_data.c:556-560, 722-728).
+	return i
 }
 
-// hasSchemaNamed reports whether l[i:] has an instance whose schema node has sn's name and module
-// name. Probes: l[i] (an earlier foreign insertion of the run), then the rank position of sn,
-// where an equivalent schema sits when both snapshots declare it in the same place.
-// ponytail: a schema absent there (absent or moved between snapshots) falls back to libyang's
-// linear scan, so many such insertions in a row are quadratic like libyang; index by name if it
-// matters.
-func (t *Tree) hasSchemaNamed(l []*Node, i int, sn *schema.Node) bool {
-	same := func(a *Node) bool {
+// crossContextSortedPos retains the leader lookup's position, then links after
+// the sorted predecessor (src/tree_data_sorted.c:1013-1038, 1213-1252). Initial
+// RB membership includes only the leader's pointer-identical schema run
+// (1052-1072); later foreign-context insertions become members of that run.
+func (t *Tree) crossContextSortedPos(sib *siblings, n *Node, lo int) (int, bool) {
+	l := sib.list
+	leader := l[lo]
+	if _, ok := t.compareSortedCompatible(leader, n); !ok {
+		return 0, false
+	}
+	if !sib.rbTree[leader.schema] {
+		hi := lo + 1
+		for hi < len(l) && l[hi].schema == leader.schema {
+			t.work.Add(1)
+			hi++
+		}
+		slices.SortStableFunc(l[lo:hi], compareSorted)
+		if sib.opIdx != nil {
+			sib.opRebuild(t, leader.schema, l[lo:hi])
+		}
+		for _, a := range l[lo:hi] {
+			a.inRB = true
+		}
+		markRB(sib, leader.schema)
+	}
+	at := lo
+	for i := lo; i < len(l); i++ {
 		t.work.Add(1)
-		return a.schema != nil && a.schema.Name == sn.Name && a.schema.Module.Name == sn.Module.Name
+		a := l[i]
+		if a.schema.Name != leader.schema.Name || a.schema.Module.Name != leader.schema.Module.Name {
+			break
+		}
+		if !a.inRB {
+			continue
+		}
+		c, ok := t.compareSortedCompatible(a, n)
+		if !ok {
+			return 0, false
+		}
+		if c > 0 {
+			break
+		}
+		at = i + 1
 	}
-	if i < len(l) && same(l[i]) {
-		return true
-	}
-	rank := t.schemaRank(sn)
-	if j := t.upper(l, i, func(a *Node) bool { return a.schema == nil || t.schemaRank(a.schema) >= rank }); j < len(l) && same(l[j]) {
-		return true
-	}
-	return slices.ContainsFunc(l[i:], same)
+	n.inRB = true
+	markRB(sib, n.schema)
+	return at, true
 }
 
 // sameOrAfter reports whether a is an instance of n's schema node or goes after it.
@@ -256,11 +339,8 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 	if len(l) == 0 {
 		return 0
 	}
-	if at, ok := t.crossContextInsertPos(l, n, order); ok {
-		if order != insertDefault && sortedSupported(n) && sib.rbTree[n.schema] {
-			markUnsorted(sib, n.schema)
-		}
-		return at
+	if t.mixedDiff {
+		return t.crossContextInsertPos(sib, n, order)
 	}
 	afterN := func(a *Node) bool { return t.after(a, n) }
 	if order == insertDefault && sortedSupported(n) {

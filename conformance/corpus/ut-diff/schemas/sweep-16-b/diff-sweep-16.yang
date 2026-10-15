@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Deterministically generated conformance fixture (this repo).
+module diff-sweep-16 {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:ut-diff:sweep:16";
+  prefix ds16;
+
+  container top {
+    leaf-list c0 { type string; ordered-by system; }
+    leaf-list c1 { type string; ordered-by system; }
+    leaf-list c2 { type int16; ordered-by system; }
+    leaf-list c3 { type int8; ordered-by system; }
+  }
+}
