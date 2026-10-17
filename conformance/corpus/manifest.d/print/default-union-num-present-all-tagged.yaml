@@ -1,0 +1,16 @@
+fixtures:
+  - id: print/default-union-num-present-all-tagged
+    dir: print
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # issue #15: lyd_is_default validates the default in the data tree (lysc_value_cmp): union leafref|string default "01": u = 1 (leafref member), target n = 1 present
+    rfc: ["RFC6243#3"]
+    areas: [codecs, defaults]
+    request:
+      op: data
+      searchdirs: [schemas, ../ietf]
+      modules: [{name: pdi}, {name: ietf-netconf-with-defaults}]
+      format: json
+      data_type: config
+      parse_only: true
+      data: "{\"pdi:c\": {\"n\": [1], \"u\": 1}}"
+      with_defaults: all-tagged
+    golden: golden/default-union-num-present-all-tagged.json

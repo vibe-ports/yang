@@ -1,0 +1,16 @@
+fixtures:
+  - id: print/wd-state-trim
+    dir: print
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # issue #15: implicit state defaults (st, stc) created by validation, printed in with-defaults mode trim (lyd_node_should_print, lyd_is_default)
+    rfc: ["RFC6243#3"]
+    areas: [codecs, defaults]
+    request:
+      op: data
+      searchdirs: [schemas, ../ietf]
+      modules: [{name: pwd}, {name: ietf-netconf-with-defaults}]
+      context_options: [no_yanglibrary]
+      format: xml
+      data_type: data
+      data_file: data/wd-state.xml
+      with_defaults: trim
+    golden: golden/wd-state-trim.json

@@ -1,0 +1,24 @@
+module pdi {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:pdi";
+  prefix pdi;
+
+  description "lyd_is_default of defaults validated in the data tree (lysc_value_cmp): a require-instance
+    instance-identifier, and a union whose member depends on a leafref target.";
+
+  container c {
+    leaf tgt { type string; }
+    leaf ii {
+      type instance-identifier { require-instance true; }
+      default "/pdi:c/pdi:tgt";
+    }
+    leaf-list n { type uint8; }
+    leaf u {
+      type union {
+        type leafref { path "../n"; }
+        type string;
+      }
+      default "01";
+    }
+  }
+}

@@ -63,7 +63,7 @@ assert:
   rfc: ["RFC7950#9.2.4"]                                      # optional, the clause it rests on
   diagnostics: [{vecode_name: LYVE_DATA, data_path: /basic:sys/mtu}]   # subset match
   deviation: null                                             # or "D-0001"
-  waive: [schema_tree, compiled]                              # optional, only with a deviation; also tree, typed, result
+  waive: [schema_tree, compiled]                              # optional, only with a deviation; also tree, typed, result, leafref_links
 ```
 
 Each listed diagnostic must equal some actual diagnostic (top-level or per-module) on every field it
@@ -81,7 +81,7 @@ are compared. With `waive` it waives instead only the
 named response fields, dropped at the top level, in every `modules` item and in every sequence step before the golden
 comparison: `schema_tree` and/or `compiled` when libyang's compiled tree is what the deviation is
 about, `tree` (the printed data) when the deviation is in the data output, `result` when it is in
-an XPath result; the verdict and
+an XPath result, `leafref_links` (a sequence `links` step) when it is in the leafref links; the verdict and
 diagnostics must then match the golden. `waive` is only valid with
 `deviation`, every waived field must be present in the golden, and an engine result that matches
 the whole golden reports a stale waive (`differ`). Engine comparison:

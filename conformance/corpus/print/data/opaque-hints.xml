@@ -1,0 +1,11 @@
+<c xmlns="urn:pj">
+  <n>x</n>
+  <bad>2</bad>
+  <big>9999999999</big>
+  <flag>true</flag>
+  <unk>a</unk>
+  <unk>b</unk>
+  <e2/>
+  <lst><a>1</a></lst>
+  <lst><a>2</a></lst>
+</c>

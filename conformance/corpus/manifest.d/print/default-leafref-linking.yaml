@@ -1,0 +1,22 @@
+fixtures:
+  - id: print/default-leafref-linking
+    dir: print
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # issue #15: lyd_is_default under LY_CTX_LEAFREF_LINKING: lysc_value_cmp -> lyd_value_validate3 -> leafref validate_tree links the node to the default's targets (leafref.c:103-107) while printing
+    rfc: ["RFC6243#3"]
+    areas: [codecs, defaults]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pdl}]
+      context_options: [leafref_linking]
+      steps:
+        - {do: parse, format: json, data_type: config, data: "{\"pdl:c\": {\"t\": [\"x\", \"y\"], \"r\": \"y\"}}"}
+        - {do: links}
+        - {do: dump, with_defaults: trim}
+        - {do: links}
+    golden: golden/default-leafref-linking.json
+    assert:
+      verdict: valid
+      rfc: ["RFC6243#3"]
+      deviation: D-0128
+      waive: [leafref_links]   # libyang's print adds the link r -> t[.='x']; the port's print changes nothing

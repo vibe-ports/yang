@@ -1,0 +1,15 @@
+module pdl {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:pdl";
+  prefix pdl;
+
+  description "lyd_is_default of a require-instance leafref default (lysc_value_cmp validates in the data tree).";
+
+  container c {
+    leaf-list t { type string; }
+    leaf r {
+      type leafref { path "../t"; }
+      default "x";
+    }
+  }
+}

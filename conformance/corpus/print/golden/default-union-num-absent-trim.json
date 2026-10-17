@@ -1,0 +1,73 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pdi",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ietf-netconf-with-defaults",
+      "revision": "2011-06-01"
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"pdi:c\": {\n    \"u\": 1\n  }\n}\n",
+    "xml": "<c xmlns=\"urn:vibe-ports:pdi\">\n  <u>1</u>\n</c>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/pdi:c",
+      "schema": "/pdi:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pdi:c/u",
+      "schema": "/pdi:c/u",
+      "value": {
+        "canonical": "1",
+        "type": "union",
+        "typedef": null,
+        "union_member": {
+          "index": 0,
+          "realtype": {
+            "type": "uint8",
+            "typedef": null
+          },
+          "type": "leafref",
+          "typedef": null
+        }
+      }
+    }
+  ],
+  "verdict": "valid"
+}

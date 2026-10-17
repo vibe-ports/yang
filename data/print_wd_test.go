@@ -70,8 +70,9 @@ func newWDFixture() *wdFixture {
 }
 
 // build is the tree libyang had for testdata/wd.xml (the nodes with the default flag are the
-// implicit ones validation added), without the state data.
-func (f *wdFixture) build(t *testing.T, state bool) *Tree {
+// implicit ones validation added), without the state data: the implicit state defaults (st,
+// stc) are compared with the oracle in the fixtures print/wd-state-*.
+func (f *wdFixture) build(t *testing.T) *Tree {
 	t.Helper()
 	tr := newTree(f.set)
 	ins := func(parent, n *Node, flags Flags) *Node {
@@ -111,11 +112,6 @@ func (f *wdFixture) build(t *testing.T, state bool) *Tree {
 		}
 		ins(c, l, 0)
 	}
-	if state {
-		ins(c, term("st", "sd"), FlagDefault)
-		stc := ins(c, newInner(f.nodes["stc"]), FlagDefault)
-		ins(stc, term("s2", "s2d"), FlagDefault)
-	}
 	return tr
 }
 
@@ -123,7 +119,7 @@ func (f *wdFixture) build(t *testing.T, state bool) *Tree {
 // (-d trim|all|all-tagged|implicit-tagged, none for explicit) for the same data; the files are
 // its output.
 func TestPrintWithDefaults(t *testing.T) {
-	tr := newWDFixture().build(t, false)
+	tr := newWDFixture().build(t)
 	for name, wd := range map[string]WD{"explicit": WDExplicit, "trim": WDTrim, "all": WDAll,
 		"all-tagged": WDAllTagged, "implicit-tagged": WDImplicitTagged} {
 		for ext, print := range map[string]func(*bytes.Buffer) error{
@@ -143,43 +139,4 @@ func TestPrintWithDefaults(t *testing.T) {
 			}
 		}
 	}
-}
-
-// TestPrintWithDefaultsState: explicit mode keeps the defaults of config false nodes (and an
-// implicit container only if a node below prints), the other modes drop an implicit container
-// without a printed descendant; derived from lyd_node_should_print (the oracle never creates
-// state defaults for config data).
-func TestPrintWithDefaultsState(t *testing.T) {
-	f := newWDFixture()
-	tr := f.build(t, true)
-	c := tr.top.list[0]
-	st := findKid(c, "st")
-	stc := findKid(c, "stc")
-	for _, tc := range []struct {
-		wd          WD
-		st, stc, np bool
-	}{
-		{WDExplicit, true, true, false}, {WDTrim, false, false, false}, {WDAll, true, true, true},
-		{WDAllTagged, true, true, true}, {WDImplicitTagged, true, true, true},
-	} {
-		o := PrintOptions{WithDefaults: tc.wd}
-		if got := o.shouldPrint(st); got != tc.st {
-			t.Errorf("mode %d: st prints %v", tc.wd, got)
-		}
-		if got := o.shouldPrint(stc); got != tc.stc {
-			t.Errorf("mode %d: stc prints %v", tc.wd, got)
-		}
-		if got := o.shouldPrint(findKid(c, "np")); got != tc.np {
-			t.Errorf("mode %d: np prints %v", tc.wd, got)
-		}
-	}
-}
-
-func findKid(n *Node, name string) *Node {
-	for c := range n.Children() {
-		if c.Name() == name {
-			return c
-		}
-	}
-	return nil
 }

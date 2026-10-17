@@ -293,7 +293,7 @@ type ValidateOptions struct {
 func Parse(ctx context.Context, r io.Reader, f Format, s *yang.Schema, o ParseOptions) (*Tree, []yang.Diagnostic, error)
 func (t *Tree) Validate(ctx context.Context, o ValidateOptions) ([]yang.Diagnostic, error)
 func (t *Tree) ValidateDiff(ctx context.Context, o ValidateOptions) (diff *Tree, d []yang.Diagnostic, err error) // lyd_validate_all's diff
-func (t *Tree) Print(w io.Writer, f Format, o PrintOptions) error // PrintOptions{WithDefaults WD; Shrink bool}
+func (t *Tree) Print(w io.Writer, f Format, o PrintOptions) error // PrintOptions{WithDefaults WD; Shrink bool}; today (*Tree).PrintJSON / PrintXML, which converge to Print before D12
 func (t *Tree) NewPath(path, value string, o NewPathOptions) (*Node, error) // o.Update
 func (t *Tree) Find(path string) (*Node, error)
 func (n *Node) Remove() error

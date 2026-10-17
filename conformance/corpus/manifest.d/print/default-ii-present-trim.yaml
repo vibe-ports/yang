@@ -1,0 +1,16 @@
+fixtures:
+  - id: print/default-ii-present-trim
+    dir: print
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # issue #15: lyd_is_default validates the default in the data tree (lysc_value_cmp): require-instance instance-identifier default, target present
+    rfc: ["RFC6243#3"]
+    areas: [codecs, defaults]
+    request:
+      op: data
+      searchdirs: [schemas, ../ietf]
+      modules: [{name: pdi}, {name: ietf-netconf-with-defaults}]
+      format: json
+      data_type: config
+      parse_only: true
+      data: "{\"pdi:c\": {\"tgt\": \"v\", \"ii\": \"/pdi:c/tgt\"}}"
+      with_defaults: trim
+    golden: golden/default-ii-present-trim.json

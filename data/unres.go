@@ -422,6 +422,8 @@ type typeTree struct {
 	vc  *valCtx
 	n   *Node
 	err error // a budget or cancellation error met on the way
+	// readOnly skips the leafref linking (printing must not change the tree, D-0128)
+	readOnly bool
 }
 
 // LeafrefTarget is lyplg_type_resolve_leafref without the targets: the path with a value
@@ -438,7 +440,7 @@ func (tt *typeTree) LeafrefTarget(t *schema.Type, v types.Value) (bool, error) {
 		tt.err = err
 		return false, nil
 	}
-	if found && tt.vc.t.set.LeafrefLinking {
+	if found && tt.vc.t.set.LeafrefLinking && !tt.readOnly {
 		// lyplg_type_validate_tree_leafref: a resolved require-instance leafref is linked with
 		// its targets (lyd_link_leafref_node)
 		for _, target := range targets {

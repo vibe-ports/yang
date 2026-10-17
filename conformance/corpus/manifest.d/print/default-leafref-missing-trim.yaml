@@ -1,0 +1,16 @@
+fixtures:
+  - id: print/default-leafref-missing-trim
+    dir: print
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # issue #15: lyd_is_default compares through lysc_value_cmp, which validates the default in the data tree (lyd_value_validate3 with the node as context): a require-instance leafref default whose target is missing is not a default
+    rfc: ["RFC6243#3"]
+    areas: [codecs, defaults]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pdl}]
+      format: json
+      data_type: config
+      parse_only: true
+      data: "{\"pdl:c\": {\"r\": \"x\"}}"
+      with_defaults: trim
+    golden: golden/default-leafref-missing-trim.json

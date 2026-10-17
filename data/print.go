@@ -39,6 +39,15 @@ type PrintOptions struct {
 	Shrink        bool // LYD_PRINT_SHRINK: no newlines and no indentation
 	EmptyLeafList bool // LYD_PRINT_EMPTY_LEAF_LIST: JSON prints lists and leaf-lists without instances as []
 	WithDefaults  WD
+
+	dflt *defaultCheck // set by printData: the evaluation state shared by one print
+}
+
+// defaultCheck is what one print shares for isDefault: the evaluation context (one XPath budget
+// for the whole print, DefaultMaxXPathSteps) and the first budget error, which fails the print.
+type defaultCheck struct {
+	vc  *valCtx
+	err error
 }
 
 // npCont is lysc_is_np_cont: a non-presence container.
@@ -56,13 +65,41 @@ func inOpNotif(s *schema.Node) bool {
 }
 
 // isDefault is lyd_is_default: a leaf or leaf-list instance whose value is a default of its
-// schema node (the canonical form of the default stored for the node).
-func isDefault(n *Node) bool {
+// schema node (the canonical form of the default stored for the node). lysc_value_cmp
+// (tree_schema_common.c:2939-2955) validates the default with lyd_value_validate3 and the node as
+// the context node, so a default that needs the data tree (a require-instance leafref or
+// instance-identifier) whose target is missing is not a default. libyang's leafref validate_tree
+// also links the node to the default's targets under LY_CTX_LEAFREF_LINKING
+// (plugins_types/leafref.c:94-107); here the check is read-only (D-0128). A budget overrun is
+// kept in o.dflt and fails the print (printData).
+func (o PrintOptions) isDefault(n *Node) bool {
 	if !n.isTerm() {
 		return false
 	}
 	for _, d := range n.schema.Default {
-		if v, diag := types.StoreDefault(n.schema, d); diag == nil && v.Canonical() == n.value.Canonical() {
+		v, diag := types.StoreDefault(n.schema, d)
+		if diag == nil && v.NeedsTree() {
+			t := n.treeOf()
+			if t == nil {
+				continue
+			}
+			dc := o.dflt
+			if dc == nil {
+				dc = &defaultCheck{}
+			}
+			if dc.err != nil {
+				return false
+			}
+			if dc.vc == nil || dc.vc.t != t {
+				dc.vc = &valCtx{t: t, log: &logger{set: t.set}}
+			}
+			tt := &typeTree{vc: dc.vc, n: n, readOnly: true}
+			if v, diag = types.ValidateTree(n.schema.Type, v, tt); tt.err != nil {
+				dc.err = tt.err
+				return false
+			}
+		}
+		if diag == nil && v.Canonical() == n.value.Canonical() {
 			return true
 		}
 	}
@@ -72,7 +109,7 @@ func isDefault(n *Node) bool {
 // tagged reports whether the with-defaults mode puts the default attribute on n.
 func (o PrintOptions) tagged(n *Node) bool {
 	return (n.flags&FlagDefault != 0 && (o.WithDefaults == WDAllTagged || o.WithDefaults == WDImplicitTagged)) ||
-		(o.WithDefaults == WDAllTagged && isDefault(n))
+		(o.WithDefaults == WDAllTagged && o.isDefault(n))
 }
 
 // shouldPrint is lyd_node_should_print.
@@ -83,7 +120,7 @@ func (o PrintOptions) shouldPrint(n *Node) bool {
 		case n.flags&FlagDefault != 0:
 			return false // an implicit node or an NP container with only default nodes
 		case n.isTerm():
-			return !isDefault(n)
+			return !o.isDefault(n)
 		case npCont(n.schema):
 			for _, c := range kids(n) { // an NP container without printed children
 				if o.shouldPrint(c) {
@@ -149,9 +186,15 @@ func (n *Node) print(w io.Writer, o PrintOptions, f func(*printer, []*Node, int)
 // printData runs f over sibs from index from: all of them with siblings, else only sibs[from].
 func printData(w io.Writer, set *schema.Set, o PrintOptions, sibs []*Node, from int, siblings bool,
 	f func(*printer, []*Node, int) error) error {
+	if o.dflt == nil { // callers cannot set it; tests do
+		o.dflt = &defaultCheck{}
+	}
 	p := &printer{set: set, opts: o, siblings: siblings}
 	if err := f(p, sibs, from); err != nil {
 		return err
+	}
+	if o.dflt.err != nil {
+		return o.dflt.err // nothing written: the output would be wrong
 	}
 	_, err := w.Write(p.buf.Bytes())
 	return err

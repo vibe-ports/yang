@@ -1,0 +1,429 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pwd",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ietf-netconf-with-defaults",
+      "revision": "2011-06-01"
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"pwd:c\": {\n    \"a\": \"da\",\n    \"b\": 5,\n    \"@b\": {\n      \"ietf-netconf-with-defaults:default\": true\n    },\n    \"ll\": [\n      \"x\",\n      \"z\"\n    ],\n    \"ll2\": [\n      1\n    ],\n    \"np\": {\n      \"d\": \"dd\",\n      \"@d\": {\n        \"ietf-netconf-with-defaults:default\": true\n      }\n    },\n    \"np2\": {\n      \"e\": \"ee\",\n      \"@e\": {\n        \"ietf-netconf-with-defaults:default\": true\n      },\n      \"f\": \"ff\"\n    },\n    \"pres\": {\n      \"g\": \"gg\",\n      \"@g\": {\n        \"ietf-netconf-with-defaults:default\": true\n      }\n    },\n    \"l\": [\n      {\n        \"k\": \"one\",\n        \"v\": \"vv\",\n        \"@v\": {\n          \"ietf-netconf-with-defaults:default\": true\n        }\n      },\n      {\n        \"k\": \"two\",\n        \"v\": \"vv\"\n      }\n    ],\n    \"st\": \"sd\",\n    \"@st\": {\n      \"ietf-netconf-with-defaults:default\": true\n    },\n    \"stc\": {\n      \"s2\": \"s2d\",\n      \"@s2\": {\n        \"ietf-netconf-with-defaults:default\": true\n      }\n    }\n  }\n}\n",
+    "xml": "<c xmlns=\"urn:vibe-ports:pwd\">\n  <a>da</a>\n  <b xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">5</b>\n  <ll>x</ll>\n  <ll>z</ll>\n  <ll2>1</ll2>\n  <np>\n    <d xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">dd</d>\n  </np>\n  <np2>\n    <e xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">ee</e>\n    <f>ff</f>\n  </np2>\n  <pres>\n    <g xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">gg</g>\n  </pres>\n  <l>\n    <k>one</k>\n    <v xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">vv</v>\n  </l>\n  <l>\n    <k>two</k>\n    <v>vv</v>\n  </l>\n  <st xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">sd</st>\n  <stc>\n    <s2 xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">s2d</s2>\n  </stc>\n</c>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-yang-schema-mount:schema-mounts",
+      "schema": "/ietf-yang-schema-mount:schema-mounts",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/pwd:c",
+      "schema": "/pwd:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pwd:c/a",
+      "schema": "/pwd:c/a",
+      "value": {
+        "canonical": "da",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pwd:c/b",
+      "schema": "/pwd:c/b",
+      "value": {
+        "canonical": "5",
+        "type": "uint8",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/pwd:c/ll[.='x']",
+      "schema": "/pwd:c/ll",
+      "value": {
+        "canonical": "x",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/pwd:c/ll[.='z']",
+      "schema": "/pwd:c/ll",
+      "value": {
+        "canonical": "z",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/pwd:c/ll2[.='1']",
+      "schema": "/pwd:c/ll2",
+      "value": {
+        "canonical": "1",
+        "type": "uint8",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/pwd:c/np",
+      "schema": "/pwd:c/np",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pwd:c/np/d",
+      "schema": "/pwd:c/np/d",
+      "value": {
+        "canonical": "dd",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/pwd:c/np2",
+      "schema": "/pwd:c/np2",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pwd:c/np2/e",
+      "schema": "/pwd:c/np2/e",
+      "value": {
+        "canonical": "ee",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pwd:c/np2/f",
+      "schema": "/pwd:c/np2/f",
+      "value": {
+        "canonical": "ff",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/pwd:c/pres",
+      "schema": "/pwd:c/pres",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pwd:c/pres/g",
+      "schema": "/pwd:c/pres/g",
+      "value": {
+        "canonical": "gg",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/pwd:c/l[k='one']",
+      "schema": "/pwd:c/l",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pwd:c/l[k='one']/k",
+      "schema": "/pwd:c/l/k",
+      "value": {
+        "canonical": "one",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pwd:c/l[k='one']/v",
+      "schema": "/pwd:c/l/v",
+      "value": {
+        "canonical": "vv",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/pwd:c/l[k='two']",
+      "schema": "/pwd:c/l",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pwd:c/l[k='two']/k",
+      "schema": "/pwd:c/l/k",
+      "value": {
+        "canonical": "two",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pwd:c/l[k='two']/v",
+      "schema": "/pwd:c/l/v",
+      "value": {
+        "canonical": "vv",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pwd:c/st",
+      "schema": "/pwd:c/st",
+      "value": {
+        "canonical": "sd",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/pwd:c/stc",
+      "schema": "/pwd:c/stc",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pwd:c/stc/s2",
+      "schema": "/pwd:c/stc/s2",
+      "value": {
+        "canonical": "s2d",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

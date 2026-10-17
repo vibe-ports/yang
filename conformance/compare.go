@@ -280,7 +280,7 @@ func firstFailed(golden, got Response) int {
 }
 
 // Waivable are the response fields assert.waive may name.
-var Waivable = []string{"schema_tree", "compiled", "tree", "typed", "result"}
+var Waivable = []string{"schema_tree", "compiled", "tree", "typed", "result", "leafref_links"}
 
 // withoutFields drops the fields of an assert.waive at the top level, in every module and in
 // every sequence step.
