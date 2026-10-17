@@ -227,7 +227,7 @@ func (t *Tree) dupMeta(m *meta, parent *Node) *meta {
 		c := *m
 		return &c
 	}
-	ant := metaAnnotation(mod, m.name)
+	ant := annotation(mod, m.name)
 	if ant == nil {
 		return nil // D-0067
 	}

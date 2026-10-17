@@ -1,0 +1,16 @@
+fixtures:
+  - id: protocol-v2/meta-other-revision-new-meta
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # lyd_new_meta of an annotation whose ietf-yang-metadata revision is not 2016-08-05 (issue #18); dup and diff cannot be reached: no such metadata can exist in a libyang tree
+    rfc: ["RFC7952#3"]
+    areas: [codecs]
+    request:
+      op: sequence
+      searchdirs: [mdrev]
+      modules: [{name: pv2-mdrev}]
+      steps:
+        - {do: parse, format: json, data_type: config, data: "{\"pv2-mdrev:c\": {\"l\": \"x\"}}"}
+        - {do: edit, new_meta: {node: /pv2-mdrev:c/l, name: "pv2-mdrev:ann", value: v}}
+        - {do: validate, data_type: config}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/meta-other-revision-new-meta.json

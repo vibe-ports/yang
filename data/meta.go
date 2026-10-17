@@ -43,13 +43,17 @@ const (
 	hintContainer types.Hints = 0x4000 // LYD_NODEHINT_CONTAINER: an object
 )
 
-// annotation is lyd_get_meta_annotation: the md:annotation extension instance of mod named name.
+// annotation is lyd_get_meta_annotation: the compiled annotation named name of mod, or nil.
+// libyang matches the extension's plugin id "ly2 metadata" (tree_data.c:1353-1371), which is
+// registered only for ietf-yang-metadata@2016-08-05 "annotation" (plugins_exts/metadata.c:258-261),
+// so an annotation of any other ietf-yang-metadata revision is not one.
 func annotation(mod *schema.Module, name string) *schema.ExtInstance {
 	if mod == nil {
 		return nil
 	}
 	for _, e := range mod.Exts {
-		if e.Def != nil && e.Def.Name == "ietf-yang-metadata" && e.Name == "annotation" && e.Argument == name {
+		if e.Def != nil && e.Def.Name == "ietf-yang-metadata" && e.Def.Revision == "2016-08-05" &&
+			e.Name == "annotation" && e.Argument == name {
 			return e
 		}
 	}

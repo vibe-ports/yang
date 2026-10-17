@@ -1,0 +1,13 @@
+// An annotation defined through an ietf-yang-metadata revision other than 2016-08-05: libyang's
+// metadata plugin is registered for ietf-yang-metadata@2016-08-05 only (plugins_exts/metadata.c),
+// so lyd_get_meta_annotation (tree_data.c:1353-1371) does not see this annotation.
+module pv2-mdrev {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-mdrev";
+  prefix pmr;
+  import ietf-yang-metadata { prefix md; revision-date 2016-08-04; }
+  md:annotation ann { type string; }
+  container c {
+    leaf l { type string; }
+  }
+}

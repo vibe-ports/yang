@@ -104,7 +104,7 @@ func (t *Tree) valDiffAdd(n *Node, op diffOp) error {
 // (lyd_new_meta with LYD_NEW_VAL_STORE_ONLY).
 func (t *Tree) yangMeta(n *Node, name, val string) error {
 	mod := t.set.Implemented("yang")
-	ant := metaAnnotation(mod, name)
+	ant := annotation(mod, name)
 	if ant == nil {
 		return &opError{"LY_EINT", fmt.Sprintf("Annotation \"yang:%s\" not found.", name)} // libyang asserts the module
 	}

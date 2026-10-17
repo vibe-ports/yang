@@ -1,0 +1,15 @@
+fixtures:
+  - id: protocol-v2/meta-other-revision-json-skip
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # annotation of an ietf-yang-metadata revision other than 2016-08-05 is not an annotation for libyang (lyd_get_meta_annotation matches the plugin id, issue #18); mdrev/ietf-yang-metadata@2016-08-04 is RFC 7952's module (IETF Trust BSD-2-Clause) with its revision date changed
+    rfc: ["RFC7952#3", "RFC7952#5"]
+    areas: [codecs, validation]
+    request:
+      op: data
+      searchdirs: [mdrev]
+      modules: [{name: pv2-mdrev}]
+      format: json
+      data_type: data
+      data: "{\"pv2-mdrev:c\": {\"l\": \"x\", \"@l\": {\"pv2-mdrev:ann\": \"v\"}}}"
+      unknown: skip
+    golden: golden/meta-other-revision-json-skip.json

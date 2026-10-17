@@ -49,7 +49,7 @@ func TestInternalAnnotations(t *testing.T) {
 		{"yang", "lyds_tree", "yang:lyds_tree"},
 		{"yang", "insert", "enum first last before after"}, // from yang.yang itself
 	} {
-		a := metaAnnotation(set.Module(tc.mod, ""), tc.name)
+		a := annotation(set.Module(tc.mod, ""), tc.name)
 		if a == nil || a.Type == nil {
 			t.Errorf("%s:%s: no annotation", tc.mod, tc.name)
 			continue
@@ -67,7 +67,7 @@ func TestInternalAnnotations(t *testing.T) {
 			t.Errorf("%s:%s: type %q, want %q", tc.mod, tc.name, got, tc.want)
 		}
 	}
-	if metaAnnotation(set.Module("ietf-netconf", ""), "default") != nil {
+	if annotation(set.Module("ietf-netconf", ""), "default") != nil {
 		t.Error("ietf-netconf has no default annotation")
 	}
 	// the internal data nodes, last of the data (before the rpcs and notifications)
