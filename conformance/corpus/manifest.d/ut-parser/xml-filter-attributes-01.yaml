@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-parser/xml-filter-attributes-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_filter_attributes:998
+    rfc: ["RFC7950#7.14", "RFC6241#7.7"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2, ../ietf, notif.1]
+      modules: [{name: "a"}, {name: "ietf-netconf", revision: "2011-06-01", features: ["writable-running"]}, {name: "notifications", revision: "2008-07-14"}]
+      format: "xml"
+      data_type: "rpc"
+      data: "<get xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\n  <filter type=\"xpath\" select=\"/*\"/>\n</get>\n"
+      parse_only: true
+      parse_options: []
+      validate_options: []
+      unknown: "reject"
+    golden: golden/xml-filter-attributes-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.14", "RFC6241#7.7"]
+      deviation: null

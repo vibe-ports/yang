@@ -1,0 +1,104 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ietf-netconf",
+      "revision": "2011-06-01"
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "notifications",
+      "revision": "2008-07-14"
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"notifications:create-subscription\": {\n    \"filter\": {\n      \"inner-node\": [null]\n    },\n    \"@filter\": {\n      \"ietf-netconf:type\": \"subtree\"\n    }\n  }\n}\n",
+    "xml": "<create-subscription xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\">\n  <filter type=\"subtree\">\n    <inner-node xmlns=\"my:urn\"/>\n  </filter>\n</create-subscription>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "rpc",
+      "meta": [],
+      "opaque": null,
+      "path": "/notifications:create-subscription",
+      "schema": "/notifications:create-subscription",
+      "value": null
+    },
+    {
+      "any": {
+        "text": "{\n  \"inner-node\": [null]\n}\n",
+        "value_type": "datatree"
+      },
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "anyxml",
+      "meta": [
+        {
+          "module": "ietf-netconf",
+          "name": "type",
+          "value": "subtree"
+        }
+      ],
+      "opaque": null,
+      "path": "/notifications:create-subscription/filter",
+      "schema": "/notifications:create-subscription/input/filter",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "inner-node",
+        "namespace": "my:urn",
+        "prefix": null
+      },
+      "path": "/notifications:create-subscription/filter/inner-node",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "string",
+          "empty"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

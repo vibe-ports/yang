@@ -1,0 +1,80 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ietf-netconf",
+      "revision": "2011-06-01"
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "notifications",
+      "revision": "2008-07-14"
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"ietf-netconf:get\": {\n    \"filter\": {},\n    \"@filter\": {\n      \"ietf-netconf:type\": \"xpath\",\n      \"ietf-netconf:select\": \"/*\"\n    }\n  }\n}\n",
+    "xml": "<get xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\n  <filter type=\"xpath\" select=\"/*\"/>\n</get>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "rpc",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf:get",
+      "schema": "/ietf-netconf:get",
+      "value": null
+    },
+    {
+      "any": {
+        "text": null,
+        "value_type": null
+      },
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "anyxml",
+      "meta": [
+        {
+          "module": "ietf-netconf",
+          "name": "type",
+          "value": "xpath"
+        },
+        {
+          "module": "ietf-netconf",
+          "name": "select",
+          "value": "/*"
+        }
+      ],
+      "opaque": null,
+      "path": "/ietf-netconf:get/filter",
+      "schema": "/ietf-netconf:get/input/filter",
+      "value": null
+    }
+  ],
+  "verdict": "valid"
+}

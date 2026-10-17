@@ -1,0 +1,83 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"a:ll2\": [\n    \"abc\",\n    \"def\",\n    \"ghi\"\n  ]\n}\n",
+    "xml": "<ll2 xmlns=\"urn:tests:a\">abc</ll2>\n<ll2 xmlns=\"urn:tests:a\">def</ll2>\n<ll2 xmlns=\"urn:tests:a\">ghi</ll2>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:ll2[.='abc']",
+      "schema": "/a:ll2",
+      "value": {
+        "canonical": "abc",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:ll2[.='def']",
+      "schema": "/a:ll2",
+      "value": {
+        "canonical": "def",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:ll2[.='ghi']",
+      "schema": "/a:ll2",
+      "value": {
+        "canonical": "ghi",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

@@ -1,0 +1,83 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"a:ll1\": [\n    1,\n    2,\n    3\n  ]\n}\n",
+    "xml": "<ll1 xmlns=\"urn:tests:a\">1</ll1>\n<ll1 xmlns=\"urn:tests:a\">2</ll1>\n<ll1 xmlns=\"urn:tests:a\">3</ll1>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:ll1[.='1']",
+      "schema": "/a:ll1",
+      "value": {
+        "canonical": "1",
+        "type": "uint8",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:ll1[.='2']",
+      "schema": "/a:ll1",
+      "value": {
+        "canonical": "2",
+        "type": "uint8",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:ll1[.='3']",
+      "schema": "/a:ll1",
+      "value": {
+        "canonical": "3",
+        "type": "uint8",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

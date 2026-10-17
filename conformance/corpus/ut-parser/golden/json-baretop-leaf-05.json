@@ -1,0 +1,97 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"a:l1\": [\n    {\n      \"a\": \"mi\",\n      \"b\": \"ni\",\n      \"c\": 12\n    }\n  ]\n}\n",
+    "xml": "<l1 xmlns=\"urn:tests:a\">\n  <a>mi</a>\n  <b>ni</b>\n  <c>12</c>\n</l1>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:l1[a='mi'][b='ni'][c='12']",
+      "schema": "/a:l1",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:l1[a='mi'][b='ni'][c='12']/a",
+      "schema": "/a:l1/a",
+      "value": {
+        "canonical": "mi",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:l1[a='mi'][b='ni'][c='12']/b",
+      "schema": "/a:l1/b",
+      "value": {
+        "canonical": "ni",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:l1[a='mi'][b='ni'][c='12']/c",
+      "schema": "/a:l1/c",
+      "value": {
+        "canonical": "12",
+        "type": "int16",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}
