@@ -93,6 +93,14 @@ func ModuleOf(m *schema.Module) *Module { return wrapMod(m) }
 // NodeOf is the handle of a compiled schema node, nil for nil (the data tree's Node.Schema).
 func NodeOf(n *schema.Node) *Node { return wrapNode(n) }
 
+// TypeOf is the handle of a compiled type, nil for nil (the data value observers).
+func TypeOf(t *schema.Type) *Type {
+	if t == nil {
+		return nil
+	}
+	return &Type{t}
+}
+
 func wrapNode(n *schema.Node) *Node {
 	if n == nil {
 		return nil

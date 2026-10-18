@@ -5,6 +5,10 @@ same behaviour) · `skipped` (out of v1 scope, see PLAN §1).
 
 | libyang file | C function | Go symbol | Status | Fixtures | Notes |
 |---|---|---|---|---|---|
+| src/tree_data.h | lyd_get_value; struct lyd_value.realtype | data.Node.ValueType | replaced | protocol-v2/union-member, protocol-v2/union-leafref-realtype; Go TestValueObservers | exposes the stored type through the immutable schema handle; lyoracle.c value_json contract |
+| src/plugins_types/union.c | lyplg_type_sort_union (member realtype lookup) | data.Node.UnionMember, data.UnionMember | ported | protocol-v2/union-repeated-realtype, protocol-v2/union-leafref-realtype; Go TestUnionMemberUnmatched | first flattened member with matching type identity, resolving leafref realtypes; oracle unmatched fallback uses index -1 |
+| src/tree_data.h | struct lyd_node_opaq.name/format/hints, struct ly_opaq_name; LYD_VALHINT_*, LYD_NODEHINT_* | data.Node.OpaqueInfo, data.OpaqueInfo | replaced | protocol-v2/opaque-xml-ns-a, protocol-v2/opaque-xml-ns-b; Go TestOpaqueObservers, TestOpaqueHintNames | copied identity and hints in lyoracle.c hints_json order |
+| src/tree_data.h | struct lyd_node_opaq.attr, struct lyd_attr | data.Node.Attrs, data.Attr | replaced | print/opaque-attrs-json, print/opaque-attrs-xml; Go TestOpaqueObservers | ordered attribute copies; XML namespace or JSON module name |
 | src/plugins_types.c | lyplg_type_check_hints, type_get_hints_base | types.checkHints, types.hintsBase | ported | types/json-* | |
 | src/plugins_types.c | lyplg_type_validate_range | types.checkRange | ported | types/string-length, types/binary-length | |
 | src/plugins_types.c | lyplg_type_validate_patterns | types.checkPatterns | ported | types/string-invert-match | regex via internal/xsdre |

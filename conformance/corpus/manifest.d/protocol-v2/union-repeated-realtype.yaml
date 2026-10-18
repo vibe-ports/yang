@@ -1,0 +1,23 @@
+fixtures:
+  - id: protocol-v2/union-repeated-realtype
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.12"]
+    areas: [types]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-observers}]
+      context_options: [no_yanglibrary]
+      steps:
+        - do: parse
+          format: json
+          data_type: config
+          data: '{"pv2-observers:c":{"strings":"abc","integers":7,"nested":7}}'
+        - {do: edit, set: {path: /pv2-observers:c/integers, value: "2"}}
+        - {do: validate, data_type: config}
+    golden: golden/union-repeated-realtype.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.12"]
+      deviation: null

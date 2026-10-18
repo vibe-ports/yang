@@ -681,19 +681,29 @@ func TestEmptyRevisionDoesNotMutateEarlierModule(t *testing.T) {
 	}
 }
 
-// TestTypedCompared: the data typed dump is compared without the skipped type details only.
+// TestTypedCompared: only anydata is skipped; observer fields remain compared.
 func TestTypedCompared(t *testing.T) {
 	r := Response{"typed": []any{map[string]any{"path": "/a:x", "flags": map[string]any{"new": false},
-		"value": map[string]any{"canonical": "1", "type": "uint8", "union_member": nil}, "meta": []any{}}}}
+		"value": map[string]any{"canonical": "1", "type": "uint8", "typedef": nil, "union_member": nil, "hints": []any{}},
+		"meta":  []any{}, "opaque": nil, "any": map[string]any{"value": "payload"}}}}
 	got, skipped := withoutSkipped(r, Yang{}.SkippedFields("data"))
 	want := Response{"typed": []any{map[string]any{"path": "/a:x", "flags": map[string]any{"new": false},
-		"value": map[string]any{"canonical": "1"}}}}
-	if d := diffResponses(want, got); d != "" || len(skipped) != 3 || r["typed"].([]any)[0].(map[string]any)["meta"] == nil {
+		"value": map[string]any{"canonical": "1", "type": "uint8", "typedef": nil, "union_member": nil, "hints": []any{}},
+		"meta":  []any{}, "opaque": nil}}}
+	if d := diffResponses(want, got); d != "" || !slices.Equal(skipped, []string{"typed.any"}) || r["typed"].([]any)[0].(map[string]any)["any"] == nil {
 		t.Fatalf("%s %v %v", d, got, skipped)
 	}
-	got["typed"].([]any)[0].(map[string]any)["flags"] = map[string]any{"new": true}
-	if diffResponses(want, got) == "" {
-		t.Fatal("flags not compared")
+	for _, field := range []string{"type", "typedef", "union_member", "hints", "meta", "opaque", "flags"} {
+		got, _ := withoutSkipped(r, Yang{}.SkippedFields("data"))
+		node := got["typed"].([]any)[0].(map[string]any)
+		if slices.Contains([]string{"meta", "opaque", "flags"}, field) {
+			node[field] = "changed"
+		} else {
+			node["value"].(map[string]any)[field] = "changed"
+		}
+		if diffResponses(want, got) == "" {
+			t.Errorf("%s not compared", field)
+		}
 	}
 }
 

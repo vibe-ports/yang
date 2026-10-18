@@ -1,0 +1,21 @@
+fixtures:
+  - id: protocol-v2/union-leafref-realtype
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9", "RFC7950#9.12"]
+    areas: [types, validation]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: pv2-observers}]
+      context_options: [no_yanglibrary]
+      format: json
+      data_type: config
+      # shared selects second-int after leafref validation fails, but the observer
+      # reports the first member with that realtype: the leafref at index zero.
+      data: '{"pv2-observers:c":{"target":7,"ref":7,"reference":7,"shared":8}}'
+    golden: golden/union-leafref-realtype.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#9.9", "RFC7950#9.12"]
+      deviation: null

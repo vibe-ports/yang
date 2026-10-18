@@ -1,0 +1,132 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-observers",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"pv2-observers:c\": {\n    \"target\": 7,\n    \"ref\": 7,\n    \"reference\": 7,\n    \"shared\": 8\n  }\n}\n",
+    "xml": "<c xmlns=\"urn:pv2-observers\">\n  <target>7</target>\n  <ref>7</ref>\n  <reference>7</reference>\n  <shared>8</shared>\n</c>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-observers:c",
+      "schema": "/pv2-observers:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-observers:c/target",
+      "schema": "/pv2-observers:c/target",
+      "value": {
+        "canonical": "7",
+        "type": "int8",
+        "typedef": "second-int",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-observers:c/ref",
+      "schema": "/pv2-observers:c/ref",
+      "value": {
+        "canonical": "7",
+        "type": "int8",
+        "typedef": "second-int",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-observers:c/reference",
+      "schema": "/pv2-observers:c/reference",
+      "value": {
+        "canonical": "7",
+        "type": "union",
+        "typedef": null,
+        "union_member": {
+          "index": 0,
+          "realtype": {
+            "type": "int8",
+            "typedef": "second-int"
+          },
+          "type": "leafref",
+          "typedef": null
+        }
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/pv2-observers:c/shared",
+      "schema": "/pv2-observers:c/shared",
+      "value": {
+        "canonical": "8",
+        "type": "union",
+        "typedef": null,
+        "union_member": {
+          "index": 0,
+          "realtype": {
+            "type": "int8",
+            "typedef": "second-int"
+          },
+          "type": "leafref",
+          "typedef": null
+        }
+      }
+    }
+  ],
+  "verdict": "valid"
+}

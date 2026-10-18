@@ -1,0 +1,338 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-observers",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-observers:c",
+          "schema": "/pv2-observers:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-observers:c/strings",
+          "schema": "/pv2-observers:c/strings",
+          "value": {
+            "canonical": "abc",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": null
+              },
+              "type": "string",
+              "typedef": null
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-observers:c/integers",
+          "schema": "/pv2-observers:c/integers",
+          "value": {
+            "canonical": "7",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "int8",
+                "typedef": "second-int"
+              },
+              "type": "int8",
+              "typedef": "second-int"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-observers:c/nested",
+          "schema": "/pv2-observers:c/nested",
+          "value": {
+            "canonical": "7",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 2,
+              "realtype": {
+                "type": "int8",
+                "typedef": "second-int"
+              },
+              "type": "int8",
+              "typedef": "second-int"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "edit",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-observers:c",
+          "schema": "/pv2-observers:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-observers:c/strings",
+          "schema": "/pv2-observers:c/strings",
+          "value": {
+            "canonical": "abc",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": null
+              },
+              "type": "string",
+              "typedef": null
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-observers:c/integers",
+          "schema": "/pv2-observers:c/integers",
+          "value": {
+            "canonical": "2",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "int8",
+                "typedef": "first-int"
+              },
+              "type": "int8",
+              "typedef": "first-int"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-observers:c/nested",
+          "schema": "/pv2-observers:c/nested",
+          "value": {
+            "canonical": "7",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 2,
+              "realtype": {
+                "type": "int8",
+                "typedef": "second-int"
+              },
+              "type": "int8",
+              "typedef": "second-int"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "validate",
+      "implicit_diff": null,
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-observers:c",
+          "schema": "/pv2-observers:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-observers:c/strings",
+          "schema": "/pv2-observers:c/strings",
+          "value": {
+            "canonical": "abc",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": null
+              },
+              "type": "string",
+              "typedef": null
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-observers:c/integers",
+          "schema": "/pv2-observers:c/integers",
+          "value": {
+            "canonical": "2",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "int8",
+                "typedef": "first-int"
+              },
+              "type": "int8",
+              "typedef": "first-int"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-observers:c/nested",
+          "schema": "/pv2-observers:c/nested",
+          "value": {
+            "canonical": "7",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 2,
+              "realtype": {
+                "type": "int8",
+                "typedef": "second-int"
+              },
+              "type": "int8",
+              "typedef": "second-int"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

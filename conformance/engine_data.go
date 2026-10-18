@@ -260,20 +260,62 @@ func typedJSON(tree *data.Tree) []any {
 	for top := range tree.Top() {
 		for n := range top.All() {
 			f := n.Flags()
-			o := map[string]any{"path": n.Path(), "schema": nil, "kind": "opaque", "value": nil,
+			o := map[string]any{"path": n.Path(), "schema": nil, "kind": "opaque", "value": nil, "opaque": nil,
 				"flags": map[string]any{"default": f&data.FlagDefault != 0, "when_true": f&data.FlagWhenTrue != 0,
 					"new": f&data.FlagNew != 0}}
 			sn := n.Schema()
 			if sn != nil {
 				o["schema"], o["kind"] = sn.Path(), kindNames[sn.Kind()]
 			}
-			if sn == nil || sn.Kind() == yang.KindLeaf || sn.Kind() == yang.KindLeafList {
-				o["value"] = map[string]any{"canonical": n.Value()}
+			meta := []any{}
+			if info, ok := n.OpaqueInfo(); ok {
+				format := "json"
+				if info.Format == data.FormatXML {
+					format = "xml"
+				}
+				o["opaque"] = map[string]any{"name": n.Name(), "prefix": opt(info.Prefix), "format": format,
+					"namespace": opt(info.Namespace), "module": opt(info.Module)}
+				o["value"] = map[string]any{"canonical": n.Value(), "type": nil, "typedef": nil,
+					"union_member": nil, "hints": info.Hints}
+				for _, a := range n.Attrs() {
+					meta = append(meta, map[string]any{"module": opt(a.Module), "name": a.Name, "value": a.Value})
+				}
+			} else if tp := n.ValueType(); tp != nil {
+				v := valueTypeRef(tp)
+				v["canonical"], v["union_member"] = n.Value(), nil
+				if member, ok := n.UnionMember(); ok {
+					v["union_member"] = unionMemberJSON(member)
+				}
+				o["value"] = v
 			}
+			for m := range n.Meta() {
+				var module any
+				if mod := m.Module(); mod != nil {
+					module = mod.Name()
+				}
+				meta = append(meta, map[string]any{"module": module, "name": m.Name(), "value": m.Value()})
+			}
+			o["meta"] = meta
 			out = append(out, o)
 		}
 	}
 	return out
+}
+
+// valueTypeRef is lyoracle.c add_type_ref, for a stored or declared member type.
+func valueTypeRef(t *yang.Type) map[string]any {
+	return map[string]any{"type": t.Base(), "typedef": opt(t.Typedef())}
+}
+
+// unionMemberJSON preserves the oracle's null index for an unmatched realtype.
+func unionMemberJSON(member data.UnionMember) map[string]any {
+	o := valueTypeRef(member.Type)
+	o["index"] = nil
+	if member.Index >= 0 {
+		o["index"] = member.Index
+	}
+	o["realtype"] = valueTypeRef(member.RealType)
+	return o
 }
 
 // runOp is lyoracle.c op_data for the operation data types (parse_one, load_oper): the
