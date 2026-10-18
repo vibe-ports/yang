@@ -1,0 +1,18 @@
+# libyang v5.8.6 reports the typed key probe error and standalone leafref validation failure.
+fixtures:
+- id: protocol-v2/hash-leafref-probe-strict
+  dir: protocol-v2
+  source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+  rfc: ["RFC7950#9.9.3"]
+  areas: [types, xpath, validation]
+  request:
+    op: data
+    searchdirs: [hash-leafref-probe, ../ut-new/e.1, ../ut-new/f.1]
+    modules: [{name: g}, {name: e}, {name: f}]
+    context_options: [no_yanglibrary]
+    format: json
+    data_type: data
+    data: '{"e:li":[{"id":"/f:lp[p=''2001:0db8::/64'']"}],"g:c":{"selector":"/f:lp[p=''2001:0db8::/64'']","strict":"/f:lp[p=''2001:0db8::/64'']"}}'
+    validate_options: [present]
+  golden: golden/hash-leafref-probe-strict.json
+  assert: {verdict: invalid, diagnostics: [{vecode_name: LYVE_DATA, schema_path: /e:li/id}, {apptag: instance-required}]}

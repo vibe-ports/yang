@@ -24,14 +24,14 @@ func TestSortRelocationOutsideOperation(t *testing.T) {
 	sn := schema.FindChild(c, nil, mod, "v", 0)
 	tr := newTree(set)
 	cn := newInner(c)
-	tr.insert(nil, cn, insertDefault)
+	mustLink(t, tr.insert(nil, cn, insertDefault))
 	for _, v := range []int{10, 2, 3, 4} {
-		tr.insert(cn, opIndexTerm(t, sn, v), insertLast)
+		mustLink(t, tr.insert(cn, opIndexTerm(t, sn, v), insertLast))
 	}
 	if cn.kids.ht == nil {
 		t.Fatal("no children table")
 	}
-	tr.insert(cn, opIndexTerm(t, sn, 11), insertDefault)
+	mustLink(t, tr.insert(cn, opIndexTerm(t, sn, 11), insertDefault))
 	var got []string
 	for _, n := range cn.kids.list {
 		got = append(got, n.value.Canonical())

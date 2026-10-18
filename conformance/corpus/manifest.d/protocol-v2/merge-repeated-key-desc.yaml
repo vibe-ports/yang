@@ -1,0 +1,18 @@
+fixtures:
+  # Libyang v5.8.6 src/tree_data_hash.c:55-66 hashes every historical leading key; src/tree_data.c:1714-1716,1758-1785 requires both that stored hash and the declared key. Descending repeated-key input retains four list instances after merging.
+  - id: protocol-v2/merge-repeated-key-desc
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.8.5", "RFC7951#4"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-sorted}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {do: edit, set: {path: "/pv2-sorted:c/l[k='m']", value: ""}}
+        - {do: edit, set: {path: "/pv2-sorted:c/l[k='z']", value: ""}}
+        - {do: edit, merge: '{"pv2-sorted:c":{"l":[{"k":"a","k":"c","v":"2"},{"k":"a","k":"b","v":"1"}]}}', data_type: config}
+        - {do: dump, with_defaults: all}
+    golden: golden/merge-repeated-key-desc.json

@@ -768,6 +768,8 @@ func (t *Tree) validateModuleFinal(ctx context.Context, mod *schema.Module, o Va
 // validateWith is lyd_validate with validate_subtree over every module (mod nil) or mod only.
 func (t *Tree) validateWith(ctx context.Context, mod *schema.Module, o ValidateOptions, b Budget,
 	diff func(*Node, diffOp) error) ([]yang.Diagnostic, error) {
+	defer t.work.beginHashWork()()
+	journal := beginHashTransaction(t)
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -785,6 +787,12 @@ func (t *Tree) validateWith(ctx context.Context, mod *schema.Module, o ValidateO
 		return nil
 	}
 	err := vc.validate(true)
+	if t.work.hashErr != nil { // a hash-budget failure, also of the journal's charge
+		err = t.work.hashErr
+		journal.end(&err)
+		return vc.log.diags, err
+	}
+	journal.end(nil) // validation is not rolled back otherwise (MaxNodes, cancellation)
 	if err == nil || errors.Is(err, errLogged) {
 		err = vc.log.result() // nil when only warnings were logged
 	}

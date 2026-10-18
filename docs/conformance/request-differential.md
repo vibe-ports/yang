@@ -192,6 +192,28 @@ The `schema/repeated-load` seed first loads `pv2`, then applies nested
 `modules[].revision` and `modules[].features` mutations to a second `pv2` entry,
 so rejected repeated loads cannot hide context mutations.
 
+The `step/dup-source` seed varies the separately parsed `source` object and its
+fields. Preflight requires an object with `data` present and `parse_only` equal
+to JSON true, checks string `data` through `input_of`, rejects unlisted source keys,
+and forbids `target` alongside `source`. It also checks that exactly one of
+the string selectors `node` and `node_xpath` is present. An empty `node` string
+counts as present and reaches lookup after parsing. `source.data` may be an
+empty string; null or absence does not satisfy the requirement. `source.rpc` is
+optional and is read only when the dup step executes. `source.keep_input` uses JSON truth, so
+nonboolean values act as false.
+
+During execution, `dparams_of(source)` checks `source.format` (`json` or
+`xml`), `source.unknown` (`reject`, `skip`, or `opaque`), and `source.data_type`
+(`config`, `data-operational`, `data`, `get`, `getconfig`, `edit`, `rpc`, `reply`,
+`notif`, `notif-netconf`, or `notif-restconf`) before reading the source inputs
+and parsing. Missing or null values take their defaults; wrong types and
+unrecognized strings are request errors. The separately parsed tree is then
+used for `node`/`node_xpath` selection; `parent` still selects in the retained
+tree. A missing `node` in the source reports `dup node … not found in the
+source`. Source parse diagnostics carry phase `parse`; duplication diagnostics
+carry phase `edit`. If an earlier step fails, these execution checks are
+skipped, while preflight checks still run for every step.
+
 The schema-prelude ordering audit follows `lyoracle.c`: context flags are read at
 1094 before context creation at 1098; search directories are applied at 1100-1104
 before requested modules; each module's name/revision and missing-name rejection

@@ -3,7 +3,9 @@
 package data
 
 import (
+	"context"
 	"errors"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
@@ -27,6 +29,51 @@ func dupFixture(t *testing.T, set *schema.Set) *Tree {
 		}
 	}
 	return tr
+}
+
+// TestDupSiblingsRPCOwnParent covers D-0132: the source run is fixed before
+// duplication, including when an RPC input or output is its own destination.
+func TestDupSiblingsRPCOwnParent(t *testing.T) {
+	set := opsSet(t, readOpsFixture(t, filepath.Join(opsManifest, "leader-parse-rpc-input-output-dup.yaml")))
+	for _, tc := range []struct {
+		name, rpc, reply, child string
+	}{
+		{"input", `{"rb:r":{"il":[40,50,60,70,20,10,80,90]}}`, "", "il"},
+		{"output", `{"rb:r":{}}`, `{"rb:v":[40,50,60,70,20,10,80,90]}`, "v"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tr, op, diags, err := parseOp(context.Background(), strings.NewReader(tc.rpc), set, FormatJSON, opRPC, nil, Reject)
+			if err != nil {
+				t.Fatal(err, diags)
+			}
+			if tc.reply != "" {
+				if _, _, diags, err = parseOp(context.Background(), strings.NewReader(tc.reply), set, FormatJSON, opReply, op, Reject); err != nil {
+					t.Fatal(err, diags)
+				}
+			}
+			nodes, _, err := tr.FindXPath("/rb:r/"+tc.child+"[.='80']", XPathOptions{})
+			if err != nil || len(nodes) != 1 {
+				t.Fatalf("source %s: %d nodes, %v", tc.child, len(nodes), err)
+			}
+			n := nodes[0]
+			if _, _, err := tr.DupSiblings(n, op, DupOptions{}); err != nil {
+				t.Fatal(err)
+			}
+			for _, check := range []struct {
+				path  string
+				count int
+			}{
+				{"/rb:r/" + tc.child, 10},
+				{"/rb:r/" + tc.child + "[.='80']", 2},
+				{"/rb:r/" + tc.child + "[.='90']", 2},
+			} {
+				nodes, _, err := tr.FindXPath(check.path, XPathOptions{})
+				if err != nil || len(nodes) != check.count {
+					t.Fatalf("%s: count %d, want %d, err %v", check.path, len(nodes), check.count, err)
+				}
+			}
+		})
+	}
 }
 
 func findNode(t *testing.T, tr *Tree, path string) *Node {
@@ -296,6 +343,69 @@ func TestDupContexts(t *testing.T) {
 	if _, err := dupTo(np, trimmed, nil, dupWithParents, false); err == nil ||
 		err.Error() != `Schema node "/pv2-edit:c/np" not found in the target context.` {
 		t.Errorf("missing node: %v", err)
+	}
+}
+
+// lyd_dup_r appends children in source order even when the target has different keys.
+// Oracle: protocol-v2/hash-cross-schema-nonkey-remove, steps[1].
+func TestDupCrossSchemaChildOrder(t *testing.T) {
+	const source = `module m { yang-version 1.1; namespace "urn:m"; prefix m;
+ container r { list l { config false; key "a b";
+ leaf a { type string; } leaf b { type string; } } } }`
+	srcSet := opIndexSet(t, source)
+	dstSet := opIndexSet(t, strings.Replace(source, `key "a b"`, `key "b"`, 1))
+	src, _, err := parseJSONString(srcSet, `{"m:r":{"l":[{"a":"x","b":"y"}]}}`, Reject, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, recursive := range []bool{false, true} {
+		name := "keys-only"
+		if recursive {
+			name = "recursive"
+		}
+		t.Run(name, func(t *testing.T) {
+			dst := newTree(dstSet)
+			root, err := dst.NewInner(nil, "m:r", NewOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			list, _, err := dst.Dup(src.top.first().kids.list[0], root, DupOptions{Recursive: recursive})
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := []string{"/m:r new", "/m:r/l new", "/m:r/l/a new = x", "/m:r/l/b new = y"}
+			if got := typedDump(dst); !slices.Equal(got, want) {
+				t.Fatalf("copy:\n got  %q\n want %q", got, want)
+			}
+			clone := newTree(dstSet)
+			if _, _, err := clone.Dup(root, nil, DupOptions{Recursive: true}); err != nil {
+				t.Fatal(err)
+			}
+			if got := typedDump(clone); !slices.Equal(got, want) {
+				t.Fatalf("same-context copy:\n got  %q\n want %q", got, want)
+			}
+			hash := list.hash
+			a, err := dst.Find("/m:r/l[1]/a")
+			if err != nil || a == nil {
+				t.Fatalf("find copied non-key: %v, %v", a, err)
+			}
+			if err := a.Remove(); err != nil {
+				t.Fatal(err)
+			}
+			if list.hash != hash || list.Path() != "/m:r/l[b='y']" {
+				t.Fatalf("non-key removal: hash %#x (was %#x), path %s", list.hash, hash, list.Path())
+			}
+			if _, err := dst.NewTerm(list, "b", "z", NewOptions{}); err != nil {
+				t.Fatal(err)
+			}
+			duplicate, _, err := dst.Dup(list, root, DupOptions{Recursive: true})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if list.Path() != "/m:r/l[b='y'][b='z']" || !list.Equal(duplicate, CompareOptions{FullRecursion: true}) {
+				t.Fatal("key insertion and duplication disagree")
+			}
+		})
 	}
 }
 

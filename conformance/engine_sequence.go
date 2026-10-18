@@ -19,19 +19,19 @@ var seqKeys = map[string]map[string]bool{
 	"parse": set("do", "format", "data_type", "data", "data_file", "unknown", "parse_only", "parse_options",
 		"validate_options", "rpc", "keep_input", "parent"),
 	"validate": set("do", "data_type", "validate_options", "module", "final_only"),
-	"edit": set("do", "set", "delete", "new_meta", "free_meta", "insert_term", "insert_inner", "insert_list", "insert_list2", "insert_opaq", "merge",
+	"edit": set("do", "set", "delete", "new_meta", "free_meta", "insert_term", "insert_inner", "insert_list", "insert_list2", "insert_opaq", "merge_self", "merge",
 		"merge_file", "format", "data_type", "unknown", "parse_options"),
-	"dup":         set("do", "node", "parent", "options", "siblings", "target"),
+	"dup":         set("do", "node", "node_xpath", "parent", "options", "siblings", "target", "source"),
 	"link":        set("do"),
 	"links":       set("do"),
-	"change_term": set("do", "node", "value", "canon"),
+	"change_term": set("do", "node", "node_xpath", "child", "value", "canon"),
 	"insert": set("do", "node", "parent", "format", "data_type", "data", "data_file", "unknown", "parse_only",
 		"parse_options", "validate_options"),
 	"dump":       set("do", "with_defaults"),
 	"print_xml":  set("do"),
 	"any_direct": set("do", "case", "target"),
 	"compare": set("do", "format", "data_type", "data", "data_file", "unknown", "parse_only", "parse_options",
-		"validate_options", "first", "second", "options", "insert_opaq"),
+		"validate_options", "first", "second", "options", "insert_opaq", "self"),
 	"diff": set("do", "format", "data_type", "data", "data_file", "unknown", "parse_only", "parse_options",
 		"validate_options", "rpc", "keep_input", "node", "data_node", "single", "options", "merge", "merge_options", "target"),
 	"diff_parse":   set("do", "format", "data_type", "data", "data_file", "unknown", "parse_options"),
@@ -39,6 +39,7 @@ var seqKeys = map[string]map[string]bool{
 	"diff_apply":   set("do", "module"),
 	"diff_reverse": set("do"),
 	"trim":         set("do", "xpath", "vars"),
+	"xpath":        set("do", "xpath", "vars"),
 }
 
 var seqContextKeys = set("searchdirs", "modules", "context_options")
@@ -144,9 +145,15 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 		case "edit":
 			err = checkInsertSelectors(s, tree, st)
 		case "change_term":
-			_, err = findNode(tree, str(st, "node", ""), "change_term node")
+			if _, xpath, _ := strField(st, "node_xpath"); !xpath { // node_xpath: stepChange selects
+				_, err = findNode(tree, str(st, "node", ""), "change_term node")
+			}
 		case "dup":
-			if _, err = findNode(tree, str(st, "node", ""), "dup node"); err == nil {
+			_, xpath, _ := strField(st, "node_xpath")
+			if st["source"] == nil && !xpath { // node_xpath or a source tree: stepDup selects
+				_, err = findNode(tree, str(st, "node", ""), "dup node")
+			}
+			if err == nil {
 				if p, present, _ := strField(st, "parent"); present {
 					_, err = findNode(tree, p, "dup parent")
 				}
@@ -189,7 +196,7 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 		case "edit":
 			tree, diags, rc, err = stepEdit(r, s, st, tree)
 		case "dup":
-			phase = "edit"
+			phase = "" // source parse and duplication collect distinct diagnostic phases
 			tree, cur, diags, err = stepDup(r, s, st, tree)
 		case "link":
 			if tree == nil || empty(tree) {
@@ -209,6 +216,21 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 		case "compare":
 			phase = "parse"
 			diags, err = stepCompare(r, s, st, tree, so)
+		case "xpath":
+			so["result"] = nil
+			if tree == nil || empty(tree) {
+				rc = "LY_EINVAL" // lyd_find_xpath requires a context node.
+				break
+			}
+			var nodes []*data.Node
+			var vars []data.XPathVar
+			vars, err = xpathVars(st)
+			if err == nil {
+				nodes, diags, err = tree.FindXPath(str(st, "xpath", ""), data.XPathOptions{Node: topNode(tree), Vars: vars})
+			}
+			if err == nil {
+				so["result"] = xpathResultJSON(data.XPathResult{Type: data.XPathNodeSet, Nodes: nodes})
+			}
 		case "diff":
 			phase = "" // the diagnostics carry theirs
 			diags, err = stepDiff(r, s, st, tree, &diff, &diffOwner, so, func(collectPhase string) []yang.Diagnostic {
@@ -384,7 +406,8 @@ func diagsOf(err error) []yang.Diagnostic {
 func emptyTree(s *yang.Schema) (*data.Tree, error) { return data.NewTree(s), nil }
 
 // stepCompare is step_compare: Node.Equal of the node at first in the tree and the node at second
-// in a second tree parsed like a parse step (omitted: the first top-level node).
+// in a second tree parsed like a parse step, or the retained tree with self:true
+// (selectors omitted: the first top-level node).
 func stepCompare(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, so map[string]any) (
 	[]yang.Diagnostic, error) {
 	var o data.CompareOptions
@@ -400,9 +423,14 @@ func stepCompare(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, 
 			return nil, fmt.Errorf("%w: compare option %v", ErrUnsupported, x)
 		}
 	}
-	other, diags, err := stepParse(r, s, st, execStepCompare, nil)
-	if err != nil || other == nil {
-		return diags, err
+	other := tree
+	var diags []yang.Diagnostic
+	if st["self"] != true {
+		var err error
+		other, diags, err = stepParse(r, s, st, execStepCompare, nil)
+		if err != nil || other == nil {
+			return diags, err
+		}
 	}
 	n1, err := selectedNode(tree, st, "first", "compare first")
 	if err != nil {
@@ -524,6 +552,14 @@ func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*d
 		}
 	}
 	switch {
+	case st["merge_self"] == true:
+		src := data.NewTree(s)
+		if n := topNode(tree); n != nil {
+			_, _, err = src.DupSiblings(n, nil, data.DupOptions{Recursive: true})
+			if err == nil {
+				err = tree.Merge(src)
+			}
+		}
 	case st["set"] != nil:
 		x, _ := st["set"].(map[string]any)
 		path := str(x, "path", "")
@@ -546,9 +582,9 @@ func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*d
 			x, _ = st["free_meta"].(map[string]any)
 		}
 		path := str(x, "node", "")
-		n, ferr := tree.Find(path)
-		if ferr != nil || n == nil {
-			return nil, nil, rc, fmt.Errorf("metadata node %s not found (a request-error)", path)
+		n, ferr := findNode(tree, path, "metadata node")
+		if ferr != nil {
+			return nil, nil, rc, ferr
 		}
 		if st["new_meta"] != nil {
 			_, err = tree.NewMeta(n, str(x, "name", ""), str(x, "value", ""))
@@ -656,8 +692,9 @@ func stepInsert(s *yang.Schema, st map[string]any, tree *data.Tree) error {
 	}
 	var parent *data.Node
 	if p, present, _ := strField(o, "parent"); present {
-		if parent, _ = tree.Find(p); parent == nil {
-			return fmt.Errorf("insert parent %s not found (a request-error)", p)
+		var err error
+		if parent, err = findNode(tree, p, "insert parent"); err != nil {
+			return err
 		}
 	}
 	if p, present, _ := strField(o, "parent_opaq"); present {
@@ -702,14 +739,38 @@ func stepInsert(s *yang.Schema, st map[string]any, tree *data.Tree) error {
 // context built like the request's (lyd_dup_*_to_ctx).
 func stepDup(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*data.Tree, *yang.Schema, []yang.Diagnostic,
 	error) {
-	n, _ := findNode(tree, str(st, "node", ""), "dup node")
-	if n == nil {
-		return nil, nil, nil, fmt.Errorf("dup node %s not found (a request-error)", str(st, "node", ""))
+	src := tree
+	var parseDiags []yang.Diagnostic
+	var err error
+	if source, ok := st["source"].(map[string]any); ok {
+		src, parseDiags, err = parseOne(r, s, source, execStepParse, "data", "parse", nil)
+		if err != nil {
+			return tree, s, parseDiags, err
+		}
+	}
+	var n *data.Node
+	if xpath, ok := st["node_xpath"].(string); ok {
+		if src == nil {
+			return nil, nil, nil, requestError("dup node_xpath %s must select exactly one node", xpath)
+		}
+		nodes, _, err := src.FindXPath(xpath, data.XPathOptions{})
+		if err != nil || len(nodes) != 1 {
+			return nil, nil, nil, requestError("dup node_xpath %s must select exactly one node", xpath)
+		}
+		n = nodes[0]
+	} else {
+		n, err = findNode(src, str(st, "node", ""), "dup node")
+		if err != nil {
+			if st["source"] != nil {
+				return nil, nil, nil, requestError("dup node %s not found in the source", str(st, "node", ""))
+			}
+			return nil, nil, nil, err
+		}
 	}
 	var parent *data.Node
 	if p, present, _ := strField(st, "parent"); present {
-		if parent, _ = tree.Find(p); parent == nil {
-			return nil, nil, nil, fmt.Errorf("dup parent %s not found (a request-error)", p)
+		if parent, err = findNode(tree, p, "dup parent"); err != nil {
+			return nil, nil, nil, err
 		}
 	}
 	var o data.DupOptions
@@ -746,9 +807,9 @@ func stepDup(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*da
 	}
 	_, diags, err := dup(n, parent, o)
 	if err != nil {
-		return tree, s, diagsOf(err), err
+		return tree, s, append(parseDiags, phased(nil, diagsOf(err), "edit")...), err
 	}
-	return dst, ds, diags, nil
+	return dst, ds, append(parseDiags, phased(nil, diags, "edit")...), nil
 }
 
 // stepChange is the change_term step: Node.SetValue of the node at "node"; "change" is
@@ -756,9 +817,35 @@ func stepDup(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*da
 // are results. Node.SetValue tells changed from not, so the two are told apart by the node's
 // Default flag before the call. libyang's argument checks log without a context: no diagnostics.
 func stepChange(st map[string]any, tree *data.Tree, so map[string]any) ([]yang.Diagnostic, error) {
-	n, _ := findNode(tree, str(st, "node", ""), "change_term node")
-	if n == nil {
-		return nil, fmt.Errorf("change_term node %s not found (a request-error)", str(st, "node", ""))
+	var n *data.Node
+	if expr, present, _ := strField(st, "node_xpath"); present {
+		if tree == nil || empty(tree) {
+			return nil, requestError("change_term node_xpath %s must select exactly one node", expr)
+		}
+		nodes, _, err := tree.FindXPath(expr, data.XPathOptions{Node: topNode(tree)})
+		if err != nil || len(nodes) != 1 {
+			return nil, requestError("change_term node_xpath %s must select exactly one node", expr)
+		}
+		n = nodes[0]
+	} else {
+		var err error
+		if n, err = findNode(tree, str(st, "node", ""), "change_term node"); err != nil {
+			return nil, err
+		}
+	}
+	if index, _ := changeChildIndex(st); index > 0 {
+		var selected *data.Node
+		for child := range n.Children() {
+			index--
+			if index == 0 {
+				selected = child
+				break
+			}
+		}
+		if selected == nil {
+			return nil, requestError("change_term child does not exist")
+		}
+		n = selected
 	}
 	dflt := n.Flags()&data.FlagDefault != 0
 	changed, err := n.SetValue(str(st, "value", ""))
@@ -946,8 +1033,8 @@ func stepMove(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*d
 	}
 	var parent *data.Node
 	if p, present, _ := strField(st, "parent"); present {
-		if parent, _ = tree.Find(p); parent == nil {
-			return nil, nil, "", fmt.Errorf("insert parent %s not found (a request-error)", p)
+		if parent, err = findNode(tree, p, "insert parent"); err != nil {
+			return nil, nil, "", err
 		}
 	}
 	err = tree.Insert(parent, n)

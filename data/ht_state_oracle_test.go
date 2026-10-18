@@ -84,7 +84,7 @@ func TestHashTableStateOracle(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				dst.insert(nil, op, insertDefault)
+				mustLink(t, dst.insert(nil, op, insertDefault))
 				tr = dst
 			}
 			if tc.dupShallow {

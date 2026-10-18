@@ -633,6 +633,7 @@ var validationUnsupported = map[string]string{
 	// U-0106: an rpc input parsed into an existing request (Request is for replies only).
 	"ops/parse-json-rpc-parent-opaque-meta":   "U-0106",
 	"ops/opidx-meta-doc-first":                "U-0106",
+	"ops/opidx-split-run-leader-switch":       "D-0058",
 	"ops/parse-json-reply-opaque-request":     "U-0106",
 	"ops/seq-parse-json-reply-opaque-request": "U-0106",
 	"ops/parse-json-rpc-rollback-key":         "U-0106",
@@ -709,6 +710,26 @@ func TestYangEngineTargets(t *testing.T) {
 		if d := diffResponses(golden, got); d != "" {
 			t.Errorf("%s: %s", f.ID, d)
 		}
+	}
+}
+
+// TestSequenceDupParsedSourceRPC keeps the native fixture executable without
+// duplicating a live sibling list into its own RPC parent (D-0132).
+func TestSequenceDupParsedSourceRPC(t *testing.T) {
+	raw, err := os.ReadFile("corpus/manifest.d/ops/leader-parse-rpc-input-output-dup.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := ParseFragment("ops/leader-parse-rpc-input-output-dup.yaml", raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := (Yang{}).Run(Request{ID: f.ID, BaseDir: filepath.Join("corpus", f.Dir), Params: f.Request})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got["verdict"] != "valid" || got["failed_step"] != nil {
+		t.Fatalf("sequence did not finish: verdict=%v failed_step=%v steps=%v", got["verdict"], got["failed_step"], got["steps"])
 	}
 }
 

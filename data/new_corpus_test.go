@@ -228,7 +228,7 @@ func replayInsert(t *testing.T, set *schema.Set, tr *Tree, st map[string]any) (r
 		n, err = b.newOpaq(parent, str("name"), str("value"), optStr(o, "prefix"), str("module"), o["xml"] == true)
 	}
 	if err = b.log.done(err); err == nil && parent == nil {
-		tr.insert(nil, n, insertDefault) // lyd_insert_sibling
+		mustLink(t, tr.insert(nil, n, insertDefault)) // lyd_insert_sibling
 	}
 	return replayResult(t, err)
 }

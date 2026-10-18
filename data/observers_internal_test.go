@@ -34,7 +34,7 @@ func TestUnionMemberUnmatched(t *testing.T) {
 	if d != nil {
 		t.Fatal(d)
 	}
-	n := newTerm(&schema.Node{Kind: schema.Leaf, Type: tp}, v)
+	n := newTerm(&schema.Node{Kind: schema.Leaf, Type: tp, Module: &schema.Module{Name: "m"}}, v)
 	// This cannot normally happen after compilation; exercise the oracle's fallback
 	// by removing the declared member after the value has stored its realtype.
 	tp.Union = nil

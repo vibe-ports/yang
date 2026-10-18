@@ -131,10 +131,12 @@ type lydCtx struct {
 	// parent is the node parsed into (nil: the top level) and opNode the operation node
 	// (lyd_ctx.op_node), opSchema its schema node: the JSON parser also records an opaque node
 	// parsed for an operation member (D-0110).
-	op       opOpts
-	parent   *Node
-	opNode   *Node
-	opSchema *schema.Node
+	op     opOpts
+	parent *Node
+	// The existing request's occurrence generation before reply parsing.
+	parsedParentGen uint64
+	opNode          *Node
+	opSchema        *schema.Node
 	// rcOnly is lyd_parse_op's result rule: the format parser's return code is the result, so an
 	// error it logged and went past (the YANG action element, lydxml_envelope) does not fail it
 	rcOnly bool
@@ -228,16 +230,25 @@ func parseOpWith(ctx context.Context, r io.Reader, s *schema.Set, f Format, t op
 	if f == FormatXML {
 		fp = parseXML
 	}
+	var journal *hashTransaction
+	if parent != nil {
+		if owner := parent.treeOf(); owner != nil {
+			journal = beginHashTransaction(owner)
+		}
+	}
 	var lc *lydCtx
 	o := parseOpts{ParseOptions: ParseOptions{Unknown: unknown, ParseOnly: true, Budget: b}}
 	tree, diags, err = parseWith(ctx, r, s, o, fp, func(c *lydCtx) {
 		lc, c.op, c.parent, c.rcOnly = c, oo, parent, true
 		if parent != nil {
+			c.parsedParentGen = parent.kids.gen
 			if pt := parent.treeOf(); pt != nil {
 				c.tree = pt
 			} // a detached parent (LYD_CTX(parent)): the parser's own tree of s stands in for lookups
 		}
 	})
+	journal.fail(&err)
+	defer journal.end(&err)
 	if err != nil {
 		if lc != nil && parent != nil {
 			// Cleanup may log key refusals after the parse error; keep the parse RC.
@@ -271,7 +282,15 @@ func (lc *lydCtx) freeParsed() {
 		}
 	}
 	ns := slices.DeleteFunc(lc.parsed, func(n *Node) bool { return n.isKey() })
+	// Error cleanup undoes already published parse nodes. It must run after the
+	// failed hash charge, whose sticky error rejects ordinary unlink preflights.
+	used, limit, budgetErr := lc.tree.work.hashUsed, lc.tree.work.hashLimit, lc.tree.work.hashErr
+	lc.tree.work.hashUsed, lc.tree.work.hashLimit, lc.tree.work.hashErr = 0, ^uint64(0), nil
 	_ = lc.tree.unlinkAll(ns) // no keys left: unlinkCheck cannot refuse
+	lc.tree.work.hashUsed, lc.tree.work.hashLimit, lc.tree.work.hashErr = used, limit, budgetErr
+	if lc.parent != nil {
+		lc.parent.kids.gen = lc.parsedParentGen
+	}
 	for _, n := range ns {
 		freeSubtreeLinks(lc.tree.set, n)
 	}
@@ -354,7 +373,11 @@ func parseWith(ctx context.Context, r io.Reader, s *schema.Set, o parseOpts, fp 
 	if setup != nil {
 		setup(lc)
 	}
+	defer lc.tree.work.beginHashWork()()
 	err = fp(lc, in)
+	if lc.tree.work.hashErr != nil {
+		err = lc.tree.work.hashErr
+	}
 	// Flush even after an error, before validation can inspect the retained nodes.
 	if ferr := lc.flushDirtyAll(); ferr != nil {
 		err = ferr
@@ -485,6 +508,9 @@ func fatalRC(rc string) error { return &rcErr{rc} }
 // countNode charges one created node against Budget.MaxNodes and checks the context every 1k
 // nodes.
 func (lc *lydCtx) countNode() error {
+	if lc.tree.work.hashErr != nil {
+		return lc.tree.work.hashErr
+	}
 	lc.nodes++
 	limit := orDefault(lc.opts.Budget.MaxNodes, DefaultMaxNodes)
 	if lc.opts.zeroNodes {
@@ -534,7 +560,10 @@ func (lc *lydCtx) createTerm(sn *schema.Node, lnode *Node, lex string, f types.F
 	if d != nil {
 		return nil, lc.log.storeErr(lnode, sn, d)
 	}
-	n := newTerm(sn, v)
+	n := newTerm(sn, v, &lc.tree.work)
+	if lc.tree.work.hashErr != nil {
+		return nil, lc.tree.work.hashErr
+	}
 	n.flags = lc.newFlags()
 	if v.NeedsTree() && !lc.opts.ParseOnly {
 		lc.nodeTypes.add(n)
@@ -548,7 +577,10 @@ func (lc *lydCtx) createInner(sn *schema.Node) (*Node, error) {
 	if err := lc.countNode(); err != nil {
 		return nil, err
 	}
-	n := newInner(sn)
+	n := newInner(sn, &lc.tree.work)
+	if lc.tree.work.hashErr != nil {
+		return nil, lc.tree.work.hashErr
+	}
 	n.flags = lc.newFlags()
 	if isNPCont(sn) {
 		n.flags |= FlagDefault
@@ -687,75 +719,97 @@ func (lc *lydCtx) closeInner(n *Node, rc error) error {
 // nodeInsert is lyd_parser_node_insert: a list is linked only once it has all its keys; an
 // anchor puts n right after it (lyd_insert_after), else n goes by schema order, appended for
 // LYD_PARSE_ORDERED input.
-func (lc *lydCtx) nodeInsert(parent, anchor, n *Node) {
+func (lc *lydCtx) nodeInsert(parent, anchor, n *Node) error {
 	if n == nil || n.parent != nil || n.tree != nil {
-		return // already inserted
+		return nil // already inserted
 	}
 	if n.schema != nil && n.schema.Kind == schema.List {
-		if _, ok := hashOf(n); !ok && !n.schema.Keyless() {
-			return // missing key(s)
+		if !n.lkeyOK && !n.schema.Keyless() {
+			return nil // missing key(s)
 		}
 	}
-	switch {
-	case anchor != nil && anchor.schema == nil && n.schema == nil:
+	if anchor != nil && anchor.schema == nil && n.schema == nil {
 		// lyd_insert_after of the XML parser's anchor (lydxml_get_hints_opaq): an opaque node
 		// right after the last opaque sibling with the same name, among the opaque nodes
 		sib := anchor.siblingsOf()
-		lc.tree.link(anchor.parent, sib, n, sib.indexOf(sib.opq, anchor)+1)
-	case anchor != nil:
+		return lc.tree.link(anchor.parent, sib, n, sib.indexOf(sib.opq, anchor)+1)
+	}
+	if anchor != nil {
 		// libyang's only insert anchor is the opaque one above
 		panic("data: insert anchor of a schema node")
-	case lc.opts.ordered:
-		lc.tree.insert(parent, n, insertLast)
-	case lc.appendSorted(parent, n):
-	default:
-		lc.tree.insert(parent, n, insertDefault)
 	}
+	if lc.opts.ordered {
+		return lc.tree.insert(parent, n, insertLast)
+	}
+	if sortedSupported(n) {
+		if inserted, err := lc.appendSorted(parent, n); err != nil || inserted {
+			return err
+		}
+	}
+	return lc.tree.insert(parent, n, insertDefault)
 }
 
 // appendSorted appends parser instances to a system-ordered run and defers publication
 // of its stable order until a reader needs the physical siblings. Operation runs retain
 // their indexed boundaries; ordinary runs are found by schema order.
-func (lc *lydCtx) appendSorted(parent, n *Node) bool {
+func (lc *lydCtx) appendSorted(parent, n *Node) (bool, error) {
 	if !sortedSupported(n) {
-		return false
+		return false, nil
 	}
 	sib := lc.tree.childrenOf(parent)
-	if sib.unsorted[n.schema] {
-		return false
-	}
+	lc.tree.touch(sib)
 	var run []*Node
 	var at int
-	if opChild(n.schema) {
+	if opChild(n.schema) && sib.opIdx[n.schema] != nil && sib.opIdx[n.schema].gaps == 0 {
 		d := sib.opIdx[n.schema]
-		if d == nil || len(d.list) == 0 {
-			return false
+		if len(d.list) == 0 {
+			return false, nil
 		}
 		run = d.list
 		at = lc.tree.indexFromEnd(sib.list, run[len(run)-1]) + 1
 	} else {
 		lo, hi := lc.tree.runBounds(sib, n)
 		if lo == hi {
-			return false
+			return false, nil
 		}
 		run, at = sib.list[lo:hi], hi
 	}
 	k := dirtyRun{sib, n.schema}
 	ord := lc.runOrd[k]
+	leader := run[0]
+	if lc.dirtyOrd[k] != nil && ord != nil {
+		leader = ord.first()
+	}
+	if sib.unsorted[leader] {
+		return false, nil
+	}
+	// A sorted instance has already had its native hash preflight when it was
+	// created. Check any earlier budget failure before changing the run order;
+	// link cannot fail a key-link preflight for a list or leaf-list instance.
+	if err := lc.tree.work.hashErr; err != nil {
+		return false, err
+	}
+	if err := lc.tree.preflightInsertPosition(sib, n, insertDefault); err != nil {
+		return false, err
+	}
+	if err := lc.tree.preflightLinkIndex(parent, sib, n, at); err != nil {
+		return false, err
+	}
 	if ord == nil || lc.dirtyOrd[k] == nil && dirtySize(ord.root) != len(run) {
 		// The first parser insertion into the run, or the run changed outside the parser since:
 		// a run without an RB tree gets one (lyds_additionally_create_rb_tree), sorting it.
-		create := !sib.rbTree[n.schema]
+		create := !sib.rbTree[leader]
 		if create {
 			lc.tree.applyRunReorderHash(sib, run, reorderExact)
 			for _, old := range run {
 				lc.tree.work.Add(1)
+				old.touch()
 				old.inRB = true
 			}
 			if d := sib.opIdx[n.schema]; d != nil {
 				d.rb = len(run)
 			}
-			markRB(sib, n.schema)
+			markRB(sib, leader)
 		}
 		var moved bool
 		ord, moved = newDirtyOrder(&lc.tree.work, run, lc.tree.compareSorted, create)
@@ -768,14 +822,20 @@ func (lc *lydCtx) appendSorted(parent, n *Node) bool {
 		}
 		lc.applyLeaders(sib, n.schema, ord)
 	}
+	n.touch()
 	n.inRB = true
-	// rb_insert_node; an instance that is not the new maximum makes the physical run stale
+	n.rbGroup = sib.rbGroups[ord.first()]
+	// rb_insert_node precedes lyd_insert_hash. The fourth child can build the
+	// table in link, which reads the pending logical order, so publish n there
+	// before linking it into the physical sibling slice.
 	if !ord.insert(n) {
 		lc.markDirty(sib, n.schema, ord)
 	}
-	lc.tree.link(parent, sib, n, at)
+	if err := lc.tree.link(parent, sib, n, at); err != nil {
+		return false, err
+	}
 	lc.applyLeaders(sib, n.schema, ord)
-	return true
+	return true, nil
 }
 
 // applyLeaders applies the first-instance changes of the latest insertions into a run's tree
@@ -784,16 +844,21 @@ func (lc *lydCtx) appendSorted(parent, n *Node) bool {
 // tree_data_hash.c:128-163). Without a children table there are no records to change; a table
 // built later starts from the tree order (siblings.logical).
 func (lc *lydCtx) applyLeaders(sib *siblings, sn *schema.Node, ord *dirtyOrder) {
-	if sib.ht != nil && firstRecordSchema(sn) {
-		for _, c := range ord.leaders {
-			lc.tree.work.Add(1)
-			sib.leaderReplace(sn, c[0], c[1])
+	sib.touch()
+	for _, c := range ord.leaders {
+		lc.tree.work.Add(1)
+		if sib.ht != nil && sib.firstRecordSchema(sn) && sib.leaderReplace(sn, c[0], c[1]) {
+			continue
 		}
+		// Metadata follows the logical leader even when there is no native
+		// first-instance record (or a transition's old record was absent).
+		sib.transferRun(c[0], c[1])
 	}
 	ord.leaders = nil
 }
 
 func (lc *lydCtx) markDirty(sib *siblings, sn *schema.Node, ord *dirtyOrder) {
+	sib.touch()
 	lc.tree.work.Add(1)
 	if lc.dirty == nil {
 		lc.dirty = map[*siblings][]*schema.Node{}
@@ -905,14 +970,14 @@ func (lc *lydCtx) flushPath(n *Node) map[*Node]int {
 }
 
 func (lc *lydCtx) flushDirtyRun(k dirtyRun, lo int) {
+	k.sib.touch()
 	defer func() {
 		delete(lc.dirtyOrd, k)
 		delete(k.sib.pending, k.sn)
 	}()
 	var count int
-	if opChild(k.sn) {
-		d := k.sib.opIdx[k.sn]
-		if d == nil || len(d.list) < 2 {
+	if d := k.sib.opIdx[k.sn]; d != nil && d.gaps == 0 {
+		if len(d.list) < 2 {
 			return
 		}
 		count = len(d.list)
@@ -924,7 +989,7 @@ func (lc *lydCtx) flushDirtyRun(k dirtyRun, lo int) {
 			lo = lc.tree.schemaIndex(k.sib, k.sn)
 		}
 		if lo >= 0 {
-			hi := lc.tree.upper(k.sib.list, lo, func(n *Node) bool { return n.schema != k.sn })
+			hi := lc.tree.runEnd(k.sib, lo)
 			count = hi - lo
 		}
 	}
@@ -933,15 +998,32 @@ func (lc *lydCtx) flushDirtyRun(k dirtyRun, lo int) {
 	}
 	ordered := lc.dirtyOrd[k].ordered()
 	run := k.sib.list[lo : lo+count]
+	if len(ordered) != len(run) {
+		// Another insertion path linked a node beside this deferred run without
+		// joining its RB tree. Keep that node in its physical slot, as logical()
+		// does for hash-table construction, when publishing the run too.
+		ordered = k.sib.logical()[lo : lo+count]
+	}
 	if checkPublish {
 		checkPublishedRun(k.sn, run, ordered)
 	}
+	oldLeader := run[0]
 	// Publish as one mutation: cancellation must not leave duplicated/missing pointers in
 	// a partially copied run, particularly when parsing into an existing operation.
 	copy(run, ordered)
+	if oldLeader != run[0] {
+		k.sib.transferRun(oldLeader, run[0])
+		if k.sib.firstRun[k.sn] == oldLeader {
+			k.sib.firstRun[k.sn] = run[0]
+		}
+	}
 	lc.tree.work.Add(int64(len(run)))
-	if opChild(k.sn) {
-		k.sib.opRebuild(lc.tree, k.sn, run)
+	if d := k.sib.opIdx[k.sn]; d != nil {
+		if d.gaps == 0 {
+			k.sib.opRebuild(lc.tree, k.sn, run)
+		} else {
+			k.sib.opBuild(lc.tree)
+		}
 	}
 	k.sib.gen++
 }

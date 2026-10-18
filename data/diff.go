@@ -42,8 +42,18 @@ func (op diffOp) String() string { return [...]string{"create", "delete", "repla
 // validation to modules present in t. Validation observes ctx cancellation and fixed default
 // implicit-node and XPath budgets.
 func (t *Tree) ValidateDiff(ctx context.Context, o ValidateOptions) (diff *Tree, d []yang.Diagnostic, err error) {
+	journal := beginHashTransaction(t)
 	dt := newTree(t.set)
+	defer dt.work.beginHashWork()()
 	d, err = t.validateAll(ctx, o, Budget{}, dt.valDiffAdd)
+	if dt.work.hashErr != nil {
+		err = dt.work.hashErr
+	}
+	if t.work.hashErr != nil || dt.work.hashErr != nil { // validation returned t's hash error
+		journal.end(&err)
+		return nil, d, err
+	}
+	journal.end(nil)
 	if dt.top.len() == 0 {
 		dt = nil
 	}
@@ -72,8 +82,18 @@ func (t *Tree) ValidateModuleDiff(ctx context.Context, module string, o Validate
 	if err != nil {
 		return nil, d, err
 	}
+	journal := beginHashTransaction(t)
 	dt := newTree(t.set)
+	defer dt.work.beginHashWork()()
 	d, err = t.validateModule(ctx, mod, o, Budget{}, dt.valDiffAdd)
+	if dt.work.hashErr != nil {
+		err = dt.work.hashErr
+	}
+	if t.work.hashErr != nil || dt.work.hashErr != nil { // validation returned t's hash error
+		journal.end(&err)
+		return nil, d, err
+	}
+	journal.end(nil)
 	if dt.top.len() == 0 {
 		dt = nil
 	}
@@ -152,6 +172,7 @@ func (t *Tree) yangMeta(n *Node, name, val string) error {
 	if d != nil {
 		return &opError{"LY_EVALID", d.Msg}
 	}
+	n.touch()
 	n.meta = append(n.meta, &meta{mod: mod, name: name, value: v})
 	return nil
 }
@@ -270,13 +291,18 @@ func (t *Tree) diffDup(n *Node, op diffOp, parent *Node) (*Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		t.insert(d, top, insertDefault)
+		if err := t.insert(d, top, insertDefault); err != nil {
+			return nil, err
+		}
 		top = d
 	}
 	if parent != nil {
-		t.insert(parent, top, insertDefault)
+		err = t.insert(parent, top, insertDefault)
 	} else {
-		t.insert(nil, top, insertLastBySchema) // lyd_diff_insert_sibling
+		err = t.insert(nil, top, insertLastBySchema) // lyd_diff_insert_sibling
+	}
+	if err != nil {
+		return nil, err
 	}
 	if top != dup {
 		if err := t.yangMeta(top, "operation", diffNone.String()); err != nil {
@@ -506,7 +532,9 @@ func (t *Tree) diffMergeR(src, parent *Node, cache *dupCache, o mergeOpts) error
 			return err
 		}
 		if parent == nil {
-			t.insert(nil, dn, insertLastBySchema) // lyd_diff_insert_sibling
+			if err := t.insert(nil, dn, insertLastBySchema); err != nil { // lyd_diff_insert_sibling
+				return err
+			}
 		}
 		if err := t.diffChangeOp(dn, srcOp); err != nil {
 			return err
@@ -567,6 +595,7 @@ func (t *Tree) diffMergeCreate(dm *Node, cur diffOp, src *Node, defaults bool) (
 				return nil, err
 			}
 			anchor := *src.meta[mi] // lyd_dup_meta_single
+			dm.touch()
 			dm.meta = append(dm.meta, &anchor)
 			// the anchors of later creates count it: moved after the instances (lyd_insert_after)
 			if last := lastInst(dm); last != dm {
@@ -599,6 +628,9 @@ func (t *Tree) diffMergeCreate(dm *Node, cur diffOp, src *Node, defaults bool) (
 				return nil, err
 			}
 			t.changeTermVal(dm, src.value, false)
+			if t.work.hashErr != nil {
+				return nil, t.work.hashErr
+			}
 		}
 	default:
 		if err := t.diffChangeOp(dm, diffNone); err != nil {
@@ -609,6 +641,7 @@ func (t *Tree) diffMergeCreate(dm *Node, cur diffOp, src *Node, defaults bool) (
 		if err := t.yangMeta(dm, "orig-default", strconv.FormatBool(trgFlags&FlagDefault != 0)); err != nil {
 			return nil, err
 		}
+		dm.touch()
 		dm.flags = dm.flags&^FlagDefault | src.flags&FlagDefault
 	}
 	for _, c := range dm.kids.nodes() { // the children stay deleted
@@ -673,6 +706,7 @@ func (t *Tree) diffMergeDelete(dm *Node, cur diffOp, src *Node) error {
 			if di < 0 {
 				return t.metaErr("yang:orig-default", dm)
 			}
+			dm.touch()
 			dm.flags &^= FlagDefault
 			if dm.meta[di].value.Bool() {
 				dm.flags |= FlagDefault
@@ -721,6 +755,7 @@ func (t *Tree) diffMergeNone(dm *Node, cur diffOp, src *Node) error {
 		return t.diffMergeOpErr(dm, diffNone, cur)
 	}
 	if src.isTerm() {
+		dm.touch()
 		dm.flags = dm.flags&^FlagDefault | src.flags&FlagDefault
 	}
 	return nil

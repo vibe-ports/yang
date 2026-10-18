@@ -1,0 +1,28 @@
+# libyang v5.8.6 retains the list's historical hash when removing a non-key, then hashes every
+# leading key child at the next successful key insertion (tree_data.c:684-702, 836-842, 1187-1239).
+fixtures:
+  - id: protocol-v2/hash-cross-schema-nonkey-remove
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [hash-nonkey-remove-source]
+      modules: [{name: m}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, data: '{"m:r":{"l":[{"a":"x","b":"y"}]}}'}
+        - do: dup
+          node: /m:r
+          options: [recursive]
+          target:
+            searchdirs: [hash-nonkey-remove-target]
+            modules: [{name: m}]
+            context_options: [no_yanglibrary]
+        - {do: edit, delete: "/m:r/l[1]/a"}
+        - {do: edit, insert_term: {parent: "/m:r/l[1]", name: b, value: z}}
+        - {do: dup, node: "/m:r/l[1]", parent: /m:r, options: [recursive]}
+        - {do: compare, self: true, first: "/m:r/l[1]", second: "/m:r/l[2]", options: [full_recursion]}
+        - {do: dump, with_defaults: all}
+    golden: golden/hash-cross-schema-nonkey-remove.json

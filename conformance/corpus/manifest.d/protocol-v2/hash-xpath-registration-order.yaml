@@ -1,0 +1,50 @@
+# libyang v5.8.6 tree_data_new.c:1177-1193 replaces registrations on key changes; XPath, Find and NewPath all select second.
+fixtures:
+- id: protocol-v2/hash-xpath-registration-order
+  dir: protocol-v2
+  source:
+    url: hand-written (this repo)
+    commit: null
+    license: BSD-3-Clause
+  rfc: []
+  areas:
+  - operations
+  - xpath
+  request:
+    op: sequence
+    searchdirs:
+    - hash-registration
+    modules:
+    - name: m
+    context_options:
+    - no_yanglibrary
+    steps:
+    - do: parse
+      format: json
+      data_type: data
+      parse_only: true
+      data: '{"m:r":{"p":"p","q":"q","l":[{"k":"a","v":"first"},{"k":"a","v":"second"}]}}'
+    - do: change_term
+      node_xpath: /m:r/l[1]/k
+      value: b
+    - do: change_term
+      node_xpath: /m:r/l[1]/k
+      value: a
+    - do: compare
+      options:
+      - full_recursion
+      format: json
+      data_type: data
+      parse_only: true
+      data: '{"m:r":{"l":[{"k":"a","v":"second"}]}}'
+      first: /m:r/l[k='a']/v
+      second: /m:r/l[k='a']/v
+    - do: xpath
+      xpath: /m:r/l[k='a']/v[.="second"]
+    - do: edit
+      set:
+        path: /m:r/l[k='a']/v
+        value: updated-second
+    - do: dump
+      with_defaults: all
+  golden: golden/hash-xpath-registration-order.json

@@ -1,0 +1,9 @@
+module opidxsplit {
+  yang-version 1.1;
+  namespace "urn:opidxsplit";
+  prefix os;
+  container r {
+    leaf-list u { type uint32; }
+    leaf sep { type string; }
+  }
+}

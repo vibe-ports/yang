@@ -4,11 +4,13 @@ package data
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"runtime"
 	"strings"
 	"testing"
 
+	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/schema"
 )
 
@@ -18,8 +20,9 @@ import (
 // the input and schema set.
 func TestParseRepeatedKeyScaling(t *testing.T) {
 	type measurement struct {
-		work  int64
-		bytes uint64
+		work     int64
+		hashWork uint64
+		bytes    uint64
 	}
 	measure := func(t *testing.T, set *schema.Set, in string, wantValid bool) measurement {
 		t.Helper()
@@ -45,7 +48,8 @@ func TestParseRepeatedKeyScaling(t *testing.T) {
 		if lc == nil {
 			t.Fatal("parser setup was not called")
 		}
-		return measurement{work: lc.tree.work.Load(), bytes: after.TotalAlloc - before.TotalAlloc}
+		return measurement{work: lc.tree.work.Load(), hashWork: lc.tree.work.hashUsed,
+			bytes: after.TotalAlloc - before.TotalAlloc}
 	}
 
 	repeatMember := func(name, value string, n int) string {
@@ -73,9 +77,14 @@ func TestParseRepeatedKeyScaling(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			for _, n := range []int{500, 2000, 8000} {
+			for _, n := range scaleSizes([]int{500, 2000, 8000}, 2) {
 				one := measure(t, tc.set, tc.input(n), tc.wantValid)
 				four := measure(t, tc.set, tc.input(4*n), tc.wantValid)
+				minWork := uint64(n) //nolint:gosec // the measured sizes above are all positive
+				if tc.name == "first-of-two" && (one.hashWork < minWork || four.hashWork > 6*one.hashWork) {
+					t.Fatalf("N=%d: positional-prefix visits charged %d -> %d; want bounded linear work",
+						n, one.hashWork, four.hashWork)
+				}
 				if four.work > 6*one.work || four.bytes > 6*one.bytes {
 					t.Fatalf("N=%d: work %d -> %d, allocated bytes %d -> %d: not linear",
 						n, one.work, four.work, one.bytes, four.bytes)
@@ -107,6 +116,77 @@ func TestParseRepeatedKeyScaling(t *testing.T) {
 				fifty.work, twoHundred.work, fifty.bytes, twoHundred.bytes)
 		}
 	})
+}
+
+func TestParseLongFirstKeyRepeatedLastKeyWork(t *testing.T) {
+	long := "a" + strings.Repeat("x", 1<<16)
+	set := opIndexSet(t, `module m { yang-version 1.1; namespace urn:m; prefix m;
+	  container c { leaf x { type string; } leaf y { type string; }
+	    leaf z { type string; } list l { key "`+long+` b";
+	      leaf `+long+` { type string; } leaf b { type string; } } } }`)
+	input := func(count int) string {
+		return `{"m:c":{"x":"x","y":"y","z":"z","l":[{"` + long + `":"a",` +
+			strings.Repeat(`"b":"q",`, count-1) + `"b":"q"}]}}`
+	}
+	measure := func(count int, limit uint64) (uint64, int64, *Tree, error) {
+		var parsed *Tree
+		_, _, err := parseWith(context.Background(), strings.NewReader(input(count)), set,
+			parseOpts{ParseOptions: ParseOptions{ParseOnly: true}}, parseJSON, func(lc *lydCtx) {
+				parsed = lc.tree
+				parsed.work.hashLimit = limit
+				parsed.work.visits = true
+			})
+		return parsed.work.hashUsed, parsed.work.Load(), parsed, err
+	}
+	one, countedOne, _, err := measure(64, defaultMaxHashWork)
+	if err != nil {
+		t.Fatal(err)
+	}
+	four, countedFour, _, err := measure(256, defaultMaxHashWork)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if one < uint64(len(long)) || four > 6*one ||
+		four > one && four-one > 192*128 || countedFour > 6*countedOne {
+		t.Fatalf("64 to 256 repeated last keys: charged %d -> %d, counted %d -> %d",
+			one, four, countedOne, countedFour)
+	}
+	base, _, _, err := measure(1, defaultMaxHashWork)
+	if err != nil {
+		t.Fatal(err)
+	}
+	limit := base + (four-base)/2
+	used, counted, _, err := measure(256, limit)
+	if !errors.Is(err, yang.ErrBudget) || used > limit || float64(counted) > 32*float64(limit) {
+		t.Fatalf("budget error=%v charged=%d counted=%d limit=%d", err, used, counted, limit)
+	}
+	if used <= base || counted < 64 {
+		t.Fatalf("budget refused before exercising repeated keys: charged=%d counted=%d", used, counted)
+	}
+	_, _, tr, err := measure(1, defaultMaxHashWork)
+	if err != nil {
+		t.Fatal(err)
+	}
+	container := tr.top.first()
+	list := container.kids.list[3]
+	if container.kids.ht == nil || len(list.kids.list) != 2 {
+		t.Fatal("linked list did not build the children table")
+	}
+	oldHash, oldKey := list.hash, list.hkey
+	tr.work.hashLimit = 32 // the native key hash fits, the secondary discriminator does not
+	if changed, err := list.kids.list[1].SetValue("r"); changed || !errors.Is(err, yang.ErrBudget) {
+		t.Fatalf("last key change=%t error=%v; want ErrBudget", changed, err)
+	}
+	if list.kids.list[1].Value() != "q" || list.hash != oldHash || list.hkey != oldKey {
+		t.Fatal("failed last key change published a value or changed the list index")
+	}
+	tr.work.hashLimit = 1
+	if added, err := tr.NewTerm(list, "b", "q", NewOptions{}); added != nil || !errors.Is(err, yang.ErrBudget) {
+		t.Fatalf("repeated key node=%v error=%v; want ErrBudget", added, err)
+	}
+	if len(list.kids.list) != 2 || list.hash != oldHash || list.hkey != oldKey {
+		t.Fatal("failed repeated key insertion published a key or changed the list index")
+	}
 }
 
 // TestKeyConcatCollisionScaling: instances of a four-string-key list whose keys are distinct
@@ -173,7 +253,7 @@ func TestKeyConcatCollisionScaling(t *testing.T) {
 	}
 	for _, parseOnly := range []bool{true, false} {
 		t.Run(fmt.Sprintf("parse-only=%v", parseOnly), func(t *testing.T) {
-			for _, n := range []int{500, 2000, 8000} {
+			for _, n := range scaleSizes([]int{500, 2000, 8000}, 2) {
 				w1, b1 := measure(t, input(n), parseOnly)
 				w4, b4 := measure(t, input(4*n), parseOnly)
 				if w4 > 6*w1 || b4 > 6*b1 {

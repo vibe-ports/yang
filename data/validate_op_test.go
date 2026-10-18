@@ -156,7 +156,7 @@ func TestValidateOpSiblings(t *testing.T) {
 			t.Fatal(err, diags)
 		}
 		unlink(op)
-		tr.insert(nil, op, insertDefault)
+		mustLink(t, tr.insert(nil, op, insertDefault))
 		return tr, op
 	}
 	_, op := build()
@@ -308,7 +308,7 @@ func TestValidateOpOpaqueAncestor(t *testing.T) {
 	if x == nil || x.schema != nil {
 		t.Fatalf("rpc parent %v", x)
 	}
-	tree.insert(nil, newOpaque(opaque{Name: "y", ModuleNS: "a", Format: types.FormatJSON}), insertDefault)
+	mustLink(t, tree.insert(nil, newOpaque(opaque{Name: "y", ModuleNS: "a", Format: types.FormatJSON}), insertDefault))
 	names := func() (out []string) {
 		for n := range tree.Top() {
 			out = append(out, n.opaq.Name)

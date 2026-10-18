@@ -113,16 +113,16 @@ func TestOpIndexSortRelocatesEqualValues(t *testing.T) {
 	oneA := opIndexTerm(t, ss, 1)
 	oneB := opIndexTerm(t, ss, 1)
 	for _, n := range []*Node{five, oneA, oneB} {
-		tr.insert(op, n, insertLast)
+		mustLink(t, tr.insert(op, n, insertLast))
 	}
-	if op.kids.rbTree[ss] {
+	if op.kids.hasRB(ss) {
 		t.Fatal("insertLast run unexpectedly has an RB tree")
 	}
 
 	six := opIndexTerm(t, ss, 6)
-	tr.insert(op, six, insertDefault)
+	mustLink(t, tr.insert(op, six, insertDefault))
 	wantEqual := []*Node{oneA, oneB}
-	if got := op.kids.bucket(idxKey{s: ss, key: "1"}); !slices.Equal(got, wantEqual) {
+	if got := op.kids.bucket(storedValueIndexKey(t, ss, "1")); !slices.Equal(got, wantEqual) {
 		t.Errorf("exact-value bucket = %p, want a,b (%p)", got, wantEqual)
 	}
 	probe := opIndexTerm(t, ss, 1)
@@ -216,18 +216,18 @@ func TestOpIndexBulkUnlinkManyActions(t *testing.T) {
 		remove := make([]*Node, 0, 3*n)
 		for i := range n {
 			list := newInner(ls)
-			tr.insert(list, opIndexTerm(t, ks, i), insertDefault)
-			tr.insert(nil, list, insertDefault)
+			mustLink(t, tr.insert(list, opIndexTerm(t, ks, i), insertDefault))
+			mustLink(t, tr.insert(nil, list, insertDefault))
 			action := newInner(as)
-			tr.insert(list, action, insertDefault)
+			mustLink(t, tr.insert(list, action, insertDefault))
 			d1 := opidxStringTerm(t, d1s, "x")
 			d2 := opidxStringTerm(t, d2s, "y")
-			tr.insert(action, d1, insertDefault)
-			tr.insert(action, d2, insertDefault)
+			mustLink(t, tr.insert(action, d1, insertDefault))
+			mustLink(t, tr.insert(action, d2, insertDefault))
 			var first *Node
 			for value := 1; value <= 3; value++ {
 				v := opIndexTerm(t, vs, value)
-				tr.insert(action, v, insertDefault)
+				mustLink(t, tr.insert(action, v, insertDefault))
 				if value == 1 {
 					first = v
 				}

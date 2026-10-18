@@ -1,0 +1,28 @@
+# libyang v5.8.6 xpath.c:6343-6345 propagates typed probe re-storage diagnostics before looking up parents.
+fixtures:
+- id: protocol-v2/hash-xpath-probe-store-error-table
+  dir: protocol-v2
+  source:
+    url: hand-written (this repo)
+    commit: null
+    license: BSD-3-Clause
+  rfc: []
+  areas:
+  - operations
+  - xpath
+  request:
+    op: xpath
+    searchdirs:
+    - hash-probe-store
+    - ../ut-new/f.1
+    modules:
+    - name: e
+    - name: f
+    context_options:
+    - no_yanglibrary
+    format: json
+    data_type: data
+    parse_only: true
+    data: '{"e:root": {"p": "p", "q": "q", "z": "z", "li": [{"id": "/f:lp[p=''2001:0db8::/64'']"}]}}'
+    xpath: count(/e:root/li[id="/f:lp[p='2001:0db8::/64']"])
+  golden: golden/hash-xpath-probe-store-error-table.json

@@ -1,0 +1,40 @@
+# libyang v5.8.6 tree_data.c:1769-1782 requires positional key schemas; variables exercise ordinary predicate evaluation.
+# Create the repeated earlier key with NewTerm: parsing that ordering rejects key completeness before XPath.
+fixtures:
+- id: protocol-v2/hash-xpath-repeated-first-multikey
+  dir: protocol-v2
+  source:
+    url: hand-written (this repo)
+    commit: null
+    license: BSD-3-Clause
+  rfc: []
+  areas:
+  - operations
+  - xpath
+  request:
+    op: sequence
+    searchdirs:
+    - hash-multikey
+    modules:
+    - name: m
+    context_options:
+    - no_yanglibrary
+    steps:
+    - do: parse
+      format: json
+      data_type: data
+      parse_only: true
+      data: '{"m:l":[{"a":"x","b":"y","marker":"bad"}]}'
+    - do: edit
+      insert_term:
+        parent: /m:l[a='x'][b='y']
+        name: a
+        value: z
+    - do: xpath
+      xpath: /m:l[a='x'][b='y']/marker
+    - do: xpath
+      xpath: /m:l[a=$a][b=$b]/marker
+      vars:
+        a: '''x'''
+        b: '''y'''
+  golden: golden/hash-xpath-repeated-first-multikey.json

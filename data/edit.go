@@ -13,6 +13,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/ly"
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
@@ -57,9 +58,24 @@ func (l *logger) done(err error) error {
 // when the value changed). The keys of a created list instance come from the path's predicate.
 // Errors are a *ValidationError with libyang's diagnostics.
 func (t *Tree) NewPath(path, value string, o NewPathOptions) (*Node, error) {
+	defer t.work.beginHashWork()()
 	lg := &logger{set: t.set}
+	// The ordinary path preflight handles small edits without a journal. A caller-specified
+	// boundary or large input can still fail after several insertions, so journal those.
+	var journal *hashTransaction
+	if t.work.hashLimit != 0 || t.work.hashTrace != nil || len(value) >= 1<<20 || len(path) >= 1<<20 {
+		journal = beginHashTransaction(t)
+	}
 	n, err := t.newPath(lg, path, value, o)
-	return n, lg.done(err)
+	if t.work.hashErr != nil {
+		err = t.work.hashErr
+	}
+	err = lg.done(err)
+	journal.end(&err)
+	if errors.Is(err, yang.ErrBudget) {
+		return nil, err
+	}
+	return n, err
 }
 
 // Find is lyd_find_path from the first top-level node of t: the node an absolute JSON path names,
@@ -81,6 +97,15 @@ func (t *Tree) Find(path string) (*Node, error) {
 // Remove is lyd_free_tree: n and its subtree leave the tree. A list key is refused (an
 // LY_EINVAL *ValidationError) and nothing is removed.
 func (n *Node) Remove() error {
+	if owner := n.treeOf(); owner != nil {
+		defer owner.work.beginHashWork()()
+	} else if n != nil {
+		root := n
+		for root.parent != nil {
+			root = root.parent
+		}
+		bindSubtreeWork(root, &workCounter{})
+	}
 	return (&logger{}).done(freeTree(n))
 }
 
@@ -89,7 +114,8 @@ func (n *Node) Remove() error {
 // takes src's value unless src's leaf is a default node; src is not changed. A nil src merges
 // nothing. Unequal anydata/anyxml payloads replace the whole destination payload,
 // copying the source flags plus New; equal payloads leave the destination unchanged.
-func (t *Tree) Merge(src *Tree) error {
+func (t *Tree) Merge(src *Tree) (result error) {
+	defer t.work.beginHashWork()()
 	lg := &logger{set: t.set}
 	if src == nil {
 		return nil
@@ -97,14 +123,51 @@ func (t *Tree) Merge(src *Tree) error {
 	if src.set != t.set {
 		return lg.done(lg.logErr("LY_EINVAL", "Different contexts mixed in a \"lyd_merge\" function call."))
 	}
+	if err := t.preflightBatchHash(src); err != nil {
+		return err
+	}
+	journal := beginHashTransaction(t)
+	defer journal.end(&result)
 	lv := &mergeLevel{cache: &dupCache{}, work: newAnyWork(context.Background(), Budget{})}
 	for _, n := range src.top.nodes() {
 		if err := t.mergeSibling(lv, n); err != nil {
 			t.flushMerge(lv)
+			if t.work.hashErr != nil {
+				return t.work.hashErr
+			}
 			return lg.done(err)
 		}
 	}
 	t.flushMerge(lv)
+	return t.work.hashErr
+}
+
+// preflightBatchHash reserves input-dependent hash work across a multi-node
+// merge or diff application before its first visible mutation. Per-link checks
+// still account for destination-specific work at the final insertion point.
+func (t *Tree) preflightBatchHash(src *Tree) error {
+	var amount uint64
+	for _, root := range src.top.nodes() {
+		for n := range root.All() {
+			if n.schema != nil {
+				schemaHashWork(n.schema, &t.work)
+				if t.work.hashErr != nil {
+					return t.work.hashErr
+				}
+			}
+			if n.isTerm() {
+				amount = addHashBound(amount, types.HashLYBWorkBound(n.value))
+			}
+			amount = addHashBound(amount, indexWorkBound(n, nil, nil, &t.work))
+			if t.work.hashErr != nil {
+				return t.work.hashErr
+			}
+		}
+	}
+	if err := t.work.checkHashWork(amount); err != nil {
+		t.work.hashErr = err
+		return err
+	}
 	return nil
 }
 
@@ -175,6 +238,8 @@ func (t *Tree) evalPartial(lg *logger, p types.Path) (*Node, int, error) {
 }
 
 func (t *Tree) evalPartialFrom(lg *logger, sib *siblings, p types.Path) (*Node, int, error) {
+	probes := newTree(t.set) // lookups share an operation quota, never mutate reader-visible work state
+	defer probes.work.beginHashWork()()
 	var prev *Node
 	for u, seg := range p {
 		var n *Node
@@ -191,13 +256,23 @@ func (t *Tree) evalPartialFrom(lg *logger, sib *siblings, p types.Path) (*Node, 
 				pos++
 			}
 		case seg.Preds[0].Kind == types.PredLeafList:
-			n = t.findFirst(sib, newTerm(seg.Node, seg.Preds[0].Value))
+			target := newTerm(seg.Node, seg.Preds[0].Value, &probes.work)
+			if probes.work.hashErr != nil {
+				return nil, u, probes.work.hashErr
+			}
+			n = t.findFirstWork(sib, target, &probes.work)
 		default:
-			target, d, key := t.lookupList(seg) // ly_path_eval_partial: lyd_create_list, store-only
+			target, d, key, err := probes.lookupList(seg) // ly_path_eval_partial: lyd_create_list, store-only
+			if err != nil {
+				return nil, u, err
+			}
 			if d != nil {
 				return nil, u, lg.storeErr(nil, key, d) // LY_CHECK_RET: logged at the key
 			}
-			n = t.findFirst(sib, target)
+			n = t.findFirstWork(sib, target, &probes.work)
+		}
+		if probes.work.hashErr != nil {
+			return nil, u, probes.work.hashErr
 		}
 		if n == nil {
 			return prev, u, nil
@@ -216,7 +291,7 @@ func (t *Tree) evalPartialFrom(lg *logger, sib *siblings, p types.Path) (*Node, 
 func (t *Tree) instances(s *siblings, sn *schema.Node) func(func(*Node) bool) {
 	return func(yield func(*Node) bool) {
 		var run []*Node
-		if opChild(sn) {
+		if opChild(sn) || s.schemaUnordered {
 			run = t.opRun(s, sn)
 		} else if i := t.schemaIndex(s, sn); i >= 0 {
 			run = s.list[i:]
@@ -235,8 +310,11 @@ func (t *Tree) instances(s *siblings, sn *schema.Node) func(func(*Node) bool) {
 // under ly_path_eval, and lyd_find_sibling_val pass it), lyd_new_path its own option, which the
 // port does not take. A key the re-store refuses (a canonical text its restriction rejects) fails
 // with the store's diagnostic and that key's schema node.
-func (t *Tree) createList(seg types.PathSegment, storeOnly bool) (*Node, *types.Diag, *schema.Node) {
-	l := newInner(seg.Node)
+func (t *Tree) createList(seg types.PathSegment, storeOnly bool) (*Node, *types.Diag, *schema.Node, error) {
+	l := newInner(seg.Node, &t.work)
+	if t.work.hashErr != nil {
+		return nil, nil, nil, t.work.hashErr
+	}
 	l.flags = FlagNew
 	store := types.Store
 	if storeOnly {
@@ -244,25 +322,30 @@ func (t *Tree) createList(seg types.PathSegment, storeOnly bool) (*Node, *types.
 	}
 	for _, pr := range seg.Preds {
 		if pr.Var != "" { // lyxp_vars_find without variables: LOGERR LY_ENOTFOUND, key by key
-			return nil, &types.Diag{Code: types.CodeNone, Err: "LY_ENOTFOUND", Msg: fmt.Sprintf("Variable \"%s\" not defined.", pr.Var)}, nil
+			return nil, &types.Diag{Code: types.CodeNone, Err: "LY_ENOTFOUND", Msg: fmt.Sprintf("Variable \"%s\" not defined.", pr.Var)}, nil, nil
 		}
 		v, d := store(pr.Key.Type, pr.Value.Canonical(), types.FormatJSON, types.HintData,
 			types.ModuleNames{Set: t.set}, pr.Key)
 		if d != nil {
-			return nil, d, pr.Key
+			return nil, d, pr.Key, nil
 		}
-		k := newTerm(pr.Key, v)
+		k := newTerm(pr.Key, v, &t.work)
+		if t.work.hashErr != nil {
+			return nil, nil, nil, t.work.hashErr
+		}
 		k.flags = FlagNew
-		t.insert(l, k, insertDefault)
+		if err := t.insert(l, k, insertDefault); err != nil {
+			return nil, nil, nil, err
+		}
 	}
-	return l, nil, nil
+	return l, nil, nil, nil
 }
 
 // lookupList is createList for a lookup (store-only). Store-only still validates what a value
 // holds itself: an instance-identifier key re-stored from its canonical text checks its own
 // predicates, which a restriction may now reject (ut-new/path-06); the diagnostic and the key's
 // schema node are returned, as ly_path_eval_partial returns lyd_create_list's error.
-func (t *Tree) lookupList(seg types.PathSegment) (*Node, *types.Diag, *schema.Node) {
+func (t *Tree) lookupList(seg types.PathSegment) (*Node, *types.Diag, *schema.Node, error) {
 	return t.createList(seg, true)
 }
 
@@ -307,6 +390,14 @@ func (t *Tree) newPath(lg *logger, path, value string, o NewPathOptions) (*Node,
 			return nil, err
 		}
 	}
+	if err := t.preflightNewPathHash(p[idx:], node, value); err != nil {
+		return nil, err
+	}
+	if idx < len(p) {
+		if err := t.preflightInsertPosition(t.childrenOf(node), &Node{schema: p[idx].Node}, insertDefault); err != nil {
+			return nil, err
+		}
+	}
 	var first, last *Node
 	created := false
 	for ; idx < len(p); idx++ {
@@ -315,17 +406,19 @@ func (t *Tree) newPath(lg *logger, path, value string, o NewPathOptions) (*Node,
 		switch seg.Node.Kind {
 		case schema.List:
 			if isDupInstList(seg.Node) {
-				node = newInner(seg.Node)
+				node = newInner(seg.Node, &t.work)
+				err = t.work.hashErr
 				node.flags = FlagNew
 			} else {
 				var d *types.Diag
 				var key *schema.Node
-				if node, d, key = t.createList(seg, false); d != nil {
+				if node, d, key, err = t.createList(seg, false); d != nil {
 					err = lg.storeErr(nil, key, d) // lyd_create_term(key, NULL parent): at the key
 				}
 			}
 		case schema.Container:
-			node = newInner(seg.Node)
+			node = newInner(seg.Node, &t.work)
+			err = t.work.hashErr
 			node.flags = FlagNew
 			if isNPCont(seg.Node) {
 				node.flags |= FlagDefault
@@ -359,13 +452,86 @@ func (t *Tree) newPath(lg *logger, path, value string, o NewPathOptions) (*Node,
 			}
 			return nil, err
 		}
-		t.insert(parent, node, insertDefault)
+		if err := t.insert(parent, node, insertDefault); err != nil {
+			if created {
+				unlink(first)
+			}
+			return nil, err
+		}
 		if first == nil {
 			first, created = node, true
 		}
 		last = node
 	}
 	return first, nil
+}
+
+// preflightNewPathHash reserves the hashes of all remaining path segments
+// before a newly created ancestor can enter an indexed sibling set.
+func (t *Tree) preflightNewPathHash(segments types.Path, parent *Node, value string) error {
+	if len(segments) == 0 {
+		return nil
+	}
+	indexed := parent != nil && parent.schema != nil &&
+		(parent.kids.ht != nil || len(parent.kids.list)+1 >= htMinItems)
+	var amount uint64
+	if indexed && parent.kids.ht == nil {
+		for _, old := range parent.kids.list {
+			amount = addHashBound(amount, indexWorkBound(old, nil, nil, &t.work))
+		}
+	}
+	for _, seg := range segments {
+		sn := seg.Node
+		schemaHashWork(sn, &t.work)
+		if t.work.hashErr != nil {
+			return t.work.hashErr
+		}
+		switch sn.Kind {
+		case schema.List:
+			// Each key link can inspect the growing positional prefix;
+			// the final link also scans the completed hash input.
+			keys := uint64(len(sn.Keys))
+			amount = addHashBound(amount, addHashBound(keys*keys, keys))
+			for _, pred := range seg.Preds {
+				if pred.Key == nil || pred.Var != "" {
+					continue
+				}
+				schemaHashWork(pred.Key, &t.work)
+				v, diag := types.Store(pred.Key.Type, pred.Value.Canonical(), types.FormatJSON,
+					types.HintData, types.ModuleNames{Set: t.set}, pred.Key)
+				if diag != nil {
+					continue // the creation reports the value diagnostic
+				}
+				amount = addHashBound(amount, types.HashLYBWorkBound(v))
+				if indexed {
+					indexNameDigest(pred.Key, &t.work)
+					amount = addHashBound(amount, 48+2*uint64(len(v.Canonical())))
+				}
+			}
+		case schema.LeafList:
+			text := value
+			if len(seg.Preds) > 0 && seg.Preds[0].Kind == types.PredLeafList {
+				text = seg.Preds[0].Value.Canonical()
+			}
+			v, diag := types.Store(sn.Type, text, types.FormatJSON, types.HintData,
+				types.ModuleNames{Set: t.set}, sn)
+			if diag == nil {
+				amount = addHashBound(amount, types.HashLYBWorkBound(v))
+				if indexed {
+					amount = addHashBound(amount, 2*uint64(len(v.Canonical())))
+				}
+			}
+		}
+		if t.work.hashErr != nil {
+			return t.work.hashErr
+		}
+		indexed = sn.Kind == schema.List && len(sn.Keys)+1 >= htMinItems
+	}
+	if err := t.work.checkHashWork(amount); err != nil {
+		t.work.hashErr = err
+		return err
+	}
+	return nil
 }
 
 // checkPosition is the position check of lyd_new_path_create: a key-less list or state
@@ -436,7 +602,13 @@ func (t *Tree) createTerm(lg *logger, lnode *Node, sn *schema.Node, value string
 	if d != nil {
 		return nil, lg.storeErr(lnode, sn, d)
 	}
-	n := newTerm(sn, v)
+	if err := t.work.checkTermHash(lnode, sn, v); err != nil {
+		return nil, err
+	}
+	n := newTerm(sn, v, &t.work)
+	if t.work.hashErr != nil {
+		return nil, t.work.hashErr
+	}
 	n.flags = FlagNew
 	return n, nil
 }
@@ -460,7 +632,11 @@ func (t *Tree) newPathUpdate(lg *logger, n *Node, value string) (*Node, error) {
 	if d != nil {
 		return nil, lg.storeErr(n, n.schema, d)
 	}
-	if valChange, dfltChange := t.changeTermVal(n, v, false); valChange || dfltChange {
+	valChange, dfltChange := t.changeTermVal(n, v, false)
+	if t.work.hashErr != nil {
+		return nil, t.work.hashErr
+	}
+	if valChange || dfltChange {
 		return n, nil
 	}
 	return nil, nil
@@ -470,17 +646,28 @@ func (t *Tree) newPathUpdate(lg *logger, n *Node, value string) (*Node, error) {
 // default flag dflt; it reports what changed.
 func (t *Tree) changeTermVal(n *Node, v types.Value, dflt bool) (valChange, dfltChange bool) {
 	if !types.Equal(n.value, v) {
-		t.changeNodeValue(n, v)
+		hashAmount, err := t.work.checkChangedHash(n, v)
+		if err != nil {
+			t.work.hashErr = err
+			return false, false
+		}
+		t.changeNodeValue(n, v, hashAmount)
+		if t.work.hashErr != nil {
+			return false, false
+		}
 		valChange = true
 		freeLinks(n) // the changed value drops its leafref links (LY_CTX_LEAFREF_LINKING)
+		n.touch()
 		n.flags |= FlagNew
 	}
 	switch {
 	case n.flags&FlagDefault != 0 && !dflt:
+		n.touch()
 		n.flags &^= FlagDefault
 		npContDfltDel(n.parent)
 		dfltChange = true
 	case n.flags&FlagDefault == 0 && dflt:
+		n.touch()
 		n.flags |= FlagDefault
 		npContDfltSet(n.parent)
 		dfltChange = true
@@ -489,43 +676,141 @@ func (t *Tree) changeTermVal(n *Node, v types.Value, dflt bool) (valChange, dflt
 }
 
 // changeNodeValue is lyd_change_node_value: a leaf-list instance or a list key changes the hash
-// of its instance, which is re-inserted (re-sorted when it has siblings and is sorted).
-func (t *Tree) changeNodeValue(n *Node, v types.Value) {
+// of its instance, which is re-inserted only when a same-schema neighbour can be re-sorted.
+func (t *Tree) changeNodeValue(n *Node, v types.Value, hashAmount uint64) {
 	target := n
 	switch {
 	case n.schema.Kind == schema.LeafList:
 	case n.isKey():
 		target = n.parent
 	default:
+		n.touch()
 		n.value = v
+		reindexComparedParent(n)
 		return
 	}
 	sib, parent := target.siblingsOf(), target.parent
 	if sib == nil {
+		n.touch()
 		n.value = v
+		refreshInstanceHash(&t.work, target)
 		return
 	}
-	if sortedSupported(target) && sib.len() > 1 {
-		unlink(target)
+	// LYD_NODE_IS_ALONE tests the physical neighbours, not the number of siblings
+	// or the number of instances in other runs of this schema.
+	relocate := false
+	if sortedSupported(target) {
+		// One indexed instance is necessarily alone; avoid a charged position
+		// lookup through unrelated siblings on its hash-only update.
+		entry := sib.opIdx[target.schema]
+		if entry == nil || len(entry.list) != 1 || entry.list[0] != target {
+			at, err := t.originIndex(sib, sib.list, target)
+			if err != nil {
+				t.work.hashErr = err
+				return
+			}
+			left, right := sib.opNeighbours(at)
+			// In libyang the first sibling's prev points to the last sibling.
+			if at == 0 && len(sib.opq) == 0 && len(sib.list) > 1 {
+				left = sib.list[len(sib.list)-1].schema
+			}
+			relocate = left == target.schema || right == target.schema
+		}
+	}
+	if relocate {
+		// A cold anchor lookup during reinsertion can still exhaust the quota.
+		// Preserve the old native snapshot until the node is linked again.
+		oldValue, oldHash := n.value, target.hash
+		oldKeyN, oldLkeyN := target.keyN, target.lkeyN
+		oldFrozen, oldOK := target.lkeyFrozen, target.lkeyOK
+		oldPrefix, oldDirty := target.lkeyPrefix, target.lkeyDirty
+		type slot struct {
+			key *Node
+			old int
+		}
+		var slots []slot
+		if n.isKey() {
+			for _, key := range target.kids.list {
+				t.work.Add(1)
+				if err := t.work.chargeHash(1); err != nil {
+					return
+				}
+				if !key.isKey() {
+					break
+				}
+				slots = append(slots, slot{key, key.keySlot})
+			}
+		}
+		// The earlier value preflight precedes this charged snapshot scan. Check
+		// the remaining hash event against the updated total before unlinking.
+		if err := t.work.checkChangedIndex(target, n, &v, hashAmount); err != nil {
+			t.work.hashErr = err
+			return
+		}
+		if err := t.preflightInsertAnchor(parent, target); err != nil {
+			return
+		}
+		if err := t.work.checkChangedIndex(target, n, &v, hashAmount); err != nil {
+			t.work.hashErr = err
+			return
+		}
+		restore, err := t.linkOrigin(target)
+		if err != nil {
+			return
+		}
+		if err := t.work.checkChangedIndex(target, n, &v, hashAmount); err != nil {
+			t.work.hashErr = err
+			return
+		}
+		unlinkRetainingHistory(target)
+		n.touch()
 		n.value = v
-		t.insert(parent, target, insertDefault)
+		refreshInstanceHash(&t.work, target)
+		linkErr := t.work.hashErr
+		if linkErr == nil {
+			linkErr = t.insert(parent, target, insertDefault)
+		}
+		if linkErr != nil {
+			n.value, target.hash = oldValue, oldHash
+			target.keyN, target.lkeyN = oldKeyN, oldLkeyN
+			target.lkeyFrozen, target.lkeyOK = oldFrozen, oldOK
+			target.lkeyPrefix, target.lkeyDirty = oldPrefix, oldDirty
+			for _, s := range slots {
+				s.key.touch()
+				s.key.keySlot = s.old
+			}
+			restore()
+		}
+		return
+	}
+	// Position and registration preparation above can spend the last unit of
+	// this operation's allowance even for a singleton that stays in place.
+	if err := t.work.checkChangedIndex(target, n, &v, hashAmount); err != nil {
+		t.work.hashErr = err
 		return
 	}
 	at := -1
 	var prev, next *Node
 	indexed := false
-	if opChild(target.schema) {
+	if sib.firstRecordSchema(target.schema) {
 		if prev, next, indexed = sib.opRehashNeighbours(target); indexed {
 			sib.leaderUnlinkBetween(target, prev, next, false)
 		} else {
-			// ponytail: split operation entries need the physical neighbours (#240).
+			// Split runs need the physical neighbours.
 			at = t.indexFromEnd(sib.list, target)
 			sib.leaderUnlink(target, at, false)
 		}
 	}
 	sib.hashRemove(target)
+	n.touch()
 	n.value = v
-	sib.hashAdd(parent, target)
+	refreshInstanceHash(&t.work, target)
+	if sib.ht != nil {
+		sib.hashPut(target)
+	} else {
+		sib.hashAdd(parent, target)
+	}
+	reindexComparedParent(target)
 	if indexed {
 		sib.leaderInsertBetween(target, prev, next)
 	} else if at >= 0 {
@@ -556,7 +841,7 @@ func (t *Tree) run(c *dupCache, inst *Node) []*Node {
 	if inst.schema == nil {
 		return sib.opq
 	}
-	k, ok := hashOf(inst)
+	k, ok := indexedKey(inst, &t.work)
 	if !ok {
 		return nil
 	}
@@ -574,14 +859,14 @@ func (t *Tree) run(c *dupCache, inst *Node) []*Node {
 	if idx == nil {
 		idx = map[idxKey][]*Node{}
 		all := t.instances(sib, inst.schema)
-		if opChild(inst.schema) {
-			// Ordinary data Merge also uses this cache and must find every operation-child
-			// instance through the operation index, including runs split by kept input.
+		if opChild(inst.schema) || sib.schemaUnordered {
+			// Merge must find every instance, including runs split by an anchor in an
+			// operation or an unordered copy.
 			all = slices.Values(sib.opInst(inst.schema))
 		}
 		for n := range all {
 			t.work.Add(1)
-			if nk, ok := hashOf(n); ok {
+			if nk, ok := indexedKey(n, &t.work); ok {
 				idx[nk] = append(idx[nk], n)
 			}
 		}
@@ -591,9 +876,9 @@ func (t *Tree) run(c *dupCache, inst *Node) []*Node {
 }
 
 // added records n, just inserted at the level of c, in the level's index.
-func (c *dupCache) added(n *Node) {
+func (c *dupCache) added(n *Node, work *workCounter) {
 	if idx := c.runs[n.schema]; idx != nil {
-		if k, ok := hashOf(n); ok {
+		if k, ok := indexedKey(n, work); ok {
 			idx[k] = append(idx[k], n)
 		}
 	}
@@ -646,6 +931,9 @@ type mergeLevel struct {
 // mergeSibling is lyd_merge_sibling_r without options: src merged into the children of lv.parent
 // (nil: the top level of t).
 func (t *Tree) mergeSibling(lv *mergeLevel, src *Node) error {
+	if t.work.hashErr != nil {
+		return t.work.hashErr
+	}
 	if lv.work == nil {
 		lv.work = newAnyWork(context.Background(), Budget{})
 	}
@@ -666,6 +954,9 @@ func (t *Tree) mergeSibling(lv *mergeLevel, src *Node) error {
 			return t.mergeMatch(last, src, lv.work)
 		case c >= 0:
 			t.flushMerge(lv)
+			if t.work.hashErr != nil {
+				return t.work.hashErr
+			}
 		}
 	}
 	parent, cache := lv.parent, lv.cache
@@ -683,18 +974,23 @@ func (t *Tree) mergeSibling(lv *mergeLevel, src *Node) error {
 	match = t.dupInstNext(match, cache)
 	if match == nil {
 		d, err := t.dupWork(src, nil, false, insertDefault, dupRecursive|dupWithFlags, lv.work)
+		if t.work.hashErr != nil {
+			return t.work.hashErr
+		}
 		if err != nil {
 			return err
 		}
 		for e := range d.All() {
 			e.flags |= FlagNew // required for validation
 		}
-		if sortedSupported(d) && sib.rbTree[d.schema] && !sib.unsorted[d.schema] {
+		if sortedSupported(d) && sib.hasRB(d.schema) && !sib.hasUnsorted(d.schema) {
 			// the run is sorted: lyd_insert_node puts d after its equal values, as splice does
 			lv.pend, lv.first = append(lv.pend, d), append(lv.first, firstInst)
 			return nil
 		}
-		t.insert(parent, d, insertDefault)
+		if err := t.insert(parent, d, insertDefault); err != nil {
+			return err
+		}
 		t.mergeAdded(cache, d, firstInst)
 		return nil
 	}
@@ -708,6 +1004,7 @@ func (t *Tree) mergeMatch(match, src *Node, w *anyWork) error {
 	case match.schema == nil:
 		if !compareSingle(t, src, match, false) {
 			o := *src.opaq
+			match.touch()
 			match.opaq.Value, match.opaq.Hints = o.Value, o.Hints
 			match.opaq.Format, match.opaq.Prefixes = o.Format, dupPrefixes(o.Prefixes, t.set)
 		}
@@ -719,6 +1016,7 @@ func (t *Tree) mergeMatch(match, src *Node, w *anyWork) error {
 			if src.any != nil {
 				child, text, hints = src.any.children.first(), src.any.text, src.any.hints
 			}
+			match.touch()
 			if err := match.copyAnyValue(w, child, text, hints); err != nil {
 				return err
 			}
@@ -726,6 +1024,9 @@ func (t *Tree) mergeMatch(match, src *Node, w *anyWork) error {
 		}
 	case match.schema.Kind == schema.Leaf && src.flags&FlagDefault == 0:
 		t.changeTermVal(match, src.value, false)
+		if t.work.hashErr != nil {
+			return t.work.hashErr
+		}
 	}
 	child := &mergeLevel{parent: match, cache: &dupCache{}, work: w}
 	for _, c := range src.kids.nodes() {
@@ -743,7 +1044,7 @@ func (t *Tree) mergeMatch(match, src *Node, w *anyWork) error {
 // mergeAdded records the new instance d in the level's duplicate cache.
 func (t *Tree) mergeAdded(cache *dupCache, d *Node, firstInst bool) {
 	if d.schema != nil {
-		cache.added(d)
+		cache.added(d, &t.work)
 	}
 	if firstInst {
 		t.dupInstNext(d, cache) // do not match this instance next time
@@ -757,12 +1058,17 @@ func (t *Tree) flushMerge(lv *mergeLevel) {
 	}
 	if len(lv.pend) == 1 {
 		// one instance: the ordinary insertion (append fast path), not a pass over the level
-		t.insert(lv.parent, lv.pend[0], insertDefault)
+		if err := t.insert(lv.parent, lv.pend[0], insertDefault); err != nil {
+			return
+		}
 		t.mergeAdded(lv.cache, lv.pend[0], lv.first[0])
 		lv.pend, lv.first = lv.pend[:0], lv.first[:0]
 		return
 	}
 	sib := t.childrenOf(lv.parent)
+	if err := t.preflightSplice(lv.parent, sib, lv.pend); err != nil {
+		return
+	}
 	// Splice needs positions; it already walks/copies the sibling slice once.
 	lo := t.schemaIndex(sib, lv.pend[0].schema)
 	hi := lo
@@ -771,8 +1077,11 @@ func (t *Tree) flushMerge(lv *mergeLevel) {
 	}
 	for _, d := range lv.pend {
 		d.inRB = true
+		d.rbGroup = sib.rbGroups[sib.runLeader(d.schema)]
 	}
-	t.splice(lv.parent, sib, lo, hi, lv.pend, false)
+	if err := t.splice(lv.parent, sib, lo, hi, lv.pend, false); err != nil {
+		return
+	}
 	for i, d := range lv.pend {
 		t.mergeAdded(lv.cache, d, lv.first[i])
 	}

@@ -107,9 +107,9 @@ func TestCreateMeta(t *testing.T) {
 	f.withAnnotations()
 	lc := &lydCtx{ctx: context.Background(), tree: newTree(f.set), log: &logger{set: f.set}}
 	c, _ := lc.createInner(f.c)
-	lc.nodeInsert(nil, nil, c)
+	mustLink(t, lc.nodeInsert(nil, nil, c))
 	z, _ := lc.json(f.z, c, "v")
-	lc.nodeInsert(c, nil, z)
+	mustLink(t, lc.nodeInsert(c, nil, z))
 	pc := types.ModuleNames{Set: f.set}
 	js := func(name, lex string, h types.Hints) error {
 		return lc.createMeta(z, &z.meta, f.b, name, lex, types.FormatJSON, pc, h, z.schema, z)

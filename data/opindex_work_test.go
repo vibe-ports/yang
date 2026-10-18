@@ -17,7 +17,18 @@ import (
 	"github.com/vibe-ports/yang/internal/types"
 )
 
-var opIndexSizes = []int{2048, 4096, 8192, 16384}
+var opIndexSizes = scaleSizes([]int{2048, 4096, 8192, 16384}, 3)
+
+// scaleSizes keeps the first keep of the ascending sizes of a scaling test under the race
+// detector. The tests compare counted work (and allocations) between sizes, which the detector's
+// instrumentation does not change, only slows down ~10x; the remaining pairs still separate linear
+// or n log n growth from quadratic growth, and the full sizes run in the non-race (386) suite.
+func scaleSizes(sizes []int, keep int) []int {
+	if raceEnabled {
+		return sizes[:keep]
+	}
+	return sizes
+}
 
 func opIndexSet(t *testing.T, yang string) *schema.Set {
 	t.Helper()
@@ -138,7 +149,7 @@ func TestOpIndexDescendingInput(t *testing.T) {
 					if tc.descending {
 						v = n - 1 - i
 					}
-					tree.insert(op, opIndexTerm(t, sn, v), insertDefault)
+					mustLink(t, tree.insert(op, opIndexTerm(t, sn, v), insertDefault))
 				}
 				return tree.work.Load()
 			})
@@ -232,7 +243,7 @@ func TestOpIndexPrependUserOrdered(t *testing.T) {
 		tree.work.shifts = true
 		for i := range n {
 			fresh := opIndexTerm(t, sn, i+1)
-			tree.insertBefore(first, fresh)
+			mustLink(t, tree.insertBefore(first, fresh))
 			first = fresh
 		}
 		return tree.work.Load()

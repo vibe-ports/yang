@@ -1,0 +1,20 @@
+fixtures:
+  # Libyang-specific stored-hash lifecycle: v5.8.6 src/tree_data.c:2280-2295 copies the source terminal hash across types; src/path.c:1363-1420 builds a target-type predicate probe and reports LY_EINCOMPLETE after matching the parent. Repeated duplication must keep the existing string hash even after the value is uint32.
+  - id: protocol-v2/hash-dup-cross-type-repeated
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []
+    areas: [operations, types]
+    request:
+      op: sequence
+      searchdirs: [hash-source]
+      modules: [{name: pv2-hash-ctx}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, data: '{"pv2-hash-ctx:r":{"s":["3"]}}'}
+        - {do: dup, node: "/pv2-hash-ctx:r", options: [recursive], target: {searchdirs: [hash-target], modules: [{name: pv2-hash-ctx}], context_options: [no_yanglibrary]}}
+        - {do: dup, node: "/pv2-hash-ctx:r", options: [recursive]}
+        - {do: dup, node: "/pv2-hash-ctx:r", options: [recursive], target: {searchdirs: [hash-target], modules: [{name: pv2-hash-ctx}], context_options: [no_yanglibrary]}}
+        - {do: dump, with_defaults: all}
+        - {do: edit, delete: "/pv2-hash-ctx:r/s[.='3']"}
+    golden: golden/hash-dup-cross-type-repeated.json

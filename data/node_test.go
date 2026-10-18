@@ -81,10 +81,10 @@ func (f *fixture) list(t *testing.T, tr *Tree, parent *Node, k, v string) *Node 
 	t.Helper()
 	l := newInner(f.l)
 	if v != "" {
-		tr.insert(l, f.term(t, f.lv, v), insertDefault)
+		mustLink(t, tr.insert(l, f.term(t, f.lv, v), insertDefault))
 	}
-	tr.insert(l, f.term(t, f.lk, k), insertDefault)
-	tr.insert(parent, l, insertDefault)
+	mustLink(t, tr.insert(l, f.term(t, f.lk, k), insertDefault))
+	mustLink(t, tr.insert(parent, l, insertDefault))
 	return l
 }
 
@@ -113,23 +113,23 @@ func TestInsertOrder(t *testing.T) {
 	f := newFixture()
 	tr := newTree(f.set)
 	c := newInner(f.c)
-	tr.insert(nil, c, insertDefault)
-	tr.insert(nil, f.term(t, f.top, "t"), insertDefault)
-	tr.insert(nil, newOpaque(opaque{Name: "zz", ModuleNS: "zz"}), insertDefault)
-	tr.insert(nil, f.term(t, f.first, "f"), insertDefault)
+	mustLink(t, tr.insert(nil, c, insertDefault))
+	mustLink(t, tr.insert(nil, f.term(t, f.top, "t"), insertDefault))
+	mustLink(t, tr.insert(nil, newOpaque(opaque{Name: "zz", ModuleNS: "zz"}), insertDefault))
+	mustLink(t, tr.insert(nil, f.term(t, f.first, "f"), insertDefault))
 	if got, want := names(tr.Top()), []string{"first=f", "c", "top=t", "zz"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("top: %v, want %v", got, want)
 	}
-	tr.insert(c, f.term(t, f.z, "z"), insertDefault)
-	tr.insert(c, newOpaque(opaque{Name: "op"}), insertDefault)
+	mustLink(t, tr.insert(c, f.term(t, f.z, "z"), insertDefault))
+	mustLink(t, tr.insert(c, newOpaque(opaque{Name: "op"}), insertDefault))
 	for _, v := range []string{"7", "3", "9", "3"} {
-		tr.insert(c, f.term(t, f.ul, v), insertDefault)
-		tr.insert(c, f.term(t, f.sl, v), insertDefault)
-		tr.insert(c, f.term(t, f.ll, v), insertDefault)
+		mustLink(t, tr.insert(c, f.term(t, f.ul, v), insertDefault))
+		mustLink(t, tr.insert(c, f.term(t, f.sl, v), insertDefault))
+		mustLink(t, tr.insert(c, f.term(t, f.ll, v), insertDefault))
 	}
 	f.list(t, tr, c, "eth1", "")
 	f.list(t, tr, c, "eth0", "x")
-	tr.insert(c, f.term(t, f.x, "x"), insertDefault)
+	mustLink(t, tr.insert(c, f.term(t, f.x, "x"), insertDefault))
 	want := []string{"ll=3", "ll=3", "ll=7", "ll=9", "l[eth0]", "l[eth1]", "x=x", "ul=7", "ul=3", "ul=9", "ul=3",
 		"sl=7", "sl=3", "sl=9", "sl=3", "z=z", "op"}
 	if got := names(c.Children()); !reflect.DeepEqual(got, want) {
@@ -142,13 +142,13 @@ func TestInsertOrder(t *testing.T) {
 	// equal values: the new instance goes after the existing ones
 	ll3 := slices.Clone(c.kids.list[:2])
 	n3 := f.term(t, f.ll, "3")
-	tr.insert(c, n3, insertDefault)
+	mustLink(t, tr.insert(c, n3, insertDefault))
 	if c.kids.list[2] != n3 || c.kids.list[0] != ll3[0] {
 		t.Fatal("equal value not inserted after the existing ones")
 	}
 	// insertLast appends, insertLastBySchema goes after its schema node's instances unsorted
 	n1 := f.term(t, f.ll, "1")
-	tr.insert(c, n1, insertLastBySchema)
+	mustLink(t, tr.insert(c, n1, insertLastBySchema))
 	if i := slices.Index(c.kids.list, n1); c.kids.list[i-1].value.Canonical() != "9" {
 		t.Fatalf("last by schema at %d", i)
 	}
@@ -163,7 +163,7 @@ func TestInsertWork(t *testing.T) {
 	for _, reversed := range []bool{true, false} {
 		tr := newTree(f.set)
 		c := newInner(f.c)
-		tr.insert(nil, c, insertDefault)
+		mustLink(t, tr.insert(nil, c, insertDefault))
 		tr.work.Store(0)
 		tr.work.visits = true
 		for i := range n {
@@ -171,7 +171,7 @@ func TestInsertWork(t *testing.T) {
 			if reversed {
 				v = n - i
 			}
-			tr.insert(c, f.term(t, f.ll, fmt.Sprint(v)), insertDefault)
+			mustLink(t, tr.insert(c, f.term(t, f.ll, fmt.Sprint(v)), insertDefault))
 		}
 		for i, k := range c.kids.list {
 			if k.value.Canonical() != fmt.Sprint(i+1) {
@@ -190,14 +190,14 @@ func TestResortRun(t *testing.T) {
 	f := newFixture()
 	tr := newTree(f.set)
 	c := newInner(f.c)
-	tr.insert(nil, c, insertDefault)
+	mustLink(t, tr.insert(nil, c, insertDefault))
 	for _, v := range []string{"9", "1", "5", "7"} {
-		tr.insert(c, f.term(t, f.ll, v), insertLast)
+		mustLink(t, tr.insert(c, f.term(t, f.ll, v), insertLast))
 	}
 	if got := names(c.Children()); !reflect.DeepEqual(got, []string{"ll=9", "ll=1", "ll=5", "ll=7"}) {
 		t.Fatalf("appended: %v", got)
 	}
-	tr.insert(c, f.term(t, f.ll, "6"), insertDefault)
+	mustLink(t, tr.insert(c, f.term(t, f.ll, "6"), insertDefault))
 	if got := names(c.Children()); !reflect.DeepEqual(got, []string{"ll=1", "ll=5", "ll=6", "ll=7", "ll=9"}) {
 		t.Fatalf("re-sorted: %v", got)
 	}
@@ -209,15 +209,15 @@ func TestOpaqueTail(t *testing.T) {
 	f := newFixture()
 	tr := newTree(f.set)
 	c := newInner(f.c)
-	tr.insert(nil, c, insertDefault)
-	tr.insert(c, f.term(t, f.z, "z"), insertLast)
-	tr.insert(c, newOpaque(opaque{Name: "op"}), insertLast)
-	tr.insert(c, f.term(t, f.x, "x"), insertLast)
-	tr.insert(c, f.term(t, f.ll, "1"), insertLast)
+	mustLink(t, tr.insert(nil, c, insertDefault))
+	mustLink(t, tr.insert(c, f.term(t, f.z, "z"), insertLast))
+	mustLink(t, tr.insert(c, newOpaque(opaque{Name: "op"}), insertLast))
+	mustLink(t, tr.insert(c, f.term(t, f.x, "x"), insertLast))
+	mustLink(t, tr.insert(c, f.term(t, f.ll, "1"), insertLast))
 	if got := names(c.Children()); !reflect.DeepEqual(got, []string{"ll=1", "x=x", "z=z", "op"}) {
 		t.Fatalf("%v", got)
 	}
-	if !panics(func() { tr.insert(c, c.kids.list[0], insertDefault) }) {
+	if !panics(func() { mustLink(t, tr.insert(c, c.kids.list[0], insertDefault)) }) {
 		t.Fatal("inserting a linked node must panic")
 	}
 }
@@ -234,18 +234,18 @@ func TestUnlinkAll(t *testing.T) {
 	tr := newTree(f.set)
 	c := newInner(f.c)
 	c.flags = FlagDefault
-	tr.insert(nil, c, insertDefault)
+	mustLink(t, tr.insert(nil, c, insertDefault))
 	var odd []*Node
 	for i := range 1000 {
 		n := f.term(t, f.ll, fmt.Sprint(i%256))
-		tr.insert(c, n, insertDefault)
+		mustLink(t, tr.insert(c, n, insertDefault))
 		if i%2 == 1 {
 			odd = append(odd, n)
 		}
 	}
 	d := f.term(t, f.z, "d")
 	d.flags = FlagDefault
-	tr.insert(c, d, insertDefault)
+	mustLink(t, tr.insert(c, d, insertDefault))
 	if err := tr.unlinkAll(odd); err != nil {
 		t.Fatal(err)
 	}
@@ -271,15 +271,15 @@ func TestNPContainerDefault(t *testing.T) {
 	tr := newTree(f.set)
 	c := newInner(f.c)
 	c.flags = FlagDefault
-	tr.insert(nil, c, insertDefault)
+	mustLink(t, tr.insert(nil, c, insertDefault))
 	d := f.term(t, f.z, "d")
 	d.flags = FlagDefault
-	tr.insert(c, d, insertDefault)
+	mustLink(t, tr.insert(c, d, insertDefault))
 	if c.flags&FlagDefault == 0 {
 		t.Fatal("default child cleared Default")
 	}
 	e := f.term(t, f.x, "e")
-	tr.insert(c, e, insertDefault)
+	mustLink(t, tr.insert(c, e, insertDefault))
 	if c.flags&FlagDefault != 0 {
 		t.Fatal("explicit child kept Default")
 	}
@@ -296,7 +296,7 @@ func TestKeyRefusal(t *testing.T) {
 	f := newFixture()
 	tr := newTree(f.set)
 	c := newInner(f.c)
-	tr.insert(nil, c, insertDefault)
+	mustLink(t, tr.insert(nil, c, insertDefault))
 	l := f.list(t, tr, c, "k1", "v")
 	key := l.kids.list[0]
 	var oe *opError
@@ -321,9 +321,9 @@ func TestFindSibling(t *testing.T) {
 	f := newFixture()
 	tr := newTree(f.set)
 	c := newInner(f.c)
-	tr.insert(nil, c, insertDefault)
+	mustLink(t, tr.insert(nil, c, insertDefault))
 	for _, v := range []string{"5", "2"} {
-		tr.insert(c, f.term(t, f.ll, v), insertDefault)
+		mustLink(t, tr.insert(c, f.term(t, f.ll, v), insertDefault))
 	}
 	l1 := f.list(t, tr, c, "a", "")
 	if got := tr.findFirst(&c.kids, f.term(t, f.ll, "5")); got == nil || got.value.Canonical() != "5" {
@@ -335,7 +335,7 @@ func TestFindSibling(t *testing.T) {
 	// the index is built now: later inserts and unlinks keep it current
 	l2 := f.list(t, tr, c, "b", "")
 	probe := newInner(f.l)
-	tr.insert(probe, f.term(t, f.lk, "b"), insertDefault)
+	mustLink(t, tr.insert(probe, f.term(t, f.lk, "b"), insertDefault))
 	if got := tr.findFirst(&c.kids, probe); got != l2 {
 		t.Fatalf("list b: %v", got)
 	}
@@ -348,19 +348,19 @@ func TestFindSibling(t *testing.T) {
 	}
 	// state leaf-list: equal instances allowed, the first in order is found
 	s1, s2 := f.term(t, f.sl, "4"), f.term(t, f.sl, "4")
-	tr.insert(c, s1, insertDefault)
-	tr.insert(c, s2, insertDefault)
+	mustLink(t, tr.insert(c, s1, insertDefault))
+	mustLink(t, tr.insert(c, s2, insertDefault))
 	if tr.findFirst(&c.kids, f.term(t, f.sl, "4")) != s1 {
 		t.Fatal("dup-inst first")
 	}
 	// keyless list: whole subtree compared
 	k1, k2 := newInner(f.kl), newInner(f.kl)
-	tr.insert(k1, f.term(t, f.klv, "p"), insertDefault)
-	tr.insert(k2, f.term(t, f.klv, "q"), insertDefault)
-	tr.insert(c, k1, insertDefault)
-	tr.insert(c, k2, insertDefault)
+	mustLink(t, tr.insert(k1, f.term(t, f.klv, "p"), insertDefault))
+	mustLink(t, tr.insert(k2, f.term(t, f.klv, "q"), insertDefault))
+	mustLink(t, tr.insert(c, k1, insertDefault))
+	mustLink(t, tr.insert(c, k2, insertDefault))
 	q := newInner(f.kl)
-	tr.insert(q, f.term(t, f.klv, "q"), insertDefault)
+	mustLink(t, tr.insert(q, f.term(t, f.klv, "q"), insertDefault))
 	if tr.findFirst(&c.kids, q) != k2 {
 		t.Fatal("keyless list by subtree")
 	}
@@ -372,8 +372,8 @@ func TestCompareSorted(t *testing.T) {
 	f := newFixture()
 	t1, t2 := newTree(f.set), newTree(f.set)
 	c1, c2 := newInner(f.c), newInner(f.c)
-	t1.insert(nil, c1, insertDefault)
-	t2.insert(nil, c2, insertDefault)
+	mustLink(t, t1.insert(nil, c1, insertDefault))
+	mustLink(t, t2.insert(nil, c2, insertDefault))
 	f.list(t, t1, c1, "a", "1")
 	f.list(t, t1, c1, "b", "2")
 	f.list(t, t2, c2, "b", "2")
@@ -392,9 +392,9 @@ func TestAllPreOrder(t *testing.T) {
 	f := newFixture()
 	tr := newTree(f.set)
 	c := newInner(f.c)
-	tr.insert(nil, c, insertDefault)
+	mustLink(t, tr.insert(nil, c, insertDefault))
 	f.list(t, tr, c, "a", "1")
-	tr.insert(c, f.term(t, f.z, "z"), insertDefault)
+	mustLink(t, tr.insert(c, f.term(t, f.z, "z"), insertDefault))
 	if got := names(c.All()); !reflect.DeepEqual(got, []string{"c", "l[a]", "k=a", "v=1", "z=z"}) {
 		t.Fatalf("%v", got)
 	}
@@ -409,7 +409,7 @@ func TestFindFirstHashOrder(t *testing.T) {
 	for _, withHT := range []bool{true, false} {
 		tr := newTree(f.set)
 		c := newInner(f.c)
-		tr.insert(nil, c, insertDefault)
+		mustLink(t, tr.insert(nil, c, insertDefault))
 		vals := []string{"1", "2", "3", "4"}
 		if !withHT {
 			vals = vals[:2]
@@ -418,13 +418,13 @@ func TestFindFirstHashOrder(t *testing.T) {
 		var old *Node
 		for _, v := range vals {
 			n := f.term(t, f.ul, v)
-			tr.insert(c, n, insertDefault)
+			mustLink(t, tr.insert(c, n, insertDefault))
 			if v == "3" {
 				old = n
 			}
 		}
 		fresh := f.term(t, f.ul, "3")
-		tr.insertBefore(c.kids.list[0], fresh)
+		mustLink(t, tr.insertBefore(c.kids.list[0], fresh))
 		want := old
 		if !withHT {
 			want = fresh
@@ -461,13 +461,13 @@ func TestCompareLiteral(t *testing.T) {
 		t.Error("opaque: value only")
 	}
 	c := newInner(f.c)
-	tr.insert(nil, c, insertDefault)
+	mustLink(t, tr.insert(nil, c, insertDefault))
 	for _, v := range []string{"1", "2", "3"} {
-		tr.insert(c, f.term(t, f.sl, v), insertDefault)
+		mustLink(t, tr.insert(c, f.term(t, f.sl, v), insertDefault))
 	}
 	z := f.term(t, f.z, "zz")
 	f.z.Type = f.str
-	tr.insert(c, z, insertDefault)
+	mustLink(t, tr.insert(c, z, insertDefault))
 	if c.kids.ht == nil || tr.findFirst(&c.kids, f.term(t, f.z, "other")) != z {
 		t.Error("hash table: a leaf matches by schema node")
 	}
@@ -487,9 +487,9 @@ func TestUnionKeyHashIdentity(t *testing.T) {
 	}}
 	tr := newTree(f.set)
 	c := newInner(f.c)
-	tr.insert(nil, c, insertDefault)
+	mustLink(t, tr.insert(nil, c, insertDefault))
 	for _, v := range []string{"2", "3", "4"} {
-		tr.insert(c, f.term(t, f.ll, v), insertDefault)
+		mustLink(t, tr.insert(c, f.term(t, f.ll, v), insertDefault))
 	}
 	list := func(kind string) *Node {
 		l := newInner(f.l)
@@ -497,11 +497,11 @@ func TestUnionKeyHashIdentity(t *testing.T) {
 		if d != nil {
 			t.Fatal(d.Msg)
 		}
-		tr.insert(l, newTerm(f.lk, v), insertDefault)
+		mustLink(t, tr.insert(l, newTerm(f.lk, v), insertDefault))
 		return l
 	}
 	number := list("number")
-	tr.insert(c, number, insertDefault)
+	mustLink(t, tr.insert(c, number, insertDefault))
 	stringProbe := list("string")
 	if c.kids.ht == nil {
 		t.Fatal("children hash table was not built")
@@ -521,19 +521,19 @@ func TestUnionKeyHashIdentity(t *testing.T) {
 	}
 }
 
-// TestKeyUnlinkRehash: removing a key (internally) moves the list out of its old bucket in the
-// parent's table (lyd_unlink_hash leaves libyang's stale; the index must not serve it).
-func TestKeyUnlinkRehash(t *testing.T) {
+// Internal key removal updates only the positional discriminator; libyang keeps
+// the stored hash and registration (tree_data.c:1187-1239).
+func TestKeyUnlinkReindex(t *testing.T) {
 	f := newFixture()
 	tr := newTree(f.set)
 	c := newInner(f.c)
-	tr.insert(nil, c, insertDefault)
+	mustLink(t, tr.insert(nil, c, insertDefault))
 	var l *Node
 	for _, k := range []string{"a", "b", "c", "d"} {
 		l = f.list(t, tr, c, k, "")
 	}
 	probe := newInner(f.l)
-	tr.insert(probe, f.term(t, f.lk, "d"), insertDefault)
+	mustLink(t, tr.insert(probe, f.term(t, f.lk, "d"), insertDefault))
 	if tr.findFirst(&c.kids, probe) != l {
 		t.Fatal("list d not found")
 	}
@@ -548,9 +548,9 @@ func TestConcurrentReads(t *testing.T) {
 	f := newFixture()
 	tr := newTree(f.set)
 	c := newInner(f.c)
-	tr.insert(nil, c, insertDefault)
+	mustLink(t, tr.insert(nil, c, insertDefault))
 	for i := range 50 {
-		tr.insert(c, f.term(t, f.ll, fmt.Sprint(i)), insertDefault)
+		mustLink(t, tr.insert(c, f.term(t, f.ll, fmt.Sprint(i)), insertDefault))
 	}
 	f.list(t, tr, c, "a", "1")
 	probe := f.term(t, f.ll, "7")
@@ -577,14 +577,14 @@ func TestBulkWork(t *testing.T) {
 	tr := newTree(f.set)
 	tr.work.visits = true
 	c := newInner(f.c)
-	tr.insert(nil, c, insertDefault)
+	mustLink(t, tr.insert(nil, c, insertDefault))
 	const n = 20000
 	var all []*Node
 	for range n {
 		s := f.term(t, f.sl, "1")
-		tr.insert(c, s, insertDefault)
+		mustLink(t, tr.insert(c, s, insertDefault))
 		all = append(all, s)
-		tr.insert(c, newOpaque(opaque{Name: "o"}), insertDefault)
+		mustLink(t, tr.insert(c, newOpaque(opaque{Name: "o"}), insertDefault))
 	}
 	if int(tr.work.Load()) > 4*n || len(c.kids.opq) != n {
 		t.Fatalf("alternating inserts: %d comparisons", int(tr.work.Load()))
@@ -619,11 +619,11 @@ func TestUnlinkAllWorkScaling(t *testing.T) {
 				f.ll.Type = &schema.Type{Base: schema.Uint32}
 				tr := newTree(f.set)
 				c := newInner(f.c)
-				tr.insert(nil, c, insertDefault)
+				mustLink(t, tr.insert(nil, c, insertDefault))
 				all := make([]*Node, 0, count)
 				for i := range count {
 					n := f.term(t, f.ll, fmt.Sprint(mode.value(i, count)))
-					tr.insert(c, n, insertDefault)
+					mustLink(t, tr.insert(c, n, insertDefault))
 					all = append(all, n)
 				}
 				tr.work.Store(0)
@@ -666,26 +666,26 @@ func TestRBTreeRunEmptied(t *testing.T) {
 		f := newFixture()
 		tr := newTree(f.set)
 		c := newInner(f.c)
-		tr.insert(nil, c, insertDefault)
+		mustLink(t, tr.insert(nil, c, insertDefault))
 		for _, v := range []string{"3", "5"} {
-			tr.insert(c, f.term(t, f.ll, v), insertDefault)
+			mustLink(t, tr.insert(c, f.term(t, f.ll, v), insertDefault))
 		}
-		if !c.kids.rbTree[f.ll] || !c.kids.list[0].inRB || !c.kids.list[1].inRB {
+		if !c.kids.hasRB(f.ll) || !c.kids.list[0].inRB || !c.kids.list[1].inRB {
 			t.Fatal("sorted instances did not build the run index")
 		}
 		for _, v := range []string{"9", "1"} {
-			tr.insert(c, f.term(t, f.ll, v), insertLastBySchema)
+			mustLink(t, tr.insert(c, f.term(t, f.ll, v), insertLastBySchema))
 		}
-		if !c.kids.unsorted[f.ll] || c.kids.list[2].inRB || c.kids.list[3].inRB {
+		if !c.kids.hasUnsorted(f.ll) || c.kids.list[2].inRB || c.kids.list[3].inRB {
 			t.Fatal("appended instances unexpectedly joined the run index")
 		}
 		if diags, err := tr.TrimXPath(tc.keep, XPathOptions{}); err != nil {
 			t.Fatal(err, diags)
 		}
-		if tc.empty && (c.kids.rbTree[f.ll] || c.kids.unsorted[f.ll]) {
+		if tc.empty && (c.kids.hasRB(f.ll) || c.kids.hasUnsorted(f.ll)) {
 			t.Fatal("empty run index state survived bulk removal")
 		}
-		tr.insert(c, f.term(t, f.ll, "4"), insertDefault)
+		mustLink(t, tr.insert(c, f.term(t, f.ll, "4"), insertDefault))
 		if got := names(c.Children()); !reflect.DeepEqual(got, tc.want) {
 			t.Fatalf("%s: %v, want %v", tc.keep, got, tc.want)
 		}
@@ -699,15 +699,15 @@ func TestRBTreeBulkUnlinkMatchesSequential(t *testing.T) {
 		f := newFixture()
 		tr := newTree(f.set)
 		c := newInner(f.c)
-		tr.insert(nil, c, insertDefault)
+		mustLink(t, tr.insert(nil, c, insertDefault))
 		var indexed []*Node
 		for _, v := range []string{"3", "5"} {
 			n := f.term(t, f.ll, v)
-			tr.insert(c, n, insertDefault)
+			mustLink(t, tr.insert(c, n, insertDefault))
 			indexed = append(indexed, n)
 		}
 		for _, v := range []string{"9", "1"} {
-			tr.insert(c, f.term(t, f.ll, v), insertLastBySchema)
+			mustLink(t, tr.insert(c, f.term(t, f.ll, v), insertLastBySchema))
 		}
 		return f, tr, c, indexed
 	}
@@ -724,8 +724,8 @@ func TestRBTreeBulkUnlinkMatchesSequential(t *testing.T) {
 		t.Fatalf("after removal: bulk %v, sequential %v", got, want)
 	}
 
-	bulk.insert(bulkParent, bulkFixture.term(t, bulkFixture.ll, "4"), insertDefault)
-	sequential.insert(sequentialParent, sequentialFixture.term(t, sequentialFixture.ll, "4"), insertDefault)
+	mustLink(t, bulk.insert(bulkParent, bulkFixture.term(t, bulkFixture.ll, "4"), insertDefault))
+	mustLink(t, sequential.insert(sequentialParent, sequentialFixture.term(t, sequentialFixture.ll, "4"), insertDefault))
 	if got, want := names(bulkParent.Children()), names(sequentialParent.Children()); !reflect.DeepEqual(got, want) || !reflect.DeepEqual(got, []string{"ll=1", "ll=4", "ll=9"}) {
 		t.Fatalf("after sorted insert: bulk %v, sequential %v", got, want)
 	}
@@ -738,13 +738,13 @@ func TestRBTreeRun(t *testing.T) {
 	f := newFixture()
 	tr := newTree(f.set)
 	c := newInner(f.c)
-	tr.insert(nil, c, insertDefault)
+	mustLink(t, tr.insert(nil, c, insertDefault))
 	for _, v := range []string{"4", "3", "5"} {
-		tr.insert(c, f.term(t, f.ll, v), insertDefault)
+		mustLink(t, tr.insert(c, f.term(t, f.ll, v), insertDefault))
 	}
-	tr.insert(c, f.term(t, f.ll, "1"), insertLastBySchema)
-	tr.insert(c, f.term(t, f.ll, "6"), insertDefault)
-	tr.insert(c, f.term(t, f.ll, "0"), insertDefault)
+	mustLink(t, tr.insert(c, f.term(t, f.ll, "1"), insertLastBySchema))
+	mustLink(t, tr.insert(c, f.term(t, f.ll, "6"), insertDefault))
+	mustLink(t, tr.insert(c, f.term(t, f.ll, "0"), insertDefault))
 	if got := names(c.Children()); !reflect.DeepEqual(got, []string{"ll=0", "ll=3", "ll=4", "ll=5", "ll=6", "ll=1"}) {
 		t.Fatalf("%v", got)
 	}
@@ -766,17 +766,17 @@ func TestParserSortedRuns(t *testing.T) {
 			}
 			tr := newTree(f.set)
 			parent := newInner(parentSchema)
-			tr.insert(nil, parent, insertDefault)
+			mustLink(t, tr.insert(nil, parent, insertDefault))
 			lc := &lydCtx{ctx: context.Background(), tree: tr}
 			for _, v := range []string{"1", "3"} {
-				lc.nodeInsert(parent, nil, f.term(t, sn, v))
+				mustLink(t, lc.nodeInsert(parent, nil, f.term(t, sn, v)))
 			}
 			if len(lc.dirtyOrd) != 0 {
 				t.Fatal("ascending run has pending work")
 			}
 			equal := f.term(t, sn, "2")
-			lc.nodeInsert(parent, nil, equal)
-			lc.nodeInsert(parent, nil, f.term(t, sn, "2"))
+			mustLink(t, lc.nodeInsert(parent, nil, equal))
+			mustLink(t, lc.nodeInsert(parent, nil, f.term(t, sn, "2")))
 			if len(lc.dirtyOrd) != 1 {
 				t.Fatal("shuffled run was not deferred")
 			}
@@ -787,8 +787,8 @@ func TestParserSortedRuns(t *testing.T) {
 				t.Fatal("run did not retain stable value order")
 			}
 			outside := f.term(t, sn, "0")
-			tr.insert(parent, outside, insertLastBySchema)
-			lc.nodeInsert(parent, nil, f.term(t, sn, "4"))
+			mustLink(t, tr.insert(parent, outside, insertLastBySchema))
+			mustLink(t, lc.nodeInsert(parent, nil, f.term(t, sn, "4")))
 			if len(lc.dirtyOrd) != 0 || outside.inRB || parent.kids.list[len(parent.kids.list)-1] != outside {
 				t.Fatal("parser reordered an instance outside the RB tree")
 			}

@@ -1,0 +1,18 @@
+# libyang v5.8.6: xpath_deref_type (xpath.c:4032-4093) on a plain leafref whose predicate key
+# re-store fails: lyxp_eval's store error, then the plugin message "XPath evaluation error (...)"
+# (LOGERR LY_EINVAL), and deref() fails.
+fixtures:
+  - id: seq/hash-leafref-probe-deref
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9.3"]
+    areas: [types, xpath]
+    request:
+      op: sequence
+      searchdirs: [hash-leafref-probe, ../ut-new/e.1, ../ut-new/f.1]
+      modules: [{name: g}, {name: e}, {name: f}]
+      context_options: [leafref_linking, no_yanglibrary]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, data: '{"e:li":[{"id":"/f:lp[p=''2001:0db8::/64'']"}],"g:c":{"selector":"/f:lp[p=''2001:0db8::/64'']","strict":"/f:lp[p=''2001:0db8::/64'']","fallback":"/f:lp[p=''2001:0db8::/64'']"}}'}
+        - {do: xpath, xpath: "deref(/g:c/strict)"}
+    golden: golden/seq-hash-leafref-probe-deref.json

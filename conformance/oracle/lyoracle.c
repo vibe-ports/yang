@@ -1705,24 +1705,26 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
     }
     keys_only(step, !strcmp(what, "parse") ? "do format data_type data data_file unknown parse_only "
             "parse_options validate_options rpc keep_input parent" : !strcmp(what, "validate") ? "do data_type validate_options module final_only" :
-            !strcmp(what, "edit") ? "do merge merge_file set delete insert_term insert_inner insert_list insert_list2 "
+            !strcmp(what, "edit") ? "do merge merge_file merge_self set delete insert_term insert_inner insert_list insert_list2 "
             "insert_opaq new_meta free_meta format data_type unknown parse_options" :
-            !strcmp(what, "change_term") ? "do node value canon" :
+            !strcmp(what, "change_term") ? "do node node_xpath child value canon" :
             !strcmp(what, "insert") ? "do node parent format data_type data data_file unknown parse_only parse_options "
             "validate_options" :
-            !strcmp(what, "dump") ? "do with_defaults" : !strcmp(what, "print_xml") ? "do" : !strcmp(what, "any_direct") ? "do case target" : !strcmp(what, "dup") ? "do node parent options siblings target" :
+            !strcmp(what, "dump") ? "do with_defaults" : !strcmp(what, "print_xml") ? "do" : !strcmp(what, "any_direct") ? "do case target" : !strcmp(what, "dup") ? "do node node_xpath parent options siblings target source" :
             !strcmp(what, "compare") ? "do format data_type data data_file unknown parse_only parse_options "
-            "validate_options first second options insert_opaq" :
+            "validate_options first second options insert_opaq self" :
             !strcmp(what, "diff") ? "do format data_type data data_file unknown parse_only parse_options validate_options "
             "rpc keep_input node data_node single options merge merge_options target" :
             !strcmp(what, "diff_parse") ? "do format data_type data data_file unknown parse_options" :
             !strcmp(what, "diff_merge") ? "do format data_type data data_file unknown parse_options options module "
             "src_node parent" :
-            !strcmp(what, "diff_apply") ? "do module" : !strcmp(what, "trim") ? "do xpath vars" : "do",
+            !strcmp(what, "diff_apply") ? "do module" : !strcmp(what, "trim") ? "do xpath vars" :
+            !strcmp(what, "xpath") ? "do xpath vars" : "do",
             "unknown key \"%s\" in a sequence step");
     if (!strcmp(what, "edit")) {
         /* the parse options belong to merge only */
-        keys_only(step, cJSON_GetObjectItemCaseSensitive(step, "set") ? "do set" :
+        keys_only(step, cJSON_GetObjectItemCaseSensitive(step, "merge_self") ? "do merge_self" :
+                cJSON_GetObjectItemCaseSensitive(step, "set") ? "do set" :
                 cJSON_GetObjectItemCaseSensitive(step, "delete") ? "do delete" :
                 cJSON_GetObjectItemCaseSensitive(step, "insert_term") ? "do insert_term" :
                 cJSON_GetObjectItemCaseSensitive(step, "insert_inner") ? "do insert_inner" :
@@ -1770,10 +1772,14 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
         const cJSON *io = cJSON_GetObjectItemCaseSensitive(step, "insert_opaq");
         const cJSON *nm = cJSON_GetObjectItemCaseSensitive(step, "new_meta");
         const cJSON *fm = cJSON_GetObjectItemCaseSensitive(step, "free_meta");
+        const cJSON *ms = cJSON_GetObjectItemCaseSensitive(step, "merge_self");
 
-        if (!!merge + !!del + !!set + !!ins + !!inn + !!il + !!il2 + !!io + !!nm + !!fm != 1) {
+        if (!!merge + !!del + !!set + !!ins + !!inn + !!il + !!il2 + !!io + !!nm + !!fm + !!ms != 1) {
             die("edit step needs exactly one of merge, merge_file, set, delete, insert_term, insert_inner, insert_list, "
                     "insert_list2, insert_opaq, new_meta, free_meta%s", NULL);
+        }
+        if (ms && !cJSON_IsTrue(ms)) {
+            die("merge_self must be true%s", NULL);
         }
         if (nm || fm) {
             const cJSON *o = nm ? nm : fm;
@@ -1852,10 +1858,20 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
         }
     } else if (!strcmp(what, "change_term")) {
         const cJSON *canon = cJSON_GetObjectItemCaseSensitive(step, "canon");
+        const cJSON *child = cJSON_GetObjectItemCaseSensitive(step, "child");
 
         /* str_of() is NULL only for an absent or null field: "" is a value (ut-new/change-09) */
-        if (!str_of(step, "node") || !str_of(step, "value")) {
+        const char *node = str_of(step, "node"), *xpath = str_of(step, "node_xpath");
+
+        if ((!node && !xpath) || !str_of(step, "value")) {
             die("change_term needs node and value%s", NULL);
+        }
+        if (node && xpath) {
+            die("change_term takes node or node_xpath, not both%s", NULL);
+        }
+        if (child && (!cJSON_IsNumber(child) || child->valuedouble <= 0 ||
+                child->valuedouble > INT32_MAX || child->valuedouble != child->valueint)) {
+            die("change_term child must be a positive integer%s", NULL);
         }
         if (canon && !cJSON_IsBool(canon)) {
             die("change_term canon must be a boolean%s", NULL);
@@ -1886,9 +1902,13 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
         }
     } else if (!strcmp(what, "dup")) {
         const cJSON *sib = cJSON_GetObjectItemCaseSensitive(step, "siblings");
+        const cJSON *source = cJSON_GetObjectItemCaseSensitive(step, "source");
 
-        if (!str_of(step, "node")) {
+        if (!str_of(step, "node") && !str_of(step, "node_xpath")) {
             die("dup step needs a node path%s", NULL);
+        }
+        if (str_of(step, "node") && str_of(step, "node_xpath")) {
+            die("dup step needs exactly one of node and node_xpath%s", NULL);
         }
         str_of(step, "parent");
         flags_of(step, "options", dup_flags);
@@ -1903,6 +1923,15 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
             }
             keys_only(tg, "searchdirs modules context_options", "unknown key \"%s\" in a dup target");
         }
+        if (source) {
+            if (!cJSON_IsObject(source) || !input_of(source, "data") || !cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(source, "parse_only"))) {
+                die("dup source needs data and parse_only true%s", NULL);
+            }
+            keys_only(source, "format data_type data unknown parse_only rpc keep_input", "unknown key \"%s\" in a dup source");
+            if (cJSON_GetObjectItemCaseSensitive(step, "target")) {
+                die("dup source excludes target%s", NULL);
+            }
+        }
     } else if (!strcmp(what, "insert")) {
         str_of(step, "node");
         str_of(step, "parent");
@@ -1915,13 +1944,17 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
             die("insert step needs a node or data%s", NULL);
         }
     } else if (!strcmp(what, "compare")) {
-        dparams_of(step, &p);
-        if (p.optype != LYD_TYPE_DATA_YANG) {
-            die("sequence supports datastore data types only%s", NULL);
+        if (cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(step, "self"))) {
+            keys_only(step, "do self first second options", "unknown key \"%s\" in a same-tree comparison");
+        } else {
+            dparams_of(step, &p);
+            if (p.optype != LYD_TYPE_DATA_YANG) {
+                die("sequence supports datastore data types only%s", NULL);
+            }
+            compare_other(ctx, step, NULL, NULL);
+            /* compare_other validates exactly one second-source form. */
+            /* Ordinary data still has its dparams checked above. */
         }
-        compare_other(ctx, step, NULL, NULL);
-        /* compare_other validates exactly one second-source form. */
-        /* Ordinary data still has its dparams checked above. */
         str_of(step, "first");
         str_of(step, "second");
         flags_of(step, "options", compare_flags);
@@ -1983,6 +2016,20 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
         }
     } else if (!strcmp(what, "diff_apply")) {
         str_of(step, "module");
+    } else if (!strcmp(what, "xpath")) {
+        const cJSON *jv = cJSON_GetObjectItemCaseSensitive(step, "vars"), *v;
+
+        if (!str_of(step, "xpath")) {
+            die("xpath step needs an xpath%s", NULL);
+        }
+        if (jv && !cJSON_IsObject(jv)) {
+            die("trim vars must be an object%s", NULL);
+        }
+        cJSON_ArrayForEach(v, jv) {
+            if (!cJSON_IsString(v)) {
+                die("trim vars value of %s must be a string", v->string);
+            }
+        }
     } else if (!strcmp(what, "trim")) {
         const cJSON *jv = cJSON_GetObjectItemCaseSensitive(step, "vars"), *v;
 
@@ -2008,18 +2055,37 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
 static LY_ERR
 step_dup(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *diag)
 {
-    const char *npath = str_of(step, "node"), *ppath = str_of(step, "parent");
+    const char *npath = str_of(step, "node"), *xpath = str_of(step, "node_xpath"), *ppath = str_of(step, "parent");
     const cJSON *target = cJSON_GetObjectItemCaseSensitive(step, "target");
-    struct lyd_node *node = NULL, *parent = NULL, *dup = NULL;
+    const cJSON *source = cJSON_GetObjectItemCaseSensitive(step, "source");
+    struct lyd_node *node = NULL, *parent = NULL, *dup = NULL, *other = NULL;
+    struct dparams p;
     struct ly_ctx *tctx = NULL;
     uint32_t opts = flags_of(step, "options", dup_flags);
     int sib = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(step, "siblings")), ok;
     LY_ERR rc;
 
-    if (!*tree || lyd_find_path(*tree, npath, 0, &node)) {
-        die("dup node %s not found", npath);
+    if (source) {
+        dparams_of(source, &p);
+        rc = parse_one(ctx, &p, input_of(source, "data"), input_of(source, "rpc"), &other, diag, "parse");
+        if (rc) {
+            lyd_free_all(other);
+            return rc;
+        }
     }
-    if (ppath && lyd_find_path(*tree, ppath, 0, &parent)) {
+    struct lyd_node *selection = source ? other : *tree;
+    if (xpath) {
+        struct ly_set *set = NULL;
+
+        if (!selection || lyd_find_xpath(selection, xpath, &set) || set->count != 1) {
+            die("dup node_xpath %s must select exactly one node", xpath);
+        }
+        node = set->dnodes[0];
+        ly_set_free(set, NULL);
+    } else if (!selection || lyd_find_path(selection, npath, 0, &node)) {
+        die(source ? "dup node %s not found in the source" : "dup node %s not found", npath);
+    }
+    if (ppath && (!*tree || lyd_find_path(*tree, ppath, 0, &parent))) {
         die("dup parent %s not found", ppath);
     }
     if (target) {
@@ -2050,6 +2116,7 @@ step_dup(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *d
         lyd_free_all(*tree);
         *tree = lyd_first_sibling(dup);
     }
+    lyd_free_all(other);
     /* tctx stays: the tree may now live in it, and the process ends after the response */
     return rc;
 }
@@ -2311,19 +2378,23 @@ step_insert(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON
     return rc;
 }
 
-/* lyd_compare_single of the node at "first" in the tree and the node at "second" in a second tree
- * parsed from the step's data as by a parse step ("first"/"second" omitted: the first top-level
- * node); "compare" is its rc (LY_SUCCESS equal, LY_ENOT not), the step's rc that of the parse */
+/* lyd_compare_single of "first" in the retained tree and "second" in a parsed tree, or the
+ * retained tree with self:true (selectors omitted: first top-level node). "compare" is its rc
+ * (LY_SUCCESS equal, LY_ENOT not), the step's rc that of the parse or LY_SUCCESS with self:true. */
 static LY_ERR
 step_compare(struct ly_ctx *ctx, const cJSON *step, struct lyd_node *tree, cJSON *diag, cJSON *s)
 {
     const char *p1 = str_of(step, "first"), *p2 = str_of(step, "second");
     struct lyd_node *other = NULL, *n1 = tree, *n2;
     /* compare_other parses data or constructs an otherwise-unparseable opaque root. */
-    LY_ERR rc;
+    LY_ERR rc = LY_SUCCESS;
+    int self = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(step, "self"));
 
-    rc = compare_other(ctx, step, &other, diag);
-
+    if (self) {
+        other = tree;
+    } else {
+        rc = compare_other(ctx, step, &other, diag);
+    }
     if (!rc) {
         n2 = other;
         if (p1 && (!tree || lyd_find_path(tree, p1, 0, &n1))) {
@@ -2335,7 +2406,9 @@ step_compare(struct ly_ctx *ctx, const cJSON *step, struct lyd_node *tree, cJSON
         cJSON_AddItemToObject(s, "compare", code_json(lyd_compare_single(n1, n2,
                 flags_of(step, "options", compare_flags))));
     }
-    lyd_free_all(other);
+    if (!self) {
+        lyd_free_all(other);
+    }
     return rc;
 }
 
@@ -2425,7 +2498,15 @@ step_edit(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *
     struct lyd_node *node = NULL;
     LY_ERR rc = LY_SUCCESS;
 
-    if (nm || fm) {
+    if (cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(step, "merge_self"))) {
+        /* Copy actual children, including incomplete cross-context key prefixes. */
+        if (*tree) {
+            rc = lyd_dup_siblings(*tree, NULL, LYD_DUP_RECURSIVE, &node);
+            if (!rc) {
+                rc = lyd_merge_siblings(tree, node, LYD_MERGE_DESTRUCT);
+            }
+        }
+    } else if (nm || fm) {
         /* lyd_new_meta, or lyd_find_meta + lyd_free_meta_single, on the node at "node" */
         const cJSON *o = nm ? nm : fm;
 
@@ -2678,6 +2759,42 @@ step_diff_merge(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **diff, c
     return rc;
 }
 
+/* Read-only node-set lookup against the retained tree, using its first node as context. */
+static LY_ERR
+step_xpath(struct ly_ctx *ctx, const cJSON *step, struct lyd_node *tree, cJSON *diag, cJSON *s)
+{
+    struct ly_set *set = NULL;
+    struct lyxp_var *vars = NULL;
+    const cJSON *v;
+    LY_ERR rc;
+
+    cJSON_ArrayForEach(v, cJSON_GetObjectItemCaseSensitive(step, "vars")) {
+        if (lyxp_vars_set(&vars, v->string, v->valuestring)) {
+            die("lyxp_vars_set %s failed", v->string);
+        }
+    }
+    rc = tree ? lyd_find_xpath3(tree, tree, str_of(step, "xpath"), LY_VALUE_JSON, NULL, vars, &set) : LY_EINVAL;
+    lyxp_vars_free(vars);
+
+    collect(ctx, diag, "xpath");
+    if (rc) {
+        cJSON_AddNullToObject(s, "result");
+    } else {
+        cJSON *res = cJSON_AddObjectToObject(s, "result");
+        cJSON *nodes = cJSON_AddArrayToObject(res, "nodes");
+
+        cJSON_AddStringToObject(res, "type", "node-set");
+        for (uint32_t i = 0; i < set->count; i++) {
+            char *path = lyd_path(set->dnodes[i], LYD_PATH_STD, NULL, 0);
+
+            cJSON_AddItemToArray(nodes, cJSON_CreateString(path));
+            free(path);
+        }
+    }
+    ly_set_free(set, NULL);
+    return rc;
+}
+
 /* trim: lyd_trim_xpath of the tree with the step's xpath and variables */
 static LY_ERR
 step_trim(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *diag)
@@ -2763,12 +2880,40 @@ op_sequence(const cJSON *req)
             rc = step_dup(sctx, step, &tree, diag);
         } else if (!strcmp(what, "compare")) {
             rc = step_compare(sctx, step, tree, diag, s);
+        } else if (!strcmp(what, "xpath")) {
+            rc = step_xpath(sctx, step, tree, diag, s);
         } else if (!strcmp(what, "insert")) {
             rc = step_insert(sctx, step, &tree, diag);
         } else if (!strcmp(what, "change_term")) {
             /* lyd_change_term(_canon) of the node at "node": "change" is its rc; LY_EEXIST (only the default
              * flag changed) and LY_ENOT (nothing changed) are results, not failures */
-            struct lyd_node *n = node_at(tree, str_of(step, "node"), "change_term node %s not found");
+            struct lyd_node *n;
+            const char *expr = str_of(step, "node_xpath");
+
+            if (expr) {
+                struct ly_set *set = NULL;
+
+                if (!tree || lyd_find_xpath(tree, expr, &set) || set->count != 1) {
+                    die("change_term node_xpath %s must select exactly one node", expr);
+                }
+                n = set->dnodes[0];
+                ly_set_free(set, NULL);
+            } else {
+                n = node_at(tree, str_of(step, "node"), "change_term node %s not found");
+            }
+            const cJSON *child = cJSON_GetObjectItemCaseSensitive(step, "child");
+
+            if (child) {
+                int index = child->valueint;
+
+                n = lyd_child(n);
+                while (n && --index) {
+                    n = n->next;
+                }
+                if (!n) {
+                    die("change_term child does not exist%s", NULL);
+                }
+            }
             LY_ERR r = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(step, "canon")) ?
                     lyd_change_term_canon(n, str_of(step, "value")) : lyd_change_term(n, str_of(step, "value"));
 

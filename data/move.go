@@ -79,6 +79,7 @@ func sibList(n *Node) *Tree {
 // the sequence step insert, seq/insert-*; Go tests TestTreeBuild, TestInsertChild,
 // TestInsertSibling and TestInsertIntoItself.
 func (t *Tree) Insert(parent, n *Node) error {
+	defer t.work.beginHashWork()()
 	fn := "lyd_insert_child"
 	if parent == nil {
 		fn = "lyd_insert_sibling"
@@ -91,6 +92,9 @@ func (t *Tree) Insert(parent, n *Node) error {
 		return lg.done(argErr("parent (not in the tree)", fn))
 	case !sameSet(setOf(n), t.set) || setOf(n) == nil:
 		return lg.done(argErr("node (another schema snapshot)", fn)) // a Go tree has one snapshot
+	}
+	if source := n.treeOf(); source != nil && source != t {
+		defer source.work.beginHashWork()()
 	}
 	if parent != nil {
 		return lg.done(t.insertChild(parent, n))
@@ -128,15 +132,43 @@ func (t *Tree) insertChild(parent, n *Node) error {
 	if err := intoItself(parent, n, "lyd_insert_child"); err != nil {
 		return err
 	}
-	if src := sibList(n); src != nil {
-		t.moveNodes(parent, src)
-		return nil
+	if n.schema != nil && n.schema.IsKey() {
+		if err := t.work.checkTermHash(parent, n.schema, n.value); err != nil {
+			return err
+		}
 	}
-	if err := unlinkTree(n); err != nil {
+	if src := sibList(n); src != nil {
+		return t.moveNodes(parent, src)
+	}
+	if err := t.preflightInsertAnchor(parent, n); err != nil {
 		return err
 	}
-	t.insert(parent, n, insertDefault)
-	return nil
+	restore, err := t.linkOrigin(n)
+	if err != nil {
+		return err
+	}
+	if err := preflightUnlink(n); err != nil {
+		return err
+	}
+	if err := t.preflightMoveDestination(parent, n); err != nil {
+		return err
+	}
+	destination := t.childrenOf(parent)
+	destinationGen := destination.gen
+	if n.siblingsOf() == t.childrenOf(parent) {
+		if err := unlinkCheck(n); err != nil {
+			return err
+		}
+		unlinkRetainingHistory(n)
+	} else if err := unlinkTree(n); err != nil {
+		return err
+	}
+	err = t.insert(parent, n, insertDefault)
+	if err != nil {
+		restore()
+		destination.gen = destinationGen
+	}
+	return err
 }
 
 // insertSibling is lyd_insert_sibling: n, or every top-level node of n's tree when n starts it
@@ -166,15 +198,43 @@ func (t *Tree) insertSibling(sibling, n *Node) error {
 			return err
 		}
 	}
-	if src := sibList(n); src != nil && src != dt {
-		dt.moveNodes(parent, src)
-		return nil
+	if n.schema != nil && n.schema.IsKey() {
+		if err := dt.work.checkTermHash(parent, n.schema, n.value); err != nil {
+			return err
+		}
 	}
-	if err := unlinkTree(n); err != nil {
+	if src := sibList(n); src != nil && src != dt {
+		return dt.moveNodes(parent, src)
+	}
+	if err := dt.preflightInsertAnchor(parent, n); err != nil {
 		return err
 	}
-	dt.insert(parent, n, insertDefault)
-	return nil
+	restore, err := dt.linkOrigin(n)
+	if err != nil {
+		return err
+	}
+	if err := preflightUnlink(n); err != nil {
+		return err
+	}
+	if err := dt.preflightMoveDestination(parent, n); err != nil {
+		return err
+	}
+	destination := dt.childrenOf(parent)
+	destinationGen := destination.gen
+	if n.siblingsOf() == dt.childrenOf(parent) {
+		if err := unlinkCheck(n); err != nil {
+			return err
+		}
+		unlinkRetainingHistory(n)
+	} else if err := unlinkTree(n); err != nil {
+		return err
+	}
+	err = dt.insert(parent, n, insertDefault)
+	if err != nil {
+		restore()
+		destination.gen = destinationGen
+	}
+	return err
 }
 
 // insertAfter is lyd_insert_after: the user-ordered instance n goes right after sibling, an
@@ -204,10 +264,31 @@ func (t *Tree) insertAfter(sibling, n *Node) error {
 	if sib == nil {
 		return &opError{"LY_EINVAL", "Sibling is not linked (no parent, no tree)."}
 	}
-	unlink(n)
 	dt := t
 	if sibling.parent == nil {
 		dt = sibling.tree
+	}
+	if dt.work.hashErr != nil {
+		return dt.work.hashErr
+	}
+	if err := dt.preflightInsertAnchor(sibling.parent, n); err != nil {
+		return err
+	}
+	restore, err := dt.linkOrigin(n)
+	if err != nil {
+		return err
+	}
+	if err := preflightUnlink(n); err != nil {
+		return err
+	}
+	if err := dt.preflightMoveDestination(sibling.parent, n); err != nil {
+		return err
+	}
+	destinationGen := sib.gen
+	if n.siblingsOf() == sib {
+		unlinkRetainingHistory(n)
+	} else {
+		unlink(n)
 	}
 	at := 0
 	switch {
@@ -218,8 +299,104 @@ func (t *Tree) insertAfter(sibling, n *Node) error {
 	case sibling.schema == nil:
 		at = slices.Index(sib.opq, sibling) + 1
 	}
-	dt.link(sibling.parent, sib, n, at)
-	return nil
+	err = dt.link(sibling.parent, sib, n, at)
+	if err != nil {
+		restore()
+		sib.gen = destinationGen
+	}
+	return err
+}
+
+// linkOrigin records a linked node's position before an insertion may unlink it.
+// A failed hash lookup or preflight must not strand that node detached.
+func (t *Tree) linkOrigin(n *Node) (func(), error) {
+	sib := n.siblingsOf()
+	if sib == nil {
+		return func() {}, nil
+	}
+	owner, parent := n.treeOf(), n.parent
+	gen := sib.gen
+	if owner == nil {
+		owner = t // a subtree under a detached parent
+	}
+	inRB := n.inRB
+	at := -1
+	var leader *Node
+	if n.schema != nil {
+		var err error
+		at, err = t.originIndex(sib, sib.list, n)
+		if err != nil {
+			return nil, err
+		}
+		if !sib.schemaUnordered && !opChild(n.schema) {
+			// Ordinary schema runs are contiguous and monotone. Their first slot
+			// is a binary lookup even when n is the last of many instances.
+			before := t.work.Load()
+			first := t.upper(sib.list, 0, func(a *Node) bool { return t.sameOrAfter(a, n) })
+			if err := t.work.chargeHash(uint64(t.work.Load() - before)); err != nil { //nolint:gosec // lookup only increments the counter
+				return nil, err
+			}
+			leader = sib.list[first]
+		} else {
+			// A copied or operation sibling set may have split runs. Limit
+			// this walk to the physical run and charge each inspected slot.
+			leader = n
+			for i := at - 1; i >= 0; i-- {
+				if err := t.work.chargeHash(1); err != nil {
+					return nil, err
+				}
+				sib.work.Add(1)
+				if sib.list[i].schema != n.schema {
+					break
+				}
+				leader = sib.list[i]
+			}
+		}
+	} else {
+		var err error
+		at, err = t.originIndex(sib, sib.opq, n)
+		if err != nil {
+			return nil, err
+		}
+	}
+	rb, uns, group := sib.rbTree[leader], sib.unsorted[leader], n.rbGroup
+	return func() {
+		if n.siblingsOf() == nil {
+			n.touch()
+			n.inRB = inRB
+			n.rbGroup = group
+			owner.restoreLink(parent, n, at)
+			sib.gen = gen
+			if rb {
+				markRB(sib, leader)
+			} else {
+				delete(sib.rbTree, leader)
+			}
+			if uns {
+				markUnsorted(sib, leader)
+			} else {
+				delete(sib.unsorted, leader)
+			}
+		}
+	}, nil
+}
+
+// originIndex locates a linked node from both ends. Each step is charged before
+// touching the sibling slots, so a middle-position lookup stops at the quota.
+func (t *Tree) originIndex(sib *siblings, nodes []*Node, n *Node) (int, error) {
+	for i, j := 0, len(nodes)-1; i <= j; i, j = i+1, j-1 {
+		if err := t.work.chargeHash(1); err != nil {
+			return -1, err
+		}
+		sib.work.Add(1)
+		if nodes[j] == n {
+			return j, nil
+		}
+		if nodes[i] == n {
+			return i, nil
+		}
+	}
+	return -1, nil
 }
 
 // runs splits nodes into runs of consecutive instances of one schema node (opaque nodes: of
@@ -241,35 +418,101 @@ func runs(nodes []*Node) [][]*Node {
 // their RB-tree membership, and the run's tree state is returned to be given to its new place.
 func take(src *Tree, run []*Node) (rb, uns bool) {
 	if s := run[0].schema; s != nil {
-		rb, uns = src.top.rbTree[s], src.top.unsorted[s]
+		rb, uns = src.top.rbTree[run[0]], src.top.unsorted[run[0]]
 	}
 	inRB := make([]bool, len(run))
+	groups := make([]*rbGroup, len(run))
 	for i, n := range run {
 		inRB[i] = n.inRB
+		groups[i] = n.rbGroup
 	}
 	_ = src.unlinkAll(run) // top-level nodes are never keys under a parent: lyd_unlink_check passes
 	for i, n := range run {
+		n.touch()
 		n.inRB = inRB[i]
+		n.rbGroup = groups[i]
 	}
 	return rb, uns
 }
 
 // give records the tree state of a run moved whole into dst (lyds_tree metadata moves with its
 // leader).
-func give(dst *siblings, s *schema.Node, rb, uns bool) {
+func give(dst *siblings, leader *Node, rb, uns bool) {
 	if rb {
-		markRB(dst, s)
+		markRB(dst, leader)
 	}
 	if uns {
-		markUnsorted(dst, s)
+		markUnsorted(dst, leader)
 	}
 }
 
 // moveNodes is lyd_move_nodes: every top-level node of src joins the children of parent (the top
 // level of t when parent is nil).
-func (t *Tree) moveNodes(parent *Node, src *Tree) {
+func (t *Tree) moveNodes(parent *Node, src *Tree) error {
 	dst := t.childrenOf(parent)
-	rs := runs(slices.Collect(src.top.all()))
+	dstGen, srcGen := dst.gen, src.top.gen
+	original := slices.Collect(src.top.all())
+	if err := t.preflightSplice(parent, dst, original); err != nil {
+		return err
+	}
+	for _, n := range original {
+		if err := t.preflightInsertAnchor(parent, n); err != nil {
+			return err
+		}
+	}
+	rs := runs(original)
+	for _, run := range rs {
+		if err := t.preflightInsertPosition(dst, run[0], insertDefault); err != nil {
+			return err
+		}
+	}
+	inRB := make([]bool, len(original))
+	groups := make([]*rbGroup, len(original))
+	type runState struct {
+		rb, uns bool
+	}
+	states := make(map[*Node]runState, len(rs))
+	for i, n := range original {
+		t.work.Add(1)
+		inRB[i] = n.inRB
+		groups[i] = n.rbGroup
+		if n.schema != nil && (i == 0 || original[i-1].schema != n.schema) {
+			states[n] = runState{src.top.rbTree[n], src.top.unsorted[n]}
+		}
+	}
+	defer func() {
+		if t.work.hashErr == nil {
+			return
+		}
+		// A later run may fail its hash-backed anchor lookup. Put every
+		// original top-level node back, including runs already transferred.
+		for _, n := range original {
+			unlink(n)
+		}
+		for i, n := range original {
+			n.touch()
+			n.inRB = inRB[i]
+			n.rbGroup = groups[i]
+			at := -1
+			if n.schema != nil {
+				at = len(src.top.list)
+			}
+			src.restoreLink(nil, n, at)
+		}
+		for leader, state := range states {
+			if state.rb {
+				markRB(&src.top, leader)
+			} else {
+				delete(src.top.rbTree, leader)
+			}
+			if state.uns {
+				markUnsorted(&src.top, leader)
+			} else {
+				delete(src.top.unsorted, leader)
+			}
+		}
+		dst.gen, src.top.gen = dstGen, srcGen
+	}()
 	if dst.len() == 0 {
 		// lyd_move_nodes_at_once: the list keeps its order, its runs their RB trees
 		for _, run := range rs {
@@ -279,39 +522,54 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) {
 				if n.schema != nil {
 					at = len(dst.list)
 				}
-				t.link(parent, dst, n, at)
+				if err := t.link(parent, dst, n, at); err != nil {
+					return err
+				}
 			}
 			if run[0].schema != nil {
-				give(dst, run[0].schema, rb, uns)
+				give(dst, run[0], rb, uns)
 			}
 		}
-		return
+		return nil
 	}
 	// lyd_move_nodes_by_schema
 	for _, run := range rs {
 		s := run[0].schema
 		if sortedSupported(run[0]) && t.schemaLookup(dst, s) != nil {
-			t.merge(parent, dst, src, run)
+			if err := t.merge(parent, dst, src, run); err != nil {
+				return err
+			}
 			continue
+		}
+		if t.work.hashErr != nil {
+			return t.work.hashErr
 		}
 		// lyd_move_nodes_ordby_schema: before the anchor (the first sibling after the run by
 		// schema, the first opaque one at the latest), the run in its order
-		rb, uns := take(src, run)
 		at := -1
 		if s != nil {
 			at = t.insertPos(dst, run[0], insertLastBySchema)
+			if t.work.hashErr != nil {
+				return t.work.hashErr
+			}
 		}
+		rb, uns := take(src, run)
 		for i, n := range run {
 			if at < 0 {
-				t.link(parent, dst, n, -1)
+				if err := t.link(parent, dst, n, -1); err != nil {
+					return err
+				}
 			} else {
-				t.link(parent, dst, n, at+i)
+				if err := t.link(parent, dst, n, at+i); err != nil {
+					return err
+				}
 			}
 		}
 		if s != nil {
-			give(dst, s, rb, uns)
+			give(dst, run[0], rb, uns)
 		}
 	}
+	return nil
 }
 
 // merge is lyds_merge: the run of a system-ordered list or leaf-list from src joins its
@@ -329,46 +587,77 @@ func (t *Tree) moveNodes(parent *Node, src *Tree) {
 //     tree shape and uses data order (D-0061).
 //
 // Source instances outside the source tree come last, one by one (lyds_merge_nodes1 from next_p).
-func (t *Tree) merge(parent *Node, dst *siblings, src *Tree, run []*Node) {
+func (t *Tree) merge(parent *Node, dst *siblings, src *Tree, run []*Node) error {
+	if err := t.preflightSplice(parent, dst, run); err != nil {
+		return err
+	}
 	s := run[0].schema
-	srcRB := src.top.rbTree[s]
+	srcRB := src.top.rbTree[run[0]]
+	selected := src.top.rbGroups[run[0]]
 	var members, rest []*Node
 	for _, n := range run {
-		if srcRB && n.inRB {
+		if srcRB && n.inRB && n.rbGroup == selected {
 			members = append(members, n)
 		} else {
 			rest = append(rest, n)
 		}
 	}
 	take(src, run)
-	if len(members) > 0 && !dst.rbTree[s] {
+	if len(members) > 0 && !dst.hasRB(s) {
 		// lyds_merge_nodes2_front/_among/_back: a stable merge, source first on equal values
 		// Splice needs positions; its sibling copy already bounds this scan.
+		group := members[0].rbGroup
+		for _, n := range members {
+			n.touch()
+			n.rbGroup = group
+		}
 		lo := t.schemaIndex(dst, s)
 		hi := lo
 		for hi < len(dst.list) && dst.list[hi].schema == s {
+			dst.list[hi].touch()
 			dst.list[hi].inRB = true
+			dst.list[hi].rbGroup = group
 			hi++
 		}
-		t.splice(parent, dst, lo, hi, members, true)
-		markRB(dst, s)
+		if err := t.splice(parent, dst, lo, hi, members, true); err != nil {
+			return err
+		}
+		markRB(dst, dst.runLeader(s))
 		members = nil
 	}
-	if len(members) > 1 && !dst.unsorted[s] {
+	monotone := true
+	for i := 1; i < len(members); i++ {
+		if t.less(members[i], members[i-1]) {
+			monotone = false
+			break
+		}
+	}
+	if len(members) > 1 && monotone && !dst.hasUnsorted(s) {
 		// lyds_merge_nodes3 into a sorted run: one pass, each after the equal values
 		// Splice needs positions; its sibling copy already bounds this scan.
+		group := dst.rbGroups[dst.runLeader(s)]
+		for _, n := range members {
+			n.touch()
+			n.rbGroup = group
+		}
 		lo := t.schemaIndex(dst, s)
 		hi := lo
 		for hi < len(dst.list) && dst.list[hi].schema == s {
 			hi++
 		}
-		t.splice(parent, dst, lo, hi, members, false)
+		if err := t.splice(parent, dst, lo, hi, members, false); err != nil {
+			return err
+		}
 		members = nil
 	}
 	for _, n := range append(members, rest...) {
+		n.touch()
 		n.inRB = false
-		t.insert(parent, n, insertDefault)
+		if err := t.insert(parent, n, insertDefault); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // less reports whether a orders strictly before b by value, counting the comparison.

@@ -1,0 +1,19 @@
+fixtures:
+  # libyang v5.8.6 xpath.c:6308-6403 builds a fresh predicate instance; tree_data.c:3181-3264 uses lyd_compare_single in both table and scan paths. The repeated a,b keys must not match a. The bucket case must select the first ordinary a instance after rejecting the repeated-key instance.
+  - id: protocol-v2/hash-xpath-repeated-key-noht
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []
+    areas: [xpath, operations]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: pv2-hash-lookup}]
+      context_options: [no_yanglibrary]
+      format: json
+      data_type: get
+      parse_only: true
+      data: '{"pv2-hash-lookup:r":{"l": [{"k":"a","k":"b","v":"bad"}]}}'
+      context_path: /pv2-hash-lookup:r
+      xpath: "count(l[k='a'])"
+    golden: golden/hash-xpath-repeated-key-noht.json

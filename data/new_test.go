@@ -331,7 +331,7 @@ func TestNewOpaqRefusals(t *testing.T) {
 		t.Fatal(err)
 	}
 	tr := newTree(set)
-	tr.insert(nil, leaf, insertDefault)
+	mustLink(t, tr.insert(nil, leaf, insertDefault))
 	for _, c := range []struct {
 		name string
 		f    func(b newBuilder) (*Node, error)
@@ -405,7 +405,7 @@ func TestNewContextMix(t *testing.T) {
 		t.Fatal(err)
 	}
 	trA := newTree(setA)
-	trA.insert(nil, op, insertDefault)
+	mustLink(t, trA.insert(nil, op, insertDefault))
 	for _, c := range []struct {
 		name string
 		f    func(b newBuilder) (*Node, error)

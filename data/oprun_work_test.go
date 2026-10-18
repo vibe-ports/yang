@@ -132,7 +132,7 @@ func TestOpRunGaps(t *testing.T) {
 		t.Fatal(err)
 	}
 	check(0, 3)
-	tr.insertBefore(op.kids.list[3], in)
+	mustLink(t, tr.insertBefore(op.kids.list[3], in))
 	check(1, 2)
 	op.kids.opBuild(tr)
 	check(1, 2)
@@ -142,13 +142,13 @@ func TestOpRunGaps(t *testing.T) {
 	check(0, 3)
 	// A singleton split run disappears and returns, updating its own entry too.
 	v3 := op.kids.list[3]
-	tr.insertBefore(v3, in)
+	mustLink(t, tr.insertBefore(v3, in))
 	if err := unlinkTree(v3); err != nil {
 		t.Fatal(err)
 	}
 	if got := op.kids.opIdx[sn].gaps; got != 0 {
 		t.Fatalf("removed singleton run: gaps %d", got)
 	}
-	tr.insert(op, v3, insertLast)
+	mustLink(t, tr.insert(op, v3, insertLast))
 	check(1, 2)
 }

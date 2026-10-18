@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module ietf-yang-types {
+  namespace "urn:ietf:params:xml:ns:yang:ietf-yang-types";
+  prefix yang;
+  description "Minimal handwritten schema selecting the old date-and-time plugin.";
+  revision 2013-07-15;
+  typedef date-and-time { type string; }
+}

@@ -1,0 +1,29 @@
+# libyang v5.8.6 xpath.c:6343-6351 prepares one predicate before visiting indexed parents.
+fixtures:
+- id: protocol-v2/hash-xpath-many-parent-miss
+  dir: protocol-v2
+  source:
+    url: hand-written (this repo)
+    commit: null
+    license: BSD-3-Clause
+  rfc: []
+  areas:
+  - operations
+  - xpath
+  request:
+    op: sequence
+    searchdirs:
+    - hash-many-parent
+    modules:
+    - name: m
+    context_options:
+    - no_yanglibrary
+    steps:
+    - do: parse
+      format: json
+      data_type: data
+      parse_only: true
+      data: '{"m:p":[{"id":0,"a":"a","b":"b","l":[{"k":"present"}]},{"id":1,"a":"a","b":"b","l":[{"k":"present"}]},{"id":2,"a":"a","b":"b","l":[{"k":"present"}]},{"id":3,"a":"a","b":"b","l":[{"k":"present"}]},{"id":4,"a":"a","b":"b","l":[{"k":"present"}]},{"id":5,"a":"a","b":"b","l":[{"k":"present"}]},{"id":6,"a":"a","b":"b","l":[{"k":"present"}]},{"id":7,"a":"a","b":"b","l":[{"k":"present"}]}]}'
+    - do: xpath
+      xpath: /m:p/l[k="AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"]
+  golden: golden/hash-xpath-many-parent-miss.json

@@ -70,7 +70,7 @@ func opidxR8DupOperation(t *testing.T, src *Node, target *schema.Set) *Node {
 		} else {
 			n = opidxStringTerm(t, sn, child.value.Canonical())
 		}
-		tr.insert(op, n, insertLast)
+		mustLink(t, tr.insert(op, n, insertLast))
 	}
 	return op
 }
@@ -108,7 +108,7 @@ func TestOpIndexParseLeaderTransitions(t *testing.T) {
 	if _, err := tr.TrimXPath("/opidxu:l/a | /opidxu:l/a2 | /opidxu:l/a3 | /opidxu:l/s", XPathOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	if op.kids.rbTree[ss] {
+	if op.kids.hasRB(ss) {
 		t.Fatal("copied and joined s run unexpectedly has an RB tree")
 	}
 	if got, want := opidxRecords(op, ss), []string{"5", "3"}; !slices.Equal(got, want) {
@@ -190,7 +190,7 @@ func TestOpIndexParseLeaderTransitionsWork(t *testing.T) {
 		if _, err := tr.TrimXPath("/opidxu:l/a | /opidxu:l/a2 | /opidxu:l/a3 | /opidxu:l/s", XPathOptions{}); err != nil {
 			t.Fatal(err)
 		}
-		if op.kids.rbTree[ss] {
+		if op.kids.hasRB(ss) {
 			t.Fatal("copied and joined s run unexpectedly has an RB tree")
 		}
 		if got, want := opidxRecords(op, ss), []string{fmt.Sprint(n + 2), fmt.Sprint(n + 1)}; !slices.Equal(got, want) {

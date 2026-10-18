@@ -299,8 +299,10 @@ func stepDiffMerge(r Request, s *yang.Schema, st map[string]any, reg **data.Tree
 	return phased(diags, diagsOf(err), "diff"), err
 }
 
-// findNode preserves the oracle's selector failure as a request-error, including
-// empty paths and a NULL tree; Find's diagnostics are not collected by lyoracle.
+// findNode mirrors lyoracle's lyd_find_path(tree, path, 0, ...): operation paths
+// resolve against input, including when the retained tree contains reply output.
+// Empty paths and a NULL tree fail as request-errors; Find's diagnostics are not
+// collected by lyoracle.
 func findNode(t *data.Tree, path, label string) (*data.Node, error) {
 	if t != nil && path != "" {
 		if n, err := t.Find(path); err == nil && n != nil {

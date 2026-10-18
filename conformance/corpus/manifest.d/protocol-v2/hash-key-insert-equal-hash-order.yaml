@@ -1,0 +1,50 @@
+# libyang v5.8.6 tree_data.c:837-842 retains successful key-insertion registrations, including earlier hashes.
+# A distinct sentinel is the schema leader: repeated insertion of the leader logs LY_EINT at tree_data_hash.c:150.
+fixtures:
+- id: protocol-v2/hash-key-insert-equal-hash-order
+  dir: protocol-v2
+  source:
+    url: hand-written (this repo)
+    commit: null
+    license: BSD-3-Clause
+  rfc: []
+  areas:
+  - operations
+  - xpath
+  request:
+    op: sequence
+    searchdirs:
+    - hash-history
+    modules:
+    - name: m
+    context_options:
+    - no_yanglibrary
+    steps:
+    - do: parse
+      format: json
+      data_type: data
+      parse_only: true
+      data: '{"m:r":{"p":"p","q":"q","z":"z","l":[{"k":"Qg==","marker":"sentinel"},{"k":"QQ==","marker":"A"},{"k":"QQ==","marker":"B"}]}}'
+    - do: edit
+      insert_term:
+        parent: /m:r/l[k='QQ==']
+        name: k
+        value: A3PU0pE=
+    - do: compare
+      options:
+      - full_recursion
+      format: json
+      data_type: data
+      parse_only: true
+      data: '{"m:r":{"l":[{"k":"QQ==","marker":"A"}]}}'
+      first: /m:r/l[k='QQ==']/marker
+      second: /m:r/l[k='QQ==']/marker
+    - do: xpath
+      xpath: /m:r/l[k='QQ==']/marker[.="A"]
+    - do: edit
+      set:
+        path: /m:r/l[k='QQ==']/marker
+        value: updated-A
+    - do: dump
+      with_defaults: all
+  golden: golden/hash-key-insert-equal-hash-order.json

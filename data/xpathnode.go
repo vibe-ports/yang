@@ -8,7 +8,6 @@ package data
 import (
 	"bytes"
 	"context"
-	"strings"
 
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/snap"
@@ -66,63 +65,86 @@ func (x xn) childSiblings() *siblings {
 	return &x.n.kids
 }
 
-// LookupChild is the children hash table lookup of moveto_node_hash_child (lyd_find_sibling_val /
-// lyd_find_sibling_first): the live instances of sn among the children of x whose list keys or
-// leaf-list value have the canonical texts vals, all instances for nil vals. It answers only from
-// one bucket and declines (ok=false: the evaluator's charged scan) everything that needs a scan:
-// a parent without a table (fewer than htMinItems schema children), a bucket of several
-// instances (duplicate state instances, which also need document order), and a miss while
-// opaque children could be the fallback.
+// LookupChild serves schema-only lookup and callers without a prepared probe.
+// The evaluator uses LookupPrepared for typed predicates, preparing once per step.
 func (x xn) LookupChild(sn xpath.SchemaNode, vals []string) ([]xpath.Node, bool) {
+	s, ok := sn.(xs)
+	if !ok {
+		return nil, false
+	}
+	if vals != nil {
+		if len(vals) != len(s.s.Keys) && (s.s.Kind != schema.LeafList || len(vals) != 1) {
+			return nil, false
+		}
+		probe, err := s.PrepareInstance(vals, nil)
+		if err != nil {
+			return nil, false
+		}
+		nodes, found, _ := x.LookupPrepared(probe)
+		return nodes, found
+	}
+	probe := &xprobe{node: newInner(s.s), set: s.set}
+	probe.key, _ = hashOf(probe.node)
+	nodes, found, _ := x.LookupPrepared(probe)
+	return nodes, found
+}
+
+// LookupPrepared follows native registration order for keyed lists, including
+// duplicate exact buckets. Only native duplicate-instance kinds need the charged
+// document-order fallback (tree_data.c:3213-3235). The fixed-size discriminator
+// avoids hashing predicate bytes again for each parent; equality verifies collisions.
+func (x xn) LookupPrepared(prepared xpath.InstanceProbe) ([]xpath.Node, bool, error) {
 	// moveto_node_hash_child passes lyd_child(x), which excludes any payloads.
 	// A handled miss also prevents the evaluator's Children() fallback scan.
 	if x.n.any != nil {
-		return nil, true
+		return nil, true, nil
 	}
-	s, ok := sn.(xs)
+	p, ok := prepared.(*xprobe)
 	sib := &x.n.kids
 	if !ok || sib.ht == nil || x.n.flags&flagDead != 0 {
-		return nil, false
+		return nil, false, nil
 	}
-	if s.set != x.set {
+	if p.set != x.set {
 		// A name test compiled from one context can be applied to another
 		// context's node in a union. Translate it before probing the hash: the
 		// table's records match by lyd_compare_schema_equal with all the parents
 		// (lyd_hash_table_schema_val_equal, lyd_hash_table_val_equal).
-		mapped, err := findSchemaCtx(s.s, x.set, x.n)
-		if err != nil || mapped == nil || !compareSchemaEqual(mapped, s.s, true) {
+		mapped, err := findSchemaCtx(p.node.schema, x.set, x.n)
+		if err != nil || mapped == nil || !compareSchemaEqual(mapped, p.node.schema, true) {
 			// LY_ENOTFOUND, then lyd_find_sibling_opaq_next. Not a decline: the
 			// evaluator's scan would match the unequal node by module and name.
 			for _, c := range sib.opq {
 				sib.visit()
-				if c.flags&flagDead == 0 && c.Name() == s.s.Name {
-					return []xpath.Node{wrap(x.set, c)}, true
+				if c.flags&flagDead == 0 && c.Name() == p.node.schema.Name {
+					return []xpath.Node{wrap(x.set, c)}, true, nil
 				}
 			}
-			return nil, true
+			return nil, true, nil
 		}
-		s.s = mapped
+		if p = p.toCtx(x.set); p == nil {
+			return nil, false, nil // the instance does not store there: the charged scan
+		}
 	}
-	k := idxKey{s: s.s}
-	if s.s.Kind == schema.LeafList && len(vals) == 1 {
-		k.key = vals[0]
-	} else if vals != nil {
-		k.key = strings.Join(vals, "\x00") + "\x00" // hashOf of a list
+	c := sib.ht[p.key]
+	if c != nil && c.count > 1 && isDupInstList(p.node.schema) {
+		return nil, false, nil
 	}
-	c := sib.ht[k]
-	var first *Node
-	if c != nil && c.first != nil {
-		sib.visit()
-		first = c.first.node
+	for n := range sib.bucketNodes(p.key) {
+		if err := p.work(1); err != nil {
+			return nil, false, err
+		}
+		if n.flags&flagDead != 0 {
+			continue
+		}
+		match, err := p.Match(xn{n, x.set})
+		if err != nil {
+			return nil, false, err
+		}
+		if match {
+			return []xpath.Node{wrap(x.set, n)}, true, nil
+		}
 	}
-	live := c != nil && c.count == 1 && first.flags&flagDead == 0
-	switch {
-	case c != nil && c.count > 1, !live && len(sib.opq) > 0:
-		return nil, false
-	case live:
-		return []xpath.Node{wrap(x.set, first)}, true
-	}
-	return nil, true
+	return nil, len(sib.opq) == 0, nil
 }
 
 // FirstChild is lyd_find_sibling_schema over lyd_child_any(x): the first live instance of sn.
@@ -358,6 +380,107 @@ func wrapSchema(set *schema.Set, s *schema.Node) xpath.SchemaNode {
 		return nil
 	}
 	return xs{s, set}
+}
+
+// xpathProbeError retains a type plugin's complete diagnostic chain until the
+// query/validation logger can place it at the probe key's schema location.
+type xpathProbeError struct {
+	schema *schema.Node
+	diag   *types.Diag
+}
+
+func (e *xpathProbeError) Error() string { return e.diag.Msg }
+
+// xprobe is lyd_create_list's fresh typed instance and its secondary index key.
+// It is private to one evaluation: concurrent reads never mutate the real tree.
+type xprobe struct {
+	node   *Node
+	set    *schema.Set // the context the instance was created in
+	key    idxKey
+	charge func(int64) error
+	bytes  int64
+}
+
+// PrepareInstance follows xpath.c:6343-6345 before the parent loop. Re-storing
+// canonical predicates is observable: a second store may fail or choose another
+// union member. Never turn that error into a successful empty result.
+func (x xs) PrepareInstance(vals []string, charge func(int64) error) (xpath.InstanceProbe, error) {
+	p := &xprobe{node: newInner(x.s), set: x.set, charge: charge}
+	keys := x.s.Keys
+	if x.s.Kind == schema.LeafList {
+		keys = []*schema.Node{x.s}
+	}
+	for i, key := range keys {
+		if err := p.work(1 + int64(len(vals[i]))); err != nil {
+			return nil, err
+		}
+		v, d := types.StoreOnly(key.Type, vals[i], types.FormatJSON, types.HintData,
+			types.ModuleNames{Set: x.set}, key)
+		if d != nil {
+			return nil, &xpathProbeError{schema: key, diag: d}
+		}
+		if err := p.work(int64(types.HashLYBWorkBound(v))); err != nil { //nolint:gosec // bounded by the LYB representation size
+			return nil, err
+		}
+		p.bytes += 1 + int64(len(v.Canonical()))
+		if x.s.Kind == schema.LeafList {
+			p.node = newTerm(key, v)
+		} else {
+			child := newTerm(key, v)
+			child.parent = p.node
+			p.node.kids.list = append(p.node.kids.list, child)
+		}
+	}
+	if x.s.Kind == schema.List {
+		resetListKey(nil, p.node)
+	}
+	var work workCounter
+	p.key, _ = hashOfWork(p.node, &work)
+	if work.hashErr != nil {
+		return nil, work.hashErr
+	}
+	if err := p.work(work.Load() + int64(work.hashUsed)); err != nil { //nolint:gosec // capped by defaultMaxHashWork
+		return nil, err
+	}
+	return p, nil
+}
+
+// toCtx is lyd_find_sibling_first's lyd_dup_single_to_ctx of the instance into the
+// siblings' context (stored hashes as a duplicate keeps them); nil when it fails there.
+func (p *xprobe) toCtx(set *schema.Set) *xprobe {
+	src := *p.node
+	src.payloadSet = p.set // the probe is in no tree: name its context for the copy
+	d, err := newTree(set).dupR(&src, nil, false, insertDefault, dupRecursive)
+	if err != nil {
+		return nil
+	}
+	q := &xprobe{node: d, set: set, charge: p.charge, bytes: p.bytes}
+	var work workCounter
+	q.key, _ = hashOfWork(d, &work)
+	if work.hashErr != nil {
+		return nil
+	}
+	return q
+}
+
+func (p *xprobe) work(n int64) error {
+	if p.charge == nil {
+		return nil
+	}
+	return p.charge(n)
+}
+
+func (p *xprobe) Match(node xpath.Node) (bool, error) {
+	n, ok := node.(xn)
+	if !ok || n.n.schema != p.node.schema || n.n.hash != p.node.hash {
+		return false, nil
+	}
+	if err := p.work(1 + p.bytes); err != nil {
+		return false, err
+	}
+	// Shared with Find/NewPath: first key-count actual children, including
+	// each child's schema and stored hash (tree_data.c:1769-1782).
+	return htValEqual(&Tree{}, n.n, p.node), nil
 }
 
 var xkinds = map[schema.Kind]xpath.Kind{

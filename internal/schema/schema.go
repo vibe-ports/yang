@@ -7,14 +7,47 @@
 // internal readers only; the public yang package wraps them in read-only handles.
 package schema
 
-import "iter"
+import (
+	"iter"
+	"sync"
+)
 
 // Set is every module of one context, in load order (libyang ly_ctx module list).
 type Set struct {
-	Modules []*Module
+	Modules    []*Module
+	nameHashes sync.Map // *Node -> uint32, immutable module/name prefixes shared by trees
+	indexNames sync.Map // *Node -> [32]byte, immutable positional-index name digests
 	// LeafrefLinking is the context flag LY_CTX_LEAFREF_LINKING: data trees over the set keep
 	// leafref links (lyd_leafref_link_node_tree).
 	LeafrefLinking bool
+}
+
+// CachedNameHash returns one schema node's immutable hash prefix. A cold caller
+// supplies both the budget charge and computation; failed charges are not cached.
+func (s *Set) CachedNameHash(n *Node, compute func() (uint32, error)) (uint32, error) {
+	if h, ok := s.nameHashes.Load(n); ok {
+		return h.(uint32), nil
+	}
+	h, err := compute()
+	if err != nil {
+		return 0, err
+	}
+	actual, _ := s.nameHashes.LoadOrStore(n, h)
+	return actual.(uint32), nil
+}
+
+// CachedIndexName shares the immutable positional discriminator component across trees.
+// A failed cold computation is not cached.
+func (s *Set) CachedIndexName(n *Node, compute func() ([32]byte, error)) ([32]byte, error) {
+	if h, ok := s.indexNames.Load(n); ok {
+		return h.([32]byte), nil
+	}
+	h, err := compute()
+	if err != nil {
+		return [32]byte{}, err
+	}
+	actual, _ := s.indexNames.LoadOrStore(n, h)
+	return actual.([32]byte), nil
 }
 
 // Module returns the module with the name and revision; revision "" means the implemented
@@ -392,8 +425,11 @@ type Type struct {
 	Patterns   []*Pattern
 	FracDigits uint8
 	Enums      []*Enum
-	Bits       []*Bit // ordered by position
-	Bases      []*Identity
+	// EnumLYBWidth is one plus the immutable LYB bit width; zero is an unprepared
+	// synthetic type. Compile fills it after declaration changes, snapshots copy it.
+	EnumLYBWidth uint8
+	Bits         []*Bit // ordered by position
+	Bases        []*Identity
 
 	// Leafref: Path is the path source, Prefixes resolves its prefixes, PathCompiled holds what
 	// compile parsed it into. Prefixes[""] is the module that *instantiates* the leafref type

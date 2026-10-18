@@ -110,8 +110,12 @@ func diffNodes(first, second *Node, o DiffOptions, nosiblings bool, ft, st *Tree
 		return nil, nil
 	}
 	d := newTree(set)
+	defer d.work.beginHashWork()()
 	if err := d.diffSiblingsR(first, second, o, nosiblings); err != nil {
 		return nil, lg.done(err)
+	}
+	if d.work.hashErr != nil {
+		return nil, d.work.hashErr
 	}
 	if d.top.len() == 0 {
 		return nil, nil

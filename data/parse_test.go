@@ -39,12 +39,12 @@ func TestParseDriver(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		lc.nodeInsert(nil, nil, c)
+		mustLink(t, lc.nodeInsert(nil, nil, c))
 		z, err := lc.json(f.z, c, "v")
 		if err != nil {
 			return err
 		}
-		lc.nodeInsert(c, nil, z)
+		mustLink(t, lc.nodeInsert(c, nil, z))
 		return lc.closeInner(c, nil)
 	}
 	validated := 0
@@ -67,7 +67,7 @@ func TestParseDriver(t *testing.T) {
 	// two store errors: the second is reported only with multi-error
 	bad := func(lc *lydCtx, _ []byte) error {
 		c, _ := lc.createInner(f.c)
-		lc.nodeInsert(nil, nil, c)
+		mustLink(t, lc.nodeInsert(nil, nil, c))
 		for _, v := range []string{"x", "300"} {
 			if _, err := lc.createTerm(f.ll, c, v, types.FormatJSON, nil, types.JSONHints("number")); lc.fatal(err) {
 				return err
@@ -119,7 +119,7 @@ func TestParseBudgets(t *testing.T) {
 	f := newFixture()
 	many := func(lc *lydCtx, _ []byte) error {
 		c, _ := lc.createInner(f.c)
-		lc.nodeInsert(nil, nil, c)
+		mustLink(t, lc.nodeInsert(nil, nil, c))
 		for {
 			_, err := lc.json(f.z, c, "v")
 			if err != nil {
@@ -180,12 +180,12 @@ func TestParserHelpers(t *testing.T) {
 	f.x.Parent.Whens = []*schema.When{when} // on the case: lysc_has_when looks through choice/case
 	lc.opts.whenTrue = true
 	c, _ := lc.createInner(f.c)
-	lc.nodeInsert(nil, nil, c)
+	mustLink(t, lc.nodeInsert(nil, nil, c))
 	z, _ := lc.json(f.z, c, "v")
-	lc.nodeInsert(c, nil, z)
+	mustLink(t, lc.nodeInsert(c, nil, z))
 	lc.setDataFlags(z, &z.meta)
 	x, _ := lc.json(f.x, c, "v")
-	lc.nodeInsert(c, nil, x)
+	mustLink(t, lc.nodeInsert(c, nil, x))
 	// the first ietf-netconf-with-defaults:default="true" metadata becomes the flag and goes
 	wd := &schema.Module{Name: "ietf-netconf-with-defaults", Implemented: true}
 	vt, _ := types.Store(&schema.Type{Base: schema.Bool}, "true", types.FormatJSON, types.JSONHints("bool"), nil, nil)
@@ -209,8 +209,8 @@ func TestParserHelpers(t *testing.T) {
 	lc.validateNewImplicit = func(*lydCtx, *Node) error { calls++; return nil }
 	l, _ := lc.createInner(f.l)
 	v, _ := lc.json(f.lv, l, "x")
-	lc.nodeInsert(l, nil, v)
-	lc.nodeInsert(c, nil, l)
+	mustLink(t, lc.nodeInsert(l, nil, v))
+	mustLink(t, lc.nodeInsert(c, nil, l))
 	if l.parent != nil {
 		t.Fatal("list linked without its key")
 	}
@@ -220,8 +220,8 @@ func TestParserHelpers(t *testing.T) {
 		t.Fatalf("missing key: %v %v calls %d", err, codes(lc.log.diags), calls)
 	}
 	k, _ := lc.json(f.lk, l, "k")
-	lc.nodeInsert(l, nil, k)
-	lc.nodeInsert(c, nil, l)
+	mustLink(t, lc.nodeInsert(l, nil, k))
+	mustLink(t, lc.nodeInsert(c, nil, l))
 	if l.parent != c || lc.closeInner(l, nil) != nil || calls != 1 {
 		t.Fatalf("list with key: linked %v calls %d", l.parent == c, calls)
 	}
@@ -236,7 +236,7 @@ func TestParserHelpers(t *testing.T) {
 	if err != nil || o.flags != 0 { // lyd_create_opaq sets no LYD_NEW
 		t.Fatalf("opaque: %v", err)
 	}
-	lc.nodeInsert(c, nil, o)
+	mustLink(t, lc.nodeInsert(c, nil, o))
 	if c.kids.opq[len(c.kids.opq)-1] != o {
 		t.Fatal("opaque node not last")
 	}
@@ -258,7 +258,7 @@ func TestOpaqError(t *testing.T) {
 	f.b.Namespace = "urn:b"
 	tr := newTree(f.set)
 	c := newInner(f.c)
-	tr.insert(nil, c, insertDefault)
+	mustLink(t, tr.insert(nil, c, insertDefault))
 	op := func(name, mod, val string, fm types.Format) *Node {
 		n := newOpaque(opaque{Name: name, ModuleNS: mod, Value: val, Format: fm, Hints: types.HintData})
 		return n
@@ -280,7 +280,7 @@ func TestOpaqError(t *testing.T) {
 		{c, op("l", "b", "", types.FormatJSON), `LY_EVALID LYVE_DATA /b:c/l: List instance is missing its key "k".`},
 	}
 	for _, tc := range cases {
-		tr.insert(tc.parent, tc.n, insertDefault)
+		mustLink(t, tr.insert(tc.parent, tc.n, insertDefault))
 		l := &logger{set: f.set}
 		if err := l.opaqError(tc.n); err == nil || len(l.diags) != 1 || codes(l.diags)[0] != tc.want {
 			t.Errorf("%s: %v %v", tc.want, err, codes(l.diags))
@@ -289,8 +289,8 @@ func TestOpaqError(t *testing.T) {
 	}
 	// an opaque list with an invalid opaque key value
 	l := op("l", "b", "", types.FormatJSON)
-	tr.insert(c, l, insertDefault)
-	tr.insert(l, op("k", "", "", types.FormatJSON), insertDefault)
+	mustLink(t, tr.insert(c, l, insertDefault))
+	mustLink(t, tr.insert(l, op("k", "", "", types.FormatJSON), insertDefault))
 	f.lk.Type = f.u8
 	lg := &logger{set: f.set}
 	if lg.opaqError(l) == nil || codes(lg.diags)[0] != `LY_EVALID LYVE_DATA /b:c/l/k: Invalid type uint8 empty value.` {
@@ -298,7 +298,7 @@ func TestOpaqError(t *testing.T) {
 	}
 	// lyd_node_schema of an opaque node under an opaque node
 	in := op("k", "", "", types.FormatJSON)
-	tr.insert(l, in, insertDefault)
+	mustLink(t, tr.insert(l, in, insertDefault))
 	if nodeSchema(f.set, in) != f.lk || nodeSchema(f.set, l) != f.l {
 		t.Error("nodeSchema")
 	}
@@ -311,13 +311,13 @@ func TestOpaqueAnchor(t *testing.T) {
 	tr := newTree(f.set)
 	lc := &lydCtx{ctx: context.Background(), tree: tr, log: &logger{set: f.set}}
 	c, _ := lc.createInner(f.c)
-	lc.nodeInsert(nil, nil, c)
+	mustLink(t, lc.nodeInsert(nil, nil, c))
 	x1, _ := lc.createOpaq(opaque{Name: "x"})
 	y, _ := lc.createOpaq(opaque{Name: "y"})
 	x2, _ := lc.createOpaq(opaque{Name: "x"})
-	lc.nodeInsert(c, nil, x1)
-	lc.nodeInsert(c, nil, y)
-	lc.nodeInsert(c, x1, x2)
+	mustLink(t, lc.nodeInsert(c, nil, x1))
+	mustLink(t, lc.nodeInsert(c, nil, y))
+	mustLink(t, lc.nodeInsert(c, x1, x2))
 	if !reflect.DeepEqual(c.kids.opq, []*Node{x1, x2, y}) {
 		t.Fatalf("%v", names(c.Children()))
 	}

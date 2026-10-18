@@ -86,7 +86,7 @@ func TestXMLItemlessStoreDiagnostic(t *testing.T) {
 			sn.Type = round6PluginType(tc.name)
 			tr := newTree(set)
 			parent := newInner(c)
-			tr.insert(nil, parent, insertDefault)
+			mustLink(t, tr.insert(nil, parent, insertDefault))
 			lc := &lydCtx{ctx: context.Background(), tree: tr, log: &logger{set: set}, opts: parseOpts{ParseOptions: ParseOptions{Validate: ValidateOptions{MultiError: true}}}}
 			pc := types.XMLNamespaces{Set: set, NS: map[string]string{"": "urn:pj"}}
 			n, err := lc.createTerm(sn, parent, tc.value, types.FormatXML, pc, types.HintData)
@@ -211,13 +211,13 @@ func TestAnyDupIntoDefaultParent(t *testing.T) {
 				outerSchema.Children = []*schema.Node{anySchema}
 				mod.Top = append(mod.Top, outerSchema)
 				outer := newInner(outerSchema)
-				tr.insert(nil, outer, insertDefault)
+				mustLink(t, tr.insert(nil, outer, insertDefault))
 				parent := &Node{schema: anySchema, any: &anyValue{}, flags: FlagDefault}
-				tr.insert(outer, parent, insertDefault)
+				mustLink(t, tr.insert(outer, parent, insertDefault))
 				outer.flags = FlagDefault
 				src := newTree(tr.set)
 				for _, name := range []string{"one", "two"} {
-					src.insert(nil, newOpaque(opaque{Name: name, Format: types.FormatJSON, set: tr.set}), insertLast)
+					mustLink(t, src.insert(nil, newOpaque(opaque{Name: name, Format: types.FormatJSON, set: tr.set}), insertLast))
 				}
 				dup := tr.Dup
 				want := 1
@@ -245,10 +245,10 @@ func TestAnyDupIntoPayload(t *testing.T) {
 					sn = x
 				}
 				parent := &Node{schema: sn, any: &anyValue{}}
-				tr.insert(nil, parent, insertDefault)
+				mustLink(t, tr.insert(nil, parent, insertDefault))
 				src := newTree(tr.set)
 				for _, name := range []string{"one", "two"} {
-					src.insert(nil, newOpaque(opaque{Name: name, Format: types.FormatJSON, set: tr.set}), insertLast)
+					mustLink(t, src.insert(nil, newOpaque(opaque{Name: name, Format: types.FormatJSON, set: tr.set}), insertLast))
 				}
 				op := tr.Dup
 				if siblings {
@@ -275,9 +275,9 @@ func TestAnyDupIntoPayload(t *testing.T) {
 	b := &schemaBuilder{t: t, set: tr.set}
 	sn := b.add(a.Module, nil, schema.Leaf, "v", &schema.Type{Base: schema.String})
 	parent := &Node{schema: a, any: &anyValue{}}
-	tr.insert(nil, parent, insertDefault)
+	mustLink(t, tr.insert(nil, parent, insertDefault))
 	src := b.term(sn, "v")
-	tr.insert(nil, src, insertDefault)
+	mustLink(t, tr.insert(nil, src, insertDefault))
 	if _, _, err := tr.Dup(src, parent, DupOptions{}); err != nil {
 		t.Fatal(err)
 	}
@@ -289,14 +289,14 @@ func TestAnyDupPayloadContext(t *testing.T) {
 			outer, a, _ := anyFixture()
 			payload, _, _ := anyFixture()
 			parent := newOpaque(opaque{Name: "parent", Format: types.FormatJSON, set: payload.set})
-			payload.insert(nil, parent, insertDefault)
+			mustLink(t, payload.insert(nil, parent, insertDefault))
 			owner, _, err := newAnyWork(context.Background(), Budget{}).createAny(outer, a, parent, nil, 0, true, false)
 			if err != nil {
 				t.Fatal(err)
 			}
-			outer.insert(nil, owner, insertDefault)
+			mustLink(t, outer.insert(nil, owner, insertDefault))
 			sourceA := newOpaque(opaque{Name: "a", Format: types.FormatJSON, set: outer.set})
-			outer.insert(nil, sourceA, insertDefault)
+			mustLink(t, outer.insert(nil, sourceA, insertDefault))
 			op := outer.Dup
 			if siblings {
 				op = outer.DupSiblings
@@ -307,7 +307,7 @@ func TestAnyDupPayloadContext(t *testing.T) {
 				t.Fatalf("mismatch mutated parent: %v", err)
 			}
 			sourceB := newOpaque(opaque{Name: "b", Format: types.FormatJSON, set: payload.set})
-			payload.insert(nil, sourceB, insertDefault)
+			mustLink(t, payload.insert(nil, sourceB, insertDefault))
 			d, err := dupTo(sourceB, nil, parent, 0, siblings)
 			if err != nil || d == nil || d.parent != parent || ctxOf(d) != payload.set || d.opaq.set != payload.set || treeOf(d) != outer {
 				t.Fatalf("B-to-B duplication: %v, %v", d, err)
@@ -329,10 +329,11 @@ func TestAnyTextNULBoundary(t *testing.T) {
 				n, _, err = w.createAny(tr, x, nil, &text, types.HintString, action == "create-transfer", false)
 			case "copy":
 				n = &Node{schema: x, payloadSet: tr.set}
+				n.refreshHash(nil)
 				err = n.copyAnyValue(w, nil, &text, types.HintString)
 			case "dup":
 				src := &Node{schema: x, any: &anyValue{text: &text, hints: types.HintString}}
-				tr.insert(nil, src, insertDefault)
+				mustLink(t, tr.insert(nil, src, insertDefault))
 				n, _, err = tr.Dup(src, nil, DupOptions{})
 			}
 			if err != nil || n == nil || n.any.text == nil || *n.any.text != "a" {
@@ -378,10 +379,10 @@ func TestAnyExactNodeBudget(t *testing.T) {
 		t.Fatalf("additional node: %v", err)
 	}
 	root := &Node{schema: a, any: &anyValue{}}
-	tr.insert(nil, root, insertDefault)
+	mustLink(t, tr.insert(nil, root, insertDefault))
 	for _, value := range []string{"<n/>", "{}"} {
 		v := value
-		tr.insert(root, &Node{schema: x, any: &anyValue{text: &v}, payloadSet: tr.set}, insertLast)
+		mustLink(t, tr.insert(root, &Node{schema: x, any: &anyValue{text: &v}, payloadSet: tr.set}, insertLast))
 	}
 	d, err := tr.dupWork(root, nil, false, insertDefault, 0, newAnyWork(context.Background(), Budget{MaxNodes: 1}))
 	if err != nil {
@@ -405,15 +406,15 @@ func TestAnyTrimPayloadBudgetAtomic(t *testing.T) {
 			b := &schemaBuilder{t: t, set: payload.set}
 			sn := b.add(pa.Module, nil, schema.Leaf, "v", &schema.Type{Base: schema.String})
 			root := &Node{schema: a, any: &anyValue{}}
-			outer.insert(nil, root, insertDefault)
+			mustLink(t, outer.insert(nil, root, insertDefault))
 			parent := root
 			for range tc.depth {
 				n := &Node{schema: pa, any: &anyValue{}, payloadSet: payload.set}
-				outer.insert(parent, n, insertLast)
+				mustLink(t, outer.insert(parent, n, insertLast))
 				parent = n
 			}
 			leaf := b.term(sn, "v")
-			outer.insert(parent, leaf, insertLast)
+			mustLink(t, outer.insert(parent, leaf, insertLast))
 			var outside []*Node
 			for range tc.links {
 				n := b.term(sn, "v")
@@ -458,7 +459,7 @@ func TestAnyWideComparisonWork(t *testing.T) {
 			sn := b.add(a.Module, nil, schema.LeafList, "v", &schema.Type{Base: schema.String})
 			makeAny := func(dst *Tree, reverse bool) *Node {
 				n := &Node{schema: a, any: &anyValue{}}
-				dst.insert(nil, n, insertDefault)
+				mustLink(t, dst.insert(nil, n, insertDefault))
 				// Deliberately reverse physical input order; lookup must find the first matching value.
 				for i := range width {
 					j := i
@@ -524,8 +525,8 @@ func TestAnyComparisonFirstMatch(t *testing.T) {
 				other = db.add(da.Module, nil, schema.LeafList, "u", &schema.Type{Base: schema.String})
 			}
 			left, right := &Node{schema: a, any: &anyValue{}}, &Node{schema: a, any: &anyValue{}}
-			tr.insert(nil, left, insertLast)
-			tr.insert(nil, right, insertLast)
+			mustLink(t, tr.insert(nil, left, insertLast))
+			mustLink(t, tr.insert(nil, right, insertLast))
 			for i := range 128 {
 				h := types.JSONHints("number")
 				if i%2 != 0 {
@@ -564,14 +565,14 @@ func TestAnyComparisonFirstMatch(t *testing.T) {
 	list.Keys = []*schema.Node{key}
 	val := b.add(a.Module, list, schema.Leaf, "value", &schema.Type{Base: schema.String})
 	left, right := &Node{schema: a, any: &anyValue{}}, &Node{schema: a, any: &anyValue{}}
-	tr.insert(nil, left, insertLast)
-	tr.insert(nil, right, insertLast)
+	mustLink(t, tr.insert(nil, left, insertLast))
+	mustLink(t, tr.insert(nil, right, insertLast))
 	for _, owner := range []*Node{left, right} {
 		for _, text := range []string{"first", "second"} {
 			n := newInner(list)
-			tr.insert(owner, n, insertLast)
-			tr.insert(n, b.term(key, "same"), insertLast)
-			tr.insert(n, b.term(val, text), insertLast)
+			mustLink(t, tr.insert(owner, n, insertLast))
+			mustLink(t, tr.insert(n, b.term(key, "same"), insertLast))
+			mustLink(t, tr.insert(n, b.term(val, text), insertLast))
 		}
 	}
 	if left.Equal(right, CompareOptions{}) {
@@ -653,14 +654,14 @@ func TestCompareCrossContextInstanceOrdering(t *testing.T) {
 				}
 				tr := newTree(set)
 				root := newInner(container)
-				tr.insert(nil, root, insertDefault)
+				mustLink(t, tr.insert(nil, root, insertDefault))
 				for _, value := range []string{"b", "a"} {
 					if tc.kind == schema.LeafList {
-						tr.insert(root, b.term(inst, value), insertDefault)
+						mustLink(t, tr.insert(root, b.term(inst, value), insertDefault))
 					} else {
 						item := newInner(inst)
-						tr.insert(item, b.term(inst.Keys[0], value), insertDefault)
-						tr.insert(root, item, insertDefault)
+						mustLink(t, tr.insert(item, b.term(inst.Keys[0], value), insertDefault))
+						mustLink(t, tr.insert(root, item, insertDefault))
 					}
 				}
 				if root.kids.ht != nil {

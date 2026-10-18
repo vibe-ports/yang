@@ -1,0 +1,18 @@
+fixtures:
+  # The fourth keyed-list instance builds the children table after the descending run became dirty. Querying that instance must find its stored-hash record.
+  - id: protocol-v2/hash-dirty-run-threshold-xml-list
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.8.5"]
+    areas: [operations, xpath]
+    request:
+      op: xpath
+      searchdirs: [hash-target]
+      modules: [{name: pv2-hash-ctx}]
+      context_options: [no_yanglibrary]
+      format: xml
+      data_type: data
+      parse_only: true
+      data: '<r xmlns="urn:vibe-ports:yang:conformance:pv2-hash-ctx"><l><k>4</k></l><l><k>3</k></l><l><k>2</k></l><l><k>1</k></l></r>'
+      xpath: "/pv2-hash-ctx:r/l[k='1']"
+    golden: golden/hash-dirty-run-threshold-xml-list.json

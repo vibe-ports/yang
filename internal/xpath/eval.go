@@ -157,6 +157,22 @@ func (ev *evaluator) tick() error {
 	return ev.err
 }
 
+// probeCharge accounts for data-dependent probe work in addition to evaluator ticks.
+// Test counters and the enforced step budget therefore measure the same work.
+func (ev *evaluator) probeCharge(work int64) error {
+	if ev.err != nil {
+		return ev.err
+	}
+	if work > int64(ev.steps) {
+		ev.steps = -1
+		ev.err = ErrBudget
+	} else {
+		ev.steps -= int(work)
+		ev.err = ev.ctx.Err()
+	}
+	return ev.err
+}
+
 // eval is eval_expr_select over the AST; ctx is the context set (never modified).
 func (ev *evaluator) eval(a ast, ctx value) (value, error) {
 	if err := ev.tick(); err != nil {
@@ -843,25 +859,39 @@ func (ev *evaluator) hashChild(set value, sn SchemaNode, name string, vals []str
 	}
 	var keys []SchemaNode
 	for _, k := range sn.Keys()[:len(vals)] {
+		if err := ev.tick(); err != nil {
+			return value{}, err
+		}
 		keys = append(keys, sn.Child(sn.Module(), k))
 	}
-	matches := func(c Node) bool { // lyd_find_sibling_first / lyd_find_sibling_val
+	var probe InstanceProbe
+	if prepare, ok := sn.(InstanceProbePreparer); ok && vals != nil {
+		var err error
+		probe, err = prepare.PrepareInstance(vals, ev.probeCharge)
+		if err != nil {
+			return value{}, err
+		}
+	}
+	matches := func(c Node) (bool, error) { // lyd_find_sibling_first / lyd_find_sibling_val
 		if len(keys) == 0 {
 			// lyd_find_sibling_val without a value is lyd_find_sibling_schema; a scan means no
 			// children hash table, or one the ChildLookup has already mapped this name into
-			return siblingSchema(c.Schema(), sn)
+			return siblingSchema(c.Schema(), sn), nil
 		}
 		if !sameSchema(c.Schema(), sn) { // lyd_compare_single_schema
-			return false
+			return false, nil
+		}
+		if probe != nil && c.Schema() == sn {
+			return probe.Match(c) // the stored-hash gate, then positional keys
 		}
 		kids := c.Children()
 		for i, ks := range keys {
 			j := slices.IndexFunc(kids, func(k Node) bool { return sameSchema(k.Schema(), ks) })
 			if j < 0 || valueOf(kids[j]).String() != vals[i] {
-				return false
+				return false, nil
 			}
 		}
-		return true
+		return true, nil
 	}
 	var out []item
 	for _, it := range set.nodes {
@@ -878,7 +908,15 @@ func (ev *evaluator) hashChild(set value, sn SchemaNode, name string, vals []str
 			if err := ev.tick(); err != nil {
 				return value{}, err
 			}
-			hit, looked = lookup.LookupChild(sn, vals)
+			if prepared, ok := lookup.(PreparedChildLookup); ok && probe != nil {
+				var err error
+				hit, looked, err = prepared.LookupPrepared(probe)
+				if err != nil {
+					return value{}, err
+				}
+			} else {
+				hit, looked = lookup.LookupChild(sn, vals)
+			}
 			if len(hit) > 1 {
 				hit = hit[:1]
 			}
@@ -898,7 +936,11 @@ func (ev *evaluator) hashChild(set value, sn SchemaNode, name string, vals []str
 				if err := ev.tick(); err != nil {
 					return value{}, err
 				}
-				if matches(c) {
+				match, err := matches(c)
+				if err != nil {
+					return value{}, err
+				}
+				if match {
 					hit = []Node{c}
 					break
 				}

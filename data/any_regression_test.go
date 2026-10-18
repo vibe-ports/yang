@@ -58,9 +58,9 @@ func TestAnyCopyRejectsMixedInput(t *testing.T) {
 	tr.set.Modules = append(tr.set.Modules, yangMod)
 	text := "unparsed text"
 	src := &Node{schema: x, any: &anyValue{text: &text}}
-	tr.insert(nil, src, insertDefault)
+	mustLink(t, tr.insert(nil, src, insertDefault))
 	child := newOpaque(opaque{Name: "child", Format: types.FormatJSON, set: tr.set})
-	tr.insert(src, child, insertLast)
+	mustLink(t, tr.insert(src, child, insertLast))
 	if src.any.children.len() != 1 || src.any.text == nil {
 		t.Fatal("fixture must have both any inputs")
 	}
@@ -87,7 +87,7 @@ func TestAnyCopyRejectsMixedInput(t *testing.T) {
 	check("merge new", newTree(tr.set).Merge(tr))
 	mergeDst := newTree(tr.set)
 	old := "old text"
-	mergeDst.insert(nil, &Node{schema: x, any: &anyValue{text: &old}}, insertDefault)
+	mustLink(t, mergeDst.insert(nil, &Node{schema: x, any: &anyValue{text: &old}}, insertDefault))
 	check("merge matched", mergeDst.Merge(tr))
 	if err := tr.diffChangeOp(src, diffCreate); err != nil {
 		t.Fatal(err)
@@ -109,8 +109,8 @@ func TestAnyMixedDupMissingModulePrecedesCopyError(t *testing.T) {
 	srcTree, _, x := anyFixture()
 	text := "plain text"
 	src := &Node{schema: x, any: &anyValue{text: &text}}
-	srcTree.insert(nil, src, insertDefault)
-	srcTree.insert(src, newOpaque(opaque{Name: "child", Format: types.FormatJSON, set: srcTree.set}), insertLast)
+	mustLink(t, srcTree.insert(nil, src, insertDefault))
+	mustLink(t, srcTree.insert(src, newOpaque(opaque{Name: "child", Format: types.FormatJSON, set: srcTree.set}), insertLast))
 	if src.anyType() != anyValueMixed {
 		t.Fatal("source must carry both child and text")
 	}
@@ -134,14 +134,14 @@ func TestAnyMixedComparedAndMergedWithTree(t *testing.T) {
 	tr, _, x := anyFixture()
 	text := "plain text"
 	mixed := &Node{schema: x, any: &anyValue{text: &text}}
-	tr.insert(nil, mixed, insertDefault)
+	mustLink(t, tr.insert(nil, mixed, insertDefault))
 	child := newOpaque(opaque{Name: "child", Value: "value", Format: types.FormatJSON, set: tr.set})
-	tr.insert(mixed, child, insertLast)
+	mustLink(t, tr.insert(mixed, child, insertLast))
 	treeOnly := &Node{schema: x, any: &anyValue{}}
 	other := newTree(tr.set)
-	other.insert(nil, treeOnly, insertDefault)
+	mustLink(t, other.insert(nil, treeOnly, insertDefault))
 	otherChild := newOpaque(opaque{Name: "child", Value: "value", Format: types.FormatJSON, set: tr.set})
-	other.insert(treeOnly, otherChild, insertLast)
+	mustLink(t, other.insert(treeOnly, otherChild, insertLast))
 	if mixed.anyType() != anyValueMixed || treeOnly.anyType() != anyValueDataTree {
 		t.Fatal("mixed and tree-only payloads must have distinct kinds")
 	}
@@ -181,7 +181,7 @@ func TestAnyReparseFlagsGolden(t *testing.T) {
 				}
 				text := g[0].Typed[0].Any.Text
 				n := &Node{schema: sn, any: &anyValue{text: &text}}
-				tr.insert(nil, n, insertDefault)
+				mustLink(t, tr.insert(nil, n, insertDefault))
 				dst := newTree(tr.set)
 				var d *Node
 				var err error
@@ -193,7 +193,7 @@ func TestAnyReparseFlagsGolden(t *testing.T) {
 					err = d.copyAnyValue(newAnyWork(context.Background(), Budget{}), nil, &text, 0)
 				case "merge":
 					d = &Node{schema: sn, any: &anyValue{}}
-					dst.insert(nil, d, insertDefault)
+					mustLink(t, dst.insert(nil, d, insertDefault))
 					err = dst.Merge(tr)
 				}
 				if err != nil {
@@ -316,7 +316,7 @@ func TestAnyParseDiagnostics(t *testing.T) {
 			t.Run(sn.Name+"/dup/"+text, func(t *testing.T) {
 				src := newTree(set)
 				n := &Node{schema: sn, any: &anyValue{text: &text}}
-				src.insert(nil, n, insertDefault)
+				mustLink(t, src.insert(nil, n, insertDefault))
 				d, diags, err := newTree(set).Dup(n, nil, DupOptions{})
 				if err != nil || len(diags) != 0 {
 					t.Fatalf("copy parse diagnostics = %+v, error = %v", diags, err)
@@ -385,7 +385,7 @@ func TestAnyDetachedPayloadContexts(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				outer.insert(nil, n, insertDefault)
+				mustLink(t, outer.insert(nil, n, insertDefault))
 				payload := n.any.children.first()
 				if (payload == child) != (action == "transfer") || payload.parent != n ||
 					action != "transfer" && child.parent != nil {

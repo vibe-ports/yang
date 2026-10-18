@@ -1,0 +1,3510 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-hash-sweep",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r",
+          "schema": "/pv2-hash-sweep:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-address-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-address-v4",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-no-zone-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-no-zone-v4",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-prefix-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-prefix-v4",
+          "value": {
+            "canonical": "192.0.2.0/24",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v4",
+          "value": {
+            "canonical": "192.0.2.1/24",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-link-local-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-link-local-v4",
+          "value": {
+            "canonical": "169.254.1.1%7",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-address-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-address-v6",
+          "value": {
+            "canonical": "2001:db8::1",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-no-zone-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-no-zone-v6",
+          "value": {
+            "canonical": "2001:db8::1",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-prefix-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-prefix-v6",
+          "value": {
+            "canonical": "2001:db8::/64",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v6",
+          "value": {
+            "canonical": "2001:db8::1/64",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-link-local-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-link-local-v6",
+          "value": {
+            "canonical": "fe80::1%7",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "dup",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r",
+          "schema": "/pv2-hash-sweep:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-address-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-address-v4",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "union",
+            "typedef": "ip-address",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address"
+              },
+              "type": "string",
+              "typedef": "ipv4-address"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-no-zone-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-no-zone-v4",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "union",
+            "typedef": "ip-address-no-zone",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-no-zone"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-no-zone"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-prefix-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-prefix-v4",
+          "value": {
+            "canonical": "192.0.2.0/24",
+            "type": "union",
+            "typedef": "ip-prefix",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv4-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v4",
+          "value": {
+            "canonical": "192.0.2.1/24",
+            "type": "union",
+            "typedef": "ip-address-and-prefix",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-and-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-and-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-link-local-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-link-local-v4",
+          "value": {
+            "canonical": "169.254.1.1%7",
+            "type": "union",
+            "typedef": "ip-address-link-local",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-link-local"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-link-local"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-address-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-address-v6",
+          "value": {
+            "canonical": "2001:db8::1",
+            "type": "union",
+            "typedef": "ip-address",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address"
+              },
+              "type": "string",
+              "typedef": "ipv6-address"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-no-zone-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-no-zone-v6",
+          "value": {
+            "canonical": "2001:db8::1",
+            "type": "union",
+            "typedef": "ip-address-no-zone",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-no-zone"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-no-zone"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-prefix-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-prefix-v6",
+          "value": {
+            "canonical": "2001:db8::/64",
+            "type": "union",
+            "typedef": "ip-prefix",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv6-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v6",
+          "value": {
+            "canonical": "2001:db8::1/64",
+            "type": "union",
+            "typedef": "ip-address-and-prefix",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-and-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-and-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-link-local-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-link-local-v6",
+          "value": {
+            "canonical": "fe80::1%7",
+            "type": "union",
+            "typedef": "ip-address-link-local",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-link-local"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-link-local"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "compare": {
+        "err": 11,
+        "name": "LY_ENOT"
+      },
+      "diagnostics": [],
+      "do": "compare",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r",
+          "schema": "/pv2-hash-sweep:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-address-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-address-v4",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "union",
+            "typedef": "ip-address",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address"
+              },
+              "type": "string",
+              "typedef": "ipv4-address"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-no-zone-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-no-zone-v4",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "union",
+            "typedef": "ip-address-no-zone",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-no-zone"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-no-zone"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-prefix-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-prefix-v4",
+          "value": {
+            "canonical": "192.0.2.0/24",
+            "type": "union",
+            "typedef": "ip-prefix",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv4-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v4",
+          "value": {
+            "canonical": "192.0.2.1/24",
+            "type": "union",
+            "typedef": "ip-address-and-prefix",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-and-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-and-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-link-local-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-link-local-v4",
+          "value": {
+            "canonical": "169.254.1.1%7",
+            "type": "union",
+            "typedef": "ip-address-link-local",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-link-local"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-link-local"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-address-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-address-v6",
+          "value": {
+            "canonical": "2001:db8::1",
+            "type": "union",
+            "typedef": "ip-address",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address"
+              },
+              "type": "string",
+              "typedef": "ipv6-address"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-no-zone-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-no-zone-v6",
+          "value": {
+            "canonical": "2001:db8::1",
+            "type": "union",
+            "typedef": "ip-address-no-zone",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-no-zone"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-no-zone"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-prefix-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-prefix-v6",
+          "value": {
+            "canonical": "2001:db8::/64",
+            "type": "union",
+            "typedef": "ip-prefix",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv6-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v6",
+          "value": {
+            "canonical": "2001:db8::1/64",
+            "type": "union",
+            "typedef": "ip-address-and-prefix",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-and-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-and-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-link-local-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-link-local-v6",
+          "value": {
+            "canonical": "fe80::1%7",
+            "type": "union",
+            "typedef": "ip-address-link-local",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-link-local"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-link-local"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "compare": {
+        "err": 11,
+        "name": "LY_ENOT"
+      },
+      "diagnostics": [],
+      "do": "compare",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r",
+          "schema": "/pv2-hash-sweep:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-address-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-address-v4",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "union",
+            "typedef": "ip-address",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address"
+              },
+              "type": "string",
+              "typedef": "ipv4-address"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-no-zone-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-no-zone-v4",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "union",
+            "typedef": "ip-address-no-zone",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-no-zone"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-no-zone"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-prefix-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-prefix-v4",
+          "value": {
+            "canonical": "192.0.2.0/24",
+            "type": "union",
+            "typedef": "ip-prefix",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv4-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v4",
+          "value": {
+            "canonical": "192.0.2.1/24",
+            "type": "union",
+            "typedef": "ip-address-and-prefix",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-and-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-and-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-link-local-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-link-local-v4",
+          "value": {
+            "canonical": "169.254.1.1%7",
+            "type": "union",
+            "typedef": "ip-address-link-local",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-link-local"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-link-local"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-address-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-address-v6",
+          "value": {
+            "canonical": "2001:db8::1",
+            "type": "union",
+            "typedef": "ip-address",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address"
+              },
+              "type": "string",
+              "typedef": "ipv6-address"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-no-zone-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-no-zone-v6",
+          "value": {
+            "canonical": "2001:db8::1",
+            "type": "union",
+            "typedef": "ip-address-no-zone",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-no-zone"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-no-zone"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-prefix-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-prefix-v6",
+          "value": {
+            "canonical": "2001:db8::/64",
+            "type": "union",
+            "typedef": "ip-prefix",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv6-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v6",
+          "value": {
+            "canonical": "2001:db8::1/64",
+            "type": "union",
+            "typedef": "ip-address-and-prefix",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-and-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-and-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-link-local-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-link-local-v6",
+          "value": {
+            "canonical": "fe80::1%7",
+            "type": "union",
+            "typedef": "ip-address-link-local",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-link-local"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-link-local"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "compare": {
+        "err": 11,
+        "name": "LY_ENOT"
+      },
+      "diagnostics": [],
+      "do": "compare",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r",
+          "schema": "/pv2-hash-sweep:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-address-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-address-v4",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "union",
+            "typedef": "ip-address",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address"
+              },
+              "type": "string",
+              "typedef": "ipv4-address"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-no-zone-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-no-zone-v4",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "union",
+            "typedef": "ip-address-no-zone",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-no-zone"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-no-zone"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-prefix-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-prefix-v4",
+          "value": {
+            "canonical": "192.0.2.0/24",
+            "type": "union",
+            "typedef": "ip-prefix",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv4-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v4",
+          "value": {
+            "canonical": "192.0.2.1/24",
+            "type": "union",
+            "typedef": "ip-address-and-prefix",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-and-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-and-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-link-local-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-link-local-v4",
+          "value": {
+            "canonical": "169.254.1.1%7",
+            "type": "union",
+            "typedef": "ip-address-link-local",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-link-local"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-link-local"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-address-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-address-v6",
+          "value": {
+            "canonical": "2001:db8::1",
+            "type": "union",
+            "typedef": "ip-address",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address"
+              },
+              "type": "string",
+              "typedef": "ipv6-address"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-no-zone-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-no-zone-v6",
+          "value": {
+            "canonical": "2001:db8::1",
+            "type": "union",
+            "typedef": "ip-address-no-zone",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-no-zone"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-no-zone"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-prefix-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-prefix-v6",
+          "value": {
+            "canonical": "2001:db8::/64",
+            "type": "union",
+            "typedef": "ip-prefix",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv6-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v6",
+          "value": {
+            "canonical": "2001:db8::1/64",
+            "type": "union",
+            "typedef": "ip-address-and-prefix",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-and-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-and-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-link-local-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-link-local-v6",
+          "value": {
+            "canonical": "fe80::1%7",
+            "type": "union",
+            "typedef": "ip-address-link-local",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-link-local"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-link-local"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "compare": {
+        "err": 11,
+        "name": "LY_ENOT"
+      },
+      "diagnostics": [],
+      "do": "compare",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r",
+          "schema": "/pv2-hash-sweep:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-address-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-address-v4",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "union",
+            "typedef": "ip-address",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address"
+              },
+              "type": "string",
+              "typedef": "ipv4-address"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-no-zone-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-no-zone-v4",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "union",
+            "typedef": "ip-address-no-zone",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-no-zone"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-no-zone"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-prefix-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-prefix-v4",
+          "value": {
+            "canonical": "192.0.2.0/24",
+            "type": "union",
+            "typedef": "ip-prefix",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv4-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v4",
+          "value": {
+            "canonical": "192.0.2.1/24",
+            "type": "union",
+            "typedef": "ip-address-and-prefix",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-and-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-and-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-link-local-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-link-local-v4",
+          "value": {
+            "canonical": "169.254.1.1%7",
+            "type": "union",
+            "typedef": "ip-address-link-local",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-link-local"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-link-local"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-address-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-address-v6",
+          "value": {
+            "canonical": "2001:db8::1",
+            "type": "union",
+            "typedef": "ip-address",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address"
+              },
+              "type": "string",
+              "typedef": "ipv6-address"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-no-zone-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-no-zone-v6",
+          "value": {
+            "canonical": "2001:db8::1",
+            "type": "union",
+            "typedef": "ip-address-no-zone",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-no-zone"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-no-zone"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-prefix-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-prefix-v6",
+          "value": {
+            "canonical": "2001:db8::/64",
+            "type": "union",
+            "typedef": "ip-prefix",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv6-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v6",
+          "value": {
+            "canonical": "2001:db8::1/64",
+            "type": "union",
+            "typedef": "ip-address-and-prefix",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-and-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-and-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-link-local-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-link-local-v6",
+          "value": {
+            "canonical": "fe80::1%7",
+            "type": "union",
+            "typedef": "ip-address-link-local",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-link-local"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-link-local"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "compare": {
+        "err": 11,
+        "name": "LY_ENOT"
+      },
+      "diagnostics": [],
+      "do": "compare",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r",
+          "schema": "/pv2-hash-sweep:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-address-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-address-v4",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "union",
+            "typedef": "ip-address",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address"
+              },
+              "type": "string",
+              "typedef": "ipv4-address"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-no-zone-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-no-zone-v4",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "union",
+            "typedef": "ip-address-no-zone",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-no-zone"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-no-zone"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-prefix-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-prefix-v4",
+          "value": {
+            "canonical": "192.0.2.0/24",
+            "type": "union",
+            "typedef": "ip-prefix",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv4-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v4",
+          "value": {
+            "canonical": "192.0.2.1/24",
+            "type": "union",
+            "typedef": "ip-address-and-prefix",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-and-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-and-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-link-local-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-link-local-v4",
+          "value": {
+            "canonical": "169.254.1.1%7",
+            "type": "union",
+            "typedef": "ip-address-link-local",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-link-local"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-link-local"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-address-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-address-v6",
+          "value": {
+            "canonical": "2001:db8::1",
+            "type": "union",
+            "typedef": "ip-address",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address"
+              },
+              "type": "string",
+              "typedef": "ipv6-address"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-no-zone-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-no-zone-v6",
+          "value": {
+            "canonical": "2001:db8::1",
+            "type": "union",
+            "typedef": "ip-address-no-zone",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-no-zone"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-no-zone"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-prefix-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-prefix-v6",
+          "value": {
+            "canonical": "2001:db8::/64",
+            "type": "union",
+            "typedef": "ip-prefix",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv6-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v6",
+          "value": {
+            "canonical": "2001:db8::1/64",
+            "type": "union",
+            "typedef": "ip-address-and-prefix",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-and-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-and-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-link-local-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-link-local-v6",
+          "value": {
+            "canonical": "fe80::1%7",
+            "type": "union",
+            "typedef": "ip-address-link-local",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-link-local"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-link-local"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "compare": {
+        "err": 11,
+        "name": "LY_ENOT"
+      },
+      "diagnostics": [],
+      "do": "compare",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r",
+          "schema": "/pv2-hash-sweep:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-address-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-address-v4",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "union",
+            "typedef": "ip-address",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address"
+              },
+              "type": "string",
+              "typedef": "ipv4-address"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-no-zone-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-no-zone-v4",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "union",
+            "typedef": "ip-address-no-zone",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-no-zone"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-no-zone"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-prefix-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-prefix-v4",
+          "value": {
+            "canonical": "192.0.2.0/24",
+            "type": "union",
+            "typedef": "ip-prefix",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv4-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v4",
+          "value": {
+            "canonical": "192.0.2.1/24",
+            "type": "union",
+            "typedef": "ip-address-and-prefix",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-and-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-and-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-link-local-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-link-local-v4",
+          "value": {
+            "canonical": "169.254.1.1%7",
+            "type": "union",
+            "typedef": "ip-address-link-local",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-link-local"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-link-local"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-address-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-address-v6",
+          "value": {
+            "canonical": "2001:db8::1",
+            "type": "union",
+            "typedef": "ip-address",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address"
+              },
+              "type": "string",
+              "typedef": "ipv6-address"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-no-zone-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-no-zone-v6",
+          "value": {
+            "canonical": "2001:db8::1",
+            "type": "union",
+            "typedef": "ip-address-no-zone",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-no-zone"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-no-zone"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-prefix-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-prefix-v6",
+          "value": {
+            "canonical": "2001:db8::/64",
+            "type": "union",
+            "typedef": "ip-prefix",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv6-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v6",
+          "value": {
+            "canonical": "2001:db8::1/64",
+            "type": "union",
+            "typedef": "ip-address-and-prefix",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-and-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-and-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-link-local-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-link-local-v6",
+          "value": {
+            "canonical": "fe80::1%7",
+            "type": "union",
+            "typedef": "ip-address-link-local",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-link-local"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-link-local"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "compare": {
+        "err": 11,
+        "name": "LY_ENOT"
+      },
+      "diagnostics": [],
+      "do": "compare",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r",
+          "schema": "/pv2-hash-sweep:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-address-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-address-v4",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "union",
+            "typedef": "ip-address",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address"
+              },
+              "type": "string",
+              "typedef": "ipv4-address"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-no-zone-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-no-zone-v4",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "union",
+            "typedef": "ip-address-no-zone",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-no-zone"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-no-zone"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-prefix-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-prefix-v4",
+          "value": {
+            "canonical": "192.0.2.0/24",
+            "type": "union",
+            "typedef": "ip-prefix",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv4-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v4",
+          "value": {
+            "canonical": "192.0.2.1/24",
+            "type": "union",
+            "typedef": "ip-address-and-prefix",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-and-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-and-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-link-local-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-link-local-v4",
+          "value": {
+            "canonical": "169.254.1.1%7",
+            "type": "union",
+            "typedef": "ip-address-link-local",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-link-local"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-link-local"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-address-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-address-v6",
+          "value": {
+            "canonical": "2001:db8::1",
+            "type": "union",
+            "typedef": "ip-address",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address"
+              },
+              "type": "string",
+              "typedef": "ipv6-address"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-no-zone-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-no-zone-v6",
+          "value": {
+            "canonical": "2001:db8::1",
+            "type": "union",
+            "typedef": "ip-address-no-zone",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-no-zone"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-no-zone"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-prefix-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-prefix-v6",
+          "value": {
+            "canonical": "2001:db8::/64",
+            "type": "union",
+            "typedef": "ip-prefix",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv6-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v6",
+          "value": {
+            "canonical": "2001:db8::1/64",
+            "type": "union",
+            "typedef": "ip-address-and-prefix",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-and-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-and-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-link-local-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-link-local-v6",
+          "value": {
+            "canonical": "fe80::1%7",
+            "type": "union",
+            "typedef": "ip-address-link-local",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-link-local"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-link-local"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "compare": {
+        "err": 11,
+        "name": "LY_ENOT"
+      },
+      "diagnostics": [],
+      "do": "compare",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r",
+          "schema": "/pv2-hash-sweep:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-address-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-address-v4",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "union",
+            "typedef": "ip-address",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address"
+              },
+              "type": "string",
+              "typedef": "ipv4-address"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-no-zone-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-no-zone-v4",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "union",
+            "typedef": "ip-address-no-zone",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-no-zone"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-no-zone"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-prefix-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-prefix-v4",
+          "value": {
+            "canonical": "192.0.2.0/24",
+            "type": "union",
+            "typedef": "ip-prefix",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv4-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v4",
+          "value": {
+            "canonical": "192.0.2.1/24",
+            "type": "union",
+            "typedef": "ip-address-and-prefix",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-and-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-and-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-link-local-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-link-local-v4",
+          "value": {
+            "canonical": "169.254.1.1%7",
+            "type": "union",
+            "typedef": "ip-address-link-local",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-link-local"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-link-local"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-address-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-address-v6",
+          "value": {
+            "canonical": "2001:db8::1",
+            "type": "union",
+            "typedef": "ip-address",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address"
+              },
+              "type": "string",
+              "typedef": "ipv6-address"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-no-zone-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-no-zone-v6",
+          "value": {
+            "canonical": "2001:db8::1",
+            "type": "union",
+            "typedef": "ip-address-no-zone",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-no-zone"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-no-zone"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-prefix-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-prefix-v6",
+          "value": {
+            "canonical": "2001:db8::/64",
+            "type": "union",
+            "typedef": "ip-prefix",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv6-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v6",
+          "value": {
+            "canonical": "2001:db8::1/64",
+            "type": "union",
+            "typedef": "ip-address-and-prefix",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-and-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-and-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-link-local-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-link-local-v6",
+          "value": {
+            "canonical": "fe80::1%7",
+            "type": "union",
+            "typedef": "ip-address-link-local",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-link-local"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-link-local"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "compare": {
+        "err": 11,
+        "name": "LY_ENOT"
+      },
+      "diagnostics": [],
+      "do": "compare",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r",
+          "schema": "/pv2-hash-sweep:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-address-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-address-v4",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "union",
+            "typedef": "ip-address",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address"
+              },
+              "type": "string",
+              "typedef": "ipv4-address"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-no-zone-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-no-zone-v4",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "union",
+            "typedef": "ip-address-no-zone",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-no-zone"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-no-zone"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-prefix-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-prefix-v4",
+          "value": {
+            "canonical": "192.0.2.0/24",
+            "type": "union",
+            "typedef": "ip-prefix",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv4-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v4",
+          "value": {
+            "canonical": "192.0.2.1/24",
+            "type": "union",
+            "typedef": "ip-address-and-prefix",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-and-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-and-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-link-local-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-link-local-v4",
+          "value": {
+            "canonical": "169.254.1.1%7",
+            "type": "union",
+            "typedef": "ip-address-link-local",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-link-local"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-link-local"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-address-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-address-v6",
+          "value": {
+            "canonical": "2001:db8::1",
+            "type": "union",
+            "typedef": "ip-address",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address"
+              },
+              "type": "string",
+              "typedef": "ipv6-address"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-no-zone-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-no-zone-v6",
+          "value": {
+            "canonical": "2001:db8::1",
+            "type": "union",
+            "typedef": "ip-address-no-zone",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-no-zone"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-no-zone"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-prefix-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-prefix-v6",
+          "value": {
+            "canonical": "2001:db8::/64",
+            "type": "union",
+            "typedef": "ip-prefix",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv6-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v6",
+          "value": {
+            "canonical": "2001:db8::1/64",
+            "type": "union",
+            "typedef": "ip-address-and-prefix",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-and-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-and-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-link-local-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-link-local-v6",
+          "value": {
+            "canonical": "fe80::1%7",
+            "type": "union",
+            "typedef": "ip-address-link-local",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-link-local"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-link-local"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "compare": {
+        "err": 11,
+        "name": "LY_ENOT"
+      },
+      "diagnostics": [],
+      "do": "compare",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r",
+          "schema": "/pv2-hash-sweep:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-address-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-address-v4",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "union",
+            "typedef": "ip-address",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address"
+              },
+              "type": "string",
+              "typedef": "ipv4-address"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-no-zone-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-no-zone-v4",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "union",
+            "typedef": "ip-address-no-zone",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-no-zone"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-no-zone"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-prefix-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-prefix-v4",
+          "value": {
+            "canonical": "192.0.2.0/24",
+            "type": "union",
+            "typedef": "ip-prefix",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv4-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v4",
+          "value": {
+            "canonical": "192.0.2.1/24",
+            "type": "union",
+            "typedef": "ip-address-and-prefix",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-and-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-and-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-link-local-v4[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-link-local-v4",
+          "value": {
+            "canonical": "169.254.1.1%7",
+            "type": "union",
+            "typedef": "ip-address-link-local",
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv4-address-link-local"
+              },
+              "type": "string",
+              "typedef": "ipv4-address-link-local"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-address-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-address-v6",
+          "value": {
+            "canonical": "2001:db8::1",
+            "type": "union",
+            "typedef": "ip-address",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address"
+              },
+              "type": "string",
+              "typedef": "ipv6-address"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-no-zone-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-no-zone-v6",
+          "value": {
+            "canonical": "2001:db8::1",
+            "type": "union",
+            "typedef": "ip-address-no-zone",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-no-zone"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-no-zone"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-prefix-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-prefix-v6",
+          "value": {
+            "canonical": "2001:db8::/64",
+            "type": "union",
+            "typedef": "ip-prefix",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv6-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v6",
+          "value": {
+            "canonical": "2001:db8::1/64",
+            "type": "union",
+            "typedef": "ip-address-and-prefix",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-and-prefix"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-and-prefix"
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ip-link-local-v6[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ip-link-local-v6",
+          "value": {
+            "canonical": "fe80::1%7",
+            "type": "union",
+            "typedef": "ip-address-link-local",
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": "ipv6-address-link-local"
+              },
+              "type": "string",
+              "typedef": "ipv6-address-link-local"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

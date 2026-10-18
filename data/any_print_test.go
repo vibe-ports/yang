@@ -56,8 +56,8 @@ func TestAnyXPathCastCommittedGoldens(t *testing.T) {
 			}
 			tr := newTree(set)
 			n := &Node{schema: x, any: &anyValue{text: tc.text}}
-			tr.insert(nil, n, insertDefault)
-			tr.insert(n, newOpaque(opaque{Name: "target", Value: "value", ModuleNS: x.Module.Namespace, Format: types.FormatXML, set: set}), insertLast)
+			mustLink(t, tr.insert(nil, n, insertDefault))
+			mustLink(t, tr.insert(n, newOpaque(opaque{Name: "target", Value: "value", ModuleNS: x.Module.Namespace, Format: types.FormatXML, set: set}), insertLast))
 			r, err := evalAnyString(context.Background(), t, n, 1000)
 			if err != nil || r.Str != golden.Result.Value {
 				t.Fatalf("XPath cast = %q, %v; golden = %q", r.Str, err, golden.Result.Value)
@@ -78,13 +78,13 @@ func TestAnyXPathCastClimbsAncestorAndSiblings(t *testing.T) {
 	outer.Children = []*schema.Node{nested}
 	m.Top = append(m.Top, outer)
 	before := &Node{schema: x, any: &anyValue{}}
-	tr.insert(nil, before, insertDefault)
-	tr.insert(before, newOpaque(opaque{Name: "before", Format: types.FormatXML, ModuleNS: m.Namespace}), insertLast)
+	mustLink(t, tr.insert(nil, before, insertDefault))
+	mustLink(t, tr.insert(before, newOpaque(opaque{Name: "before", Format: types.FormatXML, ModuleNS: m.Namespace}), insertLast))
 	parent := newInner(outer)
-	tr.insert(nil, parent, insertDefault)
+	mustLink(t, tr.insert(nil, parent, insertDefault))
 	n := &Node{schema: nested, any: &anyValue{}}
-	tr.insert(parent, n, insertDefault)
-	tr.insert(n, newOpaque(opaque{Name: "inside", Format: types.FormatXML, ModuleNS: m.Namespace}), insertLast)
+	mustLink(t, tr.insert(parent, n, insertDefault))
+	mustLink(t, tr.insert(n, newOpaque(opaque{Name: "inside", Format: types.FormatXML, ModuleNS: m.Namespace}), insertLast))
 	var want bytes.Buffer
 	if err := tr.PrintXML(&want, PrintOptions{}); err != nil {
 		t.Fatal(err)
@@ -101,10 +101,10 @@ func TestAnyXPathCastClimbsAncestorAndSiblings(t *testing.T) {
 func TestAnyXPathCastLargeValueSmallBudget(t *testing.T) {
 	tr, _, x := anyFixture()
 	n := &Node{schema: x, any: &anyValue{}}
-	tr.insert(nil, n, insertDefault)
+	mustLink(t, tr.insert(nil, n, insertDefault))
 	value := strings.Repeat("&", 16<<20)
 	for i := 0; i < 200; i++ {
-		tr.insert(n, newOpaque(opaque{Name: "v", ModuleNS: x.Module.Namespace, Value: value, Format: types.FormatXML}), insertLast)
+		mustLink(t, tr.insert(n, newOpaque(opaque{Name: "v", ModuleNS: x.Module.Namespace, Value: value, Format: types.FormatXML}), insertLast))
 	}
 	runtime.GC()
 	var before, after runtime.MemStats
@@ -137,15 +137,15 @@ func TestAnyXPathCastChargesIndentation(t *testing.T) {
 	m.Top = []*schema.Node{top}
 	tr := newTree(&schema.Set{Modules: []*schema.Module{m}})
 	root := newInner(top)
-	tr.insert(nil, root, insertDefault)
+	mustLink(t, tr.insert(nil, root, insertDefault))
 	parent := root
 	for sn := top; len(sn.Children) > 0 && sn.Children[0].Kind == schema.Container; sn = sn.Children[0] {
 		c := newInner(sn.Children[0])
-		tr.insert(parent, c, insertDefault)
+		mustLink(t, tr.insert(parent, c, insertDefault))
 		parent = c
 	}
 	text := strings.Repeat("a\n", lines) // 32 KiB of source, 128 MiB indented
-	tr.insert(parent, &Node{schema: x, any: &anyValue{text: &text}}, insertDefault)
+	mustLink(t, tr.insert(parent, &Node{schema: x, any: &anyValue{text: &text}}, insertDefault))
 
 	runtime.GC()
 	var before, after runtime.MemStats
@@ -197,7 +197,7 @@ func TestAnyPrintOracleGoldens(t *testing.T) {
 			}
 			tr := newTree(set)
 			n := &Node{schema: sn, any: &anyValue{}}
-			tr.insert(nil, n, insertDefault)
+			mustLink(t, tr.insert(nil, n, insertDefault))
 			if tc.payload != "" {
 				fragment, diags, err := parseXMLString(set, `<wrapper xmlns="urn:tests:types">`+tc.payload+`</wrapper>`, Opaque, true)
 				if err != nil {
@@ -233,14 +233,14 @@ func TestAnyPrintJSONOpaqueParentUsesOwnContext(t *testing.T) {
 	target := &schema.Set{Modules: []*schema.Module{h}}
 	tr := newTree(target)
 	anyNode := &Node{schema: a, any: &anyValue{}}
-	tr.insert(nil, anyNode, insertDefault)
+	mustLink(t, tr.insert(nil, anyNode, insertDefault))
 	parent := newOpaque(opaque{Name: "parent", ModuleNS: p.Namespace, Format: types.FormatXML, set: source})
-	tr.insert(anyNode, parent, insertLast)
+	mustLink(t, tr.insert(anyNode, parent, insertLast))
 	value, diag := types.Store(v.Type, "x", types.FormatJSON, types.HintString, nil, v)
 	if diag != nil {
 		t.Fatal(diag)
 	}
-	tr.insert(parent, newTerm(v, value), insertDefault)
+	mustLink(t, tr.insert(parent, newTerm(v, value), insertDefault))
 	var out bytes.Buffer
 	if err := tr.PrintJSON(&out, PrintOptions{Shrink: true}); err != nil {
 		t.Fatal(err)
@@ -287,7 +287,7 @@ func TestAnyScalarOracleGoldens(t *testing.T) {
 				t.Fatal("missing oracle dump")
 			}
 			tr := newTree(set)
-			tr.insert(nil, &Node{schema: sn, any: &anyValue{text: tc.text, hints: types.HintString}}, insertDefault)
+			mustLink(t, tr.insert(nil, &Node{schema: sn, any: &anyValue{text: tc.text, hints: types.HintString}}, insertDefault))
 			var j, xml bytes.Buffer
 			if err := tr.PrintJSON(&j, PrintOptions{}); err != nil {
 				t.Fatal(err)
@@ -308,8 +308,8 @@ func TestAnyXPathCastErrorsAndBudget(t *testing.T) {
 	tr, a, x := anyFixture()
 	text := "plain text"
 	mixed := &Node{schema: x, any: &anyValue{text: &text}}
-	tr.insert(nil, mixed, insertDefault)
-	tr.insert(mixed, newOpaque(opaque{Name: "child", Format: types.FormatXML, ModuleNS: "urn:anycore"}), insertLast)
+	mustLink(t, tr.insert(nil, mixed, insertDefault))
+	mustLink(t, tr.insert(mixed, newOpaque(opaque{Name: "child", Format: types.FormatXML, ModuleNS: "urn:anycore"}), insertLast))
 	if s, ok, err := mixed.AnyValueString(FormatXML); err != nil || !ok || !strings.Contains(s, "<child") {
 		t.Fatalf("child-first AnyValueString = %q, %t, %v", s, ok, err)
 	}
@@ -318,9 +318,9 @@ func TestAnyXPathCastErrorsAndBudget(t *testing.T) {
 	}
 
 	deep := &Node{schema: a, any: &anyValue{}}
-	tr.insert(nil, deep, insertDefault)
+	mustLink(t, tr.insert(nil, deep, insertDefault))
 	root := newOpaque(opaque{Name: "r", Format: types.FormatXML, ModuleNS: "urn:anycore"})
-	tr.insert(deep, root, insertLast)
+	mustLink(t, tr.insert(deep, root, insertLast))
 	p := root
 	for range maxPrintDepth {
 		child := newOpaque(opaque{Name: "r", Format: types.FormatXML, ModuleNS: "urn:anycore"})
@@ -339,8 +339,8 @@ func TestAnyXPathCastErrorsAndBudget(t *testing.T) {
 	}
 	bad := &Node{schema: a, any: &anyValue{}}
 	badTree := newTree(tr.set)
-	badTree.insert(nil, bad, insertDefault)
-	badTree.insert(bad, newTerm(badSchema, badValue), insertDefault)
+	mustLink(t, badTree.insert(nil, bad, insertDefault))
+	mustLink(t, badTree.insert(bad, newTerm(badSchema, badValue), insertDefault))
 	_, _, printErr := bad.AnyValueString(FormatXML)
 	var printed *ValidationError
 	if !errors.As(printErr, &printed) {
@@ -357,9 +357,9 @@ func TestAnyXPathCastErrorsAndBudget(t *testing.T) {
 
 	wide := &Node{schema: a, any: &anyValue{}}
 	wideTree := newTree(tr.set)
-	wideTree.insert(nil, wide, insertDefault)
+	mustLink(t, wideTree.insert(nil, wide, insertDefault))
 	for range 200 {
-		wideTree.insert(wide, newOpaque(opaque{Name: "item", Format: types.FormatXML, ModuleNS: "urn:anycore"}), insertLast)
+		mustLink(t, wideTree.insert(wide, newOpaque(opaque{Name: "item", Format: types.FormatXML, ModuleNS: "urn:anycore"}), insertLast))
 	}
 	if _, err := evalAnyString(context.Background(), t, wide, 30); !errors.Is(err, xpath.ErrBudget) {
 		t.Fatalf("wide cast error = %v", err)
@@ -412,7 +412,7 @@ func TestAnyPrintTextHintsAndEmpty(t *testing.T) {
 			sn, want = x, `{"anycore:x":{}}`
 		}
 		n := &Node{schema: sn, any: &anyValue{}}
-		tr.insert(nil, n, insertDefault)
+		mustLink(t, tr.insert(nil, n, insertDefault))
 		var b bytes.Buffer
 		if err := tr.PrintJSON(&b, PrintOptions{Shrink: true}); err != nil || b.String() != want {
 			t.Fatalf("empty %s: %q, %v", sn.Name, b.String(), err)
@@ -423,7 +423,7 @@ func TestAnyPrintTextHintsAndEmpty(t *testing.T) {
 	}
 	tr, _, x := anyFixture()
 	n := &Node{schema: x, any: &anyValue{hints: types.HintEmpty}}
-	tr.insert(nil, n, insertDefault)
+	mustLink(t, tr.insert(nil, n, insertDefault))
 	var b bytes.Buffer
 	if err := tr.PrintJSON(&b, PrintOptions{Shrink: true}); err != nil || b.String() != `{"anycore:x":null}` {
 		t.Fatalf("empty hint = %q, %v", b.String(), err)
@@ -431,7 +431,7 @@ func TestAnyPrintTextHintsAndEmpty(t *testing.T) {
 	tr, a, _ := anyFixture()
 	value := "text"
 	bad := &Node{schema: a, any: &anyValue{text: &value}}
-	tr.insert(nil, bad, insertDefault)
+	mustLink(t, tr.insert(nil, bad, insertDefault))
 	for _, print := range []func(io.Writer, PrintOptions) error{tr.PrintJSON, tr.PrintXML} {
 		var out bytes.Buffer
 		var ve *ValidationError
@@ -448,9 +448,9 @@ func TestAnyPrintPayloadSiblingsAndMetadata(t *testing.T) {
 	tr, a, x := anyFixture()
 	a.Module.Prefix = "ac"
 	n := &Node{schema: a, any: &anyValue{}}
-	tr.insert(nil, n, insertDefault)
+	mustLink(t, tr.insert(nil, n, insertDefault))
 	for _, name := range []string{"one", "two"} {
-		tr.insert(n, newOpaque(opaque{Name: name, ModuleNS: "urn:anycore", Format: types.FormatXML}), insertLast)
+		mustLink(t, tr.insert(n, newOpaque(opaque{Name: name, ModuleNS: "urn:anycore", Format: types.FormatXML}), insertLast))
 	}
 	v, diag := types.Store(&schema.Type{Base: schema.String}, "label", types.FormatJSON, types.HintString, nil, nil)
 	if diag != nil {
@@ -458,7 +458,7 @@ func TestAnyPrintPayloadSiblingsAndMetadata(t *testing.T) {
 	}
 	n.meta = []*meta{{mod: a.Module, name: "note", value: v}}
 	other := &Node{schema: x, any: &anyValue{}}
-	tr.insert(nil, other, insertDefault)
+	mustLink(t, tr.insert(nil, other, insertDefault))
 	var j, xml bytes.Buffer
 	if err := tr.PrintJSON(&j, PrintOptions{Shrink: true}); err != nil {
 		t.Fatal(err)
@@ -493,9 +493,9 @@ func TestAnyPrintPayloadSiblingsAndMetadata(t *testing.T) {
 func TestAnyPrintDepthLimitAndArguments(t *testing.T) {
 	tr, a, _ := anyFixture()
 	n := &Node{schema: a, any: &anyValue{}}
-	tr.insert(nil, n, insertDefault)
+	mustLink(t, tr.insert(nil, n, insertDefault))
 	root := newOpaque(opaque{Name: "r", Format: types.FormatJSON})
-	tr.insert(n, root, insertLast)
+	mustLink(t, tr.insert(n, root, insertLast))
 	p := root
 	for range maxPrintDepth {
 		child := newOpaque(opaque{Name: "r", Format: types.FormatJSON})
@@ -525,14 +525,14 @@ func TestAnyPrintWithDefaults(t *testing.T) {
 		Type: &schema.Type{Base: schema.String}, Default: []schema.DefaultValue{{Lex: "default"}}}
 	a.Module.Top = append(a.Module.Top, sn)
 	n := &Node{schema: a, any: &anyValue{}}
-	tr.insert(nil, n, insertDefault)
+	mustLink(t, tr.insert(nil, n, insertDefault))
 	v, d := types.Store(sn.Type, "default", types.FormatJSON, types.HintString, nil, sn)
 	if d != nil {
 		t.Fatal(d)
 	}
 	child := newTerm(sn, v)
 	child.flags = FlagDefault
-	tr.insert(n, child, insertDefault)
+	mustLink(t, tr.insert(n, child, insertDefault))
 	if got := (xn{n, tr.set}).Children(); len(got) != 1 || got[0].Name() != "leaf" {
 		t.Fatalf("XPath payload children = %v", got)
 	}

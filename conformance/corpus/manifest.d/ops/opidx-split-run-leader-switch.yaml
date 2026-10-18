@@ -1,0 +1,20 @@
+fixtures:
+  - id: ops/opidx-split-run-leader-switch
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause} # libyang v5.8.6 lyds_tree metadata follows each run leader after recursive cross-context duplication
+    rfc: ["RFC7950#7.7.7"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [opidxsplit.1]
+      modules: [{name: opidxsplit}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, parse_options: [ordered], data: '<r xmlns="urn:opidxsplit"><u>2</u><u>4</u><sep>x</sep><u>8</u><u>6</u></r>'}
+        - {do: dup, node: "/opidxsplit:r", options: [recursive], target: {searchdirs: [opidxsplit.2], modules: [{name: opidxsplit}]}}
+        - {do: edit, insert_term: {module: opidxsplit, parent: "/opidxsplit:r", name: u, value: "3"}}
+        - {do: dump}
+        - {do: edit, delete: "/opidxsplit:r/u[.='2']"}
+        - {do: dump}
+        - {do: edit, insert_term: {module: opidxsplit, parent: "/opidxsplit:r", name: u, value: "5"}}
+        - {do: dump}
+    golden: golden/ops-opidx-split-run-leader-switch.json

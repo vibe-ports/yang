@@ -239,6 +239,9 @@ func (w *anyWork) createAny(t *Tree, sn *schema.Node, child *Node, value *string
 		return nil, nil, err
 	}
 	n := &Node{schema: sn, flags: FlagNew, any: &anyValue{}, payloadSet: t.set}
+	if n.refreshHash(&t.work); t.work.hashErr != nil { // lyd_create_any's lyd_hash
+		return nil, nil, t.work.hashErr
+	}
 	if value != nil {
 		// lyd_create_any and lyd_any_copy_value take C strings, including for
 		// parsing. Match their strlen boundary before retaining or parsing text.
@@ -341,7 +344,7 @@ func (n *Node) takeAnyChildren(t *Tree, child *Node) {
 			}
 		}
 	}
-	n.any.children.work = &t.work
+	bindSubtreeWork(n, &t.work)
 	for _, c := range nodes {
 		if c.payloadSet == nil {
 			c.payloadSet = set
@@ -350,7 +353,10 @@ func (n *Node) takeAnyChildren(t *Tree, child *Node) {
 	}
 }
 
+// clearAny journals n and the old payload roots first (Node.touch) and replaces,
+// never edits, the old value: a rolled-back operation restores the journaled pointer.
 func (n *Node) clearAny() {
+	n.touch()
 	if n.any == nil {
 		n.any = &anyValue{}
 		return
@@ -359,9 +365,10 @@ func (n *Node) clearAny() {
 		for d := range c.allAny() {
 			freeLinks(d)
 		}
+		c.touch()
 		c.parent, c.tree = nil, nil
 	}
-	n.any.children, n.any.text = siblings{}, nil
+	n.any = &anyValue{hints: n.any.hints}
 }
 
 // copyAnyValue is lyd_any_copy_value, including the empty-input early return
@@ -394,6 +401,9 @@ func (n *Node) copyAnyValue(w *anyWork, child *Node, value *string, hints types.
 	n.any = d.any
 	for c := range n.any.children.all() {
 		c.parent = n
+	}
+	if t := treeOf(n); t != nil {
+		bindSubtreeWork(n, &t.work) // the copy was made in a temporary tree
 	}
 	return nil
 }

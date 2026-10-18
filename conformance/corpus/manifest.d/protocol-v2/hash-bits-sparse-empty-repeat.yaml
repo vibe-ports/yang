@@ -1,0 +1,33 @@
+# libyang v5.8.6 plugins_types/bits.c:405-407 hashes a declaration-sized bitmap; manageable position for native oracle.
+fixtures:
+- id: protocol-v2/hash-bits-sparse-empty-repeat
+  dir: protocol-v2
+  source:
+    url: hand-written (this repo)
+    commit: null
+    license: BSD-3-Clause
+  rfc: []
+  areas:
+  - operations
+  - types
+  request:
+    op: sequence
+    searchdirs:
+    - hash-sparse-repeat
+    modules:
+    - name: m
+    context_options:
+    - no_yanglibrary
+    steps:
+    - do: parse
+      format: json
+      data_type: data
+      parse_only: true
+      data: '{"m:s":["","","","","","","",""]}'
+    - do: compare
+      options:
+      - full_recursion
+      self: true
+    - do: dump
+      with_defaults: all
+  golden: golden/hash-bits-sparse-empty-repeat.json

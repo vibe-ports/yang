@@ -1,0 +1,18 @@
+fixtures:
+  # Libyang-specific user-ordered insertion without children_ht: lyd_insert_get_next_anchor passes the copied u run, then inserts before y, preserving u encounter order despite the target schema order.
+  - id: protocol-v2/hash-cross-schema-insert-user-list
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [hash-insert-source]
+      modules: [{name: m}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, data: '{"m:r":{"u":[2],"y":"y"}}'}
+        - {do: dup, node: /m:r, options: [recursive], target: {searchdirs: [hash-insert-target], modules: [{name: m}], context_options: [no_yanglibrary]}}
+        - {do: edit, insert_term: {parent: /m:r, name: u, value: "1"}}
+        - {do: dump, with_defaults: all}
+    golden: golden/hash-cross-schema-insert-user-list.json

@@ -77,7 +77,7 @@ func (f *wdFixture) build(t *testing.T) *Tree {
 	tr := newTree(f.set)
 	ins := func(parent, n *Node, flags Flags) *Node {
 		n.flags = flags
-		tr.insert(parent, n, insertDefault)
+		mustLink(t, tr.insert(parent, n, insertDefault))
 		return n
 	}
 	term := func(name, lex string) *Node {

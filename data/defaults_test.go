@@ -160,8 +160,8 @@ func TestNewImplicit(t *testing.T) {
 	tr = newTree(f.set)
 	vc, _, _, _ = f.ctx(t, tr, false)
 	top = newInner(f.top)
-	tr.insert(nil, top, insertDefault)
-	tr.insert(top, f.term(t, f.z, "1", FlagNew), insertDefault)
+	mustLink(t, tr.insert(nil, top, insertDefault))
+	mustLink(t, tr.insert(top, f.term(t, f.z, "1", FlagNew), insertDefault))
 	if err := vc.newImplicitR(top, nil, nil, implNoDefaults); err != nil {
 		t.Fatal(err)
 	}
@@ -190,9 +190,9 @@ func TestValidateNew(t *testing.T) {
 	}
 	top := tr.top.list[0]
 	*diffs = nil
-	tr.insert(top, f.term(t, f.ll, "9", FlagNew), insertDefault)
-	tr.insert(top, f.term(t, f.a, "1", FlagNew), insertDefault) // explicit a beside the default one
-	tr.insert(top, f.term(t, f.y, "3", FlagNew), insertDefault) // new case two
+	mustLink(t, tr.insert(top, f.term(t, f.ll, "9", FlagNew), insertDefault))
+	mustLink(t, tr.insert(top, f.term(t, f.a, "1", FlagNew), insertDefault)) // explicit a beside the default one
+	mustLink(t, tr.insert(top, f.term(t, f.y, "3", FlagNew), insertDefault)) // new case two
 	if err := vc.validateNew(top, nil, nil); err != nil {
 		t.Fatal(err, vc.log.diags)
 	}
@@ -211,8 +211,8 @@ func TestValidateNew(t *testing.T) {
 	}
 
 	// two cases with new data: error at the choice's schema path
-	tr.insert(top, f.term(t, f.x, "1", FlagNew), insertDefault)
-	tr.insert(top, f.term(t, f.z, "1", FlagNew), insertDefault)
+	mustLink(t, tr.insert(top, f.term(t, f.x, "1", FlagNew), insertDefault))
+	mustLink(t, tr.insert(top, f.term(t, f.z, "1", FlagNew), insertDefault))
 	vc.log.diags = nil
 	if err := vc.validateNew(top, nil, nil); err == nil || diagCodes(vc.log.diags)[0] !=
 		`LY_EVALID LYVE_DATA /d:top/ch: Data for both cases "one" and "two" exist.` {
@@ -235,15 +235,15 @@ func TestDuplicates(t *testing.T) {
 	tr := newTree(f.set)
 	vc, _, _, _ := f.ctx(t, tr, true)
 	top := newInner(f.top)
-	tr.insert(nil, top, insertDefault)
+	mustLink(t, tr.insert(nil, top, insertDefault))
 	for _, v := range []string{"5", "5", "6"} {
-		tr.insert(top, f.term(t, f.ll, v, FlagNew), insertDefault)
+		mustLink(t, tr.insert(top, f.term(t, f.ll, v, FlagNew), insertDefault))
 	}
 	l1, l2 := newInner(f.l), newInner(f.l)
 	for _, l := range []*Node{l1, l2} {
-		tr.insert(l, f.term(t, f.k, "1", 0), insertDefault)
+		mustLink(t, tr.insert(l, f.term(t, f.k, "1", 0), insertDefault))
 		l.flags = FlagNew
-		tr.insert(top, l, insertDefault)
+		mustLink(t, tr.insert(top, l, insertDefault))
 	}
 	if err := vc.validateNew(top, nil, nil); err == nil {
 		t.Fatal("no error")
@@ -283,14 +283,14 @@ func TestDuplicateWork(t *testing.T) {
 			mod = f.m
 		} else {
 			parent = newInner(f.top)
-			tr.insert(nil, parent, insertDefault)
+			mustLink(t, tr.insert(nil, parent, insertDefault))
 			sn.Type = &schema.Type{Base: schema.Uint32}
 		}
 		const n = 20000
 		for i := range n {
 			v, _ := types.Store(sn.Type, fmt.Sprint(i), types.FormatJSON, types.JSONHints("number"), nil, sn)
 			x := newTerm(sn, v)
-			tr.insert(parent, x, insertDefault)
+			mustLink(t, tr.insert(parent, x, insertDefault))
 			x.flags = FlagNew
 		}
 		tr.work.Store(0)
@@ -342,15 +342,15 @@ func TestAutodelWork(t *testing.T) {
 	tr := newTree(f.set)
 	vc, _, _, typ := f.ctx(t, tr, false)
 	top := newInner(f.top)
-	tr.insert(nil, top, insertDefault)
+	mustLink(t, tr.insert(nil, top, insertDefault))
 	f.ll.Type = &schema.Type{Base: schema.Uint32}
 	const n = 20000
 	for i := range n {
 		d := f.term(t, f.ll, fmt.Sprint(i), FlagDefault)
-		tr.insert(top, d, insertDefault)
+		mustLink(t, tr.insert(top, d, insertDefault))
 		typ.add(d)
 	}
-	tr.insert(top, f.term(t, f.ll, fmt.Sprint(n), FlagNew), insertDefault)
+	mustLink(t, tr.insert(top, f.term(t, f.ll, fmt.Sprint(n), FlagNew), insertDefault))
 	tr.work.Store(0)
 	tr.work.visits = true
 	if err := vc.validateNew(top, nil, nil); err != nil {

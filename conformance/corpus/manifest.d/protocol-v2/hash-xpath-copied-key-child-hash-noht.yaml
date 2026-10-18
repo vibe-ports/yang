@@ -1,0 +1,45 @@
+# libyang v5.8.6 tree_data.c:1769-1782 compares key child stored hashes preserved by cross-context duplication.
+fixtures:
+- id: protocol-v2/hash-xpath-copied-key-child-hash-noht
+  dir: protocol-v2
+  source:
+    url: hand-written (this repo)
+    commit: null
+    license: BSD-3-Clause
+  rfc: []
+  areas:
+  - operations
+  - xpath
+  request:
+    op: sequence
+    searchdirs:
+    - hash-key-child-source
+    modules:
+    - name: m
+    context_options:
+    - no_yanglibrary
+    steps:
+    - do: parse
+      format: json
+      data_type: data
+      parse_only: true
+      data: '{"m:r":{"l":[{"a":"x","b":["y"],"marker":"bad"}]}}'
+    - do: dup
+      node: /m:r
+      options:
+      - recursive
+      target:
+        searchdirs:
+        - hash-key-child-target
+        modules:
+        - name: m
+        context_options:
+        - no_yanglibrary
+    - do: xpath
+      xpath: /m:r/l[a='x'][b='y']/marker
+    - do: xpath
+      xpath: /m:r/l[a=$a][b=$b]/marker
+      vars:
+        a: '''x'''
+        b: '''y'''
+  golden: golden/hash-xpath-copied-key-child-hash-noht.json

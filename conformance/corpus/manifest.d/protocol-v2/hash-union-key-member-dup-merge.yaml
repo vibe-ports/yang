@@ -1,0 +1,21 @@
+fixtures:
+  # Libyang-specific union history probe: v5.8.6 src/plugins_types/union.c:522-573 validates a missing-target leafref/string union; src/tree_data.c:2297-2317 rehashes a duplicate, using the member reselected without the tree by src/plugins_types/union.c:633-666.
+  # Source reading predicts equal hashes: both hash events reselect from the same original input. Compare and merge below leave the verdict and final multiplicity to the native golden.
+  - id: protocol-v2/hash-union-key-member-dup-merge
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.8.5", "RFC7950#9.9.3", "RFC7950#9.12", "RFC7951#4"]
+    areas: [types, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-hash-stored}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {do: parse, format: json, data_type: config, parse_only: true, data: '{"pv2-hash-stored:c":{"ref":[{"k":"missing","v":"original"}]}}'}
+        - {do: validate, data_type: config}
+        - {do: dup, node: "/pv2-hash-stored:c", options: [recursive]}
+        - {do: compare, format: json, data_type: config, data: '{"pv2-hash-stored:c":{"ref":[{"k":"missing","v":"original"}]}}', options: [full_recursion]}
+        - {do: edit, format: json, data_type: config, merge: '{"pv2-hash-stored:c":{"ref":[{"k":"missing","v":"merged"}]}}'}
+        - {do: dump, with_defaults: all}
+    golden: golden/hash-union-key-member-dup-merge.json

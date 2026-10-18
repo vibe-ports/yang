@@ -20,9 +20,9 @@ func trimLinkedTree(t *testing.T, count int, targetFirst bool) (*Tree, *Node, []
 	tr := newTree(f.set)
 	c := newInner(f.c)
 	target := f.term(t, f.z, "target")
-	tr.insert(c, target, insertDefault)
+	mustLink(t, tr.insert(c, target, insertDefault))
 	if targetFirst {
-		tr.insert(nil, c, insertLast)
+		mustLink(t, tr.insert(nil, c, insertLast))
 	}
 
 	lrefs := make([]*Node, 0, count)
@@ -32,12 +32,12 @@ func trimLinkedTree(t *testing.T, count int, targetFirst bool) (*Tree, *Node, []
 	}
 	for i := range count {
 		lref := f.term(t, refSchema, fmt.Sprint(i))
-		tr.insert(nil, lref, insertLast)
+		mustLink(t, tr.insert(nil, lref, insertLast))
 		linkLeafrefNode(target, lref)
 		lrefs = append(lrefs, lref)
 	}
 	if !targetFirst {
-		tr.insert(nil, c, insertLast)
+		mustLink(t, tr.insert(nil, c, insertLast))
 	}
 	if (tr.top.list[0] == c) != targetFirst {
 		t.Fatal("fixture did not put target and referrers in the requested order")
@@ -100,13 +100,16 @@ func TestTrimXPathReferrersBeforeTarget(t *testing.T) {
 // each become default after one explicit leaf is trimmed. Recomputing the root after every child
 // would visit about count²/2 siblings.
 func TestTrimXPathDefaultPropagationLinear(t *testing.T) {
-	const count = 10_000
+	count := 10_000
+	if raceEnabled {
+		count = 2_500 // quadratic propagation still exceeds the linear bound by orders of magnitude
+	}
 	f := newFixture()
 	rSchema := &schema.Node{Kind: schema.Container, Name: "r", Module: f.b, Config: true}
 	f.b.Top = append(f.b.Top, rSchema)
 	tr := newTree(f.set)
 	r := newInner(rSchema)
-	tr.insert(nil, r, insertDefault)
+	mustLink(t, tr.insert(nil, r, insertDefault))
 	for i := range count {
 		cSchema := &schema.Node{Kind: schema.Container, Name: fmt.Sprintf("c%d", i), Module: f.b, Parent: rSchema, Config: true}
 		keepSchema := &schema.Node{Kind: schema.Leaf, Name: "keep", Module: f.b, Parent: cSchema, Type: f.str, Config: true}
@@ -116,9 +119,9 @@ func TestTrimXPathDefaultPropagationLinear(t *testing.T) {
 		c := newInner(cSchema)
 		keep := f.term(t, keepSchema, "default")
 		keep.flags = FlagDefault
-		tr.insert(c, keep, insertDefault)
-		tr.insert(c, f.term(t, dropSchema, "explicit"), insertDefault)
-		tr.insert(r, c, insertDefault)
+		mustLink(t, tr.insert(c, keep, insertDefault))
+		mustLink(t, tr.insert(c, f.term(t, dropSchema, "explicit"), insertDefault))
+		mustLink(t, tr.insert(r, c, insertDefault))
 	}
 
 	tr.work.Store(0)
@@ -129,7 +132,7 @@ func TestTrimXPathDefaultPropagationLinear(t *testing.T) {
 	if r.flags&FlagDefault == 0 {
 		t.Fatal("root container did not become default")
 	}
-	if work := tr.work.Load(); work > 30*count {
+	if work := tr.work.Load(); work > 30*int64(count) {
 		t.Fatalf("default propagation took %d units of work for %d containers", work, count)
 	}
 	for c := range r.Children() {
@@ -167,17 +170,17 @@ func denseTrimLinkedTree(t *testing.T, count int) (*Tree, *Node, []*Node, []*Nod
 	refs := make([]*Node, 0, count)
 	for i := range count {
 		n := f.term(t, f.first, fmt.Sprint(i))
-		tr.insert(nil, n, insertLast)
+		mustLink(t, tr.insert(nil, n, insertLast))
 		refs = append(refs, n)
 	}
 	c := newInner(f.c)
 	targets := make([]*Node, 0, count)
 	for i := range count {
 		n := f.term(t, f.ll, fmt.Sprint(i))
-		tr.insert(c, n, insertLast)
+		mustLink(t, tr.insert(c, n, insertLast))
 		targets = append(targets, n)
 	}
-	tr.insert(nil, c, insertLast)
+	mustLink(t, tr.insert(nil, c, insertLast))
 	for _, ref := range refs {
 		ref.links = &leafrefLinks{targets: append([]*Node(nil), targets...)}
 	}
@@ -322,9 +325,9 @@ func TestTrimXPathBudgetStopsSiblingWalk(t *testing.T) {
 	f.b.Top = append(f.b.Top, rSchema)
 	tr := newTree(f.set)
 	r := newInner(rSchema)
-	tr.insert(nil, r, insertDefault)
+	mustLink(t, tr.insert(nil, r, insertDefault))
 	for _, sn := range rSchema.Children {
-		tr.insert(r, f.term(t, sn, sn.Name), insertDefault)
+		mustLink(t, tr.insert(r, f.term(t, sn, sn.Name), insertDefault))
 	}
 	before := slices.Clone(r.kids.list)
 	topGen, childGen := tr.top.gen, r.kids.gen
@@ -368,10 +371,10 @@ func TestTrimXPathBudgetStopsRemovedSubtreeWalk(t *testing.T) {
 	tr := newTree(f.set)
 	first := f.term(t, f.first, "keep")
 	c := newInner(f.c)
-	tr.insert(nil, first, insertDefault)
-	tr.insert(nil, c, insertDefault)
+	mustLink(t, tr.insert(nil, first, insertDefault))
+	mustLink(t, tr.insert(nil, c, insertDefault))
 	for i := 0; i < width; i++ {
-		tr.insert(c, f.term(t, f.ul, "1"), insertLast)
+		mustLink(t, tr.insert(c, f.term(t, f.ul, "1"), insertLast))
 	}
 	topBefore := tr.top.nodes()
 	childrenBefore := slices.Clone(c.kids.list)

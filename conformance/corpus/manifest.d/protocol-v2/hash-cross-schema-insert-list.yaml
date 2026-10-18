@@ -1,0 +1,18 @@
+fixtures:
+  # Libyang-specific insertion after cross-context duplication: lyd_dup_r appends children in source order; lyd_insert_node finds the existing keyed system-ordered list run independently of surrounding schema order.
+  - id: protocol-v2/hash-cross-schema-insert-list
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [hash-insert-source]
+      modules: [{name: m}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, data: '{"m:r":{"l":[{"k":2}],"y":"y"}}'}
+        - {do: dup, node: /m:r, options: [recursive], target: {searchdirs: [hash-insert-target], modules: [{name: m}], context_options: [no_yanglibrary]}}
+        - {do: edit, insert_list: {parent: /m:r, name: l, keys: ["1"]}}
+        - {do: dump, with_defaults: all}
+    golden: golden/hash-cross-schema-insert-list.json

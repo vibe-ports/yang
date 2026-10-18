@@ -1,0 +1,31 @@
+fixtures:
+  # Libyang-specific split user-ordered runs: children_ht insertion has no schema successor after u and appends it after y. Inserting l uses schema-only lookup of its next schema u, exposing simple-hash registration history across deletion, rehash, and trim (lyd_insert_hash_add, lyd_unlink_hash, lyd_change_node_value).
+  - id: protocol-v2/hash-cross-schema-insert-user-list-table
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []
+    areas: [operations, xpath]
+    request:
+      op: sequence
+      searchdirs: [hash-insert-source]
+      modules: [{name: m}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, data: '{"m:r":{"u":[2,4],"z":"z","y":"y"}}'}
+        - {do: dup, node: /m:r, options: [recursive], target: {searchdirs: [hash-insert-target], modules: [{name: m}], context_options: [no_yanglibrary]}}
+        - {do: edit, insert_term: {parent: /m:r, name: u, value: "1"}}
+        - {do: dump, with_defaults: all}
+        - {do: edit, delete: "/m:r/u[.='2']"}
+        # l=1 anchors before u=1, the first remaining simple-hash registration.
+        - {do: edit, insert_list: {parent: /m:r, name: l, keys: ["1"]}}
+        - {do: dump, with_defaults: all}
+        - {do: edit, delete: "/m:r/l[k='1']"}
+        - {do: change_term, node: "/m:r/u[.='1']", value: "3"}
+        # Rehashing the trailing run moves its registration behind u=4.
+        - {do: edit, insert_list: {parent: /m:r, name: l, keys: ["2"]}}
+        - {do: dump, with_defaults: all}
+        - {do: edit, delete: "/m:r/l[k='2']"}
+        - {do: trim, xpath: "/m:r/u[.='3']"}
+        - {do: edit, insert_list: {parent: /m:r, name: l, keys: ["3"]}}
+        - {do: dump, with_defaults: all}
+    golden: golden/hash-cross-schema-insert-user-list-table.json

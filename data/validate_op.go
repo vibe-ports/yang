@@ -96,11 +96,15 @@ func (l *logger) finish(err error) error {
 // operation stays detached). Implicit nodes count against b.MaxNodes, as for Validate.
 func validateOpNode(ctx context.Context, set *schema.Set, opNode *Node, dep *Tree, oo opOpts, b Budget) ([]yang.Diagnostic, error) {
 	opTree := opNode.treeOf() // nil: a detached operation
-	sub, tparent := opMergeFind(opNode, dep)
 	t := dep
 	if t == nil {
 		t = newTree(set)
 	}
+	defer t.work.beginHashWork()()
+	if opTree != nil && opTree != t {
+		defer opTree.work.beginHashWork()()
+	}
+	sub, tparent := opMergeFind(opNode, dep)
 	// move the operation's subtree into t, under its parent there
 	sib := sub.siblingsOf()
 	oparent := sub.parent
@@ -113,15 +117,19 @@ func validateOpNode(ctx context.Context, set *schema.Set, opNode *Node, dep *Tre
 		at = slices.Index(sib.opq, sub)
 	}
 	unlink(sub)
-	t.insert(tparent, sub, insertDefault)
+	linkErr := t.insert(tparent, sub, insertDefault)
 	restore := func() {
 		unlink(sub)
 		switch {
 		case opTree != nil:
-			opTree.link(oparent, opTree.childrenOf(oparent), sub, at)
+			opTree.restoreLink(oparent, sub, at)
 		case oparent != nil: // a subtree of a detached operation tree: back under its parent there
-			t.link(oparent, &oparent.kids, sub, at)
+			t.restoreLink(oparent, sub, at)
 		} // a detached top node stays detached
+	}
+	if linkErr != nil {
+		restore()
+		return nil, linkErr
 	}
 	vc := &valCtx{t: t, log: &logger{set: t.set}, nodeWhen: &nodeSet{}, nodeTypes: &nodeSet{}, metaTypes: &[]*meta{},
 		budget: xpathBudget{ctx: ctx, max: b.MaxXPathSteps}, output: oo.reply, op: oo, charge: implicitCharge(ctx, b)}

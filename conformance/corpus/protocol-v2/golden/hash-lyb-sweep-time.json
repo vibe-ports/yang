@@ -1,0 +1,1150 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-hash-sweep",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r",
+          "schema": "/pv2-hash-sweep:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-known[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-known",
+          "value": {
+            "canonical": "00:00:01+00:00",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-offset[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-offset",
+          "value": {
+            "canonical": "02:00:01+00:00",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-fraction-known[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-fraction-known",
+          "value": {
+            "canonical": "00:00:01.25+00:00",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-fraction-offset[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-fraction-offset",
+          "value": {
+            "canonical": "02:00:01.25+00:00",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-unknown[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-unknown",
+          "value": {
+            "canonical": "00:00:01Z",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-fraction-unknown[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-fraction-unknown",
+          "value": {
+            "canonical": "00:00:01.25Z",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "dup",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r",
+          "schema": "/pv2-hash-sweep:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-known[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-known",
+          "value": {
+            "canonical": "00:00:01+00:00",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-offset[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-offset",
+          "value": {
+            "canonical": "02:00:01+00:00",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-fraction-known[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-fraction-known",
+          "value": {
+            "canonical": "00:00:01.25+00:00",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-fraction-offset[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-fraction-offset",
+          "value": {
+            "canonical": "02:00:01.25+00:00",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-unknown[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-unknown",
+          "value": {
+            "canonical": "00:00:01Z",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-fraction-unknown[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-fraction-unknown",
+          "value": {
+            "canonical": "00:00:01.25Z",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "compare": {
+        "err": 11,
+        "name": "LY_ENOT"
+      },
+      "diagnostics": [],
+      "do": "compare",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r",
+          "schema": "/pv2-hash-sweep:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-known[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-known",
+          "value": {
+            "canonical": "00:00:01+00:00",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-offset[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-offset",
+          "value": {
+            "canonical": "02:00:01+00:00",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-fraction-known[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-fraction-known",
+          "value": {
+            "canonical": "00:00:01.25+00:00",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-fraction-offset[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-fraction-offset",
+          "value": {
+            "canonical": "02:00:01.25+00:00",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-unknown[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-unknown",
+          "value": {
+            "canonical": "00:00:01Z",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-fraction-unknown[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-fraction-unknown",
+          "value": {
+            "canonical": "00:00:01.25Z",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "compare": {
+        "err": 11,
+        "name": "LY_ENOT"
+      },
+      "diagnostics": [],
+      "do": "compare",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r",
+          "schema": "/pv2-hash-sweep:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-known[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-known",
+          "value": {
+            "canonical": "00:00:01+00:00",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-offset[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-offset",
+          "value": {
+            "canonical": "02:00:01+00:00",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-fraction-known[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-fraction-known",
+          "value": {
+            "canonical": "00:00:01.25+00:00",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-fraction-offset[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-fraction-offset",
+          "value": {
+            "canonical": "02:00:01.25+00:00",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-unknown[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-unknown",
+          "value": {
+            "canonical": "00:00:01Z",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-fraction-unknown[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-fraction-unknown",
+          "value": {
+            "canonical": "00:00:01.25Z",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "compare": {
+        "err": 11,
+        "name": "LY_ENOT"
+      },
+      "diagnostics": [],
+      "do": "compare",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r",
+          "schema": "/pv2-hash-sweep:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-known[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-known",
+          "value": {
+            "canonical": "00:00:01+00:00",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-offset[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-offset",
+          "value": {
+            "canonical": "02:00:01+00:00",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-fraction-known[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-fraction-known",
+          "value": {
+            "canonical": "00:00:01.25+00:00",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-fraction-offset[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-fraction-offset",
+          "value": {
+            "canonical": "02:00:01.25+00:00",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-unknown[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-unknown",
+          "value": {
+            "canonical": "00:00:01Z",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-fraction-unknown[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-fraction-unknown",
+          "value": {
+            "canonical": "00:00:01.25Z",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "compare": {
+        "err": 11,
+        "name": "LY_ENOT"
+      },
+      "diagnostics": [],
+      "do": "compare",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r",
+          "schema": "/pv2-hash-sweep:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-known[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-known",
+          "value": {
+            "canonical": "00:00:01+00:00",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-offset[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-offset",
+          "value": {
+            "canonical": "02:00:01+00:00",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-fraction-known[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-fraction-known",
+          "value": {
+            "canonical": "00:00:01.25+00:00",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-fraction-offset[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-fraction-offset",
+          "value": {
+            "canonical": "02:00:01.25+00:00",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-unknown[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-unknown",
+          "value": {
+            "canonical": "00:00:01Z",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-fraction-unknown[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-fraction-unknown",
+          "value": {
+            "canonical": "00:00:01.25Z",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "compare": {
+        "err": 11,
+        "name": "LY_ENOT"
+      },
+      "diagnostics": [],
+      "do": "compare",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r",
+          "schema": "/pv2-hash-sweep:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-known[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-known",
+          "value": {
+            "canonical": "00:00:01+00:00",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-offset[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-offset",
+          "value": {
+            "canonical": "02:00:01+00:00",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-fraction-known[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-fraction-known",
+          "value": {
+            "canonical": "00:00:01.25+00:00",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-fraction-offset[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-fraction-offset",
+          "value": {
+            "canonical": "02:00:01.25+00:00",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-unknown[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-unknown",
+          "value": {
+            "canonical": "00:00:01Z",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-fraction-unknown[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-fraction-unknown",
+          "value": {
+            "canonical": "00:00:01.25Z",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "compare": {
+        "err": 11,
+        "name": "LY_ENOT"
+      },
+      "diagnostics": [],
+      "do": "compare",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r",
+          "schema": "/pv2-hash-sweep:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-known[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-known",
+          "value": {
+            "canonical": "00:00:01+00:00",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-offset[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-offset",
+          "value": {
+            "canonical": "02:00:01+00:00",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-fraction-known[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-fraction-known",
+          "value": {
+            "canonical": "00:00:01.25+00:00",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-fraction-offset[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-fraction-offset",
+          "value": {
+            "canonical": "02:00:01.25+00:00",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-unknown[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-unknown",
+          "value": {
+            "canonical": "00:00:01Z",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-time-fraction-unknown[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-time-fraction-unknown",
+          "value": {
+            "canonical": "00:00:01.25Z",
+            "type": "string",
+            "typedef": "time",
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

@@ -1,0 +1,21 @@
+# libyang v5.8.6 tree_data_sorted.c: lyds_merge_nodes2 joins a parsed source
+# RB tree with an untreed destination whose first instance remains first.
+# Subsequent insertions search the one merged tree.
+fixtures:
+  - id: seq/insert-merge-surviving-group
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang sorting-tree and insertion API mechanics, no RFC behaviour
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-lyds}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, data: '{"pv2-lyds:ll":[10]}'}
+        - {do: insert, format: json, data_type: data, parse_only: true, data: '{"pv2-lyds:ll":[20,30]}'}
+        - {do: edit, format: json, data_type: data, merge: '{"pv2-lyds:ll":[40,50]}'}
+        - {do: edit, insert_term: {module: pv2-lyds, name: ll, value: "35"}}
+        - {do: dump}
+    golden: golden/seq-insert-merge-surviving-group.json

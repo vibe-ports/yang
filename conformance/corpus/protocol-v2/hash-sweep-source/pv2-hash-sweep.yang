@@ -1,0 +1,128 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module pv2-hash-sweep {
+  yang-version 1.1;
+  namespace "urn:hash-sweep";
+  prefix hs;
+
+  container r {
+    leaf number { type uint32; }
+    leaf word { type string; }
+    leaf-list lyb-uint8-zero { config false; type string; }
+    leaf-list lyb-uint8-positive { config false; type string; }
+    leaf-list lyb-uint16-zero { config false; type string; }
+    leaf-list lyb-uint16-positive { config false; type string; }
+    leaf-list lyb-uint32-zero { config false; type string; }
+    leaf-list lyb-uint32-positive { config false; type string; }
+    leaf-list lyb-uint64-zero { config false; type string; }
+    leaf-list lyb-uint64-positive { config false; type string; }
+    leaf-list lyb-int8-zero { config false; type string; }
+    leaf-list lyb-int8-positive { config false; type string; }
+    leaf-list lyb-int8-negative { config false; type string; }
+    leaf-list lyb-int8-minimum { config false; type string; }
+    leaf-list lyb-int16-zero { config false; type string; }
+    leaf-list lyb-int16-positive { config false; type string; }
+    leaf-list lyb-int16-negative { config false; type string; }
+    leaf-list lyb-int16-minimum { config false; type string; }
+    leaf-list lyb-int32-zero { config false; type string; }
+    leaf-list lyb-int32-positive { config false; type string; }
+    leaf-list lyb-int32-negative { config false; type string; }
+    leaf-list lyb-int32-minimum { config false; type string; }
+    leaf-list lyb-int64-zero { config false; type string; }
+    leaf-list lyb-int64-positive { config false; type string; }
+    leaf-list lyb-int64-negative { config false; type string; }
+    leaf-list lyb-int64-minimum { config false; type string; }
+    leaf-list lyb-decimal-zero { config false; type string; }
+    leaf-list lyb-decimal-positive { config false; type string; }
+    leaf-list lyb-decimal-negative { config false; type string; }
+    leaf-list lyb-boolean-true { config false; type string; }
+    leaf-list lyb-boolean-false { config false; type string; }
+    leaf-list lyb-binary { config false; type string; }
+    leaf-list text-binary-empty { config false; type string; }
+    leaf-list lyb-bits-empty { config false; type string; }
+    leaf-list lyb-bits-low { config false; type string; }
+    leaf-list lyb-bits-high { config false; type string; }
+    leaf-list lyb-bits-both { config false; type string; }
+    leaf-list lyb-enum-zero-width { config false; type string; }
+    leaf-list lyb-enum-positive { config false; type string; }
+    leaf-list lyb-enum-negative-declaration { config false; type string; }
+    leaf-list lyb-enum-negative-value { config false; type string; }
+    leaf-list lyb-leafref-integer { config false; type string; }
+    leaf-list text-leafref-string { config false; type string; }
+    leaf-list lyb-union-int { config false; type string; }
+    leaf-list lyb-union-string { config false; type string; }
+    leaf-list lyb-union-empty { config false; type string; }
+    leaf-list lyb-union-binary-empty { config false; type string; }
+    leaf-list lyb-union-nested-int { config false; type string; }
+    leaf-list lyb-union-nested-string { config false; type string; }
+    leaf-list lyb-union-leafref { config false; type string; }
+    leaf-list lyb-ipv4-plain { config false; type string; }
+    leaf-list lyb-ipv4-numeric-zone { config false; type string; }
+    leaf-list lyb-ipv4-named-zone { config false; type string; }
+    leaf-list lyb-ipv4-link-local { config false; type string; }
+    leaf-list lyb-ipv4-no-zone { config false; type string; }
+    leaf-list lyb-ipv4-prefix { config false; type string; }
+    leaf-list lyb-ipv4-host-prefix { config false; type string; }
+    leaf-list lyb-ip-address-v4 { config false; type string; }
+    leaf-list lyb-ip-no-zone-v4 { config false; type string; }
+    leaf-list lyb-ip-prefix-v4 { config false; type string; }
+    leaf-list lyb-ip-host-prefix-v4 { config false; type string; }
+    leaf-list lyb-ip-link-local-v4 { config false; type string; }
+    leaf-list lyb-ip-address-v6 { config false; type string; }
+    leaf-list lyb-ip-no-zone-v6 { config false; type string; }
+    leaf-list lyb-ip-prefix-v6 { config false; type string; }
+    leaf-list lyb-ip-host-prefix-v6 { config false; type string; }
+    leaf-list lyb-ip-link-local-v6 { config false; type string; }
+    leaf-list lyb-ipv6-plain { config false; type string; }
+    leaf-list lyb-ipv6-numeric-zone { config false; type string; }
+    leaf-list lyb-ipv6-named-zone { config false; type string; }
+    leaf-list lyb-ipv6-link-local { config false; type string; }
+    leaf-list lyb-ipv6-no-zone { config false; type string; }
+    leaf-list lyb-ipv6-prefix { config false; type string; }
+    leaf-list lyb-ipv6-host-prefix { config false; type string; }
+    leaf-list lyb-dt-new-known { config false; type string; }
+    leaf-list lyb-dt-new-positive-offset { config false; type string; }
+    leaf-list lyb-dt-new-negative-offset { config false; type string; }
+    leaf-list lyb-dt-new-fraction-known { config false; type string; }
+    leaf-list lyb-dt-new-fraction-offset { config false; type string; }
+    leaf-list lyb-dt-new-unknown { config false; type string; }
+    leaf-list lyb-dt-new-fraction-unknown { config false; type string; }
+    leaf-list lyb-dt-new-z-input { config false; type string; }
+    leaf-list lyb-dt-new-minus-zero-input { config false; type string; }
+    leaf-list lyb-date-known { config false; type string; }
+    leaf-list lyb-date-unknown { config false; type string; }
+    leaf-list lyb-date-positive-offset { config false; type string; }
+    leaf-list lyb-date-negative-offset { config false; type string; }
+    leaf-list lyb-date-no-zone { config false; type string; }
+    leaf-list lyb-time-known { config false; type string; }
+    leaf-list lyb-time-offset { config false; type string; }
+    leaf-list lyb-time-fraction-known { config false; type string; }
+    leaf-list lyb-time-fraction-offset { config false; type string; }
+    leaf-list lyb-time-unknown { config false; type string; }
+    leaf-list lyb-time-fraction-unknown { config false; type string; }
+    leaf-list lyb-time-no-zone { config false; type string; }
+    leaf-list lyb-time-no-zone-fraction { config false; type string; }
+    leaf-list text-string { config false; type string; }
+    leaf-list text-string-empty { config false; type string; }
+    leaf-list text-empty { config false; type string; }
+    leaf-list text-hex { config false; type string; }
+    leaf-list text-phys { config false; type string; }
+    leaf-list text-mac { config false; type string; }
+    leaf-list text-uuid { config false; type string; }
+    leaf-list text-xpath { config false; type string; }
+    leaf-list text-instanceid { config false; type string; }
+    leaf-list text-node-instanceid { config false; type string; }
+    leaf-list text-node-instanceid-root { config false; type string; }
+    leaf-list text-instanceid-keys { config false; type string; }
+    leaf-list text-time-period { config false; type string; }
+    leaf-list lyb-dt-old-known { config false; type string; }
+    leaf-list lyb-dt-old-positive-offset { config false; type string; }
+    leaf-list lyb-dt-old-negative-offset { config false; type string; }
+    leaf-list lyb-dt-old-fraction-known { config false; type string; }
+    leaf-list lyb-dt-old-fraction-offset { config false; type string; }
+    leaf-list lyb-dt-old-unknown { config false; type string; }
+    leaf-list lyb-dt-old-fraction-unknown { config false; type string; }
+    leaf-list lyb-dt-old-z-input { config false; type string; }
+    leaf-list lyb-dt-old-minus-zero-input { config false; type string; }
+  }
+}

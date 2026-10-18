@@ -608,7 +608,9 @@ func (p *xmlParser) subtreeOpaq(prefix, name string, parent *Node) (node *Node, 
 			node = nil
 		}
 	}()
-	lc.nodeInsert(parent, anchor, node)
+	if err := lc.nodeInsert(parent, anchor, node); err != nil {
+		return node, err
+	}
 	if err := p.next(); err != nil {
 		return node, err
 	}
@@ -628,10 +630,25 @@ func (p *xmlParser) subtreeOpaq(prefix, name string, parent *Node) (node *Node, 
 	return node, nil
 }
 
-// nextAnchor is lyd_insert_get_next_anchor for the linked node n: the first sibling after the
-// instances of n's schema node.
-func nextAnchor(n *Node) *Node {
+// nextAnchor is lyd_insert_get_next_anchor for the linked node n. For monotone ordinary
+// siblings, this is the first sibling after the instances of n's schema node.
+func (t *Tree) nextAnchor(n *Node) *Node {
 	sib := n.siblingsOf()
+	if sib.schemaUnordered || opChild(n.schema) {
+		var at int
+		if opChild(n.schema) {
+			at = t.opAnchor(sib, n)
+		} else {
+			at = t.unorderedAnchor(sib, n)
+		}
+		if at < len(sib.list) {
+			return sib.list[at]
+		}
+		if len(sib.opq) > 0 {
+			return sib.opq[0]
+		}
+		return nil
+	}
 	for i := sib.indexOf(sib.list, n) + 1; i < len(sib.list); i++ {
 		if sib.list[i].schema != n.schema {
 			return sib.list[i]
@@ -652,9 +669,11 @@ func (p *xmlParser) subtreeTerm(sn *schema.Node, parent *Node) (*Node, error) {
 	if rc != nil && lc.fatal(rc) {
 		return nil, rc
 	}
-	lc.nodeInsert(parent, nil, node)
+	if err := lc.nodeInsert(parent, nil, node); err != nil {
+		return node, err
+	}
 	if node != nil && parent != nil && sn.IsKey() {
-		if a := nextAnchor(node); a != nil && a.schema != nil && a.schema.IsKey() {
+		if a := lc.tree.nextAnchor(node); a != nil && a.schema != nil && a.schema.IsKey() {
 			if p.strict {
 				r := lc.log.val(node, "", ly.Data, "Invalid position of the key \"%s\" in a list.", sn.Name)
 				if rc = r; lc.fatal(r) {
@@ -692,7 +711,9 @@ func (p *xmlParser) subtreeInner(sn *schema.Node, parent *Node) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	lc.nodeInsert(parent, nil, node)
+	if err := lc.nodeInsert(parent, nil, node); err != nil {
+		return node, err
+	}
 	if err := p.next(); err != nil {
 		return node, err
 	}
@@ -703,7 +724,9 @@ func (p *xmlParser) subtreeInner(sn *schema.Node, parent *Node) (*Node, error) {
 				return node, rc
 			}
 		}
-		lc.nodeInsert(parent, nil, node) // a list that had its keys missing
+		if err := lc.nodeInsert(parent, nil, node); err != nil { // a list that had its keys missing
+			return node, err
+		}
 	}
 	if rc = lc.closeInner(node, rc); rc == nil {
 		lc.opParsed(node)
@@ -738,7 +761,9 @@ func (p *xmlParser) subtreeAny(sn *schema.Node, parent *Node) (*Node, error) {
 		return nil, err
 	}
 	node.flags = lc.newFlags()
-	lc.nodeInsert(parent, nil, node)
+	if err := lc.nodeInsert(parent, nil, node); err != nil {
+		return node, err
+	}
 	if err := p.next(); err != nil {
 		return node, err
 	}
@@ -771,8 +796,7 @@ func (p *xmlParser) freeFailed(sn *schema.Node, node *Node, r error) bool {
 	if sn == nil || !p.lc.isEValid(r) || !p.lc.opts.Validate.MultiError {
 		return true
 	}
-	_, hashed := hashOf(node)
-	return sn.Kind == schema.List && !hashed
+	return sn.Kind == schema.List && !node.lkeyOK && !sn.Keyless()
 }
 
 // subtree is lydxml_subtree_r: the current element and its descendants as data nodes under parent
@@ -843,6 +867,7 @@ func (p *xmlParser) subtree(parent *Node) error {
 	switch {
 	case node == nil:
 	case sn != nil:
+		node.touch()
 		node.meta = append(node.meta, metas...) // lyd_insert_meta without clearing the default flags
 	default:
 		for _, a := range attrs {

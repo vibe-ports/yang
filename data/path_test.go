@@ -20,31 +20,31 @@ func TestLydPath(t *testing.T) {
 	f.c.Children = append(f.c.Children, aug)
 	tr := newTree(f.set)
 	c := newInner(f.c)
-	tr.insert(nil, c, insertDefault)
+	mustLink(t, tr.insert(nil, c, insertDefault))
 	l := f.list(t, tr, c, "eth0", "x")
 	q := f.list(t, tr, c, "a'b", "")
 	ll := f.term(t, f.ll, "3")
-	tr.insert(c, ll, insertDefault)
+	mustLink(t, tr.insert(c, ll, insertDefault))
 	var sl []*Node
 	for _, v := range []string{"1", "1"} {
 		n := f.term(t, f.sl, v)
-		tr.insert(c, n, insertDefault)
+		mustLink(t, tr.insert(c, n, insertDefault))
 		sl = append(sl, n)
 	}
 	k2 := newInner(f.kl)
-	tr.insert(c, newInner(f.kl), insertDefault)
-	tr.insert(c, k2, insertDefault)
+	mustLink(t, tr.insert(c, newInner(f.kl), insertDefault))
+	mustLink(t, tr.insert(c, k2, insertDefault))
 	kv := f.term(t, f.klv, "v")
-	tr.insert(k2, kv, insertDefault)
+	mustLink(t, tr.insert(k2, kv, insertDefault))
 	ax := f.term(t, aug, "a")
-	tr.insert(c, ax, insertDefault)
+	mustLink(t, tr.insert(c, ax, insertDefault))
 	opJSON := newOpaque(opaque{Name: "o", ModuleNS: "a", Format: types.FormatJSON})
-	tr.insert(nil, opJSON, insertDefault)
+	mustLink(t, tr.insert(nil, opJSON, insertDefault))
 	opUnknown := newOpaque(opaque{Name: "u", ModuleNS: "zz", Format: types.FormatJSON})
-	tr.insert(c, opUnknown, insertDefault)
+	mustLink(t, tr.insert(c, opUnknown, insertDefault))
 	pending := newInner(f.l) // keys incomplete: not linked, its path starts at the list
 	pv := f.term(t, f.lv, "v")
-	tr.insert(pending, pv, insertDefault)
+	mustLink(t, tr.insert(pending, pv, insertDefault))
 	for _, tc := range []struct {
 		n    *Node
 		want string
@@ -75,7 +75,7 @@ func TestLocation(t *testing.T) {
 	f := newFixture()
 	tr := newTree(f.set)
 	c := newInner(f.c)
-	tr.insert(nil, c, insertDefault)
+	mustLink(t, tr.insert(nil, c, insertDefault))
 	line := 7
 	l := &logger{set: f.set}
 	l.pushInput(func() int { return line })

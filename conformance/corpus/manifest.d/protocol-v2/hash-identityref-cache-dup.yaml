@@ -1,0 +1,19 @@
+fixtures:
+  # identityref.c:326-353 regenerates module:name for LYB, while tree_data.c:2317 rehashes copied lists. The first copy retains the local canonical key and compares unequal to a fresh identityref. In the second copy only the repeated key has local cached text: declared keys compare equal, and the fresh identityref list must match the regenerated hash (old cache-based hashing returns LY_ENOT).
+  - id: protocol-v2/hash-identityref-cache-dup
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []
+    areas: [operations, types]
+    request:
+      op: sequence
+      searchdirs: [hash-identity-source]
+      modules: [{name: pv2-hash-identity}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {do: parse, format: json, data_type: get, parse_only: true, data: '{"pv2-hash-identity:r":{"l":[{"k":"child"},{"k":"pv2-hash-identity:child","k":"child"}]}}'}
+        - {do: dup, node: "/pv2-hash-identity:r", options: [recursive], target: {searchdirs: [hash-identity-target], modules: [{name: pv2-hash-identity}], context_options: [no_yanglibrary]}}
+        - {do: dump, with_defaults: all}
+        - {do: compare, first: "/pv2-hash-identity:r/l[1]", second: "/pv2-hash-identity:r/l[1]", format: json, data_type: get, parse_only: true, data: '{"pv2-hash-identity:r":{"l":[{"k":"pv2-hash-identity:child"}]}}'}
+        - {do: compare, first: "/pv2-hash-identity:r/l[2]", second: "/pv2-hash-identity:r/l[1]", format: json, data_type: get, parse_only: true, data: '{"pv2-hash-identity:r":{"l":[{"k":"pv2-hash-identity:child","k":"pv2-hash-identity:child"}]}}'}
+    golden: golden/hash-identityref-cache-dup.json

@@ -1,0 +1,24 @@
+fixtures:
+  - id: ops/leader-parse-rpc-input-output-dup
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.14"]
+    areas: [operations, xpath]
+    request:
+      op: sequence
+      searchdirs: [rb.1]
+      modules: [{name: rb}]
+      steps:
+        - {do: parse, format: json, data_type: rpc, unknown: reject, parse_only: true, data: '{"rb:r":{"in":"keep","in2":"x","in3":"y","in4":"z","il":[40,50,60,70,20,10,80,90]}}'}
+        - {do: dup, node_xpath: "/rb:r/il[.='80']", parent: "/rb:r", siblings: true, options: [], source: {format: json, data_type: rpc, parse_only: true, data: '{"rb:r":{"il":[80,90]}}'}}
+        - {do: edit, insert_term: {module: rb, parent: "/rb:r", name: il, value: "15"}}
+        - {do: change_term, node_xpath: "/rb:r/il[.='15']", value: "16"}
+        - {do: xpath, xpath: "/rb:r/il[.='16']"}
+        - {do: dump}
+        - {do: parse, format: json, data_type: reply, unknown: reject, parse_only: true, keep_input: true, rpc: '{"rb:r":{"in":"keep"}}', data: '{"rb:before":"b","rb:v":[40,50,60,70,20,10,80,90]}'}
+        - {do: dup, node_xpath: "/rb:r/v[.='80']", parent: "/rb:r", siblings: true, options: [], source: {format: json, data_type: reply, parse_only: true, rpc: '{"rb:r":{}}', data: '{"rb:v":[80,90]}'}}
+        - {do: edit, insert_term: {module: rb, parent: "/rb:r", name: v, value: "15", options: [output]}}
+        - {do: change_term, node_xpath: "/rb:r/v[.='15']", value: "16"}
+        - {do: xpath, xpath: "/rb:r/v[.='16']"}
+        - {do: dump}
+    golden: golden/ops-leader-parse-rpc-input-output-dup.json

@@ -99,6 +99,10 @@ func (vc *valCtx) topNodes() []xpath.Node {
 // xpathErr logs an evaluation error as lyxp_eval does: LOGVAL_DXPATH at the current node cur
 // (the must's node, the when's context node, the leafref), LOGERR errors without a location.
 func (vc *valCtx) xpathErr(err error, cur *Node) error {
+	var probeErr *xpathProbeError
+	if errors.As(err, &probeErr) {
+		return vc.log.storeErr(nil, probeErr.schema, probeErr.diag)
+	}
 	var xe *xpath.Error
 	if errors.As(err, &xe) {
 		if xe.VECode == "" {
@@ -108,6 +112,21 @@ func (vc *valCtx) xpathErr(err error, cur *Node) error {
 		return errLogged
 	}
 	return err // budget, cancellation, errIncomplete
+}
+
+// evalErrMsg reports whether err is a logged lyxp_eval failure (an XPath error or a predicate
+// key re-store failure, xpathProbeError) rather than a budget or cancellation error, and its
+// message (ly_err_last).
+func evalErrMsg(err error) (string, bool) {
+	var probeErr *xpathProbeError
+	if errors.As(err, &probeErr) {
+		return probeErr.diag.Msg, true
+	}
+	var xe *xpath.Error
+	if errors.As(err, &xe) {
+		return xe.Msg, true
+	}
+	return "", false
 }
 
 // whenOf is lyd_validate_node_when: the whens of the schema node and of its choice/case
@@ -163,11 +182,14 @@ func truthy(r xpath.Result) bool {
 // lyd_parser_set_data_flags call, so the JSON parser queues a node with metadata several times
 // and ly_set_contains finds the first entry), built when a when-false subtree needs it.
 type whenPass struct {
-	vc     *valCtx
-	live   int
-	pos    map[*Node][]int
-	dead   []*Node // WhenTrue nodes deleted by this pass, unlinked at its end
-	builds int     // pos maps built (one per pass at most; work tests)
+	vc           *valCtx
+	live         int
+	pos          map[*Node][]int
+	dead         []*Node // WhenTrue nodes deleted by this pass, unlinked at its end
+	builds       int     // pos maps built (one per pass at most; work tests)
+	initialWhen  []*Node
+	initialFlags map[*Node]Flags
+	initialTypes nodeSet
 }
 
 // drop is ly_set_rm_index_ordered of entry i (a tombstone).
@@ -188,6 +210,7 @@ func (p *whenPass) drop(i int) {
 // wait for the next pass.
 func (p *whenPass) whenFalse(n *Node, i int) int {
 	vc := p.vc
+	n.touch()
 	n.flags |= FlagWhenFalse
 	vc.dropTypes(n)
 	if p.live <= 1 {
@@ -224,11 +247,7 @@ func (p *whenPass) del(n *Node) {
 	if n.flags&flagDead != 0 {
 		return
 	}
-	vc := p.vc
-	if vc.diff != nil {
-		_ = vc.diff(n, diffDelete)
-	}
-	vc.dropTypes(n)
+	n.touch()
 	n.flags |= flagDead
 	p.dead = append(p.dead, n)
 }
@@ -236,10 +255,29 @@ func (p *whenPass) del(n *Node) {
 // unresWhen is lyd_validate_unres_when: one pass over node_when from the end. A resolved node
 // leaves the queue (order kept); a false when deletes a WhenTrue node silently, warns for
 // operational data, else is an error (the node kept as WhenFalse under multi-error).
-func (vc *valCtx) unresWhen() error {
-	p := &whenPass{vc: vc, live: vc.nodeWhen.len()}
-	defer p.finish()
-	var rc error
+func (vc *valCtx) unresWhen() (rc error) {
+	p := &whenPass{vc: vc, live: vc.nodeWhen.len(), initialWhen: slices.Clone(vc.nodeWhen.items),
+		initialFlags: map[*Node]Flags{}}
+	for _, n := range p.initialWhen {
+		if n != nil {
+			p.initialFlags[n] = n.flags
+		}
+	}
+	if vc.nodeTypes != nil {
+		var positions map[*Node]int
+		if vc.nodeTypes.pos != nil {
+			positions = make(map[*Node]int, len(vc.nodeTypes.pos))
+			for n, at := range vc.nodeTypes.pos {
+				positions[n] = at
+			}
+		}
+		p.initialTypes = nodeSet{items: slices.Clone(vc.nodeTypes.items), pos: positions, scans: vc.nodeTypes.scans}
+	}
+	defer func() {
+		if err := p.finish(); err != nil {
+			rc = err
+		}
+	}()
 	for i := vc.nodeWhen.len() - 1; i >= 0; i-- {
 		n := vc.nodeWhen.items[i]
 		if n == nil {
@@ -259,6 +297,7 @@ func (vc *valCtx) unresWhen() error {
 			}
 			continue
 		case w == nil:
+			n.touch()
 			n.flags = n.flags&^FlagWhenFalse | FlagWhenTrue
 		case n.flags&FlagWhenTrue != 0:
 			p.del(n) // nested queued nodes cannot exist (libyang asserts it)
@@ -280,7 +319,26 @@ func (vc *valCtx) unresWhen() error {
 }
 
 // finish compacts node_when and unlinks the nodes the pass deleted.
-func (p *whenPass) finish() {
+func (p *whenPass) finish() error {
+	if err := p.vc.t.preflightUnlinkAll(p.dead); err != nil {
+		for n, flags := range p.initialFlags {
+			n.touch()
+			n.flags = flags
+		}
+		p.vc.nodeWhen.items, p.vc.nodeWhen.pos = p.initialWhen, nil
+		if p.vc.nodeTypes != nil {
+			*p.vc.nodeTypes = p.initialTypes
+		}
+		return err
+	}
+	for _, n := range p.dead {
+		n.touch()
+		n.flags &^= flagDead
+		if p.vc.diff != nil {
+			_ = p.vc.diff(n, diffDelete)
+		}
+		p.vc.dropTypes(n)
+	}
 	q := p.vc.nodeWhen
 	live := q.items[:0]
 	for _, n := range q.items {
@@ -292,12 +350,16 @@ func (p *whenPass) finish() {
 	q.items, q.pos = live, nil
 	p.vc.posBuilds += p.builds
 	for _, n := range p.dead {
+		n.touch()
 		n.flags &^= flagDead
 	}
-	_ = p.vc.t.unlinkAll(p.dead) // autodelete never reaches a key
+	if err := p.vc.t.unlinkAll(p.dead); err != nil {
+		return err
+	}
 	for _, n := range p.dead {
 		freeSubtreeLinks(p.vc.t.set, n) // lyd_free_tree
 	}
+	return nil
 }
 
 // unres is the when and type part of lyd_validate_unres: when passes while the queue shrinks,
@@ -377,6 +439,7 @@ func (vc *valCtx) validateMetaIncomplete(n *Node, m *meta) error {
 	}
 	v, err := vc.incomplete(n, ant.Type, m.value)
 	if err == nil {
+		n.touch()
 		m.value = v
 	}
 	return err
@@ -391,6 +454,9 @@ func (vc *valCtx) incomplete(n *Node, t *schema.Type, val types.Value) (types.Va
 		return val, tt.err // budget or cancellation
 	}
 	if d != nil {
+		for _, probe := range tt.probes {
+			_ = vc.xpathErr(probe, n)
+		}
 		return val, vc.log.item(n, nil, false, d.RC(), codeOf(d.Code), d.AppTag, d.Msg)
 	}
 	return v, nil
@@ -403,15 +469,28 @@ func (vc *valCtx) validateIncomplete(n *Node) error {
 		return err
 	}
 	if v.Canonical() != n.value.Canonical() || !types.Equal(v, n.value) {
-		sib := n.siblingsOf()
-		if sib != nil {
-			sib.hashRemove(n)
+		target := n
+		if n.schema.Kind != schema.LeafList {
+			target = n.parent
 		}
+		if err := vc.t.work.checkChangedIndex(target, n, &v, 0); err != nil {
+			return err
+		}
+		// Tree validation changes a union member without lyd_hash. Preserve the
+		// stored list hash, but invalidate its running prefix for the next native
+		// rehash (plugins_types/union.c:522-573; tree_data.c:836-842).
+		if n.isKey() && n.parent != nil && n.keySlot != 0 {
+			n.parent.touch()
+			n.parent.lkeyDirty = true
+		}
+		n.touch()
 		n.value = v
-		if sib != nil && sib.ht != nil {
-			sib.hashPut(n)
+		if sib := n.siblingsOf(); sib != nil {
+			sib.hashReindex(n)
 		}
+		reindexComparedParent(n)
 	} else {
+		n.touch()
 		n.value = v
 	}
 	return nil
@@ -419,9 +498,10 @@ func (vc *valCtx) validateIncomplete(n *Node) error {
 
 // typeTree is types.Tree for the node n.
 type typeTree struct {
-	vc  *valCtx
-	n   *Node
-	err error // a budget or cancellation error met on the way
+	vc     *valCtx
+	n      *Node
+	err    error   // a budget or cancellation error met on the way
+	probes []error // value-probe diagnostics, committed only if validation fails
 	// readOnly skips the leafref linking (printing must not change the tree, D-0128)
 	readOnly bool
 }
@@ -432,13 +512,16 @@ type typeTree struct {
 func (tt *typeTree) LeafrefTarget(t *schema.Type, v types.Value) (bool, error) {
 	found, targets, err := tt.vc.leafrefTargets(tt.n, t, v)
 	if err != nil {
+		if errors.Is(err, yang.ErrBudget) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			tt.err = err
+			return false, nil
+		}
+		tt.probes = append(tt.probes, err)
 		var xe *xpath.Error
 		if errors.As(err, &xe) {
-			_ = tt.vc.xpathErr(err, tt.n) // lyxp_eval logs it, then the plugin its own message
 			return false, errors.New(xe.Msg)
 		}
-		tt.err = err
-		return false, nil
+		return false, err
 	}
 	if found && tt.vc.t.set.LeafrefLinking && !tt.readOnly {
 		// lyplg_type_validate_tree_leafref: a resolved require-instance leafref is linked with
@@ -451,7 +534,13 @@ func (tt *typeTree) LeafrefTarget(t *schema.Type, v types.Value) (bool, error) {
 }
 
 // InstanceExists is ly_path_eval: the instance-identifier target, found segment by segment.
-func (tt *typeTree) InstanceExists(p types.Path) bool { return tt.vc.pathEval(p) != nil }
+func (tt *typeTree) InstanceExists(p types.Path) bool {
+	n := tt.vc.pathEval(p)
+	if tt.vc.probes != nil && tt.vc.probes.work.hashErr != nil {
+		tt.err = tt.vc.probes.work.hashErr
+	}
+	return n != nil
+}
 
 // lrefTemplate is what lyplg_type_resolve_leafref_get_target_path derives from a path once:
 // whether the value goes into a key predicate of the list before the last step; disabled when
@@ -572,6 +661,9 @@ func (l lrefNS) Default() string             { return l.def }
 
 // pathEval is ly_path_eval_partial for a full match: the node at the end of p, or nil.
 func (vc *valCtx) pathEval(p types.Path) *Node {
+	if vc.probes == nil {
+		vc.probes = newTree(vc.t.set)
+	}
 	sib := &vc.t.top
 	var node *Node
 	for _, seg := range p {
@@ -583,7 +675,7 @@ func (vc *valCtx) pathEval(p types.Path) *Node {
 			case types.PredPosition:
 				// the instance at that position; a position beyond the instances (strtoull
 				// saturates huge numbers, as ParseUint does) selects nothing
-				if opChild(seg.Node) {
+				if opChild(seg.Node) || sib.schemaUnordered {
 					run := vc.t.opRun(sib, seg.Node)
 					if pr.Position > 0 && pr.Position <= uint64(len(run)) {
 						node = run[pr.Position-1]
@@ -596,11 +688,15 @@ func (vc *valCtx) pathEval(p types.Path) *Node {
 					}
 				}
 			case types.PredLeafList:
-				node = vc.t.findFirst(sib, newTerm(seg.Node, pr.Value))
+				target := newTerm(seg.Node, pr.Value, &vc.probes.work)
+				if vc.probes.work.hashErr != nil {
+					return nil
+				}
+				node = vc.t.findFirst(sib, target)
 			case types.PredKey: // ly_path_eval → ly_path_eval_partial: lyd_create_list, store-only
 				// a key that does not re-store finds nothing: libyang's instance-identifier
 				// validation reports "required instance not found" then (ut-new/path-08)
-				if target, d, _ := vc.t.lookupList(seg); d == nil {
+				if target, d, _, err := vc.probes.lookupList(seg); d == nil && err == nil {
 					node = vc.t.findFirst(sib, target)
 				}
 			}
@@ -642,9 +738,9 @@ func (vc *valCtx) derefType(n *Node, v types.Value, t *schema.Type, log bool) ([
 	switch t.Base {
 	case schema.Leafref:
 		found, nodes, err := vc.leafrefTargets(n, t, v)
-		if xe := (*xpath.Error)(nil); errors.As(err, &xe) {
+		if msg, ok := evalErrMsg(err); ok {
 			_ = vc.xpathErr(err, n) // lyxp_eval logs it, then the plugin message names it
-			return nil, fail("Invalid leafref value \"%s\" - XPath evaluation error (%s).", v.Canonical(), xe.Msg)
+			return nil, fail("Invalid leafref value \"%s\" - XPath evaluation error (%s).", v.Canonical(), msg)
 		}
 		if err != nil {
 			return nil, err
@@ -660,6 +756,9 @@ func (vc *valCtx) derefType(n *Node, v types.Value, t *schema.Type, log bool) ([
 		return out, nil
 	case schema.InstanceID:
 		target := vc.pathEval(v.Path())
+		if vc.probes != nil && vc.probes.work.hashErr != nil {
+			return nil, vc.probes.work.hashErr
+		}
 		if target == nil {
 			return nil, fail("Invalid instance-identifier \"%s\" value - required instance not found.",
 				n.value.Canonical())
@@ -745,7 +844,9 @@ func (vc *valCtx) dummyWhen(parent *Node, sn *schema.Node) (*schema.When, error)
 	vc.ignoreWhen = false
 	defer func() { vc.ignoreWhen = iw }()
 	dummy := newOpaque(opaque{Name: sn.Name, ModuleNS: sn.Module.Name, Format: types.FormatJSON, set: vc.t.set})
-	vc.t.insert(parent, dummy, insertDefault)
+	if err := vc.t.insert(parent, dummy, insertDefault); err != nil {
+		return nil, err
+	}
 	defer unlink(dummy)
 	root := xpath.RootAll
 	if sn.Config && !inOperation(sn) {

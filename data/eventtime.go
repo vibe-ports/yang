@@ -50,7 +50,9 @@ func (p *jsonParser) eventTimeJSON(status *lyjson.Token) error {
 	if err != nil {
 		return err
 	}
-	lc.nodeInsert(nil, nil, node)
+	if err := lc.nodeInsert(nil, nil, node); err != nil {
+		return err
+	}
 	if err := lc.eventTimeValidate(value); err != nil {
 		lc.nodeFree(node)
 		return err
@@ -72,7 +74,9 @@ func (p *xmlParser) eventTimeXML() error {
 	if err != nil {
 		return err
 	}
-	lc.nodeInsert(nil, nil, node)
+	if err := lc.nodeInsert(nil, nil, node); err != nil {
+		return err
+	}
 	fail := func(err error) error {
 		lc.nodeFree(node)
 		return err

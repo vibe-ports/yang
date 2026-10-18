@@ -1,0 +1,17 @@
+fixtures:
+  # Libyang v5.8.6 src/tree_data_hash.c:55-66 hashes the LYB bytes of every leading key. Binary LYB is the decoded bytes (src/plugins_types/binary.c:410-450): the repeated key runs a,bc and a,b,c both feed abc to the running hash (src/hash_table.c:34-64). The declared first key is also equal, so they merge (src/tree_data.c:1714-1716,1758-1785).
+  - id: protocol-v2/hash-repeated-key-binary-bytes-merge
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.8.5", "RFC7950#9.8", "RFC7951#4"]
+    areas: [types, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-hash-stored}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {do: parse, format: json, data_type: config, parse_only: true, data: '{"pv2-hash-stored:c":{"binary":[{"k":"YQ==","k":"YmM=","v":"original"}]}}'}
+        - {do: edit, format: json, data_type: config, merge: '{"pv2-hash-stored:c":{"binary":[{"k":"YQ==","k":"Yg==","k":"Yw==","v":"merged"}]}}'}
+        - {do: dump, with_defaults: all}
+    golden: golden/hash-repeated-key-binary-bytes-merge.json

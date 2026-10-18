@@ -1,0 +1,24 @@
+fixtures:
+  # libyang v5.8.6 tree_data.c:2280-2295 preserves the source terminal hash on
+  # cross-context dup; tree_data.c:1714-1716 rejects unequal hashes before values.
+  # Source strings equal the target canonical text. Each lyb-* compare must be
+  # LY_ENOT; text-* controls must be LY_SUCCESS. Hashing canonical text instead
+  # would turn every lyb-* comparison into LY_SUCCESS (mutation-tested).
+  - id: protocol-v2/hash-lyb-sweep-ipv4-address
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # Libyang-specific stored hashes, not a YANG equivalence assertion.
+    areas: [operations, types]
+    request:
+      op: sequence
+      searchdirs: [hash-sweep-source]
+      modules: [{name: pv2-hash-sweep}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {"do": "parse", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><lyb-ipv4-plain>192.0.2.1</lyb-ipv4-plain><lyb-ipv4-numeric-zone>192.0.2.1%7</lyb-ipv4-numeric-zone><lyb-ipv4-named-zone>192.0.2.1%test</lyb-ipv4-named-zone><lyb-ipv4-link-local>169.254.1.1%7</lyb-ipv4-link-local></r>"}
+        - {"do": "dup", "node": "/pv2-hash-sweep:r", "options": ["recursive"], "target": {"searchdirs": ["hash-sweep-target", "../types/schemas"], "modules": [{"name": "pv2-hash-sweep"}], "context_options": ["no_yanglibrary"]}}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/lyb-ipv4-plain[1]", "second": "/pv2-hash-sweep:r/lyb-ipv4-plain[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><lyb-ipv4-plain>192.0.2.1</lyb-ipv4-plain></r>"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/lyb-ipv4-numeric-zone[1]", "second": "/pv2-hash-sweep:r/lyb-ipv4-numeric-zone[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><lyb-ipv4-numeric-zone>192.0.2.1%7</lyb-ipv4-numeric-zone></r>"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/lyb-ipv4-named-zone[1]", "second": "/pv2-hash-sweep:r/lyb-ipv4-named-zone[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><lyb-ipv4-named-zone>192.0.2.1%test</lyb-ipv4-named-zone></r>"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/lyb-ipv4-link-local[1]", "second": "/pv2-hash-sweep:r/lyb-ipv4-link-local[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><lyb-ipv4-link-local>169.254.1.1%7</lyb-ipv4-link-local></r>"}
+    golden: golden/hash-lyb-sweep-ipv4-address.json

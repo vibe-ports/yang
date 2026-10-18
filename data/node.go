@@ -71,7 +71,16 @@ type Node struct {
 	meta       []*meta // metadata (lyd_meta), in order
 	hkey       idxKey  // bucket of the node in its parent's children index (lyd_node.hash)
 	hashed     bool
+	hash       uint32        // lyd_node.hash, independent of table membership and the current value
+	keyN       int           // current leading key run
+	lkeyN      int           // leading keys captured by the last native hash event
+	lkeyFrozen []*Node       // historical prefix displaced by an earlier repeated key
+	lkeyOK     bool          // false means no native hash event yet (stored hash zero)
+	lkeyPrefix uint32        // running hash before finalization, for amortized prefix extension
+	lkeyDirty  bool          // a captured value changed during validation, without a native rehash
+	keySlot    int           // 1-based position in the parent's captured prefix
 	inRB       bool          // in its run's RB tree (lyds) of a system-ordered list or leaf-list
+	rbGroup    *rbGroup      // identity of that tree; adjacent runs can have different trees
 	links      *leafrefLinks // leafref links record (LY_CTX_LEAFREF_LINKING), nil: none
 }
 
@@ -93,10 +102,20 @@ type Tree struct {
 // workCounter counts the work of a tree for tests (work, not time): comparisons made by
 // insertions and, when visits is set, sibling and bulk link-record visits. Reads of a tree count
 // nothing unless a test sets visits, so concurrent readers do not contend on it (#186).
+// The hash quota fields belong to a mutation operation; read-only probes use a
+// private counter rather than changing the queried tree's quota.
 type workCounter struct {
 	atomic.Int64
-	visits bool // count sibling/link-record visits too (tests only; set before measured calls)
-	shifts bool // count the sibling slots moved by insertions too (tests only)
+	visits     bool                      // count sibling/link-record visits too (tests only; set before measured calls)
+	shifts     bool                      // count the sibling slots moved by insertions too (tests only)
+	hashUsed   uint64                    // cumulative reserved hash transitions in the current mutation
+	hashLimit  uint64                    // zero takes the internal default; tests may lower it
+	hashErr    error                     // the first hash budget error, propagated at the operation boundary
+	hashDepth  int                       // nested mutation helpers share their enclosing operation's quota
+	hashTrace  *[]uint64                 // optional charge/check thresholds for exhaustive budget tests
+	hashNames  map[*schema.Node]uint32   // immutable module/name prefix, once per schema node in this tree
+	indexNames map[*schema.Node][32]byte // immutable positional-index name digest for hand-built schemas
+	journal    *hashTransaction          // the running operation's undo journal (beginHashTransaction)
 }
 
 // newTree returns an empty tree over the compiled schema s (the public constructor over a
@@ -107,10 +126,28 @@ func newTree(s *schema.Set) *Tree { return &Tree{set: s} }
 func (t *Tree) Top() iter.Seq[*Node] { return t.top.all() }
 
 // newTerm returns an unlinked leaf or leaf-list instance (lyd_create_term with a stored value).
-func newTerm(s *schema.Node, v types.Value) *Node { return &Node{schema: s, value: v} }
+func newTerm(s *schema.Node, v types.Value, counters ...*workCounter) *Node {
+	n := &Node{schema: s, value: v}
+	var work *workCounter
+	if len(counters) != 0 {
+		work = counters[0]
+	}
+	n.refreshHash(work)
+	return n
+}
 
 // newInner returns an unlinked container or list instance (lyd_create_inner).
-func newInner(s *schema.Node) *Node { return &Node{schema: s} }
+func newInner(s *schema.Node, counters ...*workCounter) *Node {
+	n := &Node{schema: s}
+	var work *workCounter
+	if len(counters) != 0 {
+		work = counters[0]
+	}
+	if s.Kind != schema.List || s.Keyless() {
+		n.refreshHash(work)
+	}
+	return n
+}
 
 // newOpaque returns an unlinked opaque node (lyd_create_opaq).
 func newOpaque(o opaque) *Node { return &Node{opaq: &o} }

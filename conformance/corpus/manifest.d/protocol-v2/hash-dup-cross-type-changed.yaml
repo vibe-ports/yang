@@ -1,0 +1,20 @@
+fixtures:
+  # Libyang-specific stored-hash lifecycle: v5.8.6 src/tree_data_new.c:1172-1225 refreshes the hash on a real value change; src/path.c:1363-1373 permits the state leaf-list positional selector despite its stale source-type hash.
+  - id: protocol-v2/hash-dup-cross-type-changed
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []
+    areas: [operations, types]
+    request:
+      op: sequence
+      searchdirs: [hash-source]
+      modules: [{name: pv2-hash-ctx}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, data: '{"pv2-hash-ctx:r":{"s":["3"],"a":"a","b":"b","c":"c"}}'}
+        - {do: dup, node: "/pv2-hash-ctx:r", options: [recursive], target: {searchdirs: [hash-target], modules: [{name: pv2-hash-ctx}], context_options: [no_yanglibrary]}}
+        - {do: change_term, node: "/pv2-hash-ctx:r/s[1]", value: "4"}
+        - {do: dump, with_defaults: all}
+        - {do: edit, delete: "/pv2-hash-ctx:r/s[.='4']"}
+        - {do: dump, with_defaults: all}
+    golden: golden/hash-dup-cross-type-changed.json

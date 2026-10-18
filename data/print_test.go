@@ -131,7 +131,7 @@ func (f *printFixture) note(t *testing.T, n *Node, name, typ, lex string) {
 func (f *printFixture) build(t *testing.T) *Tree {
 	t.Helper()
 	tr := f.tr
-	ins := func(parent, n *Node) *Node { tr.insert(parent, n, insertDefault); return n }
+	ins := func(parent, n *Node) *Node { mustLink(t, tr.insert(parent, n, insertDefault)); return n }
 	c := ins(nil, newInner(f.nodes["c"]))
 	f.note(t, c, "note", "string", "on-container")
 	s := ins(c, f.term(t, "s", "a \"q\" \\ \r\t\n é <&> ]]>"))
@@ -357,14 +357,14 @@ func TestPrintOpaque(t *testing.T) {
 	f := newPrintFixture(t)
 	tr := f.tr
 	c := newInner(f.nodes["c"])
-	tr.insert(nil, c, insertDefault)
-	tr.insert(c, f.term(t, "last", "own"), insertDefault)
+	mustLink(t, tr.insert(nil, c, insertDefault))
+	mustLink(t, tr.insert(c, f.term(t, "last", "own"), insertDefault))
 	pt := "urn:vibe-ports:pt"
-	tr.insert(c, newOpaque(opaque{Name: "unk", ModuleNS: pt, Format: types.FormatXML, Value: "hello"}), insertDefault)
+	mustLink(t, tr.insert(c, newOpaque(opaque{Name: "unk", ModuleNS: pt, Format: types.FormatXML, Value: "hello"}), insertDefault))
 	u2 := newOpaque(opaque{Name: "unk2", ModuleNS: pt, Format: types.FormatXML})
-	tr.insert(u2, newOpaque(opaque{Name: "a", ModuleNS: pt, Format: types.FormatXML, Value: "b"}), insertDefault)
-	tr.insert(c, u2, insertDefault)
-	tr.insert(c, newOpaque(opaque{Name: "x", ModuleNS: "urn:other", Format: types.FormatXML, Value: "v & w"}), insertDefault)
+	mustLink(t, tr.insert(u2, newOpaque(opaque{Name: "a", ModuleNS: pt, Format: types.FormatXML, Value: "b"}), insertDefault))
+	mustLink(t, tr.insert(c, u2, insertDefault))
+	mustLink(t, tr.insert(c, newOpaque(opaque{Name: "x", ModuleNS: "urn:other", Format: types.FormatXML, Value: "v & w"}), insertDefault))
 	wantJSON := "{\n  \"pt:c\": {\n    \"last\": \"own\",\n    \"unk\": \"hello\",\n    \"unk2\": {\n      \"a\": \"b\"\n    },\n" +
 		"    \"x\": \"v & w\"\n  }\n}\n"
 	wantXML := "<c xmlns=\"urn:vibe-ports:pt\">\n  <last>own</last>\n  <unk>hello</unk>\n  <unk2>\n    <a>b</a>\n  </unk2>\n" +
@@ -388,16 +388,16 @@ func TestPrintShrink(t *testing.T) {
 	f := newPrintFixture(t)
 	tr := f.tr
 	c := newInner(f.nodes["c"])
-	tr.insert(nil, c, insertDefault)
-	tr.insert(c, f.term(t, "n", "5"), insertDefault)
+	mustLink(t, tr.insert(nil, c, insertDefault))
+	mustLink(t, tr.insert(c, f.term(t, "n", "5"), insertDefault))
 	for _, v := range []string{"b", "a"} {
-		tr.insert(c, f.term(t, "ll", v), insertDefault)
+		mustLink(t, tr.insert(c, f.term(t, "ll", v), insertDefault))
 	}
 	l := newInner(f.nodes["l"])
-	tr.insert(l, f.term(t, "k1", "a"), insertDefault)
-	tr.insert(l, f.term(t, "k2", "1"), insertDefault)
-	tr.insert(c, l, insertDefault)
-	tr.insert(c, newInner(f.nodes["ec"]), insertDefault)
+	mustLink(t, tr.insert(l, f.term(t, "k1", "a"), insertDefault))
+	mustLink(t, tr.insert(l, f.term(t, "k2", "1"), insertDefault))
+	mustLink(t, tr.insert(c, l, insertDefault))
+	mustLink(t, tr.insert(c, newInner(f.nodes["ec"]), insertDefault))
 	f.note(t, c, "note", "string", "m")
 	var j, x bytes.Buffer
 	_ = tr.PrintJSON(&j, PrintOptions{Shrink: true})

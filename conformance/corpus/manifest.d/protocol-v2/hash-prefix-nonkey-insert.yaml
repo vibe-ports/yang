@@ -1,0 +1,26 @@
+# Libyang-specific lyd_dup_r child order and lyd_hash's leading-key stop at a non-key.
+fixtures:
+  - id: protocol-v2/hash-prefix-nonkey-insert
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [hash-prefix-nonkey-source]
+      modules: [{name: m}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, data: '{"m:r":{"l":[{"b":"B","a":"A"}]}}'}
+        - do: dup
+          node: /m:r
+          options: [recursive]
+          target:
+            searchdirs: [hash-prefix-nonkey-target]
+            modules: [{name: m}]
+            context_options: [no_yanglibrary]
+        - {do: edit, insert_term: {parent: "/m:r/l[1]", name: x, value: X}}
+        - {do: edit, insert_term: {parent: "/m:r/l[1]", name: a, value: A2}}
+        - {do: edit, set: {path: "/m:r/l[a='A2'][b='B']/x", value: found}}
+        - {do: dump}
+    golden: golden/hash-prefix-nonkey-insert.json

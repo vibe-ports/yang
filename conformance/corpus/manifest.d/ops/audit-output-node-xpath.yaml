@@ -1,0 +1,18 @@
+fixtures:
+  - id: ops/audit-output-node-xpath
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.14", "RFC7950#7.7.7"]
+    areas: [operations, xpath]
+    request:
+      op: sequence
+      searchdirs: [rb.1]
+      modules: [{name: rb}]
+      steps:
+        - {do: parse, format: json, data_type: reply, parse_only: true, keep_input: true, rpc: '{"rb:r":{}}', data: '{"rb:v":[40,20]}'}
+        # The source is a separate parsed tree; D-0132 forbids self-duplication.
+        - {do: dup, node_xpath: "/rb:r/v[.='60']", parent: "/rb:r", siblings: true, options: [], source: {format: json, data_type: reply, parse_only: true, rpc: '{"rb:r":{}}', data: '{"rb:v":[60,80]}'}}
+        - {do: change_term, node_xpath: "/rb:r/v[.='20']", value: "10"}
+        - {do: xpath, xpath: "/rb:r/v[.='10']"}
+        - {do: dump}
+    golden: golden/ops-audit-output-node-xpath.json

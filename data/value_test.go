@@ -27,7 +27,7 @@ func TestValueValidate(t *testing.T) {
 	f.c.Children = append(f.c.Children, un)
 	tr := newTree(f.set)
 	c := newInner(f.c)
-	tr.insert(nil, c, insertDefault)
+	mustLink(t, tr.insert(nil, c, insertDefault))
 
 	cases := []struct {
 		name     string
@@ -74,13 +74,13 @@ func TestValueCompare(t *testing.T) {
 	f := newFixture()
 	tr := newTree(f.set)
 	c := newInner(f.c)
-	tr.insert(nil, c, insertDefault)
+	mustLink(t, tr.insert(nil, c, insertDefault))
 	v, d := types.Store(f.u8, "7", types.FormatJSON, types.HintData, nil, f.ll)
 	if d != nil {
 		t.Fatal(d)
 	}
 	n := newTerm(f.ll, v)
-	tr.insert(c, n, insertDefault)
+	mustLink(t, tr.insert(c, n, insertDefault))
 	l := &logger{set: f.set}
 	for val, want := range map[string]bool{"7": true, "+07": true, "8": false} {
 		if eq, err := l.valueCompare(n, val); eq != want || err != nil {

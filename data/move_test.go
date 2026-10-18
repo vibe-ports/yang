@@ -22,7 +22,7 @@ func (f *fixture) srcList(t *testing.T, unsorted bool, vals ...string) (*Tree, [
 	var ns []*Node
 	for _, v := range vals {
 		n := f.term(t, f.ll, v)
-		src.insert(nil, n, order)
+		mustLink(t, src.insert(nil, n, order))
 		ns = append(ns, n)
 	}
 	return src, ns
@@ -32,7 +32,7 @@ func (f *fixture) cont(t *testing.T) (*Tree, *Node) {
 	t.Helper()
 	tr := newTree(f.set)
 	c := newInner(f.c)
-	tr.insert(nil, c, insertDefault)
+	mustLink(t, tr.insert(nil, c, insertDefault))
 	return tr, c
 }
 
@@ -89,15 +89,15 @@ func TestInsertChild(t *testing.T) {
 	// at once into an empty parent
 	tr2, c2 := f.cont(t)
 	src, _ := f.srcList(t, false, "5", "2")
-	src.insert(nil, f.term(t, f.z, "z"), insertDefault)
+	mustLink(t, src.insert(nil, f.term(t, f.z, "z"), insertDefault))
 	if err := tr2.insertChild(c2, src.top.first()); err != nil {
 		t.Fatal(err)
 	}
-	tr2.insert(c2, f.term(t, f.ll, "3"), insertDefault)
+	mustLink(t, tr2.insert(c2, f.term(t, f.ll, "3"), insertDefault))
 	if got := names(c2.Children()); !reflect.DeepEqual(got, []string{"ll=2", "ll=3", "ll=5", "z=z"}) || src.top.len() != 0 {
 		t.Fatalf("at once: %v, %d left", got, src.top.len())
 	}
-	if !c2.kids.rbTree[f.ll] {
+	if !c2.kids.hasRB(f.ll) {
 		t.Fatal("RB tree not moved")
 	}
 }
@@ -115,10 +115,10 @@ func TestMergeSorted(t *testing.T) {
 		}
 		for _, v := range dstVals {
 			n := f.term(t, f.ll, v)
-			tr.insert(c, n, order)
+			mustLink(t, tr.insert(c, n, order))
 			dst = append(dst, n)
 		}
-		tr.insert(c, f.term(t, f.z, "z"), insertDefault)
+		mustLink(t, tr.insert(c, f.term(t, f.z, "z"), insertDefault))
 		if err := tr.insertChild(c, src.top.first()); err != nil {
 			t.Fatal(err)
 		}
@@ -132,7 +132,7 @@ func TestMergeSorted(t *testing.T) {
 	if got := names(c.Children()); !reflect.DeepEqual(got, []string{"ll=1", "ll=2", "ll=4", "ll=4", "ll=6", "z=z"}) {
 		t.Fatalf("no trees: %v", got)
 	}
-	if c.kids.list[2] != dst[0] || !c.kids.rbTree[f.ll] {
+	if c.kids.list[2] != dst[0] || !c.kids.hasRB(f.ll) {
 		t.Fatal("no trees: the source 4 must follow the destination 4")
 	}
 
@@ -144,7 +144,7 @@ func TestMergeSorted(t *testing.T) {
 	if got := names(c.Children()); !reflect.DeepEqual(got, []string{"ll=3", "ll=4", "ll=4", "ll=5", "z=z"}) {
 		t.Fatalf("source tree: %v", got)
 	}
-	if c.kids.list[1] != sn[1] || c.kids.list[2] != dst[0] || !c.kids.rbTree[f.ll] {
+	if c.kids.list[1] != sn[1] || c.kids.list[2] != dst[0] || !c.kids.hasRB(f.ll) {
 		t.Fatal("source tree: the source 4 must come first")
 	}
 
@@ -162,9 +162,9 @@ func TestMergeSorted(t *testing.T) {
 	// RB predecessor (lyds_link_data_node), the unsorted 1 stays last
 	tr, c := f.cont(t)
 	for _, v := range []string{"5", "3"} {
-		tr.insert(c, f.term(t, f.ll, v), insertDefault)
+		mustLink(t, tr.insert(c, f.term(t, f.ll, v), insertDefault))
 	}
-	tr.insert(c, f.term(t, f.ll, "1"), insertLastBySchema)
+	mustLink(t, tr.insert(c, f.term(t, f.ll, "1"), insertLastBySchema))
 	src, _ = f.srcList(t, false, "4", "6")
 	if err := tr.insertChild(c, src.top.first()); err != nil {
 		t.Fatal(err)
@@ -180,13 +180,13 @@ func TestMergeSorted(t *testing.T) {
 func TestMoveBySchema(t *testing.T) {
 	f := newFixture()
 	tr, c := f.cont(t)
-	tr.insert(c, f.term(t, f.ul, "1"), insertDefault)
-	tr.insert(c, f.term(t, f.z, "z"), insertDefault)
-	tr.insert(c, newOpaque(opaque{Name: "op1"}), insertDefault)
+	mustLink(t, tr.insert(c, f.term(t, f.ul, "1"), insertDefault))
+	mustLink(t, tr.insert(c, f.term(t, f.z, "z"), insertDefault))
+	mustLink(t, tr.insert(c, newOpaque(opaque{Name: "op1"}), insertDefault))
 	src := newTree(f.set)
 	for _, n := range []*Node{f.term(t, f.ul, "9"), f.term(t, f.ul, "0"), f.term(t, f.ll, "7"), f.term(t, f.ll, "2"),
 		newOpaque(opaque{Name: "op2"})} {
-		src.insert(nil, n, insertDefault)
+		mustLink(t, src.insert(nil, n, insertDefault))
 	}
 	if err := tr.insertChild(c, src.top.first()); err != nil {
 		t.Fatal(err)
@@ -195,7 +195,7 @@ func TestMoveBySchema(t *testing.T) {
 	if got := names(c.Children()); !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %v, want %v", got, want)
 	}
-	if !c.kids.rbTree[f.ll] || src.top.len() != 0 {
+	if !c.kids.hasRB(f.ll) || src.top.len() != 0 {
 		t.Fatal("RB tree not moved with its run, or source not emptied")
 	}
 }
@@ -209,8 +209,8 @@ func TestInsertSibling(t *testing.T) {
 		t.Fatal(err)
 	}
 	src := newTree(f.set)
-	src.insert(nil, f.term(t, f.first, "f"), insertDefault)
-	src.insert(nil, newOpaque(opaque{Name: "zz", ModuleNS: "zz"}), insertDefault)
+	mustLink(t, src.insert(nil, f.term(t, f.first, "f"), insertDefault))
+	mustLink(t, src.insert(nil, newOpaque(opaque{Name: "zz", ModuleNS: "zz"}), insertDefault))
 	if err := newTree(f.set).insertSibling(c, src.top.first()); err != nil {
 		t.Fatal(err)
 	}
@@ -244,11 +244,11 @@ func TestInsertAfter(t *testing.T) {
 	var ul []*Node
 	for _, v := range []string{"1", "2", "3"} {
 		n := f.term(t, f.ul, v)
-		tr.insert(c, n, insertDefault)
+		mustLink(t, tr.insert(c, n, insertDefault))
 		ul = append(ul, n)
 	}
 	op := newOpaque(opaque{Name: "op"})
-	tr.insert(c, op, insertDefault)
+	mustLink(t, tr.insert(c, op, insertDefault))
 	if err := tr.insertAfter(ul[0], ul[2]); err != nil {
 		t.Fatal(err)
 	}
@@ -257,12 +257,12 @@ func TestInsertAfter(t *testing.T) {
 	}
 	n4 := f.term(t, f.ul, "4")
 	// after an opaque sibling: after the last instance of its run, schema order kept
-	tr.insert(c, f.term(t, f.z, "z"), insertDefault)
+	mustLink(t, tr.insert(c, f.term(t, f.z, "z"), insertDefault))
 	if err := tr.insertAfter(op, n4); err != nil || c.kids.list[3] != n4 {
 		t.Fatalf("after opaque: %v %v", err, names(c.Children()))
 	}
 	n5 := f.term(t, f.ul, "5")
-	tr.insert(c, n5, insertDefault)
+	mustLink(t, tr.insert(c, n5, insertDefault))
 	if c.kids.list[4] != n5 {
 		t.Fatalf("schema order broken: %v", names(c.Children()))
 	}
@@ -271,7 +271,7 @@ func TestInsertAfter(t *testing.T) {
 		t.Fatalf("opaque after schema: %v", err)
 	}
 	ll := f.term(t, f.ll, "1")
-	tr.insert(c, ll, insertDefault)
+	mustLink(t, tr.insert(c, ll, insertDefault))
 	for _, tc := range []struct {
 		sibling, n *Node
 		err        string

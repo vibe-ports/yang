@@ -146,5 +146,15 @@ func (t *Tree) ValidateOp(ctx context.Context, typ OpType, o ValidateOpOptions) 
 	if o.Operational == t {
 		o.Operational = nil // op_tree == dep_tree: a redundant dependency
 	}
-	return validateOp(ctx, t.set, first, o.Operational, vt, o.Budget)
+	journal := beginHashTransaction(t)
+	var dependency *hashTransaction
+	if o.Operational != nil {
+		dependency = beginHashTransaction(o.Operational)
+	}
+	diags, err := validateOp(ctx, t.set, first, o.Operational, vt, o.Budget)
+	// a failed journal charge of either tree fails the operation, and both roll back
+	journal.fail(&err)
+	dependency.end(&err)
+	journal.end(&err)
+	return diags, err
 }

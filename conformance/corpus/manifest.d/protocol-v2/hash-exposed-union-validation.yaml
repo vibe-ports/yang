@@ -1,0 +1,59 @@
+# libyang v5.8.6 tree_data.c:1769-1785 compares live positional children; self-merge must retain exactly one list.
+# Dup re-stores the canonical value; SetValue restores lexical 02 so validation reselects string and changes canonical 2 to 02.
+fixtures:
+- id: protocol-v2/hash-exposed-union-validation
+  dir: protocol-v2
+  source:
+    url: hand-written (this repo)
+    commit: null
+    license: BSD-3-Clause
+  rfc: []
+  areas:
+  - operations
+  - xpath
+  request:
+    op: sequence
+    searchdirs:
+    - hash-exposed-union-source
+    modules:
+    - name: m
+    context_options:
+    - no_yanglibrary
+    steps:
+    - do: parse
+      format: xml
+      data_type: data
+      parse_only: true
+      data: <r xmlns="urn:m"><p>p</p><q>q</q><z>z</z><l><a>x</a><v>01</v></l></r>
+    - do: dup
+      node: /m:r
+      options:
+      - recursive
+      target:
+        searchdirs:
+        - hash-exposed-union-target
+        modules:
+        - name: m
+        context_options:
+        - no_yanglibrary
+    - do: change_term
+      node_xpath: /m:r/l/v
+      value: '02'
+    - do: validate
+      validate_options:
+      - present
+    - do: compare
+      options:
+      - full_recursion
+      self: true
+    - do: edit
+      merge_self: true
+    - do: xpath
+      xpath: /m:r/l
+    - do: compare
+      options:
+      - full_recursion
+      self: true
+    - do: dump
+      with_defaults: all
+  golden: golden/hash-exposed-union-validation.json

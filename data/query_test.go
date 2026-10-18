@@ -21,9 +21,9 @@ func TestFindXPath(t *testing.T) {
 	f := newFixture()
 	tr := newTree(f.set)
 	c := newInner(f.c)
-	tr.insert(nil, c, insertDefault)
+	mustLink(t, tr.insert(nil, c, insertDefault))
 	for _, v := range []string{"5", "2", "9"} {
-		tr.insert(c, f.term(t, f.ll, v), insertDefault)
+		mustLink(t, tr.insert(c, f.term(t, f.ll, v), insertDefault))
 	}
 	vars := []xpath.Var{{Name: "min", Value: "3"}, {Name: "bad", Value: "1 +"}, {Name: "lx", Value: "'"}}
 
@@ -82,7 +82,7 @@ func TestFindXPath(t *testing.T) {
 
 	// lyxp_eval refuses a tree whose first top-level node is not a top-level schema node
 	bad := newTree(f.set)
-	bad.insert(nil, f.term(t, f.ll, "1"), insertDefault)
+	mustLink(t, bad.insert(nil, f.term(t, f.ll, "1"), insertDefault))
 	l = &logger{set: f.set}
 	if _, err := findXPath(bad, l, nil, "/b:c", nil); err == nil ||
 		codes(l.diags)[0] != `LY_EINVAL LYVE_SUCCESS : Data node "ll" has no parent but is not instance of a top-level schema node.` {

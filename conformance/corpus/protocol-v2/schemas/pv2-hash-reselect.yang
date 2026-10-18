@@ -1,0 +1,25 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module pv2-hash-reselect {
+  yang-version 1.1;
+  namespace "urn:pv2-hash-reselect";
+  prefix m;
+
+  typedef ref-or-string {
+    type union {
+      type leafref { path "/m:r/m:target"; }
+      type string;
+    }
+  }
+  container r {
+    leaf target { type int32; }
+    list l {
+      config false;
+      key "k edit";
+      leaf k { type ref-or-string; }
+      leaf edit { type string; }
+    }
+    leaf-list s { config false; type ref-or-string; }
+    leaf plain { type ref-or-string; }
+  }
+}

@@ -1,0 +1,21 @@
+fixtures:
+  # libyang v5.8.6 tree_data.c:2280-2295 preserves the source terminal hash on
+  # cross-context dup; tree_data.c:1714-1716 rejects unequal hashes before values.
+  # Source strings equal the target canonical text. Each lyb-* compare must be
+  # LY_ENOT; text-* controls must be LY_SUCCESS. Hashing canonical text instead
+  # would turn every lyb-* comparison into LY_SUCCESS (mutation-tested).
+  - id: protocol-v2/hash-lyb-sweep-ipv6-no-zone
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # Libyang-specific stored hashes, not a YANG equivalence assertion.
+    areas: [operations, types]
+    request:
+      op: sequence
+      searchdirs: [hash-sweep-source]
+      modules: [{name: pv2-hash-sweep}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {"do": "parse", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><lyb-ipv6-no-zone>2001:db8::1</lyb-ipv6-no-zone></r>"}
+        - {"do": "dup", "node": "/pv2-hash-sweep:r", "options": ["recursive"], "target": {"searchdirs": ["hash-sweep-target", "../types/schemas"], "modules": [{"name": "pv2-hash-sweep"}], "context_options": ["no_yanglibrary"]}}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/lyb-ipv6-no-zone[1]", "second": "/pv2-hash-sweep:r/lyb-ipv6-no-zone[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><lyb-ipv6-no-zone>2001:db8::1</lyb-ipv6-no-zone></r>"}
+    golden: golden/hash-lyb-sweep-ipv6-no-zone.json

@@ -1,0 +1,25 @@
+fixtures:
+  # Libyang-specific mutation history: union.c:649-655 replaces the stored member while retaining the outer canonical cache. A list dup (tree_data.c:2317) or key change rehashes it; terminal duplication and read-only probes do not. XML 01 validates as string, then a key rehash makes JSON print numeric 1.
+  - id: protocol-v2/hash-union-member-reselect-print
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []
+    areas: [types, operations, codecs, validation]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-hash-reselect}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<r xmlns="urn:pv2-hash-reselect"><l><k>01</k><edit>a</edit></l><s>01</s><plain>01</plain></r>'}
+        - {do: validate, data_type: data}
+        - {do: dump, with_defaults: all}
+        - {do: dup, node: "/pv2-hash-reselect:r", options: [recursive]}
+        - {do: dump, with_defaults: all}
+        - {do: validate, data_type: data}
+        - {do: dump, with_defaults: all}
+        - {do: change_term, node: "/pv2-hash-reselect:r/l[1]/edit", value: b}
+        - {do: dump, with_defaults: all}
+        - {do: change_term, node: "/pv2-hash-reselect:r/s[1]", value: "02"}
+        - {do: dump, with_defaults: all}
+    golden: golden/hash-union-member-reselect-print.json

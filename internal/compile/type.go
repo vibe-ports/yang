@@ -630,6 +630,7 @@ func (c *typeCtx) compileEnums(items []*parser.Enum, pm *pmod, basetype schema.B
 		copy(t.Bits[v+1:], t.Bits[v:])
 		t.Bits[v] = b
 	}
+	types.PrepareEnumLYB(t)
 	return nil
 }
 

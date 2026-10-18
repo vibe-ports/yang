@@ -65,6 +65,7 @@ func appendTrimSubtree(dst *[]*Node, root *Node, charge func(int64) bool) bool {
 // recorded before (`//.` on a nested tree): the tree is unchanged. A modification: it needs
 // exclusive access to t.
 func (t *Tree) TrimXPath(expr string, o XPathOptions) ([]yang.Diagnostic, error) {
+	defer t.work.beginHashWork()()
 	l := &logger{set: t.set}
 	if o.Node != nil {
 		err := l.done(l.logErr("LY_EINVAL", "Invalid argument %s (%s()).", "XPathOptions.Node (always the first top-level node)", "lyd_trim_xpath"))
@@ -183,7 +184,7 @@ func (t *Tree) TrimXPath(expr string, o XPathOptions) ([]yang.Diagnostic, error)
 	// grouping, each set's position table, and its own removal walk before any mutation.
 	groups := map[*siblings]int{}
 	for _, n := range free {
-		if sib := n.siblingsOf(); sib != nil && sib.ht != nil && len(sib.list) != 0 && opChild(sib.list[0].schema) {
+		if sib := n.siblingsOf(); sib != nil && sib.ht != nil && len(sib.list) != 0 && (sib.schemaUnordered || opChild(sib.list[0].schema)) {
 			if !charge(1) { // group lookup/append
 				return budgetErr()
 			}
@@ -205,12 +206,12 @@ func (t *Tree) TrimXPath(expr string, o XPathOptions) ([]yang.Diagnostic, error)
 			return budgetErr()
 		}
 	}
+	if err := t.unlinkAllDefaults(free, defaults); err != nil {
+		return l.diags, l.done(err)
+	}
 	cleaner := bulkLinkCleaner{work: &t.work}
 	for _, n := range freeNodes {
 		cleaner.free(n)
-	}
-	if err := t.unlinkAllDefaults(free, defaults); err != nil {
-		return l.diags, l.done(err)
 	}
 	return l.diags, nil
 }

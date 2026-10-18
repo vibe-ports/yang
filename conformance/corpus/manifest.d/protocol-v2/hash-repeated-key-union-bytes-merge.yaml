@@ -1,0 +1,17 @@
+fixtures:
+  # Libyang v5.8.6 src/plugins_types/union.c:633-666 prefixes each LYB union value with a one-byte member index (LYPLG_UNION_TYPE_IDX_SIZE at line 50). Unlike bare int32 runs 1,2,3 and 1,770, these repeated union-key runs have different byte streams and hashes (src/tree_data_hash.c:55-66); they remain two instances despite equal declared first keys.
+  - id: protocol-v2/hash-repeated-key-union-bytes-merge
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.8.5", "RFC7950#9.12", "RFC7951#4"]
+    areas: [types, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-hash-stored}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {do: parse, format: json, data_type: config, parse_only: true, data: '{"pv2-hash-stored:c":{"union":[{"k":1,"k":2,"k":3,"v":"original"}]}}'}
+        - {do: edit, format: json, data_type: config, merge: '{"pv2-hash-stored:c":{"union":[{"k":1,"k":770,"v":"merged"}]}}'}
+        - {do: dump, with_defaults: all}
+    golden: golden/hash-repeated-key-union-bytes-merge.json

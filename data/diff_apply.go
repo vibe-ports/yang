@@ -37,7 +37,8 @@ type ApplyDiffOptions struct {
 // refused with LY_EINVAL before t is changed, including when diff is nil (D-0116). A diff tree
 // may itself have such a split because libyang inserts generated diff nodes by their schema
 // anchors; it is accepted and walked in its stored order.
-func (t *Tree) ApplyDiff(diff *Tree, o ApplyDiffOptions) error {
+func (t *Tree) ApplyDiff(diff *Tree, o ApplyDiffOptions) (result error) {
+	defer t.work.beginHashWork()()
 	lg := &logger{set: t.set}
 	if split, op := splitOpRun(t.top.first(), true); split != nil {
 		fn := "lyd_diff_apply_all"
@@ -55,16 +56,24 @@ func (t *Tree) ApplyDiff(diff *Tree, o ApplyDiffOptions) error {
 			return lg.done(lg.logErr("LY_EINVAL", "Module \"%s\" not found.", o.Module))
 		}
 	}
+	if err := t.preflightBatchHash(diff); err != nil {
+		return err
+	}
+	journal := beginHashTransaction(t)
+	defer journal.end(&result)
 	cache := &dupCache{}
 	for _, root := range diff.top.nodes() {
 		if mod != nil && nodeModule(diff.set, root) != mod {
 			continue // data of another module
 		}
 		if err := t.applyR(nil, root, o.Callback, cache); err != nil {
+			if t.work.hashErr != nil {
+				return t.work.hashErr
+			}
 			return diffDone(lg, err)
 		}
 	}
-	return nil
+	return t.work.hashErr
 }
 
 // noInstErr is LOGERR_NOINST.
@@ -108,6 +117,7 @@ func (t *Tree) applyR(parent, dn *Node, cb func(diff, node *Node) error, cache *
 				return t.noInstErr(dn)
 			}
 			if match.isTerm() { // only the default flag changed
+				match.touch()
 				match.flags = match.flags&^FlagDefault | dn.flags&FlagDefault
 			}
 		case diffCreate:
@@ -141,8 +151,12 @@ func (t *Tree) applyR(parent, dn *Node, cb func(diff, node *Node) error, cache *
 			if rc := t.changeTerm(match, dn.value.Canonical()); rc != "" && rc != "LY_EEXIST" {
 				return &opError{"LY_EINVAL", fmt.Sprintf("Unexpected value of node \"%s\" in data.", lydPath(t.set, match, false))}
 			}
+			match.touch()
 			match.flags = dn.flags // with the flags
 		}
+	}
+	if t.work.hashErr != nil {
+		return t.work.hashErr
 	}
 	if err := t.applyMetadata(match, dn, op); err != nil {
 		return err
@@ -194,8 +208,7 @@ func (t *Tree) diffInsert(parent, n *Node, anchor string) error {
 	sib := t.childrenOf(parent)
 	if sib.len() == 0 {
 		if parent == nil {
-			t.insert(nil, n, insertDefault)
-			return nil
+			return t.insert(nil, n, insertDefault)
 		}
 		if anchor != "" {
 			return anchorErr(n)
@@ -211,9 +224,16 @@ func (t *Tree) diffInsert(parent, n *Node, anchor string) error {
 		case first == n:
 			return argErr("sibling != node", "lyd_insert_before")
 		case first != nil:
+			restore, err := t.linkOrigin(n)
+			if err != nil {
+				return err
+			}
 			unlink(n)
-			t.insertBefore(first, n)
-			return nil
+			err = t.insertBefore(first, n)
+			if err != nil {
+				restore()
+			}
+			return err
 		}
 		return t.insertSibling(sib.first(), n)
 	}
@@ -275,7 +295,10 @@ func (t *Tree) findAnchor(sib *siblings, sn *schema.Node, anchor string) (*Node,
 		if d != nil {
 			return nil, &storeFailure{d, sn}
 		}
-		target = newTerm(sn, v)
+		target = newTerm(sn, v, &t.work)
+		if t.work.hashErr != nil {
+			return nil, t.work.hashErr
+		}
 	} else {
 		// lyd_find_sibling_val returning LY_ENOTFOUND is a missing anchor to lyd_diff_insert
 		// (src/diff.c: "if (ret == LY_ENOTFOUND) { LOGERR(... "instance to insert next to not
@@ -299,7 +322,11 @@ func (t *Tree) findAnchor(sib *siblings, sn *schema.Node, anchor string) (*Node,
 		// the key, path-09), whichever key comes first (path-14)
 		var d *types.Diag
 		var key *schema.Node
-		if target, d, key = t.lookupList(types.PathSegment{Node: sn, Preds: preds}); d != nil {
+		var err error
+		if target, d, key, err = t.lookupList(types.PathSegment{Node: sn, Preds: preds}); err != nil {
+			return nil, err
+		}
+		if d != nil {
 			if key == nil { // the variable
 				return nil, &anchorMissing{name: sn.Name, first: d}
 			}
@@ -317,7 +344,11 @@ func (t *Tree) changeTerm(n *Node, val string) string {
 	if d != nil {
 		return d.RC()
 	}
-	switch valChange, dfltChange := t.changeTermVal(n, v, false); {
+	valChange, dfltChange := t.changeTermVal(n, v, false)
+	if t.work.hashErr != nil {
+		return "LY_EINVAL"
+	}
+	switch {
 	case valChange:
 		return ""
 	case dfltChange:

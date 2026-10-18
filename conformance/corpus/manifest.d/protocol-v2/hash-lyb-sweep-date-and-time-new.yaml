@@ -1,0 +1,29 @@
+fixtures:
+  # libyang v5.8.6 tree_data.c:2280-2295 preserves the source terminal hash on
+  # cross-context dup; tree_data.c:1714-1716 rejects unequal hashes before values.
+  # Source strings equal the target canonical text. Each lyb-* compare must be
+  # LY_ENOT; text-* controls must be LY_SUCCESS. Hashing canonical text instead
+  # would turn every lyb-* comparison into LY_SUCCESS (mutation-tested).
+  - id: protocol-v2/hash-lyb-sweep-date-and-time-new
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # Libyang-specific stored hashes, not a YANG equivalence assertion.
+    areas: [operations, types]
+    request:
+      op: sequence
+      searchdirs: [hash-sweep-source]
+      modules: [{name: pv2-hash-sweep}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {"do": "parse", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><lyb-dt-new-known>2024-01-02T00:00:01+00:00</lyb-dt-new-known><lyb-dt-new-positive-offset>2024-01-02T00:00:01+00:00</lyb-dt-new-positive-offset><lyb-dt-new-negative-offset>2024-01-02T00:00:01+00:00</lyb-dt-new-negative-offset><lyb-dt-new-fraction-known>2024-01-02T00:00:01.25+00:00</lyb-dt-new-fraction-known><lyb-dt-new-fraction-offset>2024-01-02T00:00:01.25+00:00</lyb-dt-new-fraction-offset><lyb-dt-new-unknown>2024-01-02T00:00:01Z</lyb-dt-new-unknown><lyb-dt-new-fraction-unknown>2024-01-02T00:00:01.25Z</lyb-dt-new-fraction-unknown><lyb-dt-new-z-input>2024-01-02T00:00:01Z</lyb-dt-new-z-input><lyb-dt-new-minus-zero-input>2024-01-02T00:00:01Z</lyb-dt-new-minus-zero-input></r>"}
+        - {"do": "dup", "node": "/pv2-hash-sweep:r", "options": ["recursive"], "target": {"searchdirs": ["hash-sweep-target", "../types/schemas"], "modules": [{"name": "pv2-hash-sweep"}], "context_options": ["no_yanglibrary"]}}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/lyb-dt-new-known[1]", "second": "/pv2-hash-sweep:r/lyb-dt-new-known[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><lyb-dt-new-known>2024-01-02T00:00:01+00:00</lyb-dt-new-known></r>"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/lyb-dt-new-positive-offset[1]", "second": "/pv2-hash-sweep:r/lyb-dt-new-positive-offset[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><lyb-dt-new-positive-offset>2024-01-02T02:00:01+02:00</lyb-dt-new-positive-offset></r>"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/lyb-dt-new-negative-offset[1]", "second": "/pv2-hash-sweep:r/lyb-dt-new-negative-offset[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><lyb-dt-new-negative-offset>2024-01-01T22:00:01-02:00</lyb-dt-new-negative-offset></r>"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/lyb-dt-new-fraction-known[1]", "second": "/pv2-hash-sweep:r/lyb-dt-new-fraction-known[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><lyb-dt-new-fraction-known>2024-01-02T00:00:01.25+00:00</lyb-dt-new-fraction-known></r>"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/lyb-dt-new-fraction-offset[1]", "second": "/pv2-hash-sweep:r/lyb-dt-new-fraction-offset[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><lyb-dt-new-fraction-offset>2024-01-02T02:00:01.25+02:00</lyb-dt-new-fraction-offset></r>"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/lyb-dt-new-unknown[1]", "second": "/pv2-hash-sweep:r/lyb-dt-new-unknown[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><lyb-dt-new-unknown>2024-01-02T00:00:01Z</lyb-dt-new-unknown></r>"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/lyb-dt-new-fraction-unknown[1]", "second": "/pv2-hash-sweep:r/lyb-dt-new-fraction-unknown[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><lyb-dt-new-fraction-unknown>2024-01-02T00:00:01.25Z</lyb-dt-new-fraction-unknown></r>"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/lyb-dt-new-z-input[1]", "second": "/pv2-hash-sweep:r/lyb-dt-new-z-input[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><lyb-dt-new-z-input>2024-01-02T00:00:01Z</lyb-dt-new-z-input></r>"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/lyb-dt-new-minus-zero-input[1]", "second": "/pv2-hash-sweep:r/lyb-dt-new-minus-zero-input[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><lyb-dt-new-minus-zero-input>2024-01-02T00:00:01-00:00</lyb-dt-new-minus-zero-input></r>"}
+    golden: golden/hash-lyb-sweep-date-and-time-new.json

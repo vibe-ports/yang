@@ -287,6 +287,7 @@ func (c *Context) unresBitenum(n *schema.Node) error {
 		case schema.Enumeration:
 			if slices.ContainsFunc(t.Enums, func(e *schema.Enum) bool { return e.Disabled }) {
 				t.Enums = slices.DeleteFunc(slices.Clone(t.Enums), func(e *schema.Enum) bool { return e.Disabled })
+				types.PrepareEnumLYB(t)
 			}
 			has = has || len(t.Enums) > 0
 		case schema.Bits:

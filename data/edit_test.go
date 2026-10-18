@@ -222,9 +222,9 @@ func TestFindPathRelative(t *testing.T) {
 	f := newFixture()
 	tr := newTree(f.set)
 	c := newInner(f.c)
-	tr.insert(nil, c, insertDefault)
+	mustLink(t, tr.insert(nil, c, insertDefault))
 	z := f.term(t, f.z, "value")
-	tr.insert(c, z, insertDefault)
+	mustLink(t, tr.insert(c, z, insertDefault))
 	f.list(t, tr, c, "a", "")
 
 	if got, err := tr.Find("z"); err != nil || got != z {
@@ -280,7 +280,7 @@ func TestFindPathRelativeContextArguments(t *testing.T) {
 	}
 
 	opaqueTree := newTree(f.set)
-	opaqueTree.insert(nil, newOpaque(opaque{Name: "unknown", ModuleNS: "urn:unknown", Format: types.FormatJSON}), insertDefault)
+	mustLink(t, opaqueTree.insert(nil, newOpaque(opaque{Name: "unknown", ModuleNS: "urn:unknown", Format: types.FormatJSON}), insertDefault))
 	for _, path := range []string{"/b:c", "z"} {
 		_, err := opaqueTree.Find(path)
 		var ve *ValidationError
@@ -291,7 +291,7 @@ func TestFindPathRelativeContextArguments(t *testing.T) {
 
 	leaf := newTree(f.set)
 	top := f.term(t, f.top, "value")
-	leaf.insert(nil, top, insertDefault)
+	mustLink(t, leaf.insert(nil, top, insertDefault))
 	// ly_path_compile resolves a relative path against the leaf's schema: no child, LY_EVALID.
 	if _, err := leaf.Find("z"); err == nil {
 		t.Fatal("top-leaf.Find(relative) succeeded; want the compile error")
@@ -416,7 +416,7 @@ func TestMergeRepeatedKeyMultikey(t *testing.T) {
 			}
 			src := newTree(set)
 			c := newInner(cSchema)
-			src.insert(nil, c, insertDefault)
+			mustLink(t, src.insert(nil, c, insertDefault))
 			list := newInner(lSchema)
 			for _, member := range tc.order {
 				v, d := types.Store(member.sn.Type, member.val, types.FormatJSON,
@@ -424,11 +424,11 @@ func TestMergeRepeatedKeyMultikey(t *testing.T) {
 				if d != nil {
 					t.Fatal(d.Msg)
 				}
-				src.insert(list, newTerm(member.sn, v), insertDefault)
+				mustLink(t, src.insert(list, newTerm(member.sn, v), insertDefault))
 			}
 			// The low-level libyang merge accepts an already linked malformed list; force the
 			// equivalent state because the public parser rejects its missing positional key.
-			src.insert(c, list, insertDefault)
+			mustLink(t, src.insert(c, list, insertDefault))
 			if err := dst.Merge(src); err != nil {
 				t.Fatal(err)
 			}
@@ -503,7 +503,7 @@ func TestNewPathAPI(t *testing.T) {
 	}
 	d := newTerm(sn, v)
 	d.flags = FlagDefault
-	tr.insert(np, d, insertDefault)
+	mustLink(t, tr.insert(np, d, insertDefault))
 	if n, err := tr.NewPath("/pv2-edit:c/np/d", "5", NewPathOptions{}); n != d || err != nil ||
 		d.flags&FlagDefault != 0 || np.flags&FlagDefault != 0 || d.flags&FlagNew != 0 {
 		t.Errorf("default leaf: %v %v flags %v %v", n, err, d.flags, np.flags)

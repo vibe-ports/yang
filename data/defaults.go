@@ -36,6 +36,7 @@ const (
 // (nil when not collected), the validation options and the implicit diff.
 type valCtx struct {
 	t         *Tree
+	probes    *Tree // private typed-probe construction and cumulative hash quota
 	log       *logger
 	opts      ValidateOptions
 	nodeWhen  *nodeSet // node_when
@@ -200,7 +201,11 @@ func (vc *valCtx) newImplicit(parent *Node, sparent *schema.Node, mod *schema.Mo
 		switch sn.Kind {
 		case schema.Container:
 			if !sn.Presence && vc.t.schemaLookup(sib, sn) == nil {
-				if err := vc.addImplicit(parent, newInner(sn)); err != nil {
+				n := newInner(sn, &vc.t.work)
+				if vc.t.work.hashErr != nil {
+					return vc.t.work.hashErr
+				}
+				if err := vc.addImplicit(parent, n); err != nil {
 					return err
 				}
 			}
@@ -213,7 +218,11 @@ func (vc *valCtx) newImplicit(parent *Node, sparent *schema.Node, mod *schema.Mo
 				if diag != nil { // the default fit the type at compile; kept as libyang logs it
 					return vc.log.item(parent, sn, false, "LY_EVALID", codeOf(diag.Code), diag.AppTag, diag.Msg)
 				}
-				if err := vc.addImplicit(parent, newTerm(sn, v)); err != nil {
+				n := newTerm(sn, v, &vc.t.work)
+				if vc.t.work.hashErr != nil {
+					return vc.t.work.hashErr
+				}
+				if err := vc.addImplicit(parent, n); err != nil {
 					return err
 				}
 			}
@@ -230,17 +239,21 @@ func (vc *valCtx) addImplicit(parent, n *Node) error {
 			return err
 		}
 	}
-	if n.isTerm() && n.value.NeedsTree() && vc.nodeTypes != nil {
-		vc.nodeTypes.add(n) // only once charged: a budget error leaves nothing queued
-	}
 	n.flags = FlagDefault
 	if hasWhen(n.schema) {
 		n.flags |= FlagWhenTrue
 	}
 	if parent == nil && vc.modFirst != nil {
-		vc.modInsert(n)
+		if err := vc.modInsert(n); err != nil {
+			return err
+		}
 	} else {
-		vc.t.insert(parent, n, insertDefault)
+		if err := vc.t.insert(parent, n, insertDefault); err != nil {
+			return err
+		}
+	}
+	if n.isTerm() && n.value.NeedsTree() && vc.nodeTypes != nil {
+		vc.nodeTypes.add(n)
 	}
 	if hasWhen(n.schema) && vc.nodeWhen != nil {
 		vc.nodeWhen.add(n)
@@ -262,20 +275,25 @@ func (vc *valCtx) addImplicit(parent, n *Node) error {
 // normally, before them (fixtures protocol-v2/implicit-top-anchor-last, -opaque).
 // ponytail: Go's insertion position stands in for libyang's anchor search from first (they
 // agree while the module's nodes are in schema order).
-func (vc *valCtx) modInsert(n *Node) {
+func (vc *valCtx) modInsert(n *Node) error {
 	t, sib := vc.t, &vc.t.top
 	fi := slices.Index(sib.list, vc.modFirst)
 	at := t.insertPos(sib, n, insertDefault)
+	moveFirst := at <= fi
 	switch {
 	case fi < 0:
-		t.link(nil, sib, n, at)
-		return
+		return t.link(nil, sib, n, at)
 	case at == len(sib.list) && len(sib.opq) == 0:
 		at = fi // no anchor: after first->prev
-	case at <= fi:
+		moveFirst = false
+	}
+	if err := t.link(nil, sib, n, at); err != nil {
+		return err
+	}
+	if moveFirst {
 		vc.modFirst = n // inserted before first: lyd_insert_node_ordby_schema moves it
 	}
-	t.link(nil, sib, n, at)
+	return nil
 }
 
 // modStart is the index of lyd_validate's *first2 in the top level: modFirst, else 0.

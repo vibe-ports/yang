@@ -1,0 +1,5 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written stored-hash compatibility fixture.
+module m { yang-version 1.1; namespace "urn:m"; prefix m;
+typedef e {type enumeration {enum e0 {value 0;} enum e1 {value 1;} enum e2 {value 2;} enum e3 {value 3;} enum e4 {value 4;} enum e5 {value 5;} enum e6 {value 6;} enum e7 {value 7;} enum e8 {value 8;} enum e9 {value 9;} enum e10 {value 10;} enum e11 {value 11;} enum e12 {value 12;} enum e13 {value 13;} enum e14 {value 14;} enum e15 {value 15;} enum e16 {value 16;} enum e17 {value 17;} enum e18 {value 18;} enum e19 {value 19;} enum e20 {value 20;} enum e21 {value 21;} enum e22 {value 22;} enum e23 {value 23;} enum boundary {value 256;}}} leaf-list s {config false;type e;}
+}

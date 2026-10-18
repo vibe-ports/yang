@@ -1,0 +1,33 @@
+fixtures:
+  # libyang v5.8.6 tree_data.c:2280-2295 preserves the source terminal hash on
+  # cross-context dup; tree_data.c:1714-1716 rejects unequal hashes before values.
+  # Source strings equal the target canonical text. Each lyb-* compare must be
+  # LY_ENOT; text-* controls must be LY_SUCCESS. Hashing canonical text instead
+  # would turn every lyb-* comparison into LY_SUCCESS (mutation-tested).
+  - id: protocol-v2/hash-lyb-sweep-text
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # Libyang-specific stored hashes, not a YANG equivalence assertion.
+    areas: [operations, types]
+    request:
+      op: sequence
+      searchdirs: [hash-sweep-source]
+      modules: [{name: pv2-hash-sweep}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {"do": "parse", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><text-string>word</text-string><text-string-empty></text-string-empty><text-empty></text-empty><text-hex>ab:01</text-hex><text-phys>ab:01</text-phys><text-mac>02:00:00:00:00:01</text-mac><text-uuid>00000000-0000-0000-0000-000000000001</text-uuid><text-xpath>/pv2-hash-sweep:r/word</text-xpath><text-instanceid>/pv2-hash-sweep:r/word</text-instanceid><text-node-instanceid>/pv2-hash-sweep:r/word</text-node-instanceid><text-node-instanceid-root>/</text-node-instanceid-root><text-instanceid-keys>[pv2-hash-sweep:word='word']</text-instanceid-keys><text-time-period>5m</text-time-period></r>"}
+        - {"do": "dup", "node": "/pv2-hash-sweep:r", "options": ["recursive"], "target": {"searchdirs": ["hash-sweep-target", "../types/schemas"], "modules": [{"name": "pv2-hash-sweep"}], "context_options": ["no_yanglibrary"]}}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/text-string[1]", "second": "/pv2-hash-sweep:r/text-string[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><text-string>word</text-string></r>"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/text-string-empty[1]", "second": "/pv2-hash-sweep:r/text-string-empty[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><text-string-empty></text-string-empty></r>"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/text-empty[1]", "second": "/pv2-hash-sweep:r/text-empty[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><text-empty></text-empty></r>"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/text-hex[1]", "second": "/pv2-hash-sweep:r/text-hex[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><text-hex>ab:01</text-hex></r>"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/text-phys[1]", "second": "/pv2-hash-sweep:r/text-phys[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><text-phys>ab:01</text-phys></r>"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/text-mac[1]", "second": "/pv2-hash-sweep:r/text-mac[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><text-mac>02:00:00:00:00:01</text-mac></r>"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/text-uuid[1]", "second": "/pv2-hash-sweep:r/text-uuid[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><text-uuid>00000000-0000-0000-0000-000000000001</text-uuid></r>"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/text-xpath[1]", "second": "/pv2-hash-sweep:r/text-xpath[1]", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"pv2-hash-sweep:r\": {\"text-xpath\": [\"/pv2-hash-sweep:r/word\"]}}"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/text-instanceid[1]", "second": "/pv2-hash-sweep:r/text-instanceid[1]", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"pv2-hash-sweep:r\": {\"text-instanceid\": [\"/pv2-hash-sweep:r/word\"]}}"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/text-node-instanceid[1]", "second": "/pv2-hash-sweep:r/text-node-instanceid[1]", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"pv2-hash-sweep:r\": {\"text-node-instanceid\": [\"/pv2-hash-sweep:r/word\"]}}"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/text-node-instanceid-root[1]", "second": "/pv2-hash-sweep:r/text-node-instanceid-root[1]", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"pv2-hash-sweep:r\": {\"text-node-instanceid-root\": [\"/\"]}}"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/text-instanceid-keys[1]", "second": "/pv2-hash-sweep:r/text-instanceid-keys[1]", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"pv2-hash-sweep:r\": {\"text-instanceid-keys\": [\"[pv2-hash-sweep:word='word']\"]}}"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/text-time-period[1]", "second": "/pv2-hash-sweep:r/text-time-period[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><text-time-period>5m</text-time-period></r>"}
+    golden: golden/hash-lyb-sweep-text.json

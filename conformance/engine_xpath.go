@@ -133,6 +133,11 @@ func runXPath(r Request, s *yang.Schema, resp map[string]any, exec executionCont
 		resp["verdict"] = "invalid"
 		return nil
 	}
+	resp["result"] = xpathResultJSON(res)
+	return nil
+}
+
+func xpathResultJSON(res data.XPathResult) map[string]any {
 	out := map[string]any{"type": res.Type.String()}
 	switch res.Type {
 	case data.XPathNodeSet:
@@ -157,8 +162,7 @@ func runXPath(r Request, s *yang.Schema, resp map[string]any, exec executionCont
 	case data.XPathBoolean:
 		out["value"] = res.Boolean
 	}
-	resp["result"] = out
-	return nil
+	return out
 }
 
 // parseXPathData is op_xpath's parse_one with no rpc request. Every data type follows the same

@@ -1,0 +1,131 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "g",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "e",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "f",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"e:li\": [\n    {\n      \"id\": \"/f:lp[p='2001:db8::/64']\"\n    }\n  ],\n  \"g:c\": {\n    \"selector\": \"/f:lp[p='2001:0db8::/64']\",\n    \"fallback\": \"/f:lp[p='2001:0db8::/64']\"\n  }\n}\n",
+    "xml": "<li xmlns=\"urn:vibe-ports:yang:ut-new:e\">\n  <id xmlns:f=\"urn:vibe-ports:yang:ut-new:f\">/f:lp[f:p='2001:db8::/64']</id>\n</li>\n<c xmlns=\"urn:vibe-ports:yang:hash-leafref-probe:g\">\n  <selector>/f:lp[p='2001:0db8::/64']</selector>\n  <fallback>/f:lp[p='2001:0db8::/64']</fallback>\n</c>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/e:li[id=\"/f:lp[p='2001:db8::/64']\"]",
+      "schema": "/e:li",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/e:li[id=\"/f:lp[p='2001:db8::/64']\"]/id",
+      "schema": "/e:li/id",
+      "value": {
+        "canonical": "/f:lp[p='2001:db8::/64']",
+        "type": "instance-identifier",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/g:c",
+      "schema": "/g:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/g:c/selector",
+      "schema": "/g:c/selector",
+      "value": {
+        "canonical": "/f:lp[p='2001:0db8::/64']",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/g:c/fallback",
+      "schema": "/g:c/fallback",
+      "value": {
+        "canonical": "/f:lp[p='2001:0db8::/64']",
+        "type": "union",
+        "typedef": null,
+        "union_member": {
+          "index": 1,
+          "realtype": {
+            "type": "string",
+            "typedef": null
+          },
+          "type": "string",
+          "typedef": null
+        }
+      }
+    }
+  ],
+  "verdict": "valid"
+}

@@ -53,7 +53,8 @@ type MergeDiffOptions struct {
 // intermediate diffs: Diff(first, last, DiffOptions{Defaults: true}), with Defaults for the reason
 // given at ReverseDiff. An operation's children in a diff tree may be split by schema-anchor
 // insertion; MergeDiff accepts that order, as libyang does.
-func (t *Tree) MergeDiff(src *Tree, o MergeDiffOptions) error {
+func (t *Tree) MergeDiff(src *Tree, o MergeDiffOptions) (result error) {
+	defer t.work.beginHashWork()()
 	lg := &logger{set: t.set}
 	if src == nil {
 		return nil
@@ -64,7 +65,13 @@ func (t *Tree) MergeDiff(src *Tree, o MergeDiffOptions) error {
 			return lg.done(lg.logErr("LY_EINVAL", "Module \"%s\" not found.", o.Module))
 		}
 	}
-	return diffDone(lg, t.diffMergeModule(src, mo))
+	journal := beginHashTransaction(t)
+	defer journal.end(&result)
+	err := t.diffMergeModule(src, mo)
+	if t.work.hashErr != nil {
+		err = t.work.hashErr
+	}
+	return diffDone(lg, err)
 }
 
 // MergeDiffTree is lyd_diff_merge_tree: the subtree src of a source diff merged into the diff t
@@ -72,7 +79,8 @@ func (t *Tree) MergeDiff(src *Tree, o MergeDiffOptions) error {
 // MergeDiff, whose limitations for user-ordered instances apply here too. A nil src normally
 // merges nothing. Operation-child runs in either diff may be split by schema-anchor insertion
 // and are accepted in that stored order, as in libyang.
-func (t *Tree) MergeDiffTree(parent, src *Node, o MergeDiffOptions) error {
+func (t *Tree) MergeDiffTree(parent, src *Node, o MergeDiffOptions) (result error) {
+	defer t.work.beginHashWork()()
 	lg := &logger{set: t.set}
 	if src == nil {
 		return nil
@@ -80,7 +88,12 @@ func (t *Tree) MergeDiffTree(parent, src *Node, o MergeDiffOptions) error {
 	if parent != nil && treeOf(parent) != t {
 		return diffDone(lg, argErr("parent (not a node of the diff)", "lyd_diff_merge_tree"))
 	}
+	journal := beginHashTransaction(t)
+	defer journal.end(&result)
 	err := t.diffMergeR(src, parent, &dupCache{}, mergeOpts{defaults: o.Defaults, cb: o.Callback})
+	if t.work.hashErr != nil {
+		err = t.work.hashErr
+	}
 	return diffDone(lg, err)
 }
 
@@ -103,6 +116,7 @@ func copyYangMeta(src, n *Node, name string) bool {
 		return false
 	}
 	m := *src.meta[i]
+	n.touch()
 	n.meta = append(n.meta, &m)
 	return true
 }
@@ -148,6 +162,7 @@ func (t *Tree) diffMergeReplace(dm *Node, cur diffOp, src *Node) error {
 					}
 				}
 			}
+			dm.touch()
 			dm.flags = dm.flags&^FlagDefault | src.flags&FlagDefault
 		default: // anydata, anyxml values await the public diff surface (U-0112)
 			return fmt.Errorf("data: merging a replace of %s %q: %w", nodetypeStr(dm.schema.Kind), dm.schema.Name, ErrUnsupported)
@@ -292,6 +307,7 @@ func (t *Tree) diffMergeMetadata(src, trg *Node) error {
 				trgOrig = slices.Delete(trgOrig, i, i+1)
 			default:
 				c := *m
+				trg.touch()
 				trg.meta = append(trg.meta, &c)
 			}
 		case "meta-delete":
@@ -299,6 +315,7 @@ func (t *Tree) diffMergeMetadata(src, trg *Node) error {
 				removeMeta(trg, m1)
 			} else {
 				c := *m
+				trg.touch()
 				trg.meta = append(trg.meta, &c)
 			}
 		case "meta-replace":
@@ -325,6 +342,7 @@ func (t *Tree) diffMergeMetadata(src, trg *Node) error {
 			}
 		default:
 			c, o := *r, *srcOrig[i]
+			trg.touch()
 			trg.meta = append(trg.meta, &c, &o)
 		}
 	}

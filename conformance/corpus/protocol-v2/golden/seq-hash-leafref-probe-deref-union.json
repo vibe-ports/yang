@@ -1,0 +1,298 @@
+{
+  "context_diagnostics": [],
+  "failed_step": 1,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "g",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "e",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "f",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 7,
+    "name": "LY_EVALID"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/e:li[id=\"/f:lp[p='2001:db8::/64']\"]",
+          "schema": "/e:li",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/e:li[id=\"/f:lp[p='2001:db8::/64']\"]/id",
+          "schema": "/e:li/id",
+          "value": {
+            "canonical": "/f:lp[p='2001:db8::/64']",
+            "type": "instance-identifier",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/g:c",
+          "schema": "/g:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/g:c/selector",
+          "schema": "/g:c/selector",
+          "value": {
+            "canonical": "/f:lp[p='2001:0db8::/64']",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/g:c/fallback",
+          "schema": "/g:c/fallback",
+          "value": {
+            "canonical": "/f:lp[p='2001:db8::/64']",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "instance-identifier",
+                "typedef": null
+              },
+              "type": "leafref",
+              "typedef": null
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/g:c/strict",
+          "schema": "/g:c/strict",
+          "value": {
+            "canonical": "/f:lp[p='2001:db8::/64']",
+            "type": "instance-identifier",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Invalid instance-identifier \"/f:lp[p='2001:db8::/64']\" value - semantic error: Unsatisfied pattern - \"2001:db8::/64\" does not match \".*0db8.*\".",
+          "phase": "xpath",
+          "schema_path": "/e:li/id",
+          "vecode": 9,
+          "vecode_name": "LYVE_DATA"
+        }
+      ],
+      "do": "xpath",
+      "rc": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "result": {
+        "nodes": [],
+        "type": "node-set"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/e:li[id=\"/f:lp[p='2001:db8::/64']\"]",
+          "schema": "/e:li",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/e:li[id=\"/f:lp[p='2001:db8::/64']\"]/id",
+          "schema": "/e:li/id",
+          "value": {
+            "canonical": "/f:lp[p='2001:db8::/64']",
+            "type": "instance-identifier",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/g:c",
+          "schema": "/g:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/g:c/selector",
+          "schema": "/g:c/selector",
+          "value": {
+            "canonical": "/f:lp[p='2001:0db8::/64']",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/g:c/fallback",
+          "schema": "/g:c/fallback",
+          "value": {
+            "canonical": "/f:lp[p='2001:db8::/64']",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "instance-identifier",
+                "typedef": null
+              },
+              "type": "leafref",
+              "typedef": null
+            }
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/g:c/strict",
+          "schema": "/g:c/strict",
+          "value": {
+            "canonical": "/f:lp[p='2001:db8::/64']",
+            "type": "instance-identifier",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "invalid"
+}

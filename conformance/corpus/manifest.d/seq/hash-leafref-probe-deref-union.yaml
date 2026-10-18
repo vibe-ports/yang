@@ -1,0 +1,18 @@
+# libyang v5.8.6: xpath_deref_type (xpath.c:4032-4093) treats a union's leafref member whose predicate
+# key re-store fails (logged by lyxp_eval) as unresolved and tries the next member (a string: no
+# targets), so deref() returns an empty node set.
+fixtures:
+  - id: seq/hash-leafref-probe-deref-union
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9.3"]
+    areas: [types, xpath]
+    request:
+      op: sequence
+      searchdirs: [hash-leafref-probe, ../ut-new/e.1, ../ut-new/f.1]
+      modules: [{name: g}, {name: e}, {name: f}]
+      context_options: [leafref_linking, no_yanglibrary]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, data: '{"e:li":[{"id":"/f:lp[p=''2001:0db8::/64'']"}],"g:c":{"selector":"/f:lp[p=''2001:0db8::/64'']","strict":"/f:lp[p=''2001:0db8::/64'']","fallback":"/f:lp[p=''2001:0db8::/64'']"}}'}
+        - {do: xpath, xpath: "deref(/g:c/fallback)"}
+    golden: golden/seq-hash-leafref-probe-deref-union.json

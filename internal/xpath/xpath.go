@@ -91,17 +91,38 @@ type Node interface {
 // Without it the evaluator scans Children() for every step whose schema node it
 // knows, which costs O(siblings) per step.
 type ChildLookup interface {
-	// LookupChild returns, in document order, every child instance of sn whose
-	// list keys (in key order) have the string values (Value().String()) vals,
-	// or every instance of sn when vals is nil (a container, leaf or any node).
+	// LookupChild returns matching children with the native first match first:
+	// registration order for keyed lists, document order for duplicate-instance
+	// kinds. Keys compare positionally with vals, or by schema for nil vals.
 	// vals are canonical already (stored by the key's type, as
-	// ly_path_compile_predicate does), so the comparison is plain string
-	// equality; no match is an empty result, or the first opaque child named
+	// ly_path_compile_predicate does). Matching also applies the stored-hash gate
+	// of lyd_compare_single_data; canonical equality alone is insufficient.
+	// No match is an empty result, or the first opaque child named
 	// like sn (lyd_find_sibling_opaq_next), which libyang returns as it is.
 	// ok=false declines the lookup: the evaluator scans this node's children
 	// instead, charging the step budget per child. A lookup must cost O(1)
 	// steps; decline wherever it would have to scan.
 	LookupChild(sn SchemaNode, vals []string) (nodes []Node, ok bool)
+}
+
+// InstanceProbe is the typed instance constructed once by moveto_node_hash_child.
+// Match applies the same stored-hash, positional-schema, and value comparison as
+// indexed lookup. Implementations charge any data-dependent work to the callback
+// supplied to PrepareInstance.
+type InstanceProbe interface {
+	Match(Node) (bool, error)
+}
+
+// InstanceProbePreparer constructs the typed probe before visiting any parents.
+// Type storage errors retain their diagnostic and are returned to the caller.
+type InstanceProbePreparer interface {
+	PrepareInstance(vals []string, charge func(int64) error) (InstanceProbe, error)
+}
+
+// PreparedChildLookup reuses a probe and its fixed-size discriminator for every
+// parent. Declining a lookup asks the evaluator for its charged sibling scan.
+type PreparedChildLookup interface {
+	LookupPrepared(InstanceProbe) (nodes []Node, ok bool, err error)
 }
 
 // OpaqueSchema is an optional interface of an opaque Node (Schema() nil): lyd_node_schema, the

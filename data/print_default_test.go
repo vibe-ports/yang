@@ -32,14 +32,14 @@ func dfltLeafrefTree(t *testing.T, rv string, vals ...string) (*Tree, *Node) {
 	c.Children = []*schema.Node{tl, r}
 	tr := newTree(set)
 	cn := newInner(c)
-	tr.insert(nil, cn, insertDefault)
+	mustLink(t, tr.insert(nil, cn, insertDefault))
 	term := func(sn *schema.Node, lex string) *Node {
 		v, d := types.Store(sn.Type, lex, types.FormatJSON, types.JSONHints("string"), types.ModuleNames{Set: set}, sn)
 		if d != nil {
 			t.Fatal(d.Msg)
 		}
 		n := newTerm(sn, v)
-		tr.insert(cn, n, insertDefault)
+		mustLink(t, tr.insert(cn, n, insertDefault))
 		return n
 	}
 	for _, v := range vals {

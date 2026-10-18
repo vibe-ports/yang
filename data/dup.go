@@ -177,6 +177,9 @@ type dupFrame struct {
 func (t *Tree) dupWork(n, parent *Node, top bool, order insertOrder, opts dupOpts, w *anyWork) (*Node, error) {
 	stack := []dupFrame{{tree: t, src: n, parent: parent, sourceSet: setOf(n), top: top, order: order, opts: opts}}
 	var root *Node
+	// one tree per payload context: its sibling sets share one work counter, so
+	// linking an outer node does not rebind the payloads below it again
+	payloadTrees := map[*schema.Set]*Tree{}
 	for len(stack) != 0 {
 		if err := w.ctx.Err(); err != nil {
 			return nil, err
@@ -184,21 +187,11 @@ func (t *Tree) dupWork(n, parent *Node, top bool, order insertOrder, opts dupOpt
 		f := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
 		if f.dst != nil {
-			if f.dst.schema != nil && isInner(f.dst.schema) {
-				npContDfltSet(f.dst)
+			if err := f.tree.dupLink(f); err != nil {
+				return nil, err
 			}
-			if f.parent != nil || f.top {
-				// lyd_any_copy_value duplicates the forest before assigning its
-				// parent pointers, so linking a payload must not clear the any
-				// node's own Default flag through npContDfltDel.
-				var flags Flags
-				if f.payload && f.parent != nil {
-					flags = f.parent.flags
-				}
-				f.tree.insert(f.parent, f.dst, f.order)
-				if f.payload && f.parent != nil {
-					f.parent.flags = flags
-				}
+			if err := t.absorbHashWork(f.tree); err != nil {
+				return nil, err
 			}
 			continue
 		}
@@ -250,7 +243,10 @@ func (t *Tree) dupWork(n, parent *Node, top bool, order insertOrder, opts dupOpt
 				if sourceSet == nil {
 					sourceSet = f.sourceSet
 				}
-				childTree = newTree(sourceSet)
+				if childTree = payloadTrees[sourceSet]; childTree == nil {
+					childTree = newTree(sourceSet)
+					payloadTrees[sourceSet] = childTree
+				}
 			}
 		} else if f.opts&dupRecursive == 0 {
 			keys := 0
@@ -271,6 +267,76 @@ func (t *Tree) dupWork(n, parent *Node, top bool, order insertOrder, opts dupOpt
 		}
 	}
 	return root, nil
+}
+
+// dupLink completes f.dst after its children were copied: lyd_dup_r's final hash
+// (tree_data.c:2317: final leading keys, not the source hash), then the link.
+func (t *Tree) dupLink(f dupFrame) error {
+	d := f.dst
+	if d.schema != nil && !d.isTerm() {
+		if err := t.work.checkRefreshHash(d); err != nil {
+			return err
+		}
+		refreshInstanceHash(&t.work, d)
+		if isInner(d.schema) {
+			npContDfltSet(d)
+		}
+	}
+	if f.parent == nil && !f.top {
+		return nil
+	}
+	if d.schema != nil && d.schema.IsKey() && f.parent != nil && (f.parent.parent != nil || f.parent.tree != nil) {
+		if err := t.work.checkTermHash(f.parent, d.schema, d.value); err != nil {
+			return err
+		}
+	}
+	// lyd_any_copy_value duplicates the forest before assigning its parent
+	// pointers, so linking a payload must not clear the any node's own Default
+	// flag through npContDfltDel.
+	var flags Flags
+	if f.payload && f.parent != nil {
+		flags = f.parent.flags
+	}
+	var err error
+	if f.order == insertLast && d.schema != nil {
+		// lyd_dup_r uses LYD_INSERT_NODE_LAST for copied children, including
+		// across contexts whose key/schema order differs. Bypass insertPos's
+		// schema-order constraint (D-0058 applies to ordered parsing).
+		sib := t.childrenOf(f.parent)
+		if sortedSupported(d) && len(sib.list) > 0 &&
+			sib.list[len(sib.list)-1].schema == d.schema && sib.list[len(sib.list)-1].inRB {
+			leader := sib.list[len(sib.list)-1]
+			for i := len(sib.list) - 2; i >= 0 && sib.list[i].schema == d.schema; i-- {
+				t.work.Add(1)
+				leader = sib.list[i]
+			}
+			markUnsorted(sib, leader)
+		}
+		err = t.link(f.parent, sib, d, len(sib.list))
+	} else {
+		err = t.insert(f.parent, d, f.order)
+	}
+	if f.payload && f.parent != nil {
+		f.parent.flags = flags
+	}
+	return err
+}
+
+// absorbHashWork charges the hash work done in c, a payload copy's own-context
+// tree, to t's operation quota.
+// ponytail: c has its own quota, so one payload node may overshoot t's by at most
+// that; share one counter across contexts if that ever matters.
+func (t *Tree) absorbHashWork(c *Tree) error {
+	if c == t {
+		return nil
+	}
+	if c.work.hashErr != nil {
+		t.work.hashErr = c.work.hashErr
+		return c.work.hashErr
+	}
+	used := c.work.hashUsed
+	c.work.hashUsed = 0
+	return t.work.chargeHash(used)
 }
 
 // dupSingle copies scalar state; children are scheduled by dupWork. Schema and
@@ -308,6 +374,9 @@ func (t *Tree) dupSingle(n, parent *Node, sourceSet *schema.Set, opts dupOpts) (
 		}
 		d.opaq = &o
 	case d.isTerm():
+		// tree_data.c:2280-2295 retains the existing hash, even across types and
+		// repeated duplicates. Only a later native value change replaces it.
+		d.hash = n.hash
 		d.value = n.value
 		if cross {
 			v, diag := types.StoreOnly(d.schema.Type, n.value.Canonical(), types.FormatCanon, types.HintData,
@@ -374,7 +443,9 @@ func (t *Tree) dupLocalParent(n, parent *Node, opts dupOpts, w *anyWork) (top, l
 				return nil, nil, err
 			}
 			if top != nil {
-				t.insert(it, top, insertDefault)
+				if err := t.insert(it, top, insertDefault); err != nil {
+					return nil, nil, err
+				}
 			}
 			top = it
 		}
@@ -388,7 +459,9 @@ func (t *Tree) dupLocalParent(n, parent *Node, opts dupOpts, w *anyWork) (top, l
 	}
 	if top != nil {
 		// into parent; without one the top of t holds the parents (libyang leaves them unlinked)
-		t.insert(parent, top, insertDefault)
+		if err := t.insert(parent, top, insertDefault); err != nil {
+			return nil, nil, err
+		}
 	}
 	return top, local, nil
 }
@@ -585,6 +658,7 @@ func (t *Tree) isSchemaParent(n, parent *Node) bool {
 }
 
 func (t *Tree) dupPublic(n, parent *Node, o DupOptions, siblings bool, fn string) (*Node, []yang.Diagnostic, error) {
+	defer t.work.beginHashWork()()
 	lg := &logger{set: t.set}
 	switch {
 	case n == nil:
@@ -613,11 +687,138 @@ func (t *Tree) dupPublic(n, parent *Node, o DupOptions, siblings bool, fn string
 		return nil, nil, lg.done(&opError{"LY_EINVAL", fmt.Sprintf(
 			"Duplicating \"%s\" under \"%s\", which is not an instance of its schema parent (D-0124).", n.Path(), parent.Path())})
 	}
+	if err := t.preflightDupHash(n, parent, o, siblings); err != nil {
+		return nil, nil, err
+	}
+	if parent != nil {
+		if err := t.preflightInsertPosition(t.childrenOf(parent), n, insertDefault); err != nil {
+			return nil, nil, err
+		}
+	}
+	journal := beginHashTransaction(t)
 	t.dupLog = lg
 	d, err := t.dupNodes(n, parent, o.opts(), siblings)
 	t.dupLog = nil
-	if err = lg.done(err); err != nil {
+	if t.work.hashErr != nil {
+		err = t.work.hashErr
+	}
+	err = lg.done(err)
+	journal.end(&err)
+	if err != nil {
 		return nil, nil, err
 	}
 	return d, lg.diags, nil
+}
+
+// preflightDupHash reserves the copied sibling batch, including descendants
+// whose list keys are rehashed and leaf-list values whose indexed canonical
+// digest is recomputed. It runs before WithParents can link an ancestor.
+func (t *Tree) preflightDupHash(n, parent *Node, o DupOptions, siblings bool) error {
+	orig := []*Node{n}
+	if siblings {
+		if sib := n.siblingsOf(); sib != nil {
+			all := sib.nodes()
+			for i, c := range all {
+				if c == n {
+					orig = all[i:]
+					break
+				}
+			}
+		}
+	}
+	var amount uint64
+	rootIndexed := false
+	if parent != nil && parent.schema != nil {
+		sib := t.childrenOf(parent)
+		rootIndexed = sib.ht != nil || len(sib.list)+len(orig) >= htMinItems
+	}
+	visit := func(child *Node, indexed bool) error {
+		if indexed {
+			amount = addHashBound(amount, indexWorkBound(child, nil, nil, &t.work))
+		}
+		if child.isKey() {
+			amount = addHashBound(amount, types.HashLYBWorkBound(child.value))
+		}
+		if child.schema != nil && child.schema.Kind == schema.List && !child.schema.Keyless() {
+			// lyd_dup_r hashes the completed list once more after copying its
+			// children, independently of each key-link hash event.
+			for _, key := range child.kids.list {
+				if !key.isKey() {
+					break
+				}
+				amount = addHashBound(amount, types.HashLYBWorkBound(key.value))
+			}
+		}
+		return t.work.hashErr
+	}
+	for _, root := range orig {
+		if o.Recursive {
+			for child := range root.All() {
+				indexed := rootIndexed
+				if child != root {
+					p := child.parent
+					indexed = p != nil && p.schema != nil && (p.kids.ht != nil || len(p.kids.list) >= htMinItems)
+				}
+				if err := visit(child, indexed); err != nil {
+					return err
+				}
+			}
+		} else {
+			if err := visit(root, rootIndexed); err != nil {
+				return err
+			}
+			if root.schema != nil && root.schema.Kind == schema.List {
+				indexed := root.kids.ht != nil || len(root.schema.Keys) >= htMinItems
+				for _, child := range root.kids.list {
+					if !child.isKey() {
+						break
+					}
+					if err := visit(child, indexed); err != nil {
+						return err
+					}
+				}
+			}
+		}
+	}
+	if o.WithParents {
+		for ancestor := n.parent; ancestor != nil; ancestor = ancestor.parent {
+			if parent != nil && ancestor.schema == parent.schema && sameSet(setOf(ancestor), t.set) {
+				break
+			}
+			if err := visit(ancestor, true); err != nil {
+				return err
+			}
+			if ancestor.schema != nil && ancestor.schema.Kind == schema.List {
+				for _, key := range ancestor.kids.list {
+					if !key.isKey() {
+						break
+					}
+					if err := visit(key, true); err != nil {
+						return err
+					}
+				}
+			}
+		}
+	}
+	if parent != nil {
+		sib := t.childrenOf(parent)
+		if sib.ht == nil && len(sib.list)+len(orig) >= htMinItems {
+			for _, old := range sib.list {
+				amount = addHashBound(amount, indexWorkBound(old, nil, nil, &t.work))
+			}
+		}
+		if parent.schema != nil && parent.schema.Kind == schema.List {
+			if ps := parent.siblingsOf(); ps != nil && ps.ht != nil && parent.keyN < len(parent.schema.Keys) {
+				amount = addHashBound(amount, indexBatchInsertedBound(parent, orig, &t.work))
+			}
+		}
+	}
+	if t.work.hashErr != nil {
+		return t.work.hashErr
+	}
+	if err := t.work.checkHashWork(amount); err != nil {
+		t.work.hashErr = err
+		return err
+	}
+	return nil
 }

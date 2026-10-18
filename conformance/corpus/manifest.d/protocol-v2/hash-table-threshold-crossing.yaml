@@ -1,0 +1,22 @@
+fixtures:
+  # Libyang-specific hash history: v5.8.6 src/tree_data_hash.c:181-195 creates children_ht at four schema children, including a terminal copied with a source-type hash (src/tree_data.c:2280-2295). A real value change must replace that hash-table entry (src/tree_data_new.c:1172-1225).
+  - id: protocol-v2/hash-table-threshold-crossing
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []
+    areas: [operations, types]
+    request:
+      op: sequence
+      searchdirs: [hash-source]
+      modules: [{name: pv2-hash-ctx}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, data: '{"pv2-hash-ctx:r":{"s":["3"]}}'}
+        - {do: dup, node: "/pv2-hash-ctx:r", options: [recursive], target: {searchdirs: [hash-target], modules: [{name: pv2-hash-ctx}], context_options: [no_yanglibrary]}}
+        - {do: edit, set: {path: "/pv2-hash-ctx:r/a", value: "a"}}
+        - {do: edit, set: {path: "/pv2-hash-ctx:r/b", value: "b"}}
+        - {do: edit, set: {path: "/pv2-hash-ctx:r/c", value: "c"}}
+        - {do: change_term, node: "/pv2-hash-ctx:r/s[1]", value: "4"}
+        - {do: edit, delete: "/pv2-hash-ctx:r/s[.='4']"}
+        - {do: dump, with_defaults: all}
+    golden: golden/hash-table-threshold-crossing.json

@@ -28,7 +28,7 @@ func anyText(t *testing.T, tr *Tree, sn *schema.Node, text string, hints types.H
 	if err != nil {
 		t.Fatal(err)
 	}
-	tr.insert(nil, n, insertDefault)
+	mustLink(t, tr.insert(nil, n, insertDefault))
 	return n
 }
 
@@ -170,12 +170,14 @@ func TestAnyDupOwnership(t *testing.T) {
 func TestAnyCrossContextAndDeep(t *testing.T) {
 	tr, a, _ := anyFixture()
 	root := &Node{schema: a, any: &anyValue{}}
-	tr.insert(nil, root, insertDefault)
+	root.refreshHash(nil) // lyd_create_any's lyd_hash
+	mustLink(t, tr.insert(nil, root, insertDefault))
 	last := root
 	const depth = 12000
 	for range depth {
 		n := &Node{schema: a, any: &anyValue{}, payloadSet: tr.set}
-		tr.insert(last, n, insertLast)
+		n.refreshHash(nil)
+		mustLink(t, tr.insert(last, n, insertLast))
 		last = n
 	}
 	value := "end"
@@ -260,9 +262,9 @@ func TestAnySchemaPayload(t *testing.T) {
 	sn.Mandatory = true
 	payload := newTree(tr.set)
 	container := newInner(c)
-	payload.insert(nil, container, insertDefault)
+	mustLink(t, payload.insert(nil, container, insertDefault))
 	leaf := b.term(sn, "kept")
-	payload.insert(container, leaf, insertDefault)
+	mustLink(t, payload.insert(container, leaf, insertDefault))
 	leaf.flags = FlagDefault | FlagWhenTrue
 	leaf.meta = []*meta{{mod: a.Module, name: "note", value: leaf.value}}
 	w := newAnyWork(context.Background(), Budget{})
@@ -270,7 +272,7 @@ func TestAnySchemaPayload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tr.insert(nil, n, insertDefault)
+	mustLink(t, tr.insert(nil, n, insertDefault))
 	if payload.top.len() != 1 || n.any.children.list[0] == container {
 		t.Fatal("copy consumed its input")
 	}
@@ -352,10 +354,10 @@ func TestAnyEmptyConstructorTransitions(t *testing.T) {
 func TestAnyAggregateParseBudget(t *testing.T) {
 	tr, a, x := anyFixture()
 	root := &Node{schema: a, any: &anyValue{}}
-	tr.insert(nil, root, insertDefault)
+	mustLink(t, tr.insert(nil, root, insertDefault))
 	for range 2 {
 		text := "<node/>"
-		tr.insert(root, &Node{schema: x, any: &anyValue{text: &text}, payloadSet: tr.set}, insertLast)
+		mustLink(t, tr.insert(root, &Node{schema: x, any: &anyValue{text: &text}, payloadSet: tr.set}, insertLast))
 	}
 	for _, budget := range []Budget{{MaxBytes: 10}, {MaxNodes: 1}} {
 		_, err := tr.dupWork(root, nil, false, insertDefault, 0, newAnyWork(context.Background(), budget))
@@ -411,7 +413,7 @@ func TestAnyOpaqueContextCopy(t *testing.T) {
 		pc := types.XMLNamespaces{Set: tr.set, NS: map[string]string{"p": "urn:anycore"}}
 		n := newOpaque(opaque{Name: "n", Value: "p:v", Format: types.FormatXML, Prefixes: pc, set: tr.set,
 			Attrs: []attr{{Name: "a", Value: "p:v", Format: types.FormatXML, Prefixes: pc}}})
-		tr.insert(nil, n, insertDefault)
+		mustLink(t, tr.insert(nil, n, insertDefault))
 		return n
 	}
 	orig, want := makeOpaque(src), makeOpaque(dst)
@@ -427,7 +429,7 @@ func TestAnyOpaqueContextCopy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	src.insert(nil, n, insertDefault)
+	mustLink(t, src.insert(nil, n, insertDefault))
 	d, _, err = dst.Dup(n, nil, DupOptions{})
 	if err != nil {
 		t.Fatal(err)
@@ -448,13 +450,13 @@ func TestAnyPayloadLinkCleanup(t *testing.T) {
 			b := &schemaBuilder{t: t, set: payload.set}
 			sn := b.add(payload.set.Modules[0], nil, schema.Leaf, "v", &schema.Type{Base: schema.String})
 			leaf, outside := b.term(sn, "v"), b.term(sn, "v")
-			payload.insert(nil, leaf, insertDefault)
+			mustLink(t, payload.insert(nil, leaf, insertDefault))
 			w := newAnyWork(context.Background(), Budget{})
 			n, _, err := w.createAny(outer, a, leaf, nil, 0, true, false)
 			if err != nil {
 				t.Fatal(err)
 			}
-			outer.insert(nil, n, insertDefault)
+			mustLink(t, outer.insert(nil, n, insertDefault))
 			linkLeafrefNode(outside, leaf)
 			switch action {
 			case "clear":

@@ -180,7 +180,7 @@ func TestOpIndexLeaderOracle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dst.insert(nil, op, insertDefault)
+	mustLink(t, dst.insert(nil, op, insertDefault))
 	if got := dst.schemaLookup(&op.kids, vschema); got == nil || got.value.Canonical() != "2" {
 		t.Errorf("first-instance lookup in the recursive copy = %s, want v2", opidxLabel(got))
 	}
@@ -252,7 +252,7 @@ func TestOpIndexDupSetOracle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dst.insert(nil, op, insertDefault)
+	mustLink(t, dst.insert(nil, op, insertDefault))
 	if got, want := opidxDupSetIDs(t, dst, op, op.kids.list[0]), []string{"a", "b", "c", "d"}; !slices.Equal(got, want) {
 		t.Errorf("copied duplicate set %v, want %v", got, want)
 	}

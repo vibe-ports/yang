@@ -1,0 +1,22 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module pv2-hash-sweep {
+  yang-version 1.1;
+  namespace "urn:hash-sweep";
+  prefix hs;
+  import ietf-yang-types { prefix yang; revision-date 2013-07-15; }
+
+  container r {
+    leaf number { type uint32; }
+    leaf word { type string; }
+    leaf-list lyb-dt-old-known { config false; type yang:date-and-time; }
+    leaf-list lyb-dt-old-positive-offset { config false; type yang:date-and-time; }
+    leaf-list lyb-dt-old-negative-offset { config false; type yang:date-and-time; }
+    leaf-list lyb-dt-old-fraction-known { config false; type yang:date-and-time; }
+    leaf-list lyb-dt-old-fraction-offset { config false; type yang:date-and-time; }
+    leaf-list lyb-dt-old-unknown { config false; type yang:date-and-time; }
+    leaf-list lyb-dt-old-fraction-unknown { config false; type yang:date-and-time; }
+    leaf-list lyb-dt-old-z-input { config false; type yang:date-and-time; }
+    leaf-list lyb-dt-old-minus-zero-input { config false; type yang:date-and-time; }
+  }
+}

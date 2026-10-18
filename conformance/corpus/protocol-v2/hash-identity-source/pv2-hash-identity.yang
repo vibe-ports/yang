@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module pv2-hash-identity {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-hash-identity";
+  prefix phi;
+  identity base;
+  identity child { base base; }
+  container r {
+    list l {
+      config false;
+      key k;
+      leaf k { type string; }
+    }
+  }
+}

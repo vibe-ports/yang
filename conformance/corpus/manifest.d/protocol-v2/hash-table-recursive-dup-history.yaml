@@ -1,0 +1,22 @@
+fixtures:
+  # Libyang-specific hash history: v5.8.6 src/tree_data.c:2301-2305 precreates children_ht before recursive duplication when the source retains a table after shrinking (src/tree_data_hash.c:220-246).
+  - id: protocol-v2/hash-table-recursive-dup-history
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []
+    areas: [operations, types]
+    request:
+      op: sequence
+      searchdirs: [hash-source]
+      modules: [{name: pv2-hash-ctx}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, data: '{"pv2-hash-ctx:r":{"s":["3"],"a":"a","b":"b","c":"c"}}'}
+        - {do: edit, delete: "/pv2-hash-ctx:r/a"}
+        - {do: edit, delete: "/pv2-hash-ctx:r/b"}
+        - {do: edit, delete: "/pv2-hash-ctx:r/c"}
+        - {do: dup, node: "/pv2-hash-ctx:r", options: [recursive], target: {searchdirs: [hash-target], modules: [{name: pv2-hash-ctx}], context_options: [no_yanglibrary]}}
+        - {do: change_term, node: "/pv2-hash-ctx:r/s[1]", value: "4"}
+        - {do: edit, delete: "/pv2-hash-ctx:r/s[.='4']"}
+        - {do: dump, with_defaults: all}
+    golden: golden/hash-table-recursive-dup-history.json

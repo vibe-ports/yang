@@ -36,11 +36,15 @@ func (t *Tree) ReverseDiff() (*Tree, error) {
 	}
 	lg := &logger{set: t.set}
 	d := newTree(t.set)
+	defer d.work.beginHashWork()()
 	if _, err := d.dupNodes(t.top.first(), nil, dupRecursive, true); err != nil {
 		return nil, diffDone(lg, err)
 	}
 	if err := d.reverseSiblingsR(&d.top); err != nil {
 		return nil, diffDone(lg, err)
+	}
+	if d.work.hashErr != nil {
+		return nil, d.work.hashErr
 	}
 	return d, nil
 }
@@ -58,6 +62,7 @@ func (t *Tree) reverseValue(n *Node) error {
 	if rc := t.changeTerm(n, m.value.Canonical()); rc != "" {
 		return &diffError{rc: rc} // LY_ENOT or LY_EEXIST returned, nothing logged
 	}
+	n.touch()
 	n.flags = flags
 	return t.metaChange(n, m, cur)
 }
@@ -72,6 +77,7 @@ func (t *Tree) reverseDefault(n *Node) error {
 	if orig == cur {
 		return nil // no default state change to reverse
 	}
+	n.touch()
 	n.flags &^= FlagDefault
 	if orig {
 		n.flags |= FlagDefault

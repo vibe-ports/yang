@@ -79,7 +79,7 @@ func TestValidateOrder(t *testing.T) {
 		lc := &lydCtx{ctx: context.Background(), tree: newTree(b.set), log: &logger{set: b.set}, opts: o}
 		for _, in := range input {
 			n := b.term(nodes[in.sn], in.v)
-			lc.nodeInsert(nil, nil, n)
+			mustLink(t, lc.nodeInsert(nil, nil, n))
 			if n.value.NeedsTree() {
 				lc.nodeTypes.add(n)
 			}
@@ -143,15 +143,15 @@ func TestFinal(t *testing.T) {
 
 	tr := newTree(b.set)
 	cn := newInner(c)
-	tr.insert(nil, cn, insertDefault)
-	tr.insert(cn, b.term(ll, "1"), insertDefault)
+	mustLink(t, tr.insert(nil, cn, insertDefault))
+	mustLink(t, tr.insert(cn, b.term(ll, "1"), insertDefault))
 	for _, kv := range [][2]string{{"a", "1"}, {"b", "2"}, {"c", "1"}} {
 		li := newInner(l)
-		tr.insert(li, b.term(k, kv[0]), insertDefault)
-		tr.insert(li, b.term(u, kv[1]), insertDefault)
-		tr.insert(cn, li, insertDefault)
+		mustLink(t, tr.insert(li, b.term(k, kv[0]), insertDefault))
+		mustLink(t, tr.insert(li, b.term(u, kv[1]), insertDefault))
+		mustLink(t, tr.insert(cn, li, insertDefault))
 	}
-	tr.insert(cn, b.term(st, "s"), insertDefault)
+	mustLink(t, tr.insert(cn, b.term(st, "s"), insertDefault))
 	diags, err := tr.validateAll(context.Background(), ValidateOptions{MultiError: true, NoState: true}, Budget{}, nil)
 	want := []string{
 		`LY_EVALID LYVE_DATA /f:tm: Mandatory node "tm" instance does not exist.`,
@@ -191,9 +191,9 @@ func TestFinalOpaqueOnly(t *testing.T) {
 	leaf := b.add(m1, nil, schema.Leaf, "a", &schema.Type{Base: schema.String})
 	for _, withData := range []bool{false, true} {
 		tr := newTree(b.set)
-		tr.insert(nil, newOpaque(opaque{Name: "x", ModuleNS: "zz", Format: types.FormatJSON}), insertDefault)
+		mustLink(t, tr.insert(nil, newOpaque(opaque{Name: "x", ModuleNS: "zz", Format: types.FormatJSON}), insertDefault))
 		if withData {
-			tr.insert(nil, b.term(leaf, "v"), insertDefault)
+			mustLink(t, tr.insert(nil, b.term(leaf, "v"), insertDefault))
 		}
 		diags, _ := tr.validateAll(context.Background(), ValidateOptions{MultiError: true}, Budget{}, nil)
 		n := 2
@@ -222,7 +222,7 @@ func TestParseValidates(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		lc.nodeInsert(nil, nil, cn)
+		mustLink(t, lc.nodeInsert(nil, nil, cn))
 		return lc.closeInner(cn, nil)
 	}
 	o := parseOpts{ParseOptions: ParseOptions{Validate: ValidateOptions{MultiError: true}}}
@@ -259,9 +259,9 @@ func TestUniqueWork(t *testing.T) {
 	const n = 5000
 	for i := range n {
 		li := newInner(l)
-		tr.insert(li, b.term(k, fmt.Sprint(i)), insertDefault)
-		tr.insert(li, b.term(u, fmt.Sprint(i%(n-1))), insertDefault) // one collision: 0 and n-1
-		tr.insert(nil, li, insertDefault)
+		mustLink(t, tr.insert(li, b.term(k, fmt.Sprint(i)), insertDefault))
+		mustLink(t, tr.insert(li, b.term(u, fmt.Sprint(i%(n-1))), insertDefault)) // one collision: 0 and n-1
+		mustLink(t, tr.insert(nil, li, insertDefault))
 	}
 	tr.work.Store(0)
 	tr.work.visits = true
@@ -287,8 +287,8 @@ func TestUniqueMissingDefault(t *testing.T) {
 	fill := func(tr *Tree, n int) {
 		for i := range n {
 			li := newInner(l)
-			tr.insert(li, b.term(k, fmt.Sprint(i)), insertDefault)
-			tr.insert(nil, li, insertDefault)
+			mustLink(t, tr.insert(li, b.term(k, fmt.Sprint(i)), insertDefault))
+			mustLink(t, tr.insert(nil, li, insertDefault))
 		}
 	}
 	work := func(n int) (int, []yang.Diagnostic, error) {

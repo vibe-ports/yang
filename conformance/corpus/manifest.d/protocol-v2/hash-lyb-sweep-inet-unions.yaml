@@ -1,0 +1,30 @@
+fixtures:
+  # libyang v5.8.6 tree_data.c:2280-2295 preserves the source terminal hash on
+  # cross-context dup; tree_data.c:1714-1716 rejects unequal hashes before values.
+  # Source strings equal the target canonical text. Each lyb-* compare must be
+  # LY_ENOT; text-* controls must be LY_SUCCESS. Hashing canonical text instead
+  # would turn every lyb-* comparison into LY_SUCCESS (mutation-tested).
+  - id: protocol-v2/hash-lyb-sweep-inet-unions
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # Libyang-specific stored hashes, not a YANG equivalence assertion.
+    areas: [operations, types]
+    request:
+      op: sequence
+      searchdirs: [hash-sweep-source]
+      modules: [{name: pv2-hash-sweep}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {"do": "parse", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><lyb-ip-address-v4>192.0.2.1</lyb-ip-address-v4><lyb-ip-no-zone-v4>192.0.2.1</lyb-ip-no-zone-v4><lyb-ip-prefix-v4>192.0.2.0/24</lyb-ip-prefix-v4><lyb-ip-host-prefix-v4>192.0.2.1/24</lyb-ip-host-prefix-v4><lyb-ip-link-local-v4>169.254.1.1%7</lyb-ip-link-local-v4><lyb-ip-address-v6>2001:db8::1</lyb-ip-address-v6><lyb-ip-no-zone-v6>2001:db8::1</lyb-ip-no-zone-v6><lyb-ip-prefix-v6>2001:db8::/64</lyb-ip-prefix-v6><lyb-ip-host-prefix-v6>2001:db8::1/64</lyb-ip-host-prefix-v6><lyb-ip-link-local-v6>fe80::1%7</lyb-ip-link-local-v6></r>"}
+        - {"do": "dup", "node": "/pv2-hash-sweep:r", "options": ["recursive"], "target": {"searchdirs": ["hash-sweep-target", "../types/schemas"], "modules": [{"name": "pv2-hash-sweep"}], "context_options": ["no_yanglibrary"]}}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/lyb-ip-address-v4[1]", "second": "/pv2-hash-sweep:r/lyb-ip-address-v4[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><lyb-ip-address-v4>192.0.2.1</lyb-ip-address-v4></r>"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/lyb-ip-no-zone-v4[1]", "second": "/pv2-hash-sweep:r/lyb-ip-no-zone-v4[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><lyb-ip-no-zone-v4>192.0.2.1</lyb-ip-no-zone-v4></r>"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/lyb-ip-prefix-v4[1]", "second": "/pv2-hash-sweep:r/lyb-ip-prefix-v4[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><lyb-ip-prefix-v4>192.0.2.0/24</lyb-ip-prefix-v4></r>"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v4[1]", "second": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v4[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><lyb-ip-host-prefix-v4>192.0.2.1/24</lyb-ip-host-prefix-v4></r>"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/lyb-ip-link-local-v4[1]", "second": "/pv2-hash-sweep:r/lyb-ip-link-local-v4[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><lyb-ip-link-local-v4>169.254.1.1%7</lyb-ip-link-local-v4></r>"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/lyb-ip-address-v6[1]", "second": "/pv2-hash-sweep:r/lyb-ip-address-v6[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><lyb-ip-address-v6>2001:db8::1</lyb-ip-address-v6></r>"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/lyb-ip-no-zone-v6[1]", "second": "/pv2-hash-sweep:r/lyb-ip-no-zone-v6[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><lyb-ip-no-zone-v6>2001:db8::1</lyb-ip-no-zone-v6></r>"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/lyb-ip-prefix-v6[1]", "second": "/pv2-hash-sweep:r/lyb-ip-prefix-v6[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><lyb-ip-prefix-v6>2001:db8::/64</lyb-ip-prefix-v6></r>"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v6[1]", "second": "/pv2-hash-sweep:r/lyb-ip-host-prefix-v6[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><lyb-ip-host-prefix-v6>2001:db8::1/64</lyb-ip-host-prefix-v6></r>"}
+        - {"do": "compare", "first": "/pv2-hash-sweep:r/lyb-ip-link-local-v6[1]", "second": "/pv2-hash-sweep:r/lyb-ip-link-local-v6[1]", "format": "xml", "data_type": "data", "parse_only": true, "data": "<r xmlns=\"urn:hash-sweep\"><lyb-ip-link-local-v6>fe80::1%7</lyb-ip-link-local-v6></r>"}
+    golden: golden/hash-lyb-sweep-inet-unions.json

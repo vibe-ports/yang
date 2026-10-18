@@ -7,7 +7,10 @@
 package data
 
 import (
+	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
+	"hash"
 	"iter"
 	"slices"
 	"strings"
@@ -22,12 +25,32 @@ const htMinItems = 4
 
 // siblings is an ordered sibling list with libyang's children hash table (children_ht) as an
 // index: chains of instances per hash key, each chain in insertion order like lyht_find returns
-// colliding records. It is written only by insertions and removals; lookups read.
+// colliding records. Mutations maintain the index; lookups only read it.
+//
+// List invariant: every active instance's bucket describes its CURRENT first
+// len(schema.Keys) children, positionally (schema, stored child hash and canonical
+// value, including an early end), as tree_data.c:1758-1785 compares them. Its own
+// stored hash instead follows native HISTORY (tree_data_hash.c:45-81), and its
+// record order follows native registration, never canonical bucket order. History
+// groups retain all recorded hashes and orders; the secondary index contains the
+// earliest record whose recorded hash equals the node's current stored hash.
+// In particular a failed lyd_insert_has_keys (tree_data.c:684-702,836-842), an
+// internal key unlink (1187-1239), or union validation changes only the canonical
+// discriminator: hashReindex preserves hash, exact order and first-instance
+// records. Successful key insertion, a changed key value, and duplication follow
+// their native hash/registration events (836-842; tree_data_new.c:1129-1197;
+// tree_data.c:2280-2330). All child links go through keyLinked; unlink updates the
+// discriminator after detach, and value validation uses hashReindex directly.
 type siblings struct {
 	nodeDeque           // schema nodes, in order, with front headroom for insertAt
 	opq         []*Node // opaque nodes, after all schema nodes (libyang keeps them last)
 	ht          map[idxKey]*recordChain
 	exactByNode map[*Node]*record
+	// history retains unchecked native insertions, grouped by recorded hash.
+	// Only the oldest registration for the node's CURRENT hash can win a lookup;
+	// the others stay dormant until removal or a later return to that hash.
+	history    map[*Node]map[uint32]*record
+	exactOrder uint64 // native insertion order, retained by secondary-index-only moves
 	// leaders are libyang's first-instance records. lyd_insert_hash_add
 	// (tree_data_hash.c:128-163) stores every list or leaf-list instance that starts a run under
 	// the schema-only hash, and lyd_find_sibling_schema (tree_data_common.c:1101-1115) returns the
@@ -49,30 +72,160 @@ type siblings struct {
 	// Removed nodes are always dropped; libyang keeps the record of a removed node that no longer
 	// started a run (D-0117).
 	//
-	// Outside operation children runs are contiguous and schemaIndex is their first instance, so
-	// no record is kept. Operation children may be split around retained input, and the records
+	// Schema-ordered ordinary children have contiguous runs, so no record is kept. Operation
+	// children and copies outside schema order may have split runs, and the records
 	// exist only while ht does; without a table lookup starts at the first sibling instance.
 	leaders      map[*schema.Node]*recordChain
 	leaderByNode map[*Node]*record
-	unsorted     map[*schema.Node]bool        // runs appended out of value order
+	firstRun     map[*schema.Node]*Node       // lookup hint only; sorting state stays on the leader
+	unsorted     map[*Node]bool               // run leaders with instances outside their RB tree
 	pending      map[*schema.Node]*dirtyOrder // the parser's dirty runs: the sibling order is their tree's
-	rbTree       map[*schema.Node]bool        // runs that have libyang's RB tree (lyds)
-	opIdx        map[*schema.Node]*opEntry    // an operation's children by schema node (opInst), nil: not built
+	rbTree       map[*Node]bool               // libyang's lyds metadata lives on each run leader
+	rbGroups     map[*Node]*rbGroup           // tree identity follows metadata when its leader moves
+	opIdx        map[*schema.Node]*opEntry    // operation children or unordered copies by schema (opInst)
 	opRanks      [2]rankBits                  // occupied input/output schema ranks, for the next anchor
 	gen          uint64                       // changes with every insertion and removal
 	work         *workCounter                 // the tree's work counter once a node was linked: all and indexOf count visits
+
+	schemaUnordered bool // a copy or move retained a different schema order
 }
 
 type recordChain struct {
 	first *record
 	last  *record
 	count int
+	// Exact chains build an ordered index at their first canonical-only move.
+	// Ordinary registration and removal stay O(1). After validation first moves
+	// a record into a bucket, AVL height bounds its subsequent ordered updates.
+	root *record
 }
 
 type record struct {
-	node       *Node
-	chain      *recordChain
-	prev, next *record
+	node        *Node
+	chain       *recordChain
+	prev, next  *record
+	order       uint64
+	left, right *record
+	height      int
+	more        []uint64 // later registrations of this node with the same recorded hash
+}
+
+func recordHeight(r *record) int {
+	if r == nil {
+		return 0
+	}
+	return r.height
+}
+
+func (r *record) setHeight() {
+	r.height = 1 + max(recordHeight(r.left), recordHeight(r.right))
+}
+
+func (r *record) rotateLeft(work *workCounter) *record {
+	if work != nil {
+		work.Add(1)
+	}
+	next := r.right
+	r.right, next.left = next.left, r
+	r.setHeight()
+	next.setHeight()
+	return next
+}
+
+func (r *record) rotateRight(work *workCounter) *record {
+	if work != nil {
+		work.Add(1)
+	}
+	next := r.left
+	r.left, next.right = next.right, r
+	r.setHeight()
+	next.setHeight()
+	return next
+}
+
+func (r *record) balance(work *workCounter) *record {
+	if work != nil {
+		work.Add(1)
+	}
+	r.setHeight()
+	switch delta := recordHeight(r.left) - recordHeight(r.right); {
+	case delta > 1:
+		if recordHeight(r.left.left) < recordHeight(r.left.right) {
+			r.left = r.left.rotateLeft(work)
+		}
+		return r.rotateRight(work)
+	case delta < -1:
+		if recordHeight(r.right.right) < recordHeight(r.right.left) {
+			r.right = r.right.rotateRight(work)
+		}
+		return r.rotateLeft(work)
+	default:
+		return r
+	}
+}
+
+// recordOrderBuild consumes an already ordered chain in linear work, only when
+// a mutation first needs arbitrary-order insertion. Reads never build indexes.
+func recordOrderBuild(next **record, count int, work *workCounter) *record {
+	if count == 0 {
+		return nil
+	}
+	if work != nil {
+		work.Add(1)
+	}
+	left := recordOrderBuild(next, count/2, work)
+	r := *next
+	*next = r.next
+	r.left = left
+	r.right = recordOrderBuild(next, count-count/2-1, work)
+	r.setHeight()
+	return r
+}
+
+// recordOrderInsert returns the balanced root and the new record's successor.
+// It counts every search/comparison and balancing step, including rotations.
+func recordOrderInsert(root, r *record, work *workCounter) (*record, *record) {
+	if work != nil {
+		work.Add(1)
+	}
+	if root == nil {
+		r.height = 1
+		return r, nil
+	}
+	var before *record
+	if r.order < root.order {
+		root.left, before = recordOrderInsert(root.left, r, work)
+		if before == nil {
+			before = root
+		}
+	} else {
+		root.right, before = recordOrderInsert(root.right, r, work)
+	}
+	return root.balance(work), before
+}
+
+func recordOrderRemove(root *record, order uint64, work *workCounter) *record {
+	if work != nil {
+		work.Add(1)
+	}
+	switch {
+	case order < root.order:
+		root.left = recordOrderRemove(root.left, order, work)
+	case order > root.order:
+		root.right = recordOrderRemove(root.right, order, work)
+	case root.left == nil:
+		return root.right
+	case root.right == nil:
+		return root.left
+	default:
+		// The linked successor is also the right subtree's minimum, so finding
+		// the replacement requires no additional traversal.
+		next := root.next
+		right := recordOrderRemove(root.right, next.order, work)
+		next.left, next.right = root.left, right
+		root = next
+	}
+	return root.balance(work)
 }
 
 func recordAppend(c *recordChain, byNode map[*Node]*record, n *Node) bool {
@@ -151,21 +304,91 @@ func (s *siblings) has(sn *schema.Node) bool {
 	return false
 }
 
-// runGone forgets the run state of s once its last instance left (the RB tree goes with it).
-func (s *siblings) runGone(sn *schema.Node) {
-	delete(s.rbTree, sn)
-	delete(s.unsorted, sn)
+// runLeader returns the selected first-instance record, or the first physical
+// instance before a children hash table exists.
+func (s *siblings) runLeader(sn *schema.Node) *Node {
+	if n := s.leaderFirst(sn); n != nil {
+		return n
+	}
+	if n := s.firstRun[sn]; n != nil {
+		return n
+	}
+	if d := s.opIdx[sn]; d != nil && len(d.list) != 0 {
+		return d.list[0]
+	}
+	return nil
+}
+
+func (s *siblings) hasRB(sn *schema.Node) bool       { return s.rbTree[s.runLeader(sn)] }
+func (s *siblings) hasUnsorted(sn *schema.Node) bool { return s.unsorted[s.runLeader(sn)] }
+
+func (s *siblings) transferRun(old, next *Node) {
+	s.touch()
+	if old == nil || next == nil || old == next {
+		return
+	}
+	if s.rbTree[old] {
+		// lyds_move_meta appends the old tree metadata. If next already leads a
+		// different tree, lyds_get_rb_tree continues to select next's first one.
+		if !s.rbTree[next] {
+			s.rbTree[next] = true
+			if s.rbGroups != nil {
+				s.rbGroups[next] = s.rbGroups[old]
+			}
+		} else if s.rbGroups[next] != s.rbGroups[old] {
+			markUnsorted(s, next)
+		}
+		delete(s.rbTree, old)
+		if s.rbGroups != nil {
+			delete(s.rbGroups, old)
+		}
+	}
+	if s.unsorted[old] {
+		s.unsorted[next] = true
+		delete(s.unsorted, old)
+	}
+}
+
+// runGone forgets state carried by a removed run leader.
+func (s *siblings) runGone(n *Node) {
+	s.touch()
+	delete(s.rbTree, n)
+	delete(s.rbGroups, n)
+	delete(s.unsorted, n)
+}
+
+// rb_remove_node empties only the selected tree. Adjacent runs of the same
+// schema can have different trees after a separator is removed.
+func (s *siblings) clearEmptyRBGroup(group *rbGroup) {
+	s.touch()
+	if group == nil {
+		return
+	}
+	for _, n := range s.list {
+		if s.work != nil {
+			s.work.Add(1)
+		}
+		if n.inRB && n.rbGroup == group {
+			return
+		}
+	}
+	for leader, selected := range s.rbGroups {
+		if selected == group {
+			s.runGone(leader)
+		}
+	}
 }
 
 // len is the number of siblings, opaque ones included.
 func (s *siblings) len() int { return len(s.list) + len(s.opq) }
 
-// idxKey stands for lyd_hash: the schema node, plus the canonical text of a leaf-list value or
-// of a list's keys. libyang hashes the LYB form of the values; buckets of equal canonical text
-// are filtered by compareSingle, which checks value equality like the hash comparison does.
+// idxKey is a secondary index by schema and a digest of delimited canonical values. Native
+// equality also checks Node.hash. Keeping this discriminator avoids unbounded work
+// when many distinct key tuples concatenate to identical LYB bytes (#236 case 4).
 type idxKey struct {
-	s   *schema.Node
-	key string
+	s    *schema.Node
+	key  string
+	hash uint32
 }
 
 func (s *siblings) all() iter.Seq[*Node] {
@@ -185,27 +408,261 @@ func (s *siblings) all() iter.Seq[*Node] {
 	}
 }
 
-// hashOf is lyd_hash: ok false for an opaque node and for a list whose keys are not all
-// present (libyang hashes and links a list only then).
-func hashOf(n *Node) (k idxKey, ok bool) {
+// hashOf reads the stored hash and the live positional discriminator. It does not
+// run lyd_hash. A list with no native hash event yet cannot be registered.
+func hashOf(n *Node) (idxKey, bool) { return hashOfWork(n, nil) }
+
+func indexedKey(n *Node, work *workCounter) (idxKey, bool) {
+	if n.hashed {
+		return n.hkey, true
+	}
+	return hashOfWork(n, work)
+}
+
+func hashOfWork(n *Node, work *workCounter) (k idxKey, ok bool) {
 	k.s = n.schema
+	k.hash = n.hash
 	switch {
 	case n.schema == nil:
 		return k, false
 	case n.schema.Kind == schema.LeafList:
-		k.key = n.value.Canonical()
+		k.key = indexDigest(n.value.Canonical(), work)
+		if work != nil && work.hashErr != nil {
+			return k, false
+		}
 	case n.schema.Kind == schema.List && !n.schema.Keyless():
-		var b strings.Builder
-		for i, sk := range n.schema.Keys {
-			if i >= len(n.kids.list) || n.kids.list[i].schema != sk {
+		if !n.lkeyOK {
+			return k, false
+		}
+		h := sha256.New()
+		for i := range n.schema.Keys {
+			if work != nil {
+				work.Add(1)
+			}
+			child := positionalChild(n, i)
+			if child == nil {
+				break // early end is part of positional equality, not lost registration
+			}
+			writeKeyPosition(h, child.schema, child.hash, child.Value(), work)
+			if work != nil && work.hashErr != nil {
 				return k, false
 			}
-			b.WriteString(n.kids.list[i].value.Canonical())
-			b.WriteByte(0)
 		}
-		k.key = b.String()
+		k.key = string(h.Sum(nil))
 	}
 	return k, true
+}
+
+// Fixed-size map keys make an indexed miss independent of predicate length.
+// Callers still verify native equality, so digest collisions cannot select a node.
+func indexDigest(value string, work *workCounter) string {
+	if work != nil && work.chargeHash(2*uint64(len(value))) != nil {
+		return ""
+	}
+	digest := sha256.Sum256([]byte(value))
+	return string(digest[:])
+}
+
+// indexWorkBound warms immutable name components and bounds one subsequent
+// discriminator computation without touching the node or its index record.
+func indexWorkBound(n, changed *Node, value *types.Value, work *workCounter) uint64 {
+	if n.schema == nil {
+		return 0
+	}
+	if n.schema.Kind == schema.LeafList {
+		if value != nil && n == changed {
+			return 2 * uint64(len(value.Canonical()))
+		}
+		return 2 * uint64(len(n.value.Canonical()))
+	}
+	if n.schema.Kind != schema.List || n.schema.Keyless() || !n.lkeyOK {
+		return 0
+	}
+	var amount uint64
+	for i := range n.schema.Keys {
+		child := positionalChild(n, i)
+		if child == nil {
+			break
+		}
+		length := len(child.Value())
+		if child == changed && value != nil {
+			length = len(value.Canonical())
+		}
+		if child.schema != nil {
+			indexNameDigest(child.schema, work)
+			amount = addHashBound(amount, 32)
+		}
+		amount = addHashBound(amount, 16+2*uint64(length))
+	}
+	return amount
+}
+
+func indexInsertedBound(list, inserted *Node, at int, work *workCounter) uint64 {
+	if list == nil || list.schema == nil || list.schema.Kind != schema.List || list.schema.Keyless() {
+		return 0
+	}
+	var amount uint64
+	for i := range list.schema.Keys {
+		var child *Node
+		switch {
+		case i == at:
+			child = inserted
+		case i < at:
+			child = positionalChild(list, i)
+		default:
+			child = positionalChild(list, i-1)
+		}
+		if child == nil {
+			break
+		}
+		if child.schema != nil {
+			indexNameDigest(child.schema, work)
+			amount = addHashBound(amount, 32)
+		}
+		amount = addHashBound(amount, 16+2*uint64(len(child.Value())))
+	}
+	return amount
+}
+
+// indexBatchInsertedBound bounds every intermediate compared prefix while a
+// batch enters an incomplete list. A later insertion may compare an earlier
+// inserted value, so summing independent single-insertion bounds is too small.
+func indexBatchInsertedBound(list *Node, inserted []*Node, work *workCounter) uint64 {
+	if len(inserted) == 0 {
+		return 0
+	}
+	bound := indexWorkBound(list, nil, nil, work)
+	for _, child := range inserted {
+		if child.schema != nil {
+			indexNameDigest(child.schema, work)
+			bound = addHashBound(bound, 32)
+		}
+		bound = addHashBound(bound, 16+2*uint64(len(child.Value())))
+	}
+	var total uint64
+	for range inserted {
+		total = addHashBound(total, bound)
+	}
+	return total
+}
+
+// indexRemovedBound bounds the discriminator after a child leaves a list.
+// In particular, removing a non-key from a copied incomplete prefix can expose
+// a different, much larger child to the parent's live comparison index.
+func indexRemovedBound(list, removed *Node, work *workCounter) uint64 {
+	return indexAfterRemovedBound(list, map[*Node]bool{removed: true}, work)
+}
+
+func indexAfterRemovedBound(list *Node, removed map[*Node]bool, work *workCounter) uint64 {
+	if list == nil || list.schema == nil || list.schema.Kind != schema.List || list.schema.Keyless() || !list.lkeyOK {
+		return 0
+	}
+	var amount uint64
+	position := 0
+	for i := 0; i < len(list.schema.Keys); i++ {
+		for {
+			if work != nil {
+				work.Add(1)
+			}
+			if !removed[positionalChild(list, position)] {
+				break
+			}
+			position++
+		}
+		if work != nil {
+			work.Add(1)
+		}
+		child := positionalChild(list, position)
+		if child == nil {
+			break
+		}
+		position++
+		if child.schema != nil {
+			indexNameDigest(child.schema, work)
+			amount = addHashBound(amount, 32)
+		}
+		amount = addHashBound(amount, 16+2*uint64(len(child.Value())))
+	}
+	return amount
+}
+
+// positionalChild follows lyd_child/next, including an opaque child exposed by
+// internal key removal. Both the discriminator and comparison must see it.
+func positionalChild(n *Node, i int) *Node {
+	if i < len(n.kids.list) {
+		return n.kids.list[i]
+	}
+	i -= len(n.kids.list)
+	if i < len(n.kids.opq) {
+		return n.kids.opq[i]
+	}
+	return nil
+}
+
+// writeKeyPosition encodes the schema and data gates of the positional comparison
+// (tree_data.c:1775-1778). Names, not pointers, permit probes from another context.
+func writeKeyPosition(h hash.Hash, sn *schema.Node, stored uint32, value string, work *workCounter) {
+	var fixed [16]byte
+	if sn != nil {
+		name := indexNameDigest(sn, work)
+		if work != nil && work.hashErr != nil {
+			return
+		}
+		if work != nil && work.chargeHash(uint64(len(name)+len(fixed))+2*uint64(len(value))) != nil {
+			return
+		}
+		_, _ = h.Write(name[:])
+	} else if work != nil && work.chargeHash(uint64(len(fixed))+2*uint64(len(value))) != nil {
+		return
+	}
+	if sn != nil {
+		binary.LittleEndian.PutUint32(fixed[:4], uint32(sn.Kind))
+	}
+	binary.LittleEndian.PutUint32(fixed[4:], stored)
+	binary.LittleEndian.PutUint64(fixed[8:], uint64(len(value)))
+	_, _ = h.Write(fixed[:])
+	_, _ = h.Write([]byte(value))
+}
+
+func indexNameDigest(sn *schema.Node, work *workCounter) [32]byte {
+	compute := func() ([32]byte, error) {
+		if work != nil {
+			if err := work.chargeHash(2 * (uint64(len(sn.Module.Name)) + uint64(len(sn.Name)) + 1)); err != nil {
+				return [32]byte{}, err
+			}
+		}
+		h := sha256.New()
+		_, _ = h.Write([]byte(sn.Module.Name))
+		_, _ = h.Write([]byte{0})
+		_, _ = h.Write([]byte(sn.Name))
+		var digest [32]byte
+		copy(digest[:], h.Sum(nil))
+		return digest, nil
+	}
+	if sn.Module.Owner != nil {
+		digest, err := sn.Module.Owner.CachedIndexName(sn, compute)
+		if work != nil && err != nil {
+			work.hashErr = err
+		}
+		return digest
+	}
+	if work != nil {
+		if digest, ok := work.indexNames[sn]; ok {
+			return digest
+		}
+	}
+	digest, err := compute()
+	if work != nil {
+		if err != nil {
+			work.hashErr = err
+		} else {
+			if work.indexNames == nil {
+				work.indexNames = map[*schema.Node][32]byte{}
+			}
+			work.indexNames[sn] = digest
+		}
+	}
+	return digest
 }
 
 // hashAdd is lyd_insert_hash: create the parent's table once it has htMinItems schema children
@@ -230,6 +687,7 @@ func hashOf(n *Node) (k idxKey, ok bool) {
 // Fixtures ops/ht-* (create, none, shrink, grow after shrink, dup of a shrunk, of a small and
 // non-recursive copy, each followed by an output insertion) pin it.
 func (s *siblings) hashAdd(parent, n *Node) {
+	s.touch()
 	if parent == nil || parent.schema == nil || isAny(parent.schema) || n.schema == nil {
 		return
 	}
@@ -254,61 +712,160 @@ func (s *siblings) hashAdd(parent, n *Node) {
 	s.leaderBuild(order)
 }
 
-// logical is the sibling order libyang has: s.list with each dirty run in its tree order, at
-// the place of its first instance.
+// logical is the sibling order libyang has: each member of a dirty run occupies a physical
+// slot in its tree order. A node linked by another insertion path while the parser defers that
+// run is not in its RB tree; keep it in its physical slot so table construction sees it too.
 func (s *siblings) logical() []*Node {
 	if len(s.pending) == 0 {
 		return s.list
 	}
 	out := make([]*Node, 0, len(s.list))
-	done := map[*schema.Node]bool{}
+	type run struct {
+		ordered []*Node
+		next    int
+	}
+	runs := map[*schema.Node]*run{}
 	for _, n := range s.list {
 		if s.work != nil {
 			s.work.Add(1)
 		}
 		ord := s.pending[n.schema]
-		switch {
-		case ord == nil:
+		if ord == nil || ord.nodes[n] == nil || !ord.nodes[n].active {
 			out = append(out, n)
-		case !done[n.schema]:
-			done[n.schema] = true
-			out = append(out, ord.ordered()...)
+			continue
 		}
+		r := runs[n.schema]
+		if r == nil {
+			r = &run{ordered: ord.ordered()}
+			runs[n.schema] = r
+		}
+		out = append(out, r.ordered[r.next])
+		r.next++
 	}
 	return out
 }
 
+// hashPut is the unchecked exact insertion in tree_data_hash.c:134. Repeated
+// key insertion must retain even registrations whose recorded hash is now stale.
 func (s *siblings) hashPut(n *Node) {
-	if k, ok := hashOf(n); ok {
-		if s.work != nil {
-			s.work.Add(1)
+	s.touch()
+	k, ok := hashOfWork(n, s.work)
+	if !ok {
+		return
+	}
+	s.hashPutKey(n, k)
+}
+
+// hashPutKey reuses a live discriminator across a registration-only reorder.
+func (s *siblings) hashPutKey(n *Node, k idxKey) {
+	s.touch()
+	if s.work != nil {
+		s.work.Add(1)
+	}
+	if s.history == nil {
+		s.history = map[*Node]map[uint32]*record{}
+	}
+	byHash := s.history[n]
+	if byHash == nil {
+		byHash = map[uint32]*record{}
+		s.history[n] = byHash
+	}
+	s.exactOrder++
+	r := byHash[n.hash]
+	if r == nil {
+		r = &record{node: n, order: s.exactOrder}
+		byHash[n.hash] = r
+	} else {
+		r.more = append(r.more, s.exactOrder)
+	}
+	s.activateRecord(n, k, r)
+}
+
+// activateRecord indexes the oldest applicable registration. Grouping later
+// identical registrations avoids revisiting an ever-growing history on each key
+// insertion while preserving the order revealed by successive native removals.
+func (s *siblings) activateRecord(n *Node, k idxKey, r *record) {
+	s.touch()
+	if n.hashed && n.hkey == k && s.exactByNode[n] == r {
+		return
+	}
+	s.unindexRecord(n)
+	if r == nil {
+		return
+	}
+	if s.exactByNode == nil {
+		s.exactByNode = map[*Node]*record{}
+	}
+	c := s.ht[k]
+	if c == nil {
+		c = &recordChain{}
+		s.ht[k] = c
+	}
+	var before *record
+	if c.last == nil || c.last.order < r.order {
+		if c.root != nil {
+			c.root, _ = recordOrderInsert(c.root, r, s.work)
 		}
-		if s.exactByNode == nil {
-			s.exactByNode = map[*Node]*record{}
+	} else {
+		if c.root == nil {
+			next := c.first
+			c.root = recordOrderBuild(&next, c.count, s.work)
 		}
-		if s.exactByNode[n] != nil {
-			return
-		}
-		c := s.ht[k]
-		if c == nil {
-			c = &recordChain{}
-			s.ht[k] = c
-		}
-		if recordAppend(c, s.exactByNode, n) {
-			n.hkey, n.hashed = k, true
-		}
+		c.root, before = recordOrderInsert(c.root, r, s.work)
+	}
+	r.chain, r.next = c, before
+	if before == nil {
+		r.prev = c.last
+		c.last = r
+	} else {
+		r.prev = before.prev
+		before.prev = r
+	}
+	if r.prev == nil {
+		c.first = r
+	} else {
+		r.prev.next = r
+	}
+	c.count++
+	s.exactByNode[n] = r
+	n.hkey, n.hashed = k, true
+}
+
+// hashReindex changes only the live comparison discriminator, without adding or
+// deleting any native registration. Old recorded hashes remain in history.
+func (s *siblings) hashReindex(n *Node) {
+	s.touch()
+	if s.ht == nil || s.history[n] == nil {
+		return
+	}
+	k, ok := hashOfWork(n, s.work)
+	if !ok {
+		return
+	}
+	if n.hashed && k == n.hkey {
+		return
+	}
+	s.activateRecord(n, k, s.history[n][n.hash])
+	if c := s.ht[k]; c != nil && c.root == nil {
+		next := c.first
+		c.root = recordOrderBuild(&next, c.count, s.work)
 	}
 }
 
-// hashRemove is lyd_unlink_hash.
-func (s *siblings) hashRemove(n *Node) {
+// unindexRecord removes a secondary-index entry, preserving native history.
+func (s *siblings) unindexRecord(n *Node) {
+	s.touch()
 	if !n.hashed || s.ht == nil {
 		return
 	}
 	if s.work != nil {
 		s.work.Add(1)
 	}
-	c := s.ht[n.hkey]
+	c, r := s.ht[n.hkey], s.exactByNode[n]
+	if c != nil && c.root != nil && r != nil && r.chain == c {
+		c.root = recordOrderRemove(c.root, r.order, s.work)
+		r.left, r.right, r.height = nil, nil, 0
+	}
 	if !recordDrop(c, s.exactByNode, n) {
 		return
 	}
@@ -316,6 +873,36 @@ func (s *siblings) hashRemove(n *Node) {
 		delete(s.ht, n.hkey)
 	}
 	n.hashed = false
+}
+
+// hashRemove is lyd_unlink_hash: remove ONE registration at the node's current
+// stored hash (tree_data_hash.c:219), never a registration under an earlier hash.
+func (s *siblings) hashRemove(n *Node) {
+	s.touch()
+	byHash := s.history[n]
+	r := byHash[n.hash]
+	if r == nil {
+		return
+	}
+	k := n.hkey
+	s.unindexRecord(n)
+	if len(r.more) == 0 {
+		delete(byHash, n.hash)
+		if len(byHash) == 0 {
+			delete(s.history, n)
+		}
+		return
+	}
+	r.order, r.more = r.more[0], r.more[1:]
+	s.activateRecord(n, k, r)
+}
+
+// hashForget drops references when a node leaves this sibling set. As with
+// first-instance records (D-0117), dangling native records are not retained.
+func (s *siblings) hashForget(n *Node) {
+	s.touch()
+	s.unindexRecord(n)
+	delete(s.history, n)
 }
 
 // bucket is a snapshot of an exact-value record chain in hash insertion order. It is for tests;
@@ -347,21 +934,27 @@ func (s *siblings) bucketNodes(k idxKey) iter.Seq[*Node] {
 	}
 }
 
-func firstRecordSchema(sn *schema.Node) bool {
-	return sn != nil && (sn.Kind == schema.List || sn.Kind == schema.LeafList) && opChild(sn)
+func (s *siblings) firstRecordSchema(sn *schema.Node) bool {
+	return sn != nil && (sn.Kind == schema.List || sn.Kind == schema.LeafList) && (s.schemaUnordered || opChild(sn))
 }
 
 // leaderBuild is lyd_insert_hash_add's empty_ht branch: every run start is registered in sibling
-// order. It is called only when the children table is created, never for a copied empty table.
+// order. It runs when the table is created or ordinary siblings first leave schema order.
 func (s *siblings) leaderBuild(order []*Node) {
+	s.touch()
 	s.leaders = map[*schema.Node]*recordChain{}
 	s.leaderByNode = map[*Node]*record{}
+	seen := map[*schema.Node]bool{}
 	var prev *schema.Node
 	for _, n := range order {
 		if s.work != nil {
 			s.work.Add(1)
 		}
-		if firstRecordSchema(n.schema) && n.schema != prev {
+		if s.firstRecordSchema(n.schema) && n.schema != prev {
+			if !seen[n.schema] {
+				s.firstRun[n.schema] = n
+				seen[n.schema] = true
+			}
 			s.leaderAppend(n.schema, n)
 		}
 		prev = n.schema
@@ -377,6 +970,7 @@ func (s *siblings) leaderHas(sn *schema.Node, n *Node) bool {
 }
 
 func (s *siblings) leaderAppend(sn *schema.Node, n *Node) bool {
+	s.touch()
 	if s.work != nil {
 		s.work.Add(1)
 	}
@@ -398,6 +992,7 @@ func (s *siblings) leaderAppend(sn *schema.Node, n *Node) bool {
 }
 
 func (s *siblings) leaderDrop(sn *schema.Node, n *Node) bool {
+	s.touch()
 	if s.work != nil {
 		s.work.Add(1)
 	}
@@ -584,7 +1179,8 @@ func (s *siblings) checkRecords() error {
 
 // leaderInsert applies lyd_insert_hash_add to n already at position at.
 func (s *siblings) leaderInsert(n *Node, at int) {
-	if s.ht == nil || !firstRecordSchema(n.schema) || at < 0 || at >= len(s.list) ||
+	s.touch()
+	if s.ht == nil || !s.firstRecordSchema(n.schema) || at < 0 || at >= len(s.list) ||
 		at > 0 && s.list[at-1].schema == n.schema {
 		return
 	}
@@ -599,7 +1195,8 @@ func (s *siblings) leaderInsert(n *Node, at int) {
 
 // leaderInsertBetween is leaderInsert with already-known neighbours.
 func (s *siblings) leaderInsertBetween(n, prev, next *Node) {
-	if s.ht == nil || !firstRecordSchema(n.schema) || prev != nil && prev.schema == n.schema {
+	s.touch()
+	if s.ht == nil || !s.firstRecordSchema(n.schema) || prev != nil && prev.schema == n.schema {
 		return
 	}
 	if next != nil && next.schema == n.schema {
@@ -636,9 +1233,11 @@ func (s *siblings) opRehashNeighbours(n *Node) (prev, next *Node, ok bool) {
 // node becomes the run start. A missing old record leaves the new record uninserted; libyang also
 // logs an internal error, which the port deliberately does not surface as a data verdict (D-0118).
 func (s *siblings) leaderReplace(sn *schema.Node, old, n *Node) bool {
+	s.touch()
 	if !s.leaderDrop(sn, old) {
 		return false
 	}
+	s.transferRun(old, n)
 	return s.leaderAppend(sn, n)
 }
 
@@ -646,7 +1245,8 @@ func (s *siblings) leaderReplace(sn *schema.Node, old, n *Node) bool {
 // unlink (the node leaves its siblings); a value rehash (lyd_change_node_value: lyd_unlink_hash
 // then lyd_insert_hash on the same linked node, tree_data_new.c:1177-1194) passes false.
 func (s *siblings) leaderUnlink(n *Node, at int, removing bool) {
-	if s.ht == nil || !firstRecordSchema(n.schema) || at < 0 || at >= len(s.list) {
+	s.touch()
+	if s.ht == nil || !s.firstRecordSchema(n.schema) || at < 0 || at >= len(s.list) {
 		return
 	}
 	var prev, next *Node
@@ -664,7 +1264,8 @@ func (s *siblings) leaderUnlink(n *Node, at int, removing bool) {
 // after it stopped starting a run keeps it through a rehash, as libyang does; when the node is
 // removed the port drops that record, which libyang leaves dangling (D-0117).
 func (s *siblings) leaderUnlinkBetween(n, prev, next *Node, removing bool) {
-	if s.ht == nil || !firstRecordSchema(n.schema) {
+	s.touch()
+	if s.ht == nil || !s.firstRecordSchema(n.schema) {
 		return
 	}
 	if prev != nil && prev.schema == n.schema {
@@ -678,6 +1279,9 @@ func (s *siblings) leaderUnlinkBetween(n, prev, next *Node, removing bool) {
 	}
 	if next == nil || next.schema != n.schema {
 		return
+	}
+	if removing {
+		s.transferRun(n, next)
 	}
 	if s.leaderHas(n.schema, next) {
 		return
@@ -745,9 +1349,9 @@ func (s *siblings) leaderUnlinkBetween(n, prev, next *Node, removing bool) {
 //	insert.go:700 opAnchor                  lyd_insert_get_next_anchor (tree_data.c:468,493) hash
 //
 // schemaLookup is lyd_find_sibling_schema: its first-instance hash record, which need not be the
-// first sibling instance for an operation child.
+// first sibling instance when runs can be split.
 func (t *Tree) schemaLookup(s *siblings, sn *schema.Node) *Node {
-	if opChild(sn) {
+	if opChild(sn) || s.schemaUnordered {
 		return t.schemaLookupOperation(s, sn)
 	}
 	if i := t.schemaIndex(s, sn); i >= 0 {
@@ -757,9 +1361,9 @@ func (t *Tree) schemaLookup(s *siblings, sn *schema.Node) *Node {
 }
 
 // documentFirst is the first instance in sibling order. Operation children use their mutation-
-// maintained document-order index; ordinary schema runs start at schemaIndex.
+// maintained document-order index, as do copies outside schema order.
 func (t *Tree) documentFirst(s *siblings, sn *schema.Node) *Node {
-	if opChild(sn) {
+	if opChild(sn) || s.schemaUnordered {
 		if inst := s.opInst(sn); len(inst) > 0 {
 			return inst[0]
 		}
@@ -773,12 +1377,13 @@ func (t *Tree) documentFirst(s *siblings, sn *schema.Node) *Node {
 
 // schemaIndex is the index of the first instance of sn in s, -1 if there is none.
 // Operation callers must need a position for a mutation or metadata walk; first-instance
-// and run-only lookups use schemaLookup and opRun without a position scan.
+// and run-only lookups use schemaLookup and opRun without a position scan. Unordered copies
+// likewise use their first-instance records when the children table exists.
 func (t *Tree) schemaIndex(s *siblings, sn *schema.Node) int {
 	if len(s.list) == 0 {
 		return -1
 	}
-	if opChild(sn) {
+	if opChild(sn) || s.schemaUnordered {
 		if leader := physicalStart(s, sn, t.schemaLookupOperation(s, sn)); leader != nil {
 			return t.indexFromEnd(s.list, leader)
 		}
@@ -811,6 +1416,14 @@ func isDupInstList(s *schema.Node) bool {
 // ponytail: keyless lists compare whole subtrees per instance (O(n·subtree), libyang parity);
 // parsers and validation never search them, Merge/diff must run under a step budget.
 func (t *Tree) findFirst(s *siblings, target *Node) *Node {
+	if t.work.hashDepth == 0 {
+		var readWork workCounter
+		return t.findFirstWork(s, target, &readWork)
+	}
+	return t.findFirstWork(s, target, &t.work)
+}
+
+func (t *Tree) findFirstWork(s *siblings, target *Node, work *workCounter) *Node {
 	if s.len() == 0 {
 		return nil
 	}
@@ -844,7 +1457,7 @@ func (t *Tree) findFirst(s *siblings, target *Node) *Node {
 			}
 			return nil
 		}
-		k, ok := hashOf(target)
+		k, ok := indexedKey(target, work)
 		if !ok {
 			return nil
 		}
@@ -873,33 +1486,10 @@ func htValEqual(t *Tree, a, b *Node) bool {
 	return compareSchemaEqual(a.schema, b.schema, true)
 }
 
-// hashEqual is the hash comparison of lyd_compare_single_data: lyd_hash covers the schema node
-// and the LYB form of a leaf-list value or of the list keys, which types.Equal stands for; values
-// of two contexts (types of different sets) by their canonical text, which lyd_hash hashes.
-func hashEqual(a, b *Node) bool {
-	eq := func(x, y types.Value) bool {
-		if x.Type() != y.Type() {
-			return x.Canonical() == y.Canonical()
-		}
-		return types.Equal(x, y)
-	}
-	switch {
-	case a.schema == nil:
-		return true // opaque nodes are not hashed
-	case a.schema.Kind == schema.LeafList:
-		return eq(a.value, b.value)
-	case a.schema.Kind == schema.List && !a.schema.Keyless():
-		for i := range a.schema.Keys {
-			if i >= len(a.kids.list) || i >= len(b.kids.list) {
-				return len(a.kids.list) == len(b.kids.list)
-			}
-			if !eq(a.kids.list[i].value, b.kids.list[i].value) {
-				return false
-			}
-		}
-	}
-	return true
-}
+// hashEqual is the stored-hash gate of lyd_compare_single_data (tree_data.c:1714-1716).
+// Canonical value and declared-key comparisons follow separately. In particular, a
+// cross-type terminal duplicate retains its source hash even when its value changes type.
+func hashEqual(a, b *Node) bool { return a.hash == b.hash }
 
 // compareSingle is lyd_compare_single; full is LYD_COMPARE_FULL_RECURSION (Node.Equal for all
 // the options).
@@ -1011,8 +1601,9 @@ func (x *compareIndex) first(t *Tree, s *siblings, current, target *Node) *Node 
 				return n
 			}
 		}
-		x.matched[target] = nil
-		return nil
+		// Stored hashes decide equality, not the selected member: a duplicate
+		// keeps its hash while its union member may be reselected
+		// (hash-union-key-member-dup-merge). Scan the canonical bucket on a miss.
 	}
 	for _, n := range x.buckets[canonical] {
 		s.visit()
@@ -1126,13 +1717,13 @@ func compareDataStack(t *Tree, stack []compareFrame) bool {
 				continue
 			}
 			for i := range a.schema.Keys {
-				if i >= len(a.kids.list) || i >= len(b.kids.list) {
-					if len(a.kids.list) != len(b.kids.list) {
+				x, y := positionalChild(a, i), positionalChild(b, i)
+				if x == nil || y == nil {
+					if x != y {
 						return false
 					}
 					break
 				}
-				x, y := a.kids.list[i], b.kids.list[i]
 				if !compareSingleSchema(x, y, o.Opaque, true) {
 					return false
 				}

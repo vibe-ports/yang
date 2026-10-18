@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module m {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:sort-join";
+  prefix m;
+  container r {
+    leaf z { type string; }
+    leaf y { type string; }
+    leaf-list u { type uint16; ordered-by user; }
+  }
+}

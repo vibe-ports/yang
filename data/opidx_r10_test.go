@@ -254,19 +254,19 @@ func TestOpIndexMetaSplitInterior(t *testing.T) {
 			if sn == nil {
 				t.Fatalf("prefix schema p%d not compiled", i)
 			}
-			tr.insert(op, opidxStringTerm(t, sn, "p"), insertLast)
+			mustLink(t, tr.insert(op, opidxStringTerm(t, sn, "p"), insertLast))
 		}
 		first := opIndexTerm(t, vs, 1)
-		tr.insert(op, first, insertLast)
-		tr.insert(op, opidxStringTerm(t, os, "split"), insertLast)
+		mustLink(t, tr.insert(op, first, insertLast))
+		mustLink(t, tr.insert(op, opidxStringTerm(t, os, "split"), insertLast))
 		second := opIndexTerm(t, vs, 2)
-		tr.insert(op, second, insertLast)
+		mustLink(t, tr.insert(op, second, insertLast))
 		for i := range block {
 			sn := schema.FindChild(rpc, nil, mod, fmt.Sprintf("s%d", i), 0)
 			if sn == nil {
 				t.Fatalf("suffix schema s%d not compiled", i)
 			}
-			tr.insert(op, opidxStringTerm(t, sn, "s"), insertLast)
+			mustLink(t, tr.insert(op, opidxStringTerm(t, sn, "s"), insertLast))
 		}
 		if got := opidxFirstDocumentInstance(op, vs); got != first {
 			t.Fatalf("document-first v = %s, want v1", opidxLabel(got))

@@ -85,11 +85,11 @@ func TestOpIndexParseSortsRunWithoutRBTree(t *testing.T) {
 	var op *Node
 	fp := func(lc *lydCtx, _ []byte) error {
 		op = newInner(rpc)
-		lc.tree.insert(nil, op, insertDefault)
+		mustLink(t, lc.tree.insert(nil, op, insertDefault))
 		for _, v := range []int{3, 1} {
-			lc.tree.insert(op, opIndexTerm(t, sn, v), insertLast)
+			mustLink(t, lc.tree.insert(op, opIndexTerm(t, sn, v), insertLast))
 		}
-		lc.nodeInsert(op, nil, opIndexTerm(t, sn, 4))
+		mustLink(t, lc.nodeInsert(op, nil, opIndexTerm(t, sn, 4)))
 		return lc.closeInner(op, nil)
 	}
 	o := parseOpts{ParseOptions: ParseOptions{Unknown: Reject, ParseOnly: true}}

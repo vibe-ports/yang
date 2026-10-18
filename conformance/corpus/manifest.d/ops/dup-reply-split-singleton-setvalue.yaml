@@ -1,0 +1,19 @@
+fixtures:
+  # lyd_change_node_value uses LYD_NODE_IS_ALONE after a recursive copy:
+  # the last v follows the input leaf and has no next sibling, although
+  # two earlier v instances survive before that input leaf.
+  - id: ops/dup-reply-split-singleton-setvalue
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.14"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [rb.1]
+      modules: [{name: rb}]
+      steps:
+        - {do: parse, format: json, data_type: reply, unknown: reject, parse_only: true, keep_input: true, rpc: '{"rb:r":{"in":"keep"}}', data: '{"rb:before":"b","rb:v":[1,2,3]}'}
+        - {do: dup, node: "/rb:r", options: [recursive]}
+        - {do: change_term, node_xpath: "/rb:r/v[.='3']", value: "4"}
+        - {do: dump}
+    golden: golden/ops-dup-reply-split-singleton-setvalue.json

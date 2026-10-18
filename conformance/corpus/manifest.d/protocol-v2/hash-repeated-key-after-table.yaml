@@ -1,0 +1,26 @@
+fixtures:
+  # Libyang-specific history: v5.8.6 src/tree_data_hash.c:181-195 creates c's table
+  # at four children. src/tree_data.c:683-702,836-842 preserves the list hash when
+  # inserting a second a changes its leading children from a,b to a,a,b.
+  # src/tree_data.c:1761-1787 compares positional key schemas as well as values:
+  # the XPath lookup for the original a=x,b=y must return an empty node-set.
+  # The later NewPath lookup independently creates a second pair.
+  # Recursive self-comparison before NewPath must still return LY_SUCCESS.
+  - id: protocol-v2/hash-repeated-key-after-table
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []
+    areas: [operations, xpath]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-hash-lyb}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {do: parse, format: json, data_type: config, parse_only: true, data: '{"pv2-hash-lyb:c":{"ll":["a","b","c"],"pair":[{"a":"x","b":"y","v":"original"}]}}'}
+        - {do: edit, insert_term: {parent: "/pv2-hash-lyb:c/pair[a='x'][b='y']", name: a, value: "z"}}
+        - {do: xpath, xpath: "/pv2-hash-lyb:c/pair[a='x'][b='y']"}
+        - {do: compare, self: true, options: [full_recursion]}
+        - {do: edit, set: {path: "/pv2-hash-lyb:c/pair[a='x'][b='y']/v", value: "lookup-created"}}
+        - {do: dump, with_defaults: all}
+    golden: golden/hash-repeated-key-after-table.json

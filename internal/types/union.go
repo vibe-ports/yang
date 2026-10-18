@@ -16,11 +16,15 @@ import (
 type UnionValue struct {
 	member Value
 	index  int
-	orig   string
-	f      Format
-	h      Hints
-	pc     PrefixCtx
-	ctx    *schema.Node
+	// noTree is the immutable selection made at store time. The LYB callback
+	// selects without a data tree even if later validation changed member.
+	noTree   *UnionValue
+	noTreeOK bool
+	orig     string
+	f        Format
+	h        Hints
+	pc       PrefixCtx
+	ctx      *schema.Node
 }
 
 // Member returns the selected member's value and its index in the union's member types.
@@ -38,12 +42,15 @@ func storeUnion(a *storeArgs) (Value, *Diag) {
 	}
 	u := &UnionValue{orig: a.lex, f: a.f, h: a.h, pc: pc, ctx: a.ctx}
 	d = unionFind(a.t, u, false, nil)
+	noTreeOK := d == nil
 	if d != nil && a.only {
 		d = unionFind(a.t, u, true, nil)
 	}
 	if d != nil {
 		return Value{}, d
 	}
+	u.noTree = &UnionValue{member: u.member, index: u.index}
+	u.noTreeOK = noTreeOK
 	return Value{typ: a.t, canon: u.member.canon, union: u, needsTree: u.member.needsTree}, nil
 }
 

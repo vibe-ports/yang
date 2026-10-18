@@ -1,0 +1,18 @@
+# libyang v5.8.6: lyd_leafref_link_node_tree_type (tree_data.c:3863-3901) skips a leafref (plain
+# or a union member) whose lyplg_type_resolve_leafref fails because lyxp_eval cannot re-store the
+# predicate's instance-identifier key; the store errors stay logged and linking goes on.
+fixtures:
+  - id: seq/hash-leafref-probe-link
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.9.3"]
+    areas: [types, xpath, operations]
+    request:
+      op: sequence
+      searchdirs: [hash-leafref-probe, ../ut-new/e.1, ../ut-new/f.1]
+      modules: [{name: g}, {name: e}, {name: f}]
+      context_options: [leafref_linking, no_yanglibrary]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, data: '{"e:li":[{"id":"/f:lp[p=''2001:0db8::/64'']"}],"g:c":{"selector":"/f:lp[p=''2001:0db8::/64'']","strict":"/f:lp[p=''2001:0db8::/64'']","fallback":"/f:lp[p=''2001:0db8::/64'']"}}'}
+        - {do: link}
+    golden: golden/seq-hash-leafref-probe-link.json

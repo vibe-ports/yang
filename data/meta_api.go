@@ -39,6 +39,7 @@ func (m *Meta) Remove() { removeMeta(m.node, m.m) }
 // Node.Meta iterator, the diff code removing while it walks) keeps seeing it unchanged.
 func removeMeta(n *Node, m *meta) {
 	if i := slices.Index(n.meta, m); i >= 0 {
+		n.touch()
 		n.meta = append(n.meta[:i:i], n.meta[i+1:]...)
 	}
 }

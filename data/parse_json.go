@@ -34,12 +34,15 @@ type opqKey struct {
 }
 
 // insertOpaq links the new opaque node n under parent (lyd_parser_node_insert) and indexes it.
-func (p *jsonParser) insertOpaq(parent, n *Node) {
-	p.lc.nodeInsert(parent, nil, n)
+func (p *jsonParser) insertOpaq(parent, n *Node) error {
+	if err := p.lc.nodeInsert(parent, nil, n); err != nil {
+		return err
+	}
 	k := opqKey{parent, n.opaq.Name, n.opaq.ModuleNS}
 	if _, ok := p.opqFirst[k]; !ok {
 		p.opqFirst[k] = n
 	}
+	return nil
 }
 
 // parseJSON is lyd_parse_json without a bare value: every member of the top-level object (only
@@ -422,9 +425,9 @@ func (p *jsonParser) metadataFinish(parent *Node) error {
 		}
 		r, ok := runs[sn]
 		if !ok && sn != nil {
-			if opChild(sn) {
-				// an operation's output instances may be split by its input (the anchor):
-				// libyang counts every one in sibling order
+			if opChild(sn) || sib.schemaUnordered {
+				// Anchors may split operation children and unordered copies:
+				// libyang counts every instance in sibling order
 				r = slices.Clone(sib.opInst(sn))
 				lc.tree.work.Add(int64(len(r)))
 			} else if i := lc.tree.schemaIndex(sib, sn); i >= 0 {
@@ -598,9 +601,8 @@ func (p *jsonParser) metaAttr(node *Node, idx int) (rc error) {
 				}
 				return nil
 			}
-		} else if opChild(node.schema) {
-			// ponytail: a run split by the anchor (bounded split boundaries, #240) is located by
-			// a counted scan from the nearer end.
+		} else if opChild(node.schema) || sib.schemaUnordered {
+			// A run split by an anchor is located by a counted scan from the nearer end.
 			idx = lc.position(sib, node)
 		}
 	}
@@ -783,7 +785,9 @@ func (p *jsonParser) parseOpaq(name, prefix string, parent *Node, statusP, statu
 	if err != nil {
 		return nil, err
 	}
-	p.insertOpaq(parent, node)
+	if err := p.insertOpaq(parent, node); err != nil {
+		return node, err
+	}
 	children := func(status *lyjson.Token) error {
 		for {
 			if err := p.subtree(node); err != nil {
@@ -829,7 +833,9 @@ func (p *jsonParser) parseOpaq(name, prefix string, parent *Node, statusP, statu
 				return node, err
 			}
 			node = next
-			p.insertOpaq(parent, node)
+			if err := p.insertOpaq(parent, node); err != nil {
+				return node, err
+			}
 		}
 	case *statusP == lyjson.TokenObject:
 		node.opaq.Hints |= hintContainer
@@ -889,7 +895,7 @@ func (p *jsonParser) parseAttribute(attrNode *Node, sn *schema.Node, name, prefi
 			} else {
 				attrNode = lc.tree.documentFirst(sib, sn)
 			}
-			if attrNode != nil && sn.Kind == schema.LeafList && !opChild(sn) && lc.dirtyOrd[dirtyRun{sib, sn}] == nil {
+			if attrNode != nil && sn.Kind == schema.LeafList && !opChild(sn) && !sib.schemaUnordered && lc.dirtyOrd[dirtyRun{sib, sn}] == nil {
 				idx = lc.tree.schemaIndex(sib, sn)
 			}
 		}
@@ -922,7 +928,9 @@ func (p *jsonParser) parseInstanceInner(sn *schema.Node, parent *Node, status *l
 	if err != nil {
 		return nil, err
 	}
-	lc.nodeInsert(parent, nil, node)
+	if err := lc.nodeInsert(parent, nil, node); err != nil {
+		return node, err
+	}
 	// libyang frees the node after an error that stops the parse; the tree is dropped then anyway
 	var rc error
 	for {
@@ -931,7 +939,9 @@ func (p *jsonParser) parseInstanceInner(sn *schema.Node, parent *Node, status *l
 				return node, rc
 			}
 		}
-		lc.nodeInsert(parent, nil, node) // a list that had its keys missing
+		if err := lc.nodeInsert(parent, nil, node); err != nil { // a list that had its keys missing
+			return node, err
+		}
 		if *status = p.lx.Status(); *status != lyjson.TokenObjectNext {
 			break
 		}
@@ -955,7 +965,9 @@ func (p *jsonParser) parseInstanceTerm(sn *schema.Node, h types.Hints, parent *N
 	if rc != nil && lc.fatal(rc) {
 		return nil, rc
 	}
-	lc.nodeInsert(parent, nil, node)
+	if err := lc.nodeInsert(parent, nil, node); err != nil {
+		return node, err
+	}
 	if *status == lyjson.TokenArray { // [null]: two more moves
 		for range 2 {
 			if err := p.next(status); err != nil {
@@ -1018,7 +1030,9 @@ func (p *jsonParser) parseAny(sn *schema.Node, parent *Node, status *lyjson.Toke
 		return nil, err
 	}
 	node.flags = lc.newFlags()
-	lc.nodeInsert(parent, nil, node)
+	if err := lc.nodeInsert(parent, nil, node); err != nil {
+		return node, err
+	}
 	if *status != lyjson.TokenObject {
 		return node, nil
 	}

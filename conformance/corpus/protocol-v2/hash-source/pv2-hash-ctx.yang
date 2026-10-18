@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module pv2-hash-ctx {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-hash-ctx";
+  prefix phc;
+
+  container r {
+    presence "Keep the parent after removing its last child.";
+    leaf-list s {
+      config false;
+      type string;
+    }
+    list l {
+      key "k";
+      leaf k { type string; }
+      leaf v { type string; }
+    }
+    leaf a { type string; }
+    leaf b { type string; }
+    leaf c { type string; }
+  }
+}

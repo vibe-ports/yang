@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module pv2-hash-stored {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-hash-stored";
+  prefix phs;
+
+  container c {
+    leaf target { type string; }
+    list ref {
+      key "k";
+      leaf k {
+        type union {
+          type leafref { path "/phs:c/phs:target"; }
+          type string;
+        }
+      }
+      leaf v { type string; }
+    }
+    list binary {
+      key "k";
+      leaf k { type binary; }
+      leaf v { type string; }
+    }
+    list union {
+      key "k";
+      leaf k {
+        type union {
+          type int32;
+          type string;
+        }
+      }
+      leaf v { type string; }
+    }
+  }
+}

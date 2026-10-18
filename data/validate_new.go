@@ -54,6 +54,9 @@ func (vc *valCtx) validateNew(parent *Node, sparent *schema.Node, mod *schema.Mo
 			} else {
 				gone = vc.autodelContLeafDflt(sib, n)
 			}
+			if vc.t.work.hashErr != nil {
+				return vc.t.work.hashErr
+			}
 			if gone {
 				continue
 			}
@@ -64,10 +67,14 @@ func (vc *valCtx) validateNew(parent *Node, sparent *schema.Node, mod *schema.Mo
 					return rc
 				}
 			}
+			n.touch()
 			n.flags &^= FlagNew // this node is valid
 		}
 		if n.flags&FlagDefault != 0 && vc.autodelCaseDflt(sib, n, explicit) {
 			continue
+		}
+		if vc.t.work.hashErr != nil {
+			return vc.t.work.hashErr
 		}
 	}
 	return rc
@@ -225,6 +232,10 @@ func (vc *valCtx) autodelCaseDflt(sib *siblings, n *Node, explicit map[*schema.N
 // each subtree (ly_set_rm_index per node in DFS order), then the nodes, unlinked in one pass.
 // Autodelete never reaches a key (keys have no defaults, cases hold no keys).
 func (vc *valCtx) autodel(del []*Node, npContDiff bool) {
+	if err := vc.t.preflightUnlinkAll(del); err != nil {
+		vc.t.work.hashErr = err
+		return
+	}
 	for _, n := range del {
 		if vc.diff == nil {
 			break
@@ -240,10 +251,9 @@ func (vc *valCtx) autodel(del []*Node, npContDiff bool) {
 	for _, n := range del {
 		vc.dropTypes(n)
 	}
-	if len(del) == 1 {
-		unlink(del[0]) // the usual single default: no batch bookkeeping
-	} else {
-		_ = vc.t.unlinkAll(del)
+	if err := vc.t.unlinkAll(del); err != nil {
+		vc.t.work.hashErr = err
+		return
 	}
 	for _, n := range del {
 		freeSubtreeLinks(vc.t.set, n) // lyd_free_tree
@@ -280,14 +290,14 @@ type dupIndex struct {
 
 // bucket iterates the instances that hash like k, the children table's chain in registration
 // order when the parent has one (lazily: duplicates stops at the first equal instance).
-func (d *dupIndex) bucket(k idxKey) iter.Seq[*Node] {
+func (d *dupIndex) bucket(k idxKey, work *workCounter) iter.Seq[*Node] {
 	if d.sib.ht != nil {
 		return d.sib.bucketNodes(k)
 	}
 	if d.tmp == nil {
 		d.tmp = map[idxKey][]*Node{}
 		for _, n := range d.sib.list {
-			if hk, ok := hashOf(n); ok {
+			if hk, ok := indexedKey(n, work); ok {
 				d.tmp[hk] = append(d.tmp[hk], n)
 			}
 		}
@@ -302,11 +312,17 @@ func (vc *valCtx) duplicates(d *dupIndex, n *Node) error {
 	if isDupInstList(n.schema) {
 		return nil
 	}
-	k, ok := hashOf(n)
+	k, ok := indexedKey(n, &vc.t.work)
 	if !ok {
+		if vc.t.work.hashErr != nil {
+			return vc.t.work.hashErr
+		}
 		return nil
 	}
-	for m := range d.bucket(k) {
+	for m := range d.bucket(k, &vc.t.work) {
+		if vc.t.work.hashErr != nil {
+			return vc.t.work.hashErr
+		}
 		vc.t.work.Add(1)
 		if m == n || !vc.linkedIn(m, d.sib) || !htValEqual(vc.t, m, n) {
 			continue
@@ -316,6 +332,9 @@ func (vc *valCtx) duplicates(d *dupIndex, n *Node) error {
 			return nil
 		}
 		return vc.log.val(n, "", ly.Data, "Duplicate instance of \"%s\".", n.schema.Name)
+	}
+	if vc.t.work.hashErr != nil {
+		return vc.t.work.hashErr
 	}
 	return nil
 }

@@ -1,0 +1,638 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-hash-sweep",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r",
+          "schema": "/pv2-hash-sweep:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ipv4-plain[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ipv4-plain",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ipv4-numeric-zone[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ipv4-numeric-zone",
+          "value": {
+            "canonical": "192.0.2.1%7",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ipv4-named-zone[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ipv4-named-zone",
+          "value": {
+            "canonical": "192.0.2.1%test",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ipv4-link-local[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ipv4-link-local",
+          "value": {
+            "canonical": "169.254.1.1%7",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "dup",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r",
+          "schema": "/pv2-hash-sweep:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ipv4-plain[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ipv4-plain",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "string",
+            "typedef": "ipv4-address",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ipv4-numeric-zone[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ipv4-numeric-zone",
+          "value": {
+            "canonical": "192.0.2.1%7",
+            "type": "string",
+            "typedef": "ipv4-address",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ipv4-named-zone[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ipv4-named-zone",
+          "value": {
+            "canonical": "192.0.2.1%test",
+            "type": "string",
+            "typedef": "ipv4-address",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ipv4-link-local[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ipv4-link-local",
+          "value": {
+            "canonical": "169.254.1.1%7",
+            "type": "string",
+            "typedef": "ipv4-address-link-local",
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "compare": {
+        "err": 11,
+        "name": "LY_ENOT"
+      },
+      "diagnostics": [],
+      "do": "compare",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r",
+          "schema": "/pv2-hash-sweep:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ipv4-plain[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ipv4-plain",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "string",
+            "typedef": "ipv4-address",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ipv4-numeric-zone[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ipv4-numeric-zone",
+          "value": {
+            "canonical": "192.0.2.1%7",
+            "type": "string",
+            "typedef": "ipv4-address",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ipv4-named-zone[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ipv4-named-zone",
+          "value": {
+            "canonical": "192.0.2.1%test",
+            "type": "string",
+            "typedef": "ipv4-address",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ipv4-link-local[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ipv4-link-local",
+          "value": {
+            "canonical": "169.254.1.1%7",
+            "type": "string",
+            "typedef": "ipv4-address-link-local",
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "compare": {
+        "err": 11,
+        "name": "LY_ENOT"
+      },
+      "diagnostics": [],
+      "do": "compare",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r",
+          "schema": "/pv2-hash-sweep:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ipv4-plain[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ipv4-plain",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "string",
+            "typedef": "ipv4-address",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ipv4-numeric-zone[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ipv4-numeric-zone",
+          "value": {
+            "canonical": "192.0.2.1%7",
+            "type": "string",
+            "typedef": "ipv4-address",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ipv4-named-zone[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ipv4-named-zone",
+          "value": {
+            "canonical": "192.0.2.1%test",
+            "type": "string",
+            "typedef": "ipv4-address",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ipv4-link-local[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ipv4-link-local",
+          "value": {
+            "canonical": "169.254.1.1%7",
+            "type": "string",
+            "typedef": "ipv4-address-link-local",
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "compare": {
+        "err": 11,
+        "name": "LY_ENOT"
+      },
+      "diagnostics": [],
+      "do": "compare",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r",
+          "schema": "/pv2-hash-sweep:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ipv4-plain[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ipv4-plain",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "string",
+            "typedef": "ipv4-address",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ipv4-numeric-zone[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ipv4-numeric-zone",
+          "value": {
+            "canonical": "192.0.2.1%7",
+            "type": "string",
+            "typedef": "ipv4-address",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ipv4-named-zone[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ipv4-named-zone",
+          "value": {
+            "canonical": "192.0.2.1%test",
+            "type": "string",
+            "typedef": "ipv4-address",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ipv4-link-local[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ipv4-link-local",
+          "value": {
+            "canonical": "169.254.1.1%7",
+            "type": "string",
+            "typedef": "ipv4-address-link-local",
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "compare": {
+        "err": 11,
+        "name": "LY_ENOT"
+      },
+      "diagnostics": [],
+      "do": "compare",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r",
+          "schema": "/pv2-hash-sweep:r",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ipv4-plain[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ipv4-plain",
+          "value": {
+            "canonical": "192.0.2.1",
+            "type": "string",
+            "typedef": "ipv4-address",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ipv4-numeric-zone[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ipv4-numeric-zone",
+          "value": {
+            "canonical": "192.0.2.1%7",
+            "type": "string",
+            "typedef": "ipv4-address",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ipv4-named-zone[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ipv4-named-zone",
+          "value": {
+            "canonical": "192.0.2.1%test",
+            "type": "string",
+            "typedef": "ipv4-address",
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-hash-sweep:r/lyb-ipv4-link-local[1]",
+          "schema": "/pv2-hash-sweep:r/lyb-ipv4-link-local",
+          "value": {
+            "canonical": "169.254.1.1%7",
+            "type": "string",
+            "typedef": "ipv4-address-link-local",
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

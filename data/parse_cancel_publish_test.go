@@ -85,7 +85,7 @@ func TestParseCancelPublishes(t *testing.T) {
 				if d != nil {
 					t.Fatal(d.Msg)
 				}
-				lc.tree.insert(nil, newTerm(ll, v), insertDefault)
+				mustLink(t, lc.tree.insert(nil, newTerm(ll, v), insertDefault))
 				if got := run(); !slices.IsSorted(got) {
 					t.Fatalf("cancelled at check %d, then 25 inserted: run %v", ctx.at, got)
 				}
@@ -137,7 +137,7 @@ func TestParseReplyCancelRequest(t *testing.T) {
 				if !slices.Equal(got, []string{"3", "1", "2"}[:len(got)]) {
 					t.Fatalf("cancelled at check %d (%v): run %v, want an input-order prefix", ctx.at, err, got)
 				}
-				tree.insert(op, opIndexTerm(t, v, 0), insertDefault)
+				mustLink(t, tree.insert(op, opIndexTerm(t, v, 0), insertDefault))
 				if got2 := run(); !slices.Equal(got2, append(got, "0")) {
 					t.Fatalf("cancelled at check %d, then 0 inserted: run %v", ctx.at, got2)
 				}

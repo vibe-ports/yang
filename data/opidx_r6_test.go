@@ -130,7 +130,7 @@ func TestOpIndexRecordUniqueness(t *testing.T) {
 
 	srcTree := newTree(set1)
 	src := newInner(rpc1)
-	srcTree.insert(nil, src, insertDefault)
+	mustLink(t, srcTree.insert(nil, src, insertDefault))
 	for _, n := range []*Node{
 		opidxStringTerm(t, a1, "a"),
 		opidxStringTerm(t, a2s, "a2"),
@@ -138,7 +138,7 @@ func TestOpIndexRecordUniqueness(t *testing.T) {
 		opidxStringTerm(t, sep1, "split"),
 		opIndexTerm(t, vs1, 1),
 	} {
-		srcTree.insert(src, n, insertLast)
+		mustLink(t, srcTree.insert(src, n, insertLast))
 	}
 	opidxCheckRecords(t, &src.kids)
 
@@ -172,7 +172,7 @@ func TestOpIndexRecordUniqueness(t *testing.T) {
 	}
 
 	one := values[1]
-	tr.insert(op, opIndexTerm(t, vs2, 6), insertDefault)
+	mustLink(t, tr.insert(op, opIndexTerm(t, vs2, 6), insertDefault))
 	opidxCheckRecords(t, &op.kids)
 	count := 0
 	for _, n := range op.kids.records(vs2) {
@@ -250,7 +250,7 @@ func TestOpIndexRecordRandomized(t *testing.T) {
 
 			tr := newTree(set1)
 			op := newInner(rpc1)
-			tr.insert(nil, op, insertDefault)
+			mustLink(t, tr.insert(nil, op, insertDefault))
 			for _, n := range []*Node{
 				opidxStringTerm(t, a, "a"),
 				opidxStringTerm(t, a2s, "a2"),
@@ -258,7 +258,7 @@ func TestOpIndexRecordRandomized(t *testing.T) {
 				opIndexTerm(t, sepSchema, 1),
 				opIndexTerm(t, is, 1),
 			} {
-				tr.insert(op, n, insertLast)
+				mustLink(t, tr.insert(op, n, insertLast))
 			}
 
 			type copyState struct {
@@ -354,7 +354,7 @@ func TestOpIndexRecordRandomized(t *testing.T) {
 				case 6: // recursive cross-context copy with a populated table
 					scratchTree := newTree(set1)
 					scratch := newInner(rpc1)
-					scratchTree.insert(nil, scratch, insertDefault)
+					mustLink(t, scratchTree.insert(nil, scratch, insertDefault))
 					add(scratch, set1, mod1, "a", fresh(), false)
 					add(scratch, set1, mod1, "a2", fresh(), false)
 					add(scratch, set1, mod1, "is", fresh(), false)
@@ -376,7 +376,7 @@ func TestOpIndexRecordRandomized(t *testing.T) {
 				case 8: // recursive copy, then build a missing sorted index
 					scratchTree := newTree(set1)
 					scratch := newInner(rpc1)
-					scratchTree.insert(nil, scratch, insertDefault)
+					mustLink(t, scratchTree.insert(nil, scratch, insertDefault))
 					hi, lo := fresh()+4, fresh()
 					for _, n := range []*Node{
 						opidxStringTerm(t, a, fmt.Sprint(fresh())),
@@ -384,7 +384,7 @@ func TestOpIndexRecordRandomized(t *testing.T) {
 						opIndexTerm(t, is, hi),
 						opIndexTerm(t, is, lo),
 					} {
-						scratchTree.insert(scratch, n, insertLast)
+						mustLink(t, scratchTree.insert(scratch, n, insertLast))
 					}
 					dup, err := dupTo(scratch, nil, nil, dupRecursive, false)
 					if err != nil {

@@ -1,0 +1,5 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written stored-hash compatibility fixture.
+module m { yang-version 1.1; namespace "urn:m"; prefix m;
+leaf-list s {config false;type bits {bit high {position 65534;}}}
+}

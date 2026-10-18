@@ -32,7 +32,7 @@ func opidxR9OperationRun(t *testing.T, source, target *schema.Set, values []int)
 	}
 	srcTree := treeOf(src)
 	for _, value := range values {
-		srcTree.insert(src, opIndexTerm(t, ss1, value), insertLast)
+		mustLink(t, srcTree.insert(src, opIndexTerm(t, ss1, value), insertLast))
 	}
 	sourceNodes := opidxSchemaNodes(src, ss1)
 
@@ -47,7 +47,7 @@ func opidxR9OperationRun(t *testing.T, source, target *schema.Set, values []int)
 	if len(sourceNodes) != len(values) || len(copyNodes) != len(values) {
 		t.Fatalf("source/copy instances = %d/%d, want %d", len(sourceNodes), len(copyNodes), len(values))
 	}
-	if op.kids.rbTree[ss2] {
+	if op.kids.hasRB(ss2) {
 		t.Fatal("LAST-linked copy unexpectedly has an RB tree")
 	}
 	return tr, op, ss2, sourceNodes, copyNodes
@@ -63,9 +63,9 @@ func opidxR9ContainerRun(t *testing.T, source, target *schema.Set, values []int)
 	}
 	srcTree := newTree(source)
 	src := newInner(cs1)
-	srcTree.insert(nil, src, insertDefault)
+	mustLink(t, srcTree.insert(nil, src, insertDefault))
 	for _, value := range values {
-		srcTree.insert(src, opIndexTerm(t, vs1, value), insertLast)
+		mustLink(t, srcTree.insert(src, opIndexTerm(t, vs1, value), insertLast))
 	}
 	sourceNodes := opidxSchemaNodes(src, vs1)
 
@@ -84,13 +84,13 @@ func opidxR9ContainerRun(t *testing.T, source, target *schema.Set, values []int)
 		if err != nil {
 			t.Fatal(err)
 		}
-		tr.insert(copyRoot, opIndexTerm(t, vs2, value), insertLast)
+		mustLink(t, tr.insert(copyRoot, opIndexTerm(t, vs2, value), insertLast))
 	}
 	copyNodes := opidxSchemaNodes(copyRoot, vs2)
 	if len(copyNodes) != len(values) {
 		t.Fatalf("copy instances = %d, want %d", len(copyNodes), len(values))
 	}
-	if copyRoot.kids.rbTree[vs2] {
+	if copyRoot.kids.hasRB(vs2) {
 		t.Fatal("LAST-linked copy unexpectedly has an RB tree")
 	}
 	return tr, copyRoot, vs2, sourceNodes, copyNodes
@@ -176,11 +176,11 @@ func TestOpIndexSortRelocationDuplicateHeavy(t *testing.T) {
 		tr.work.Store(0)
 		tr.work.visits = true
 		tr.work.shifts = true
-		tr.insert(op, opIndexTerm(t, ss, 6), insertDefault)
+		mustLink(t, tr.insert(op, opIndexTerm(t, ss, 6), insertDefault))
 		work := tr.work.Load()
 
 		opidxR9AssertSorted(t, op, ss, 2*n+2)
-		if got := op.kids.bucket(idxKey{s: ss, key: "1"}); !slices.Equal(got, wantOnes) {
+		if got := op.kids.bucket(storedValueIndexKey(t, ss, "1")); !slices.Equal(got, wantOnes) {
 			t.Errorf("n=%d exact-value bucket order differs: got %p, want leading then relocated trailing %p", n, got, wantOnes)
 		}
 		opidxCheckRecords(t, &op.kids)
@@ -234,12 +234,12 @@ func TestOpIndexSortRelocationBucketEquivalence(t *testing.T) {
 			t.Run(fmt.Sprintf("%x-%x/%s", sd.a, sd.b, tc.name), func(t *testing.T) {
 				tr, parent, sn, sourceNodes, copied := tc.build(t, values)
 				want := opidxR9RelocationBuckets(t, sourceNodes, copied)
-				tr.insert(parent, opIndexTerm(t, sn, 6), insertDefault)
+				mustLink(t, tr.insert(parent, opIndexTerm(t, sn, 6), insertDefault))
 
 				opidxR9AssertSorted(t, parent, sn, len(values)+1)
 				for value := 0; value < 6; value++ {
 					key := strconv.Itoa(value)
-					if got := parent.kids.bucket(idxKey{s: sn, key: key}); !slices.Equal(got, want[key]) {
+					if got := parent.kids.bucket(storedValueIndexKey(t, sn, key)); !slices.Equal(got, want[key]) {
 						t.Errorf("value %s bucket order differs: got %p, want %p", key, got, want[key])
 					}
 				}
@@ -268,7 +268,7 @@ func TestOpIndexBucketRemoveScrambled(t *testing.T) {
 		if len(remaining) != n {
 			t.Fatalf("instances = %d, want %d", len(remaining), n)
 		}
-		if got := len(op.kids.bucket(idxKey{s: sn, key: "1"})); got != n {
+		if got := len(op.kids.bucket(storedValueIndexKey(t, sn, "1"))); got != n {
 			t.Fatalf("exact-value bucket records = %d, want %d", got, n)
 		}
 		// Put the exact records into a permutation unrelated to sibling order. Removing
@@ -314,7 +314,7 @@ func TestOpIndexBucketRemoveScrambled(t *testing.T) {
 		if got := opidxSchemaNodes(op, sn); len(got) != 0 {
 			t.Errorf("%d instances remain", len(got))
 		}
-		if got := op.kids.bucket(idxKey{s: sn, key: "1"}); len(got) != 0 {
+		if got := op.kids.bucket(storedValueIndexKey(t, sn, "1")); len(got) != 0 {
 			t.Errorf("%d exact-value records remain", len(got))
 		}
 		if got := tr.schemaLookup(&op.kids, sn); got != nil {

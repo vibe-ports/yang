@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo): leafref validation re-stores an
+// instance-identifier key whose canonical nested key fails its lexical pattern.
+module g {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:hash-leafref-probe:g";
+  prefix g;
+
+  import e { prefix e; }
+
+  container c {
+    leaf selector { type string; }
+    leaf fallback {
+      type union {
+        type leafref { path "/e:li[e:id=current()/../g:selector]/e:id"; }
+        type string;
+      }
+    }
+    leaf strict {
+      type leafref { path "/e:li[e:id=current()/../g:selector]/e:id"; }
+    }
+  }
+}

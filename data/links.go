@@ -13,7 +13,6 @@ import (
 	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
-	"github.com/vibe-ports/yang/internal/xpath"
 )
 
 // leafrefLinks is struct lyd_leafref_links_rec: the leafref nodes pointing to a term node and,
@@ -43,6 +42,8 @@ func linksOf(set *schema.Set, n *Node) (*leafrefLinks, error) {
 // linkLeafrefNode is lyd_link_leafref_node: lref points to target. Like libyang it stops early
 // when lref is already among target's leafref nodes.
 func linkLeafrefNode(target, lref *Node) {
+	target.touch()
+	lref.touch()
 	if target.links == nil {
 		target.links = &leafrefLinks{}
 	}
@@ -85,6 +86,7 @@ func freeLinks(n *Node) {
 	if rec == nil {
 		return
 	}
+	n.touch()
 	for i := 0; i < len(rec.leafrefs); i++ {
 		l := rec.leafrefs[i]
 		if r2 := l.links; r2 != nil {
@@ -298,6 +300,7 @@ func (c *bulkLinkCleaner) free(n *Node) {
 	if rec == nil {
 		return
 	}
+	n.touch()
 	for i := 0; i < len(rec.leafrefs); i++ {
 		c.visit()
 		l := rec.leafrefs[i]
@@ -363,8 +366,7 @@ func (vc *valCtx) linkType(n *Node, v types.Value, t *schema.Type) error {
 	case schema.Leafref:
 		_, targets, err := vc.leafrefTargets(n, t, v)
 		if err != nil {
-			var xe *xpath.Error
-			if errors.As(err, &xe) {
+			if _, ok := evalErrMsg(err); ok {
 				_ = vc.xpathErr(err, n) // lyxp_eval logged it at cur_node; the link is skipped
 				return nil
 			}

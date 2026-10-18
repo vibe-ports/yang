@@ -40,18 +40,18 @@ func TestAnyXPathHashExcludesPayload(t *testing.T) {
 	}
 	tr := newTree(set)
 	a := &Node{schema: data, any: &anyValue{}}
-	tr.insert(nil, a, insertDefault)
-	tr.insert(a, newOpaque(opaque{Name: "payload-target", ModuleNS: m.Namespace, Value: "hidden", Format: types.FormatXML, set: set}), insertLast)
+	mustLink(t, tr.insert(nil, a, insertDefault))
+	mustLink(t, tr.insert(a, newOpaque(opaque{Name: "payload-target", ModuleNS: m.Namespace, Value: "hidden", Format: types.FormatXML, set: set}), insertLast))
 	c := newInner(outer)
-	tr.insert(nil, c, insertDefault)
+	mustLink(t, tr.insert(nil, c, insertDefault))
 	v, diag := types.Store(value.Type, "real", types.FormatJSON, types.HintString, nil, value)
 	if diag != nil {
 		t.Fatal(diag)
 	}
 	// A schema-backed payload is visible to the ordinary child and descendant
 	// axes, but lyd_child-based hash lookup still has no children on the any node.
-	tr.insert(a, newTerm(value, v), insertDefault)
-	tr.insert(c, newTerm(value, v), insertDefault)
+	mustLink(t, tr.insert(a, newTerm(value, v), insertDefault))
+	mustLink(t, tr.insert(c, newTerm(value, v), insertDefault))
 	if got, ok := (xn{a, set}).LookupChild(xs{value, set}, nil); !ok || len(got) != 0 {
 		t.Fatalf("any hash lookup = %v, handled=%t", got, ok)
 	}
@@ -82,9 +82,9 @@ func TestAnyXPathPredicateFirstInstanceIncludesPayload(t *testing.T) {
 	l, k := c.Children[0], c.Children[0].Children[0]
 	tr := newTree(set)
 	an := &Node{schema: a, any: &anyValue{}}
-	tr.insert(nil, an, insertDefault)
+	mustLink(t, tr.insert(nil, an, insertDefault))
 	cn := newInner(c)
-	tr.insert(nil, cn, insertDefault)
+	mustLink(t, tr.insert(nil, cn, insertDefault))
 	var payload *Node
 	for _, parent := range []*Node{an, cn} {
 		ln := newInner(l)
@@ -92,8 +92,8 @@ func TestAnyXPathPredicateFirstInstanceIncludesPayload(t *testing.T) {
 		if d != nil {
 			t.Fatal(d)
 		}
-		tr.insert(ln, newTerm(k, v), insertDefault)
-		tr.insert(parent, ln, insertDefault)
+		mustLink(t, tr.insert(ln, newTerm(k, v), insertDefault))
+		mustLink(t, tr.insert(parent, ln, insertDefault))
 		if parent == an {
 			payload = ln
 		}
@@ -126,30 +126,30 @@ func TestAnyXPathCopiedPayloadFirstInstance(t *testing.T) {
 	sm, tm := source.Implemented("ac-lookup"), target.Implemented("ac-lookup")
 	src := newTree(source)
 	a := &Node{schema: sm.Top[0], any: &anyValue{}}
-	src.insert(nil, a, insertDefault)
+	mustLink(t, src.insert(nil, a, insertDefault))
 	l, k := sm.Top[1].Children[0], sm.Top[1].Children[0].Children[0]
 	ln := newInner(l)
 	v, d := types.Store(k.Type, "x", types.FormatJSON, types.HintString, nil, k)
 	if d != nil {
 		t.Fatal(d)
 	}
-	src.insert(ln, newTerm(k, v), insertDefault)
-	src.insert(a, ln, insertDefault)
+	mustLink(t, src.insert(ln, newTerm(k, v), insertDefault))
+	mustLink(t, src.insert(a, ln, insertDefault))
 	tr := newTree(target)
 	dup, _, err := tr.Dup(a, nil, DupOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	c := newInner(tm.Top[1])
-	tr.insert(nil, c, insertDefault)
+	mustLink(t, tr.insert(nil, c, insertDefault))
 	tl, tk := tm.Top[1].Children[0], tm.Top[1].Children[0].Children[0]
 	other := newInner(tl)
 	tv, d := types.Store(tk.Type, "x", types.FormatJSON, types.HintString, nil, tk)
 	if d != nil {
 		t.Fatal(d)
 	}
-	tr.insert(other, newTerm(tk, tv), insertDefault)
-	tr.insert(c, other, insertDefault)
+	mustLink(t, tr.insert(other, newTerm(tk, tv), insertDefault))
+	mustLink(t, tr.insert(c, other, insertDefault))
 	// a payload has no children table: the evaluator's charged walk finds the payload's l
 	if got, ok := (xn{dup, target}).FirstChild(xs{tl, target}); ok {
 		t.Fatalf("cross-context first payload list = %v, handled=%t", got, ok)
@@ -169,7 +169,7 @@ func xpTestList(t *testing.T, tr *Tree, l *schema.Node, val string) *Node {
 	if d != nil {
 		t.Fatal(d)
 	}
-	tr.insert(ln, newTerm(k, v), insertDefault)
+	mustLink(t, tr.insert(ln, newTerm(k, v), insertDefault))
 	return ln
 }
 
@@ -201,17 +201,17 @@ func TestAnyXPathRedundantParentAcrossContexts(t *testing.T) {
 	sm, tm := source.Implemented("ac-lookup"), target.Implemented("ac-lookup")
 	src := newTree(source)
 	a := &Node{schema: xpTestTop(sm, "a"), any: &anyValue{}}
-	src.insert(nil, a, insertDefault)
+	mustLink(t, src.insert(nil, a, insertDefault))
 	pc := newInner(xpTestTop(sm, "c"))
-	src.insert(pc, xpTestList(t, src, pc.schema.Children[0], "x"), insertDefault)
-	src.insert(a, pc, insertDefault)
+	mustLink(t, src.insert(pc, xpTestList(t, src, pc.schema.Children[0], "x"), insertDefault))
+	mustLink(t, src.insert(a, pc, insertDefault))
 	tr := newTree(target)
 	if _, _, err := tr.Dup(a, nil, DupOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	c := newInner(xpTestTop(tm, "c"))
-	tr.insert(nil, c, insertDefault)
-	tr.insert(c, xpTestList(t, tr, c.schema.Children[0], "x"), insertDefault)
+	mustLink(t, tr.insert(nil, c, insertDefault))
+	mustLink(t, tr.insert(c, xpTestList(t, tr, c.schema.Children[0], "x"), insertDefault))
 	// hashed, [k='x' != 'zz'] would look up k = 'x' (2); evaluated it is false (0)
 	xpTestCount(t, tr, "count((/ac-lookup:a/ac-lookup:c | /ac-lookup:c)/ac-lookup:l[k='x' != 'zz'])", 0)
 	xpTestCount(t, tr, "count((/ac-lookup:a/ac-lookup:c | /ac-lookup:c)/ac-lookup:l[k='x'])", 2)
@@ -235,17 +235,17 @@ func TestAnyXPathFirstInstanceByNameAcrossContexts(t *testing.T) {
 	sm, tm := source.Implemented("ac-shadow"), target.Implemented("ac-shadow")
 	src := newTree(source)
 	a := &Node{schema: xpTestTop(sm, "a"), any: &anyValue{}}
-	src.insert(nil, a, insertDefault)
-	src.insert(a, xpTestList(t, src, xpTestTop(sm, "l"), "x"), insertDefault)
+	mustLink(t, src.insert(nil, a, insertDefault))
+	mustLink(t, src.insert(a, xpTestList(t, src, xpTestTop(sm, "l"), "x"), insertDefault))
 	tr := newTree(target)
 	dup, _, err := tr.Dup(a, nil, DupOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	c := newInner(xpTestTop(tm, "c"))
-	tr.insert(nil, c, insertDefault)
+	mustLink(t, tr.insert(nil, c, insertDefault))
 	cl := c.schema.Children[0]
-	tr.insert(c, xpTestList(t, tr, cl, "x"), insertDefault)
+	mustLink(t, tr.insert(c, xpTestList(t, tr, cl, "x"), insertDefault))
 	if got, ok := (xn{dup, target}).FirstChild(xs{cl, target}); ok { // declined: the charged walk
 		t.Fatalf("cross-context first instance by name = %v, handled=%t", got, ok)
 	}
@@ -253,11 +253,11 @@ func TestAnyXPathFirstInstanceByNameAcrossContexts(t *testing.T) {
 	// within one context the walk compares pointers: no instance, no hashing, both match by name
 	same := newTree(target)
 	sa := &Node{schema: xpTestTop(tm, "a"), any: &anyValue{}}
-	same.insert(nil, sa, insertDefault)
-	same.insert(sa, xpTestList(t, same, xpTestTop(tm, "l"), "x"), insertDefault)
+	mustLink(t, same.insert(nil, sa, insertDefault))
+	mustLink(t, same.insert(sa, xpTestList(t, same, xpTestTop(tm, "l"), "x"), insertDefault))
 	sc := newInner(xpTestTop(tm, "c"))
-	same.insert(nil, sc, insertDefault)
-	same.insert(sc, xpTestList(t, same, cl, "x"), insertDefault)
+	mustLink(t, same.insert(nil, sc, insertDefault))
+	mustLink(t, same.insert(sc, xpTestList(t, same, cl, "x"), insertDefault))
 	xpTestCount(t, same, "count((/ac-shadow:a | /ac-shadow:c)/ac-shadow:l[k='x'])", 2)
 }
 
@@ -271,15 +271,15 @@ func TestAnyXPathMissingModuleInheritsAcrossContexts(t *testing.T) {
 	sm := source.Implemented("ac-shadow")
 	src := newTree(source)
 	a := &Node{schema: xpTestTop(sm, "a"), any: &anyValue{}}
-	src.insert(nil, a, insertDefault)
+	mustLink(t, src.insert(nil, a, insertDefault))
 	p := newInner(xpTestTop(sm, "p"))
 	x := p.schema.Children[0]
 	v, d := types.Store(x.Type, "v", types.FormatJSON, types.HintString, nil, x)
 	if d != nil {
 		t.Fatal(d)
 	}
-	src.insert(p, newTerm(x, v), insertDefault)
-	src.insert(a, p, insertDefault)
+	mustLink(t, src.insert(p, newTerm(x, v), insertDefault))
+	mustLink(t, src.insert(a, p, insertDefault))
 	tr := newTree(target)
 	if _, _, err := tr.Dup(a, nil, DupOptions{}); err != nil {
 		t.Fatal(err)
@@ -295,11 +295,11 @@ func TestAnyXPathCopiedOpaqueDescendantContext(t *testing.T) {
 	target := corpusSet(t, where, []string{"ac"})
 	src := newTree(source)
 	a := &Node{schema: source.Implemented("ac").Top[0], any: &anyValue{}}
-	src.insert(nil, a, insertDefault)
+	mustLink(t, src.insert(nil, a, insertDefault))
 	c := newInner(source.Implemented("ac-xpath-ctx").Top[0])
-	src.insert(a, c, insertDefault)
+	mustLink(t, src.insert(a, c, insertDefault))
 	v := newOpaque(opaque{Name: "v", ModuleNS: "urn:tests:any-core-xpath-ctx", Value: "bad", Format: types.FormatXML, set: source})
-	src.insert(c, v, insertLast)
+	mustLink(t, src.insert(c, v, insertLast))
 	tr := newTree(target)
 	dup, _, err := tr.Dup(a, nil, DupOptions{})
 	if err != nil {
@@ -410,27 +410,27 @@ func xpTestCross(t *testing.T, n int) (tr *Tree, a *schema.Set, q *Node) {
 	am, bm, bq := a.Implemented("a"), b.Implemented("a"), xpTestTop(b.Implemented("b"), "q")
 	src := newTree(b)
 	an := &Node{schema: xpTestTop(bm, "any"), any: &anyValue{}}
-	src.insert(nil, an, insertDefault)
+	mustLink(t, src.insert(nil, an, insertDefault))
 	pb := newInner(xpTestTop(bm, "p"))
 	for _, y := range pb.schema.Children {
-		src.insert(pb, xpTestTerm(t, y, "y"), insertDefault)
+		mustLink(t, src.insert(pb, xpTestTerm(t, y, "y"), insertDefault))
 	}
-	src.insert(pb, newOpaque(opaque{Name: "x", ModuleNS: "urn:a", Value: "o", Format: types.FormatXML, set: b}), insertLast)
+	mustLink(t, src.insert(pb, newOpaque(opaque{Name: "x", ModuleNS: "urn:a", Value: "o", Format: types.FormatXML, set: b}), insertLast))
 	qb := newInner(bq)
 	for i := range n {
-		src.insert(qb, xpTestTerm(t, bq.Children[0], fmt.Sprint(i)), insertDefault)
+		mustLink(t, src.insert(qb, xpTestTerm(t, bq.Children[0], fmt.Sprint(i)), insertDefault))
 	}
-	src.insert(an, qb, insertDefault)
-	src.insert(an, pb, insertDefault)
+	mustLink(t, src.insert(an, qb, insertDefault))
+	mustLink(t, src.insert(an, pb, insertDefault))
 	tr = newTree(a)
 	dup, _, err := tr.Dup(an, nil, DupOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	pa := newInner(xpTestTop(am, "p"))
-	tr.insert(nil, pa, insertDefault)
-	tr.insert(pa, xpTestTerm(t, pa.schema.Children[0], "v"), insertDefault)
-	tr.insert(pa, xpTestList(t, tr, pa.schema.Children[1], "1"), insertDefault)
+	mustLink(t, tr.insert(nil, pa, insertDefault))
+	mustLink(t, tr.insert(pa, xpTestTerm(t, pa.schema.Children[0], "v"), insertDefault))
+	mustLink(t, tr.insert(pa, xpTestList(t, tr, pa.schema.Children[1], "1"), insertDefault))
 	for c := range dup.any.children.all() {
 		if c.schema != nil && c.schema.Name == "q" {
 			q = c

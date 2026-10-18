@@ -1,0 +1,55 @@
+# libyang v5.8.6 tree_data.c:1769-1785 compares live positional children; self-merge must retain exactly one list.
+fixtures:
+- id: protocol-v2/hash-exposed-nested-list-rehash
+  dir: protocol-v2
+  source:
+    url: hand-written (this repo)
+    commit: null
+    license: BSD-3-Clause
+  rfc: []
+  areas:
+  - operations
+  - xpath
+  request:
+    op: sequence
+    searchdirs:
+    - hash-exposed-nested-list-source
+    modules:
+    - name: m
+    context_options:
+    - no_yanglibrary
+    steps:
+    - do: parse
+      format: json
+      data_type: data
+      parse_only: true
+      data: '{"m:r":{"p":"p","q":"q","z":"z","l":[{"a":"x","v":[{"k":"old"}]}]}}'
+    - do: dup
+      node: /m:r
+      options:
+      - recursive
+      target:
+        searchdirs:
+        - hash-exposed-nested-list-target
+        modules:
+        - name: m
+        context_options:
+        - no_yanglibrary
+    - do: change_term
+      node_xpath: /m:r/l/v/k
+      value: new
+    - do: compare
+      options:
+      - full_recursion
+      self: true
+    - do: edit
+      merge_self: true
+    - do: xpath
+      xpath: /m:r/l
+    - do: compare
+      options:
+      - full_recursion
+      self: true
+    - do: dump
+      with_defaults: all
+  golden: golden/hash-exposed-nested-list-rehash.json

@@ -47,9 +47,9 @@ func TestCompareMixedSchemaParentPayload(t *testing.T) {
 	anySchema := &schema.Node{Kind: schema.AnyData, Name: "payload", Module: mod}
 	mod.Top = append(mod.Top, anySchema)
 	payload := &Node{schema: anySchema, any: &anyValue{}}
-	tr.insert(nil, payload, insertDefault)
+	mustLink(t, tr.insert(nil, payload, insertDefault))
 	for _, n := range nodes {
-		tr.insert(payload, n, insertLast)
+		mustLink(t, tr.insert(payload, n, insertLast))
 	}
 	if !payload.Equal(payload, CompareOptions{}) {
 		t.Fatal("mixed-parent any payload must compare equal to itself")

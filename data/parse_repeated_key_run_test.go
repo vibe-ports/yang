@@ -135,7 +135,7 @@ func TestParseRepeatedKeyRunScaling(t *testing.T) {
 		top := map[bool]string{true: "r", false: "c"}[operation]
 		for _, name := range []string{"even-odd", "shuffled", "descending"} {
 			t.Run(fmt.Sprintf("%s/%s", top, name), func(t *testing.T) {
-				for _, n := range []int{500, 2000, 8000} {
+				for _, n := range scaleSizes([]int{500, 2000, 8000}, 2) {
 					one := parse(t, operation, input(top, shapes[name](n)))
 					four := parse(t, operation, input(top, shapes[name](4*n)))
 					if n == 500 {

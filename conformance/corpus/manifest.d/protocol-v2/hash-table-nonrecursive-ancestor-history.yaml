@@ -1,0 +1,22 @@
+fixtures:
+  # Libyang-specific hash history: v5.8.6 src/tree_data.c:2297-2317 creates children_ht only for recursive copies; with_parents copies the ancestor nonrecursively. Subsequent threshold crossing and rehash must work with the preserved source terminal hash.
+  - id: protocol-v2/hash-table-nonrecursive-ancestor-history
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []
+    areas: [operations, types]
+    request:
+      op: sequence
+      searchdirs: [hash-source]
+      modules: [{name: pv2-hash-ctx}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, data: '{"pv2-hash-ctx:r":{"s":["3"],"a":"a","b":"b","c":"c"}}'}
+        - {do: dup, node: "/pv2-hash-ctx:r/s[1]", options: [with_parents], target: {searchdirs: [hash-target], modules: [{name: pv2-hash-ctx}], context_options: [no_yanglibrary]}}
+        - {do: edit, set: {path: "/pv2-hash-ctx:r/a", value: "a"}}
+        - {do: edit, set: {path: "/pv2-hash-ctx:r/b", value: "b"}}
+        - {do: edit, set: {path: "/pv2-hash-ctx:r/c", value: "c"}}
+        - {do: change_term, node: "/pv2-hash-ctx:r/s[1]", value: "4"}
+        - {do: edit, delete: "/pv2-hash-ctx:r/s[.='4']"}
+        - {do: dump, with_defaults: all}
+    golden: golden/hash-table-nonrecursive-ancestor-history.json

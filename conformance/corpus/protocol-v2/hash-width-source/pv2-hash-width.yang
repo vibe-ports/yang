@@ -1,0 +1,32 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module pv2-hash-width {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-hash-width";
+  prefix phw;
+
+  typedef enum-value {
+    type enumeration {
+      enum keep { value 1; }
+      enum alternate { value 2; }
+    }
+  }
+  typedef bits-value {
+    type bits {
+      bit keep { position 0; }
+      bit alternate { position 1; }
+    }
+  }
+  container r {
+    leaf-list enums { config false; type enum-value; }
+    leaf-list bitmap { config false; type bits-value; }
+    list enum-key {
+      key k;
+      leaf k { type enum-value; }
+    }
+    list bits-key {
+      key k;
+      leaf k { type bits-value; }
+    }
+  }
+}

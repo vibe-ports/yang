@@ -25,8 +25,10 @@ type newValOptions struct {
 // newBuilder holds what the lyd_new_* functions read besides their arguments: the schema set
 // (libyang's context) and the log.
 type newBuilder struct {
-	set *schema.Set
-	log *logger
+	set  *schema.Set
+	log  *logger
+	work *workCounter
+	tree *Tree
 }
 
 // treeFor is the tree whose sibling lists a node is inserted into: the parent's, or a tree of its
@@ -36,6 +38,9 @@ func (b newBuilder) treeFor(parent *Node) *Tree {
 		if t := treeOf(parent); t != nil {
 			return t
 		}
+	}
+	if b.tree != nil {
+		return b.tree
 	}
 	return newTree(b.set)
 }
@@ -146,7 +151,17 @@ func (b newBuilder) createTerm(lnode *Node, sn *schema.Node, value string, f typ
 	if d != nil {
 		return nil, b.log.storeErr(lnode, sn, d)
 	}
-	n := newTerm(sn, v)
+	work := b.work
+	if work == nil {
+		work = &b.treeFor(lnode).work
+	}
+	if err := work.checkTermHash(lnode, sn, v); err != nil {
+		return nil, err
+	}
+	n := newTerm(sn, v, work)
+	if work.hashErr != nil {
+		return nil, work.hashErr
+	}
 	n.flags = FlagNew
 	return n, nil
 }
@@ -184,7 +199,9 @@ func (b newBuilder) newTerm(parent *Node, mod *schema.Module, name, value string
 		return nil, err
 	}
 	if parent != nil {
-		b.treeFor(parent).insert(parent, n, insertDefault)
+		if err := b.treeFor(parent).insert(parent, n, insertDefault); err != nil {
+			return nil, err
+		}
 	}
 	return n, nil
 }
@@ -204,13 +221,22 @@ func (b newBuilder) newInner(parent *Node, mod *schema.Module, name string, outp
 		sn.Kind != schema.Action {
 		return nil, b.notFound("Inner node (container, notif, RPC, or action) \"%s\" not found.", name)
 	}
-	n := newInner(sn)
+	work := b.work
+	if work == nil {
+		work = &b.treeFor(parent).work
+	}
+	n := newInner(sn, work)
+	if work.hashErr != nil {
+		return nil, work.hashErr
+	}
 	n.flags = FlagNew
 	if isNPCont(sn) {
 		n.flags |= FlagDefault // lyd_create_inner
 	}
 	if parent != nil {
-		b.treeFor(parent).insert(parent, n, insertDefault)
+		if err := b.treeFor(parent).insert(parent, n, insertDefault); err != nil {
+			return nil, err
+		}
 	}
 	return n, nil
 }
@@ -221,7 +247,10 @@ func (b newBuilder) newListNode(parent *Node, mod *schema.Module, name string, o
 	if sn == nil || sn.Kind != schema.List {
 		return nil, b.notFound("List node \"%s\" not found.", name)
 	}
-	n := newInner(sn)
+	n := newInner(sn, &b.treeFor(parent).work)
+	if b.treeFor(parent).work.hashErr != nil {
+		return nil, b.treeFor(parent).work.hashErr
+	}
 	n.flags = FlagNew
 	return n, nil
 }
@@ -256,15 +285,20 @@ func (b newBuilder) newList(parent *Node, mod *schema.Module, name string, keys 
 		return nil, argErr("keys", fn)
 	}
 	t := b.treeFor(parent)
+	b.work, b.tree = &t.work, t
 	for i, v := range keys[:len(l.schema.Keys)] { // values past the keys ignored
 		k, err := b.createTerm(parent, l.schema.Keys[i], v, f, o.storeOnly) // lnode: the list's parent
 		if err != nil {
 			return nil, err
 		}
-		t.insert(l, k, insertLast)
+		if err := t.insert(l, k, insertLast); err != nil {
+			return nil, err
+		}
 	}
 	if parent != nil {
-		t.insert(parent, l, insertDefault)
+		if err := t.insert(parent, l, insertDefault); err != nil {
+			return nil, err
+		}
 	}
 	return l, nil
 }
@@ -286,7 +320,10 @@ func (b newBuilder) newList2(parent *Node, mod *schema.Module, name, keys string
 	t := b.treeFor(parent)
 	var l *Node
 	if sn.Keyless() && keys == "" {
-		l = newInner(sn)
+		l = newInner(sn, &t.work)
+		if t.work.hashErr != nil {
+			return nil, t.work.hashErr
+		}
 		l.flags = FlagNew
 	} else {
 		// lyd_create_list2
@@ -319,11 +356,15 @@ func (b newBuilder) newList2(parent *Node, mod *schema.Module, name, keys string
 			if err != nil {
 				return nil, err
 			}
-			t.insert(l, k, insertDefault)
+			if err := t.insert(l, k, insertDefault); err != nil {
+				return nil, err
+			}
 		}
 	}
 	if parent != nil {
-		t.insert(parent, l, insertDefault)
+		if err := t.insert(parent, l, insertDefault); err != nil {
+			return nil, err
+		}
 	}
 	return l, nil
 }
@@ -368,7 +409,9 @@ func (b newBuilder) newOpaq(parent *Node, name, value string, prefix *string, mo
 	}
 	n := newOpaque(o)
 	if parent != nil {
-		b.treeFor(parent).insert(parent, n, insertLast)
+		if err := b.treeFor(parent).insert(parent, n, insertLast); err != nil {
+			return nil, err
+		}
 	}
 	return n, nil
 }
@@ -414,8 +457,18 @@ func (b newBuilder) changeTerm(n *Node, value string, canon bool) error {
 	tr := treeOf(n)
 	if tr == nil {
 		tr = newTree(set)
+		root := n
+		for root.parent != nil {
+			root = root.parent
+		}
+		bindSubtreeWork(root, &tr.work)
 	}
-	switch valChange, dfltChange := tr.changeTermVal(n, v, false); {
+	defer tr.work.beginHashWork()()
+	valChange, dfltChange := tr.changeTermVal(n, v, false)
+	if tr.work.hashErr != nil {
+		return tr.work.hashErr
+	}
+	switch {
 	case valChange:
 		return nil
 	case dfltChange:
@@ -435,7 +488,7 @@ type NewOptions struct {
 // of t, the module of a "module:node" name implemented in t's snapshot) and splits the name:
 // the module (nil: the parent's) and the node name.
 func (t *Tree) builder(parent *Node, name, fn string) (newBuilder, *schema.Module, string, error) {
-	b := newBuilder{set: t.set, log: &logger{set: t.set}}
+	b := newBuilder{set: t.set, log: &logger{set: t.set}, work: &t.work, tree: t}
 	if parent != nil && treeOf(parent) != t {
 		return b, nil, "", b.log.done(argErr("parent (not in the tree)", fn))
 	}
@@ -454,6 +507,9 @@ func (t *Tree) builder(parent *Node, name, fn string) (newBuilder, *schema.Modul
 // top-level node of t, as lyd_insert_sibling with t's first top-level node inserts it (its schema
 // check included: a top-level node that is not a top-level schema node refuses n).
 func (t *Tree) placed(b newBuilder, parent, n *Node, err error) (*Node, error) {
+	if err == nil {
+		err = t.work.hashErr
+	}
 	if err == nil && parent == nil {
 		err = t.insertSibling(t.top.first(), n)
 	}
@@ -470,6 +526,7 @@ func (t *Tree) placed(b newBuilder, parent, n *Node, err error) (*Node, error) {
 // diagnostics and return code: a name that does not resolve is "Term node … not found."
 // (LY_ENOTFOUND), a value the type rejects the type's diagnostics.
 func (t *Tree) NewTerm(parent *Node, name, value string, o NewOptions) (*Node, error) {
+	defer t.work.beginHashWork()()
 	b, mod, local, err := t.builder(parent, name, "_lyd_new_term")
 	if err != nil {
 		return nil, err
@@ -482,6 +539,7 @@ func (t *Tree) NewTerm(parent *Node, name, value string, o NewOptions) (*Node, e
 // places its node. A non-presence container is created with the Default flag, which inserting a
 // child into it clears.
 func (t *Tree) NewInner(parent *Node, name string, o NewOptions) (*Node, error) {
+	defer t.work.beginHashWork()()
 	b, mod, local, err := t.builder(parent, name, "lyd_new_inner")
 	if err != nil {
 		return nil, err
@@ -495,6 +553,7 @@ func (t *Tree) NewInner(parent *Node, name string, o NewOptions) (*Node, error) 
 // for a keyless list, as libyang ignores them; nil keys of a keyed list is "Missing list … keys."
 // and fewer values than keys an LY_EINVAL argument error, "keys".
 func (t *Tree) NewList(parent *Node, name string, keys []string, o NewOptions) (*Node, error) {
+	defer t.work.beginHashWork()()
 	b, mod, local, err := t.builder(parent, name, "lyd_new_list")
 	if err != nil {
 		return nil, err

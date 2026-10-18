@@ -95,7 +95,7 @@ func (f *unresFixture) build(t *testing.T, opts ValidateOptions, leaves ...any) 
 	tr := newTree(f.set)
 	vc := &valCtx{t: tr, log: &logger{set: f.set}, opts: opts, nodeWhen: &nodeSet{}, nodeTypes: &nodeSet{}}
 	c := newInner(f.c)
-	tr.insert(nil, c, insertDefault)
+	mustLink(t, tr.insert(nil, c, insertDefault))
 	byName := map[string]*Node{}
 	for i := 0; i+1 < len(leaves); i += 2 {
 		sn, lex := leaves[i].(*schema.Node), leaves[i+1].(string)
@@ -105,7 +105,7 @@ func (f *unresFixture) build(t *testing.T, opts ValidateOptions, leaves ...any) 
 			t.Fatal(d.Msg)
 		}
 		n := newTerm(sn, v)
-		tr.insert(c, n, insertDefault)
+		mustLink(t, tr.insert(c, n, insertDefault))
 		if v.NeedsTree() {
 			vc.nodeTypes.add(n)
 		}
@@ -310,22 +310,27 @@ func TestWhenQueueWork(t *testing.T) {
 	rl := &schema.Node{Kind: schema.LeafList, Name: "rl", Module: f.m, Parent: f.c, Config: true,
 		Type: &schema.Type{Base: schema.Leafref, Path: "../l/k", Prefixes: schema.NSCtx{"": f.m}, RequireInstance: true, Realtype: str}}
 	f.c.Children = append(f.c.Children, rl)
-	args = nil
-	for i := range n / 4 {
-		args = append(args, rl, fmt.Sprint(i))
+	// Prepared lookup now charges predicate bytes and typed hashing too. Compare
+	// N and 4N references directly instead of bounding only evaluator-node ticks.
+	listWork := func(count int) int64 {
+		var input []any
+		for i := range count {
+			input = append(input, rl, fmt.Sprint(i))
+		}
+		refs, c, _ := f.build(t, ValidateOptions{}, input...)
+		for i := range count {
+			inst := newInner(l)
+			key, _ := types.Store(k.Type, fmt.Sprint(i), types.FormatJSON, types.JSONHints("string"), nil, k)
+			mustLink(t, refs.t.insert(inst, newTerm(k, key), insertDefault))
+			mustLink(t, refs.t.insert(c, inst, insertDefault))
+		}
+		if err := refs.unres(); err != nil {
+			t.Fatal(err, diagCodes(refs.log.diags))
+		}
+		return refs.budget.steps
 	}
-	vc, c, _ := f.build(t, ValidateOptions{}, args...)
-	for i := range n / 4 {
-		inst := newInner(l)
-		key, _ := types.Store(k.Type, fmt.Sprint(i), types.FormatJSON, types.JSONHints("string"), nil, k)
-		vc.t.insert(inst, newTerm(k, key), insertDefault)
-		vc.t.insert(c, inst, insertDefault)
-	}
-	if err := vc.unres(); err != nil {
-		t.Fatal(err, diagCodes(vc.log.diags))
-	}
-	if vc.budget.steps > 20*n/4 {
-		t.Fatalf("leafrefs to a list: %d steps for %d references", vc.budget.steps, n/4)
+	if small, large := listWork(n/4), listWork(n); large > 6*small {
+		t.Fatalf("leafrefs to a list: work(4N)=%d > 6*work(N)=%d", large, 6*small)
 	}
 	f.t.Type = &schema.Type{Base: schema.Uint16}
 	f.r.Type.Realtype = f.t.Type
@@ -398,8 +403,8 @@ func TestLeafrefForms(t *testing.T) {
 	vc, c, nodes := f.build(t, ValidateOptions{MultiError: true}, f.a, `x'y"z`, f.t, "5", f.iid, "/u:c/t[.='5']")
 	inst := newInner(l)
 	key, _ := types.Store(k.Type, "k1", types.FormatJSON, types.JSONHints("string"), nil, k)
-	vc.t.insert(inst, newTerm(k, key), insertDefault)
-	vc.t.insert(c, inst, insertDefault)
+	mustLink(t, vc.t.insert(inst, newTerm(k, key), insertDefault))
+	mustLink(t, vc.t.insert(c, inst, insertDefault))
 	tp, err := vc.template(lk.Type, lk)
 	if err != nil || !tp.listKey || tp.head != "../l" || tp.key != "k" {
 		t.Fatalf("template %+v %v", tp, err)
@@ -418,7 +423,7 @@ func TestLeafrefForms(t *testing.T) {
 			t.Fatal(d.Msg)
 		}
 		n := newTerm(tc.sn, v)
-		vc.t.insert(c, n, insertDefault)
+		mustLink(t, vc.t.insert(c, n, insertDefault))
 		found, _, err := vc.leafrefTargets(n, tc.sn.Type, v)
 		if err != nil || found != tc.found {
 			t.Errorf("%s=%s: found %v, %v", tc.sn.Name, tc.lex, found, err)
@@ -428,7 +433,7 @@ func TestLeafrefForms(t *testing.T) {
 	// deref(): the targets of a leafref, the node of an instance-identifier
 	v, _ := types.Store(lk.Type, "k1", types.FormatJSON, types.JSONHints("string"), nil, lk)
 	ref := newTerm(lk, v)
-	vc.t.insert(c, ref, insertDefault)
+	mustLink(t, vc.t.insert(c, ref, insertDefault))
 	got, err := vc.deref(xn{ref, f.set})
 	if err != nil || len(got) != 1 || got[0].(xn).n != inst.kids.list[0] {
 		t.Fatalf("deref leafref: %v %v", got, err)
@@ -441,7 +446,7 @@ func TestLeafrefForms(t *testing.T) {
 	// then reads targets->count of a NULL set and crashes, D-0068): no nodes and no error
 	v, _ = types.Store(dis.Type, "anything", types.FormatJSON, types.JSONHints("string"), nil, dis)
 	dn := newTerm(dis, v)
-	vc.t.insert(c, dn, insertDefault)
+	mustLink(t, vc.t.insert(c, dn, insertDefault))
 	if got, err = vc.deref(xn{dn, f.set}); err != nil || len(got) != 0 {
 		t.Fatalf("deref disabled target: %v %v", got, err)
 	}
@@ -456,11 +461,11 @@ func TestWhenFalseSubtree(t *testing.T) {
 	vc, c, _ := f.build(t, ValidateOptions{MultiError: true}, f.a, "off")
 	inst := newInner(l)
 	key, _ := types.Store(k.Type, "off", types.FormatJSON, types.JSONHints("string"), nil, k)
-	vc.t.insert(inst, newTerm(k, key), insertDefault)
+	mustLink(t, vc.t.insert(inst, newTerm(k, key), insertDefault))
 	val, _ := types.Store(v.Type, "x", types.FormatJSON, types.JSONHints("string"), nil, v)
 	vn := newTerm(v, val)
-	vc.t.insert(inst, vn, insertDefault)
-	vc.t.insert(c, inst, insertDefault)
+	mustLink(t, vc.t.insert(inst, vn, insertDefault))
+	mustLink(t, vc.t.insert(c, inst, insertDefault))
 	vc.nodeWhen.add(vn) // post-order: the child before its list
 	vc.nodeWhen.add(inst)
 	if err := vc.unres(); err == nil {
@@ -493,7 +498,7 @@ func TestUnresWork(t *testing.T) {
 	for i := range n {
 		v, _ := types.Store(tl.Type, fmt.Sprint(i), types.FormatJSON, types.JSONHints("number"), nil, tl)
 		x := newTerm(tl, v)
-		vc.t.insert(nil, x, insertDefault)
+		mustLink(t, vc.t.insert(nil, x, insertDefault))
 		tops = append(tops, x)
 	}
 	for _, x := range tops {
@@ -515,7 +520,7 @@ func TestUnresWork(t *testing.T) {
 		v, _ := types.Store(tw.Type, fmt.Sprint(i), types.FormatJSON, types.JSONHints("number"), nil, tw)
 		x := newTerm(tw, v)
 		x.flags = FlagWhenTrue
-		vc.t.insert(nil, x, insertDefault)
+		mustLink(t, vc.t.insert(nil, x, insertDefault))
 		vc.nodeWhen.add(x)
 	}
 	if err := vc.unres(); err != nil {
@@ -593,11 +598,11 @@ func TestDeadSubtree(t *testing.T) {
 	pn := newInner(p)
 	pn.flags = FlagWhenTrue
 	qv, _ := types.Store(str, "v", types.FormatJSON, types.JSONHints("string"), nil, q)
-	vc.t.insert(pn, newTerm(q, qv), insertDefault)
-	vc.t.insert(nil, pn, insertDefault)
+	mustLink(t, vc.t.insert(pn, newTerm(q, qv), insertDefault))
+	mustLink(t, vc.t.insert(nil, pn, insertDefault))
 	zv, _ := types.Store(str, "v", types.FormatJSON, types.JSONHints("string"), nil, z)
 	zn := newTerm(z, zv)
-	vc.t.insert(nil, zn, insertDefault)
+	mustLink(t, vc.t.insert(nil, zn, insertDefault))
 	vc.nodeWhen.add(zn) // queued before p: the pass (from the end) handles p first
 	vc.nodeWhen.add(pn)
 	if err := vc.unres(); err != nil {

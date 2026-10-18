@@ -49,14 +49,14 @@ func linksTree(t *testing.T, linking bool) (*Tree, *Node) {
 	tr := newTree(set)
 	vc := &valCtx{t: tr, log: &logger{set: set}, nodeWhen: &nodeSet{}, nodeTypes: &nodeSet{}}
 	cn := newInner(c)
-	tr.insert(nil, cn, insertDefault)
+	mustLink(t, tr.insert(nil, cn, insertDefault))
 	term := func(parent *Node, sn *schema.Node, lex, hint string) {
 		val, d := types.Store(sn.Type, lex, types.FormatJSON, types.JSONHints(hint), types.ModuleNames{Set: set}, sn)
 		if d != nil {
 			t.Fatal(d.Msg)
 		}
 		n := newTerm(sn, val)
-		tr.insert(parent, n, insertDefault)
+		mustLink(t, tr.insert(parent, n, insertDefault))
 		if val.NeedsTree() {
 			vc.nodeTypes.add(n)
 		}
@@ -64,7 +64,7 @@ func linksTree(t *testing.T, linking bool) (*Tree, *Node) {
 	for _, key := range []string{"a", "b", "5"} {
 		li := newInner(l)
 		term(li, k, key, "string")
-		tr.insert(cn, li, insertDefault)
+		mustLink(t, tr.insert(cn, li, insertDefault))
 	}
 	term(cn, tl, "x", "string")
 	term(cn, tl, "y", "string")
