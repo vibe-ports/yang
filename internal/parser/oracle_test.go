@@ -82,6 +82,16 @@ func oracleError(t *testing.T, src string, line int, msg string) {
 	}
 }
 
+var oracleVerdictOnlyInputs = map[string]string{
+	sb11 + "feature a; leaf l {type string; if-feature \"not (not a)\";}}": "D-0021",
+}
+
+// oracleVerdictOnly returns the deviation that permits comparing only the
+// verdict for this exact input. Diagnostic text must not grant an exemption.
+func oracleVerdictOnly(src string) string {
+	return oracleVerdictOnlyInputs[src]
+}
+
 func TestOracleParseErrors(t *testing.T) {
 	for _, c := range parseErrors {
 		oracleError(t, c.src, c.line, c.msg)
@@ -100,6 +110,24 @@ func TestOracleG1(t *testing.T) {
 	}
 }
 
+func TestOracleVerdictOnlyExemption(t *testing.T) {
+	const d0021 = sb11 + "feature a; leaf l {type string; if-feature \"not (not a)\";}}"
+	if got := oracleVerdictOnly(d0021); got != "D-0021" {
+		t.Fatalf("D-0021 input exemption = %q, want D-0021", got)
+	}
+
+	// The diagnostic suffix is deliberately the same as D-0021. A different
+	// input must still receive the full oracle comparison.
+	const other = sb11 + "leaf l {type string; if-feature \"not (not missing)\";}}"
+	const sameSuffix = `Invalid value "not (not missing)" of if-feature - processing error.`
+	if !strings.HasSuffix(sameSuffix, "processing error.") {
+		t.Fatal("test input no longer has the diagnostic suffix under test")
+	}
+	if got := oracleVerdictOnly(other); got != "" {
+		t.Errorf("different input exemption = %q, want full comparison", got)
+	}
+}
+
 // TestOracleErrors: libyang rejects every buildErrors / iffErrors module with
 // the same message and line (0: libyang reports a schema path).
 func TestOracleErrors(t *testing.T) {
@@ -109,11 +137,11 @@ func TestOracleErrors(t *testing.T) {
 		}
 	}
 	for _, c := range iffErrors {
-		if strings.HasSuffix(c.msg, "processing error.") {
-			// D-0021: libyang rejects, but its message is architecture-dependent
-			// ("processing error." on arm64, empty on x86_64), so compare the verdict only.
+		if deviation := oracleVerdictOnly(c.src); deviation != "" {
+			// D-0021 reaches undefined behaviour in libyang, so compare only the
+			// verdict for the explicitly registered input.
 			if out, ok := yanglint(t, c.src); ok {
-				t.Errorf("%q: libyang accepted, we reject (D-0021): %s", c.src, out)
+				t.Errorf("%q: libyang accepted, we reject (%s): %s", c.src, deviation, out)
 			}
 			continue
 		}
