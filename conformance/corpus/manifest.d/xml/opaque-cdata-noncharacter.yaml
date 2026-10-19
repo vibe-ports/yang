@@ -1,0 +1,9 @@
+fixtures:
+  - id: xml/opaque-cdata-noncharacter
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # Opaque prefix scanning is a libyang parser contract.
+    areas: [types, codecs]
+    request: {op: data, searchdirs: [schemas], modules: [{name: prefix-scan}], format: xml, data_type: config, parse_only: true, unknown: opaque, data: "<unknown xmlns=\"urn:vibe-ports:unknown\"><![CDATA[\uFFFE]]></unknown>"}
+    golden: golden/opaque-cdata-noncharacter.json
+    assert: {verdict: invalid, rc: LY_EINVAL}

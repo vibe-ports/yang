@@ -1,0 +1,9 @@
+fixtures:
+  - id: any-core/merge-fill-empty-tree
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    # An empty tree payload can be replaced with an entire nonempty forest, including multiple siblings.
+    rfc: [] # Core operation semantics are libyang API contracts.
+    areas: ["operations"]
+    request: {"op": "sequence", "searchdirs": ["schemas"], "modules": [{"name": "ac"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "parse", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"ac:data\":{}}"}, {"do": "edit", "format": "json", "data_type": "data", "merge": "{\"ac:data\":{\"ac:c\":{\"value\":\"filled\"},\"ac:xml\":\"second\"}}"}, {"do": "dump", "with_defaults": "all"}]}
+    golden: golden/merge-fill-empty-tree.json

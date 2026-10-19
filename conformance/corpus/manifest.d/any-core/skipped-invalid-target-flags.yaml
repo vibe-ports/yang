@@ -1,0 +1,17 @@
+fixtures:
+  - id: any-core/skipped-invalid-target-flags
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # Sequence request preflight and lazy target construction are oracle contracts.
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: ac-r6}]
+      steps:
+        - {do: link} # An empty tree fails before the target context is constructed.
+        - do: any_direct
+          case: trim_payload_links
+          target: {context_options: [bogus]}
+    golden: golden/skipped-invalid-target-flags.json
+    assert: {verdict: invalid, rc: LY_EINVAL}

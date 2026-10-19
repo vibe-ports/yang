@@ -1,0 +1,8 @@
+fixtures:
+  - id: any-core/any-text-embedded-nul
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # C-string truncation at the native any-value API boundary.
+    areas: [operations]
+    request: {op: sequence, searchdirs: [schemas], modules: [{name: ac-r6}], steps: [{do: any_direct, case: text_nul}]}
+    golden: golden/any-text-embedded-nul.json

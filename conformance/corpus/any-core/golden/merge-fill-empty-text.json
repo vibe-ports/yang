@@ -1,0 +1,107 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ac",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": {
+            "text": null,
+            "value_type": null
+          },
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "anyxml",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac:xml",
+          "schema": "/ac:xml",
+          "value": null
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "edit",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": {
+            "text": "filled",
+            "value_type": "string"
+          },
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "anyxml",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac:xml",
+          "schema": "/ac:xml",
+          "value": null
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "dump",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "tree": {
+        "json": "{\n  \"ac:xml\": \"filled\"\n}\n",
+        "xml": "<xml xmlns=\"urn:tests:any-core\">filled</xml>\n"
+      },
+      "typed": [
+        {
+          "any": {
+            "text": "filled",
+            "value_type": "string"
+          },
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "anyxml",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac:xml",
+          "schema": "/ac:xml",
+          "value": null
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

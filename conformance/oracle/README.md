@@ -367,6 +367,8 @@ becomes observable. Context fields as in `schema`; step fields are per step (not
 | `insert` | `node` (path), `parent` (path, optional), the fields of `parse` for a second tree (optional) | `lyd_insert_child(parent, node)`, without `parent` `lyd_insert_sibling(tree, node, &tree)`; with data the node comes from the parsed second tree (`node` a path in it, omitted: its first top-level node, which moves with its siblings) and the rest of that tree is freed (diagnostics phases `parse`, `edit`) |
 | `change_term` | `node` (path), `value`, `canon` (bool) | `lyd_change_term` (`canon`: `lyd_change_term_canon`) of the node; `change` = its rc, where `LY_EEXIST` (only the default flag changed) and `LY_ENOT` (no change) are results and the step succeeds (diagnostics phase `edit`) |
 | `dump` | `with_defaults` | `tree` = `{"json", "xml"}` as op `data` |
+| `print_xml` | — | prints the retained tree with `lyd_print_mem(..., LYD_XML, ...)`; reports the exact print return code and, on success, `tree` = `{"json", "xml"}`. On failure `tree` is null: partial bytes written before an error are excluded, matching the Go printer's atomic output. This separate step exposes JSON-to-XML conversion failures instead of hiding them behind a dump |
+| `any_direct` | `case`, optional `target` | test-only pointer-level anydata/anyxml probes that cannot be expressed through serialized input. Cases are `nil_boundaries`, `text_nul`, `node_then_empty`, `equal_repeated_collisions`, `dup_payload_parent_context`, `trim_payload_links`, `merge_mixed_into_tree`, `dup_siblings_into_empty_anydata`, `dup_siblings_into_empty_anyxml`, and `dup_into_default_any_parent`; `target` supplies the second context where required. The Go engine reports U-0043 for internal representations and U-0107 for the two opaque-source duplication cases |
 | `link` | — | `lyd_leafref_link_node_tree(tree)` (`LY_EDENIED` without the `leafref_linking` context option) |
 | `links` | — | `leafref_links`: the record of every term node that has one (`lyd_leafref_get_links`), in DFS order: `{"node", "leafref_nodes", "target_nodes"}` as `lyd_path(LYD_PATH_STD)` lists in record order |
 | `dup` | `node` (path), `parent` (path, optional), `options` (`recursive no_meta with_parents with_flags no_lyds`), `siblings` (bool) | `lyd_dup_siblings` (`siblings: true`) or `lyd_dup_single` of `node` into `parent`; without `parent` the duplicate, from its top duplicated parent, replaces the tree (diagnostics phase `edit`); with `target` (`searchdirs`, `modules`, `context_options`, no `parent`) `lyd_dup_single_to_ctx` / `lyd_dup_siblings_to_ctx` into a second context built like the request's, the duplicate replacing the tree (its diagnostics: the request context's, then the target's). Every step runs in the retained tree's context, the target's after such a dup |
@@ -397,7 +399,8 @@ Response: `steps` (one per request step), `verdict` (`valid` iff every step succ
 `{"do", "diagnostics" (phase `parse` | `validate` | `edit`), "rc", "typed"}`, plus
 `diff`/`diff_typed` (and `new_diff` for `diff` with `merge`) for the `diff*` steps,
 `implicit_diff` for `validate` (the diff printed as JSON with `LYD_PRINT_WD_ALL`, carrying
-`yang:operation`; null when validation changed nothing) and `tree` for `dump`. The first step whose
+`yang:operation`; null when validation changed nothing), `tree` for `dump` and `print_xml`, and
+`direct` for `any_direct`. The first step whose
 rc is not `LY_SUCCESS` stops the run; later steps are `{"do": "...", "skipped": true}`. A failed
 step reports the tree as it is after the call (a failed `parse` keeps the previous tree).
 

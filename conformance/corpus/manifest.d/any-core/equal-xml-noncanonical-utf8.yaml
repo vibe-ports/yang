@@ -1,0 +1,27 @@
+fixtures:
+  - id: any-core/equal-xml-noncanonical-utf8
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    # libyang's ly_getutf8 accepts F0 81 80 80 as U+1000. The XML lexer retains
+    # those source bytes, and lyxml_value_compare must still distinguish the
+    # following A and B bytes in otherwise identical opaque XML values.
+    rfc: [] # Non-canonical UTF-8 acceptance is a libyang compatibility contract.
+    areas: [operations, codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: ac}]
+      context_options: [no_yanglibrary]
+      steps:
+        - do: parse
+          format: xml
+          data_type: get
+          unknown: opaque
+          data_file: data/equal-xml-noncanonical-utf8-a.xml
+        - do: compare
+          format: xml
+          data_type: get
+          unknown: opaque
+          options: []
+          data_file: data/equal-xml-noncanonical-utf8-b.xml
+    golden: golden/equal-xml-noncanonical-utf8.json

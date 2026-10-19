@@ -1,0 +1,9 @@
+fixtures:
+  - id: xml/typed-int-cdata-multierror-opaque
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # Opaque prefix scanning precedes numeric lexical validation in libyang's XML parser.
+    areas: [types, codecs]
+    request: {op: data, searchdirs: [schemas], modules: [{name: prefix-scan}], format: xml, data_type: config, parse_only: true, unknown: opaque, validate_options: [multi_error], data: "<c xmlns=\"urn:vibe-ports:prefix-scan\"><n1><![CDATA[\uFFFE]]></n1><n2>bad</n2></c>"}
+    golden: golden/typed-int-cdata-multierror-opaque.json
+    assert: {verdict: invalid, rc: LY_EINVAL}

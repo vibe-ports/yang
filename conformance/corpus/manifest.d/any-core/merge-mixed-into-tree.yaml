@@ -1,0 +1,15 @@
+fixtures:
+  - id: any-core/merge-mixed-into-tree
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # lyd_merge_siblings reaches lyd_any_copy_value, which rejects child and text together (tree_data_new.c:326).
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: ac-r6}]
+      context_options: [no_yanglibrary]
+      steps:
+        - do: any_direct
+          case: merge_mixed_into_tree
+    golden: golden/merge-mixed-into-tree.json

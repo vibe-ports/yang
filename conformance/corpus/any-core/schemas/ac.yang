@@ -1,0 +1,25 @@
+// SPDX-License-Identifier: BSD-3-Clause
+module ac {
+  yang-version 1.1;
+  namespace "urn:tests:any-core";
+  prefix ac;
+
+  import ietf-yang-metadata { prefix md; }
+
+  md:annotation note { type string; }
+
+  anydata data;
+  anyxml xml;
+
+  container c {
+    presence "Payload container";
+    leaf value { type string; }
+    leaf other { type string; }
+  }
+
+  container checked {
+    presence "Payload with a deferred validation constraint";
+    must "value = 'ok'";
+    leaf value { type string; }
+  }
+}

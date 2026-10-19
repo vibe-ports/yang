@@ -1,0 +1,9 @@
+fixtures:
+  - id: any-core/equal-tree-shallow
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    # Any-node sibling comparison forces full payload recursion even without the outer full_recursion option.
+    rfc: [] # Core operation semantics are libyang API contracts.
+    areas: ["operations"]
+    request: {"op": "sequence", "searchdirs": ["schemas"], "modules": [{"name": "ac"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "parse", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"ac:data\":{\"ac:c\":{\"value\":\"before\"}}}"}, {"do": "compare", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"ac:data\":{\"ac:c\":{\"value\":\"after\"}}}", "options": []}, {"do": "compare", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"ac:data\":{\"ac:c\":{\"value\":\"before\"}}}", "options": []}]}
+    golden: golden/equal-tree-shallow.json

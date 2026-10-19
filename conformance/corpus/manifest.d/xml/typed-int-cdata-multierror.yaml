@@ -1,0 +1,12 @@
+fixtures:
+  - id: xml/typed-int-cdata-multierror
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.2"]
+    areas: [types, codecs]
+    request: {op: data, searchdirs: [schemas], modules: [{name: prefix-scan}], format: xml, data_type: config, validate_options: [multi_error], data: "<c xmlns=\"urn:vibe-ports:prefix-scan\"><n1><![CDATA[\uFFFE]]></n1><n2>bad</n2></c>"}
+    golden: golden/typed-int-cdata-multierror.json
+    assert:
+      verdict: invalid
+      rc: LY_EVALID
+      diagnostics: [{vecode_name: LYVE_DATA, data_path: /prefix-scan:c/n1}, {vecode_name: LYVE_DATA, data_path: /prefix-scan:c/n2}]

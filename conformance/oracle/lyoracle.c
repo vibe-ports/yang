@@ -125,7 +125,7 @@ static const struct flag compare_flags[] = {
     {"opaq", LYD_COMPARE_OPAQ},
     {NULL, 0}
 };
-
+static LY_ERR compare_other(const struct ly_ctx *, const cJSON *, struct lyd_node **, cJSON *);
 static const struct flag diff_flags[] = {
     {"defaults", LYD_DIFF_DEFAULTS},
     {"meta", LYD_DIFF_META},
@@ -1710,9 +1710,9 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
             !strcmp(what, "change_term") ? "do node value canon" :
             !strcmp(what, "insert") ? "do node parent format data_type data data_file unknown parse_only parse_options "
             "validate_options" :
-            !strcmp(what, "dump") ? "do with_defaults" : !strcmp(what, "dup") ? "do node parent options siblings target" :
+            !strcmp(what, "dump") ? "do with_defaults" : !strcmp(what, "print_xml") ? "do" : !strcmp(what, "any_direct") ? "do case target" : !strcmp(what, "dup") ? "do node parent options siblings target" :
             !strcmp(what, "compare") ? "do format data_type data data_file unknown parse_only parse_options "
-            "validate_options first second options" :
+            "validate_options first second options insert_opaq" :
             !strcmp(what, "diff") ? "do format data_type data data_file unknown parse_only parse_options validate_options "
             "rpc keep_input node data_node single options merge merge_options target" :
             !strcmp(what, "diff_parse") ? "do format data_type data data_file unknown parse_options" :
@@ -1862,6 +1862,28 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
         }
     } else if (!strcmp(what, "dump")) {
         wd_of(step);
+    } else if (!strcmp(what, "print_xml")) {
+        /* no fields */
+    } else if (!strcmp(what, "any_direct")) {
+        const cJSON *tg = cJSON_GetObjectItemCaseSensitive(step, "target");
+        const char *which = str_of(step, "case");
+
+        if (!which) {
+            die("any_direct needs a case%s", NULL);
+        }
+        if (strcmp(which, "nil_boundaries") && strcmp(which, "text_nul") &&
+                strcmp(which, "node_then_empty") && strcmp(which, "equal_repeated_collisions") && strcmp(which, "equal_mixed_parent_payload") &&
+                strcmp(which, "dup_payload_parent_context") && strcmp(which, "trim_payload_links") && strcmp(which, "merge_mixed_into_tree") &&
+                strcmp(which, "dup_siblings_into_empty_anydata") &&
+                strcmp(which, "dup_siblings_into_empty_anyxml") && strcmp(which, "dup_into_default_any_parent")) {
+            die("unknown any_direct case %s", which);
+        }
+        if (tg && !cJSON_IsObject(tg)) {
+            die("any_direct target must be a context object%s", NULL);
+        }
+        if (tg) {
+            keys_only(tg, "searchdirs modules context_options", "unknown key \"%s\" in an any_direct target");
+        }
     } else if (!strcmp(what, "dup")) {
         const cJSON *sib = cJSON_GetObjectItemCaseSensitive(step, "siblings");
 
@@ -1897,9 +1919,9 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
         if (p.optype != LYD_TYPE_DATA_YANG) {
             die("sequence supports datastore data types only%s", NULL);
         }
-        if (!input_of(step, "data")) {
-            die("compare step needs data%s", NULL);
-        }
+        compare_other(ctx, step, NULL, NULL);
+        /* compare_other validates exactly one second-source form. */
+        /* Ordinary data still has its dparams checked above. */
         str_of(step, "first");
         str_of(step, "second");
         flags_of(step, "options", compare_flags);
@@ -2031,6 +2053,205 @@ step_dup(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *d
     /* tctx stays: the tree may now live in it, and the process ends after the response */
     return rc;
 }
+static LY_ERR step_dup_into_default_any_parent(struct ly_ctx *, const struct lys_module *, cJSON *, cJSON *), step_merge_mixed_into_tree(struct ly_ctx *, const struct lys_module *, cJSON *, cJSON *), step_equal_mixed_parent_payload(struct ly_ctx *, const struct lys_module *, cJSON *, cJSON *);
+static LY_ERR check_equal_order_contexts(struct ly_ctx *ctx, const cJSON *step, cJSON *diag);
+static LY_ERR
+step_any_direct(struct ly_ctx *ctx, const cJSON *step, cJSON *out, cJSON *diag)
+{
+    const char *which = str_of(step, "case");
+    const struct lys_module *ac = ly_ctx_get_module_implemented(ctx, "ac-r6");
+    struct lyd_node *n = NULL, *n2 = NULL, *dup = NULL;
+    LY_ERR rc = LY_SUCCESS;
+
+    if (!strcmp(which, "nil_boundaries")) {
+        cJSON_AddBoolToObject(out, "child_is_null", lyd_child_any(NULL) == NULL);
+        cJSON_AddItemToObject(out, "copy_rc", code_json(lyd_any_copy_value(NULL, NULL, NULL, 0)));
+        return LY_SUCCESS;
+    }
+    if (!strcmp(which, "text_nul")) {
+        char bytes[] = {'a', '\0', 'b', '\0'};
+        char *s = NULL;
+
+        rc = lyd_new_any(NULL, ac, "xml", NULL, bytes, LYD_VALHINT_STRING, 0, &n);
+        if (!rc) {
+            lyd_any_value_str(n, LYD_JSON, &s);
+            add_opt_str(out, "created", s);
+            free(s);
+            rc = lyd_new_any(NULL, ac, "xml", NULL, NULL, 0, 0, &n2);
+        }
+        if (!rc) {
+            rc = lyd_any_copy_value(n2, NULL, bytes, LYD_VALHINT_STRING);
+        }
+        if (!rc) {
+            s = NULL;
+            lyd_any_value_str(n2, LYD_JSON, &s);
+            add_opt_str(out, "copied", s);
+            free(s);
+            rc = lyd_dup_single(n, NULL, 0, &dup);
+        }
+        if (!rc) {
+            s = NULL;
+            lyd_any_value_str(dup, LYD_JSON, &s);
+            add_opt_str(out, "duplicated", s);
+            free(s);
+            cJSON_AddItemToObject(out, "compare", code_json(lyd_compare_single(n, dup, 0)));
+        }
+        lyd_free_tree(n);
+        lyd_free_tree(n2);
+        lyd_free_tree(dup);
+        collect(ctx, diag, "edit");
+        return rc;
+    }
+    if (!strcmp(which, "node_then_empty")) {
+        struct lyd_node *dup2;
+        char *s = NULL;
+        rc = lyd_new_any(NULL, ac, "xml", NULL, "<n/>", LYD_VALHINT_STRING, 0, &n);
+        if (!rc) rc = lyd_new_any(NULL, ac, "xml", NULL, "{}", LYD_VALHINT_STRING, 0, &n2);
+        if (!rc) {
+            ((struct lyd_node_any *)n)->hints = 0;
+            ((struct lyd_node_any *)n2)->hints = 0;
+            rc = lyd_insert_sibling(n, n2, &n);
+        }
+        if (!rc) rc = lyd_dup_siblings(n, NULL, 0, &dup);
+        dup2 = dup ? dup->next : NULL;
+        cJSON_AddBoolToObject(out, "first_reparsed_as_tree", dup && lyd_child_any(dup));
+        if (dup2) {
+            lyd_any_value_str(dup2, LYD_JSON, &s);
+        }
+        add_opt_str(out, "second_retained_text", s);
+        free(s);
+        lyd_free_all(n);
+        lyd_free_all(dup);
+        collect(ctx, diag, "edit");
+        return rc;
+    }
+    if (!strcmp(which, "dup_siblings_into_empty_anydata") ||
+            !strcmp(which, "dup_siblings_into_empty_anyxml")) {
+        struct lyd_node *first = NULL, *second = NULL, *single_parent = NULL, *parent = NULL, *made = NULL, *iter;
+        size_t count = 0;
+        rc = lyd_new_opaq(NULL, ctx, "one", "v1", NULL, "free", &first);
+        if (!rc) rc = lyd_new_opaq(NULL, ctx, "two", "v2", NULL, "free", &second);
+        if (!rc) rc = lyd_insert_sibling(first, second, &first);
+        if (!rc) rc = lyd_new_any(NULL, ac,
+                !strcmp(which, "dup_siblings_into_empty_anydata") ? "data" : "xml",
+                NULL, NULL, 0, 0, &single_parent);
+        if (!rc) rc = lyd_dup_single(first, single_parent, 0, &made);
+        cJSON_AddBoolToObject(out, "single_copied", lyd_child_any(single_parent) != NULL);
+        if (!rc) rc = lyd_new_any(NULL, ac,
+                !strcmp(which, "dup_siblings_into_empty_anydata") ? "data" : "xml",
+                NULL, NULL, 0, 0, &parent);
+        if (!rc) rc = lyd_dup_siblings(first, parent, 0, &made);
+        LY_LIST_FOR(lyd_child_any(parent), iter) {
+            ++count;
+        }
+        cJSON_AddNumberToObject(out, "source_siblings", 2);
+        cJSON_AddNumberToObject(out, "copied_siblings", count);
+        cJSON_AddBoolToObject(out, "destination_was_empty", 1);
+        lyd_free_all(first);
+        lyd_free_tree(single_parent);
+        lyd_free_tree(parent);
+        collect(ctx, diag, "edit");
+        return rc;
+    }
+    if (!strcmp(which, "merge_mixed_into_tree")) return step_merge_mixed_into_tree(ctx, ac, out, diag);
+    if (!strcmp(which, "dup_into_default_any_parent")) return step_dup_into_default_any_parent(ctx, ac, out, diag); if (!strcmp(which, "equal_mixed_parent_payload")) return step_equal_mixed_parent_payload(ctx, ac, out, diag);
+    if (!strcmp(which, "equal_repeated_collisions")) {
+        struct lyd_node *a = NULL, *b = NULL, *x = NULL, *aw = NULL, *bw = NULL;
+        const char *av[] = {"first", "second", "collision"};
+        const char *bv[] = {"second", "first", "collision"};
+        const char *keys[] = {"repeat", "repeat", "Aa/BB"};
+
+        for (size_t i = 0; !rc && i < 3; ++i) {
+            rc = lyd_new_list(NULL, ac, "entry", 0, &x, keys[i]);
+            if (!rc) rc = lyd_new_term(x, NULL, "value", av[i], 0, NULL);
+            if (!rc) rc = lyd_insert_sibling(a, x, &a);
+        }
+        for (size_t i = 0; !rc && i < 3; ++i) {
+            rc = lyd_new_list(NULL, ac, "entry", 0, &x, keys[i]);
+            if (!rc) rc = lyd_new_term(x, NULL, "value", bv[i], 0, NULL);
+            if (!rc) rc = lyd_insert_sibling(b, x, &b);
+        }
+        if (!rc) rc = lyd_new_any(NULL, ac, "data", a, NULL, 0, LYD_NEW_ANY_USE_VALUE, &aw);
+        if (!rc) rc = lyd_new_any(NULL, ac, "data", b, NULL, 0, LYD_NEW_ANY_USE_VALUE, &bw);
+        if (!rc) cJSON_AddItemToObject(out, "compare_rc", code_json(lyd_compare_single(aw, bw, 0)));
+        cJSON_AddNumberToObject(out, "repeated_keys", 2);
+        cJSON_AddStringToObject(out, "collision_shaped_key", "Aa/BB");
+        lyd_free_tree(aw);
+        lyd_free_tree(bw); if (!rc) rc = check_equal_order_contexts(ctx, step, diag);
+        collect(ctx, diag, "edit");
+        return rc;
+    }
+    if (!strcmp(which, "dup_payload_parent_context") || !strcmp(which, "trim_payload_links")) {
+        const cJSON *target = cJSON_GetObjectItemCaseSensitive(step, "target");
+        struct ly_ctx *bctx;
+        cJSON *scratch = cJSON_CreateObject();
+        int ok;
+
+        if (!target) {
+            die("any_direct %s needs target", which);
+        }
+        bctx = build_ctx_in(target, &ok, 0, scratch);
+        cJSON_Delete(scratch);
+        if (!ok) {
+            die("any_direct target context failed%s", NULL);
+        }
+        if (!strcmp(which, "dup_payload_parent_context")) {
+            struct lyd_node *parent = NULL, *src_a = NULL, *src_b = NULL, *outer = NULL, *made = NULL;
+            LY_ERR mismatch, match;
+
+            rc = lyd_new_opaq(NULL, bctx, "parent", "", NULL, "free", &parent);
+            if (!rc) rc = lyd_new_opaq(NULL, ctx, "source-a", "", NULL, "free", &src_a);
+            if (!rc) rc = lyd_new_opaq(NULL, bctx, "source-b", "", NULL, "free", &src_b);
+            if (!rc) rc = lyd_new_any(NULL, ac, "data", parent, NULL, 0, LYD_NEW_ANY_USE_VALUE, &outer);
+            mismatch = rc ? rc : lyd_dup_single_to_ctx(src_a, ctx, parent, 0, &made);
+            cJSON_AddItemToObject(out, "mismatch_rc", code_json(mismatch));
+            cJSON_AddBoolToObject(out, "mismatch_unchanged", lyd_child_any(parent) == NULL);
+            match = rc ? rc : lyd_dup_single_to_ctx(src_b, bctx, parent, 0, &made);
+            cJSON_AddItemToObject(out, "match_rc", code_json(match));
+            cJSON_AddBoolToObject(out, "match_inserted", lyd_child_any(parent) != NULL);
+            lyd_free_tree(src_a);
+            lyd_free_tree(src_b);
+            lyd_free_tree(outer);
+            collect(ctx, diag, "edit");
+            collect(bctx, diag, "edit");
+            ly_ctx_destroy(bctx);
+            return rc;
+        } else {
+            const struct lys_module *ap = ly_ctx_get_module_implemented(bctx, "ac-r6");
+            struct lyd_node *holder = NULL, *ref_node = NULL, *forest = NULL, *nested = NULL, *outer = NULL;
+            const struct lyd_leafref_links_rec *rec = NULL;
+            LY_ARRAY_COUNT_TYPE before = 0, after = 0;
+            rc = lyd_new_path(NULL, bctx, "/ac-r6:outer/payload-target", "x", 0, &holder);
+            if (!rc) rc = lyd_new_path(NULL, bctx, "/ac-r6:payload-ref", "x", 0, &ref_node);
+            if (!rc) rc = lyd_insert_sibling(holder, ref_node, &forest);
+            if (!rc) rc = lyd_leafref_link_node_tree(forest);
+            /* Unlinking a non-terminal holder keeps its child's leafref link alive. */
+            if (!rc) rc = lyd_unlink_tree(holder);
+            if (!rc) rc = lyd_new_any(NULL, ap, "nested", holder, NULL, 0, LYD_NEW_ANY_USE_VALUE, &nested);
+            if (!rc) rc = lyd_new_any(NULL, ac, "data", nested, NULL, 0, LYD_NEW_ANY_USE_VALUE, &outer);
+            if (!rc && !lyd_leafref_get_links((const struct lyd_node_term *)ref_node, &rec)) {
+                before = LY_ARRAY_COUNT(rec->target_nodes);
+            }
+            if (!rc && before != 1) die("trim_payload_links link missing before trim%s", NULL);
+            if (!rc) rc = lyd_trim_xpath(&outer, "/*[false()]", NULL);
+            if (!lyd_leafref_get_links((const struct lyd_node_term *)ref_node, &rec)) {
+                after = LY_ARRAY_COUNT(rec->target_nodes);
+            }
+            if (!rc && after != 0) die("trim_payload_links link survived trim%s", NULL);
+            cJSON_AddNumberToObject(out, "links_before_trim", before);
+            cJSON_AddNumberToObject(out, "links_after", after);
+            cJSON_AddBoolToObject(out, "outer_removed", outer == NULL);
+            lyd_free_all(ref_node);
+            lyd_free_all(outer);
+            collect(ctx, diag, "xpath");
+            collect(bctx, diag, "xpath");
+            ly_ctx_destroy(bctx);
+            return rc;
+        }
+    }
+    die("unknown any_direct case %s", which);
+    return LY_EINVAL;
+}
 
 /* lyd_insert_child of the node at "node" under the node at "parent" in the tree, or without a parent
  * lyd_insert_sibling(tree, node, &tree). With "data" the node comes from a second tree parsed as by a
@@ -2098,11 +2319,11 @@ step_compare(struct ly_ctx *ctx, const cJSON *step, struct lyd_node *tree, cJSON
 {
     const char *p1 = str_of(step, "first"), *p2 = str_of(step, "second");
     struct lyd_node *other = NULL, *n1 = tree, *n2;
-    struct dparams p;
+    /* compare_other parses data or constructs an otherwise-unparseable opaque root. */
     LY_ERR rc;
 
-    dparams_of(step, &p);
-    rc = parse_one(ctx, &p, input_of(step, "data"), NULL, &other, diag, "parse");
+    rc = compare_other(ctx, step, &other, diag);
+
     if (!rc) {
         n2 = other;
         if (p1 && (!tree || lyd_find_path(tree, p1, 0, &n1))) {
@@ -2569,6 +2790,28 @@ op_sequence(const cJSON *req)
         } else if (!strcmp(what, "diff_apply")) {
             rc = lyd_diff_apply_module(&tree, diff, module_of(sctx, step), NULL, NULL);
             collect(sctx, diag, "diff");
+        } else if (!strcmp(what, "print_xml")) {
+            cJSON *t = cJSON_CreateObject();
+            char *json = NULL, *xml = NULL;
+
+            lyd_print_mem(&json, tree, LYD_JSON, LYD_PRINT_SIBLINGS | LYD_PRINT_WD_EXPLICIT);
+            add_opt_str(t, "json", json ? json : "");
+            free(json);
+            rc = lyd_print_mem(&xml, tree, LYD_XML, LYD_PRINT_SIBLINGS | LYD_PRINT_WD_EXPLICIT);
+            if (!rc) {
+                add_opt_str(t, "xml", xml ? xml : "");
+            }
+            free(xml);
+            if (rc) {
+                cJSON_Delete(t);
+                cJSON_AddNullToObject(s, "tree");
+            } else {
+                cJSON_AddItemToObject(s, "tree", t);
+            }
+            collect(sctx, diag, "data");
+        } else if (!strcmp(what, "any_direct")) {
+            cJSON *direct = cJSON_AddObjectToObject(s, "direct");
+            rc = step_any_direct(sctx, step, direct, diag);
         } else {
             cJSON_AddItemToObject(s, "tree", print_tree(tree, wd_of(step), 1));
         }
@@ -2716,4 +2959,212 @@ main(void)
     out = cJSON_Print(resp);
     printf("%s\n", out);
     return 0;
+}
+
+/* Validate the compare step's second source. During execution, parse ordinary data or construct
+ * one opaque root so values rejected by the XML parser can still exercise lyd_compare_single. */
+static LY_ERR
+compare_other(const struct ly_ctx *ctx, const cJSON *step, struct lyd_node **other, cJSON *diag)
+{
+    const cJSON *io = cJSON_GetObjectItemCaseSensitive(step, "insert_opaq"), *xml;
+    const char *data = input_of(step, "data");
+    struct dparams p;
+    LY_ERR rc;
+
+    if (!data && !io) {
+        die("compare step needs data%s", NULL);
+    }
+    if (data && io) {
+        die("compare step needs exactly one of data, insert_opaq%s", NULL);
+    }
+    if (!io) {
+        if (!other) {
+            return LY_SUCCESS;
+        }
+        dparams_of(step, &p);
+        return parse_one((struct ly_ctx *)ctx, &p, data, NULL, other, diag, "parse");
+    }
+    if (!cJSON_IsObject(io) || !str_of(io, "name") || !str_of(io, "module")) {
+        die("compare insert_opaq needs an object with name and module%s", NULL);
+    }
+    keys_only(io, "name value prefix module xml", "unknown key \"%s\" in compare insert_opaq");
+    str_of(io, "value");
+    str_of(io, "prefix");
+    xml = cJSON_GetObjectItemCaseSensitive(io, "xml");
+    if (xml && !cJSON_IsBool(xml)) {
+        die("insert_opaq xml must be a boolean%s", NULL);
+    }
+    if (!other) {
+        return LY_SUCCESS;
+    }
+    if (cJSON_IsTrue(xml)) {
+        rc = lyd_new_opaq2(NULL, ctx, str_of(io, "name"), str_of(io, "value"), str_of(io, "prefix"),
+                str_of(io, "module"), other);
+    } else {
+        rc = lyd_new_opaq(NULL, ctx, str_of(io, "name"), str_of(io, "value"), str_of(io, "prefix"),
+                str_of(io, "module"), other);
+    }
+    collect(ctx, diag, "edit");
+    return rc;
+}
+
+/* lyd_dup_r links explicit copies through lyd_insert_node. Its default-flag deletion must
+ * reach an any parent supplied by the caller, unlike lyd_any_copy_value's internal forest. */
+static LY_ERR
+step_dup_into_default_any_parent(struct ly_ctx *ctx, const struct lys_module *ac, cJSON *out, cJSON *diag)
+{
+    struct lyd_node *first = NULL, *second = NULL, *outer = NULL, *parent = NULL, *made = NULL;
+    const char *kinds[] = {"data", "xml"};
+    cJSON *results = cJSON_AddObjectToObject(out, "default_after_dup");
+    LY_ERR rc;
+
+    rc = lyd_new_term(NULL, ac, "target", "value", 0, &first);
+    if (!rc) rc = lyd_new_term(NULL, ac, "item", "second", 0, &second);
+    if (!rc) rc = lyd_insert_sibling(first, second, &first);
+    for (size_t k = 0; !rc && k < 2; ++k) {
+        cJSON *kind = cJSON_AddObjectToObject(results, kinds[k]);
+        for (size_t s = 0; !rc && s < 2; ++s) {
+            cJSON *result = cJSON_AddObjectToObject(kind, s ? "siblings" : "single");
+
+            outer = parent = made = NULL;
+            rc = lyd_new_inner(NULL, ac, "outer", 0, &outer);
+            if (!rc) rc = lyd_new_any(outer, ac, kinds[k], NULL, NULL, 0, 0, &parent);
+            if (!rc) {
+                outer->flags |= LYD_DEFAULT;
+                parent->flags |= LYD_DEFAULT;
+                if (s) {
+                    rc = lyd_dup_siblings(first, parent, 0, &made);
+                } else {
+                    rc = lyd_dup_single(first, parent, 0, &made);
+                }
+            }
+            if (!rc) {
+                cJSON_AddBoolToObject(result, "parent_default", !!(parent->flags & LYD_DEFAULT));
+                cJSON_AddBoolToObject(result, "ancestor_default", !!(outer->flags & LYD_DEFAULT));
+            }
+            lyd_free_tree(outer);
+        }
+    }
+    lyd_free_all(first);
+    collect(ctx, diag, "edit");
+    return rc;
+}
+
+/* Exercise lyd_compare_siblings_'s LHS lookup rule across schema contexts. Both
+ * anydata payloads lack children_ht, so the RHS scan must include user-ordered
+ * instances (and, for item, state leaf-list instances). */
+static LY_ERR
+check_equal_order_contexts(struct ly_ctx *ctx, const cJSON *step, cJSON *diag)
+{
+    const cJSON *target = cJSON_GetObjectItemCaseSensitive(step, "target");
+    const struct lys_module *system = ly_ctx_get_module_implemented(ctx, "ac-r6"), *user;
+    struct ly_ctx *uctx;
+    cJSON *scratch;
+    LY_ERR rc = LY_SUCCESS;
+    int ok;
+
+    if (!target) die("equal_repeated_collisions needs target%s", NULL);
+    scratch = cJSON_CreateObject();
+    uctx = build_ctx_in(target, &ok, 0, scratch);
+    cJSON_Delete(scratch);
+    if (!ok || !system || !(user = ly_ctx_get_module_implemented(uctx, "ac-r6"))) {
+        die("equal_repeated_collisions context failed%s", NULL);
+    }
+
+    for (int list = 0; list < 2 && !rc; ++list) {
+        struct lyd_node *left = NULL, *right = NULL, *sys_any = NULL, *usr_any = NULL, *n = NULL;
+        const char *values[] = {"b", "a"};
+
+        for (size_t i = 0; i < 2 && !rc; ++i) {
+            rc = list ? lyd_new_list(NULL, system, "entry", 0, &n, values[i]) :
+                    lyd_new_term(NULL, system, "item", values[i], 0, &n);
+            if (!rc) rc = lyd_insert_sibling(left, n, &left);
+        }
+        for (size_t i = 0; i < 2 && !rc; ++i) {
+            rc = list ? lyd_new_list(NULL, user, "entry", 0, &n, values[i]) :
+                    lyd_new_term(NULL, user, "item", values[i], 0, &n);
+            if (!rc) rc = lyd_insert_sibling(right, n, &right);
+        }
+        if (!rc) {
+            rc = lyd_new_any(NULL, system, "data", left, NULL, 0, LYD_NEW_ANY_USE_VALUE, &sys_any);
+            if (!rc) left = NULL;
+        }
+        if (!rc) {
+            rc = lyd_new_any(NULL, user, "data", right, NULL, 0, LYD_NEW_ANY_USE_VALUE, &usr_any);
+            if (!rc) right = NULL;
+        }
+        if (!rc && (lyd_compare_single(sys_any, usr_any, 0) != LY_SUCCESS ||
+                lyd_compare_single(usr_any, sys_any, 0) != LY_ENOT)) {
+            die("cross-context comparison ordering failed for %s", list ? "list" : "leaf-list");
+        }
+        lyd_free_all(left);
+        lyd_free_all(right);
+        lyd_free_tree(sys_any);
+        lyd_free_tree(usr_any);
+    }
+    collect(ctx, diag, "edit");
+    collect(uctx, diag, "edit");
+    ly_ctx_destroy(uctx);
+    return rc;
+}
+
+/* A mixed anyxml can be built by duplicating a child under an existing text value.
+ * The sequence edit step cannot pass this mutated node as a merge source. */
+static LY_ERR
+step_merge_mixed_into_tree(struct ly_ctx *ctx, const struct lys_module *ac, cJSON *out, cJSON *diag)
+{
+    struct lyd_node *tree = NULL, *mixed = NULL, *child = NULL, *copied = NULL;
+    LY_ERR rc = LY_SUCCESS;
+
+    rc = lyd_new_any(NULL, ac, "xml", NULL, NULL, 0, 0, &tree);
+    if (!rc) rc = lyd_new_term(NULL, ac, "target", "value", 0, &child);
+    if (!rc) rc = lyd_dup_single(child, tree, 0, &copied);
+    lyd_free_tree(child);
+    child = NULL;
+    if (!rc) rc = lyd_new_any(NULL, ac, "xml", NULL, "plain text", LYD_VALHINT_STRING, 0, &mixed);
+    if (!rc) rc = lyd_new_term(NULL, ac, "target", "value", 0, &child);
+    if (!rc) rc = lyd_dup_single(child, mixed, 0, &copied);
+    lyd_free_tree(child);
+    if (!rc) {
+        cJSON_AddItemToObject(out, "compare", code_json(lyd_compare_single(mixed, tree, 0)));
+        cJSON_AddItemToObject(out, "compare_reverse", code_json(lyd_compare_single(tree, mixed, 0)));
+        cJSON_AddItemToObject(out, "merge_rc", code_json(lyd_merge_siblings(&tree, mixed, 0)));
+    }
+    lyd_free_all(tree);
+    lyd_free_all(mixed);
+    collect(ctx, diag, "edit");
+    return rc;
+}
+
+/* Regression: anydata payload roots retain distinct schema parents, and a
+ * system-ordered leaf-list after the first root still compares equal. */
+static LY_ERR
+step_equal_mixed_parent_payload(struct ly_ctx *ctx, const struct lys_module *ac, cJSON *out, cJSON *diag)
+{
+    struct lyd_node *outer = NULL, *first = NULL, *inner = NULL, *any = NULL, *copy = NULL;
+    LY_ERR rc;
+
+    rc = lyd_new_term(NULL, ac, "item", "same", 0, &first);
+    if (!rc) rc = lyd_new_inner(NULL, ac, "outer", 0, &outer);
+    if (!rc) rc = lyd_new_term(outer, NULL, "item", "same", 0, &inner);
+    if (!rc) {
+        lyd_unlink_tree(inner); /* retain its schema parent while making it a payload root */
+        rc = lyd_insert_sibling(first, inner, &first);
+        if (!rc) inner = NULL;
+    }
+    if (!rc) {
+        lyd_free_tree(outer);
+        outer = NULL;
+        rc = lyd_new_any(NULL, ac, "data", first, NULL, 0, LYD_NEW_ANY_USE_VALUE, &any);
+        if (!rc) first = NULL;
+    }
+    if (!rc) rc = lyd_dup_single(any, NULL, 0, &copy);
+    if (!rc) cJSON_AddItemToObject(out, "compare", code_json(lyd_compare_single(any, copy, 0)));
+    lyd_free_tree(outer);
+    lyd_free_all(first);
+    lyd_free_tree(inner);
+    lyd_free_tree(any);
+    lyd_free_tree(copy);
+    collect(ctx, diag, "edit");
+    return rc;
 }

@@ -1,0 +1,59 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "prefix-scan",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"prefix-scan:item\": [\n    {\n      \"key\": \"\ufffe\"\n    }\n  ]\n}\n",
+    "xml": "<item xmlns=\"urn:vibe-ports:prefix-scan\">\n  <key>\ufffe</key>\n</item>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/prefix-scan:item[key='\ufffe']",
+      "schema": "/prefix-scan:item",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/prefix-scan:item[key='\ufffe']/key",
+      "schema": "/prefix-scan:item/key",
+      "value": {
+        "canonical": "\ufffe",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

@@ -1,0 +1,45 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ac-r6",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "direct": {
+        "compare": {
+          "err": 11,
+          "name": "LY_ENOT"
+        },
+        "compare_reverse": {
+          "err": 0,
+          "name": "LY_SUCCESS"
+        },
+        "merge_rc": {
+          "err": 3,
+          "name": "LY_EINVAL"
+        }
+      },
+      "do": "any_direct",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": []
+    }
+  ],
+  "verdict": "valid"
+}

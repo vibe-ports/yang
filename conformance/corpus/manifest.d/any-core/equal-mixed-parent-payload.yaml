@@ -1,0 +1,14 @@
+fixtures:
+  - id: any-core/equal-mixed-parent-payload
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.10", "RFC7950#7.7.7"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: ac-r6}]
+      steps:
+        - do: any_direct
+          case: equal_mixed_parent_payload
+    golden: golden/equal-mixed-parent-payload.json

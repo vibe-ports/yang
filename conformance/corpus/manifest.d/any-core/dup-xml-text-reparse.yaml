@@ -1,0 +1,9 @@
+fixtures:
+  - id: any-core/dup-xml-text-reparse
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    # XML character content has no JSON scalar hint. Copy reparses its decoded markup as a payload tree.
+    rfc: [] # Core operation semantics are libyang API contracts.
+    areas: ["operations", "codecs"]
+    request: {"op": "sequence", "searchdirs": ["schemas"], "modules": [{"name": "ac"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "parse", "format": "xml", "data_type": "data", "parse_only": true, "data": "<xml xmlns=\"urn:tests:any-core\">&lt;item xmlns=\"urn:tests:opaque\"&gt;value&lt;/item&gt;</xml>"}, {"do": "dup", "node": "/ac:xml", "options": []}, {"do": "dump", "with_defaults": "all"}]}
+    golden: golden/dup-xml-text-reparse.json

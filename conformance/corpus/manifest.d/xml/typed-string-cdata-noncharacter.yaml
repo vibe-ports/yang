@@ -1,0 +1,9 @@
+fixtures:
+  - id: xml/typed-string-cdata-noncharacter
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#9.4"]
+    areas: [types, codecs]
+    request: {op: data, searchdirs: [schemas], modules: [{name: prefix-scan}], format: xml, data_type: config, data: "<c xmlns=\"urn:vibe-ports:prefix-scan\"><s><![CDATA[\uFFFE]]></s></c>"}
+    golden: golden/typed-string-cdata-noncharacter.json
+    assert: {verdict: valid}

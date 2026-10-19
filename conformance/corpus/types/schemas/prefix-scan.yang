@@ -1,0 +1,34 @@
+// SPDX-License-Identifier: BSD-3-Clause
+module prefix-scan {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:prefix-scan";
+  prefix ps;
+
+  import ietf-yang-types { prefix ietf; }
+  import yang { prefix yang; }
+
+  container c {
+    leaf s { type string; }
+    leaf n1 { type int32; }
+    leaf n2 { type int32; }
+    leaf xp { type ietf:xpath1.0; }
+    leaf iik { type yang:instance-identifier-keys; }
+    leaf u {
+      type union {
+        type uint8;
+        type string;
+      }
+    }
+    leaf ux {
+      type union {
+        type ietf:xpath1.0;
+        type string;
+      }
+    }
+  }
+
+  list item {
+    key "key";
+    leaf key { type string; }
+  }
+}

@@ -1,0 +1,9 @@
+fixtures:
+  - id: ut-new/any-create-xml
+    dir: ut-new
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_new.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}
+    # test_new.c:186; the existing set operation reaches lyd_create_any through lyd_new_path.
+    rfc: [] # Constructor behavior is a libyang API contract.
+    areas: [operations, codecs]
+    request: {"op": "sequence", "searchdirs": ["a.1"], "modules": [{"name": "a"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "edit", "set": {"path": "/a:any", "value": "<node>val</node>"}}, {"do": "dump", "with_defaults": "all"}]}
+    golden: golden/any-create-xml.json

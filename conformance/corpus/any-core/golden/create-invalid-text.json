@@ -1,0 +1,47 @@
+{
+  "context_diagnostics": [],
+  "failed_step": 0,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ac",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 11,
+    "name": "LY_ENOT"
+  },
+  "steps": [
+    {
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Failed to parse any content into a data tree.",
+          "phase": "edit",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "do": "edit",
+      "rc": {
+        "err": 11,
+        "name": "LY_ENOT"
+      },
+      "typed": []
+    }
+  ],
+  "verdict": "invalid"
+}

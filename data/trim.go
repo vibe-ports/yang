@@ -29,7 +29,11 @@ func appendTrimSubtree(dst *[]*Node, root *Node, charge func(int64) bool) bool {
 	stack := []frame{{n: root}}
 	for len(stack) > 0 {
 		f := &stack[len(stack)-1]
-		if f.next == f.n.kids.len() {
+		sib := &f.n.kids
+		if f.n.any != nil {
+			sib = &f.n.any.children // freeing an any owns its payload, unlike XPath selection
+		}
+		if f.next == sib.len() {
 			stack = stack[:len(stack)-1]
 			continue
 		}
@@ -39,12 +43,12 @@ func appendTrimSubtree(dst *[]*Node, root *Node, charge func(int64) bool) bool {
 		i := f.next
 		f.next++
 		var child *Node
-		if i < len(f.n.kids.list) {
-			child = f.n.kids.list[i]
+		if i < len(sib.list) {
+			child = sib.list[i]
 		} else {
-			child = f.n.kids.opq[i-len(f.n.kids.list)]
+			child = sib.opq[i-len(sib.list)]
 		}
-		f.n.kids.visit()
+		sib.visit()
 		*dst = append(*dst, child)
 		stack = append(stack, frame{n: child})
 	}

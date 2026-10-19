@@ -1,0 +1,44 @@
+fixtures:
+  - id: any-core/equal-xml-unicode-boundary
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    # U+00D7 is not an XML QName character: the following p:v is a distinct
+    # prefixed token. Parsing must retain its loaded-module namespace so that
+    # lyxml_value_compare recognizes identical and prefix-renamed values, and
+    # the XML dump preserves the namespace declaration used by the value.
+    # The last parse exercises collection from an attribute alone.
+    rfc: [] # Opaque XML prefix collection/comparison is a libyang API contract.
+    areas: [operations, codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: ac}]
+      context_options: [no_yanglibrary]
+      steps:
+        - do: parse
+          format: xml
+          data_type: get
+          unknown: opaque
+          data: '<item xmlns="urn:tests:opaque" xmlns:p="urn:tests:any-core">×p:v</item>'
+        - do: compare
+          format: xml
+          data_type: get
+          unknown: opaque
+          options: []
+          data: '<item xmlns="urn:tests:opaque" xmlns:p="urn:tests:any-core">×p:v</item>'
+        - do: compare
+          format: xml
+          data_type: get
+          unknown: opaque
+          options: []
+          data: '<item xmlns="urn:tests:opaque" xmlns:q="urn:tests:any-core">×q:v</item>'
+        - do: dump
+          with_defaults: all
+        - do: parse
+          format: xml
+          data_type: get
+          unknown: opaque
+          data: '<item xmlns="urn:tests:opaque" xmlns:p="urn:tests:any-core" note="×p:v"/>'
+        - do: dump
+          with_defaults: all
+    golden: golden/equal-xml-unicode-boundary.json

@@ -1,0 +1,9 @@
+fixtures:
+  - id: any-core/dup-payload-options
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    # Outer no_meta and with_flags do not propagate into the recursive payload copy: payload metadata survives, and its nodes receive LYD_NEW.
+    rfc: [] # Core operation semantics are libyang API contracts.
+    areas: ["operations", "codecs"]
+    request: {"op": "sequence", "searchdirs": ["schemas"], "modules": [{"name": "ac"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "parse", "format": "json", "data_type": "data", "validate_options": ["present"], "data": "{\"ac:data\": {\"ac:c\": {\"@\": {\"ac:note\": \"payload\"}, \"value\": \"kept\"}}, \"@ac:data\": {\"ac:note\": \"outer\"}}"}, {"do": "dup", "node": "/ac:data", "options": ["no_meta", "with_flags"]}, {"do": "dump", "with_defaults": "all"}]}
+    golden: golden/dup-payload-options.json

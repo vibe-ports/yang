@@ -69,7 +69,9 @@ func TestOpRunLookupWork(t *testing.T) {
 						target := srcOp.kids.list[i]
 						switch operation {
 						case "merge":
-							tr.mergeSibling(lv, target)
+							if err := tr.mergeSibling(lv, target); err != nil {
+								t.Fatal(err)
+							}
 						case "find":
 							p := types.Path{{Node: op.schema}, {Node: target.schema, Preds: []types.PathPred{{Kind: types.PredLeafList, Value: target.value}}}}
 							got, used, err := tr.evalPartial(&logger{set: set}, p)

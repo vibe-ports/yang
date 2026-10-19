@@ -1,0 +1,15 @@
+fixtures:
+  - id: types/xpath10-data-print-unresolved-prefix
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # libyang print_tree ignores a terminal XML printer failure.
+    areas: [types, codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: print-failure}]
+      data_type: data
+      format: json
+      parse_only: true
+      data: '{"print-failure:c":{"xp":"/missing:node"}}'
+    golden: golden/xpath10-data-print-unresolved-prefix.json

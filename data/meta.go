@@ -295,4 +295,6 @@ func (l *logger) newAttr(parent *Node, moduleName, name, val string) error {
 var errNot = errors.New("data: LY_ENOT")
 
 // isAny reports whether sn is an anydata or anyxml node (LYD_NODE_ANY).
-func isAny(sn *schema.Node) bool { return sn.Kind == schema.AnyData || sn.Kind == schema.AnyXML }
+func isAny(sn *schema.Node) bool {
+	return sn != nil && (sn.Kind == schema.AnyData || sn.Kind == schema.AnyXML)
+}

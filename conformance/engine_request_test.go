@@ -92,6 +92,7 @@ func TestSkippedStepNeedsNoCapability(t *testing.T) {
 		{"do": "change_term", "node": "/pv2:c/mode", "value": "on", "canon": true},
 		{"do": "dup", "node": "/pv2:c", "options": []any{"no_lyds"}},
 		{"do": "edit", "insert_opaq": map[string]any{"name": "x", "module": "pv2"}},
+		{"do": "any_direct", "case": "trim_payload_links", "target": map[string]any{"context_options": []any{"bogus"}}},
 	} {
 		r := Request{BaseDir: "corpus/protocol-v2", Params: map[string]any{
 			"op": "sequence", "context_options": []any{"no_yanglibrary"},
@@ -108,6 +109,29 @@ func TestSkippedStepNeedsNoCapability(t *testing.T) {
 			steps[0].(map[string]any)["rc"].(map[string]any)["name"] != "LY_ENOTFOUND" || steps[1].(map[string]any)["skipped"] != true {
 			t.Errorf("%v: %v", st, resp)
 		}
+	}
+}
+
+func TestAnyDirectTargetFlagsWhenConsumed(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		consumes bool
+	}{
+		{"nil_boundaries", false},
+		{"equal_repeated_collisions", true},
+		{"dup_payload_parent_context", true},
+		{"trim_payload_links", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			st := map[string]any{"case": tc.name, "target": map[string]any{"context_options": []any{"bogus"}}}
+			if err := checkRequest(Request{}, nil, st, execStepAnyDirect, stepRequestRules["any_direct"]); err != nil {
+				t.Fatalf("preflight: %v", err)
+			}
+			err := checkRequest(Request{}, nil, st, execStepAnyDirect, stepExecutionRules["any_direct"])
+			if (err != nil) != tc.consumes {
+				t.Fatalf("execution error = %v; consumes target = %v", err, tc.consumes)
+			}
+		})
 	}
 }
 

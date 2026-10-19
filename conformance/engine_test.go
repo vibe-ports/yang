@@ -615,6 +615,47 @@ var validationUnsupported = map[string]string{
 	"ut-parser/xml-filter-attributes-02": "U-0043",
 	"protocol-v2/sequence-edits":         "U-0043",
 	"protocol-v2/when-auto-delete":       "U-0043",
+	// U-0043: the any-value core fixtures (anydata PR 2) need the anydata parsers and
+	// NewPath creation (PRs 4-6); they gate once those land.
+	"any-core/create-invalid-json":           "U-0043",
+	"any-core/create-invalid-text":           "U-0043",
+	"any-core/create-invalid-xml":            "U-0043",
+	"any-core/create-xml-scan-error-anydata": "U-0043",
+	"any-core/create-xml-scan-error-anyxml":  "U-0043",
+	"any-core/create-warning-xml-key-order":  "U-0043",
+	"any-core/dup-cross-context":             "U-0043",
+	"any-core/dup-empty-hints":               "U-0043",
+	"any-core/dup-payload-options":           "U-0043",
+	"any-core/dup-shallow-tree":              "U-0043",
+	"any-core/dup-text-hints":                "U-0043",
+	"any-core/dup-xml-text-reparse":          "U-0043",
+	"any-core/equal-empty-hints":             "U-0043",
+	"any-core/equal-mixed-tree":              "U-0043",
+	"any-core/equal-nonempty-empty":          "U-0043",
+	"any-core/equal-text-hints":              "U-0043",
+	"any-core/equal-tree-shallow":            "U-0043",
+	"any-core/equal-xml-prefixes":            "U-0043",
+	"any-core/equal-xml-scan-error":          "U-0107",
+	"any-core/merge-equal-hints":             "U-0043",
+	"any-core/merge-fill-empty-text":         "U-0043",
+	"any-core/merge-fill-empty-tree":         "U-0043",
+	"any-core/merge-mixed-into-tree":         "U-0043",
+	"any-core/merge-replace-tree":            "U-0043",
+	"any-core/validation-excludes-payload":   "U-0043",
+	"any-core/any-text-embedded-nul":         "U-0043",
+	"any-core/dup-node-then-empty-object":    "U-0043",
+	"any-core/dup-payload-parent-context":    "U-0043",
+	"any-core/equal-wide-system-ordered":     "U-0043",
+	"any-core/nil-any-boundaries":            "U-0043",
+	"any-core/trim-payload-links":            "U-0043",
+	"any-core/dup-into-anydata":              "U-0107",
+	"any-core/dup-into-default-any-parent":   "U-0043",
+	"any-core/dup-mixed-missing-module":      "U-0043",
+	"any-core/dup-text-with-child":           "U-0043",
+	"any-core/equal-mixed-parent-payload":    "U-0043",
+	"any-core/dup-into-anyxml":               "U-0107",
+	"ut-new/any-create-json":                 "U-0043",
+	"ut-new/any-create-xml":                  "U-0043",
 	// D-0058: LYD_PARSE_ORDERED input order is not exported.
 	"seq/trim-links-referrer-first": "D-0058",
 	// U-0105: LYD_DUP_NO_LYDS is not exported.
@@ -1329,5 +1370,177 @@ func TestRelativeSetParent(t *testing.T) {
 	}
 	if r, err := run("pv2", set("/pv2:c/mode"), set("/pv2:c/x")); err != nil || r["verdict"] != "valid" {
 		t.Fatalf("absolute set under a parent = %v, %v", r, err)
+	}
+}
+
+func TestSequencePrintXMLTypeFailures(t *testing.T) {
+	run := func(steps ...any) Response {
+		t.Helper()
+		r, err := (Yang{}).Run(Request{BaseDir: filepath.Join("corpus", "types"), Params: map[string]any{
+			"op": "sequence", "searchdirs": []any{"schemas"},
+			"modules": []any{map[string]any{"name": "print-failure"}}, "steps": steps,
+		}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return r
+	}
+	inner := map[string]any{"do": "edit", "insert_inner": map[string]any{"module": "print-failure", "name": "c"}}
+	term := func(name, value string) map[string]any {
+		return map[string]any{"do": "edit", "insert_term": map[string]any{
+			"module": "print-failure", "name": name, "parent": "/print-failure:c", "value": value,
+		}}
+	}
+	printXML := map[string]any{"do": "print_xml"}
+
+	meta := run(inner, term("s", "value"), map[string]any{"do": "edit", "new_meta": map[string]any{
+		"node": "/print-failure:c/s", "name": "print-failure:select", "value": "'a\x01b'",
+	}}, printXML)
+	metaStep := meta["steps"].([]any)[3].(map[string]any)
+	xml := metaStep["tree"].(map[string]any)["xml"]
+	if meta["verdict"] != "valid" || !strings.Contains(xml.(string), `pf:select=""`) {
+		t.Fatalf("metadata print = %v", metaStep)
+	}
+	badMeta := run(inner, term("s", "value"), map[string]any{"do": "edit", "new_meta": map[string]any{
+		"node": "/print-failure:c/s", "name": "print-failure:select", "value": "/missing:node",
+	}}, printXML)
+	badStep := badMeta["steps"].([]any)[3].(map[string]any)
+	badDiags := badStep["diagnostics"].([]any)
+	if badMeta["verdict"] != "invalid" || badMeta["rc"].(map[string]any)["name"] != "LY_EVALID" ||
+		badStep["rc"].(map[string]any)["name"] != "LY_EVALID" || len(badDiags) != 1 ||
+		!strings.Contains(badStep["tree"].(map[string]any)["xml"].(string), `pf:select=""`) {
+		t.Fatalf("unresolved metadata print = %v", badStep)
+	}
+	badDiag := badDiags[0].(map[string]any)
+	if badDiag["phase"] != "data" || badDiag["vecode_name"] != "LYVE_DATA" || badDiag["msg"] != `Failed to resolve prefix "missing".` {
+		t.Fatalf("unresolved metadata diagnostic = %v", badDiag)
+	}
+
+	terminal := run(inner, term("xp", "/missing:node"), printXML)
+	terminalStep := terminal["steps"].([]any)[2].(map[string]any)
+	ds := terminalStep["diagnostics"].([]any)
+	if terminal["verdict"] != "invalid" || terminal["rc"].(map[string]any)["name"] != "LY_EINVAL" || len(ds) != 1 {
+		t.Fatalf("terminal print = %v", terminalStep)
+	}
+	if terminalStep["tree"] != nil {
+		t.Fatalf("terminal print_xml retained partial tree: %v", terminalStep["tree"])
+	}
+	d := ds[0].(map[string]any)
+	if d["phase"] != "data" || d["vecode_name"] != "LYVE_DATA" || d["msg"] != `Failed to resolve prefix "missing".` {
+		t.Fatalf("terminal diagnostic = %v", d)
+	}
+}
+
+func TestSequenceTargetDiffPrinterKeepsItsContext(t *testing.T) {
+	for _, merge := range []bool{false, true} {
+		t.Run(fmt.Sprintf("merge=%v", merge), func(t *testing.T) {
+			modules := []any{map[string]any{"name": "print-failure"}}
+			diff := map[string]any{
+				"do": "diff", "format": "json", "data_type": "data", "parse_only": true,
+				"data":   `{"print-failure:c":{"xp":"/missing:node"}}`,
+				"target": map[string]any{"searchdirs": []any{"schemas"}, "modules": modules},
+				"merge":  merge,
+			}
+			resp, err := (Yang{}).Run(Request{BaseDir: filepath.Join("corpus", "types"), Params: map[string]any{
+				"op": "sequence", "searchdirs": []any{"schemas"}, "modules": modules,
+				"steps": []any{diff, map[string]any{"do": "edit", "set": map[string]any{
+					"path": "/print-failure:c/s", "value": "valid",
+				}}},
+			}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			steps := resp["steps"].([]any)
+			gotDiff := steps[0].(map[string]any)
+			edit := steps[1].(map[string]any)
+			if gotDiff["rc"].(map[string]any)["name"] != "LY_SUCCESS" ||
+				!strings.Contains(gotDiff["diff"].(map[string]any)["json"].(string), "/missing:node") {
+				t.Fatalf("target diff did not retain the failing printer value: %v", gotDiff)
+			}
+			if merge && !strings.Contains(gotDiff["new_diff"].(map[string]any)["json"].(string), "/missing:node") {
+				t.Fatalf("new_diff did not retain the failing printer value: %v", gotDiff)
+			}
+			if resp["verdict"] != "valid" || edit["rc"].(map[string]any)["name"] != "LY_SUCCESS" ||
+				len(edit["diagnostics"].([]any)) != 0 {
+				t.Fatalf("target diff printer diagnostics reached original context: %v", resp)
+			}
+		})
+	}
+}
+
+// print_tree ignores printer return codes and keeps any completed output
+// (lyoracle.c:1370-1387). The same behavior applies to dump and op_data.
+func TestPrintTreeKeepsPrinterDiagnosticOutput(t *testing.T) {
+	base := filepath.Join("corpus", "types")
+	common := map[string]any{"searchdirs": []any{"schemas"},
+		"modules": []any{map[string]any{"name": "print-failure"}}}
+	seq := map[string]any{"op": "sequence", "searchdirs": common["searchdirs"], "modules": common["modules"],
+		"steps": []any{
+			map[string]any{"do": "edit", "insert_inner": map[string]any{"module": "print-failure", "name": "c"}},
+			map[string]any{"do": "edit", "insert_term": map[string]any{"module": "print-failure", "name": "s", "parent": "/print-failure:c", "value": "value"}},
+			map[string]any{"do": "edit", "new_meta": map[string]any{"node": "/print-failure:c/s", "name": "print-failure:select", "value": "/missing:node"}},
+			map[string]any{"do": "dump"},
+		}}
+	r, err := (Yang{}).Run(Request{BaseDir: base, Params: seq})
+	if err != nil || r["verdict"] != "valid" {
+		t.Fatalf("dump: %v, %v", r, err)
+	}
+	step := r["steps"].([]any)[3].(map[string]any)
+	if xml := step["tree"].(map[string]any)["xml"].(string); !strings.Contains(xml, `pf:select=""`) {
+		t.Fatalf("dump XML: %q", xml)
+	}
+	setup := seq["steps"].([]any)
+	// The dump does not collect its XML printer error. free_meta is a void API
+	// followed by collect(ctx, ..., "edit"), so the stored error fails that step.
+	seq["steps"] = append(append([]any(nil), setup...),
+		map[string]any{"do": "edit", "free_meta": map[string]any{"node": "/print-failure:c/s", "name": "print-failure:select"}},
+		map[string]any{"do": "dump"})
+	r, err = (Yang{}).Run(Request{BaseDir: base, Params: seq})
+	if err != nil {
+		t.Fatalf("dump then free_meta: %v", err)
+	}
+	steps := r["steps"].([]any)
+	free := steps[4].(map[string]any)
+	if r["verdict"] != "invalid" || fmt.Sprint(r["failed_step"]) != "4" || free["rc"].(map[string]any)["name"] != "LY_EVALID" {
+		t.Fatalf("pending printer diagnostic did not fail free_meta: %v", r)
+	}
+	ds := free["diagnostics"].([]any)
+	if len(ds) != 1 || ds[0].(map[string]any)["phase"] != "edit" ||
+		ds[0].(map[string]any)["msg"] != `Failed to resolve prefix "missing".` {
+		t.Fatalf("free_meta diagnostics = %v", ds)
+	}
+	if steps[5].(map[string]any)["skipped"] != true {
+		t.Fatalf("step after failed free_meta ran: %v", steps[5])
+	}
+	// links reads the tree without collect(); print_xml collects its own printer
+	// item together with the earlier dump item.
+	seq["steps"] = append(append([]any(nil), setup...),
+		map[string]any{"do": "links"},
+		map[string]any{"do": "edit", "free_meta": map[string]any{"node": "/print-failure:c/s", "name": "print-failure:select"}})
+	r, err = (Yang{}).Run(Request{BaseDir: base, Params: seq})
+	if err != nil || fmt.Sprint(r["failed_step"]) != "5" ||
+		len(r["steps"].([]any)[4].(map[string]any)["diagnostics"].([]any)) != 0 ||
+		len(r["steps"].([]any)[5].(map[string]any)["diagnostics"].([]any)) != 1 {
+		t.Fatalf("links consumed a pending printer diagnostic: %v, %v", r, err)
+	}
+	seq["steps"] = append(append([]any(nil), setup...), map[string]any{"do": "print_xml"})
+	r, err = (Yang{}).Run(Request{BaseDir: base, Params: seq})
+	if err != nil || fmt.Sprint(r["failed_step"]) != "4" ||
+		len(r["steps"].([]any)[4].(map[string]any)["diagnostics"].([]any)) != 2 {
+		t.Fatalf("print_xml did not collect both printer diagnostics: %v, %v", r, err)
+	}
+	dataReq := map[string]any{"op": "data", "searchdirs": common["searchdirs"], "modules": common["modules"],
+		"data_type": "data", "format": "json", "parse_only": true,
+		"data": `{"print-failure:c":{"xp":"/missing:node"}}`}
+	r, err = (Yang{}).Run(Request{BaseDir: base, Params: dataReq})
+	if err != nil || r["verdict"] != "valid" {
+		t.Fatalf("data print: %v, %v", r, err)
+	}
+	golden, err := LoadGolden(filepath.Join(base, "golden", "xpath10-data-print-unresolved-prefix.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := r["tree"].(map[string]any)["xml"], golden["tree"].(map[string]any)["xml"]; got != want {
+		t.Fatalf("data XML = %q, want committed golden %q", got, want)
 	}
 }

@@ -1,0 +1,15 @@
+fixtures:
+  - id: any-core/dup-payload-parent-context
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # Target-context validation is a libyang duplication API contract.
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: ac-r6}]
+      steps:
+        - do: any_direct
+          case: dup_payload_parent_context
+          target: {searchdirs: [schemas], modules: [{name: ac-r6}], context_options: [no_yanglibrary]}
+    golden: golden/dup-payload-parent-context.json

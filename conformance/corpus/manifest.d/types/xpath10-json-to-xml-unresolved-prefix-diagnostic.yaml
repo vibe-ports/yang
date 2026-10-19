@@ -1,0 +1,18 @@
+fixtures:
+  - id: types/xpath10-json-to-xml-unresolved-prefix-diagnostic
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # libyang terminal type-printer failure and diagnostic propagation.
+    areas: [types, codecs, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: print-failure}]
+      steps:
+        - do: edit
+          insert_inner: {module: print-failure, name: c}
+        - do: edit
+          insert_term: {module: print-failure, name: xp, parent: /print-failure:c, value: /missing:node}
+        - do: print_xml
+    golden: golden/xpath10-json-to-xml-unresolved-prefix-diagnostic.json
+    assert: {verdict: invalid, rc: LY_EINVAL, diagnostics: [{vecode_name: LYVE_DATA}]}

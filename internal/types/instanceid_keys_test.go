@@ -89,40 +89,9 @@ func TestInstanceIDKeys(t *testing.T) {
 	}
 }
 
-func TestValuePrefixNext(t *testing.T) {
-	type seg struct {
-		s      string
-		prefix bool
-	}
-	for _, c := range []struct {
-		in   string
-		want []seg
-	}{
-		{"a:b", []seg{{"a", true}, {"b", false}}},
-		{"x/a:b/c:d", []seg{{"x/", false}, {"a", true}, {"b/", false}, {"c", true}, {"d", false}}},
-		{"'p:v'", []seg{{"'", false}, {"p", true}, {"v'", false}}},
-		{"plain", []seg{{"plain", false}}},
-		{"1:2", []seg{{"1:2", false}}},
-	} {
-		var got []seg
-		for i := 0; ; {
-			n, p, next := valuePrefixNext(c.in, i)
-			if n == 0 {
-				break
-			}
-			got = append(got, seg{c.in[i : i+n], p})
-			if next < 0 {
-				break
-			}
-			i = next
-		}
-		if len(got) != len(c.want) {
-			t.Fatalf("%q: got %v, want %v", c.in, got, c.want)
-		}
-		for i := range got {
-			if got[i] != c.want[i] {
-				t.Fatalf("%q: got %v, want %v", c.in, got, c.want)
-			}
-		}
+func TestPrefixDataScanError(t *testing.T) {
+	_, d := prefixDataNew(&storeArgs{lex: "\x01a:b", f: FormatXML})
+	if d == nil || d.RC() != "LY_EINVAL" || d.Code != CodeOther || !d.NoItem {
+		t.Fatalf("prefix scan error = %+v", d)
 	}
 }

@@ -326,11 +326,10 @@ func (c *bulkLinkCleaner) free(n *Node) {
 
 // freeSubtreeLinks is the leafref part of lyd_free_subtree: every term node of the subtree of n
 // loses its record (lyd_free_tree), where an unlink frees only n's own (lyd_unlink).
-func freeSubtreeLinks(set *schema.Set, n *Node) {
-	if !set.LeafrefLinking {
-		return
-	}
-	for d := range n.All() {
+func freeSubtreeLinks(_ *schema.Set, n *Node) {
+	// A payload may retain a context with linking enabled even when its outer
+	// tree has linking disabled. Destruction must visit all owned payloads.
+	for d := range n.allAny() {
 		freeLinks(d)
 	}
 }

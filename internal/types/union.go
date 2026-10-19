@@ -32,8 +32,12 @@ func (u *UnionValue) Original() (string, Format) { return u.orig, u.f }
 // storeUnion ports lyplg_type_store_union: the first member that stores and validates the value
 // wins; with StoreOnly, when none validates, the first that only stores.
 func storeUnion(a *storeArgs) (Value, *Diag) {
-	u := &UnionValue{orig: a.lex, f: a.f, h: a.h, pc: a.pc, ctx: a.ctx}
-	d := unionFind(a.t, u, false, nil)
+	pc, d := prefixDataNew(a)
+	if d != nil {
+		return Value{}, d
+	}
+	u := &UnionValue{orig: a.lex, f: a.f, h: a.h, pc: pc, ctx: a.ctx}
+	d = unionFind(a.t, u, false, nil)
 	if d != nil && a.only {
 		d = unionFind(a.t, u, true, nil)
 	}

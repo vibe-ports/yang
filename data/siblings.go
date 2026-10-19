@@ -230,7 +230,7 @@ func hashOf(n *Node) (k idxKey, ok bool) {
 // Fixtures ops/ht-* (create, none, shrink, grow after shrink, dup of a shrunk, of a small and
 // non-recursive copy, each followed by an output insertion) pin it.
 func (s *siblings) hashAdd(parent, n *Node) {
-	if parent == nil || parent.schema == nil || n.schema == nil {
+	if parent == nil || parent.schema == nil || isAny(parent.schema) || n.schema == nil {
 		return
 	}
 	if s.ht != nil {
@@ -814,7 +814,7 @@ func (t *Tree) findFirst(s *siblings, target *Node) *Node {
 	if s.len() == 0 {
 		return nil
 	}
-	if len(s.list) > 0 && target.schema != nil &&
+	if len(s.list) > 0 && s.list[0].schema != nil && target.schema != nil &&
 		!compareSchemaEqual(s.list[0].schema.DataParent(), target.schema.DataParent(), true) {
 		return nil // schema mismatch
 	}
@@ -907,79 +907,248 @@ func compareSingle(t *Tree, a, b *Node, full bool) bool {
 	return compareSingleChecked(t, a, b, CompareOptions{FullRecursion: full}, false)
 }
 
-// compareSingleChecked is lyd_compare_single_schema with its parental_schemas_checked, then
-// lyd_compare_single_data. Values compare by canonical text (lyd_compare_single_value: a plain
-// leaf's union "1" as int and as string are equal, VERIFY(cmp/union-leaf-text)); opaque nodes by
-// value only, not by name (VERIFY(cmp/opaque-value-only); the XML prefix rewrite of opaque values
-// is not ported). Nodes of two contexts compare by their schema nodes' names (compareSingleSchema).
+// compareSingleChecked is lyd_compare_single_schema followed by the iterative
+// lyd_compare_single_data/lyd_compare_siblings_ walk. Any payloads are always
+// compared as sibling forests, irrespective of the outer FullRecursion option.
 func compareSingleChecked(t *Tree, a, b *Node, o CompareOptions, parentsChecked bool) bool {
-	return compareSingleSchema(a, b, o.Opaque, parentsChecked) && compareSingleData(t, a, b, o)
-}
-
-// compareSingleData is lyd_compare_single_data (any nodes come with M5).
-func compareSingleData(t *Tree, a, b *Node, o CompareOptions) bool {
-	if !o.Opaque && !hashEqual(a, b) {
+	if !compareSingleSchema(a, b, o.Opaque, parentsChecked) {
 		return false
 	}
-	if a.schema == nil || b.schema == nil {
-		if !o.Opaque && (a.schema == nil) != (b.schema == nil) {
-			return false
-		}
-		// compare values only if there are any to compare
-		if a.schema == nil && b.schema == nil || a.isTerm() || b.isTerm() {
-			if a.Value() != b.Value() {
-				return false
-			}
-		}
-		return !o.FullRecursion || compareSiblings(t, &a.kids, &b.kids, o)
-	}
-	switch a.schema.Kind {
-	case schema.Leaf, schema.LeafList:
-		if o.Defaults && a.flags&FlagDefault != b.flags&FlagDefault {
-			return false
-		}
-		return a.value.Canonical() == b.value.Canonical()
-	case schema.List:
-		if o.FullRecursion {
-			return compareSiblings(t, &a.kids, &b.kids, o)
-		}
-		if a.schema.Keyless() {
-			return true
-		}
-		for i := range a.schema.Keys {
-			if i >= len(a.kids.list) || i >= len(b.kids.list) {
-				return len(a.kids.list) == len(b.kids.list)
-			}
-			if !compareSingleChecked(t, a.kids.list[i], b.kids.list[i], o, true) {
-				return false
-			}
-		}
-		return true
-	}
-	// container, rpc, action, notification: an implicit container equals one with explicit
-	// descendants
-	return !o.FullRecursion || compareSiblings(t, &a.kids, &b.kids, o)
+	return compareDataStack(t, []compareFrame{{a: a, b: b, opts: o}})
 }
 
-// compareSiblings is lyd_compare_siblings_: pairwise in order, except that a system-ordered
-// keyed list or config leaf-list instance is looked up among b's siblings.
-func compareSiblings(t *Tree, a, b *siblings, o CompareOptions) bool {
-	al, bl := slices.Concat(a.list, a.opq), slices.Concat(b.list, b.opq)
-	i := 0
-	for ; i < len(al) && i < len(bl); i++ {
-		n, m := al[i], bl[i]
-		if !compareSingleSchema(n, m, o.Opaque, true) {
-			return false
+type compareFrame struct {
+	a, b *Node
+	opts CompareOptions
+}
+
+// compareIndex is private to one sibling comparison. Payload roots have no
+// persistent children_ht: index their instance values without changing that
+// observable state. Keep sibling order and reuse the first match (never consume
+// it), including when equal instances are repeated.
+type compareIndex struct {
+	buckets map[string][]*Node
+	matched map[*Node]*Node
+	exact   map[string][]*Node
+	types   map[string]string
+	mixed   map[string]bool
+}
+
+// compareInstanceKey uses lengths, not delimiters that may occur in values. The
+// typed key also distinguishes union members with the same canonical spelling.
+func compareInstanceKey(n *Node, typed, members bool) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%d:%s", n.schema.Kind, n.schema.LogPath())
+	value := func(v types.Value) {
+		fmt.Fprintf(&b, "/%d:%s", len(v.Canonical()), v.Canonical())
+		if typed {
+			for {
+				fmt.Fprintf(&b, ":%p", v.Type())
+				if !members || v.Union() == nil {
+					break
+				}
+				v, _ = v.Union().Member()
+			}
 		}
-		if sortedSupported(n) && !isDupInstList(n.schema) {
-			if m = t.findFirst(b, n); m == nil {
-				return false
+	}
+	if n.schema.Kind == schema.LeafList {
+		value(n.value)
+	} else {
+		for _, k := range n.kids.list {
+			if !k.isKey() {
+				break
+			}
+			value(k.value)
+		}
+	}
+	return b.String()
+}
+
+func newCompareIndex(nodes []*Node) *compareIndex {
+	x := &compareIndex{buckets: map[string][]*Node{}, matched: map[*Node]*Node{},
+		exact: map[string][]*Node{}, types: map[string]string{}, mixed: map[string]bool{}}
+	for _, n := range nodes {
+		// The LHS decides whether lyd_compare_siblings_ looks up an instance.
+		// lyd_find_sibling_first then searches every RHS instance, including one
+		// whose schema is user-ordered in another context.
+		if n.schema == nil || n.schema.Kind != schema.LeafList &&
+			(n.schema.Kind != schema.List || n.schema.Keyless()) {
+			continue
+		}
+		// Canonical text and type can still hide distinct stored values (for
+		// example, dates with different timestamps). Keep every candidate.
+		typed := compareInstanceKey(n, true, true)
+		x.exact[typed] = append(x.exact[typed], n)
+		key := compareInstanceKey(n, false, false)
+		topTypes := compareInstanceKey(n, true, false)
+		if old, ok := x.types[key]; ok && old != topTypes {
+			x.mixed[key] = true
+		} else {
+			x.types[key] = topTypes
+		}
+		x.buckets[key] = append(x.buckets[key], n)
+	}
+	return x
+}
+
+func (x *compareIndex) first(t *Tree, s *siblings, current, target *Node) *Node {
+	if current.schema != nil && target.schema != nil &&
+		!compareSchemaEqual(current.schema.DataParent(), target.schema.DataParent(), true) {
+		return nil // keep lyd_find_sibling_first's initial schema-parent check
+	}
+	if n, ok := x.matched[target]; ok {
+		return n
+	}
+	canonical := compareInstanceKey(target, false, false)
+	if !x.mixed[canonical] && x.types[canonical] == compareInstanceKey(target, true, false) {
+		// One declared type per value position narrows the search to the
+		// selected union member, while typed equality resolves collisions.
+		key := compareInstanceKey(target, true, true)
+		for _, n := range x.exact[key] {
+			s.visit()
+			if compareSingle(t, n, target, false) {
+				x.matched[target] = n
+				return n
+			}
+		}
+		x.matched[target] = nil
+		return nil
+	}
+	for _, n := range x.buckets[canonical] {
+		s.visit()
+		if compareSingle(t, n, target, false) {
+			x.matched[target] = n
+			return n
+		}
+	}
+	x.matched[target] = nil
+	return nil
+}
+
+// compareNeedsLookup is lyd_compare_siblings_' LHS-only selection. Unlike
+// lyds_is_supported, it excludes state leaf-lists, which compare in sibling order.
+func compareNeedsLookup(n *Node) bool {
+	if n.schema == nil || n.schema.UserOrdered {
+		return false
+	}
+	s := n.schema
+	return s.Kind == schema.List && !s.Keyless() || s.Kind == schema.LeafList && s.Config
+}
+
+// compareSiblingFrames is lyd_compare_siblings_: pairwise schema comparison,
+// system-ordered instance lookup, then full recursive data comparison. The work
+// is queued instead of calling recursively across unbounded payload boundaries.
+func compareSiblingFrames(t *Tree, stack []compareFrame, a, b *siblings, o CompareOptions) ([]compareFrame, bool) {
+	if a.len() != b.len() {
+		return stack, false
+	}
+	al, bl := a.nodes(), b.nodes()
+	var index *compareIndex
+	for i, n := range al {
+		m := bl[i]
+		if !compareSingleSchema(n, m, o.Opaque, true) {
+			return stack, false
+		}
+		if compareNeedsLookup(n) {
+			if b.ht == nil {
+				if index == nil {
+					index = newCompareIndex(bl)
+				}
+				m = index.first(t, b, m, n)
+			} else {
+				m = t.findFirst(b, n)
+			}
+			if m == nil {
+				return stack, false
 			}
 		}
 		o.FullRecursion = true
-		if !compareSingleData(t, n, m, o) {
+		stack = append(stack, compareFrame{n, m, o})
+	}
+	return stack, true
+}
+
+func compareDataStack(t *Tree, stack []compareFrame) bool {
+	for len(stack) != 0 {
+		f := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		a, b, o := f.a, f.b, f.opts
+		if !o.Opaque && !hashEqual(a, b) {
 			return false
 		}
+		var ac, bc *siblings
+		switch {
+		case a.schema == nil || b.schema == nil:
+			if !o.Opaque && (a.schema == nil) != (b.schema == nil) {
+				return false
+			}
+			if a.schema == nil && b.schema == nil || a.isTerm() || b.isTerm() {
+				if !compareNodeValue(a, b) {
+					return false
+				}
+			}
+			if o.FullRecursion {
+				ac, bc = &a.kids, &b.kids
+			}
+		case a.isTerm():
+			if o.Defaults && a.flags&FlagDefault != b.flags&FlagDefault {
+				return false
+			}
+			if a.value.Canonical() != b.value.Canonical() {
+				return false
+			}
+		case isAny(a.schema):
+			// libyang checks the first operand's child and text independently.
+			// A mixed first operand differs from a tree-only second operand;
+			// a tree-only first operand compares only their children. D-0129:
+			// an empty first operand must not dereference absent text.
+			av, bv := a.any, b.any
+			if av == nil {
+				av = &anyValue{}
+			}
+			if bv == nil {
+				bv = &anyValue{}
+			}
+			ach, bch := av.children.len() != 0, bv.children.len() != 0
+			if !ach && av.text == nil && !bch && bv.text == nil {
+				break
+			}
+			if ach && !bch || av.text != nil && bv.text == nil {
+				return false
+			}
+			if ach {
+				ac, bc = &a.any.children, &b.any.children
+			} else if av.text == nil || bv.text == nil || *av.text != *bv.text {
+				return false
+			}
+		case a.schema.Kind == schema.List && !o.FullRecursion:
+			if a.schema.Keyless() {
+				continue
+			}
+			for i := range a.schema.Keys {
+				if i >= len(a.kids.list) || i >= len(b.kids.list) {
+					if len(a.kids.list) != len(b.kids.list) {
+						return false
+					}
+					break
+				}
+				x, y := a.kids.list[i], b.kids.list[i]
+				if !compareSingleSchema(x, y, o.Opaque, true) {
+					return false
+				}
+				stack = append(stack, compareFrame{x, y, o})
+			}
+		default:
+			if o.FullRecursion {
+				ac, bc = &a.kids, &b.kids
+			}
+		}
+		if ac != nil {
+			var ok bool
+			if stack, ok = compareSiblingFrames(t, stack, ac, bc, o); !ok {
+				return false
+			}
+		}
 	}
-	return i == len(al) && i == len(bl)
+	return true
 }

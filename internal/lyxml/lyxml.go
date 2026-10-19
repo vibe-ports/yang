@@ -460,13 +460,13 @@ func isNameChar(c rune) bool {
 		(c >= 0x300 && c <= 0x36f) || (c >= 0x203f && c <= 0x2040)
 }
 
-// getUTF8 is ly_getutf8 on in[p:] (NUL past the end): the character and its
+// decodeUTF8 is ly_getutf8 on in[p:] (NUL past the end): the character and its
 // length, 0 length on error. Its quirks are kept (four-byte sequences start at
 // U+1000, U+FFFE/U+FFFF and control characters other than TAB/LF/CR are errors).
-func (c *Ctx) getUTF8(p int) (rune, int) {
+func decodeUTF8[S ~string | ~[]byte](in S, p int) (rune, int) {
 	b := func(i int) rune {
-		if p+i < len(c.in) {
-			return rune(c.in[p+i])
+		if p+i < len(in) {
+			return rune(in[p+i])
 		}
 		return 0
 	}
@@ -508,6 +508,8 @@ func (c *Ctx) getUTF8(p int) (rune, int) {
 	}
 	return r, n
 }
+
+func (c *Ctx) getUTF8(p int) (rune, int) { return decodeUTF8(c.in, p) }
 
 // putUTF8 is ly_pututf8: the encoding of v, false where libyang refuses it
 // (YANG control characters, surrogates, noncharacters).

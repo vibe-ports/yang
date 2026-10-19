@@ -5,6 +5,7 @@
 package data
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/vibe-ports/yang/internal/schema"
@@ -106,9 +107,17 @@ func (x *xmlPrinter) meta(n *Node) error {
 	}
 	for _, m := range n.meta {
 		pc := &types.PrintCtx{}
+		// xml_print_meta emits an empty attribute for a NULL type-printer result, but the
+		// plugin may have logged an error item. Keep it for the completed print.
 		value, err := types.Print(m.value, types.FormatXML, pc)
 		if err != nil {
-			return err
+			var d *types.Diag
+			if !errors.As(err, &d) {
+				return err
+			}
+			if !d.NoItem {
+				x.printDiags = append(x.printDiags, d)
+			}
 		}
 		for _, um := range pc.Used {
 			x.printNS(um.Namespace, um.Prefix, true, prefixRequired)

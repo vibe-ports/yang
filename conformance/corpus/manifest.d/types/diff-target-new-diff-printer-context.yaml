@@ -1,0 +1,23 @@
+fixtures:
+  - id: types/diff-target-new-diff-printer-context
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # libyang keeps new_diff printer diagnostics in the new diff's context.
+    areas: [types, codecs, diff]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: print-failure}]
+      steps:
+        - do: diff
+          format: json
+          data_type: data
+          parse_only: true
+          data: '{"print-failure:c":{"xp":"/missing:node"}}'
+          target:
+            searchdirs: [schemas]
+            modules: [{name: print-failure}]
+          merge: true
+        - do: edit
+          set: {path: /print-failure:c/s, value: valid}
+    golden: golden/diff-target-new-diff-printer-context.json

@@ -1,0 +1,19 @@
+fixtures:
+  - id: any-core/equal-xml-scan-error
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    # lyd_new_opaq2 accepts these bytes, but lyd_compare_single maps the scanner failure to LY_ENOT.
+    rfc: [] # Opaque comparison is a libyang API contract.
+    areas: [operations, codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: ac}]
+      context_options: [no_yanglibrary]
+      steps:
+        - do: edit
+          insert_opaq: {name: n, module: "urn:tests:any-core", prefix: "", value: "\x01A", xml: true}
+        - do: compare
+          insert_opaq: {name: n, module: "urn:tests:any-core", prefix: "", value: "\x01A", xml: true}
+          options: []
+    golden: golden/equal-xml-scan-error.json

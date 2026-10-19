@@ -337,9 +337,15 @@ func TestInheritedItemsWithoutChain(t *testing.T) {
 }
 
 func TestValuePrefixes(t *testing.T) {
-	got := valuePrefixes("/a:x[b:k = current()/../c:y]/1d:z/é:w")
+	got, err := valuePrefixes("/a:x[b:k = current()/../c:y]/1d:z/é:w")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if strings.Join(got, ",") != "a,b,c,d,é" {
 		t.Errorf("%v", got)
+	}
+	if _, err := valuePrefixes("\x01a:b"); !errors.Is(err, eInval) {
+		t.Fatalf("scanner error = %v, want LY_EINVAL", err)
 	}
 }
 

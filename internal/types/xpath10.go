@@ -37,7 +37,11 @@ func storeXPath10(a *storeArgs) (Value, *Diag) {
 		return Value{}, &Diag{Code: CodeNone, Msg: msg}
 	}
 	// the expression and its prefix data, for printing in other formats (lyplg_type_print_xpath10)
-	k := &keysValue{e: e, f: a.f, pc: prefixDataNew(a)}
+	pc, d := prefixDataNew(a)
+	if d != nil {
+		return Value{}, d
+	}
+	k := &keysValue{e: e, f: a.f, pc: pc}
 	v := Value{typ: a.t, canon: a.lex, ext: k}
 	switch a.f {
 	case FormatCanon, FormatJSON:

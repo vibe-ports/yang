@@ -1,0 +1,9 @@
+fixtures:
+  - id: any-core/equal-nonempty-empty
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    # Exercise the safe nonempty-first direction only. D-0129 covers the reverse direction in Go unit tests because libyang crashes there.
+    rfc: [] # Core operation semantics are libyang API contracts.
+    areas: ["operations"]
+    request: {"op": "sequence", "searchdirs": ["schemas"], "modules": [{"name": "ac"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "parse", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"ac:xml\":\"\"}"}, {"do": "compare", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"ac:xml\":null}", "options": []}, {"do": "parse", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"ac:data\":{\"ac:c\":{\"value\":\"set\"}}}"}, {"do": "compare", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"ac:data\":{}}", "options": []}]}
+    golden: golden/equal-nonempty-empty.json

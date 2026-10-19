@@ -1,0 +1,48 @@
+{
+  "context_diagnostics": [],
+  "failed_step": 0,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ac-r6",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 3,
+    "name": "LY_EINVAL"
+  },
+  "steps": [
+    {
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 3,
+            "name": "LY_EINVAL"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Cannot insert, node \"item\" is not top-level.",
+          "phase": "edit",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "direct": {},
+      "do": "any_direct",
+      "rc": {
+        "err": 3,
+        "name": "LY_EINVAL"
+      },
+      "typed": []
+    }
+  ],
+  "verdict": "invalid"
+}

@@ -1,0 +1,9 @@
+fixtures:
+  - id: xml/typed-list-key-cdata-noncharacter-opaque
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.8.5", "RFC7950#9.4"]
+    areas: [types, codecs]
+    request: {op: data, searchdirs: [schemas], modules: [{name: prefix-scan}], format: xml, data_type: config, parse_only: true, unknown: opaque, data: "<item xmlns=\"urn:vibe-ports:prefix-scan\"><key><![CDATA[\uFFFE]]></key></item>"}
+    golden: golden/typed-list-key-cdata-noncharacter-opaque.json
+    assert: {verdict: valid}

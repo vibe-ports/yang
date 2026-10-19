@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: BSD-3-Clause
+module ac-r6 {
+  yang-version 1.1;
+  namespace "urn:tests:any-core-r6";
+  prefix ar6;
+
+  anydata data;
+  anyxml xml;
+  anydata nested;
+
+  container outer {
+    anydata data;
+    anyxml xml;
+    leaf payload-target { type string; }
+    leaf-list item { type string; ordered-by system; }
+  }
+
+  leaf-list item {
+    type string;
+    ordered-by system;
+  }
+
+  leaf target { type string; }
+  leaf ref {
+    type leafref { path "/ar6:target"; }
+  }
+  leaf payload-ref {
+    type leafref { path "/ar6:outer/ar6:payload-target"; }
+  }
+
+  list entry {
+    key "key";
+    leaf key { type string; }
+    leaf value { type string; }
+  }
+}

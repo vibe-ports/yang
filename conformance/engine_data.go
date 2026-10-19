@@ -100,7 +100,7 @@ func runData(r Request, s *yang.Schema, resp map[string]any, exec executionConte
 		return err
 	}
 	if requestOperation(&requestCheck{p: p}) {
-		// the envelope types: their request checks above run first, as in lyoracle
+		// op_data resolves print_subtree only after parse_one succeeds.
 		return fmt.Errorf("%w: notification envelope data_type %v (conformance engine capability gap, U-0110)", ErrUnsupported, p["data_type"])
 	}
 	// op_data line 1451 passes rpc to parse_one, but its datastore branch (1285-1287) ignores
@@ -145,18 +145,40 @@ func runData(r Request, s *yang.Schema, resp map[string]any, exec executionConte
 // printTree is lyoracle.c print_tree with siblings: the JSON and XML printouts. libyang prints
 // a NULL tree as "{}\n" in JSON and nothing in XML (a trim can free every node).
 func printTree(tree *data.Tree, wd data.WD) (map[string]any, error) {
+	out, _, err := printTreeLogged(tree, wd)
+	return out, err
+}
+
+// printTreeLogged returns diagnostics retained by libyang's context until its next collect().
+// print_tree ignores both printer return codes, but their logged items survive the call.
+func printTreeLogged(tree *data.Tree, wd data.WD) (map[string]any, []yang.Diagnostic, error) {
 	po := data.PrintOptions{WithDefaults: wd}
 	var j, x strings.Builder
 	if tree == nil || empty(tree) {
-		return map[string]any{"json": "{}\n", "xml": ""}, nil
+		return map[string]any{"json": "{}\n", "xml": ""}, nil, nil
 	}
+	var diags []yang.Diagnostic
 	if err := tree.PrintJSON(&j, po); err != nil {
-		return nil, unsupported(err)
+		if !printerDiagnostic(err) {
+			return nil, nil, unsupported(err)
+		}
+		diags = append(diags, diagsOf(err)...)
 	}
 	if err := tree.PrintXML(&x, po); err != nil {
-		return nil, unsupported(err)
+		if !printerDiagnostic(err) {
+			return nil, nil, unsupported(err)
+		}
+		diags = append(diags, diagsOf(err)...)
 	}
-	return map[string]any{"json": j.String(), "xml": x.String()}, nil
+	return map[string]any{"json": j.String(), "xml": x.String()}, diags, nil
+}
+
+// print_tree ignores both lyd_print_mem return codes and does not collect printer
+// diagnostics (lyoracle.c:1370-1387). A ValidationError can accompany completed
+// output, notably an unresolved prefix in XML metadata. Keep the bytes it wrote.
+func printerDiagnostic(err error) bool {
+	var ve *data.ValidationError
+	return errors.As(err, &ve)
 }
 
 // str is the string field k of p, def when absent.
@@ -363,6 +385,31 @@ func runOp(r Request, s *yang.Schema, resp map[string]any, typ data.OpType, oper
 	}
 	ctx := context.Background()
 	diags := list(resp["diagnostics"])
+	if p["rpc_parent"] != nil || typ == data.OpRPC && p["rpc"] != nil {
+		// parse_one parses rpc_src and resolves rpc_parent against that request
+		// before it attempts the unsupported RPC-with-request operation
+		// (lyoracle.c:1281, 1298-1310). The same request root is also the
+		// printed operation root for an RPC input.
+		rpcIn, _, readErr := requestInput(r, p, "rpc")
+		if readErr != nil {
+			return readErr
+		}
+		f, formatErr := formatOf(p)
+		if formatErr != nil {
+			return formatErr
+		}
+		req, _, perr, parseErr := parseRequest(context.Background(), rpcIn, f, s, unknown, true)
+		if parseErr != nil {
+			return parseErr
+		}
+		if perr == nil && req.Tree != nil {
+			if path, present, _ := strField(p, "rpc_parent"); present {
+				if n, findErr := req.Tree.Find(path); findErr != nil || n == nil {
+					return requestError("rpc_parent %s not found", path)
+				}
+			}
+		}
+	}
 	if p["rpc_parent"] != nil {
 		return fmt.Errorf("%w: rpc input into an existing request parent is not exported (ParseOpOptions.Request is for replies only, U-0106)",
 			ErrUnsupported)
@@ -644,17 +691,17 @@ func printRequestTree(tree *data.Tree, node *data.Node, p map[string]any, wd dat
 	}
 	var j, x strings.Builder
 	if node != nil {
-		if err := node.PrintJSON(printopts.With(&j, flags), po); err != nil {
+		if err := node.PrintJSON(printopts.With(&j, flags), po); err != nil && !printerDiagnostic(err) {
 			return nil, unsupported(err)
 		}
-		if err := node.PrintXML(printopts.With(&x, flags), po); err != nil {
+		if err := node.PrintXML(printopts.With(&x, flags), po); err != nil && !printerDiagnostic(err) {
 			return nil, unsupported(err)
 		}
 	} else {
-		if err := tree.PrintJSON(printopts.With(&j, flags), po); err != nil {
+		if err := tree.PrintJSON(printopts.With(&j, flags), po); err != nil && !printerDiagnostic(err) {
 			return nil, unsupported(err)
 		}
-		if err := tree.PrintXML(printopts.With(&x, flags), po); err != nil {
+		if err := tree.PrintXML(printopts.With(&x, flags), po); err != nil && !printerDiagnostic(err) {
 			return nil, unsupported(err)
 		}
 	}

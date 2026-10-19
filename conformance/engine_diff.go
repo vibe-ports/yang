@@ -98,7 +98,8 @@ func runDiff(r Request, s *yang.Schema, resp map[string]any, exec executionConte
 // the diff register, or with merge is merged into it (reported as new_diff). The diagnostics carry
 // their phase (parse, diff).
 func stepDiff(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, reg **data.Tree,
-	so map[string]any) ([]yang.Diagnostic, error) {
+	regOwner **yang.Schema, so map[string]any, collectPending func(string) []yang.Diagnostic,
+	logPrint func(*yang.Schema, []yang.Diagnostic)) ([]yang.Diagnostic, error) {
 	_, hasData, err := requestInput(r, st, "data")
 	if err != nil {
 		return nil, err
@@ -119,10 +120,11 @@ func stepDiff(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, reg
 	}
 	var second *data.Node
 	var secondTree *data.Tree
+	secondSchema := s
 	var diags []yang.Diagnostic
 	crossContext := false
 	if hasData {
-		secondSchema := s
+		// step_diff resolves data_node only after parse_one succeeds.
 		if p, ok := st["target"].(map[string]any); ok {
 			targetSchema, _, _, verdict, cerr := r.buildContext(Request{BaseDir: r.BaseDir, Params: p, buildContext: r.buildContext})
 			if cerr != nil {
@@ -133,6 +135,14 @@ func stepDiff(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, reg
 			}
 			secondSchema = targetSchema
 			crossContext = secondSchema != s
+		}
+		if secondSchema == s {
+			collectPhase := "parse"
+			typ := opTypes[str(st, "data_type", "data-operational")]
+			if (typ == data.OpRPC || typ == data.OpReply) && st["rpc"] != nil {
+				collectPhase = "rpc"
+			}
+			diags = append(diags, collectPending(collectPhase)...)
 		}
 		t, d, perr := parseOne(r, secondSchema, st, execStepDiff, "data", "parse", nil)
 		diags = append(diags, d...)
@@ -159,20 +169,49 @@ func stepDiff(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, reg
 		diff = data.DiffTree
 	}
 	res, err := diff(first, second, o)
+	// step_diff collects the retained context after diffing, including when
+	// the parsed second tree belonged to a separate target context.
+	diags = append(diags, collectPending("diff")...)
 	if err != nil {
 		return phased(diags, diagsOf(err), "diff"), err
 	}
+	// A diff node is built in the context of whichever non-NULL input supplied it.
+	// The target owns it when the retained tree is empty.
+	resOwner := s
+	if first == nil && second != nil {
+		resOwner = secondSchema
+	}
 	if b, _ := st["merge"].(bool); !b {
 		*reg = res
+		*regOwner = nil
+		if res != nil {
+			*regOwner = resOwner
+		}
 		return diags, nil
 	}
 	so["new_diff"] = nil
 	if res != nil {
-		if so["new_diff"], err = printTree(res, data.WDAll); err != nil {
+		var printed []yang.Diagnostic
+		if so["new_diff"], printed, err = printTreeLogged(res, data.WDAll); err != nil {
 			return nil, err
 		}
+		// step_diff prints new_diff before the merge's collect(ctx, ..., "diff").
+		// Its printer logs stay in the context of the new diff until collected.
+		if resOwner == s {
+			diags = phased(diags, printed, "diff")
+		} else {
+			logPrint(resOwner, printed)
+		}
 	}
-	err = mergeInto(s, reg, func(t *data.Tree) error { return t.MergeDiff(res, mo) })
+	mergeOwner := *regOwner
+	if *reg == nil {
+		mergeOwner = resOwner
+	}
+	err = mergeInto(mergeOwner, reg, func(t *data.Tree) error { return t.MergeDiff(res, mo) })
+	*regOwner = mergeOwner
+	if *reg == nil {
+		*regOwner = nil
+	}
 	return phased(diags, diagsOf(err), "diff"), err
 }
 
@@ -270,15 +309,17 @@ func findNode(t *data.Tree, path, label string) (*data.Node, error) {
 }
 
 // diffOut is the diff register of a diff step as lyoracle.c reports it: printed and dumped.
-func diffOut(reg *data.Tree, so map[string]any) error {
+func diffOut(reg *data.Tree, so map[string]any, logPrint func([]yang.Diagnostic)) error {
 	so["diff"], so["diff_typed"] = nil, []any{}
 	if reg == nil {
 		return nil
 	}
 	var err error
-	if so["diff"], err = printTree(reg, data.WDAll); err != nil {
+	var printed []yang.Diagnostic
+	if so["diff"], printed, err = printTreeLogged(reg, data.WDAll); err != nil {
 		return err
 	}
+	logPrint(printed)
 	so["diff_typed"] = typedJSON(reg)
 	return nil
 }

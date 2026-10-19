@@ -1,0 +1,133 @@
+{
+  "context_diagnostics": [],
+  "failed_step": 2,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "prefix-scan",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 3,
+    "name": "LY_EINVAL"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "edit",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/prefix-scan:c",
+          "schema": "/prefix-scan:c",
+          "value": null
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "edit",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/prefix-scan:c",
+          "schema": "/prefix-scan:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/prefix-scan:c/xp",
+          "schema": "/prefix-scan:c/xp",
+          "value": {
+            "canonical": "'a\u0001b'",
+            "type": "string",
+            "typedef": "xpath1.0",
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "print_xml",
+      "rc": {
+        "err": 3,
+        "name": "LY_EINVAL"
+      },
+      "tree": null,
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/prefix-scan:c",
+          "schema": "/prefix-scan:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/prefix-scan:c/xp",
+          "schema": "/prefix-scan:c/xp",
+          "value": {
+            "canonical": "'a\u0001b'",
+            "type": "string",
+            "typedef": "xpath1.0",
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "invalid"
+}

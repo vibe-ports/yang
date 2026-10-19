@@ -1,0 +1,19 @@
+fixtures:
+  - id: types/xpath10-meta-dump-unresolved-prefix
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # libyang print_tree ignores printer diagnostics and keeps output.
+    areas: [types, codecs, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: print-failure}]
+      steps:
+        - do: edit
+          insert_inner: {module: print-failure, name: c}
+        - do: edit
+          insert_term: {module: print-failure, name: s, parent: /print-failure:c, value: value}
+        - do: edit
+          new_meta: {node: /print-failure:c/s, name: print-failure:select, value: /missing:node}
+        - do: dump
+    golden: golden/xpath10-meta-dump-unresolved-prefix.json

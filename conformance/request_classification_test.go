@@ -27,7 +27,7 @@ func TestRequestClassification(t *testing.T) {
 		{name: "missing-diff", want: Response{"verdict": "valid", "diff": map[string]any{"json": "{}"}}, got: Response{"verdict": "valid"}, category: "A", class: "output"},
 		{name: "wrong-diagnostic", want: Response{"verdict": "invalid", "diagnostics": []any{map[string]any{"msg": "native"}}}, got: Response{"verdict": "invalid", "diagnostics": []any{map[string]any{"msg": "wrong"}}}, category: "A", class: "execution"},
 		{name: "envelope", want: valid, err: fmt.Errorf("%w: notification envelope data_type notif-netconf (U-0110)", ErrUnsupported), category: "B", class: "notification-netconf"},
-		{name: "gap-before-oracle-error", want: Response{"verdict": "request-error", "request_error": "missing data"}, err: fmt.Errorf("%w: notification envelope data_type notif-restconf (U-0110)", ErrUnsupported), category: "B", class: "notification-restconf"},
+		{name: "gap-before-oracle-error", want: Response{"verdict": "request-error", "request_error": "missing data"}, err: fmt.Errorf("%w: notification envelope data_type notif-restconf (U-0110)", ErrUnsupported), category: "A", class: "request-error"},
 		{name: "new-gap", want: valid, err: fmt.Errorf("%w: new capability (U-0110)", ErrUnsupported), category: "B", class: "unclassified"},
 		{name: "new-gap-existing-id", want: valid, err: fmt.Errorf("%w: new capability (U-0106)", ErrUnsupported), category: "B", class: "unclassified"},
 		{name: "concrete-error-is-not-gap", want: valid, err: fmt.Errorf("notification envelope data_type notif-netconf (U-0110)"), category: "A", class: "engine-error"},
@@ -42,10 +42,81 @@ func TestRequestClassification(t *testing.T) {
 	}
 }
 
+func TestUnsupportedRequestErrorOrdering(t *testing.T) {
+	netconf := fmt.Errorf("%w: notification envelope data_type notif-netconf (conformance engine capability gap, U-0110)", ErrUnsupported)
+	restconf := fmt.Errorf("%w: notification envelope data_type notif-restconf (conformance engine capability gap, U-0110)", ErrUnsupported)
+	rpc := fmt.Errorf("%w: an rpc request with data_type rpc (ParseOpOptions.Request is for replies only, deviations.md U-0106)", ErrUnsupported)
+	anyDirect := fmt.Errorf("%w: native pointer-level any-value calls have no public Go equivalent, U-0043", ErrUnsupported)
+	for _, tc := range []struct {
+		name, oracleError, category, class string
+		request                            map[string]any
+		err                                error
+	}{
+		{"netconf-subtree-lookup", `print_subtree "/pv2:c" not found`, "B", "notification-netconf", map[string]any{"op": "data", "data_type": "notif-netconf"}, netconf},
+		{"restconf-context-lookup", "context_path /pv2:c must select exactly one node", "B", "notification-restconf", map[string]any{"op": "xpath", "data_type": "notif-restconf"}, restconf},
+		{"netconf-data-node-lookup", "diff data_node /pv2:c not found", "B", "notification-netconf", map[string]any{"op": "sequence", "steps": []any{map[string]any{"do": "diff", "data_type": "notif-netconf"}}}, netconf},
+		{"restconf-module-lookup", "cur_module bogus not implemented", "B", "notification-restconf", map[string]any{"op": "xpath", "data_type": "notif-restconf"}, restconf},
+		{"netconf-namespace-shape", "namespaces must be a list", "B", "notification-netconf", map[string]any{"op": "xpath", "data_type": "notif-netconf"}, netconf},
+		{"restconf-namespace-entry", `field "prefix" must be a string`, "B", "notification-restconf", map[string]any{"op": "xpath", "data_type": "notif-restconf"}, restconf},
+		{"netconf-namespace-uri", `field "uri" must be a string`, "B", "notification-netconf", map[string]any{"op": "xpath", "data_type": "notif-netconf"}, netconf},
+		{"restconf-xpath-format", "unknown xpath_format bogus", "B", "notification-restconf", map[string]any{"op": "xpath", "data_type": "notif-restconf"}, restconf},
+		{"unknown-error-text", "unknown flag in ", "B", "notification-netconf", map[string]any{"op": "data", "data_type": "notif-netconf"}, netconf},
+		{"rpc-subtree-lookup", `print_subtree "/pv2:c" not found`, "B", "operation-parent", map[string]any{"op": "data", "data_type": "rpc", "rpc": inventoryRPC}, rpc},
+		{"rpc-parent-lookup", "rpc_parent /pv2:missing not found", "B", "operation-parent", map[string]any{"op": "data", "data_type": "rpc", "rpc": inventoryRPC}, rpc},
+		{"preparse-input", "missing data", "A", "request-error", map[string]any{"op": "data", "data_type": "notif-netconf"}, netconf},
+		{"preparse-subtree-type", `field "print_subtree" must be a string`, "A", "request-error", map[string]any{"op": "data", "data_type": "notif-netconf"}, netconf},
+		{"preparse-context-type", `field "context_path" must be a string`, "A", "request-error", map[string]any{"op": "xpath", "data_type": "notif-restconf"}, restconf},
+		{"preparse-xpath-type", `field "xpath_format" must be a string`, "A", "request-error", map[string]any{"op": "xpath", "data_type": "notif-restconf"}, restconf},
+		{"preparse-diff-selector-type", `field "data_node" must be a string`, "A", "request-error", map[string]any{"op": "sequence", "steps": []any{map[string]any{"do": "diff", "data_type": "notif-netconf"}}}, netconf},
+		{"preparse-parse-flag", `unknown flag in "parse_options"`, "A", "request-error", map[string]any{"op": "data", "data_type": "notif-netconf"}, netconf},
+		{"preparse-input-conflict", `both inline and _file given for "data"`, "A", "request-error", map[string]any{"op": "data", "data_type": "notif-netconf"}, netconf},
+		{"any-direct-missing-target", "equal_repeated_collisions needs target", "A", "request-error", map[string]any{"op": "sequence", "steps": []any{map[string]any{"do": "any_direct", "case": "equal_repeated_collisions"}}}, anyDirect},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			want := Response{"verdict": "request-error", "request_error": tc.oracleError}
+			category, class := inventoryCaseClassification(tc.request, want, nil, nil, tc.err, "")
+			if category != tc.category || class != tc.class {
+				t.Fatalf("%s/%s, want %s/%s", category, class, tc.category, tc.class)
+			}
+		})
+	}
+	if inventoryPreparseRequestError(`unknown flag in "diff_options"`) {
+		t.Fatal("diff_options is checked after both inputs parse")
+	}
+}
+
 func TestUnknownPrintOptionUnsupported(t *testing.T) {
 	_, _, err := requestPrintOptions(map[string]any{"print_options": []any{"bogus"}}, 0)
 	if got := inventoryGap(err); got != "unclassified" {
 		t.Fatalf("inventoryGap() = %q, want unclassified (error: %v)", got, err)
+	}
+}
+
+func TestAnyDirectMatrixGapClassification(t *testing.T) {
+	step := func(do string, fields map[string]any) map[string]any {
+		st := map[string]any{"do": do}
+		maps.Copy(st, fields)
+		return map[string]any{"op": "sequence", "steps": []any{st}}
+	}
+	for _, tc := range []struct {
+		name, reason, class string
+		request             map[string]any
+	}{
+		{"direct", "native pointer-level any-value calls have no public Go equivalent, U-0043", "any-direct", step("any_direct", nil)},
+		{"direct-mixed-merge", "native pointer-level any-value calls have no public Go equivalent, U-0043", "any-direct", step("any_direct", map[string]any{"case": "merge_mixed_into_tree"})},
+		{"opaque-source", "opaque source construction has no public Go equivalent, U-0107", "any-direct-opaque-source", step("any_direct", map[string]any{"case": "dup_siblings_into_empty_anydata"})},
+		{"compare", "compare insert_opaq (lyd_new_opaq / lyd_new_opaq2 are exported in M5 with the envelopes, U-0107)", "compare-insert-opaq", step("compare", map[string]any{"insert_opaq": map[string]any{"name": "n"}})},
+		{"wrong-step", "native pointer-level any-value calls have no public Go equivalent, U-0043", "unclassified", step("dup", nil)},
+		{"wrong-reason", "native pointer-level any-value calls have no public Go equivalent, U-0043 (changed)", "unclassified", step("any_direct", nil)},
+		{"compare-without-opaque", "compare insert_opaq (lyd_new_opaq / lyd_new_opaq2 are exported in M5 with the envelopes, U-0107)", "unclassified", step("compare", nil)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := fmt.Errorf("%w: %s", ErrUnsupported, tc.reason)
+			category, class := inventoryCaseClassification(tc.request, Response{"verdict": "valid"}, nil, nil, err, "")
+			if category != "B" || class != tc.class {
+				t.Fatalf("%s/%s, want B/%s", category, class, tc.class)
+			}
+		})
 	}
 }
 

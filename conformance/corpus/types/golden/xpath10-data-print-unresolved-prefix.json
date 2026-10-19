@@ -1,0 +1,59 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "print-failure",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"print-failure:c\": {\n    \"xp\": \"/missing:node\"\n  }\n}\n",
+    "xml": "<c xmlns=\"urn:vibe-ports:print-failure\">\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/print-failure:c",
+      "schema": "/print-failure:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/print-failure:c/xp",
+      "schema": "/print-failure:c/xp",
+      "value": {
+        "canonical": "/missing:node",
+        "type": "string",
+        "typedef": "xpath1.0",
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

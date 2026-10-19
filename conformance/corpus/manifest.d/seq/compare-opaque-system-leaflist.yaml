@@ -1,0 +1,15 @@
+fixtures:
+  - id: seq/compare-opaque-system-leaflist
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # libyang API: lyd_compare_single and lyd_find_sibling_first
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      context_options: [no_yanglibrary]
+      modules: [{name: pv2-fz}]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<c xmlns="urn:fz"><ll>1</ll></c>'}
+        - {do: compare, format: xml, data_type: data, unknown: opaque, parse_only: true, data: '<c xmlns="urn:fz"><ll>bad</ll></c>', first: "/pv2-fz:c", second: "/pv2-fz:c", options: [full_recursion, opaq]}
+    golden: golden/seq-compare-opaque-system-leaflist.json

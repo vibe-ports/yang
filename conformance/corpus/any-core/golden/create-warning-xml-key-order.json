@@ -1,0 +1,200 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 0,
+            "name": "LY_SUCCESS"
+          },
+          "data_path": null,
+          "level": "warning",
+          "line": 0,
+          "msg": "Invalid position of the key \"a\" in a list.",
+          "phase": "edit",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "do": "edit",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": {
+            "text": "{\n  \"a:l1\": [\n    {\n      \"a\": \"first\",\n      \"b\": \"second\"\n    }\n  ]\n}\n",
+            "value_type": "datatree"
+          },
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "anydata",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:any",
+          "schema": "/a:any",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:any/l1[a='first'][b='second']",
+          "schema": "/a:l1",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:any/l1[a='first'][b='second']/a",
+          "schema": "/a:l1/a",
+          "value": {
+            "canonical": "first",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:any/l1[a='first'][b='second']/b",
+          "schema": "/a:l1/b",
+          "value": {
+            "canonical": "second",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "dump",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "tree": {
+        "json": "{\n  \"a:any\": {\n    \"l1\": [\n      {\n        \"a\": \"first\",\n        \"b\": \"second\"\n      }\n    ]\n  }\n}\n",
+        "xml": "<any xmlns=\"urn:tests:a\">\n  <l1>\n    <a>first</a>\n    <b>second</b>\n  </l1>\n</any>\n"
+      },
+      "typed": [
+        {
+          "any": {
+            "text": "{\n  \"a:l1\": [\n    {\n      \"a\": \"first\",\n      \"b\": \"second\"\n    }\n  ]\n}\n",
+            "value_type": "datatree"
+          },
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "anydata",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:any",
+          "schema": "/a:any",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:any/l1[a='first'][b='second']",
+          "schema": "/a:l1",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:any/l1[a='first'][b='second']/a",
+          "schema": "/a:l1/a",
+          "value": {
+            "canonical": "first",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/a:any/l1[a='first'][b='second']/b",
+          "schema": "/a:l1/b",
+          "value": {
+            "canonical": "second",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

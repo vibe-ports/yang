@@ -1,0 +1,9 @@
+fixtures:
+  - id: any-core/equal-text-hints
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    # Text values compare textually; numeric, string, and boolean representation hints do not participate.
+    rfc: [] # Core operation semantics are libyang API contracts.
+    areas: ["operations"]
+    request: {"op": "sequence", "searchdirs": ["schemas"], "modules": [{"name": "ac"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "parse", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"ac:xml\":55}"}, {"do": "compare", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"ac:xml\":\"55\"}", "options": []}, {"do": "compare", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"ac:xml\":\"56\"}", "options": []}, {"do": "parse", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"ac:xml\":true}"}, {"do": "compare", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"ac:xml\":\"true\"}", "options": []}]}
+    golden: golden/equal-text-hints.json

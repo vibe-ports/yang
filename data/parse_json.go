@@ -203,6 +203,7 @@ func (p *jsonParser) getSnode(isAttr bool, prefix, name string, parent *Node) (*
 	}
 	switch {
 	case prefix != "":
+	case lc.opts.anyContent:
 	case parent != nil:
 		mod = nil
 		if parent.schema != nil {

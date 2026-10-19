@@ -1,0 +1,9 @@
+fixtures:
+  - id: types/xpath10-xml-prefix-scan-diagnostic
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC6991#3"]
+    areas: [types, codecs]
+    request: {op: data, searchdirs: [schemas], modules: [{name: prefix-scan}], format: xml, data_type: config, data: "<c xmlns=\"urn:vibe-ports:prefix-scan\"><xp><![CDATA['a\u0001b']]></xp></c>"}
+    golden: golden/xpath10-xml-prefix-scan-diagnostic.json
+    assert: {verdict: invalid, rc: LY_EINVAL, diagnostics: [{vecode_name: LYVE_OTHER, schema_path: /prefix-scan:c/xp}]}

@@ -698,7 +698,11 @@ func (x xpathNS) CurModule() (xpath.Ident, bool) {
 
 // xpathCompile is lyxp_expr_parse with its error logged at the current path.
 func (w *nodeCtx) xpathCompile(src string, ns schema.NSCtx) (*xpath.Expr, error) {
-	e, err := xpath.Compile(src, xpathNS{ns, w.cur.Name, valuePrefixes(src), w.cur.Revision})
+	used, err := valuePrefixes(src)
+	if err != nil {
+		return nil, err
+	}
+	e, err := xpath.Compile(src, xpathNS{ns, w.cur.Name, used, w.cur.Revision})
 	if err != nil {
 		var xe *xpath.Error
 		if !errors.As(err, &xe) {

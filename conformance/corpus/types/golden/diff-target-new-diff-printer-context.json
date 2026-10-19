@@ -1,0 +1,123 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "print-failure",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"print-failure:c\": {\n    \"@\": {\n      \"yang:operation\": \"create\"\n    },\n    \"xp\": \"/missing:node\"\n  }\n}\n",
+        "xml": "<c xmlns=\"urn:vibe-ports:print-failure\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            }
+          ],
+          "opaque": null,
+          "path": "/print-failure:c",
+          "schema": "/print-failure:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/print-failure:c/xp",
+          "schema": "/print-failure:c/xp",
+          "value": {
+            "canonical": "/missing:node",
+            "type": "string",
+            "typedef": "xpath1.0",
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff",
+      "new_diff": {
+        "json": "{\n  \"print-failure:c\": {\n    \"@\": {\n      \"yang:operation\": \"create\"\n    },\n    \"xp\": \"/missing:node\"\n  }\n}\n",
+        "xml": "<c xmlns=\"urn:vibe-ports:print-failure\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">\n"
+      },
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": []
+    },
+    {
+      "diagnostics": [],
+      "do": "edit",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/print-failure:c",
+          "schema": "/print-failure:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/print-failure:c/s",
+          "schema": "/print-failure:c/s",
+          "value": {
+            "canonical": "valid",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

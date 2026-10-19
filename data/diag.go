@@ -149,6 +149,15 @@ func (l *logger) item(lnode *Node, sn *schema.Node, warning bool, err string, co
 // stored under lnode, after the errors the plugin left in the context log (located at sn).
 func (l *logger) storeErr(lnode *Node, sn *schema.Node, d *types.Diag) error {
 	l.logged(sn, d.Logged)
+	if d.NoItem {
+		// lyd_value_store logs LOGVAL at the schema location, independently of
+		// the plugin's return code (tree_data_common.c:514-530).
+		_ = l.item(nil, sn, false, "LY_EVALID", ly.Other, "", "Storing value failed.")
+		if d.RC() != "LY_EVALID" {
+			return rcError(d.RC())
+		}
+		return errLogged
+	}
 	return l.item(lnode, sn, false, d.RC(), codeOf(d.Code), d.AppTag, d.Msg)
 }
 
@@ -165,6 +174,10 @@ func (l *logger) logged(sn *schema.Node, e *types.Diag) {
 		at = e.At
 	}
 	l.logged(at, e.Logged)
+	if e.NoItem {
+		_ = l.item(nil, at, false, "LY_EVALID", ly.Other, "", "Storing value failed.")
+		return
+	}
 	_ = l.item(nil, at, false, e.RC(), codeOf(e.Code), e.AppTag, e.Msg)
 }
 

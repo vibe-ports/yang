@@ -1,0 +1,18 @@
+fixtures:
+  - id: types/xpath10-json-to-xml-scan-error
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC6991#3"]
+    areas: [types, codecs, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: prefix-scan}]
+      steps:
+        - do: edit
+          insert_inner: {module: prefix-scan, name: c}
+        - do: edit
+          insert_term: {module: prefix-scan, name: xp, parent: /prefix-scan:c, value: "'a\u0001b'"}
+        - do: print_xml
+    golden: golden/xpath10-json-to-xml-scan-error.json
+    assert: {verdict: invalid, rc: LY_EINVAL}

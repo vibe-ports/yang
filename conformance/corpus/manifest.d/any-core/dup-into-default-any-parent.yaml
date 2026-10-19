@@ -1,0 +1,15 @@
+fixtures:
+  - id: any-core/dup-into-default-any-parent
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # lyd_dup_r insertion into a default-marked any parent calls lyd_np_cont_dflt_del on it and its ancestors.
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: ac-r6}]
+      steps:
+        - do: any_direct
+          case: dup_into_default_any_parent
+    golden: golden/dup-into-default-any-parent.json
+    assert: {verdict: valid}

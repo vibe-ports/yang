@@ -1,0 +1,280 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ac",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "opaque",
+          "meta": [],
+          "opaque": {
+            "format": "xml",
+            "module": null,
+            "name": "item",
+            "namespace": "urn:tests:opaque",
+            "prefix": null
+          },
+          "path": "/item",
+          "schema": null,
+          "value": {
+            "canonical": "\u00d7p:v",
+            "hints": [
+              "string"
+            ],
+            "type": null,
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "compare": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "diagnostics": [],
+      "do": "compare",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "opaque",
+          "meta": [],
+          "opaque": {
+            "format": "xml",
+            "module": null,
+            "name": "item",
+            "namespace": "urn:tests:opaque",
+            "prefix": null
+          },
+          "path": "/item",
+          "schema": null,
+          "value": {
+            "canonical": "\u00d7p:v",
+            "hints": [
+              "string"
+            ],
+            "type": null,
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "compare": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "diagnostics": [],
+      "do": "compare",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "opaque",
+          "meta": [],
+          "opaque": {
+            "format": "xml",
+            "module": null,
+            "name": "item",
+            "namespace": "urn:tests:opaque",
+            "prefix": null
+          },
+          "path": "/item",
+          "schema": null,
+          "value": {
+            "canonical": "\u00d7p:v",
+            "hints": [
+              "string"
+            ],
+            "type": null,
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "dump",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "tree": {
+        "json": "{\n  \"item\": \"\u00d7p:v\"\n}\n",
+        "xml": "<item xmlns=\"urn:tests:opaque\" xmlns:p=\"urn:tests:any-core\">\u00d7p:v</item>\n"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "opaque",
+          "meta": [],
+          "opaque": {
+            "format": "xml",
+            "module": null,
+            "name": "item",
+            "namespace": "urn:tests:opaque",
+            "prefix": null
+          },
+          "path": "/item",
+          "schema": null,
+          "value": {
+            "canonical": "\u00d7p:v",
+            "hints": [
+              "string"
+            ],
+            "type": null,
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "opaque",
+          "meta": [
+            {
+              "module": null,
+              "name": "note",
+              "value": "\u00d7p:v"
+            }
+          ],
+          "opaque": {
+            "format": "xml",
+            "module": null,
+            "name": "item",
+            "namespace": "urn:tests:opaque",
+            "prefix": null
+          },
+          "path": "/item",
+          "schema": null,
+          "value": {
+            "canonical": "",
+            "hints": [
+              "string",
+              "empty"
+            ],
+            "type": null,
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "dump",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "tree": {
+        "json": "{\n  \"item\": [null],\n  \"@item\": {\n    \"note\": \"\u00d7p:v\"\n  }\n}\n",
+        "xml": "<item xmlns=\"urn:tests:opaque\" xmlns:p=\"urn:tests:any-core\" note=\"\u00d7p:v\"/>\n"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "opaque",
+          "meta": [
+            {
+              "module": null,
+              "name": "note",
+              "value": "\u00d7p:v"
+            }
+          ],
+          "opaque": {
+            "format": "xml",
+            "module": null,
+            "name": "item",
+            "namespace": "urn:tests:opaque",
+            "prefix": null
+          },
+          "path": "/item",
+          "schema": null,
+          "value": {
+            "canonical": "",
+            "hints": [
+              "string",
+              "empty"
+            ],
+            "type": null,
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

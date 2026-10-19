@@ -1,0 +1,16 @@
+fixtures:
+  - id: any-core/create-xml-scan-error-anydata
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    # CDATA bypasses XML character decoding, but lydxml_subtree_opaq still scans value prefixes.
+    rfc: [] # Constructor return codes are a libyang API contract.
+    areas: [operations, codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: ac}]
+      context_options: [no_yanglibrary]
+      steps:
+        - do: edit
+          set: {path: /ac:data, value: "<n><![CDATA[\x01]]></n>"}
+    golden: golden/create-xml-scan-error-anydata.json

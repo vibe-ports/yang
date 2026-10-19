@@ -7,6 +7,7 @@
 package data
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"slices"
@@ -86,7 +87,8 @@ func (n *Node) Remove() error {
 // Merge is lyd_merge_siblings without options: the top-level subtrees of src are merged into t.
 // Nodes missing in t are copied with their flags and metadata and marked New; an existing leaf
 // takes src's value unless src's leaf is a default node; src is not changed. A nil src merges
-// nothing.
+// nothing. Unequal anydata/anyxml payloads replace the whole destination payload,
+// copying the source flags plus New; equal payloads leave the destination unchanged.
 func (t *Tree) Merge(src *Tree) error {
 	lg := &logger{set: t.set}
 	if src == nil {
@@ -95,9 +97,12 @@ func (t *Tree) Merge(src *Tree) error {
 	if src.set != t.set {
 		return lg.done(lg.logErr("LY_EINVAL", "Different contexts mixed in a \"lyd_merge\" function call."))
 	}
-	lv := &mergeLevel{cache: &dupCache{}}
+	lv := &mergeLevel{cache: &dupCache{}, work: newAnyWork(context.Background(), Budget{})}
 	for _, n := range src.top.nodes() {
-		t.mergeSibling(lv, n)
+		if err := t.mergeSibling(lv, n); err != nil {
+			t.flushMerge(lv)
+			return lg.done(err)
+		}
 	}
 	t.flushMerge(lv)
 	return nil
@@ -342,7 +347,11 @@ func (t *Tree) newPath(lg *logger, path, value string, o NewPathOptions) (*Node,
 			}
 			node, err = t.createTerm(lg, last, seg.Node, value)
 		default: // rpc, action, notification, anydata: operations are M4, anydata M5
-			err = fmt.Errorf("data: creating %s %q is not supported: %w", nodetypeStr(seg.Node.Kind), seg.Node.Name, errors.ErrUnsupported)
+			limit := ""
+			if seg.Node.Kind == schema.AnyData || seg.Node.Kind == schema.AnyXML {
+				limit = " (U-0043)"
+			}
+			err = fmt.Errorf("data: creating %s %q is not supported%s: %w", nodetypeStr(seg.Node.Kind), seg.Node.Name, limit, errors.ErrUnsupported)
 		}
 		if err != nil {
 			if created {
@@ -627,6 +636,7 @@ func (t *Tree) dupInstNext(inst *Node, c *dupCache) *Node {
 // system-ordered run waiting to be spliced in (src runs are sorted, so linking them one by one
 // would shift the destination run once per instance).
 type mergeLevel struct {
+	work   *anyWork
 	parent *Node
 	cache  *dupCache
 	pend   []*Node // ascending, strictly: none matches another
@@ -635,7 +645,10 @@ type mergeLevel struct {
 
 // mergeSibling is lyd_merge_sibling_r without options: src merged into the children of lv.parent
 // (nil: the top level of t).
-func (t *Tree) mergeSibling(lv *mergeLevel, src *Node) {
+func (t *Tree) mergeSibling(lv *mergeLevel, src *Node) error {
+	if lv.work == nil {
+		lv.work = newAnyWork(context.Background(), Budget{})
+	}
 	if len(lv.pend) > 0 {
 		last := lv.pend[len(lv.pend)-1]
 		c := 1
@@ -650,8 +663,7 @@ func (t *Tree) mergeSibling(lv *mergeLevel, src *Node) {
 			// a source with duplicate instances (parsed only): the equal one matches the pending
 			// copy, the first instance of its value (none was in the destination), as it would
 			// once linked; the batch goes on
-			t.mergeMatch(last, src)
-			return
+			return t.mergeMatch(last, src, lv.work)
 		case c >= 0:
 			t.flushMerge(lv)
 		}
@@ -670,42 +682,62 @@ func (t *Tree) mergeSibling(lv *mergeLevel, src *Node) {
 	firstInst := match == nil
 	match = t.dupInstNext(match, cache)
 	if match == nil {
-		d := t.dup(src)
+		d, err := t.dupWork(src, nil, false, insertDefault, dupRecursive|dupWithFlags, lv.work)
+		if err != nil {
+			return err
+		}
 		for e := range d.All() {
 			e.flags |= FlagNew // required for validation
 		}
 		if sortedSupported(d) && sib.rbTree[d.schema] && !sib.unsorted[d.schema] {
 			// the run is sorted: lyd_insert_node puts d after its equal values, as splice does
 			lv.pend, lv.first = append(lv.pend, d), append(lv.first, firstInst)
-			return
+			return nil
 		}
 		t.insert(parent, d, insertDefault)
 		t.mergeAdded(cache, d, firstInst)
-		return
+		return nil
 	}
-	t.mergeMatch(match, src)
+	return t.mergeMatch(match, src, lv.work)
 }
 
 // mergeMatch is lyd_merge_sibling_r for src matched by match: a leaf takes src's value, children
 // are merged recursively.
-func (t *Tree) mergeMatch(match, src *Node) {
+func (t *Tree) mergeMatch(match, src *Node, w *anyWork) error {
 	switch {
 	case match.schema == nil:
 		if !compareSingle(t, src, match, false) {
 			o := *src.opaq
 			match.opaq.Value, match.opaq.Hints = o.Value, o.Hints
-			match.opaq.Format, match.opaq.Prefixes = o.Format, o.Prefixes
+			match.opaq.Format, match.opaq.Prefixes = o.Format, dupPrefixes(o.Prefixes, t.set)
+		}
+	case isAny(match.schema):
+		if !compareSingle(t, src, match, false) {
+			var child *Node
+			var text *string
+			var hints types.Hints
+			if src.any != nil {
+				child, text, hints = src.any.children.first(), src.any.text, src.any.hints
+			}
+			if err := match.copyAnyValue(w, child, text, hints); err != nil {
+				return err
+			}
+			match.flags = src.flags | FlagNew
 		}
 	case match.schema.Kind == schema.Leaf && src.flags&FlagDefault == 0:
 		t.changeTermVal(match, src.value, false)
 	}
-	child := &mergeLevel{parent: match, cache: &dupCache{}}
+	child := &mergeLevel{parent: match, cache: &dupCache{}, work: w}
 	for _, c := range src.kids.nodes() {
 		if !c.isKey() { // lyd_child_no_keys
-			t.mergeSibling(child, c)
+			if err := t.mergeSibling(child, c); err != nil {
+				t.flushMerge(child)
+				return err
+			}
 		}
 	}
 	t.flushMerge(child)
+	return nil
 }
 
 // mergeAdded records the new instance d in the level's duplicate cache.
@@ -760,11 +792,6 @@ func opaqNext(s *siblings, name string) *Node {
 
 // dup is lyd_dup_single with LYD_DUP_RECURSIVE | LYD_DUP_WITH_FLAGS: an unlinked copy of n and
 // its subtree with the flags and metadata; children keep their order (LYD_INSERT_NODE_LAST).
-func (t *Tree) dup(n *Node) *Node {
-	d, err := t.dupR(n, nil, false, insertDefault, dupRecursive|dupWithFlags)
-	if err != nil {
-		// internal invariant: dupR fails only when it looks nodes up in another context
-		panic("data: duplicate in the same context: " + err.Error())
-	}
-	return d
+func (t *Tree) dup(n *Node) (*Node, error) {
+	return t.dupR(n, nil, false, insertDefault, dupRecursive|dupWithFlags)
 }

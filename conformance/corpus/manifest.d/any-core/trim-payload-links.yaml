@@ -1,0 +1,18 @@
+fixtures:
+  - id: any-core/trim-payload-links
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # Payload ownership and leafref-record cleanup are libyang API contracts.
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: ac-r6}]
+      steps:
+        - do: any_direct
+          case: trim_payload_links
+          target: {searchdirs: [schemas], modules: [{name: ac-r6}], context_options: [no_yanglibrary, leafref_linking]}
+    golden: golden/trim-payload-links.json
+    # The oracle requires one live external link immediately before trim; the
+    # golden records links_before_trim: 1 and links_after: 0.
+    assert: {verdict: valid}

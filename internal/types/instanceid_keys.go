@@ -9,6 +9,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/vibe-ports/yang/internal/lyxml"
 	"github.com/vibe-ports/yang/internal/lyxp"
 	"github.com/vibe-ports/yang/internal/schema"
 )
@@ -37,22 +38,30 @@ func (p prefixSnap) Resolve(prefix string) *schema.Module { return p[prefix] }
 // later. For the schema and XML formats the modules of the prefixes the value uses are copied out
 // of a.pc (the parser's namespace context does not outlive the value); the other formats name
 // modules and keep a.pc.
-func prefixDataNew(a *storeArgs) PrefixCtx {
+func prefixDataNew(a *storeArgs) (PrefixCtx, *Diag) {
 	switch a.f {
 	case FormatSchema, FormatSchemaResolved, FormatXML:
 	default:
-		return a.pc
+		return a.pc, nil
 	}
 	snap := prefixSnap{}
-	if a.pc == nil {
-		return snap
+	if a.pc != nil {
+		// XML's default namespace and schema text's local module are also
+		// needed by union members with an unprefixed identityref value.
+		snap[""] = a.pc.Resolve("")
 	}
 	for i := 0; ; {
-		n, isPrefix, next := valuePrefixNext(a.lex, i)
+		n, isPrefix, next, ok := lyxml.ValuePrefixNext(a.lex, i)
+		if !ok {
+			// lyplg_type_prefix_data_new propagates ly_store_prefix_data's
+			// LY_EINVAL without an error item. lyd_value_store then emits this
+			// generic LYVE_OTHER item (tree_data_common.c:514-526).
+			return nil, &Diag{Code: CodeOther, Msg: "Storing value failed.", Err: "LY_EINVAL", NoItem: true}
+		}
 		if n == 0 {
 			break
 		}
-		if isPrefix {
+		if isPrefix && a.pc != nil {
 			p := a.lex[i : i+n]
 			if m := a.pc.Resolve(p); m != nil {
 				snap[p] = m
@@ -63,7 +72,7 @@ func prefixDataNew(a *storeArgs) PrefixCtx {
 		}
 		i = next
 	}
-	return snap
+	return snap, nil
 }
 
 // storeInstanceIDKeys ports lyplg_type_store_instanceid_keys.
@@ -87,7 +96,11 @@ func storeInstanceIDKeys(a *storeArgs) (Value, *Diag) {
 	if msg != "" {
 		return Value{}, errf("%s", msg)
 	}
-	k := &keysValue{e: e, f: a.f, pc: prefixDataNew(a)}
+	pc, d := prefixDataNew(a)
+	if d != nil {
+		return Value{}, d
+	}
+	k := &keysValue{e: e, f: a.f, pc: pc}
 	v := Value{typ: a.t, ext: k, canon: a.lex}
 	switch a.f {
 	case FormatSchema, FormatSchemaResolved, FormatXML:
@@ -132,7 +145,10 @@ func printXPathToken(tok string, isNameTest bool, ctxMod **schema.Module, resolv
 	var b strings.Builder
 	hasPrefix := false
 	for i := 0; ; {
-		n, isPrefix, next := valuePrefixNext(tok, i)
+		n, isPrefix, next, ok := lyxml.ValuePrefixNext(tok, i)
+		if !ok {
+			return "", &Diag{Err: "LY_EINVAL", NoItem: true}
+		}
 		if n == 0 {
 			break
 		}
@@ -170,67 +186,4 @@ func printXPathToken(tok string, isNameTest bool, ctxMod **schema.Module, resolv
 		i = next
 	}
 	return b.String(), nil
-}
-
-// valuePrefixNext ports ly_value_prefix_next on s[begin:]: the length of the next substring, whether
-// it is a prefix (an XML QName followed by ':'), and the index where the following substring
-// starts (-1 at the end). Length 0 ends the iteration (also for invalid UTF-8, which libyang
-// reports as an error).
-func valuePrefixNext(s string, begin int) (length int, isPrefix bool, next int) {
-	next = -1
-	if begin >= len(s) {
-		return 0, false, next
-	}
-	stop, prefix, found := begin, -1, false
-	var c rune
-	var bytesRead int
-	read := func() bool {
-		r, n := utf8.DecodeRuneInString(s[stop:])
-		if r == utf8.RuneError && n <= 1 {
-			return false
-		}
-		c, bytesRead = r, n
-		stop += n
-		return true
-	}
-	for {
-		// look for the beginning of the YANG value
-		for {
-			if !read() {
-				return 0, false, -1
-			}
-			if lyxp.IsQNameStart(c) || stop >= len(s) {
-				break
-			}
-		}
-		if stop >= len(s) {
-			break
-		}
-		// maybe the prefix was found
-		prefix = stop - bytesRead
-		// look for the end of the prefix
-		for {
-			if !read() {
-				return 0, false, -1
-			}
-			if !lyxp.IsQNameChar(c) || stop >= len(s) {
-				break
-			}
-		}
-		found = c == ':'
-		// if it wasn't the prefix, keep looking
-		if stop >= len(s) || found {
-			break
-		}
-	}
-	switch {
-	case begin == prefix && found:
-		if stop < len(s) {
-			next = stop
-		}
-		return (stop - bytesRead) - begin, true, next
-	case begin != prefix && found:
-		return prefix - begin, false, prefix
-	}
-	return stop - begin, false, next
 }

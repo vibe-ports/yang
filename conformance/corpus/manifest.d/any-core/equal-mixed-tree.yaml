@@ -1,0 +1,30 @@
+fixtures:
+  - id: any-core/equal-mixed-tree
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # lyd_compare_single_data checks child and text presence independently (tree_data.c:1778).
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: ac-r6}]
+      context_options: [no_yanglibrary]
+      steps:
+        - do: parse
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<xml xmlns="urn:tests:any-core-r6">plain text</xml><target xmlns="urn:tests:any-core-r6">value</target>'
+        - do: dup
+          node: /ac-r6:target
+          parent: /ac-r6:xml
+          options: []
+        - do: compare
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<xml xmlns="urn:tests:any-core-r6"><target>value</target></xml>'
+          first: /ac-r6:xml
+          second: /ac-r6:xml
+          options: []
+    golden: golden/equal-mixed-tree.json

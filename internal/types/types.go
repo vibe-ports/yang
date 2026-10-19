@@ -126,15 +126,15 @@ type Diag struct {
 	Code   string
 	Msg    string
 	AppTag string
-	Err    string // the LY_ERR of the plugin's error item when not LY_EVALID ("" = LY_EVALID)
+	Err    string // the plugin return code; with an item, also its LY_ERR ("" = LY_EVALID)
 	// Logged is an error the plugin left in the context log before its error item (LOGVAL
 	// located at the value's schema node, no data path): node-instance-identifier does not spend
 	// the path parser's or compiler's error as instance-identifier does.
 	Logged *Diag
 	// At is the schema node a Logged error is located at (nil: the value's schema node).
 	At *schema.Node
-	// NoItem: the plugin failed without an error item of its own (err NULL); Msg is what
-	// lyd_value_store logs then ("Storing value failed."), and a union lists no line for the
+	// NoItem: the plugin failed without an error item of its own (err NULL); the caller
+	// logs a separate generic LY_EVALID/LYVE_OTHER item, and a union lists no line for the
 	// member (union_find_type: "if (!errs[u]) continue;", src/plugins_types/union.c:369)
 	NoItem bool
 }

@@ -199,23 +199,55 @@ func printData(w io.Writer, set *schema.Set, o PrintOptions, sibs []*Node, from 
 	}
 	p := &printer{set: set, opts: o, flags: flags, siblings: siblings}
 	if err := f(p, sibs, from); err != nil {
+		var d *types.Diag
+		if errors.As(err, &d) {
+			// lyd_print_mem leaves bytes produced before a type-printer failure.
+			if _, writeErr := w.Write(p.buf.Bytes()); writeErr != nil {
+				return writeErr
+			}
+			// A NULL type print callback becomes LY_EINVAL (printer_xml.c:367).
+			ve := &ValidationError{rc: "LY_EINVAL"}
+			lg := &logger{set: set}
+			for _, prior := range p.printDiags {
+				lg.logged(nil, prior)
+			}
+			if !d.NoItem {
+				// A plugin may log its own item before returning NULL
+				// (lyplg_type_print_xpath10). Keep that item even though the
+				// XML printer itself always returns LY_EINVAL for NULL.
+				lg.logged(nil, d)
+			}
+			ve.Diags = lg.diags
+			return ve
+		}
 		return err
 	}
 	if o.dflt.err != nil {
 		return o.dflt.err // nothing written: the output would be wrong
 	}
 	_, err := w.Write(p.buf.Bytes())
-	return err
+	if err != nil {
+		return err
+	}
+	if len(p.printDiags) != 0 {
+		lg := &logger{set: set}
+		for _, d := range p.printDiags {
+			lg.logged(nil, d)
+		}
+		return &ValidationError{rc: lg.diags[0].Err, Diags: lg.diags}
+	}
+	return nil
 }
 
 // printer is the state the JSON and XML printers share (jsonpr_ctx, xmlpr_ctx).
 type printer struct {
-	set      *schema.Set
-	opts     PrintOptions
-	flags    printopts.Flags
-	siblings bool // LYD_PRINT_SIBLINGS: lyd_print_all, else lyd_print_tree
-	buf      bytes.Buffer
-	level    int // indentation level
+	set        *schema.Set
+	opts       PrintOptions
+	flags      printopts.Flags
+	siblings   bool          // LYD_PRINT_SIBLINGS: lyd_print_all, else lyd_print_tree
+	printDiags []*types.Diag // xml_print_meta may log without stopping the printer
+	buf        bytes.Buffer
+	level      int // indentation level
 }
 
 func (p *printer) shouldPrint(n *Node) bool { return p.opts.shouldPrint(n, p.flags) }

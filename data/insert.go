@@ -811,6 +811,9 @@ func (t *Tree) childrenOf(parent *Node) *siblings {
 	if parent == nil {
 		return &t.top
 	}
+	if parent.any != nil {
+		return &parent.any.children
+	}
 	return &parent.kids
 }
 
@@ -1086,7 +1089,7 @@ func freeTree(n *Node) error {
 		return &opError{"LY_EINVAL", fmt.Sprintf("Cannot free a list key \"%s\", free the list instance instead.", n.Name())}
 	}
 	unlink(n)
-	for d := range n.All() {
+	for d := range n.allAny() {
 		freeLinks(d)
 	}
 	return nil

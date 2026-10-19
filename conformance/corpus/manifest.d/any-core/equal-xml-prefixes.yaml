@@ -1,0 +1,38 @@
+fixtures:
+  - id: any-core/equal-xml-prefixes
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    # lyd_compare_single_value delegates opaque XML values to lyxml_value_compare.
+    # Known-module prefixes compare by module identity; unknown-module prefixes
+    # remain unequal even when both namespace declarations name the same URI.
+    rfc: [] # Core comparison semantics are libyang API contracts.
+    areas: [operations, codecs]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: ac}]
+      context_options: [no_yanglibrary]
+      steps:
+        - do: parse
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<data xmlns="urn:tests:any-core"><item xmlns="urn:tests:opaque" xmlns:p="urn:tests:any-core">p:c</item></data>'
+        - do: compare
+          format: xml
+          data_type: data
+          parse_only: true
+          options: []
+          data: '<data xmlns="urn:tests:any-core"><item xmlns="urn:tests:opaque" xmlns:q="urn:tests:any-core">q:c</item></data>'
+        - do: parse
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<data xmlns="urn:tests:any-core"><item xmlns="urn:tests:opaque" xmlns:p="urn:tests:unloaded">p:c</item></data>'
+        - do: compare
+          format: xml
+          data_type: data
+          parse_only: true
+          options: []
+          data: '<data xmlns="urn:tests:any-core"><item xmlns="urn:tests:opaque" xmlns:q="urn:tests:unloaded">q:c</item></data>'
+    golden: golden/equal-xml-prefixes.json

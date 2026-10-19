@@ -1,0 +1,9 @@
+fixtures:
+  - id: any-core/create-invalid-text
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    # lyd_create_any preserves parser diagnostics, then logs its own failure.
+    rfc: [] # Constructor diagnostics are a libyang API contract.
+    areas: [operations, codecs]
+    request: {"op": "sequence", "searchdirs": ["schemas"], "modules": [{"name": "ac"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "edit", "set": {"path": "/ac:data", "value": "not a tree"}}]}
+    golden: golden/create-invalid-text.json

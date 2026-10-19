@@ -1,0 +1,1313 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ac-r6",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": {
+            "text": "{\n  \"ac-r6:item\": [\n    \"a\",\n    \"aa\",\n    \"ab\",\n    \"ac\",\n    \"b\",\n    \"c\",\n    \"q\",\n    \"r\",\n    \"s\",\n    \"t\",\n    \"u\",\n    \"v\"\n  ]\n}\n",
+            "value_type": "datatree"
+          },
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "anydata",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data",
+          "schema": "/ac-r6:data",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='a']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='aa']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "aa",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='ab']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "ab",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='ac']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "ac",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='b']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='c']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='q']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "q",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='r']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "r",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='s']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "s",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='t']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "t",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='u']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "u",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='v']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "v",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "compare": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "diagnostics": [],
+      "do": "compare",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": {
+            "text": "{\n  \"ac-r6:item\": [\n    \"a\",\n    \"aa\",\n    \"ab\",\n    \"ac\",\n    \"b\",\n    \"c\",\n    \"q\",\n    \"r\",\n    \"s\",\n    \"t\",\n    \"u\",\n    \"v\"\n  ]\n}\n",
+            "value_type": "datatree"
+          },
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "anydata",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data",
+          "schema": "/ac-r6:data",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='a']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='aa']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "aa",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='ab']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "ab",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='ac']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "ac",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='b']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='c']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='q']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "q",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='r']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "r",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='s']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "s",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='t']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "t",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='u']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "u",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='v']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "v",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "edit",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": {
+            "text": "{\n  \"ac-r6:item\": [\n    \"a\",\n    \"aa\",\n    \"ab\",\n    \"ac\",\n    \"b\",\n    \"c\",\n    \"q\",\n    \"r\",\n    \"s\",\n    \"t\",\n    \"u\",\n    \"v\"\n  ]\n}\n",
+            "value_type": "datatree"
+          },
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "anydata",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data",
+          "schema": "/ac-r6:data",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='a']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='aa']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "aa",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='ab']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "ab",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='ac']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "ac",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='b']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='c']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='q']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "q",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='r']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "r",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='s']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "s",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='t']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "t",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='u']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "u",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='v']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "v",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "dump",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "tree": {
+        "json": "{\n  \"ac-r6:data\": {\n    \"item\": [\n      \"a\",\n      \"aa\",\n      \"ab\",\n      \"ac\",\n      \"b\",\n      \"c\",\n      \"q\",\n      \"r\",\n      \"s\",\n      \"t\",\n      \"u\",\n      \"v\"\n    ]\n  }\n}\n",
+        "xml": "<data xmlns=\"urn:tests:any-core-r6\">\n  <item>a</item>\n  <item>aa</item>\n  <item>ab</item>\n  <item>ac</item>\n  <item>b</item>\n  <item>c</item>\n  <item>q</item>\n  <item>r</item>\n  <item>s</item>\n  <item>t</item>\n  <item>u</item>\n  <item>v</item>\n</data>\n"
+      },
+      "typed": [
+        {
+          "any": {
+            "text": "{\n  \"ac-r6:item\": [\n    \"a\",\n    \"aa\",\n    \"ab\",\n    \"ac\",\n    \"b\",\n    \"c\",\n    \"q\",\n    \"r\",\n    \"s\",\n    \"t\",\n    \"u\",\n    \"v\"\n  ]\n}\n",
+            "value_type": "datatree"
+          },
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "anydata",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data",
+          "schema": "/ac-r6:data",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='a']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='aa']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "aa",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='ab']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "ab",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='ac']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "ac",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='b']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='c']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='q']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "q",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='r']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "r",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='s']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "s",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='t']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "t",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='u']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "u",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='v']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "v",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "direct": {
+        "collision_shaped_key": "Aa/BB",
+        "compare_rc": {
+          "err": 11,
+          "name": "LY_ENOT"
+        },
+        "repeated_keys": 2
+      },
+      "do": "any_direct",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": {
+            "text": "{\n  \"ac-r6:item\": [\n    \"a\",\n    \"aa\",\n    \"ab\",\n    \"ac\",\n    \"b\",\n    \"c\",\n    \"q\",\n    \"r\",\n    \"s\",\n    \"t\",\n    \"u\",\n    \"v\"\n  ]\n}\n",
+            "value_type": "datatree"
+          },
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "anydata",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data",
+          "schema": "/ac-r6:data",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='a']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='aa']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "aa",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='ab']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "ab",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='ac']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "ac",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='b']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "b",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='c']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "c",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='q']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "q",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='r']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "r",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='s']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "s",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='t']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "t",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='u']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "u",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-r6:data/item[.='v']",
+          "schema": "/ac-r6:item",
+          "value": {
+            "canonical": "v",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

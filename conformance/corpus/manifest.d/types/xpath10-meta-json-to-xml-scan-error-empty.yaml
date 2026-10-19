@@ -1,0 +1,20 @@
+fixtures:
+  - id: types/xpath10-meta-json-to-xml-scan-error-empty
+    dir: types
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # libyang xml_print_meta compatibility: a NULL converted value prints as an empty attribute.
+    areas: [types, codecs, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: print-failure}]
+      steps:
+        - do: edit
+          insert_inner: {module: print-failure, name: c}
+        - do: edit
+          insert_term: {module: print-failure, name: s, parent: /print-failure:c, value: value}
+        - do: edit
+          new_meta: {node: /print-failure:c/s, name: print-failure:select, value: "'a\u0001b'"}
+        - do: print_xml
+    golden: golden/xpath10-meta-json-to-xml-scan-error-empty.json
+    assert: {verdict: valid}

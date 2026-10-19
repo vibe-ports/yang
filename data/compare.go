@@ -18,6 +18,8 @@ type CompareOptions struct {
 
 // Equal is lyd_compare_single: whether n and m are equal nodes (the same schema node, across
 // schema snapshots an equal one; equal values, list keys and, with o.FullRecursion, subtrees).
+// Anydata/anyxml payload forests always compare recursively; text compares literally,
+// ignoring representation hints.
 // Two nil nodes are equal, a nil and a non-nil node are not.
 func (n *Node) Equal(m *Node, o CompareOptions) bool {
 	if n == nil || m == nil {

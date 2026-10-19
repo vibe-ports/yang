@@ -89,10 +89,12 @@ const (
 // parseOpts are the LYD_PARSE_* options, the internal ones included.
 type parseOpts struct {
 	ParseOptions
-	ordered   bool // LYD_PARSE_ORDERED: input is in schema order, siblings are appended
-	storeOnly bool // LYD_PARSE_STORE_ONLY: no restriction checks of values
-	whenTrue  bool // LYD_PARSE_WHEN_TRUE: nodes with a when start as FlagWhenTrue
-	noNew     bool // LYD_PARSE_NO_NEW: nodes are not FlagNew
+	anyContent bool // LYD_INTOPT_ANY, only for the internal any-value text helper
+	zeroNodes  bool // an internal aggregate budget with no remaining capacity; zero Budget means default
+	ordered    bool // LYD_PARSE_ORDERED: input is in schema order, siblings are appended
+	storeOnly  bool // LYD_PARSE_STORE_ONLY: no restriction checks of values
+	whenTrue   bool // LYD_PARSE_WHEN_TRUE: nodes with a when start as FlagWhenTrue
+	noNew      bool // LYD_PARSE_NO_NEW: nodes are not FlagNew
 	// LYD_PARSE_JSON_NULL: a JSON null value creates nothing
 	jsonNull bool
 	// LYD_PARSE_JSON_STRING_DATATYPES: numbers and booleans may come as JSON strings
@@ -378,6 +380,10 @@ func parseWith(ctx context.Context, r io.Reader, s *schema.Set, o parseOpts, fp 
 	if errors.As(err, &ve) && ve.Diags == nil {
 		ve.Diags = lc.log.diags // a silent lexer error keeps what was logged before it
 	}
+	var rc rcError
+	if errors.As(err, &rc) {
+		err = &ValidationError{Diags: lc.log.diags, rc: string(rc)}
+	}
 	if lc.limitHit && errors.As(err, &ve) {
 		ve.err = yang.ErrBudget
 	}
@@ -477,7 +483,11 @@ func fatalRC(rc string) error { return &rcErr{rc} }
 // nodes.
 func (lc *lydCtx) countNode() error {
 	lc.nodes++
-	if limit := orDefault(lc.opts.Budget.MaxNodes, DefaultMaxNodes); lc.nodes > limit {
+	limit := orDefault(lc.opts.Budget.MaxNodes, DefaultMaxNodes)
+	if lc.opts.zeroNodes {
+		limit = 0
+	}
+	if lc.nodes > limit {
 		return fmt.Errorf("%w: more than %d data nodes", yang.ErrBudget, limit)
 	}
 	if lc.nodes%1024 == 0 {
@@ -556,6 +566,9 @@ func (lc *lydCtx) createOpaq(o opaque) (*Node, error) {
 // checkSchema is lyd_parser_check_schema: a state node with LYD_PARSE_NO_STATE is unexpected, and
 // an rpc, action or notification unless the parse is of that operation and none was parsed yet.
 func (lc *lydCtx) checkSchema(sn *schema.Node) error {
+	if lc.opts.anyContent {
+		return nil
+	}
 	if lc.opts.NoState && !sn.Config && !inOperation(sn) {
 		lc.log.locSet(sn)
 		defer lc.log.locBack(1)

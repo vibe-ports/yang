@@ -1,0 +1,9 @@
+fixtures:
+  - id: any-core/equal-empty-hints
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    # Both inputs have no children or text. Empty object and null compare equal despite their different hints.
+    rfc: [] # Core operation semantics are libyang API contracts.
+    areas: ["operations"]
+    request: {"op": "sequence", "searchdirs": ["schemas"], "modules": [{"name": "ac"}], "context_options": ["no_yanglibrary"], "steps": [{"do": "parse", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"ac:xml\":{}}"}, {"do": "compare", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"ac:xml\":null}", "options": []}, {"do": "parse", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"ac:xml\":null}"}, {"do": "compare", "format": "json", "data_type": "data", "parse_only": true, "data": "{\"ac:xml\":{}}", "options": []}]}
+    golden: golden/equal-empty-hints.json

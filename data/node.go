@@ -61,14 +61,18 @@ type Node struct {
 	parent *Node
 	tree   *Tree // set for top-level nodes linked into a tree
 	kids   siblings
-	value  types.Value
-	opaq   *opaque
-	flags  Flags
-	meta   []*meta // metadata (lyd_meta), in order
-	hkey   idxKey  // bucket of the node in its parent's children index (lyd_node.hash)
-	hashed bool
-	inRB   bool          // in its run's RB tree (lyds) of a system-ordered list or leaf-list
-	links  *leafrefLinks // leafref links record (LY_CTX_LEAFREF_LINKING), nil: none
+	any    *anyValue
+	// payloadSet preserves LYD_CTX at a payload boundary, even when the enclosing
+	// any node belongs to another snapshot. It also survives unlinking the root.
+	payloadSet *schema.Set
+	value      types.Value
+	opaq       *opaque
+	flags      Flags
+	meta       []*meta // metadata (lyd_meta), in order
+	hkey       idxKey  // bucket of the node in its parent's children index (lyd_node.hash)
+	hashed     bool
+	inRB       bool          // in its run's RB tree (lyds) of a system-ordered list or leaf-list
+	links      *leafrefLinks // leafref links record (LY_CTX_LEAFREF_LINKING), nil: none
 }
 
 // Tree is a data tree: its top-level siblings and the schema snapshot it is built over.
@@ -125,7 +129,7 @@ func (n *Node) Name() string {
 	return n.schema.Name
 }
 
-// Children yields the children in order.
+// Children yields ordinary children in order, excluding anydata/anyxml payloads.
 func (n *Node) Children() iter.Seq[*Node] { return n.kids.all() }
 
 // isTerm reports whether n is a leaf or leaf-list instance (LYD_NODE_TERM).
@@ -136,7 +140,8 @@ func (n *Node) isTerm() bool {
 // isKey reports whether n is a list key linked into its list (lysc_is_key && parent).
 func (n *Node) isKey() bool { return n.schema != nil && n.schema.IsKey() && n.parent != nil }
 
-// All yields n and its descendants in pre-order (LYD_TREE_DFS_BEGIN/END).
+// All yields n and its ordinary descendants in pre-order (LYD_TREE_DFS_BEGIN/END),
+// excluding anydata/anyxml payloads.
 func (n *Node) All() iter.Seq[*Node] {
 	return func(yield func(*Node) bool) {
 		// explicit stack: tree depth is bounded by the input, not by the Go stack
@@ -161,6 +166,9 @@ func (n *Node) All() iter.Seq[*Node] {
 func (n *Node) siblingsOf() *siblings {
 	switch {
 	case n.parent != nil:
+		if n.parent.any != nil {
+			return &n.parent.any.children
+		}
 		return &n.parent.kids
 	case n.tree != nil:
 		return &n.tree.top

@@ -1,0 +1,31 @@
+fixtures:
+  - id: any-core/equal-wide-system-ordered
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.7.7"]
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: ac-r6}]
+      steps:
+        - do: parse
+          format: json
+          data_type: data
+          parse_only: true
+          data: '{"ac-r6:data":{"ac-r6:item":["a","q","aa","r","b","s","ab","t","c","u","ac","v"]}}'
+        - do: compare
+          format: json
+          data_type: data
+          parse_only: true
+          data: '{"ac-r6:data":{"ac-r6:item":["v","ac","u","c","t","ab","s","b","r","aa","q","a"]}}'
+        - do: edit
+          merge: '{"ac-r6:data":{"ac-r6:item":["v","ac","u","c","t","ab","s","b","r","aa","q","a"]}}'
+          format: json
+          data_type: data
+        - do: dump
+        - do: any_direct
+          case: equal_repeated_collisions
+          # Also checks system -> user and user -> system comparisons for leaf-lists and keyed lists across contexts.
+          target: {searchdirs: [schemas/ordered-user], modules: [{name: ac-r6}], context_options: [no_yanglibrary]}
+    golden: golden/equal-wide-system-ordered.json

@@ -116,16 +116,21 @@ follow-up issue (deferred envelope classes are tracked in
 
 This is the explicit list mirrored by `inventoryGapClasses`. Zero means that
 the single-field matrix contains no instance, not that the capability exists.
-Pairwise counts are reported separately below.
+The three newly added classes have Go-side generator counts; their native
+classification awaits the linux/amd64 oracle run. Other numeric counts are
+from the earlier r7 cache evidence above. Pairwise counts are reported separately below.
 
 | B class | Registry ID | Capability gap | Single-field |
 |---|---|---|---:|
 | `ordered-input` | D-0058 | `LYD_PARSE_ORDERED` input ordering | 39 |
 | `anydata-anyxml` | U-0043 | Actual anydata/anyxml payload instances | 0 |
+| `any-direct` | U-0043 | `any_direct` step: native pointer-level any-value calls | 210 |
 | `dup-no-lyds` | U-0105 | Duplication without value ordering | 2 |
 | `split-validation` | U-0106 | Final-only / not-final validation entry points | 7 |
 | `operation-parent` | U-0106 | Operation input into an existing parent, or reply into an opaque request | 581 |
 | `opaque-construction` | U-0107 | `insert_opaq` construction | 79 |
+| `any-direct-opaque-source` | U-0107 | `any_direct` step: opaque source construction for sibling duplication | 2 |
+| `compare-insert-opaq` | U-0107 | `compare` step with `insert_opaq` construction | 78 |
 | `canonical-values` | U-0108 | Canonical/store-only constructor and change-term options | 5 |
 | `list2` | U-0109 | `lyd_new_list2` inputs/diagnostics unavailable through `NewPath` | 12 |
 | `notification-netconf` | U-0110 | Engine parsing of the NETCONF notification envelope | 1,419 |
@@ -133,7 +138,13 @@ Pairwise counts are reported separately below.
 | `reply-non-operation-parent` | U-0110 | Reply into a parent that is not an RPC/action; `ParseOpOptions.Request` rejects it before parsing | 0 |
 | `relative-set-parent` | U-0110 | A `set` path that does not start with `/` (relative, or led by whitespace) under a retained parent: `lyd_new_path` takes the original text with the parent, which `Tree.NewPath` cannot take (#255). Rewriting or trimming the path diverged from libyang's diagnostics (original path text, lexer positions, syntax before schema, opaque and quoted-key parents), so the engine does not emulate it. Without a retained tree, a relative path keeps `lyd_new_path`'s LY_EINVAL argument check (fixtures seq/set-relative-quoted-parent, -opaque-parent, -opaque-malformed, -missing-key, seq/set-spaced-malformed) | not re-run |
 | `cross-context-diff` | D-0069 | Diff matching between populated trees from separate schema snapshots (#236) | 0 |
-| **Total** | | | **3,563** |
+| **Total** | | | **not re-run** |
+
+The new class counts cover engine `ErrUnsupported` results from all generated
+mutations of `step/any_direct`, `any_direct/target`, and `compare/insert-opaq`,
+including skipped-step probes. The classifier requires the relevant step and
+the exact unsupported reason. The earlier canonical B total of 3,563 above
+does not include these 290 cases.
 
 U-0110 is the single new unsupported-registry row for request-matrix engine
 coverage gaps, tracked in [#247](https://github.com/vibe-ports/yang/issues/247).
@@ -215,6 +226,13 @@ compiled schema text and unexported typed metadata; it does not discard concrete
 tree/diff results. Request-error comparisons retain the explicit text classes
 for quoting and OS file-error differences, preserving the rejected field and
 kind of error. Unclassified error text compares verbatim.
+
+When the engine returns `ErrUnsupported` and the oracle returns a request-error,
+the result is A only if the oracle rejected a pre-parse request-shape check the
+engine can perform first. Selector lookup, `cur_module` lookup, namespace checks
+and `xpath_format` semantics follow envelope parsing, so those errors retain the
+documented B class for an unsupported envelope. The `any_direct` missing-target
+check precedes its capability gap and remains A if the engine skips it.
 
 Four parse-flag probes cover `when_true` on a false when and `anydata_strict` on
 ordinary nodes, in JSON and XML. The sole new public field is

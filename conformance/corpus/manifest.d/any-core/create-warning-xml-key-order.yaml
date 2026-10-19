@@ -1,0 +1,26 @@
+fixtures:
+  - id: any-core/create-warning-xml-key-order
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    # lyd_create_any_datatree parses without LYD_PARSE_STRICT and keeps logging enabled for anydata.
+    # Reversed keys therefore emit lydxml_subtree_term's warning while construction succeeds.
+    rfc: [] # Constructor acceptance and warning retention are libyang API contracts.
+    areas: [operations, codecs]
+    request:
+      op: sequence
+      searchdirs: [../ut-new/a.1]
+      modules: [{name: a}]
+      context_options: [no_yanglibrary]
+      steps:
+        - do: edit
+          set:
+            path: /a:any
+            value: '<l1 xmlns="urn:tests:a"><b>second</b><a>first</a></l1>'
+        - do: dump
+          with_defaults: all
+    golden: golden/create-warning-xml-key-order.json
+    assert:
+      verdict: valid
+      rc: LY_SUCCESS
+      rfc: []
+      deviation: null

@@ -519,20 +519,52 @@ func inventoryErrorClass(msg string) string {
 var inventoryGapClasses = map[string]struct {
 	id      string
 	reasons []string
+	exact   string
+	request func(map[string]any) bool
 }{
-	"ordered-input":              {"D-0058", []string{"LYD_PARSE_ORDERED input order"}},
-	"anydata-anyxml":             {"U-0043", []string{"anydata", "anyxml"}},
-	"dup-no-lyds":                {"U-0105", []string{"dup option no_lyds"}},
-	"split-validation":           {"U-0106", []string{"split-validation speed path"}},
-	"operation-parent":           {"U-0106", []string{"rpc input into an existing", "operation input into an existing parent", "an rpc request with data_type", "a reply into an opaque request"}},
-	"opaque-construction":        {"U-0107", []string{"edit insert_opaq"}},
-	"canonical-values":           {"U-0108", []string{"change_term canon", "LYD_NEW_VAL_STORE_ONLY and _CANON"}},
-	"list2":                      {"U-0109", []string{"insert_list2"}},
-	"reply-non-operation-parent": {"U-0110", []string{"reply into a non-operation parent"}},
-	"relative-set-parent":        {"U-0110", []string{"relative set under a retained parent"}},
-	"notification-netconf":       {"U-0110", []string{"notification envelope data_type notif-netconf"}},
-	"notification-restconf":      {"U-0110", []string{"notification envelope data_type notif-restconf"}},
-	"cross-context-diff":         {"D-0069", []string{"cross-context diff of populated trees"}},
+	"ordered-input":              {id: "D-0058", reasons: []string{"LYD_PARSE_ORDERED input order"}},
+	"anydata-anyxml":             {id: "U-0043", reasons: []string{"anydata", "anyxml"}},
+	"any-direct":                 {id: "U-0043", exact: "unsupported: native pointer-level any-value calls have no public Go equivalent, U-0043", request: inventoryAnyDirectStep},
+	"any-direct-opaque-source":   {id: "U-0107", exact: "unsupported: opaque source construction has no public Go equivalent, U-0107", request: inventoryAnyDirectStep},
+	"compare-insert-opaq":        {id: "U-0107", exact: "unsupported: compare insert_opaq (lyd_new_opaq / lyd_new_opaq2 are exported in M5 with the envelopes, U-0107)", request: inventoryCompareInsertOpaqStep},
+	"dup-no-lyds":                {id: "U-0105", reasons: []string{"dup option no_lyds"}},
+	"split-validation":           {id: "U-0106", reasons: []string{"split-validation speed path"}},
+	"operation-parent":           {id: "U-0106", reasons: []string{"rpc input into an existing", "operation input into an existing parent", "an rpc request with data_type", "a reply into an opaque request"}},
+	"opaque-construction":        {id: "U-0107", reasons: []string{"edit insert_opaq"}},
+	"canonical-values":           {id: "U-0108", reasons: []string{"change_term canon", "LYD_NEW_VAL_STORE_ONLY and _CANON"}},
+	"list2":                      {id: "U-0109", reasons: []string{"insert_list2"}},
+	"reply-non-operation-parent": {id: "U-0110", reasons: []string{"reply into a non-operation parent"}},
+	"relative-set-parent":        {id: "U-0110", reasons: []string{"relative set under a retained parent"}},
+	"notification-netconf":       {id: "U-0110", reasons: []string{"notification envelope data_type notif-netconf"}},
+	"notification-restconf":      {id: "U-0110", reasons: []string{"notification envelope data_type notif-restconf"}},
+	"cross-context-diff":         {id: "D-0069", reasons: []string{"cross-context diff of populated trees"}},
+}
+
+func inventoryAnyDirectStep(p map[string]any) bool {
+	if p["op"] != "sequence" {
+		return false
+	}
+	for _, raw := range list(p["steps"]) {
+		if step, ok := raw.(map[string]any); ok && step["do"] == "any_direct" {
+			return true
+		}
+	}
+	return false
+}
+
+func inventoryCompareInsertOpaqStep(p map[string]any) bool {
+	if p["op"] != "sequence" {
+		return false
+	}
+	for _, raw := range list(p["steps"]) {
+		if step, ok := raw.(map[string]any); ok && step["do"] == "compare" {
+			_, present := step["insert_opaq"]
+			if present {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // Explicit native-crash registry. A signal is a documented deviation only when exactly one
@@ -672,12 +704,18 @@ func inventoryOpParseTermParent(p map[string]any) bool {
 	return inventoryJSONPathIsTerm(seed, parent)
 }
 
-func inventoryGap(err error) string {
+func inventoryGap(err error, request ...map[string]any) string {
 	if !errors.Is(err, ErrUnsupported) {
 		return ""
 	}
 	for class, gap := range inventoryGapClasses {
 		if !strings.Contains(err.Error(), gap.id) {
+			continue
+		}
+		if gap.exact != "" {
+			if err.Error() == gap.exact && len(request) == 1 && gap.request(request[0]) {
+				return class
+			}
 			continue
 		}
 		for _, reason := range gap.reasons {
@@ -689,12 +727,17 @@ func inventoryGap(err error) string {
 	return "unclassified"
 }
 
-func inventoryClassification(want, got Response, err error, artefact string) (string, string) {
+func inventoryClassification(want, got Response, err error, artefact string, request ...map[string]any) (string, string) {
 	if artefact != "" {
 		return "C", "outside-subject"
 	}
 	if errors.Is(err, ErrUnsupported) {
-		return "B", inventoryGap(err)
+		// A gap cannot explain a request-shape rejection that precedes the
+		// unsupported operation. Checks after parsing need that capability.
+		if want["verdict"] == "request-error" && inventoryPreparseRequestError(fmt.Sprint(want["request_error"])) {
+			return "A", "request-error"
+		}
+		return "B", inventoryGap(err, request...)
 	}
 	if err != nil && strings.HasSuffix(err.Error(), "(a request-error)") {
 		got = Response{"verdict": "request-error", "request_error": strings.TrimSuffix(err.Error(), " (a request-error)")}
@@ -710,6 +753,52 @@ func inventoryClassification(want, got Response, err error, artefact string) (st
 		return "A", "output"
 	}
 	return "MATCH", "equal"
+}
+
+// inventoryPreparseRequestError recognizes only checks the engine can reach before
+// an unsupported capability. The oracle's selector lookups, cur_module lookup,
+// namespace checks and xpath_format semantics follow parse_one; an unknown
+// request-error stays with the registered capability gap until its order is known.
+func inventoryPreparseRequestError(msg string) bool {
+	s := strings.ReplaceAll(msg, "\"", "")
+	if field, ok := strings.CutPrefix(s, "field "); ok {
+		if field, ok := strings.CutSuffix(field, " must be a string"); ok {
+			// str_of is used during request initialization and step preflight.
+			// Namespace entries are read after XPath data parse.
+			return field != "prefix" && field != "uri"
+		}
+		if key, ok := strings.CutSuffix(field, " must be an array of flags"); ok {
+			return inventoryPreparseFlag(key)
+		}
+	}
+	if key, ok := strings.CutPrefix(s, "unknown flag in "); ok {
+		return inventoryPreparseFlag(key)
+	}
+	switch {
+	case strings.HasPrefix(s, "unknown key "), strings.HasPrefix(s, "missing "),
+		strings.HasPrefix(s, "step without"), strings.HasPrefix(s, "both inline and _file given for "):
+		return true
+	case strings.HasPrefix(s, "cannot chdir"), strings.HasPrefix(s, "cannot open file "),
+		strings.HasPrefix(s, "cannot read file "), strings.HasPrefix(s, "unknown format"),
+		strings.HasPrefix(s, "unknown unknown"), strings.HasPrefix(s, "unknown with_defaults"),
+		strings.HasPrefix(s, "parse_options strict/opaq"), strings.HasPrefix(s, "unknown sequence step"):
+		return true
+	case strings.HasPrefix(s, "bad searchdir "), strings.HasPrefix(s, "data_type ") && strings.HasSuffix(s, " needs parse_only"),
+		s == "equal_repeated_collisions needs target",
+		strings.HasPrefix(s, "any_direct ") && strings.HasSuffix(s, " needs target"):
+		return true
+	}
+	return false
+}
+
+func inventoryPreparseFlag(key string) bool {
+	// diff_options is checked only after both diff inputs parse.
+	switch key {
+	case "context_options", "parse_options", "validate_options", "print_options",
+		"atom_options", "options", "merge_options":
+		return true
+	}
+	return false
 }
 
 // inventoryDeferredClass is a demonstrated envelope-only discrepancy deferred under the M4
@@ -756,7 +845,7 @@ func inventoryBaseClassification(p map[string]any, want Response, nativeErr erro
 		if artefact != "" {
 			return "C", "outside-subject"
 		}
-		category, class := inventoryClassification(want, got, err, "")
+		category, class := inventoryClassification(want, got, err, "", p)
 		if category == "A" {
 			if dev := inventoryDeviation(p, want, got, err); dev != "" {
 				return "DEV", dev

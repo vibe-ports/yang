@@ -27,9 +27,11 @@ var seqKeys = map[string]map[string]bool{
 	"change_term": set("do", "node", "value", "canon"),
 	"insert": set("do", "node", "parent", "format", "data_type", "data", "data_file", "unknown", "parse_only",
 		"parse_options", "validate_options"),
-	"dump": set("do", "with_defaults"),
+	"dump":       set("do", "with_defaults"),
+	"print_xml":  set("do"),
+	"any_direct": set("do", "case", "target"),
 	"compare": set("do", "format", "data_type", "data", "data_file", "unknown", "parse_only", "parse_options",
-		"validate_options", "first", "second", "options"),
+		"validate_options", "first", "second", "options", "insert_opaq"),
 	"diff": set("do", "format", "data_type", "data", "data_file", "unknown", "parse_only", "parse_options",
 		"validate_options", "rpc", "keep_input", "node", "data_node", "single", "options", "merge", "merge_options", "target"),
 	"diff_parse":   set("do", "format", "data_type", "data", "data_file", "unknown", "parse_options"),
@@ -44,6 +46,7 @@ var seqContextKeys = set("searchdirs", "modules", "context_options")
 // seqUnsupported are the oracle's step kinds and edits package data has no public API for.
 var seqUnsupported = map[string]string{
 	"insert_opaq": "(lyd_new_opaq / lyd_new_opaq2 are exported in M5 with the envelopes, U-0107)",
+	"any_direct":  "(native pointer-level any-value calls have no public Go equivalent, U-0043)",
 }
 
 // seqOptionUnsupported is the reason a step's options cannot be expressed with the public API,
@@ -104,10 +107,14 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 		}
 		steps = append(steps, st)
 	}
-	var tree, diff *data.Tree // the retained tree and the diff register
+	var tree, diff *data.Tree  // the retained tree and the diff register
+	var diffOwner *yang.Schema // the context that owns the retained diff, when non-NULL
 	out := []any{}
 	rc, failed := "LY_SUCCESS", any(nil)
 	cur := s // the retained tree's snapshot: a dup step with a target moves the tree to another
+	// ly_err_first/ly_err_clean belong to a context. Printers and links can log after
+	// (or without) a collect(), so keep those items until that context is collected.
+	pending := map[*yang.Schema][]yang.Diagnostic{}
 	for i, st := range steps {
 		if cur != s && (tree == nil || empty(tree)) {
 			// the oracle's tree is NULL again and its steps use the request's context (lyoracle.c
@@ -123,27 +130,48 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 			continue
 		}
 		var (
-			diags []yang.Diagnostic
-			err   error
+			diags     []yang.Diagnostic
+			postPrint []yang.Diagnostic
+			err       error
 		)
 		stepExec := stepExecutionContexts[what]
 		if err := checkRequest(r, s, st, stepExec, stepExecutionRules[what]); err != nil {
 			return err
 		}
-		// Execution-time selectors precede the API call, including for opaque
-		// construction which the public API does not expose yet.
-		if what == "edit" {
-			if err := checkInsertSelectors(s, tree, st); err != nil {
-				return err
+		// Check selectors in the order the oracle reaches them, before a capability
+		// refusal for the same step. Skipped steps never reach these checks.
+		switch what {
+		case "edit":
+			err = checkInsertSelectors(s, tree, st)
+		case "change_term":
+			_, err = findNode(tree, str(st, "node", ""), "change_term node")
+		case "dup":
+			if _, err = findNode(tree, str(st, "node", ""), "dup node"); err == nil {
+				if p, present, _ := strField(st, "parent"); present {
+					_, err = findNode(tree, p, "dup parent")
+				}
 			}
+			if err == nil && seqOptionUnsupported(what, st) != "" {
+				if tg, ok := st["target"].(map[string]any); ok {
+					_, _, _, verdict, buildErr := r.buildContext(Request{ID: r.ID, BaseDir: r.BaseDir, Params: tg, buildContext: r.buildContext})
+					if buildErr != nil {
+						err = buildErr
+					} else if verdict != "valid" {
+						err = requestError("dup target context failed")
+					}
+				}
+			}
+		}
+		if err != nil {
+			return err
 		}
 		// A skipped step never needs an API capability (lyoracle.c:2502-2506).
 		if why := seqOptionUnsupported(what, st); why != "" {
 			return fmt.Errorf("%w: %s", ErrUnsupported, why)
 		}
 		for _, k := range slices.Sorted(maps.Keys(st)) { // the first refusal must not depend on map order
-			if why, bad := seqUnsupported[k]; bad && what == "edit" {
-				return fmt.Errorf("%w: edit %s %s", ErrUnsupported, k, why)
+			if why, bad := seqUnsupported[k]; bad && (what == "edit" || what == "compare") {
+				return fmt.Errorf("%w: %s %s %s", ErrUnsupported, what, k, why)
 			}
 		}
 		if what == "validate" && st["final_only"] == true {
@@ -155,7 +183,9 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 			phase = "" // parseOne distinguishes the request's "rpc" phase from "parse"
 			tree, diags, err = stepParse(r, s, st, stepExec, tree)
 		case "validate":
-			tree, diags, err = stepValidate(s, st, tree, so)
+			tree, diags, err = stepValidate(s, st, tree, so, func(ds []yang.Diagnostic) {
+				postPrint = append(postPrint, ds...)
+			})
 		case "edit":
 			tree, diags, rc, err = stepEdit(r, s, st, tree)
 		case "dup":
@@ -181,7 +211,13 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 			diags, err = stepCompare(r, s, st, tree, so)
 		case "diff":
 			phase = "" // the diagnostics carry theirs
-			diags, err = stepDiff(r, s, st, tree, &diff, so)
+			diags, err = stepDiff(r, s, st, tree, &diff, &diffOwner, so, func(collectPhase string) []yang.Diagnostic {
+				prior := phased(nil, pending[s], collectPhase)
+				delete(pending, s)
+				return prior
+			}, func(owner *yang.Schema, ds []yang.Diagnostic) {
+				pending[owner] = append(pending[owner], ds...)
+			})
 		case "diff_parse":
 			phase = "parse"
 			var d *data.Tree
@@ -190,10 +226,20 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 				if empty(diff) {
 					diff = nil
 				}
+				diffOwner = nil
+				if diff != nil {
+					diffOwner = s
+				}
 			}
 		case "diff_merge":
 			phase = ""
+			hadDiff := diff != nil
 			diags, err = stepDiffMerge(r, s, st, &diff)
+			if diff == nil {
+				diffOwner = nil
+			} else if !hadDiff {
+				diffOwner = s
+			}
 		case "diff_apply":
 			phase = "diff"
 			if tree == nil {
@@ -217,20 +263,81 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 			phase = "diff"
 			diff, err = diff.ReverseDiff()
 			diags = diagsOf(err)
+			if diff == nil {
+				diffOwner = nil
+			}
 		case "dump":
 			wd, werr := wdOf(st)
 			if werr != nil {
 				return werr
 			}
-			if so["tree"], err = printTree(tree, wd); err != nil {
+			var logged []yang.Diagnostic
+			if so["tree"], logged, err = printTreeLogged(tree, wd); err != nil {
 				return err
 			}
+			pending[s] = append(pending[s], logged...)
+		case "print_xml":
+			phase = "data" // lyoracle collects printer diagnostics as data diagnostics
+			var j, x strings.Builder
+			if tree == nil || empty(tree) {
+				so["tree"] = map[string]any{"json": "{}\n", "xml": ""}
+				break
+			}
+			po := data.PrintOptions{WithDefaults: data.WDExplicit}
+			jsonErr := tree.PrintJSON(&j, po)
+			err = tree.PrintXML(&x, po)
+			// xml_print_meta can log LY_EVALID after completing XML. A terminal
+			// type-printer failure returns LY_EINVAL and this explicit step drops
+			// its partial output, unlike ordinary print_tree calls.
+			rc, rcErr := rcOf(err)
+			if rcErr != nil {
+				return rcErr
+			}
+			if err == nil || rc == "LY_EVALID" && x.Len() != 0 {
+				so["tree"] = map[string]any{"json": j.String(), "xml": x.String()}
+			} else {
+				so["tree"] = nil
+			}
+			diags = append(diagsOf(jsonErr), diagsOf(err)...)
+		case "any_direct":
+			phase = "edit"
+			if str(st, "case", "") == "equal_repeated_collisions" && s.Implemented("ac-r6") == nil {
+				// lyd_new_list(NULL, ac, ...) fails before this case reads target
+				// (lyoracle.c:2158-2184). The direct counters are still emitted.
+				so["direct"] = map[string]any{"repeated_keys": 2, "collision_shaped_key": "Aa/BB"}
+				rc = "LY_EINVAL"
+				break
+			}
+			if c := str(st, "case", ""); c == "dup_siblings_into_empty_anydata" || c == "dup_siblings_into_empty_anyxml" {
+				return fmt.Errorf("%w: opaque source construction has no public Go equivalent, U-0107", ErrUnsupported)
+			}
+			return fmt.Errorf("%w: native pointer-level any-value calls have no public Go equivalent, U-0043", ErrUnsupported)
 		}
 		if err != nil {
 			if rc, err = rcOf(err); err != nil {
 				return err
 			}
 		}
+		// Each branch that calls collect() consumes prior logs from the retained
+		// context before its own diagnostics. links and dump do not collect.
+		if what != "links" && what != "dump" && what != "diff" {
+			prior := pending[s]
+			if phase == "" {
+				collectPhase := "parse"
+				_, hasData, _ := requestInput(r, st, "data")
+				if what == "insert" && !hasData {
+					collectPhase = "edit"
+				}
+				typ := opTypes[str(st, "data_type", "data-operational")]
+				if what == "parse" && st["parent"] == nil && (typ == data.OpRPC || typ == data.OpReply) && st["rpc"] != nil {
+					collectPhase = "rpc"
+				}
+				prior = phased(nil, prior, collectPhase)
+			}
+			diags = append(prior, diags...)
+			delete(pending, s)
+		}
+		pending[s] = append(pending[s], postPrint...)
 		so["diagnostics"] = diagsJSON(diags, phase)
 		// an error-level item means failure even if the call returned success (lyoracle.c)
 		for _, d := range diags {
@@ -244,7 +351,9 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 			so["typed"] = typedJSON(tree)
 		}
 		if strings.HasPrefix(what, "diff") {
-			if err := diffOut(diff, so); err != nil {
+			if err := diffOut(diff, so, func(ds []yang.Diagnostic) {
+				pending[diffOwner] = append(pending[diffOwner], ds...)
+			}); err != nil {
 				return err
 			}
 		}
@@ -365,8 +474,8 @@ func stepParse(r Request, s *yang.Schema, st map[string]any, exec executionConte
 
 // stepValidate is step_validate: lyd_validate_all or lyd_validate_module with the step's flags
 // and its implicit diff.
-func stepValidate(s *yang.Schema, st map[string]any, tree *data.Tree, so map[string]any) (*data.Tree,
-	[]yang.Diagnostic, error) {
+func stepValidate(s *yang.Schema, st map[string]any, tree *data.Tree, so map[string]any,
+	logPrint func([]yang.Diagnostic)) (*data.Tree, []yang.Diagnostic, error) {
 	o, err := dataOptions(st, execStepValidate)
 	if err != nil {
 		return nil, nil, err
@@ -388,7 +497,10 @@ func stepValidate(s *yang.Schema, st map[string]any, tree *data.Tree, so map[str
 	if diff != nil && !empty(diff) {
 		var b strings.Builder
 		if perr := diff.PrintJSON(&b, data.PrintOptions{WithDefaults: data.WDAll}); perr != nil {
-			return nil, nil, unsupported(perr)
+			if !printerDiagnostic(perr) {
+				return nil, nil, unsupported(perr)
+			}
+			logPrint(diagsOf(perr))
 		}
 		so["implicit_diff"] = b.String()
 	}
@@ -575,30 +687,6 @@ func stepInsert(s *yang.Schema, st map[string]any, tree *data.Tree) error {
 			for _, k := range ks {
 				v, _ := k.(string) // null: libyang's NULL value, ""
 				keys = append(keys, v)
-			}
-		}
-		if keys != nil {
-			var sn *yang.SchemaNode
-			if parent != nil && parent.Schema() != nil {
-				ps := parent.Schema()
-				if ps.Kind() == yang.KindRPC || ps.Kind() == yang.KindAction {
-					kind := yang.KindInput
-					if opts.Output {
-						kind = yang.KindOutput
-					}
-					for child := range ps.Children() {
-						if child.Kind() == kind {
-							ps = child
-							break
-						}
-					}
-				}
-				sn = ps.Child(str(o, "module", ""), str(o, "name", ""))
-			} else if m := s.Implemented(str(o, "module", "")); m != nil {
-				sn = topChild(m.Top(), str(o, "name", ""))
-			}
-			if sn != nil && sn.Kind() == yang.KindList && len(keys) < len(slices.Collect(sn.Keys())) {
-				return requestError("insert_list %s has fewer keys than the list", o["name"])
 			}
 		}
 		_, err = tree.NewList(parent, name, keys, opts)
@@ -917,6 +1005,44 @@ func checkInsertSelectors(s *yang.Schema, tree *data.Tree, st map[string]any) er
 		if kind != "insert_opaq" && o["module"] == nil && (parent == nil || parent.Schema() == nil) {
 			return requestError("insert %s under an opaque parent needs a module (libyang reads its NULL schema)", o["name"])
 		}
+		if kind == "insert_list" {
+			if err := checkInsertListKeys(s, parent, o); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// lyd_new_list3 reads every schema key from the supplied array. The oracle
+// rejects a short array before calling it, even when its options need an API
+// capability the engine cannot provide.
+func checkInsertListKeys(s *yang.Schema, parent *data.Node, o map[string]any) error {
+	keys, present := o["keys"].([]any)
+	if !present {
+		return nil
+	}
+	var sn *yang.SchemaNode
+	if parent != nil && parent.Schema() != nil {
+		ps := parent.Schema()
+		if ps.Kind() == yang.KindRPC || ps.Kind() == yang.KindAction {
+			kind := yang.KindInput
+			if slices.Contains(list(o["options"]), any("output")) {
+				kind = yang.KindOutput
+			}
+			for child := range ps.Children() {
+				if child.Kind() == kind {
+					ps = child
+					break
+				}
+			}
+		}
+		sn = ps.Child(str(o, "module", ""), str(o, "name", ""))
+	} else if m := s.Implemented(str(o, "module", "")); m != nil {
+		sn = topChild(m.Top(), str(o, "name", ""))
+	}
+	if sn != nil && sn.Kind() == yang.KindList && len(keys) < len(slices.Collect(sn.Keys())) {
+		return requestError("insert_list %s has fewer keys than the list", o["name"])
 	}
 	return nil
 }

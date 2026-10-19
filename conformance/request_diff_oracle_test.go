@@ -45,6 +45,50 @@ func nativeRequestRunner(t testing.TB) func(string, map[string]any) (Response, e
 
 func nativeRequestAvailable() bool { return true }
 
+func TestCompareDateCanonicalCollisionOracle(t *testing.T) {
+	base, err := filepath.Abs("corpus/types")
+	if err != nil {
+		t.Fatal(err)
+	}
+	wrap := func(values string) string {
+		return `<c xmlns="urn:vibe-ports:ty3">` + values + `</c>`
+	}
+	step := func(do, values string) map[string]any {
+		s := map[string]any{"do": do, "format": "xml", "data_type": "data", "parse_only": true,
+			"data": wrap(values)}
+		if do == "compare" {
+			s["options"] = []any{"full_recursion"}
+		}
+		return s
+	}
+	p := map[string]any{"op": "sequence", "searchdirs": []any{"schemas"},
+		"modules": []any{map[string]any{"name": "ty3"}}, "steps": []any{
+			step("parse", `<dl>2024-01-01+01:00</dl><dl>2023-12-31+00:00</dl>`),
+			step("compare", `<dl>2023-12-31+00:00</dl><dl>2024-01-01+01:00</dl>`),
+			step("compare", `<dl>2024-01-01+01:00</dl><dl>2024-01-01+01:00</dl>`),
+		}}
+	got, err := (Yang{}).Run(Request{BaseDir: base, Params: p})
+	if err != nil {
+		t.Fatal(err)
+	}
+	check := func(source string, response Response) {
+		t.Helper()
+		for i, name := range []string{"LY_SUCCESS", "LY_ENOT"} {
+			steps := response["steps"].([]any)
+			compare := steps[i+1].(map[string]any)["compare"].(map[string]any)
+			if compare["name"] != name {
+				t.Errorf("%s comparison %d = %v, want %s", source, i, compare, name)
+			}
+		}
+	}
+	check("engine", got)
+	want, err := nativeRequestRunner(t)(base, p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	check("oracle", want)
+}
+
 func runNativeRequest(oracle, base string, p map[string]any) (Response, error) {
 	b, err := json.Marshal(p)
 	if err != nil {

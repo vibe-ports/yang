@@ -80,7 +80,10 @@ func TestHashTableStateOracle(t *testing.T) {
 			}
 			if tc.dupRecursive {
 				dst := newTree(set)
-				op = dst.dup(op)
+				op, err = dst.dup(op)
+				if err != nil {
+					t.Fatal(err)
+				}
 				dst.insert(nil, op, insertDefault)
 				tr = dst
 			}

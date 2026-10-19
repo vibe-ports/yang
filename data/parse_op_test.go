@@ -441,7 +441,10 @@ func TestParseOpDupKeepsOrder(t *testing.T) {
 		FormatJSON, opReply, op, Reject); err != nil {
 		t.Fatal(err, diags)
 	}
-	d := newTree(set).dup(op)
+	d, err := newTree(set).dup(op)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var got []string
 	for c := range d.kids.all() {
 		got = append(got, c.Path()+"="+c.Value())

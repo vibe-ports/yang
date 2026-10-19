@@ -81,56 +81,57 @@ func Print(v Value, f Format, pc *PrintCtx) (string, error) {
 	if pc == nil {
 		pc = &PrintCtx{}
 	}
-	return printValue(v, f, pc), nil
+	return printValue(v, f, pc)
 }
 
-func printValue(v Value, f Format, pc *PrintCtx) string {
+func printValue(v Value, f Format, pc *PrintCtx) (string, error) {
 	if v.union != nil { // lyplg_type_print_union
 		return printValue(v.union.member, f, pc)
 	}
 	if v.typ == nil {
-		return v.canon
+		return v.canon, nil
 	}
 	if k, ok := v.ext.(*keysValue); ok && f != FormatCanon && f != FormatJSON {
 		// lyplg_type_print_xpath10 (xpath1.0.c), also for instance-identifier-keys, whose
 		// lyd_value_instance_identifier_keys it reads as the identically laid out lyd_value_xpath10:
-		// the expression printed with xpath10_print_subexpr_r. On an error libyang prints nothing
-		// (NULL); the canonical text is kept here.
-		if s, d := printXPath10(k.e, k.pc, f, pc); d == nil {
-			return s
+		// the expression printed with xpath10_print_subexpr_r. A failed conversion
+		// returns NULL in libyang; never replace it with unconverted canonical text.
+		s, d := printXPath10(k.e, k.pc, f, pc)
+		if d != nil {
+			return "", d
 		}
-		return v.canon
+		return s, nil
 	}
 	if n, ok := v.ext.(*nodeInstanceID); ok && f != FormatCanon && f != FormatJSON {
 		// lyplg_type_print_node_instanceid (node_instanceid.c): node_instanceid_path2str in f, the
 		// same as instanceid_path2str but for the special path "/"
 		if n.path == nil {
-			return "/"
+			return "/", nil
 		}
 		return printPath(n.path, f, pc)
 	}
 	switch v.typ.Base {
 	case schema.IdentityRef: // lyplg_type_print_identityref
 		if f == FormatCanon {
-			return v.canon
+			return v.canon, nil
 		}
 		if p := pc.prefix(v.ident.Module, f); p != "" {
-			return p + ":" + v.ident.Name
+			return p + ":" + v.ident.Name, nil
 		}
-		return v.ident.Name
+		return v.ident.Name, nil
 	case schema.InstanceID: // lyplg_type_print_instanceid: the canonical form is JSON
 		if f == FormatCanon || f == FormatJSON {
-			return v.canon
+			return v.canon, nil
 		}
 		return printPath(v.path, f, pc)
 	}
-	return v.canon // lyplg_type_print_simple
+	return v.canon, nil // lyplg_type_print_simple
 }
 
 // printPath ports instanceid_path2str for the formats that prefix every node (XML and schema).
 // The key and leaf-list values are printed in f too: libyang stores the canonical form again and
 // prints that (lyplg_type_print_val), which yields the stored value itself.
-func printPath(p Path, f Format, pc *PrintCtx) string {
+func printPath(p Path, f Format, pc *PrintCtx) (string, error) {
 	if f == FormatXML { // null the local module so that all the prefixes are printed
 		defer func(local *schema.Module) { pc.Local = local }(pc.Local)
 		pc.Local = nil
@@ -150,12 +151,20 @@ func printPath(p Path, f Format, pc *PrintCtx) string {
 			case PredPosition:
 				fmt.Fprintf(&b, "[%d]", pr.Position)
 			case PredKey: // the value first: it may add to pc.Used before the key's prefix
-				val := quoteXP(printValue(pr.Value, f, pc))
+				value, err := printValue(pr.Value, f, pc)
+				if err != nil {
+					return "", err
+				}
+				val := quoteXP(value)
 				fmt.Fprintf(&b, "[%s:%s=%s]", pfx(pr.Key.Module), pr.Key.Name, val)
 			case PredLeafList:
-				fmt.Fprintf(&b, "[.=%s]", quoteXP(printValue(pr.Value, f, pc)))
+				value, err := printValue(pr.Value, f, pc)
+				if err != nil {
+					return "", err
+				}
+				fmt.Fprintf(&b, "[.=%s]", quoteXP(value))
 			}
 		}
 	}
-	return b.String()
+	return b.String(), nil
 }

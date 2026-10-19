@@ -1,0 +1,31 @@
+fixtures:
+  - id: any-core/dup-mixed-missing-module
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # lyd_dup_r resolves the target schema before lyd_any_copy_value rejects mixed input.
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: ac-r6}]
+      context_options: [no_yanglibrary]
+      steps:
+        - do: parse
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<xml xmlns="urn:tests:any-core-r6">plain text</xml><target xmlns="urn:tests:any-core-r6">value</target>'
+        - do: dup
+          node: /ac-r6:target
+          parent: /ac-r6:xml
+          options: []
+        - do: dup
+          node: /ac-r6:xml
+          options: []
+          target: {searchdirs: [schemas], modules: [], context_options: [no_yanglibrary]}
+    golden: golden/dup-mixed-missing-module.json
+    assert:
+      verdict: invalid
+      rc: LY_ENOTFOUND
+      diagnostics:
+        - {phase: edit, code: {err: 5, name: LY_ENOTFOUND}, msg: 'Module "ac-r6" not present/implemented in the target context.'}

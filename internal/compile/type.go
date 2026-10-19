@@ -11,9 +11,9 @@ import (
 	"fmt"
 	"math"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/vibe-ports/yang/internal/ly"
+	"github.com/vibe-ports/yang/internal/lyxml"
 	"github.com/vibe-ports/yang/internal/parser"
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
@@ -422,7 +422,9 @@ func (c *typeCtx) newType(sc *scope, st schema.Status, name string, tp *parser.T
 		switch {
 		case tp.Path != "":
 			t.Path = tp.Path
-			t.Prefixes = c.pathPrefixes(tp.Path, pm)
+			if t.Prefixes, err = c.pathPrefixes(tp.Path, pm); err != nil {
+				return nil, err
+			}
 		case base != nil:
 			t.Path = base.Path
 			t.Prefixes = make(schema.NSCtx, len(base.Prefixes))
@@ -659,9 +661,13 @@ func (c *typeCtx) identityBases(pm *pmod, bases []string) ([]*schema.Identity, e
 // pathPrefixes ports ly_store_prefix_data for LY_VALUE_SCHEMA over a leafref path, then binds
 // "" to the module instantiating the type (SCN:1841): every prefix used in the path that pm
 // resolves, unknown ones left out.
-func (c *typeCtx) pathPrefixes(path string, pm *pmod) schema.NSCtx {
+func (c *typeCtx) pathPrefixes(path string, pm *pmod) (schema.NSCtx, error) {
 	ns := schema.NSCtx{"": c.cur}
-	for _, p := range valuePrefixes(path) {
+	prefixes, err := valuePrefixes(path)
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range prefixes {
 		if _, ok := ns[p]; ok {
 			continue
 		}
@@ -669,46 +675,21 @@ func (c *typeCtx) pathPrefixes(path string, pm *pmod) schema.NSCtx {
 			ns[p] = mod
 		}
 	}
-	return ns
+	return ns, nil
 }
 
-// valuePrefixes ports the prefix scan of ly_value_prefix_next: every XML QName run directly
-// followed by ':' is a prefix.
-func valuePrefixes(s string) []string {
+// valuePrefixes collects the prefixes from the shared ly_value_prefix_next scanner.
+func valuePrefixes(s string) ([]string, error) {
 	var out []string
-	for i := 0; i < len(s); {
-		r, n := utf8.DecodeRuneInString(s[i:])
-		if !isQNameStart(r) {
-			i += n
-			continue
+	for i := 0; i >= 0; {
+		n, isPrefix, next, ok := lyxml.ValuePrefixNext(s, i)
+		if !ok {
+			return nil, eInval
 		}
-		j := i + n
-		for j < len(s) {
-			r, n := utf8.DecodeRuneInString(s[j:])
-			if !isQNameChar(r) {
-				break
-			}
-			j += n
+		if isPrefix {
+			out = append(out, s[i:i+n])
 		}
-		if j < len(s) && s[j] == ':' {
-			out = append(out, s[i:j])
-			j++
-		}
-		i = j
+		i = next
 	}
-	return out
-}
-
-// isQNameStart and isQNameChar are libyang's is_xmlqnamestartchar / is_xmlqnamechar (xml.h).
-func isQNameStart(c rune) bool {
-	return (c >= 'a' && c <= 'z') || c == '_' || (c >= 'A' && c <= 'Z') ||
-		(c >= 0x370 && c <= 0x1fff && c != 0x37e) || (c >= 0xc0 && c <= 0x2ff && c != 0xd7 && c != 0xf7) ||
-		c == 0x200c || c == 0x200d || (c >= 0x2070 && c <= 0x218f) || (c >= 0x2c00 && c <= 0x2fef) ||
-		(c >= 0x3001 && c <= 0xd7ff) || (c >= 0xf900 && c <= 0xfdcf) || (c >= 0xfdf0 && c <= 0xfffd) ||
-		(c >= 0x10000 && c <= 0xeffff)
-}
-
-func isQNameChar(c rune) bool {
-	return isQNameStart(c) || c == '-' || (c >= '0' && c <= '9') || c == '.' || c == 0xb7 ||
-		(c >= 0x300 && c <= 0x36f) || (c >= 0x203f && c <= 0x2040)
+	return out, nil
 }

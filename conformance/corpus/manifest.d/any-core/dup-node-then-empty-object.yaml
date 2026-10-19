@@ -1,0 +1,8 @@
+fixtures:
+  - id: any-core/dup-node-then-empty-object
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # Empty anydata representation and duplication are libyang API contracts; the Go budget limit is tested separately.
+    areas: [operations]
+    request: {op: sequence, searchdirs: [schemas], modules: [{name: ac-r6}], steps: [{do: any_direct, case: node_then_empty}]}
+    golden: golden/dup-node-then-empty-object.json

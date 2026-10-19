@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vibe-ports/yang/internal/lyxml"
 	"github.com/vibe-ports/yang/internal/schema"
 )
 
@@ -409,7 +410,10 @@ func TestXPath10(t *testing.T) {
 	} {
 		var got []string
 		for i := 0; ; {
-			n, isPrefix, next := valuePrefixNext(s, i)
+			n, isPrefix, next, ok := lyxml.ValuePrefixNext(s, i)
+			if !ok {
+				t.Fatalf("ValuePrefixNext(%q, %d) failed", s, i)
+			}
 			if n == 0 {
 				break
 			}
