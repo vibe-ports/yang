@@ -465,7 +465,6 @@ var schemaLimits = []struct{ id, re string }{
 	{"U-0035", `schema nodes nested deeper than`},
 	{"U-0036", `XPath steps`},
 	{"U-0038", `extension instances of a top-level uses`},
-	{"U-0110", `empty revision with a failing module load`}, // class empty-revision-load-failure (#254)
 }
 
 // schemaLimit is the id of the allowed limit an unsupported reason names, "" for none.
@@ -678,6 +677,41 @@ func TestEmptyRevisionDoesNotMutateEarlierModule(t *testing.T) {
 			diagnostic["data_path"] != nil || diagnostic["schema_path"] != nil || diagnostic["apptag"] != nil {
 			t.Errorf("diagnostic %d = %#v, want %s/%q", i, diagnostic, want.err, want.msg)
 		}
+	}
+}
+
+func TestEmptyRevisionUsesExistingContextForParserChecks(t *testing.T) {
+	dir := t.TempDir()
+	files := map[string]string{
+		"a.yang": "module a { yang-version 1.1; namespace urn:a; prefix a; }",
+		"b.yang": "module b { yang-version 1.1; namespace urn:b; prefix b; include a; revision 2020-01-01; }",
+	}
+	for name, src := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(src), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := (Yang{}).Run(Request{BaseDir: dir, Params: map[string]any{
+		"op": "schema", "searchdirs": []any{"."}, "context_options": []any{"no_yanglibrary"},
+		"modules": []any{map[string]any{"name": "a"}, map[string]any{"name": "b", "revision": ""}},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	modules := got["modules"].([]any)
+	if len(modules) != 2 || modules[0].(map[string]any)["accepted"] != true {
+		t.Fatalf("modules = %#v", modules)
+	}
+	second := modules[1].(map[string]any)
+	diagnostics := second["diagnostics"].([]any)
+	if second["accepted"] != false || second["phase"] != "parse" || len(diagnostics) == 0 {
+		t.Fatalf("second module = %#v", second)
+	}
+	diagnostic := diagnostics[0].(map[string]any)
+	code := diagnostic["code"].(map[string]any)
+	if code["name"] != "LY_EVALID" || diagnostic["vecode_name"] != "LYVE_SEMANTICS" ||
+		diagnostic["msg"] != `Name collision between module and submodule of name "a".` {
+		t.Fatalf("first diagnostic = %#v", diagnostic)
 	}
 }
 
@@ -1130,10 +1164,9 @@ func TestSequenceSetLeadingSpace(t *testing.T) {
 	}
 }
 
-// An explicit empty revision: a module that loads without diagnostics is rejected with the parsed module's revision
-// (an inline revision statement, a revision inside a comment ignored); a module whose load fails
-// in any phase is unsupported (U-0110 empty-revision-load-failure, #254), also from a
-// subdirectory of a search directory.
+// An explicit empty revision is rejected with the parsed module's revision (an inline revision
+// statement, a revision inside a comment ignored). The check precedes includes, imports, and
+// compilation, including when those later phases would fail.
 func TestEmptyRevisionProbe(t *testing.T) {
 	dir := t.TempDir()
 	files := map[string]string{
@@ -1143,6 +1176,14 @@ func TestEmptyRevisionProbe(t *testing.T) {
 		"warning.yang": "module warning { yang-version 1.1; namespace \"urn:w\"; prefix w;\n" +
 			"  container top { grouping g { leaf x { type string; } } leaf y { type string; } } }\n",
 		"missing-import.yang": "module missing-import { yang-version 1.1; namespace \"urn:mi\"; prefix mi; import nosuch { prefix ns; } }\n",
+		"broken-import.yang": "module broken-import { yang-version 1.1; namespace \"urn:bi\"; prefix bi; " +
+			"import broken-dependency { prefix bd; } }\n",
+		"broken-dependency.yang": "module broken-dependency { yang-version 1.1; namespace \"urn:bd\"; prefix bd; " +
+			"leaf bad { type ; } }\n",
+		"parse-error.yang": "module parse-error { yang-version 1.1; namespace \"urn:pe\"; prefix pe; " +
+			"include parse-error-sub; }\n",
+		"parse-error-sub.yang": "submodule parse-error-sub { yang-version 1.1; belongs-to parse-error { prefix pe; } " +
+			"leaf bad { type ; } }\n",
 	}
 	for name, src := range files {
 		if err := os.MkdirAll(filepath.Dir(filepath.Join(dir, name)), 0o750); err != nil {
@@ -1156,21 +1197,29 @@ func TestEmptyRevisionProbe(t *testing.T) {
 		return (Yang{}).Run(Request{BaseDir: dir, Params: map[string]any{"op": "schema", "searchdirs": []any{"."},
 			"context_options": []any{"no_yanglibrary"}, "modules": []any{map[string]any{"name": name, "revision": ""}}}})
 	}
-	r, err := run("inline")
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, _ := r["modules"].([]any)[0].(map[string]any)
-	ds, _ := m["diagnostics"].([]any)
-	if len(ds) != 2 || m["phase"] != "parse" || !strings.Contains(fmt.Sprint(ds[0]), `parsed with the wrong revision ("2020-01-01" instead "")`) {
-		t.Fatalf("inline module entry = %v", m)
-	}
-	// "warning" compiles with an unused-grouping warning that libyang never reaches.
-	for _, name := range []string{"nested", "missing-import", "nosuch", "warning"} {
-		if _, err := run(name); !errors.Is(err, ErrUnsupported) || inventoryGap(err) != "empty-revision-load-failure" ||
-			schemaLimit(err.Error()) != "U-0110" {
-			t.Errorf("%s: err = %v", name, err)
+	for name, actual := range map[string]string{
+		"inline":         "2020-01-01",
+		"nested":         "none",
+		"warning":        "none",
+		"missing-import": "none",
+		"broken-import":  "none",
+		"parse-error":    "none",
+	} {
+		r, err := run(name)
+		if err != nil {
+			t.Errorf("%s: %v", name, err)
+			continue
 		}
+		m, _ := r["modules"].([]any)[0].(map[string]any)
+		ds, _ := m["diagnostics"].([]any)
+		want := fmt.Sprintf(`parsed with the wrong revision (%q instead "")`, actual)
+		if len(ds) != 2 || m["phase"] != "parse" || !strings.Contains(fmt.Sprint(ds[0]), want) {
+			t.Errorf("%s module entry = %v", name, m)
+		}
+	}
+	// With no requested module to parse, there is no parsed revision to reject.
+	if r, err := run("nosuch"); err != nil || r["verdict"] != "invalid" {
+		t.Errorf("nosuch: response = %v, err = %v", r, err)
 	}
 }
 

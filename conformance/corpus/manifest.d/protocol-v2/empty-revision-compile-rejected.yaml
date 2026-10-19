@@ -1,7 +1,7 @@
 fixtures:
   - id: protocol-v2/empty-revision-compile-rejected
     dir: protocol-v2
-    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: pv2-rejected parses but does not compile; libyang checks the requested empty revision right after parsing (lysp_load_module_check), so the module is rejected in the parse phase before compilation. The engine does not emulate that order for a failing load: unsupported, U-0110 class empty-revision-load-failure (#254).
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: pv2-rejected parses but does not compile; libyang checks the requested empty revision right after parsing (lysp_load_module_data_check), so the module is rejected in the parse phase before compilation.
     rfc: ["RFC7950#5.6.5"]
     areas: [schema]
     request:

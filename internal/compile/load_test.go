@@ -8,10 +8,13 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
+	"github.com/vibe-ports/yang/internal/ly"
 	"github.com/vibe-ports/yang/internal/parser"
 )
 
@@ -364,5 +367,183 @@ func TestLoaderOrder(t *testing.T) {
 		if err != nil || m.Revision != want {
 			t.Errorf("prefer=%v: %v %v, want %s", prefer, m, err, want)
 		}
+	}
+}
+
+// TestExplicitEmptyRevisionPrecedesLaterLoadFailures exercises the non-NULL empty revision
+// accepted by ly_ctx_load_module. lysp_load_module_data_check rejects it immediately after the
+// requested module is parsed, before includes, imports, and compilation can report their errors.
+func TestExplicitEmptyRevisionPrecedesLaterLoadFailures(t *testing.T) {
+	empty := ""
+	tests := []struct {
+		name  string
+		files map[string]string
+	}{
+		{
+			name: "parse-error",
+			files: map[string]string{
+				"parse-error.yang":     "module parse-error { namespace urn:parse-error; prefix p; include parse-error-sub; }",
+				"parse-error-sub.yang": "submodule parse-error-sub { belongs-to parse-error { prefix p; } leaf broken { type ; } }",
+			},
+		},
+		{
+			name: "missing-import",
+			files: map[string]string{
+				"missing-import.yang": "module missing-import { namespace urn:missing-import; prefix m; import absent { prefix a; } }",
+			},
+		},
+		{
+			name: "broken-import",
+			files: map[string]string{
+				"broken-import.yang": "module broken-import { namespace urn:broken-import; prefix b; import broken-dependency { prefix d; } }",
+				"broken-dependency.yang": "module broken-dependency { namespace urn:broken-dependency; prefix d; " +
+					"leaf broken { type ; } }",
+			},
+		},
+		{
+			name: "compile-error",
+			files: map[string]string{
+				"compile-error.yang": "module compile-error { namespace urn:compile-error; prefix c; leaf bad { type uint8; default 256; } }",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			for name, src := range tt.files {
+				write(t, dir, name, src)
+			}
+			c, _, err := NewContext(Options{NoYangLibrary: true}, os.DirFS(dir))
+			if err != nil {
+				t.Fatal(err)
+			}
+			m, diags, err := c.LoadRevision(tt.name, &empty, nil)
+			if !errors.Is(err, eInval) || m != nil {
+				t.Fatalf("LoadRevision() = (%v, %v), want (nil, LY_EINVAL)", m, err)
+			}
+			want := []Diagnostic{
+				{Phase: "parse", Level: LevelError, Err: "LY_EINVAL", Msg: "Module \"" + tt.name + "\" parsed with the wrong revision (\"none\" instead \"\")."},
+				{Phase: "parse", Level: LevelError, Err: "LY_EOTHER", Msg: "Parsing module \"" + tt.name + "\" failed."},
+			}
+			if js(diags) != js(want) {
+				t.Fatalf("diagnostics:\n got %s\nwant %s", js(diags), js(want))
+			}
+			if got := len(c.Modules); got != len(internalModules)-2 {
+				t.Fatalf("%d modules remain after rejected load, want %d", got, len(internalModules)-2)
+			}
+		})
+	}
+}
+
+func TestExplicitEmptyRevisionReloadsRevisionlessModuleForCheck(t *testing.T) {
+	dir := t.TempDir()
+	write(t, dir, "revisionless.yang", "module revisionless { namespace urn:revisionless; prefix r; }")
+	c, _, err := NewContext(Options{NoYangLibrary: true}, os.DirFS(dir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, _, err := c.Load("revisionless", "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	empty := ""
+	second, diags, err := c.LoadRevision("revisionless", &empty, nil)
+	if !errors.Is(err, eInval) || second != nil || len(diags) != 2 ||
+		diags[0].Msg != `Module "revisionless" parsed with the wrong revision ("none" instead "").` {
+		t.Fatalf("LoadRevision() = (%v, %+v, %v), want explicit-empty rejection", second, diags, err)
+	}
+	if got := c.implemented("revisionless"); got != first {
+		t.Fatalf("implemented module changed after rejection: got %p, want %p", got, first)
+	}
+}
+
+// TestExplicitEmptyRevisionSearchOrder exercises lys_search_localfile's distinction between a
+// NULL revision (find the latest file across all search directories) and a non-NULL empty revision
+// (accept the first name@revision file so lysp_load_module_data_check can reject its revision).
+func TestExplicitEmptyRevisionSearchOrder(t *testing.T) {
+	newer := t.TempDir()
+	first := t.TempDir()
+	write(t, newer, "ordered@2021-01-01.yang", "module ordered { this is malformed; }")
+	write(t, first, "ordered@2020-01-01.yang", "module ordered { namespace urn:ordered; prefix o; revision 2020-01-01; }")
+	c, _, err := NewContext(Options{NoYangLibrary: true}, os.DirFS(newer), os.DirFS(first))
+	if err != nil {
+		t.Fatal(err)
+	}
+	empty := ""
+	m, diags, err := c.LoadRevision("ordered", &empty, nil)
+	if !errors.Is(err, eInval) || m != nil {
+		t.Fatalf("LoadRevision() = (%v, %v), want (nil, LY_EINVAL)", m, err)
+	}
+	want := []Diagnostic{
+		{Phase: "parse", Level: LevelError, Err: "LY_EINVAL", Msg: `Module "ordered" parsed with the wrong revision ("2020-01-01" instead "").`},
+		{Phase: "parse", Level: LevelError, Err: "LY_EOTHER", Msg: `Parsing module "ordered" failed.`},
+	}
+	if js(diags) != js(want) {
+		t.Fatalf("diagnostics:\n got %s\nwant %s", js(diags), js(want))
+	}
+}
+
+type reverseDirectoryFS struct{ fs.FS }
+
+func (f reverseDirectoryFS) Open(name string) (fs.File, error) {
+	file, err := f.FS.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	if rd, ok := file.(fs.ReadDirFile); ok {
+		return reverseDirectoryFile{rd}, nil
+	}
+	return file, nil
+}
+
+type reverseDirectoryFile struct{ fs.ReadDirFile }
+
+func (f reverseDirectoryFile) ReadDir(n int) ([]fs.DirEntry, error) {
+	entries, err := f.ReadDirFile.ReadDir(n)
+	slices.Reverse(entries)
+	return entries, err
+}
+
+func TestSearchUsesBackendDirectoryOrder(t *testing.T) {
+	const module = "ordered"
+	empty := ""
+	for _, tt := range []struct {
+		name, want string
+		files      fstest.MapFS
+	}{
+		{"same directory", "ordered@2021-01-01.yang", fstest.MapFS{
+			"ordered@2020-01-01.yang": {}, "ordered@2021-01-01.yang": {},
+		}},
+		{"subdirectories", "alpha/ordered@2020-01-01.yang", fstest.MapFS{
+			"alpha/ordered@2020-01-01.yang": {}, "zeta/ordered@2021-01-01.yang": {},
+		}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Context{dirs: []fs.FS{reverseDirectoryFS{tt.files}}, opts: Options{MaxSearchDirs: 10}}
+			got, err := c.search(module, &empty)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got == nil || got.name != tt.want {
+				t.Fatalf("search() = %+v, want %s", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestExplicitEmptyRevisionNotFoundDiagnostic(t *testing.T) {
+	c, _, err := NewContext(Options{NoYangLibrary: true}, fstest.MapFS{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	empty := ""
+	m, diags, err := c.LoadRevision("nosuch", &empty, nil)
+	if !errors.Is(err, eNotFound) || m != nil {
+		t.Fatalf("LoadRevision() = (%v, %v), want (nil, LY_ENOTFOUND)", m, err)
+	}
+	want := []Diagnostic{{Phase: "parse", Level: LevelError, Err: "LY_EVALID", Code: ly.Reference,
+		Msg: `Loading "nosuch@" module failed, not found.`}}
+	if js(diags) != js(want) {
+		t.Fatalf("diagnostics:\n got %s\nwant %s", js(diags), js(want))
 	}
 }

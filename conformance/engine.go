@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/vibe-ports/yang"
+	"github.com/vibe-ports/yang/internal/contextopts"
 )
 
 // FieldSkipper is implemented by an engine that does not produce some response fields for an op
@@ -218,12 +219,13 @@ func buildContext(r Request) (*yang.Context, map[string]any, []map[string]any, s
 		}
 		m := map[string]any{"name": name}
 		// Load's empty revision means latest; the oracle distinguishes a non-NULL
-		// empty revision at ly_ctx_load_module (lyoracle.c:1134). Probe that load in
-		// a disposable context so a rejected entry cannot load a new module or
-		// change features on one implemented by an earlier entry.
+		// empty revision at ly_ctx_load_module (lyoracle.c:1134). Preserve it for
+		// the load on this context so parser checks see modules loaded by earlier
+		// entries. Revision rejection precedes feature changes and the failed load
+		// is reverted.
 		var diags []yang.Diagnostic
 		if hasRev && rev == "" {
-			diags, err = probeEmptyRevision(opts, dirs, name)
+			diags, err = loadEmptyRevision(ctx, name)
 		} else {
 			diags, err = ctx.Load(name, rev, feats)
 		}
@@ -253,43 +255,13 @@ func buildContext(r Request) (*yang.Context, map[string]any, []map[string]any, s
 	return ctx, resp, mods, verdict, nil
 }
 
-// probeEmptyRevision loads name with the latest revision in a disposable context, so the request
-// context is untouched. When it loads without any diagnostic, the oracle's explicit "" revision
-// is libyang's mismatch with the parsed module's revision (lysp_load_module_check), reported in
-// the parse phase. When the load logs any diagnostic (a warning included) or fails in any phase
-// (parse, imports, compile), libyang would still check the
-// revision right after parsing and before imports and compilation; the Load API has no
-// parse-only step, so that ordering is not emulated and the request is unsupported (U-0110,
-// class empty-revision-load-failure; the parse-phase check in the loader is tracked in #254).
-func probeEmptyRevision(opts yang.Options, dirs []fs.FS, name string) ([]yang.Diagnostic, error) {
-	scratch, _, err := yang.NewContext(opts, dirs...)
-	if err != nil {
-		return nil, err
-	}
+// loadEmptyRevision preserves a non-NULL empty revision on the request context. The loader checks
+// the parsed module's revision before resolving imports, includes, compilation, or feature changes.
+func loadEmptyRevision(ctx *yang.Context, name string) ([]yang.Diagnostic, error) {
 	// Revision validation happens while parsing the module, before requested features are
 	// applied. Do not let a feature error replace the empty-revision diagnostic.
-	diags, err := scratch.Load(name, "", nil)
-	switch {
-	case errors.Is(err, yang.ErrUnsupported) || errors.Is(err, yang.ErrBudget):
-		return diags, err
-	case err != nil:
-		return nil, fmt.Errorf("%w: empty revision with a failing module load: %s "+
-			"(libyang checks the revision before imports and compile, U-0110)", ErrUnsupported, err.Error())
-	case len(diags) > 0:
-		// libyang rejects the revision in lysp_load_module_data_check, before imports and
-		// compilation log anything; which of the probe's diagnostics (warnings included) come
-		// before that check cannot be told without a parse-only load.
-		return nil, fmt.Errorf("%w: empty revision with a failing module load: the load logged %d "+
-			"diagnostics (libyang checks the revision before imports and compile, U-0110)", ErrUnsupported, len(diags))
-	}
-	actual := "none"
-	if mod := scratch.Schema().Implemented(name); mod != nil && mod.Revision() != "" {
-		actual = mod.Revision()
-	}
-	diags = append([]yang.Diagnostic{},
-		yang.Diagnostic{Phase: "parse", Err: "LY_EINVAL", Code: "LYVE_SUCCESS", Msg: fmt.Sprintf(`Module %q parsed with the wrong revision (%q instead "").`, name, actual)},
-		yang.Diagnostic{Phase: "parse", Err: "LY_EOTHER", Code: "LYVE_SUCCESS", Msg: fmt.Sprintf("Parsing module %q failed.", name)})
-	return diags, fmt.Errorf("module revision mismatch")
+	empty := ""
+	return contextopts.LoadRevision(ctx, name, &empty, nil)
 }
 
 func unsupported(err error) error { return fmt.Errorf("%w: %s", ErrUnsupported, err.Error()) }

@@ -105,3 +105,114 @@ func TestRunNativeRequestDeadlineIsTransport(t *testing.T) {
 		t.Fatalf("deadline classification = %s/%s, want A/native-transport", category, class)
 	}
 }
+
+// TestExplicitEmptyRevisionLoaderStages is a live-oracle fixture table for revision-presence
+// behavior whose diagnostics include details deliberately ignored by corpus normalization. It
+// compares the complete diagnostic messages without writing golden files.
+func TestExplicitEmptyRevisionLoaderStages(t *testing.T) {
+	oracle := nativeRequestRunner(t)
+	base := filepath.Join("corpus", "protocol-v2")
+	tests := []struct {
+		id      string
+		params  map[string]any
+		message string
+	}{
+		{
+			id: "protocol-v2/empty-revision-search-first-directory",
+			params: map[string]any{"op": "schema", "searchdirs": []any{"empty-rev-search-newer", "empty-rev-search-first"},
+				"modules": []any{map[string]any{"name": "pv2-empty-rev-parse", "revision": ""}}},
+			message: `Module "pv2-empty-rev-parse" parsed with the wrong revision ("2020-01-01" instead "").`,
+		},
+		{
+			id: "protocol-v2/empty-revision-existing-module-collision",
+			params: map[string]any{"op": "schema", "searchdirs": []any{"schemas"},
+				"modules": []any{map[string]any{"name": "pv2-empty-rev-collision-a"},
+					map[string]any{"name": "pv2-empty-rev-collision", "revision": ""}}},
+			message: `Name collision between module and submodule of name "pv2-empty-rev-collision-a".`,
+		},
+		{
+			id: "protocol-v2/empty-revision-module-not-found",
+			params: map[string]any{"op": "schema", "searchdirs": []any{"schemas"},
+				"modules": []any{map[string]any{"name": "pv2-empty-rev-not-found", "revision": ""}}},
+			message: `Loading "pv2-empty-rev-not-found@" module failed, not found.`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.id, func(t *testing.T) {
+			want, err := oracle(base, tt.params)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := (Yang{}).Run(Request{ID: tt.id, BaseDir: base, Params: tt.params})
+			if err != nil {
+				t.Fatal(err)
+			}
+			want, _ = withoutSkipped(want, Yang{}.SkippedFields("schema"))
+			got, _ = withoutSkipped(got, Yang{}.SkippedFields("schema"))
+			if diff := diffResponses(want, got); diff != "" {
+				t.Fatalf("oracle mismatch: %s\noracle: %#v\nengine: %#v", diff, want, got)
+			}
+			for label, response := range map[string]Response{"oracle": want, "engine": got} {
+				diagnostics := response.Diagnostics()
+				if len(diagnostics) == 0 || diagnostics[0]["msg"] != tt.message {
+					t.Errorf("%s first diagnostic = %#v, want msg %q", label, diagnostics, tt.message)
+				}
+			}
+		})
+	}
+}
+
+// The oracle and engine must inspect the same directory: readdir order is
+// filesystem-defined and can differ from filename order.
+func TestExplicitEmptyRevisionNativeDirectoryOrder(t *testing.T) {
+	oracle := nativeRequestRunner(t)
+	base := t.TempDir()
+	const valid = "native-order@2020-01-01.yang"
+	const malformed = "native-order@2021-01-01.yang"
+	for _, file := range []struct{ name, source string }{
+		{malformed, "module native-order { this is malformed; }"},
+		{valid, "module native-order { namespace urn:native-order; prefix n; revision 2020-01-01; }"},
+	} {
+		if err := os.WriteFile(filepath.Join(base, file.name), []byte(file.source), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	dir, err := os.Open(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entries, readErr := dir.ReadDir(-1)
+	closeErr := dir.Close()
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if closeErr != nil {
+		t.Fatal(closeErr)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("directory has %d entries, want 2", len(entries))
+	}
+	params := map[string]any{"op": "schema", "searchdirs": []any{"."},
+		"modules": []any{map[string]any{"name": "native-order", "revision": ""}}}
+	want, err := oracle(base, params)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := (Yang{}).Run(Request{ID: "native-order/explicit-empty-revision", BaseDir: base, Params: params})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, _ = withoutSkipped(want, Yang{}.SkippedFields("schema"))
+	got, _ = withoutSkipped(got, Yang{}.SkippedFields("schema"))
+	if diff := diffResponses(want, got); diff != "" {
+		t.Fatalf("native first entry %q: oracle mismatch: %s\noracle: %#v\nengine: %#v", entries[0].Name(), diff, want, got)
+	}
+	diagnostics := want.Diagnostics()
+	if len(diagnostics) == 0 {
+		t.Fatal("oracle returned no diagnostics")
+	}
+	wrongRevision := `Module "native-order" parsed with the wrong revision ("2020-01-01" instead "").`
+	if first := entries[0].Name(); (first == valid) != (diagnostics[0]["msg"] == wrongRevision) {
+		t.Fatalf("native first entry %q, oracle first diagnostic = %#v", first, diagnostics[0])
+	}
+}

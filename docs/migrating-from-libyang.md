@@ -23,7 +23,7 @@ it; the issue tracks the public API.
 | `LY_CTX_*` options | `yang.Options` fields: `AllImplemented`, `NoYangLibrary`, `DisableSearchdirs`, `PreferSearchdirs`, `EnableImportFeatures`, `CompileObsolete`, `RefImplemented`, `LeafrefExtended`, `BuiltinPluginsOnly` |
 | `ly_ctx_set_module_imp_clb` | `yang.Options.Loader` |
 | `lys_parse_mem` / `lys_parse_path` | put the text in an `fs.FS` (`fstest.MapFS` for in-memory text) and `Context.Load` it |
-| `ly_ctx_load_module(ctx, name, revision, features)` | `Context.Load(name, revision, features)` |
+| `ly_ctx_load_module(ctx, name, revision, features)` | `Context.Load(name, revision, features)`; an explicit empty revision (distinct from NULL/latest) is not expressible through the public API yet and is deferred to the M7 API review |
 | `ly_ctx_destroy` | nothing: garbage collected |
 | (the compiled context passed to data calls) | `Context.Schema()`: an immutable `*yang.Schema` snapshot, safe to share between goroutines |
 | `ly_ctx_get_module` / `ly_ctx_get_module_implemented` | `Schema.Module(name, revision)` / `Schema.Implemented(name)` |

@@ -8,6 +8,7 @@ import (
 	"testing/fstest"
 
 	"github.com/vibe-ports/yang"
+	"github.com/vibe-ports/yang/internal/contextopts"
 )
 
 func TestContextLoad(t *testing.T) {
@@ -33,6 +34,33 @@ func TestContextLoad(t *testing.T) {
 	diags, err = ctx.Load("s", "", nil)
 	if err == nil || len(diags) != 2 || diags[0].Line != 2 || diags[1].Msg != `Parsing module "s" failed.` {
 		t.Errorf("s: %v %+v", err, diags)
+	}
+}
+
+func TestContextLoadRevisionExplicitEmpty(t *testing.T) {
+	dir := fstest.MapFS{
+		"r.yang": {Data: []byte(`module r { namespace urn:r; prefix r; import absent { prefix a; } revision 2020-01-01; }`)},
+	}
+	ctx, _, err := yang.NewContext(yang.Options{NoYangLibrary: true}, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	empty := ""
+	diags, err := contextopts.LoadRevision(ctx, "r", &empty, nil)
+	if err == nil || len(diags) != 2 || diags[0].Phase != "parse" || diags[0].Err != "LY_EINVAL" ||
+		diags[0].Msg != `Module "r" parsed with the wrong revision ("2020-01-01" instead "").` ||
+		diags[1].Err != "LY_EOTHER" || diags[1].Msg != `Parsing module "r" failed.` {
+		t.Fatalf("explicit empty: %v %+v", err, diags)
+	}
+
+	latest, _, err := yang.NewContext(yang.Options{NoYangLibrary: true}, fstest.MapFS{
+		"r.yang": {Data: []byte(`module r { namespace urn:r; prefix r; revision 2020-01-01; }`)},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diags, err := latest.Load("r", "", nil); err != nil || len(diags) != 0 {
+		t.Fatalf("Load latest: %v %+v", err, diags)
 	}
 }
 

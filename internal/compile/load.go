@@ -263,11 +263,22 @@ func NewContext(opts Options, dirs ...fs.FS) (*Context, []Diagnostic, error) {
 // reverted (lys_unres_glob_revert); other changes (feature flags of a module
 // implemented before) stay, as in libyang.
 func (c *Context) Load(name, rev string, features []string) (*Module, []Diagnostic, error) {
+	var requested *string
+	if rev != "" {
+		requested = &rev
+	}
+	return c.LoadRevision(name, requested, features)
+}
+
+// LoadRevision is ly_ctx_load_module with the distinction its const char *revision preserves:
+// nil selects the latest revision while a non-nil pointer, including one to "", requests that
+// exact revision.
+func (c *Context) LoadRevision(name string, rev *string, features []string) (*Module, []Diagnostic, error) {
 	c.diags, c.creating, c.implementing, c.compiling, c.sets = nil, nil, nil, nil, nil
 	c.nodes, c.types, c.disabled, c.ur = 0, 0, nil, unresSets{}
 	c.xpathSteps = orDefault(c.opts.Budget.MaxXPathSteps, xpath.DefaultMaxSteps)
 	c.phase = "parse"
-	m, err := c.parseLoad(name, rev)
+	m, err := c.parseLoadRevision(name, rev)
 	if err == nil {
 		err = c.setImplemented(m, features)
 	}
@@ -380,24 +391,41 @@ func (c *Context) withoutRevision(name string) *Module {
 	return c.latest(name)
 }
 
+func requestedRevision(rev string) *string {
+	if rev == "" {
+		return nil
+	}
+	return &rev
+}
+
 // parseLoad is lys_parse_load: the module from the context or loaded.
 func (c *Context) parseLoad(name, rev string) (*Module, error) {
+	return c.parseLoadRevision(name, requestedRevision(rev))
+}
+
+func (c *Context) parseLoadRevision(name string, requested *string) (*Module, error) {
+	rev := ""
+	if requested != nil {
+		rev = *requested
+	}
 	var m, cand *Module
-	if rev != "" {
-		m = c.module(name, rev)
+	if requested != nil {
+		if rev != "" {
+			m = c.module(name, rev)
+		}
 	} else if m = c.withoutRevision(name); m != nil && !m.Implemented && m.latest&importedRev == 0 {
 		cand, m = m, nil // look for a newer revision first
 	}
 	if m == nil {
 		var err error
-		if m, err = c.loadModule(name, rev, cand); err != nil {
+		if m, err = c.loadModule(name, rev, requested, cand); err != nil {
 			return nil, err
 		}
 		switch {
 		case m == nil:
 			cand.latest |= latestSearchdirs
 			m = cand
-		case rev == "" && m.latest&latestRev != 0:
+		case requested == nil && m.latest&latestRev != 0:
 			m.latest |= latestSearchdirs
 		}
 	}
@@ -407,9 +435,10 @@ func (c *Context) parseLoad(name, rev string) (*Module, error) {
 	return m, nil
 }
 
-// loadModule is lys_load_mod_from_clb_or_file. A nil module without error
-// means only cand (the latest in the context) was found.
-func (c *Context) loadModule(name, rev string, cand *Module) (*Module, error) {
+// loadModule is lys_load_mod_from_clb_or_file. requested preserves C's revision
+// pointer: only nil prints <any> and marks a load as the latest-revision search.
+// A nil module without error means only cand (the latest in the context) was found.
+func (c *Context) loadModule(name, rev string, requested *string, cand *Module) (*Module, error) {
 	clbUsed := c.opts.Loader == nil || cand != nil && cand.latest&latestImpClb != 0
 	dirsUsed := c.opts.DisableSearchdirs || cand != nil && cand.latest&latestSearchdirs != 0
 	var m *Module
@@ -417,17 +446,17 @@ func (c *Context) loadModule(name, rev string, cand *Module) (*Module, error) {
 		if (!c.opts.PreferSearchdirs || dirsUsed) && !clbUsed {
 			if src, ok := c.opts.Loader(name, rev, "", ""); ok {
 				var err error
-				if m, err = c.parseModule(src, loadData{name: name, rev: rev}); err != nil {
+				if m, err = c.parseModule(src, loadData{name: name, rev: requested}); err != nil {
 					return nil, err
 				}
 				found = true
 			}
 			clbUsed = true
-			if m != nil && rev == "" {
+			if m != nil && requested == nil {
 				m.latest |= latestImpClb
 			}
 		} else if !dirsUsed {
-			f, err := c.search(name, rev)
+			f, err := c.search(name, requested)
 			if err != nil {
 				return nil, err
 			}
@@ -436,20 +465,20 @@ func (c *Context) loadModule(name, rev string, cand *Module) (*Module, error) {
 				if err != nil {
 					return nil, err
 				}
-				if m, err = c.parseModule(src, loadData{name: name, rev: rev, path: f.name}); err != nil {
+				if m, err = c.parseModule(src, loadData{name: name, rev: requested, path: f.name}); err != nil {
 					return nil, err
 				}
 				found = true
 			}
 			dirsUsed = true
-			if m != nil && rev == "" {
+			if m != nil && requested == nil {
 				m.latest |= latestSearchdirs
 			}
 		}
 	}
 	if m == nil && cand == nil {
 		r := rev
-		if r == "" {
+		if requested == nil {
 			r = "<any>"
 		}
 		_ = c.logVal(ly.Reference, 0, "Loading \"%s@%s\" module failed, not found.", name, r)
@@ -479,7 +508,10 @@ func (c *Context) read(f *file) ([]byte, error) {
 }
 
 // loadData is struct lysp_load_module_data.
-type loadData struct{ name, rev, path string }
+type loadData struct {
+	name, path string
+	rev        *string
+}
 
 // pctx is the part of the main module's parser context the loader needs.
 type pctx struct {
@@ -653,10 +685,10 @@ func (c *Context) checkLoadData(d loadData, name, rev string, latest bool) (exis
 	if d.name != "" && d.name != name {
 		return false, c.logErr(eInval, "Unexpected module \"%s\" parsed instead of \"%s\".", name, d.name)
 	}
-	if d.rev != "" {
-		if rev != d.rev {
+	if d.rev != nil {
+		if rev == "" || rev != *d.rev {
 			return false, c.logErr(eInval, "Module \"%s\" parsed with the wrong revision (\"%s\" instead \"%s\").",
-				name, revOrNone(rev), d.rev)
+				name, revOrNone(rev), *d.rev)
 		}
 	} else if !latest {
 		return true, nil
@@ -825,14 +857,14 @@ func (c *Context) loadSubmodule(p *pctx, name, rev string, cand *Submodule, cur 
 		if (!c.opts.PreferSearchdirs || dirsUsed) && !clbUsed {
 			if src, ok := c.opts.Loader(p.main.Name, "", name, rev); ok {
 				var err error
-				if s, err = c.parseSubmodule(p, src, loadData{name: name, rev: rev}, false); err != nil {
+				if s, err = c.parseSubmodule(p, src, loadData{name: name, rev: requestedRevision(rev)}, false); err != nil {
 					return nil, err
 				}
 				found = true
 			}
 			clbUsed = true
 		} else if !dirsUsed {
-			f, err := c.search(name, rev)
+			f, err := c.search(name, requestedRevision(rev))
 			if err != nil {
 				return nil, err
 			}
@@ -841,7 +873,7 @@ func (c *Context) loadSubmodule(p *pctx, name, rev string, cand *Submodule, cur 
 				if err != nil {
 					return nil, err
 				}
-				if s, err = c.parseSubmodule(p, src, loadData{name: name, rev: rev, path: f.name}, true); err != nil {
+				if s, err = c.parseSubmodule(p, src, loadData{name: name, rev: requestedRevision(rev), path: f.name}, true); err != nil {
 					return nil, err
 				}
 				found = true
@@ -873,7 +905,7 @@ func (c *Context) parseSubmodule(p *pctx, src []byte, d loadData, inDirs bool) (
 	s.Revision = c.lastRevision(pm.Revisions, "submodule", s.Name)
 	latest := c.submoduleLatest(p.main, s.Name)
 	switch {
-	case latest == nil && inDirs && d.rev == "":
+	case latest == nil && inDirs && d.rev == nil:
 		s.latest = 2
 	case latest == nil:
 		s.latest = 1

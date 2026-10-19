@@ -49,13 +49,14 @@ U-0021). With a revision: the first exact
 `@REV` file wins; a plain `name.yang` is remembered as fallback and later checked by
 `lysp_load_module_data_check` (TS:2019: "Module \"%s\" parsed with the wrong revision" LY_EINVAL).
 Without a revision: the newest valid `@REV` across all dirs; a plain `name.yang` only when no dated
-file exists. libyang pops directories LIFO (TS:3083) and depends on `readdir` order for ties; we walk
-the directories in lexical order and treat any tie (same module+revision in two places) as a
-VERIFY(load/tie) case — goldens must not depend on it. **Symlinks:** libyang follows them — an entry
+file exists. libyang pops directories LIFO (TS:3083) and depends on `readdir` order for ties; we use
+each backend's native directory enumeration order, including within subdirectories. A live-oracle
+test compares both implementations over the same on-disk directory because that order is
+filesystem-defined. **Symlinks:** libyang follows them — an entry
 with `d_type` `DT_LNK`/`DT_UNKNOWN` is `stat`ed (target type), so a symlinked directory is descended
 into and a symlinked file is a candidate (TS:2957-3020); there is no cycle detection, a symlink loop
 only ends when `opendir` fails on an over-long path (`LOGWRN(NULL, …)`, not stored, TS:3091-3095).
-`fs.WalkDir` does not follow symlinks, so the search is our own walk: `fs.ReadDir`, and for
+`fs.WalkDir` does not follow symlinks, so the search is our own walk: `fs.ReadDirFile.ReadDir`, and for
 `ModeSymlink` entries `fs.Stat` to get the target type (works for `os.DirFS`; an `fs.FS` without
 symlinks is unaffected). Bounds: a directory path longer than 4096 bytes (`PATH_MAX`) is skipped
 silently like libyang's failing `opendir`, and `Budget.MaxSearchDirs` (default 10 000 directories

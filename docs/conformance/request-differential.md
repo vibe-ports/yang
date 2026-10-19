@@ -104,7 +104,6 @@ Pairwise counts are reported separately below.
 | `notification-restconf` | U-0110 | Engine parsing of the RESTCONF notification envelope | 1,419 |
 | `reply-non-operation-parent` | U-0110 | Reply into a parent that is not an RPC/action; `ParseOpOptions.Request` rejects it before parsing | 0 |
 | `relative-set-parent` | U-0110 | A `set` path that does not start with `/` (relative, or led by whitespace) under a retained parent: `lyd_new_path` takes the original text with the parent, which `Tree.NewPath` cannot take (#255). Rewriting or trimming the path diverged from libyang's diagnostics (original path text, lexer positions, syntax before schema, opaque and quoted-key parents), so the engine does not emulate it. Without a retained tree, a relative path keeps `lyd_new_path`'s LY_EINVAL argument check (fixtures seq/set-relative-quoted-parent, -opaque-parent, -opaque-malformed, -missing-key, seq/set-spaced-malformed) | not re-run |
-| `empty-revision-load-failure` | U-0110 | Explicit empty module revision whose load fails in any phase (parse, imports, compile): libyang checks the revision right after parsing (`lysp_load_module_check`), but `Context.Load` has no parse-only step, so the engine does not emulate that order (fixture protocol-v2/empty-revision-compile-rejected, #254) | not re-run |
 | `cross-context-diff` | D-0069 | Diff matching between populated trees from separate schema snapshots (#236) | 0 |
 | **Total** | | | **3,563** |
 
@@ -163,8 +162,9 @@ occur at 1113-1122 before its load at 1134; and feature collection at 1124-1128
 does not reject non-string children. The Go adapter follows the same order. Its
 empty-revision compatibility rejection probes the load in a disposable context,
 so the real context is exactly as if that module entry had been omitted. When the
-probe loads, the rejection names the parsed module's revision; when it fails in
-any phase, the request is B `empty-revision-load-failure` (U-0110, #254).
+probe parses the requested module, the loader rejects the explicit empty revision
+before resolving its imports and includes or compiling it, and names the parsed
+module's revision in the diagnostic.
 
 Generic sequence seed labels use `step/`, removing the old collision between
 root `diff` and sequence `diff`. Requests use `base_dir: "."` and relative,

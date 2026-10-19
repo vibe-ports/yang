@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 
 	"github.com/vibe-ports/yang/internal/compile"
+	"github.com/vibe-ports/yang/internal/contextopts"
 	"github.com/vibe-ports/yang/internal/parser"
 	"github.com/vibe-ports/yang/internal/snap"
 )
@@ -83,6 +84,12 @@ type Context struct {
 	schema atomic.Pointer[Schema]
 }
 
+func init() {
+	contextopts.RegisterLoadRevision(func(ctx any, name string, revision *string, features []string) ([]snap.Diagnostic, error) {
+		return ctx.(*Context).loadRevision(name, revision, features)
+	})
+}
+
 // Schema returns the compiled schema as of the last NewContext or Load: an immutable snapshot.
 // A later Load publishes a new one; snapshots obtained before stay valid and unchanged (they just
 // do not see later loads). Safe to call concurrently with Load.
@@ -119,9 +126,19 @@ func NewContext(opts Options, dirs ...fs.FS) (*Context, []Diagnostic, error) {
 // error the context is unchanged except where libyang keeps changes too
 // (the features of a module implemented before). Afterwards Schema returns the new state.
 func (x *Context) Load(name, revision string, features []string) ([]Diagnostic, error) {
+	var requested *string
+	if revision != "" {
+		requested = &revision
+	}
+	return x.loadRevision(name, requested, features)
+}
+
+// loadRevision preserves libyang's distinction between a NULL revision and an explicitly
+// requested empty revision for the internal conformance bridge.
+func (x *Context) loadRevision(name string, revision *string, features []string) ([]Diagnostic, error) {
 	x.mu.Lock()
 	defer x.mu.Unlock()
-	_, diags, err := x.c.Load(name, revision, features)
+	_, diags, err := x.c.LoadRevision(name, revision, features)
 	x.publish()
 	return convert(diags), err
 }

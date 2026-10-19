@@ -520,20 +520,19 @@ var inventoryGapClasses = map[string]struct {
 	id      string
 	reasons []string
 }{
-	"ordered-input":               {"D-0058", []string{"LYD_PARSE_ORDERED input order"}},
-	"anydata-anyxml":              {"U-0043", []string{"anydata", "anyxml"}},
-	"dup-no-lyds":                 {"U-0105", []string{"dup option no_lyds"}},
-	"split-validation":            {"U-0106", []string{"split-validation speed path"}},
-	"operation-parent":            {"U-0106", []string{"rpc input into an existing", "operation input into an existing parent", "an rpc request with data_type", "a reply into an opaque request"}},
-	"opaque-construction":         {"U-0107", []string{"edit insert_opaq"}},
-	"canonical-values":            {"U-0108", []string{"change_term canon", "LYD_NEW_VAL_STORE_ONLY and _CANON"}},
-	"list2":                       {"U-0109", []string{"insert_list2"}},
-	"reply-non-operation-parent":  {"U-0110", []string{"reply into a non-operation parent"}},
-	"relative-set-parent":         {"U-0110", []string{"relative set under a retained parent"}},
-	"empty-revision-load-failure": {"U-0110", []string{"empty revision with a failing module load"}},
-	"notification-netconf":        {"U-0110", []string{"notification envelope data_type notif-netconf"}},
-	"notification-restconf":       {"U-0110", []string{"notification envelope data_type notif-restconf"}},
-	"cross-context-diff":          {"D-0069", []string{"cross-context diff of populated trees"}},
+	"ordered-input":              {"D-0058", []string{"LYD_PARSE_ORDERED input order"}},
+	"anydata-anyxml":             {"U-0043", []string{"anydata", "anyxml"}},
+	"dup-no-lyds":                {"U-0105", []string{"dup option no_lyds"}},
+	"split-validation":           {"U-0106", []string{"split-validation speed path"}},
+	"operation-parent":           {"U-0106", []string{"rpc input into an existing", "operation input into an existing parent", "an rpc request with data_type", "a reply into an opaque request"}},
+	"opaque-construction":        {"U-0107", []string{"edit insert_opaq"}},
+	"canonical-values":           {"U-0108", []string{"change_term canon", "LYD_NEW_VAL_STORE_ONLY and _CANON"}},
+	"list2":                      {"U-0109", []string{"insert_list2"}},
+	"reply-non-operation-parent": {"U-0110", []string{"reply into a non-operation parent"}},
+	"relative-set-parent":        {"U-0110", []string{"relative set under a retained parent"}},
+	"notification-netconf":       {"U-0110", []string{"notification envelope data_type notif-netconf"}},
+	"notification-restconf":      {"U-0110", []string{"notification envelope data_type notif-restconf"}},
+	"cross-context-diff":         {"D-0069", []string{"cross-context diff of populated trees"}},
 }
 
 // Explicit native-crash registry. A signal is a documented deviation only when exactly one

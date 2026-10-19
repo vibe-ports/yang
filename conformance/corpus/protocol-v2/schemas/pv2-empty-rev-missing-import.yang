@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+module pv2-empty-rev-missing-import {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-empty-rev-missing-import";
+  prefix ermi;
+
+  import pv2-empty-rev-absent { prefix absent; }
+
+  revision 2020-01-02;
+}

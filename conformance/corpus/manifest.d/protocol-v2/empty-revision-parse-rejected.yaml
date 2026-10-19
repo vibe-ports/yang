@@ -1,0 +1,15 @@
+fixtures:
+  - id: protocol-v2/empty-revision-parse-rejected
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # The requested module parses, but its included submodule has a syntax error. libyang rejects the explicit empty revision before parsing the include.
+    rfc: ["RFC7950#5.6.5"]
+    areas: [schema]
+    request:
+      op: schema
+      searchdirs: [schemas]
+      modules:
+        - {name: pv2-empty-rev-parse, revision: ""}
+    golden: golden/empty-revision-parse-rejected.json
+    assert:
+      verdict: invalid
+      deviation: null

@@ -24,10 +24,16 @@ type file struct {
 
 // search is lys_search_localfile (without the implicit current directory,
 // LY_CTX_DISABLE_SEARCHDIR_CWD): directories are a stack, the last search
-// directory and the last found subdirectory are searched first. Symlinks are
+// directory and the last found subdirectory are searched first. A non-nil
+// requested revision follows C's `if (revision)` branch even when it points to
+// an empty string, which selects the first name@revision file. Symlinks are
 // followed (fs.Stat), so a symlink cycle is bounded by Budget.MaxSearchDirs
 // (U-0022). It returns a nil file when nothing matches.
-func (c *Context) search(name, rev string) (*file, error) {
+func (c *Context) search(name string, requested *string) (*file, error) {
+	rev := ""
+	if requested != nil {
+		rev = *requested
+	}
 	type dir struct {
 		fsys fs.FS
 		name string
@@ -49,7 +55,7 @@ func (c *Context) search(name, rev string) (*file, error) {
 			return nil, fmt.Errorf("%w: more than %d directories searched for module %q", ErrBudget,
 				c.opts.MaxSearchDirs, name)
 		}
-		ents, err := fs.ReadDir(wd.fsys, wd.name)
+		ents, err := readDirNative(wd.fsys, wd.name)
 		if err != nil {
 			continue // LOGWRN(NULL, ...), not stored
 		}
@@ -78,7 +84,7 @@ func (c *Context) search(name, rev string) (*file, error) {
 				continue
 			}
 			rest := fn[len(name):]
-			if rev != "" {
+			if requested != nil {
 				if rest[0] == '@' {
 					if strings.HasPrefix(rest[1:], rev) { // exact revision
 						return &file{wd.fsys, p, yin}, nil
@@ -104,6 +110,23 @@ func (c *Context) search(name, rev string) (*file, error) {
 		}
 	}
 	return match, nil
+}
+
+// readDirNative keeps the backend's enumeration order. fs.ReadDir sorts entries
+// when it falls back to ReadDirFile, unlike readdir in lys_search_localfile.
+func readDirNative(fsys fs.FS, name string) ([]fs.DirEntry, error) {
+	f, err := fsys.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+	if rd, ok := f.(fs.ReadDirFile); ok {
+		return rd.ReadDir(-1)
+	}
+	if rd, ok := fsys.(fs.ReadDirFS); ok {
+		return rd.ReadDir(name)
+	}
+	return nil, fs.ErrInvalid
 }
 
 // validDate is lys_check_date without logging.
