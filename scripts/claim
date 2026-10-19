@@ -42,7 +42,12 @@ LIVE="$TRUST"'
 comments() { gh api --paginate --slurp "repos/$repo/issues/$1/comments" | jq -c 'add // []'; }
 say() { gh api -X POST "repos/$repo/issues/$1/comments" -f body="$2" --jq .id; }
 relabel() { # <issue> <add> <remove>
-  gh api -X POST "repos/$repo/issues/$1/labels" -f "labels[]=$2" >/dev/null
+  local present
+  # A failed POST may still have applied. Confirm the replacement from the issue before
+  # removing the old label; if the read fails or it is absent, leave the old label alone.
+  gh api -X POST "repos/$repo/issues/$1/labels" -f "labels[]=$2" >/dev/null || true
+  present=$(gh api "repos/$repo/issues/$1" --jq "[.labels[].name] | index(\"$2\") != null") || return 1
+  [[ $present == true ]] || return 1
   gh api -X DELETE "repos/$repo/issues/$1/labels/$3" >/dev/null 2>&1 || true  # absent label: fine
 }
 args() {
@@ -65,21 +70,54 @@ claim() {
   [[ ,$labels, == *,up-for-grabs,* ]] || die "#$n is not up-for-grabs" 1
   [[ ,$labels, != *,blocked,* ]] || die "#$n is blocked" 1
   mine=$(say "$n" "CLAIM $agent $(stamp)")
-  # Whatever goes wrong before the labels are swapped, withdraw this claim (no ghost claims).
-  trap 'say "$n" "RELEASE $agent $(stamp) $mine" >/dev/null || echo "claim: could not withdraw claim $mine on #$n" >&2' EXIT
+  # Whatever goes wrong before the labels are reconciled, withdraw this claim (no ghost claims).
+  trap rollback EXIT
   sleep "${CLAIM_SETTLE:-3}"  # let concurrent claims land before deciding
-  first=$(comments "$n" | jq -r "$LIVE | .[0] // {} | \"\(.id) \(.agent)\"")
+  first=$(comments "$n" | jq -r "$LIVE | (.[0] // empty) | \"\(.id) \(.agent)\"")
+  [[ -n $first ]] || die "#$n own claim not visible" 1
   [[ ${first%% *} == "$mine" ]] || die "#$n lost to ${first#* }" 1
   relabel "$n" claimed up-for-grabs
+  reconcile_labels
   trap - EXIT
   echo "claimed #$n as $agent: branch issue-$n-<slug>, PR body 'Closes #$n'"
 }
 
+rollback() {
+  say "$n" "RELEASE $agent $(stamp) $mine" >/dev/null \
+    || echo "claim: could not withdraw claim $mine on #$n" >&2
+  reconcile_labels || echo "claim: could not reconcile labels on #$n" >&2
+}
+
+reconcile_labels() {
+  local attempt live labels
+  for attempt in 1 2 3; do
+    if ! live=$(comments "$n" | jq "$LIVE | length"); then
+      continue
+    fi
+    if [[ $live == 0 ]]; then
+      relabel "$n" up-for-grabs claimed || continue
+    else
+      relabel "$n" claimed up-for-grabs || continue
+    fi
+    # A CLAIM or RELEASE may land while the labels are being written. Re-read both sides so
+    # this attempt, or the actor that changed the live claims, converges them before it exits.
+    if ! live=$(comments "$n" | jq "$LIVE | length") \
+      || ! labels=$(gh api "repos/$repo/issues/$n" --jq '[.labels[].name] | join(",")'); then
+      continue
+    fi
+    if [[ $live == 0 ]]; then
+      [[ ,$labels, == *,up-for-grabs,* && ,$labels, != *,claimed,* ]] && return 0
+    else
+      [[ ,$labels, == *,claimed,* && ,$labels, != *,up-for-grabs,* ]] && return 0
+    fi
+  done
+  return 1
+}
+
 release() {
-  local n=$1 agent=$2 live
+  local n=$1 agent=$2
   say "$n" "RELEASE $agent $(stamp)" >/dev/null
-  live=$(comments "$n" | jq "$LIVE | length")
-  if [[ $live == 0 ]]; then relabel "$n" up-for-grabs claimed; fi
+  reconcile_labels
   echo "released #$n"
 }
 
@@ -95,7 +133,7 @@ stale() {
   issues=$(gh api --paginate --slurp "repos/$repo/issues?state=open&labels=agent-ready&per_page=100" \
              | jq -r 'add // [] | .[] | select(.pull_request | not)
                       | "\(.number) \([.labels[].name] | index("claimed") != null)"')
-  while read -r n claimed; do
+  while read -r -u 3 n claimed; do
     [[ -n $n ]] || continue
     c=$(comments "$n")
     w=$(jq -c "$LIVE | .[0] // empty" <<<"$c")
@@ -114,10 +152,10 @@ stale() {
     done
     if ((now - last >= ttl)); then
       say "$n" "RELEASE (stale) $(stamp)" >/dev/null
-      relabel "$n" up-for-grabs claimed
+      reconcile_labels
       echo "released stale claim on #$n"
     fi
-  done <<<"$issues"
+  done 3<<<"$issues"
 }
 
 case ${1:-} in
