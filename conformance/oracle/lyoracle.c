@@ -90,7 +90,7 @@ static const struct flag wd_modes[] = {
 
 /* op data: printer flags added to the with-defaults mode for `tree` and `subtree` */
 static const struct flag print_flags[] = {
-    {"empty_leaf_list", LYD_PRINT_EMPTY_LEAF_LIST},
+    {"shrink", LYD_PRINT_SHRINK}, {"empty_leaf_list", LYD_PRINT_EMPTY_LEAF_LIST}, {"empty_cont", LYD_PRINT_EMPTY_CONT}, {"json_no_nested_prefix", LYD_PRINT_JSON_NO_NESTED_PREFIX},
     {NULL, 0}
 };
 

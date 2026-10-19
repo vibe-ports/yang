@@ -1,0 +1,71 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "schema1",
+      "revision": "2014-05-08"
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\"schema1:data\":{\"cont1\":{}}}",
+    "xml": "<data xmlns=\"urn:tests:schema1\"><cont1/></data>"
+  },
+  "typed": [
+    {
+      "any": {
+        "text": "{\n  \"schema1:cont1\": {}\n}\n",
+        "value_type": "datatree"
+      },
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "anydata",
+      "meta": [],
+      "opaque": null,
+      "path": "/schema1:data",
+      "schema": "/schema1:data",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "schema1",
+        "name": "cont1",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/schema1:data/cont1",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "container"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

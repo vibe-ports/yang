@@ -1,0 +1,36 @@
+fixtures:
+  - id: print/ut-json-empty-leaf-list-03
+    dir: print
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_printer_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_empty_leaf_list:97-133
+    rfc: []   # libyang LYD_PRINT_EMPTY_CONT plus LYD_PRINT_EMPTY_LEAF_LIST, formatted JSON output
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: schema2}]
+      format: json
+      data_type: data
+      data: '{"schema2:a":{}}'
+      validate_options: [present]
+      print_options: [empty_cont, empty_leaf_list]
+    golden: golden/ut-json-empty-leaf-list-03.json
+    assert:
+      # C CHECK_STRING: tree.json contains a/b with empty l and l2, empty a/ll, and empty top-level tl.
+      verdict: valid
+      result: |
+        {
+          "schema2:a": {
+            "b": {
+              "l": [
+              ],
+              "l2": [
+              ]
+            },
+            "ll": [
+            ]
+          },
+          "schema2:tl": [
+          ]
+        }
+      rfc: []
+      deviation: null

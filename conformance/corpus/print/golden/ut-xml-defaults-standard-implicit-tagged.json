@@ -1,0 +1,78 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "defaults",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ietf-netconf-with-defaults",
+      "revision": "2011-06-01"
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\"defaults:a\":\"/d:b\",\"@defaults:a\":{\"ietf-netconf-with-defaults:default\":true},\"defaults:c\":\"aa\"}",
+    "xml": "<a xmlns=\"urn:defaults\" xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">/d:b</a><c xmlns=\"urn:defaults\">aa</c>"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/defaults:a",
+      "schema": "/defaults:a",
+      "value": {
+        "canonical": "/d:b",
+        "type": "union",
+        "typedef": null,
+        "union_member": {
+          "index": 1,
+          "realtype": {
+            "type": "string",
+            "typedef": null
+          },
+          "type": "string",
+          "typedef": null
+        }
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/defaults:c",
+      "schema": "/defaults:c",
+      "value": {
+        "canonical": "aa",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

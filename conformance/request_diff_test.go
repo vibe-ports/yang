@@ -533,6 +533,8 @@ var inventoryGapClasses = map[string]struct {
 	"empty-revision-load-failure": {"U-0110", []string{"empty revision with a failing module load"}},
 	"notification-netconf":        {"U-0110", []string{"notification envelope data_type notif-netconf"}},
 	"notification-restconf":       {"U-0110", []string{"notification envelope data_type notif-restconf"}},
+	"print-empty-cont":            {"U-0111", []string{"print option empty_cont"}},
+	"print-json-no-nested-prefix": {"U-0111", []string{"print option json_no_nested_prefix"}},
 	"cross-context-diff":          {"D-0069", []string{"cross-context diff of populated trees"}},
 }
 

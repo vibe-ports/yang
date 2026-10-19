@@ -371,6 +371,23 @@ func TestMatchAssertTypes(t *testing.T) {
 	}
 }
 
+func TestMatchAssertResult(t *testing.T) {
+	want := "<x/>"
+	a := &Assert{Verdict: "valid", Result: &want}
+	for _, raw := range []string{
+		`{"verdict":"valid","result":"<x/>"}`,
+		`{"verdict":"valid","tree":{"xml":"<x/>"}}`,
+		`{"verdict":"valid","subtree":{"xml":"<x/>"}}`,
+	} {
+		if d := MatchAssert(a, resp(t, raw)); d != "" {
+			t.Errorf("MatchAssert(%s) = %s", raw, d)
+		}
+	}
+	if d := MatchAssert(a, resp(t, `{"verdict":"valid","tree":{"xml":"<y/>"}}`)); d == "" {
+		t.Error("MatchAssert accepted the wrong exact result")
+	}
+}
+
 func TestSequenceSteps(t *testing.T) {
 	base := `{"verdict":"invalid","rc":{"err":3},"failed_step":1,"steps":[` +
 		`{"do":"parse","rc":{"err":0},"diagnostics":[],"tree":null},` +

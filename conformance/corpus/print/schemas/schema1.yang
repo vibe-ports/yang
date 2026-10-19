@@ -1,0 +1,9 @@
+module schema1 {
+  yang-version 1.1;
+  namespace "urn:tests:schema1";
+  prefix schema1;
+
+  revision 2014-05-08;
+
+  anydata data;
+}

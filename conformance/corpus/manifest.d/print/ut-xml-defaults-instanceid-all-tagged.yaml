@@ -1,0 +1,24 @@
+fixtures:
+  - id: print/ut-xml-defaults-instanceid-all-tagged
+    dir: print
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_printer_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_defaults:235-248
+    rfc: ["RFC7950#7.6.4", "RFC7950#9.12", "RFC7950#9.13", "RFC6243#3"]
+    areas: [codecs, defaults]
+    request:
+      op: data
+      searchdirs: [schemas, ../ietf]
+      modules: [{name: defaults}, {name: ietf-netconf-with-defaults, revision: "2011-06-01"}]
+      context_options: [no_yanglibrary]
+      format: xml
+      data_type: data
+      data: '<a xmlns="urn:defaults" xmlns:d="urn:defaults">/d:b</a><b xmlns="urn:defaults">val</b><c xmlns="urn:defaults">aa</c>'
+      validate_options: [present]
+      with_defaults: all-tagged
+      print_options: [shrink]
+    golden: golden/ut-xml-defaults-instanceid-all-tagged.json
+    assert:
+      # C CHECK_LYD_STRING: a has dflt:default="true" and xmlns:d; b and c are untagged.
+      verdict: valid
+      result: '<a xmlns="urn:defaults" xmlns:dflt="urn:ietf:params:xml:ns:netconf:default:1.0" dflt:default="true" xmlns:d="urn:defaults">/d:b</a><b xmlns="urn:defaults">val</b><c xmlns="urn:defaults">aa</c>'
+      rfc: ["RFC7950#7.6.4", "RFC7950#9.12", "RFC7950#9.13", "RFC6243#3"]
+      deviation: null

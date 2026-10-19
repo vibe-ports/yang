@@ -1,0 +1,18 @@
+module defaults {
+  namespace "urn:defaults";
+  prefix d;
+
+  leaf a {
+    type union {
+      type instance-identifier;
+      type string;
+    }
+    default "/d:b";
+  }
+  leaf b {
+    type string;
+  }
+  leaf c {
+    type string;
+  }
+}

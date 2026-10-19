@@ -62,12 +62,14 @@ assert:
   rc: LY_EINVAL                                               # optional, the call's LY_ERR name (rc.name)
   rfc: ["RFC7950#9.2.4"]                                      # optional, the clause it rests on
   diagnostics: [{vecode_name: LYVE_DATA, data_path: /basic:sys/mtu}]   # subset match
+  result: "exact result text"                              # optional; top-level result or tree/subtree JSON/XML
   deviation: null                                             # or "D-0001"
   waive: [schema_tree, compiled]                              # optional, only with a deviation; also tree, typed, result, leafref_links
 ```
 
 Each listed diagnostic must equal some actual diagnostic (top-level or per-module) on every field it
-names. Goldens record what libyang does, `assert` what the spec requires: an `assert` that
+names. `result` must exactly equal a top-level string result or one of the printed `tree`/`subtree`
+JSON/XML strings. Goldens record what libyang does, `assert` what the spec requires: an `assert` that
 contradicts its golden must name a deviation id present in `conformance/deviations.md`, otherwise
 `go test` fails (and a deviation whose assert already matches the golden is stale, also a failure).
 `deviations.md` records OUR intentional differences from libyang. A deviation waives what the

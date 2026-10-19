@@ -1,0 +1,23 @@
+fixtures:
+  - id: print/ut-json-empty-container-wd-trim-empty-cont
+    dir: print
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_printer_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_empty_container_wd_trim:78-90
+    rfc: []   # libyang LYD_PRINT_EMPTY_CONT preserves otherwise-empty non-presence containers after trim
+    areas: [codecs, defaults]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: schema2}]
+      format: json
+      data_type: data
+      data: '{"schema2:a":{"b":{"c":"dflt"}}}'
+      validate_options: [present]
+      with_defaults: trim
+      print_options: [shrink, empty_cont]
+    golden: golden/ut-json-empty-container-wd-trim-empty-cont.json
+    assert:
+      # C CHECK_STRING: tree.json == {"schema2:a":{"b":{}}} (LYD_PRINT_SHRINK).
+      verdict: valid
+      result: '{"schema2:a":{"b":{}}}'
+      rfc: []
+      deviation: null

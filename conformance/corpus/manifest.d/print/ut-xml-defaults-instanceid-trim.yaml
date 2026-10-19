@@ -1,0 +1,24 @@
+fixtures:
+  - id: print/ut-xml-defaults-instanceid-trim
+    dir: print
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_printer_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_defaults:235-246
+    rfc: ["RFC7950#7.6.4", "RFC7950#9.12", "RFC7950#9.13", "RFC6243#3"]
+    areas: [codecs, defaults]
+    request:
+      op: data
+      searchdirs: [schemas, ../ietf]
+      modules: [{name: defaults}, {name: ietf-netconf-with-defaults, revision: "2011-06-01"}]
+      context_options: [no_yanglibrary]
+      format: xml
+      data_type: data
+      data: '<a xmlns="urn:defaults" xmlns:d="urn:defaults">/d:b</a><b xmlns="urn:defaults">val</b><c xmlns="urn:defaults">aa</c>'
+      validate_options: [present]
+      with_defaults: trim
+      print_options: [shrink]
+    golden: golden/ut-xml-defaults-instanceid-trim.json
+    assert:
+      # C CHECK_LYD_STRING: tree.xml omits default-valued a and preserves b then c.
+      verdict: valid
+      result: '<b xmlns="urn:defaults">val</b><c xmlns="urn:defaults">aa</c>'
+      rfc: ["RFC7950#7.6.4", "RFC7950#9.12", "RFC7950#9.13", "RFC6243#3"]
+      deviation: null

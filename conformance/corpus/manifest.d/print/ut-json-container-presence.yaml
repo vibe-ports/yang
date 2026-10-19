@@ -1,0 +1,22 @@
+fixtures:
+  - id: print/ut-json-container-presence
+    dir: print
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_printer_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_container_presence:64-72
+    rfc: ["RFC7950#7.10", "RFC7951#5.5"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: schema1}]
+      format: json
+      data_type: data
+      data: '{"schema1:data":{"cont1":{}}}'
+      validate_options: [present]
+      print_options: [shrink]
+    golden: golden/ut-json-container-presence.json
+    assert:
+      # C CHECK_STRING: tree.json == {"schema1:data":{"cont1":{}}} (LYD_PRINT_SHRINK).
+      verdict: valid
+      result: '{"schema1:data":{"cont1":{}}}'
+      rfc: ["RFC7950#7.10", "RFC7951#5.5"]
+      deviation: null

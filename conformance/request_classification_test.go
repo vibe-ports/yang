@@ -41,6 +41,20 @@ func TestRequestClassification(t *testing.T) {
 	}
 }
 
+func TestInventoryPrintOptionGaps(t *testing.T) {
+	for option, want := range map[string]string{
+		"empty_cont":            "print-empty-cont",
+		"json_no_nested_prefix": "print-json-no-nested-prefix",
+	} {
+		t.Run(option, func(t *testing.T) {
+			_, err := printRequestTree(nil, nil, map[string]any{"print_options": []any{option}}, 0)
+			if got := inventoryGap(err); got != want {
+				t.Fatalf("inventoryGap() = %q, want %q (error: %v)", got, want, err)
+			}
+		})
+	}
+}
+
 func TestInventoryDupTermParent(t *testing.T) {
 	request := func(parent string, options ...any) map[string]any {
 		return map[string]any{

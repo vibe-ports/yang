@@ -1,0 +1,139 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "schema2",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\"schema2:a\":{\"b\":{\"l\":[{\"k\":\"key1\"},{\"k\":\"key2\"}],\"l2\":[]},\"ll\":[]},\"schema2:tl\":[]}",
+    "xml": "<a xmlns=\"urn:tests:schema2\"><b><l><k>key1</k></l><l><k>key2</k></l></b></a>"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/schema2:a",
+      "schema": "/schema2:a",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/schema2:a/b",
+      "schema": "/schema2:a/b",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/schema2:a/b/c",
+      "schema": "/schema2:a/b/c",
+      "value": {
+        "canonical": "dflt",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/schema2:a/b/l[k='key1']",
+      "schema": "/schema2:a/b/l",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/schema2:a/b/l[k='key1']/k",
+      "schema": "/schema2:a/b/l/k",
+      "value": {
+        "canonical": "key1",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "list",
+      "meta": [],
+      "opaque": null,
+      "path": "/schema2:a/b/l[k='key2']",
+      "schema": "/schema2:a/b/l",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/schema2:a/b/l[k='key2']/k",
+      "schema": "/schema2:a/b/l/k",
+      "value": {
+        "canonical": "key2",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

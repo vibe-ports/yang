@@ -1,0 +1,97 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "defaults",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ietf-netconf-with-defaults",
+      "revision": "2011-06-01"
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\"defaults:a\":\"/defaults:b\",\"@defaults:a\":{\"ietf-netconf-with-defaults:default\":true},\"defaults:b\":\"val\",\"defaults:c\":\"aa\"}",
+    "xml": "<a xmlns=\"urn:defaults\" xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\" xmlns:d=\"urn:defaults\">/d:b</a><b xmlns=\"urn:defaults\">val</b><c xmlns=\"urn:defaults\">aa</c>"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/defaults:a",
+      "schema": "/defaults:a",
+      "value": {
+        "canonical": "/defaults:b",
+        "type": "union",
+        "typedef": null,
+        "union_member": {
+          "index": 0,
+          "realtype": {
+            "type": "instance-identifier",
+            "typedef": null
+          },
+          "type": "instance-identifier",
+          "typedef": null
+        }
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/defaults:b",
+      "schema": "/defaults:b",
+      "value": {
+        "canonical": "val",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/defaults:c",
+      "schema": "/defaults:c",
+      "value": {
+        "canonical": "aa",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

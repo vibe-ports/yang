@@ -101,6 +101,9 @@ func (s *Source) UnmarshalYAML(n *yaml.Node) error {
 // item must equal some actual diagnostic on all the fields it names.
 type Assert struct {
 	Verdict string `yaml:"verdict"`
+	// Result is an exact result string asserted by an imported upstream test. It matches the
+	// top-level result or one of tree/subtree's format strings.
+	Result *string `yaml:"result"`
 	// RC is the call's LY_ERR name (rc.name), when the fixture pins it: libyang's return code need
 	// not be the code of its last diagnostic (design 07 §2).
 	RC          string           `yaml:"rc"`

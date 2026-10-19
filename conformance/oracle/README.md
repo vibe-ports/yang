@@ -183,7 +183,10 @@ present for accepted modules.
 ```
 On success `tree` is `{"json": "<lyd_print_mem JSON>", "xml": "<lyd_print_mem XML>"}`, printed with
 `with_defaults` (`explicit` | `trim` | `all` | `all-tagged` | `implicit-tagged`) plus
-`print_options` (`empty_leaf_list` = `LYD_PRINT_EMPTY_LEAF_LIST`, JSON only in libyang).
+`print_options` (`shrink` = `LYD_PRINT_SHRINK`; `empty_leaf_list` =
+`LYD_PRINT_EMPTY_LEAF_LIST`, JSON only in libyang;
+`empty_cont` = `LYD_PRINT_EMPTY_CONT`; `json_no_nested_prefix` =
+`LYD_PRINT_JSON_NO_NESTED_PREFIX`).
 `print_subtree: "<path>"` adds `subtree` in the same shape: the node `lyd_find_path` finds, printed
 without `LYD_PRINT_SIBLINGS` (= `lyd_print_tree`), with the same options; a path that finds nothing
 is a request-error.

@@ -288,7 +288,7 @@ var dataInitRules = []requestRule{
 	{1441, requestStrings("print_subtree")},                                                          // request prelude; lyoracle.c:1441 str_of
 	{1442, requestStrings("with_defaults")},                                                          // request prelude; lyoracle.c:1442 wd_of
 	{1442, requestEnum("with_defaults", "explicit", "explicit trim all all-tagged implicit-tagged")}, // request prelude; lyoracle.c:1442 wd_of
-	{1442, requestFlags("print_options", "empty_leaf_list")},                                         // request prelude; lyoracle.c:1442 flags_of
+	{1442, requestFlags("print_options", "shrink empty_leaf_list empty_cont json_no_nested_prefix")}, // request prelude; lyoracle.c:1442 flags_of
 }
 var dataRequestRules = []requestRule{
 	{1448, requestRead("data", true)}, // request prelude; lyoracle.c:1448 input_of

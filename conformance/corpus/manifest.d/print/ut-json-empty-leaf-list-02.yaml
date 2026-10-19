@@ -1,0 +1,22 @@
+fixtures:
+  - id: print/ut-json-empty-leaf-list-02
+    dir: print
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_printer_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_empty_leaf_list:97-113
+    rfc: []   # libyang LYD_PRINT_EMPTY_LEAF_LIST prints only absent list and leaf-list instances as []
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: schema2}]
+      format: json
+      data_type: data
+      data: '{"schema2:a":{"b":{"l":[{"k":"key1"},{"k":"key2"}]}}}'
+      validate_options: [present]
+      print_options: [shrink, empty_leaf_list]
+    golden: golden/ut-json-empty-leaf-list-02.json
+    assert:
+      # C CHECK_STRING: tree.json == {"schema2:a":{"b":{"l":[{"k":"key1"},{"k":"key2"}],"l2":[]},"ll":[]},"schema2:tl":[]}.
+      verdict: valid
+      result: '{"schema2:a":{"b":{"l":[{"k":"key1"},{"k":"key2"}],"l2":[]},"ll":[]},"schema2:tl":[]}'
+      rfc: []
+      deviation: null

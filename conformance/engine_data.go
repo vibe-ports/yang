@@ -619,7 +619,20 @@ func loadOperational(r Request, s *yang.Schema, resp map[string]any) (*data.Tree
 }
 
 func printRequestTree(tree *data.Tree, node *data.Node, p map[string]any, wd data.WD) (map[string]any, error) {
-	po := data.PrintOptions{WithDefaults: wd, EmptyLeafList: slices.Contains(list(p["print_options"]), any("empty_leaf_list"))}
+	for _, f := range list(p["print_options"]) {
+		switch f {
+		case "shrink", "empty_leaf_list":
+		case "empty_cont", "json_no_nested_prefix":
+			return nil, fmt.Errorf("%w: print option %v is not supported by the Go printer (U-0111)", ErrUnsupported, f)
+		default:
+			return nil, fmt.Errorf("%w: print option %v", ErrUnsupported, f)
+		}
+	}
+	po := data.PrintOptions{
+		Shrink:        slices.Contains(list(p["print_options"]), any("shrink")),
+		EmptyLeafList: slices.Contains(list(p["print_options"]), any("empty_leaf_list")),
+		WithDefaults:  wd,
+	}
 	var j, x strings.Builder
 	if node != nil {
 		if err := node.PrintJSON(&j, po); err != nil {

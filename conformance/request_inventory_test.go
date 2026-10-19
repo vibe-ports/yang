@@ -82,7 +82,7 @@ var requestInventory = []inventoryRow{
 	{"step:edit", "merge", "1764,2195", "input", "", "Optional: absent/null no input. xpath passes NULL to parse_one; diff data read during execution (preflight only with target); insert falls back to retained node; edit needs exactly one edit. RPC allowed only for reply steps, ignored for top-level datastore/notif."},
 	{"data", "print_subtree", "1441", "string", "", "Optional path selects output subtree after parse."},
 	{"data step:dump", "with_defaults", "1364,1442,1864,2574", "enum", "explicit trim all all-tagged implicit-tagged", "Absent/null explicit; changes printed defaults."},
-	{"data", "print_options", "1442", "flags", "empty_leaf_list", "OR into printer options."},
+	{"data", "print_options", "1442", "flags", "shrink empty_leaf_list empty_cont json_no_nested_prefix", "OR into printer options."},
 	{"diff", "diff_options", "1657", "flags", "defaults meta", "Execution only after BOTH inputs parse successfully."},
 	{"xpath", "xpath", "1495", "string", "", "Required; empty/bogus evaluated after parsing data; parse failure bypasses evaluation."},
 	{"xpath", "context_path", "1495,1574", "string", "", "Optional; execution XPath must select exactly one node or request-error."},

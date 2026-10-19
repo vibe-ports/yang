@@ -105,6 +105,8 @@ Pairwise counts are reported separately below.
 | `reply-non-operation-parent` | U-0110 | Reply into a parent that is not an RPC/action; `ParseOpOptions.Request` rejects it before parsing | 0 |
 | `relative-set-parent` | U-0110 | A `set` path that does not start with `/` (relative, or led by whitespace) under a retained parent: `lyd_new_path` takes the original text with the parent, which `Tree.NewPath` cannot take (#255). Rewriting or trimming the path diverged from libyang's diagnostics (original path text, lexer positions, syntax before schema, opaque and quoted-key parents), so the engine does not emulate it. Without a retained tree, a relative path keeps `lyd_new_path`'s LY_EINVAL argument check (fixtures seq/set-relative-quoted-parent, -opaque-parent, -opaque-malformed, -missing-key, seq/set-spaced-malformed) | not re-run |
 | `empty-revision-load-failure` | U-0110 | Explicit empty module revision whose load fails in any phase (parse, imports, compile): libyang checks the revision right after parsing (`lysp_load_module_check`), but `Context.Load` has no parse-only step, so the engine does not emulate that order (fixture protocol-v2/empty-revision-compile-rejected, #254) | not re-run |
+| `print-empty-cont` | U-0111 | `LYD_PRINT_EMPTY_CONT` output; the Go printer has no `empty_cont` option until #110 | not re-run |
+| `print-json-no-nested-prefix` | U-0111 | `LYD_PRINT_JSON_NO_NESTED_PREFIX` output; the Go printer has no `json_no_nested_prefix` option until #110 | not re-run |
 | `cross-context-diff` | D-0069 | Diff matching between populated trees from separate schema snapshots (#236) | 0 |
 | **Total** | | | **3,563** |
 

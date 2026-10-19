@@ -139,6 +139,9 @@ func MatchAssert(a *Assert, resp Response) string {
 	if v := resp.Verdict(); v != a.Verdict {
 		return fmt.Sprintf("verdict %q, want %q", v, a.Verdict)
 	}
+	if a.Result != nil && !responseHasResult(resp, *a.Result) {
+		return fmt.Sprintf("no result matching %q", *a.Result)
+	}
 	if a.RC != "" {
 		rc, _ := resp["rc"].(map[string]any)
 		if name, _ := rc["name"].(string); name != a.RC {
@@ -152,6 +155,23 @@ func MatchAssert(a *Assert, resp Response) string {
 		}
 	}
 	return ""
+}
+
+// responseHasResult finds an exact result-carrying field. Printer fixtures use tree/subtree's
+// JSON or XML string; XPath and similar operations may use the top-level result field.
+func responseHasResult(resp Response, want string) bool {
+	if got, ok := resp["result"].(string); ok && got == want {
+		return true
+	}
+	for _, field := range []string{"tree", "subtree"} {
+		out, _ := resp[field].(map[string]any)
+		for _, format := range []string{"json", "xml"} {
+			if got, ok := out[format].(string); ok && got == want {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // withoutSkipped drops the fields of a response and of its module and step items; skipped are
