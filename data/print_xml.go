@@ -157,7 +157,7 @@ func (x *xmlPrinter) inner(n *Node) error {
 	children := kids(n)
 	printable := false
 	for _, c := range children {
-		if x.opts.shouldPrint(c) {
+		if x.shouldPrint(c) {
 			printable = true
 			break
 		}
@@ -277,7 +277,7 @@ func (x *xmlPrinter) opaq(n *Node) error {
 
 // node is xml_print_node: the namespaces it declares go out of scope with it.
 func (x *xmlPrinter) node(n *Node) error {
-	if !x.opts.shouldPrint(n) {
+	if !x.shouldPrint(n) {
 		return nil
 	}
 	count := len(x.ns)

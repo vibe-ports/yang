@@ -41,17 +41,10 @@ func TestRequestClassification(t *testing.T) {
 	}
 }
 
-func TestInventoryPrintOptionGaps(t *testing.T) {
-	for option, want := range map[string]string{
-		"empty_cont":            "print-empty-cont",
-		"json_no_nested_prefix": "print-json-no-nested-prefix",
-	} {
-		t.Run(option, func(t *testing.T) {
-			_, err := printRequestTree(nil, nil, map[string]any{"print_options": []any{option}}, 0)
-			if got := inventoryGap(err); got != want {
-				t.Fatalf("inventoryGap() = %q, want %q (error: %v)", got, want, err)
-			}
-		})
+func TestUnknownPrintOptionUnsupported(t *testing.T) {
+	_, _, err := requestPrintOptions(map[string]any{"print_options": []any{"bogus"}}, 0)
+	if got := inventoryGap(err); got != "unclassified" {
+		t.Fatalf("inventoryGap() = %q, want unclassified (error: %v)", got, err)
 	}
 }
 

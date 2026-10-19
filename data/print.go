@@ -11,6 +11,7 @@ import (
 	"io"
 	"slices"
 
+	"github.com/vibe-ports/yang/internal/printopts"
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
 )
@@ -113,7 +114,7 @@ func (o PrintOptions) tagged(n *Node) bool {
 }
 
 // shouldPrint is lyd_node_should_print.
-func (o PrintOptions) shouldPrint(n *Node) bool {
+func (o PrintOptions) shouldPrint(n *Node, flags printopts.Flags) bool {
 	switch {
 	case o.WithDefaults == WDTrim:
 		switch {
@@ -122,16 +123,22 @@ func (o PrintOptions) shouldPrint(n *Node) bool {
 		case n.isTerm():
 			return !o.isDefault(n)
 		case npCont(n.schema):
+			if flags&printopts.EmptyCont != 0 { // src/out.c:58-62 (LYD_PRINT_EMPTY_CONT)
+				return true
+			}
 			for _, c := range kids(n) { // an NP container without printed children
-				if o.shouldPrint(c) {
+				if o.shouldPrint(c, flags) {
 					return true
 				}
 			}
 			return false
 		}
 	case n.flags&FlagDefault != 0 && n.schema != nil && n.schema.Kind == schema.Container:
+		if flags&printopts.EmptyCont != 0 { // src/out.c:73-77 (LYD_PRINT_EMPTY_CONT)
+			return true
+		}
 		for d := range n.All() { // avoid empty default containers
-			if d != n && o.shouldPrint(d) {
+			if d != n && o.shouldPrint(d, flags) {
 				return true
 			}
 		}
@@ -186,10 +193,11 @@ func (n *Node) print(w io.Writer, o PrintOptions, f func(*printer, []*Node, int)
 // printData runs f over sibs from index from: all of them with siblings, else only sibs[from].
 func printData(w io.Writer, set *schema.Set, o PrintOptions, sibs []*Node, from int, siblings bool,
 	f func(*printer, []*Node, int) error) error {
+	w, flags := printopts.Unwrap(w)
 	if o.dflt == nil { // callers cannot set it; tests do
 		o.dflt = &defaultCheck{}
 	}
-	p := &printer{set: set, opts: o, siblings: siblings}
+	p := &printer{set: set, opts: o, flags: flags, siblings: siblings}
 	if err := f(p, sibs, from); err != nil {
 		return err
 	}
@@ -204,10 +212,13 @@ func printData(w io.Writer, set *schema.Set, o PrintOptions, sibs []*Node, from 
 type printer struct {
 	set      *schema.Set
 	opts     PrintOptions
+	flags    printopts.Flags
 	siblings bool // LYD_PRINT_SIBLINGS: lyd_print_all, else lyd_print_tree
 	buf      bytes.Buffer
 	level    int // indentation level
 }
+
+func (p *printer) shouldPrint(n *Node) bool { return p.opts.shouldPrint(n, p.flags) }
 
 func (p *printer) format() bool { return !p.opts.Shrink }
 

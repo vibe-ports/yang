@@ -12,6 +12,7 @@ import (
 
 	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/data"
+	"github.com/vibe-ports/yang/internal/printopts"
 )
 
 // dataPresets are lyoracle.c dparams_of's parse and validate flags for every data type.
@@ -58,6 +59,18 @@ var unknownPolicies = map[string]data.UnknownPolicy{"reject": data.Reject, "skip
 
 var wdModes = map[string]data.WD{"explicit": data.WDExplicit, "trim": data.WDTrim, "all": data.WDAll,
 	"all-tagged": data.WDAllTagged, "implicit-tagged": data.WDImplicitTagged}
+
+// printFlags is lyoracle.c print_flags. The internal flags deliberately do not add public fields
+// to data.PrintOptions; they exist only so this engine can exercise the complete oracle surface.
+var printFlags = map[string]struct {
+	set      func(*data.PrintOptions)
+	internal printopts.Flags
+}{
+	"shrink":                {set: func(o *data.PrintOptions) { o.Shrink = true }},
+	"empty_leaf_list":       {set: func(o *data.PrintOptions) { o.EmptyLeafList = true }},
+	"empty_cont":            {internal: printopts.EmptyCont},
+	"json_no_nested_prefix": {internal: printopts.JSONNoNestedPrefix},
+}
 
 // opTypes are lyoracle.c dparams_of's operation data types.
 var opTypes = map[string]data.OpType{"rpc": data.OpRPC, "reply": data.OpReply, "notif": data.OpNotif}
@@ -619,37 +632,44 @@ func loadOperational(r Request, s *yang.Schema, resp map[string]any) (*data.Tree
 }
 
 func printRequestTree(tree *data.Tree, node *data.Node, p map[string]any, wd data.WD) (map[string]any, error) {
-	for _, f := range list(p["print_options"]) {
-		switch f {
-		case "shrink", "empty_leaf_list":
-		case "empty_cont", "json_no_nested_prefix":
-			return nil, fmt.Errorf("%w: print option %v is not supported by the Go printer (U-0111)", ErrUnsupported, f)
-		default:
-			return nil, fmt.Errorf("%w: print option %v", ErrUnsupported, f)
-		}
-	}
-	po := data.PrintOptions{
-		Shrink:        slices.Contains(list(p["print_options"]), any("shrink")),
-		EmptyLeafList: slices.Contains(list(p["print_options"]), any("empty_leaf_list")),
-		WithDefaults:  wd,
+	po, flags, err := requestPrintOptions(p, wd)
+	if err != nil {
+		return nil, err
 	}
 	var j, x strings.Builder
 	if node != nil {
-		if err := node.PrintJSON(&j, po); err != nil {
+		if err := node.PrintJSON(printopts.With(&j, flags), po); err != nil {
 			return nil, unsupported(err)
 		}
-		if err := node.PrintXML(&x, po); err != nil {
+		if err := node.PrintXML(printopts.With(&x, flags), po); err != nil {
 			return nil, unsupported(err)
 		}
 	} else {
-		if err := tree.PrintJSON(&j, po); err != nil {
+		if err := tree.PrintJSON(printopts.With(&j, flags), po); err != nil {
 			return nil, unsupported(err)
 		}
-		if err := tree.PrintXML(&x, po); err != nil {
+		if err := tree.PrintXML(printopts.With(&x, flags), po); err != nil {
 			return nil, unsupported(err)
 		}
 	}
 	return map[string]any{"json": j.String(), "xml": x.String()}, nil
+}
+
+// requestPrintOptions is op_data:1442's wd_of OR flags_of(print_flags).
+func requestPrintOptions(p map[string]any, wd data.WD) (data.PrintOptions, printopts.Flags, error) {
+	po := data.PrintOptions{WithDefaults: wd}
+	var flags printopts.Flags
+	for _, f := range list(p["print_options"]) {
+		option, ok := printFlags[fmt.Sprint(f)]
+		if !ok {
+			return po, flags, fmt.Errorf("%w: print option %v", ErrUnsupported, f)
+		}
+		if option.set != nil {
+			option.set(&po)
+		}
+		flags |= option.internal
+	}
+	return po, flags, nil
 }
 
 func printRequestSubtree(tree *data.Tree, p map[string]any, resp map[string]any, wd data.WD) error {

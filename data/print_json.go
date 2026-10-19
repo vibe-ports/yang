@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/vibe-ports/yang/internal/printopts"
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
 )
@@ -36,6 +37,11 @@ func printJSON(p *printer, sibs []*Node, from int) error {
 	p.printf("{%s", p.nl())
 	for i := from; i < len(sibs); i++ {
 		j.root = sibs[i]
+		if p.flags&printopts.JSONNoNestedPrefix != 0 {
+			// json_print_data:1161-1164: for a subtree, compare its root namespace with
+			// its real parent instead of always qualifying the root member.
+			j.parent = sibs[i].parent
+		}
 		if err := j.node(sibs, i); err != nil {
 			return err
 		}
@@ -318,7 +324,7 @@ func (j *jsonPrinter) inner(n *Node) error {
 	children := kids(n)
 	printable := false // json_print_inner: a child that will be printed
 	for _, c := range children {
-		if j.opts.shouldPrint(c) {
+		if j.shouldPrint(c) {
 			printable = true
 			break
 		}
@@ -404,7 +410,7 @@ func (j *jsonPrinter) leafListEmpty(sn *schema.Node) {
 func (j *jsonPrinter) nextEmpty(sl []*schema.Node, sibs []*Node) []*schema.Node {
 	for k, sn := range sl {
 		// lyd_find_sibling_schema: the first instance
-		if i := slices.IndexFunc(sibs, func(n *Node) bool { return n.schema == sn }); i >= 0 && j.opts.shouldPrint(sibs[i]) {
+		if i := slices.IndexFunc(sibs, func(n *Node) bool { return n.schema == sn }); i >= 0 && j.shouldPrint(sibs[i]) {
 			return nil
 		}
 		if sn.Kind == schema.LeafList || sn.Kind == schema.List {
@@ -586,7 +592,7 @@ func (j *jsonPrinter) opaq(sibs []*Node, i int) error {
 // node is json_print_node.
 func (j *jsonPrinter) node(sibs []*Node, i int) error {
 	n := sibs[i]
-	if !j.opts.shouldPrint(n) {
+	if !j.shouldPrint(n) {
 		if j.isLastInst(n, sibs, i) {
 			j.arrayClose()
 		}
