@@ -389,16 +389,25 @@ has "merge-pr carry-over: log names the carried approval" "approval of $Aold car
 g=$t/ig; G=conformance/corpus/basic/golden; mkdir -p "$g/$G" "$g/scripts"
 cp "$src/import-goldens" "$g/scripts/"; echo '{"v":1}' >"$g/$G/a.json"; echo 'FROM x' >"$g/Dockerfile"
 git -C "$g" init -q -b main; git -C "$g" add -A; git -C "$g" commit -qm base
-mktar() { # mktar <out> <kind:path:arg>...   kind = reg (arg = octal mode) | sym | hard (arg = target)
+mktar() { # mktar <out> <kind:path:arg>...
+  # kind = reg (arg = octal mode) | size (arg = bytes) | many (arg = count) | sym | hard (arg = target)
   python3 - "$@" <<'PY'
 import io, sys, tarfile
-with tarfile.open(sys.argv[1], "w") as tar:
+with tarfile.open(sys.argv[1], "w", format=tarfile.GNU_FORMAT) as tar:
     for spec in sys.argv[2:]:
         kind, path, arg = spec.split(":", 2)
-        ti = tarfile.TarInfo(path)
         if kind == "reg":
+            ti = tarfile.TarInfo(path)
             data = b'{"v":2}\n'; ti.size = len(data); ti.mode = int(arg, 8); tar.addfile(ti, io.BytesIO(data))
+        elif kind == "size":
+            ti = tarfile.TarInfo(path)
+            data = b'x' * int(arg); ti.size = len(data); ti.mode = 0o644; tar.addfile(ti, io.BytesIO(data))
+        elif kind == "many":
+            for i in range(int(arg)):
+                data = b'{}\n'; ti = tarfile.TarInfo(f"{path}{i}.json")
+                ti.size = len(data); ti.mode = 0o644; tar.addfile(ti, io.BytesIO(data))
         else:
+            ti = tarfile.TarInfo(path)
             ti.type = tarfile.SYMTYPE if kind == "sym" else tarfile.LNKTYPE; ti.linkname = arg; tar.addfile(ti)
 PY
 }
@@ -408,10 +417,13 @@ mktar "$t/g.tar" "reg:$G/a.json:644" "reg:$G/new.json:644"
 expect 0 "import-goldens: modified + new golden" - ig
 [[ $(git -C "$g" diff --cached --name-status | tr '\t' ' ' | sort | tr '\n' ,) == "A $G/new.json,M $G/a.json," ]] &&
   ok "import-goldens: exactly the goldens staged" || no "import-goldens: exactly the goldens staged"
+printf '{"v":2}\n' >"$t/want-golden"
+cmp -s "$t/want-golden" "$g/$G/a.json" && ok "import-goldens: happy path is byte-identical" ||
+  no "import-goldens: happy path changed bytes"
 igreset; mktar "$t/g.tar" "sym:$G/a.json:../../../../Dockerfile"
-expect 1 "import-goldens: symlink member rejected" "not a regular file" ig
+expect 1 "import-goldens: symlink member rejected" "not an allowed regular file" ig
 igreset; mktar "$t/g.tar" "hard:$G/a.json:Dockerfile"
-expect 1 "import-goldens: hardlink member rejected" "not a regular file" ig
+expect 1 "import-goldens: hardlink member rejected" "not an allowed regular file" ig
 igreset; mktar "$t/g.tar" "reg:$G/a.json:755"
 expect 1 "import-goldens: executable member rejected" "exec bits" ig
 igreset; mktar "$t/g.tar" "reg:conformance/corpus/manifest.yaml:644"
@@ -422,6 +434,123 @@ expect 1 "import-goldens: Dockerfile tampering rejected" "not a golden JSON path
   ok "import-goldens: nothing written when any member is bad" || no "import-goldens: nothing written when any member is bad"
 igreset; mktar "$t/g.tar" "reg:conformance/corpus/../golden/x.json:644"
 expect 1 "import-goldens: dot-dot path rejected" "not a golden JSON path" ig
+igreset; mktar "$t/g.tar" $'reg:'"$G"$'/bad\nname.json:644'
+expect 1 "import-goldens: control character in name rejected" "control character" ig
+igreset; python3 - "$t/g.tar" <<'PY2'
+import io, sys, tarfile
+# Built here, not via $'\u…': bash expands \u only under a UTF-8 locale (CI runs with C).
+with tarfile.open(sys.argv[1], "w", format=tarfile.GNU_FORMAT, encoding="utf-8") as tar:
+    ti = tarfile.TarInfo("conformance/corpus/\uff0e\uff0e/golden/x.json")
+    data = b'{"v":2}\n'; ti.size = len(data); ti.mode = 0o644; tar.addfile(ti, io.BytesIO(data))
+PY2
+expect 1 "import-goldens: path bad after normalization rejected" "after normalization" ig
+igreset; python3 - "$t/g.tar" <<'PY'
+import sys
+with open(sys.argv[1], "wb") as f:
+    f.truncate(128 * 1024 * 1024 + 1)
+PY
+expect 1 "import-goldens: oversized archive rejected" "archive size" ig
+igreset; mktar "$t/g.tar" "size:$G/large.json:$((8 * 1024 * 1024 + 1))"
+expect 1 "import-goldens: oversized member rejected" "member size" ig
+igreset; mktar "$t/g.tar" "many:$G/member-:8193"
+expect 1 "import-goldens: too many members rejected" "member count" ig
+igreset; python3 - "$t/g.tar" "$G" <<'PY'
+import sys, tarfile
+
+def pax_record(key, value):
+    body = f" {key}={value}\n".encode()
+    size = len(body) + 1
+    while True:
+        record = str(size).encode() + body
+        if len(record) == size:
+            return record
+        size = len(record)
+
+def header(name, typeflag, size):
+    info = tarfile.TarInfo(name); info.type = typeflag; info.size = size; info.mode = 0o644
+    return info.tobuf(format=tarfile.GNU_FORMAT)
+
+def padded(data):
+    return data + bytes((-len(data)) % 512)
+
+# The first PAX record changes the following raw size to zero. An old raw-size scanner then
+# skipped the global PAX header and member concealed in what it believed was the file payload.
+override = pax_record("size", "0")
+global_pax = pax_record("comment", "hidden")
+data = b'{}\n'
+hidden = (header("././@PaxHeader", tarfile.XGLTYPE, len(global_pax)) + padded(global_pax) +
+          header(f"{sys.argv[2]}/hidden.json", tarfile.REGTYPE, len(data)) + padded(data))
+with open(sys.argv[1], "wb") as archive:
+    archive.write(header("././@PaxHeader", tarfile.XHDTYPE, len(override)))
+    archive.write(padded(override))
+    archive.write(header(f"{sys.argv[2]}/a.json", tarfile.REGTYPE, len(hidden)))
+    archive.write(hidden)
+    archive.write(bytes(20 * 512))
+PY
+expect 1 "import-goldens: PAX size override cannot hide a global header" "not an allowed regular file" ig
+[[ $(cat "$g/$G/a.json") == '{"v":1}' && -z $(git -C "$g" status --porcelain --untracked-files=all) ]] &&
+  ok "import-goldens: global PAX rejection writes nothing" || no "import-goldens: global PAX rejection wrote files"
+igreset; python3 - "$t/g.tar" "$G" <<'PY'
+import io, sys, tarfile
+with tarfile.open(sys.argv[1], "w", format=tarfile.PAX_FORMAT) as tar:
+    ti = tarfile.TarInfo(f"{sys.argv[2]}/pax.json")
+    ti.pax_headers = {"comment": "plain PAX record"}
+    data = b'{}\n'; ti.size = len(data); ti.mode = 0o644; tar.addfile(ti, io.BytesIO(data))
+PY
+expect 1 "import-goldens: plain per-member PAX record rejected" "not an allowed regular file" ig
+igreset; python3 - "$t/g.tar" "$G" <<'PY'
+import io, sys, tarfile
+with tarfile.open(sys.argv[1], "w", format=tarfile.PAX_FORMAT) as tar:
+    ti = tarfile.TarInfo(f"{sys.argv[2]}/sparse-pax.json")
+    ti.pax_headers = {
+        "GNU.sparse.major": "1", "GNU.sparse.minor": "0", "GNU.sparse.realsize": "0",
+    }
+    data = b'0\n'; ti.size = len(data); ti.mode = 0o644; tar.addfile(ti, io.BytesIO(data))
+PY
+expect 1 "import-goldens: GNU sparse PAX metadata rejected" "not an allowed regular file" ig
+igreset; python3 - "$t/g.tar" "$G" <<'PY'
+import sys, tarfile
+with tarfile.open(sys.argv[1], "w", format=tarfile.GNU_FORMAT) as tar:
+    ti = tarfile.TarInfo(f"{sys.argv[2]}/sparse-header.json")
+    ti.type = tarfile.GNUTYPE_SPARSE; ti.size = 0; ti.mode = 0o644; tar.addfile(ti)
+PY
+expect 1 "import-goldens: GNU sparse S header rejected" "not an allowed regular file" ig
+igreset; python3 - "$t/g.tar" "$G" <<'PY'
+import io, sys, tarfile
+with tarfile.open(sys.argv[1], "w", format=tarfile.GNU_FORMAT) as tar:
+    ti = tarfile.TarInfo(f"{sys.argv[2]}/sparse-marker.json")
+    ti.uname = "GNU.sparse.major"
+    data = b'{}\n'; ti.size = len(data); ti.mode = 0o644; tar.addfile(ti, io.BytesIO(data))
+PY
+expect 1 "import-goldens: GNU sparse marker in header fields rejected" "GNU sparse marker" ig
+igreset; python3 - "$t/g.tar" "$G" <<'PY'
+import io, sys, tarfile
+name = f"{sys.argv[2]}/{'long-' * 24}.json"
+with tarfile.open(sys.argv[1], "w", format=tarfile.GNU_FORMAT) as tar:
+    ti = tarfile.TarInfo(name)
+    data = b'{"long":true}\n'; ti.size = len(data); ti.mode = 0o644; tar.addfile(ti, io.BytesIO(data))
+PY
+long_name=$(python3 - "$G" <<'PY'
+import sys
+print(f"{sys.argv[1]}/{'long-' * 24}.json")
+PY
+)
+expect 0 "import-goldens: GNU long-name metadata within cap accepted" - ig
+[[ $(cat "$g/$long_name") == '{"long":true}' ]] &&
+  ok "import-goldens: long-name member is byte-identical" || no "import-goldens: long-name member changed bytes"
+igreset; mktar "$t/g.tar" \
+  "size:$G/aggregate-1.json:$((8 * 1024 * 1024))" \
+  "size:$G/aggregate-2.json:$((8 * 1024 * 1024))" \
+  "size:$G/aggregate-3.json:$((8 * 1024 * 1024))" \
+  "size:$G/aggregate-4.json:$((8 * 1024 * 1024))" \
+  "size:$G/aggregate-5.json:$((8 * 1024 * 1024))" \
+  "size:$G/aggregate-6.json:$((8 * 1024 * 1024))" \
+  "size:$G/aggregate-7.json:$((8 * 1024 * 1024))" \
+  "size:$G/aggregate-8.json:$((8 * 1024 * 1024))" \
+  "size:$G/aggregate-9.json:1"
+expect 1 "import-goldens: aggregate overflow rejected" "aggregate extracted size" ig
+[[ $(cat "$g/$G/a.json") == '{"v":1}' && -z $(git -C "$g" status --porcelain --untracked-files=all) ]] &&
+  ok "import-goldens: limits checked before any write" || no "import-goldens: wrote before limit rejection"
 igreset; git -C "$g" mv "$G/a.json" "$G/b.json"; mktar "$t/g.tar" "reg:$G/new.json:644"
 expect 1 "import-goldens: rename in the index rejected" "unexpected staged change D" ig
 igreset; git -C "$g" update-index --chmod=+x "$G/a.json"; mktar "$t/g.tar" "reg:$G/new.json:644"
