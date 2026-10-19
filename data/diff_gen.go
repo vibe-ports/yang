@@ -64,7 +64,7 @@ func DiffTree(first, second *Node, o DiffOptions) (*Tree, error) {
 
 // diffNodes is lyd_diff; ft and st are the trees of first and second when known.
 func diffNodes(first, second *Node, o DiffOptions, nosiblings bool, ft, st *Tree) (*Tree, error) {
-	fs, ss := setOf(first), setOf(second)
+	fs, ss := ctxOf(first), ctxOf(second)
 	var set *schema.Set
 	switch {
 	case fs != nil:
@@ -234,7 +234,14 @@ func sibsOf(n *Node) *siblings {
 	if sib := n.siblingsOf(); sib != nil {
 		return sib
 	}
-	return &siblings{nodeDeque: nodeDeque{list: []*Node{n}}}
+	s := &siblings{}
+	if n.schema == nil {
+		s.opq = []*Node{n}
+	} else {
+		s.list = []*Node{n}
+	}
+	s.addContext(n)
+	return s
 }
 
 // firstNoKeys is lyd_child_no_keys: the first child of n that is not a list key, nil if none.
@@ -261,6 +268,17 @@ func (t *Tree) findMatch(sib *siblings, target *Node, defaults bool, cache *dupC
 		m = t.findFirst(sib, target)
 	default:
 		m = t.schemaLookup(sib, target.schema)
+		// schemaLookup already scans mixed sibling contexts. A uniform foreign context
+		// may still need schema equivalence after its pointer lookup misses.
+		if m == nil && len(sib.contexts) == 1 && ctxOf(sib.list[0]) != ctxOf(target) {
+			for _, candidate := range sib.list {
+				sib.visit()
+				if compareSchemaEqual(candidate.schema, target.schema, true) {
+					m = candidate
+					break
+				}
+			}
+		}
 	}
 	m = t.dupInstNext(m, cache)
 	if m != nil && m.flags&FlagDefault != 0 && !defaults {
@@ -288,7 +306,7 @@ func (t *Tree) userordGet(first *Node, sn *schema.Node, items *[]*userord) *user
 	}
 	u := &userord{schema: sn}
 	if first != nil {
-		for n := range t.instances(first.siblingsOf(), first.schema) {
+		for n := range t.instances(sibsOf(first), first.schema) {
 			u.inst = append(u.inst, n)
 		}
 	}
@@ -474,7 +492,7 @@ func (t *Tree) metaDiffers(first, second *Node) bool {
 // metaAdd is lyd_diff_node_metadata_add: the diff metadata name ("meta-create", …) with the
 // value "module:name=value" on n.
 func (t *Tree) metaAdd(n *Node, name string, m *meta) error {
-	lg := &logger{set: t.set}
+	lg := &logger{set: ctxOf(n)}
 	if _, err := lg.newMeta(n, nil, "yang:"+name, m.mod.Name+":"+m.name+"="+m.value.Canonical(), false); err != nil {
 		if len(lg.diags) > 0 {
 			return &opError{lg.diags[0].Err, lg.diags[0].Msg}

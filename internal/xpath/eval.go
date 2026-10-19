@@ -746,11 +746,21 @@ func (ev *evaluator) firstInstance(set value, sn SchemaNode) Node {
 		if c.Schema() == nil {
 			break // opaque nodes are last, the walk stops at the first
 		}
-		if siblingSchema(c.Schema(), sn) {
+		if siblingMatch(c, sn) {
 			return c
 		}
 	}
 	return nil
+}
+
+// siblingMatch is lyd_find_sibling_schema's match of sibling c: the data adapter's own
+// (SchemaLookupMatch: the table record's or the linear walk's comparison, by the sibling list c
+// is in), else siblingSchema.
+func siblingMatch(c Node, sn SchemaNode) bool {
+	if lookup, ok := c.(interface{ SchemaLookupMatch(SchemaNode) bool }); ok {
+		return lookup.SchemaLookupMatch(sn)
+	}
+	return siblingSchema(c.Schema(), sn)
 }
 
 // hasVar reports a variable reference in a.
@@ -875,14 +885,23 @@ func (ev *evaluator) hashChild(set value, sn SchemaNode, name string, vals []str
 	matches := func(c Node) (bool, error) { // lyd_find_sibling_first / lyd_find_sibling_val
 		if len(keys) == 0 {
 			// lyd_find_sibling_val without a value is lyd_find_sibling_schema; a scan means no
-			// children hash table, or one the ChildLookup has already mapped this name into
-			return siblingSchema(c.Schema(), sn), nil
+			// children hash table, one the ChildLookup has already mapped this name into, or
+			// siblings of several contexts
+			return siblingMatch(c, sn), nil
 		}
 		if !sameSchema(c.Schema(), sn) { // lyd_compare_single_schema
 			return false, nil
 		}
 		if probe != nil && c.Schema() == sn {
 			return probe.Match(c) // the stored-hash gate, then positional keys
+		}
+		if len(vals) > 0 {
+			if gate, ok := c.(interface {
+				HashKeyValuesEqual(SchemaNode, []string) bool
+			}); ok &&
+				!gate.HashKeyValuesEqual(sn, vals) {
+				return false, nil
+			}
 		}
 		kids := c.Children()
 		for i, ks := range keys {
@@ -1154,7 +1173,12 @@ func (ev *evaluator) index(n Node) ([]Node, int) {
 	}
 	i, ok := sl.idx[n]
 	if !ok {
-		i = -1 // not under Tree
+		if p == nil {
+			// An unlinked context root has no next/previous sibling. The supplied
+			// tree still supplies the children of the document root for / paths.
+			return []Node{n}, 0
+		}
+		i = -1
 	}
 	return sl.nodes, i
 }

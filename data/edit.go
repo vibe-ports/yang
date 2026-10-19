@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Ported from libyang v5.8.6 src/tree_data_new.c (lyd_new_path and its helpers, lyd_create_list,
-// lyd_change_term), src/tree_data.c (lyd_find_path, lyd_merge, lyd_dup_r), src/path.c
+// lyd_change_term), src/tree_data.c (lyd_find_path, lyd_merge, lyd_dup_r, lyd_unlink_tree), src/path.c
 // (ly_path_eval_partial) and src/tree_data_common.c (lyd_dup_inst_next,
 // lyd_find_sibling_dup_inst_set) (BSD-3-Clause, © CESNET).
 
@@ -59,7 +59,7 @@ func (l *logger) done(err error) error {
 // Errors are a *ValidationError with libyang's diagnostics.
 func (t *Tree) NewPath(path, value string, o NewPathOptions) (*Node, error) {
 	defer t.work.beginHashWork()()
-	lg := &logger{set: t.set}
+	lg := &logger{set: t.context()}
 	// The ordinary path preflight handles small edits without a journal. A caller-specified
 	// boundary or large input can still fail after several insertions, so journal those.
 	var journal *hashTransaction
@@ -83,7 +83,7 @@ func (t *Tree) NewPath(path, value string, o NewPathOptions) (*Node, error) {
 // instances need their predicates). It returns nil when the path does not exist. A malformed path
 // is a *ValidationError.
 func (t *Tree) Find(path string) (*Node, error) {
-	lg := &logger{set: t.set}
+	lg := &logger{set: t.context()}
 	n, err := t.findPath(lg, path)
 	if errors.Is(err, errNotFound) || errors.Is(err, errPartial) {
 		return nil, nil
@@ -97,16 +97,36 @@ func (t *Tree) Find(path string) (*Node, error) {
 // Remove is lyd_free_tree: n and its subtree leave the tree. A list key is refused (an
 // LY_EINVAL *ValidationError) and nothing is removed.
 func (n *Node) Remove() error {
-	if owner := n.treeOf(); owner != nil {
-		defer owner.work.beginHashWork()()
-	} else if n != nil {
-		root := n
-		for root.parent != nil {
-			root = root.parent
-		}
-		bindSubtreeWork(root, &workCounter{})
+	if n == nil {
+		return nil
 	}
+	defer n.beginHashWork()()
 	return (&logger{}).done(freeTree(n))
+}
+
+// Unlink is lyd_unlink_tree: n and its subtree leave their siblings but remain usable. A list
+// key is refused (an LY_EINVAL *ValidationError) and nothing is unlinked. Unlike Remove, Unlink
+// preserves leafref links of descendants; the links of n itself are removed as by libyang.
+func (n *Node) Unlink() error {
+	if n == nil {
+		return nil
+	}
+	defer n.beginHashWork()()
+	return (&logger{}).done(unlinkTree(n))
+}
+
+// beginHashWork starts the hash work of a mutation of n: in its tree or, detached, bound to a
+// fresh counter of its root's subtree. The returned func ends it.
+func (n *Node) beginHashWork() func() {
+	if owner := n.treeOf(); owner != nil {
+		return owner.work.beginHashWork()
+	}
+	root := n
+	for root.parent != nil {
+		root = root.parent
+	}
+	bindSubtreeWork(root, &workCounter{})
+	return func() {}
 }
 
 // Merge is lyd_merge_siblings without options: the top-level subtrees of src are merged into t.
@@ -116,11 +136,11 @@ func (n *Node) Remove() error {
 // copying the source flags plus New; equal payloads leave the destination unchanged.
 func (t *Tree) Merge(src *Tree) (result error) {
 	defer t.work.beginHashWork()()
-	lg := &logger{set: t.set}
+	lg := &logger{set: t.context()}
 	if src == nil {
 		return nil
 	}
-	if src.set != t.set {
+	if src.context() != t.context() {
 		return lg.done(lg.logErr("LY_EINVAL", "Different contexts mixed in a \"lyd_merge\" function call."))
 	}
 	if err := t.preflightBatchHash(src); err != nil {
@@ -205,7 +225,7 @@ func (t *Tree) findPath(lg *logger, path string) (*Node, error) {
 		}
 		ctxNode = ctx.schema
 	}
-	p, msg, at := types.CompilePath(t.set, ctxNode, path, false, false)
+	p, msg, at := types.CompilePath(t.context(), ctxNode, path, false, false)
 	if msg != "" {
 		if at == nil {
 			at = ctxNode // ly_path_parse: LOG_LOCSET(ctx_node) before parsing (path.c:340)
@@ -296,6 +316,10 @@ func (t *Tree) instances(s *siblings, sn *schema.Node) func(func(*Node) bool) {
 		} else if i := t.schemaIndex(s, sn); i >= 0 {
 			run = s.list[i:]
 		}
+		if len(run) == 0 {
+			return
+		}
+		// LYD_LIST_FOR_INST tests the requested pointer on the first node too.
 		for _, n := range run {
 			if n.schema != sn || !yield(n) {
 				return
@@ -325,7 +349,7 @@ func (t *Tree) createList(seg types.PathSegment, storeOnly bool) (*Node, *types.
 			return nil, &types.Diag{Code: types.CodeNone, Err: "LY_ENOTFOUND", Msg: fmt.Sprintf("Variable \"%s\" not defined.", pr.Var)}, nil, nil
 		}
 		v, d := store(pr.Key.Type, pr.Value.Canonical(), types.FormatJSON, types.HintData,
-			types.ModuleNames{Set: t.set}, pr.Key)
+			types.ModuleNames{Set: seg.Node.Module.Owner}, pr.Key)
 		if d != nil {
 			return nil, d, pr.Key, nil
 		}
@@ -359,7 +383,7 @@ func (t *Tree) newPath(lg *logger, path, value string, o NewPathOptions) (*Node,
 	if len(t.top.list) > 0 {
 		ctxNode = t.top.list[0].schema
 	}
-	p, msg, at := types.CompilePath(t.set, ctxNode, path, false, true)
+	p, msg, at := types.CompilePath(t.context(), ctxNode, path, false, true)
 	if msg != "" {
 		return nil, lg.item(nil, at, false, "LY_EVALID", ly.XPath, "", msg)
 	}
@@ -585,7 +609,7 @@ func (t *Tree) checkFindPath(lg *logger, p types.Path, path, value string) (type
 				nodetypeStr(sn.Kind), sn.Name, path)
 			return nil, rcError("LY_EINVAL")
 		case sn.Kind == schema.LeafList && (len(preds) == 0 || preds[0].Kind != types.PredLeafList):
-			v, d := types.Store(sn.Type, value, types.FormatJSON, types.HintData, types.ModuleNames{Set: t.set}, sn)
+			v, d := types.Store(sn.Type, value, types.FormatJSON, types.HintData, types.ModuleNames{Set: sn.Module.Owner}, sn)
 			if d != nil {
 				return nil, rcError(d.RC()) // lyd_value_validate3 without logging: the plugin's rc
 			}
@@ -598,7 +622,7 @@ func (t *Tree) checkFindPath(lg *logger, p types.Path, path, value string) (type
 // createTerm is lyd_create_term with a JSON value and LYD_HINT_DATA; lnode is the data parent
 // for the error location.
 func (t *Tree) createTerm(lg *logger, lnode *Node, sn *schema.Node, value string) (*Node, error) {
-	v, d := types.Store(sn.Type, value, types.FormatJSON, types.HintData, types.ModuleNames{Set: t.set}, sn)
+	v, d := types.Store(sn.Type, value, types.FormatJSON, types.HintData, types.ModuleNames{Set: sn.Module.Owner}, sn)
 	if d != nil {
 		return nil, lg.storeErr(lnode, sn, d)
 	}
@@ -628,7 +652,7 @@ func (t *Tree) newPathUpdate(lg *logger, n *Node, value string) (*Node, error) {
 		return nil, nil // an inner node has nothing to update
 	}
 	// _lyd_change_term
-	v, d := types.Store(n.schema.Type, value, types.FormatJSON, types.HintData, types.ModuleNames{Set: t.set}, n.schema)
+	v, d := types.Store(n.schema.Type, value, types.FormatJSON, types.HintData, types.ModuleNames{Set: ctxOf(n)}, n.schema)
 	if d != nil {
 		return nil, lg.storeErr(n, n.schema, d)
 	}
@@ -827,10 +851,18 @@ type dupInst struct {
 
 // dupCache is the duplicate instance cache of one sibling level (lyd_dup_inst_get's hash table).
 // A level without a children table gets a document-order index built once per schema node; a
-// level with one reads the live lyd_hash bucket in registration order.
+// level with one reads the live lyd_hash bucket in registration order, or, with instances of
+// several contexts, a registration-order index by native key. The indexes are only appended to
+// (added); dupInstNext skips the nodes that have left the level since.
 type dupCache struct {
-	inst map[*Node]*dupInst
-	runs map[*schema.Node]map[idxKey][]*Node
+	inst      map[*Node]*dupInst
+	runs      map[*schema.Node]map[idxKey][]*Node
+	tableRuns map[*siblings]map[string][]*Node
+}
+
+func dupNativeKey(n *Node) string {
+	k, _ := hashOf(n)
+	return n.schema.Module.Name + "\x00" + n.schema.Name + "\x00" + k.key
 }
 
 // run returns the instances of the siblings of inst that hash like it (opaque nodes: the opaque
@@ -845,12 +877,48 @@ func (t *Tree) run(c *dupCache, inst *Node) []*Node {
 	if !ok {
 		return nil
 	}
-	if sib.ht != nil {
+	if sib.ht != nil && !sib.mixedContexts() {
+		// lyd_find_sibling_dup_inst_set reads the live hash bucket on each first lookup.
 		out := make([]*Node, 0)
 		for n := range sib.bucketNodes(k) {
 			out = append(out, n)
 		}
 		return out
+	}
+	if sib.ht != nil {
+		// Instances compiled in another context hash alike in libyang (names, not schema
+		// pointers), so one index over the level groups them by native key.
+		if c.tableRuns == nil {
+			c.tableRuns = map[*siblings]map[string][]*Node{}
+		}
+		idx := c.tableRuns[sib]
+		if idx == nil {
+			idx = map[string][]*Node{}
+			records := make([]*record, 0, len(sib.exactByNode))
+			for _, r := range sib.exactByNode {
+				records = append(records, r)
+			}
+			slices.SortFunc(records, func(a, b *record) int {
+				switch {
+				case a.order < b.order:
+					return -1
+				case a.order > b.order:
+					return 1
+				}
+				return 0
+			})
+			for _, r := range records {
+				t.work.Add(1)
+				idx[dupNativeKey(r.node)] = append(idx[dupNativeKey(r.node)], r.node)
+			}
+			c.tableRuns[sib] = idx
+		}
+		return idx[dupNativeKey(inst)]
+	}
+	if sib.mixedContexts() {
+		// lyd_find_sibling_dup_inst_set's no-table branch compares each
+		// sibling, including instances compiled in another context.
+		return sib.list
 	}
 	if c.runs == nil {
 		c.runs = map[*schema.Node]map[idxKey][]*Node{}
@@ -877,6 +945,12 @@ func (t *Tree) run(c *dupCache, inst *Node) []*Node {
 
 // added records n, just inserted at the level of c, in the level's index.
 func (c *dupCache) added(n *Node, work *workCounter) {
+	if sib := n.siblingsOf(); sib != nil && c.tableRuns != nil {
+		if idx := c.tableRuns[sib]; idx != nil && n.schema != nil {
+			key := dupNativeKey(n)
+			idx[key] = append(idx[key], n)
+		}
+	}
 	if idx := c.runs[n.schema]; idx != nil {
 		if k, ok := indexedKey(n, work); ok {
 			idx[k] = append(idx[k], n)
@@ -896,9 +970,12 @@ func (t *Tree) dupInstNext(inst *Node, c *dupCache) *Node {
 	if d == nil {
 		d = &dupInst{set: []*Node{inst}}
 		full := isDupInstList(inst.schema)
+		sib := inst.siblingsOf()
 		for _, n := range t.run(c, inst) {
 			t.work.Add(1)
-			if n != inst && compareSingle(t, n, inst, full) {
+			// The level indexes outlive removals (ApplyDiff delete, merge); only the live
+			// siblings are candidates, as libyang looks them up anew.
+			if n != inst && n.siblingsOf() == sib && compareSingle(t, n, inst, full) {
 				d.set = append(d.set, n)
 			}
 		}
@@ -973,7 +1050,10 @@ func (t *Tree) mergeSibling(lv *mergeLevel, src *Node) error {
 	firstInst := match == nil
 	match = t.dupInstNext(match, cache)
 	if match == nil {
-		d, err := t.dupWork(src, nil, false, insertDefault, dupRecursive|dupWithFlags, lv.work)
+		// lyd_merge_sibling_r duplicates an unmatched source node without a target
+		// context, then inserts it below the matched destination parent. A child
+		// introduced in another context keeps its own compiled schema.
+		d, err := t.dupWork(src, nil, false, insertDefault, dupRecursive|dupWithFlags, ctxOf(src), lv.work)
 		if t.work.hashErr != nil {
 			return t.work.hashErr
 		}
@@ -997,6 +1077,14 @@ func (t *Tree) mergeSibling(lv *mergeLevel, src *Node) error {
 	return t.mergeMatch(match, src, lv.work)
 }
 
+// mergeCtx is LYD_CTX(match), the context the merged opaque value is stored in.
+func (t *Tree) mergeCtx(match *Node) *schema.Set {
+	if set := ctxOf(match); set != nil {
+		return set
+	}
+	return t.set
+}
+
 // mergeMatch is lyd_merge_sibling_r for src matched by match: a leaf takes src's value, children
 // are merged recursively.
 func (t *Tree) mergeMatch(match, src *Node, w *anyWork) error {
@@ -1006,7 +1094,7 @@ func (t *Tree) mergeMatch(match, src *Node, w *anyWork) error {
 			o := *src.opaq
 			match.touch()
 			match.opaq.Value, match.opaq.Hints = o.Value, o.Hints
-			match.opaq.Format, match.opaq.Prefixes = o.Format, dupPrefixes(o.Prefixes, t.set)
+			match.opaq.Format, match.opaq.Prefixes = o.Format, dupPrefixes(o.Prefixes, t.mergeCtx(match))
 		}
 	case isAny(match.schema):
 		if !compareSingle(t, src, match, false) {
@@ -1102,5 +1190,5 @@ func opaqNext(s *siblings, name string) *Node {
 // dup is lyd_dup_single with LYD_DUP_RECURSIVE | LYD_DUP_WITH_FLAGS: an unlinked copy of n and
 // its subtree with the flags and metadata; children keep their order (LYD_INSERT_NODE_LAST).
 func (t *Tree) dup(n *Node) (*Node, error) {
-	return t.dupR(n, nil, false, insertDefault, dupRecursive|dupWithFlags)
+	return t.dupWork(n, nil, false, insertDefault, dupRecursive|dupWithFlags, ctxOf(n), newAnyWork(context.Background(), Budget{}))
 }

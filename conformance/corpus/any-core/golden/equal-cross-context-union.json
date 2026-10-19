@@ -1,0 +1,420 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ac-union",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": {
+            "text": "{\n  \"ac-union:u\": [\n    1\n  ]\n}\n",
+            "value_type": "datatree"
+          },
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "anydata",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-union:data",
+          "schema": "/ac-union:data",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-union:data/u[.='1']",
+          "schema": "/ac-union:u",
+          "value": {
+            "canonical": "1",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "uint8",
+                "typedef": null
+              },
+              "type": "uint8",
+              "typedef": null
+            }
+          }
+        }
+      ]
+    },
+    {
+      "compare": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "diagnostics": [],
+      "do": "compare",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": {
+            "text": "{\n  \"ac-union:u\": [\n    1\n  ]\n}\n",
+            "value_type": "datatree"
+          },
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "anydata",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-union:data",
+          "schema": "/ac-union:data",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-union:data/u[.='1']",
+          "schema": "/ac-union:u",
+          "value": {
+            "canonical": "1",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "uint8",
+                "typedef": null
+              },
+              "type": "uint8",
+              "typedef": null
+            }
+          }
+        }
+      ]
+    },
+    {
+      "compare": {
+        "err": 11,
+        "name": "LY_ENOT"
+      },
+      "diagnostics": [],
+      "do": "compare",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": {
+            "text": "{\n  \"ac-union:u\": [\n    1\n  ]\n}\n",
+            "value_type": "datatree"
+          },
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "anydata",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-union:data",
+          "schema": "/ac-union:data",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-union:data/u[.='1']",
+          "schema": "/ac-union:u",
+          "value": {
+            "canonical": "1",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "uint8",
+                "typedef": null
+              },
+              "type": "uint8",
+              "typedef": null
+            }
+          }
+        }
+      ]
+    },
+    {
+      "compare": {
+        "err": 11,
+        "name": "LY_ENOT"
+      },
+      "diagnostics": [],
+      "do": "compare",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": {
+            "text": "{\n  \"ac-union:u\": [\n    1\n  ]\n}\n",
+            "value_type": "datatree"
+          },
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "anydata",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-union:data",
+          "schema": "/ac-union:data",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-union:data/u[.='1']",
+          "schema": "/ac-union:u",
+          "value": {
+            "canonical": "1",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 0,
+              "realtype": {
+                "type": "uint8",
+                "typedef": null
+              },
+              "type": "uint8",
+              "typedef": null
+            }
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": {
+            "text": "{\n  \"ac-union:u\": [\n    \"x\"\n  ]\n}\n",
+            "value_type": "datatree"
+          },
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "anydata",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-union:data",
+          "schema": "/ac-union:data",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-union:data/u[.='x']",
+          "schema": "/ac-union:u",
+          "value": {
+            "canonical": "x",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": null
+              },
+              "type": "string",
+              "typedef": null
+            }
+          }
+        }
+      ]
+    },
+    {
+      "compare": {
+        "err": 11,
+        "name": "LY_ENOT"
+      },
+      "diagnostics": [],
+      "do": "compare",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": {
+            "text": "{\n  \"ac-union:u\": [\n    \"x\"\n  ]\n}\n",
+            "value_type": "datatree"
+          },
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "anydata",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-union:data",
+          "schema": "/ac-union:data",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-union:data/u[.='x']",
+          "schema": "/ac-union:u",
+          "value": {
+            "canonical": "x",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": null
+              },
+              "type": "string",
+              "typedef": null
+            }
+          }
+        }
+      ]
+    },
+    {
+      "compare": {
+        "err": 11,
+        "name": "LY_ENOT"
+      },
+      "diagnostics": [],
+      "do": "compare",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": {
+            "text": "{\n  \"ac-union:u\": [\n    \"x\"\n  ]\n}\n",
+            "value_type": "datatree"
+          },
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "anydata",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-union:data",
+          "schema": "/ac-union:data",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-union:data/u[.='x']",
+          "schema": "/ac-union:u",
+          "value": {
+            "canonical": "x",
+            "type": "union",
+            "typedef": null,
+            "union_member": {
+              "index": 1,
+              "realtype": {
+                "type": "string",
+                "typedef": null
+              },
+              "type": "string",
+              "typedef": null
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

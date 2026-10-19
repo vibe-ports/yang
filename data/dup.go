@@ -36,7 +36,8 @@ const (
 	dupNoLyds                          // LYD_DUP_NO_LYDS: no value order for (leaf-)list instances
 )
 
-// setOf is LYD_CTX: the schema set of the tree n is in, nil for a node not in a tree.
+// setOf is the schema set of the tree n is currently linked in, nil for a detached node. It is
+// deliberately narrower than LYD_CTX; use ctxOf when libyang reads a node's retained context.
 func setOf(n *Node) *schema.Set {
 	for ; n != nil; n = n.parent {
 		if n.payloadSet != nil {
@@ -54,14 +55,18 @@ func setOf(n *Node) *schema.Set {
 func sameSet(a, b *schema.Set) bool { return a == nil || b == nil || a == b }
 
 // compareSchemaEqual is lyd_compare_schema_equal: the same schema node, or, across contexts, the
-// same node type, name and module name (and so all the schema parents with cmpParents). Go schema
-// nodes do not name their set, so different nodes are always compared by name: within one set
-// two data nodes that agree on all of them up the parents are the same node.
+// same node type, name and module name (and so all the schema parents with cmpParents).
+// Schema pointers retain their identity within a single compiled context. Ownerless test sets
+// still retain module identity, which distinguishes their same-context nodes.
 func compareSchemaEqual(a, b *schema.Node, cmpParents bool) bool {
 	switch {
 	case a == b:
 		return true
 	case a == nil || b == nil:
+		return false
+	}
+	if a.Module == nil || b.Module == nil || a.Module == b.Module ||
+		(a.Module.Owner != nil && a.Module.Owner == b.Module.Owner) {
 		return false
 	}
 	for {
@@ -95,7 +100,7 @@ func compareSingleSchema(a, b *Node, opaq, parentsChecked bool) bool {
 	if !opaq && a.schema == b.schema {
 		return true
 	}
-	if sa, sb := setOf(a), setOf(b); sameSet(sa, sb) {
+	if sa, sb := ctxOf(a), ctxOf(b); sameSet(sa, sb) {
 		if sa == nil {
 			sa = sb
 		}
@@ -152,11 +157,25 @@ func findSchemaCtx(sn *schema.Node, trg *schema.Set, parent *Node) (*schema.Node
 	}
 }
 
-// dupR is lyd_dup_r into the context of t: a copy of n (its subtree with dupRecursive, else the
-// keys of a list) inserted into parent, or with top into the top level of t, by order; with
-// neither it stays unlinked.
+// dupR is lyd_dup_r: a copy of n (its subtree with dupRecursive, else the keys of a list)
+// inserted into parent, or with top into the top level of t, by order; with neither it stays
+// unlinked. A supplied parent determines the destination context.
 func (t *Tree) dupR(n, parent *Node, top bool, order insertOrder, opts dupOpts) (*Node, error) {
-	return t.dupWork(n, parent, top, order, opts, newAnyWork(context.Background(), Budget{}))
+	return t.dupWork(n, parent, top, order, opts, t.dupDest(parent), newAnyWork(context.Background(), Budget{}))
+}
+
+// dupRIn is dupR into the explicit destination context dest.
+func (t *Tree) dupRIn(n, parent *Node, top bool, order insertOrder, opts dupOpts, dest *schema.Set) (*Node, error) {
+	return t.dupWork(n, parent, top, order, opts, dest, newAnyWork(context.Background(), Budget{}))
+}
+
+// dupDest is the destination context of a duplicate: parent's (LYD_CTX, also for a
+// detached parent) when supplied, otherwise the tree's.
+func (t *Tree) dupDest(parent *Node) *schema.Set {
+	if parent != nil && ctxOf(parent) != nil {
+		return ctxOf(parent)
+	}
+	return t.context()
 }
 
 // dupFrame records a post-order insertion. Payload boundaries reset the options
@@ -165,6 +184,7 @@ type dupFrame struct {
 	tree             *Tree
 	src, dst, parent *Node
 	sourceSet        *schema.Set
+	dest             *schema.Set // the target context of this copy
 	top              bool
 	order            insertOrder
 	opts             dupOpts
@@ -174,8 +194,8 @@ type dupFrame struct {
 // dupWork replaces lyd_dup_r's recursion with an explicit stack, including across
 // repeated schema roots in any payloads. Nothing is linked to the caller's tree
 // until the entire requested subtree has been copied successfully.
-func (t *Tree) dupWork(n, parent *Node, top bool, order insertOrder, opts dupOpts, w *anyWork) (*Node, error) {
-	stack := []dupFrame{{tree: t, src: n, parent: parent, sourceSet: setOf(n), top: top, order: order, opts: opts}}
+func (t *Tree) dupWork(n, parent *Node, top bool, order insertOrder, opts dupOpts, dest *schema.Set, w *anyWork) (*Node, error) {
+	stack := []dupFrame{{tree: t, src: n, parent: parent, sourceSet: ctxOf(n), dest: dest, top: top, order: order, opts: opts}}
 	var root *Node
 	// one tree per payload context: its sibling sets share one work counter, so
 	// linking an outer node does not rebind the payloads below it again
@@ -195,7 +215,7 @@ func (t *Tree) dupWork(n, parent *Node, top bool, order insertOrder, opts dupOpt
 			}
 			continue
 		}
-		d, err := f.tree.dupSingle(f.src, f.parent, f.sourceSet, f.opts)
+		d, err := f.tree.dupSingle(f.src, f.parent, f.sourceSet, f.dest, f.opts)
 		if err != nil {
 			return nil, err
 		}
@@ -204,7 +224,7 @@ func (t *Tree) dupWork(n, parent *Node, top bool, order insertOrder, opts dupOpt
 		}
 		f.dst = d
 		stack = append(stack, f)
-		children, childTree, childOpts, sourceSet := f.src.kids.nodes(), f.tree, f.opts, f.sourceSet
+		children, childTree, childOpts, sourceSet, childDest := f.src.kids.nodes(), f.tree, f.opts, f.sourceSet, f.dest
 		if isAny(d.schema) {
 			d.any = &anyValue{}
 			// lyd_dup_r resolves the schema and duplicates metadata before
@@ -224,7 +244,7 @@ func (t *Tree) dupWork(n, parent *Node, top bool, order insertOrder, opts dupOpt
 					if d.schema.Kind == schema.AnyData || av.hints&0x0fff == 0 {
 						// lyd_any_copy_value passes log=0 for both any kinds
 						// (tree_data_new.c:344): copy-time warnings stay silent.
-						parsed, _, err := w.createAnyDatatree(f.tree.set, s)
+						parsed, _, err := w.createAnyDatatree(f.dest, s)
 						if anyParseFatal(err) {
 							return nil, err
 						}
@@ -247,6 +267,7 @@ func (t *Tree) dupWork(n, parent *Node, top bool, order insertOrder, opts dupOpt
 					childTree = newTree(sourceSet)
 					payloadTrees[sourceSet] = childTree
 				}
+				childDest = sourceSet
 			}
 		} else if f.opts&dupRecursive == 0 {
 			keys := 0
@@ -263,7 +284,7 @@ func (t *Tree) dupWork(n, parent *Node, top bool, order insertOrder, opts dupOpt
 				cs = children[i].payloadSet
 			}
 			stack = append(stack, dupFrame{tree: childTree, src: children[i], parent: d,
-				sourceSet: cs, order: insertLast, opts: childOpts, payload: isAny(d.schema)})
+				sourceSet: cs, dest: childDest, order: insertLast, opts: childOpts, payload: isAny(d.schema)})
 		}
 	}
 	return root, nil
@@ -341,14 +362,14 @@ func (t *Tree) absorbHashWork(c *Tree) error {
 
 // dupSingle copies scalar state; children are scheduled by dupWork. Schema and
 // typed value objects are immutable, while opaque namespace maps/attributes are not.
-func (t *Tree) dupSingle(n, parent *Node, sourceSet *schema.Set, opts dupOpts) (*Node, error) {
-	d := &Node{schema: n.schema, flags: n.flags&FlagDefault | FlagNew, payloadSet: t.set}
+func (t *Tree) dupSingle(n, parent *Node, sourceSet, dest *schema.Set, opts dupOpts) (*Node, error) {
+	d := &Node{schema: n.schema, flags: n.flags&FlagDefault | FlagNew, payloadSet: dest}
 	if opts&dupWithFlags != 0 {
 		d.flags = n.flags
 	}
-	cross := !sameSet(sourceSet, t.set)
+	cross := !sameSet(sourceSet, dest)
 	if cross {
-		sn, err := findSchemaCtx(n.schema, t.set, parent)
+		sn, err := findSchemaCtx(n.schema, dest, parent)
 		if err != nil {
 			return nil, err
 		}
@@ -356,7 +377,7 @@ func (t *Tree) dupSingle(n, parent *Node, sourceSet *schema.Set, opts dupOpts) (
 	}
 	if opts&dupNoMeta == 0 && n.schema != nil {
 		for _, m := range n.meta {
-			if dm := t.dupMeta(m, d); dm != nil {
+			if dm := t.dupMeta(m, d, dest); dm != nil {
 				d.meta = append(d.meta, dm)
 			}
 		}
@@ -364,12 +385,12 @@ func (t *Tree) dupSingle(n, parent *Node, sourceSet *schema.Set, opts dupOpts) (
 	switch {
 	case d.schema == nil:
 		o := *n.opaq
-		o.set = t.set // the target context
-		o.Prefixes = dupPrefixes(o.Prefixes, t.set)
+		o.set = dest // the target context
+		o.Prefixes = dupPrefixes(o.Prefixes, dest)
 		o.Attrs = nil
 		if opts&dupNoMeta == 0 { // lyd_dup_attr_single
 			for _, a := range n.opaq.Attrs {
-				o.Attrs = append(o.Attrs, dupAttr(a, t.set))
+				o.Attrs = append(o.Attrs, dupAttr(a, dest))
 			}
 		}
 		d.opaq = &o
@@ -380,7 +401,7 @@ func (t *Tree) dupSingle(n, parent *Node, sourceSet *schema.Set, opts dupOpts) (
 		d.value = n.value
 		if cross {
 			v, diag := types.StoreOnly(d.schema.Type, n.value.Canonical(), types.FormatCanon, types.HintData,
-				types.ModuleNames{Set: t.set}, d.schema)
+				types.ModuleNames{Set: dest}, d.schema)
 			if diag != nil {
 				if t.dupLog == nil {
 					return nil, &opError{"LY_EVALID", diag.Msg}
@@ -398,14 +419,14 @@ func (t *Tree) dupSingle(n, parent *Node, sourceSet *schema.Set, opts dupOpts) (
 	return d, nil
 }
 
-// dupMeta is lyd_dup_meta_single_to_ctx: a copy of m for its duplicate parent in the context of
-// t; across contexts the annotation of the module with the same name and revision, and the
+// dupMeta is lyd_dup_meta_single_to_ctx: a copy of m for its duplicate parent in dest; across
+// contexts the annotation of the module with the same name and revision, and the
 // canonical value stored with its type. nil when it cannot be stored there: libyang logs the
 // errors ("…value duplication failed.") and the duplicate goes on without the metadata. A
 // target without the annotation crashes libyang (NULL annotation); it is dropped the same way
 // (D-0067).
-func (t *Tree) dupMeta(m *meta, parent *Node) *meta {
-	mod := t.set.Module(m.mod.Name, m.mod.Revision)
+func (t *Tree) dupMeta(m *meta, parent *Node, dest *schema.Set) *meta {
+	mod := dest.Module(m.mod.Name, m.mod.Revision)
 	if mod == m.mod {
 		c := *m
 		return &c
@@ -415,7 +436,7 @@ func (t *Tree) dupMeta(m *meta, parent *Node) *meta {
 		return nil // D-0067
 	}
 	v, d := types.StoreOnly(ant.Type, m.value.Canonical(), types.FormatCanon, types.HintData,
-		types.ModuleNames{Set: t.set}, parent.schema)
+		types.ModuleNames{Set: dest}, parent.schema)
 	if d != nil {
 		if t.dupLog != nil { // lyd_value_store's items at the duplicate, then LOGERR; the copy goes on
 			_ = t.dupLog.storeErr(parent, parent.schema, d)
@@ -429,17 +450,17 @@ func (t *Tree) dupMeta(m *meta, parent *Node) *meta {
 // dupLocalParent is lyd_dup_get_local_parent: the parents of n duplicated (without their
 // subtrees, opts dupWithFlags and dupNoMeta) up to the one equal to parent or the top, the
 // highest duplicate inserted into parent; local is the duplicate parent n's copy goes under.
-func (t *Tree) dupLocalParent(n, parent *Node, opts dupOpts, w *anyWork) (top, local *Node, err error) {
+func (t *Tree) dupLocalParent(n, parent *Node, opts dupOpts, dest *schema.Set, w *anyWork) (top, local *Node, err error) {
 	repeat := true
 	for op := n.parent; repeat && op != nil; op = op.parent {
 		var it *Node
 		switch {
-		case parent != nil && sameSet(setOf(parent), setOf(op)) && parent.schema == op.schema,
-			parent != nil && !sameSet(setOf(parent), setOf(op)) && compareSchemaEqual(parent.schema, op.schema, false) &&
+		case parent != nil && sameSet(ctxOf(parent), ctxOf(op)) && parent.schema == op.schema,
+			parent != nil && !sameSet(ctxOf(parent), ctxOf(op)) && compareSchemaEqual(parent.schema, op.schema, false) &&
 				compareSchemaParentsEqual(parent.schema, op.schema):
 			it, repeat = parent, false // connect what we have into parent
 		default:
-			if it, err = t.dupWork(op, nil, false, insertDefault, opts, w); err != nil {
+			if it, err = t.dupWork(op, nil, false, insertDefault, opts, dest, w); err != nil {
 				return nil, nil, err
 			}
 			if top != nil {
@@ -472,11 +493,12 @@ func (t *Tree) dupLocalParent(n, parent *Node, opts dupOpts, w *anyWork) (top, l
 // not the parent's other children as libyang frees them (D-0065).
 func (t *Tree) dupNodes(n, parent *Node, opts dupOpts, siblings bool) (*Node, error) {
 	w := newAnyWork(context.Background(), Budget{})
+	dest := t.dupDest(parent)
 	local := parent
 	var top *Node
 	if opts&dupWithParents != 0 {
 		var err error
-		if top, local, err = t.dupLocalParent(n, parent, opts&(dupWithFlags|dupNoMeta), w); err != nil {
+		if top, local, err = t.dupLocalParent(n, parent, opts&(dupWithFlags|dupNoMeta), dest, w); err != nil {
 			return nil, err
 		}
 	}
@@ -525,7 +547,7 @@ func (t *Tree) dupNodes(n, parent *Node, opts dupOpts, siblings bool) (*Node, er
 				}
 			} else { // a single key
 				var err error
-				if d, err = t.dupWork(orig, nil, true, insertDefault, opts, w); err != nil {
+				if d, err = t.dupWork(orig, nil, true, insertDefault, opts, dest, w); err != nil {
 					return fail(err)
 				}
 				made = append(made, d)
@@ -544,7 +566,7 @@ func (t *Tree) dupNodes(n, parent *Node, opts dupOpts, siblings bool) (*Node, er
 				firstLL = orig
 			}
 			var err error
-			if d, err = t.dupWork(orig, local, local == nil, order, opts, w); err != nil {
+			if d, err = t.dupWork(orig, local, local == nil, order, opts, dest, w); err != nil {
 				return fail(err)
 			}
 			made = append(made, d)
@@ -565,6 +587,9 @@ func (t *Tree) dupNodes(n, parent *Node, opts dupOpts, siblings bool) (*Node, er
 // hasNext reports whether the linked node d has a next sibling (lyd_node.next).
 func hasNext(d *Node) bool {
 	sib := d.siblingsOf()
+	if sib == nil {
+		return false
+	}
 	if d.schema == nil {
 		return sib.opq[len(sib.opq)-1] != d
 	}
@@ -575,15 +600,16 @@ func hasNext(d *Node) bool {
 // variants: the copy of n (and with siblings of its following siblings) under parent, or as
 // top-level nodes of a new tree over the target set when parent is nil.
 func dupTo(n *Node, trg *schema.Set, parent *Node, opts dupOpts, siblings bool) (*Node, error) {
-	if setOf(n) == nil {
-		return nil, &opError{"LY_EINVAL", "Duplicating a node that is not in a tree."} // libyang nodes always have a context
+	src := ctxOf(n)
+	if src == nil {
+		return nil, &opError{"LY_EINVAL", "Duplicating a node that is not in a tree."}
 	}
 	if trg == nil {
-		if parent != nil && setOf(parent) != setOf(n) {
+		if parent != nil && ctxOf(parent) != src {
 			return nil, &opError{"LY_EINVAL", "Different \"node\" and \"parent\" contexts used in node duplication."}
 		}
-		trg = setOf(n)
-	} else if parent != nil && setOf(parent) != trg {
+		trg = src
+	} else if parent != nil && ctxOf(parent) != trg {
 		return nil, &opError{"LY_EINVAL", "Different \"trg_ctx\" and \"parent\" contexts used in node duplication."}
 	}
 	t := newTree(trg)
@@ -620,10 +646,12 @@ func (o DupOptions) opts() dupOpts {
 	return d
 }
 
-// Dup is lyd_dup_single: a copy of n, from any tree, under parent (a node of t) or, with parent
-// nil, as a top-level node of t (a fresh NewTree gives libyang's unlinked copy); with
-// o.WithParents the copy of n under copies of its parents. When n's snapshot is not t's it is
-// lyd_dup_single_to_ctx, the way to move data onto a newer snapshot: schema nodes are found by
+// Dup is lyd_dup_single: a copy of n, from any tree or retained after Unlink, under parent (a
+// node of t or a detached node of its snapshot) or, with parent nil, as a top-level node of t
+// (a fresh NewTree gives libyang's unlinked copy); with
+// o.WithParents the copy of n under copies of its parents. When n's snapshot differs from the
+// destination (parent's snapshot when supplied, otherwise t's), it is lyd_dup_single_to_ctx,
+// the way to move data onto a newer snapshot: schema nodes are found by
 // path and values stored again. The diagnostics are those logged also on success (a metadata
 // value the target rejects: dropped, "Value duplication failed."); a terminal parent
 // is refused (D-0123; opaque and any parents remain accepted), and so is a
@@ -644,13 +672,13 @@ func (t *Tree) DupSiblings(n, parent *Node, o DupOptions) (*Node, []yang.Diagnos
 }
 
 // isSchemaParent reports whether parent is an instance of n's schema parent (lysc_data_parent),
-// n's schema node taken in t's context as lyd_dup_single_to_ctx finds it; a node the target
+// n's schema node taken in dest as lyd_dup_single_to_ctx finds it; a node the target
 // context lacks is left to the duplication's own error.
-func (t *Tree) isSchemaParent(n, parent *Node) bool {
+func (t *Tree) isSchemaParent(n, parent *Node, dest *schema.Set) bool {
 	sn := n.schema
-	if !sameSet(setOf(n), t.set) {
+	if !sameSet(ctxOf(n), dest) {
 		var err error
-		if sn, err = findSchemaCtx(sn, t.set, parent); err != nil {
+		if sn, err = findSchemaCtx(sn, dest, parent); err != nil {
 			return true
 		}
 	}
@@ -659,13 +687,14 @@ func (t *Tree) isSchemaParent(n, parent *Node) bool {
 
 func (t *Tree) dupPublic(n, parent *Node, o DupOptions, siblings bool, fn string) (*Node, []yang.Diagnostic, error) {
 	defer t.work.beginHashWork()()
-	lg := &logger{set: t.set}
+	dest := t.dupDest(parent)
+	lg := &logger{set: dest}
 	switch {
 	case n == nil:
 		return nil, nil, lg.done(argErr("node", fn))
-	case setOf(n) == nil:
+	case ctxOf(n) == nil:
 		return nil, nil, lg.done(&opError{"LY_EINVAL", "Duplicating a node that is not in a tree."})
-	case parent != nil && treeOf(parent) != t:
+	case parent != nil && treeOf(parent) != nil && treeOf(parent) != t:
 		return nil, nil, lg.done(argErr("parent (not in the tree)", fn))
 	case parent != nil && ctxOf(parent) != t.set:
 		return nil, nil, lg.done(&opError{"LY_EINVAL", "Different \"trg_ctx\" and \"parent\" contexts used in node duplication."})
@@ -679,7 +708,7 @@ func (t *Tree) dupPublic(n, parent *Node, o DupOptions, siblings bool, fn string
 		// siblings from a key stops at that key, so no later sibling reaches lyd_dup_r.
 		return nil, nil, lg.done(argErr("parent (not an inner node)", fn))
 	case parent != nil && parent.schema != nil && !isAny(parent.schema) && n.schema != nil && !o.WithParents && !n.schema.IsKey() &&
-		!t.isSchemaParent(n, parent):
+		!t.isSchemaParent(n, parent, dest):
 		// lyd_dup does not check that parent is an instance of n's schema parent either; it links
 		// the copy where lyd_insert_get_next_anchor finds an anchor among unrelated schema
 		// siblings, a tree whose later ordering and lookups depend on hash-table and rank

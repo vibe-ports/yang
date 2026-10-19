@@ -61,27 +61,27 @@ func (vc *valCtx) firstModuleSibling(top []*Node, start int, mod *schema.Module)
 	}
 	first := start
 	cmp := 1
-	if own := ownerModule(vc.t.set, top[first]); own != nil {
+	if own := ownerModule(vc.t.context(), top[first]); own != nil {
 		cmp = strings.Compare(own.Name, mod.Name)
 	}
 	if cmp > 0 { // there may be some preceding data
 		for first > 0 {
 			first--
-			if ownerModule(vc.t.set, top[first]) == mod {
+			if ownerModule(vc.t.context(), top[first]) == mod {
 				cmp = 0
 				break
 			}
 		}
 	}
 	if cmp == 0 { // there may be some preceding data of this module
-		for first > 0 && ownerModule(vc.t.set, top[first-1]) == mod {
+		for first > 0 && ownerModule(vc.t.context(), top[first-1]) == mod {
 			first--
 		}
 		return first
 	}
 	if cmp < 0 { // there may be some following data
 		for i := first; i < len(top); i++ {
-			if ownerModule(vc.t.set, top[i]) == mod {
+			if ownerModule(vc.t.context(), top[i]) == mod {
 				return i
 			}
 		}
@@ -99,7 +99,7 @@ func (vc *valCtx) modules() []*schema.Module {
 		return []*schema.Module{vc.module}
 	}
 	if !vc.opts.Present {
-		for _, m := range vc.t.set.Modules {
+		for _, m := range vc.t.context().Modules {
 			if m.Implemented {
 				out = append(out, m)
 			}
@@ -108,12 +108,12 @@ func (vc *valCtx) modules() []*schema.Module {
 	}
 	top := vc.topList()
 	for i := 0; i < len(top); {
-		mod := ownerModule(vc.t.set, top[i])
+		mod := ownerModule(vc.t.context(), top[i])
 		if mod == nil {
 			break
 		}
 		out = append(out, mod)
-		for i < len(top) && ownerModule(vc.t.set, top[i]) == mod {
+		for i < len(top) && ownerModule(vc.t.context(), top[i]) == mod {
 			i++
 		}
 	}
@@ -148,7 +148,7 @@ func (vc *valCtx) validate(validateSubtree bool) error {
 			}
 		}
 		if top := vc.topList(); len(top) > 0 {
-			if i := vc.firstModuleSibling(top, 0, mod); i > 0 && i < len(top) && ownerModule(vc.t.set, top[i]) == mod {
+			if i := vc.firstModuleSibling(top, 0, mod); i > 0 && i < len(top) && ownerModule(vc.t.context(), top[i]) == mod {
 				vc.modFirst = top[i]
 			}
 		}
@@ -173,7 +173,7 @@ func (vc *valCtx) validate(validateSubtree bool) error {
 				// before first is found again, one behind data of another module is not walked
 				start = vc.firstModuleSibling(top, vc.modStart(), mod)
 			}
-			for i := start; i < len(top) && ownerModule(vc.t.set, top[i]) == mod; i++ {
+			for i := start; i < len(top) && ownerModule(vc.t.context(), top[i]) == mod; i++ {
 				if err := vc.validateTree(top[i]); err != nil {
 					if rc = err; vc.stop(err) {
 						return rc
@@ -266,7 +266,7 @@ func (vc *valCtx) finalR(parent *Node, sibs []*Node, sparent *schema.Node, mod *
 		switch {
 		case n.schema == nil:
 			err = vc.log.opaqError(n)
-		case n.parent == nil && mod != nil && ownerModule(vc.t.set, n) != mod:
+		case n.parent == nil && mod != nil && ownerModule(vc.t.context(), n) != mod:
 		default:
 			if inn := unexpected(n.schema, vc.opts.NoState, vc.op); inn != "" {
 				err = vc.log.val(n, "", ly.Data, "Unexpected data %s node \"%s\" found.", inn, n.schema.Name)
@@ -275,7 +275,7 @@ func (vc *valCtx) finalR(parent *Node, sibs []*Node, sparent *schema.Node, mod *
 				err = vc.validateMust(n)
 			}
 		}
-		if n.schema != nil && n.parent == nil && mod != nil && ownerModule(vc.t.set, n) != mod {
+		if n.schema != nil && n.parent == nil && mod != nil && ownerModule(vc.t.context(), n) != mod {
 			break // all top-level data of this module checked
 		}
 		if err != nil {
@@ -290,7 +290,7 @@ func (vc *valCtx) finalR(parent *Node, sibs []*Node, sparent *schema.Node, mod *
 		}
 	}
 	for _, n := range sibs {
-		if n.schema == nil || n.parent == nil && mod != nil && ownerModule(vc.t.set, n) != mod {
+		if n.schema == nil || n.parent == nil && mod != nil && ownerModule(vc.t.context(), n) != mod {
 			break // condensed condition of the previous loop
 		}
 		if n.flags&FlagWhenFalse != 0 {
@@ -590,7 +590,7 @@ func (vc *valCtx) uniqEqual(first, second *Node, u int) bool {
 			for _, l := range uniq {
 				names = append(names, relPath(l, sn))
 			}
-			p1, p2 := lydPath(vc.t.set, first, false), lydPath(vc.t.set, second, false)
+			p1, p2 := lydPath(vc.t.context(), first, false), lydPath(vc.t.context(), second, false)
 			if vc.opts.Operational {
 				vc.log.warn("Unique data leaf(s) \"%s\" not satisfied in \"%s\" and \"%s\".", strings.Join(names, " "), p1, p2)
 			} else {
@@ -746,16 +746,16 @@ func (t *Tree) validateModuleFinal(ctx context.Context, mod *schema.Module, o Va
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	vc := &valCtx{t: t, log: &logger{set: t.set}, opts: o, module: mod, budget: xpathBudget{ctx: ctx, max: b.MaxXPathSteps}}
+	vc := &valCtx{t: t, log: &logger{set: t.context()}, opts: o, module: mod, budget: xpathBudget{ctx: ctx, max: b.MaxXPathSteps}}
 	// lyd_mod_next_module: the first top-level node of mod, none (an empty sibling set, so
 	// only mod's schema-level checks run) when mod has no data
 	top := vc.topList()
-	first := slices.IndexFunc(top, func(n *Node) bool { return ownerModule(t.set, n) == mod })
+	first := slices.IndexFunc(top, func(n *Node) bool { return ownerModule(t.context(), n) == mod })
 	if first < 0 {
 		// no data of mod: libyang's siblings are NULL, so the whens of absent mandatory and
 		// min-elements nodes are evaluated over their temporary node alone, without the other
 		// modules' data
-		vc.t = newTree(t.set)
+		vc.t = newTree(t.context())
 		top, first = nil, 0
 	}
 	err := vc.finalR(nil, top[first:], nil, mod)
@@ -774,7 +774,7 @@ func (t *Tree) validateWith(ctx context.Context, mod *schema.Module, o ValidateO
 		ctx = context.Background()
 	}
 	charged := 0 // implicit nodes created by this validation (Budget.MaxNodes)
-	vc := &valCtx{t: t, log: &logger{set: t.set}, opts: o, nodeWhen: &nodeSet{}, nodeTypes: &nodeSet{}, metaTypes: &[]*meta{}, diff: diff,
+	vc := &valCtx{t: t, log: &logger{set: t.context()}, opts: o, nodeWhen: &nodeSet{}, nodeTypes: &nodeSet{}, metaTypes: &[]*meta{}, diff: diff,
 		budget: xpathBudget{ctx: ctx, max: b.MaxXPathSteps}, module: mod}
 	vc.charge = func() error {
 		charged++

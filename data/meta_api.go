@@ -7,16 +7,16 @@ package data
 import (
 	"iter"
 	"slices"
-	"strings"
 
 	"github.com/vibe-ports/yang"
+	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/snap"
 )
 
 // Meta is a metadata instance of a data node (RFC 7952 annotation, libyang struct lyd_meta), such
 // as ietf-netconf:operation or the yang:operation, yang:key, yang:value, yang:position and
 // yang:orig-* metadata of libyang's diff format. It is a handle of the instance on its node:
-// handles are fresh per call, compare Module, Name and Value, not the handles.
+// handles are fresh per call, compare Module().Name(), Name() and Value(), not the handles.
 type Meta struct {
 	node *Node
 	m    *meta
@@ -32,22 +32,37 @@ func (m *Meta) Name() string { return m.m.name }
 func (m *Meta) Value() string { return m.m.value.Canonical() }
 
 // Remove is lyd_free_meta_single: the instance leaves its node. Removing it again does nothing.
+// It mutates the tree and, like Node.Remove, must not run concurrently with any other call on it.
 func (m *Meta) Remove() { removeMeta(m.node, m.m) }
 
 // removeMeta is lyd_free_meta_single: m leaves the metadata of n; nothing when it is not there.
 // It builds a new slice instead of shifting n.meta in place, so a range over the old n.meta (the
 // Node.Meta iterator, the diff code removing while it walks) keeps seeing it unchanged.
 func removeMeta(n *Node, m *meta) {
+	if n == nil {
+		return
+	}
 	if i := slices.Index(n.meta, m); i >= 0 {
 		n.touch()
 		n.meta = append(n.meta[:i:i], n.meta[i+1:]...)
 	}
 }
 
-// metasNamed is lyd_find_meta by module name, every match: the metadata of n of the module named
-// mod and named name, in order, with their index in n.meta. The diff's lookups of its yang
-// metadata (findYangMeta, metaOfName, findMetaNamed) are over it.
-func metasNamed(n *Node, mod, name string) iter.Seq2[int, *meta] {
+// metasNamedModule is every metadata instance of exactly mod named name, in order, with its
+// index in n.meta. Callers choose the module lookup policy required by their libyang function.
+func metasNamedModule(n *Node, mod *schema.Module, name string) iter.Seq2[int, *meta] {
+	return func(yield func(int, *meta) bool) {
+		for i, m := range n.meta {
+			if m.mod == mod && m.name == name && !yield(i, m) {
+				return
+			}
+		}
+	}
+}
+
+// metasNamedModuleName is every metadata instance whose module name and local name match. It is
+// the policy of lyd_diff_find_meta (diff.c:165-184), which deliberately ignores revisions.
+func metasNamedModuleName(n *Node, mod, name string) iter.Seq2[int, *meta] {
 	return func(yield func(int, *meta) bool) {
 		for i, m := range n.meta {
 			if m.mod.Name == mod && m.name == name && !yield(i, m) {
@@ -57,12 +72,28 @@ func metasNamed(n *Node, mod, name string) iter.Seq2[int, *meta] {
 	}
 }
 
+// metasNamedLatest is the repeated-match form of lyd_find_meta with a prefixed name: resolve the
+// module to the latest revision, then compare module identity (tree_data.c:2904-2942).
+func metasNamedLatest(n *Node, mod, name string) iter.Seq2[int, *meta] {
+	if n == nil || len(n.meta) == 0 {
+		return func(func(int, *meta) bool) {}
+	}
+	set := n.meta[0].mod.Owner
+	if set == nil {
+		set = ctxOf(n)
+	}
+	return metasNamedModule(n, latestModule(set, mod), name)
+}
+
 // Meta yields the metadata of n in order (the lyd_node.meta list). Removing an instance while
 // iterating is safe. An opaque node has generic attributes instead and yields nothing. libyang's
 // internal yang:lyds_tree metadata (lyd_meta_is_internal, the RB tree of sorted instances) does
 // not exist in the port, which keeps no such tree.
 func (n *Node) Meta() iter.Seq[*Meta] {
 	return func(yield func(*Meta) bool) {
+		if n == nil {
+			return
+		}
 		for _, m := range n.meta { // removeMeta builds a new slice: this one stays as it was
 			if !yield(&Meta{n, m}) {
 				return
@@ -75,21 +106,16 @@ func (n *Node) Meta() iter.Seq[*Meta] {
 // module being the latest revision of that name), nil if there is none. A name without a module
 // is an error; an invalid name or an unknown module is a *ValidationError with libyang's message.
 func (n *Node) FindMeta(name string) (*Meta, error) {
-	set := setOf(n)
-	if set == nil { // a removed subtree: no context to resolve the module in, match its name
-		if !strings.Contains(name, ":") {
-			return nil, (&logger{}).done(argErr("module || strchr(name, ':')", "lyd_find_meta"))
+	set := ctxOf(n)
+	var metas []*meta
+	if n != nil {
+		metas = n.meta
+		if len(metas) > 0 && metas[0].mod.Owner != nil {
+			set = metas[0].mod.Owner
 		}
-		prefix, local, _, _, _ := parseNodeID(name) // invalid: "", matching nothing
-		for _, m := range n.meta {
-			if m.mod.Name == prefix && m.name == local {
-				return &Meta{n, m}, nil
-			}
-		}
-		return nil, nil
 	}
 	lg := &logger{set: set}
-	m, err := lg.findMeta(n.meta, nil, name)
+	m, err := lg.findMeta(metas, nil, name)
 	if err != nil || m == nil {
 		return nil, lg.done(err)
 	}
@@ -98,17 +124,20 @@ func (n *Node) FindMeta(name string) (*Meta, error) {
 
 // NewMeta is lyd_new_meta: the metadata name ("module:name" of an implemented module) with the
 // value in the JSON format, stored and validated by the annotation's type, appended to the
-// metadata of n, a node of t. A name without a module or a nil n is an error; an invalid name, an
-// unknown module or annotation, a value the type rejects or an opaque n is a *ValidationError with
-// libyang's diagnostics and return code (RC). The Default flags of n and its parents are kept.
+// metadata of n, a node of t. With n nil, it returns a detached metadata instance. A name without
+// a module is an error; an invalid name, an unknown module or annotation, a value the type rejects
+// or an opaque n is a *ValidationError with libyang's diagnostics and return code (RC). The Default
+// flags of n and its parents are kept.
 func (t *Tree) NewMeta(n *Node, name, value string) (*Meta, error) {
-	lg := &logger{set: t.set}
-	if n == nil { // libyang creates a detached instance, which this API cannot return
-		return nil, lg.done(argErr("parent", "lyd_new_meta"))
-	}
-	if !sameSet(setOf(n), t.set) {
+	set := t.context()
+	if n != nil && n.treeOf() != nil && n.treeOf() != t {
+		lg := &logger{set: set}
 		return nil, lg.done(lg.logErr("LY_EINVAL", "Different contexts mixed in a \"lyd_new_meta\" function call."))
 	}
+	if n != nil && ctxOf(n) != nil {
+		set = ctxOf(n) // lyd_new_meta uses LYD_CTX(parent)
+	}
+	lg := &logger{set: set}
 	m, err := lg.newMeta(n, nil, name, value, false)
 	if err != nil {
 		return nil, lg.done(err)

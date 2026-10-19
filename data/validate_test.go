@@ -303,15 +303,15 @@ func TestUniqueMissingDefault(t *testing.T) {
 	base, _, _ := work(50) // the work of the other checks
 	l.Uniques = [][]*schema.Node{{u}}
 	w, diags, err := work(50)
-	if err != nil || len(diags) != 0 || w-base != 1+50*49/2 { // one default, every pair compared
-		t.Fatalf("%v %q, %d steps over %d", err, diagCodes(diags), w, base)
+	if err != nil || len(diags) != 0 || w-base != 1+50*49/2+2*50*50 { // one default, every pair compared and its context checks
+		t.Fatalf("%v %q, %d steps over %d (delta %d)", err, diagCodes(diags), w, base, w-base)
 	}
 	tr := newTree(b.set)
 	fill(tr, 3000)
 	tr.work.Store(0)
 	tr.work.visits = true
 	_, err = tr.validateAll(context.Background(), ValidateOptions{NoDefaults: true}, Budget{MaxXPathSteps: 1000}, nil)
-	if !errors.Is(err, yang.ErrBudget) || int(tr.work.Load()) > 1001+3000*2 {
+	if !errors.Is(err, yang.ErrBudget) || int(tr.work.Load()) > 1001+3000*3 {
 		t.Fatalf("%v, %d steps", err, int(tr.work.Load()))
 	}
 	fp := func(lc *lydCtx, _ []byte) error {

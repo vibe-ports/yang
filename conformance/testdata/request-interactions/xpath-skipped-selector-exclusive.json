@@ -1,0 +1,16 @@
+{
+  "id": "protocol-v2/xpath-skipped-selector-exclusive",
+  "request_error_class": "xpath node and detached are mutually exclusive",
+  "request": {
+    "base_dir": ".",
+    "op": "sequence",
+    "searchdirs": ["schemas"],
+    "modules": [{"name": "pv2-detached"}],
+    "steps": [
+      {"do": "parse", "format": "json", "data_type": "config", "data": "{"},
+      {"do": "xpath", "xpath": "count(/*)", "node": "/pv2-detached:c", "detached": true}
+    ]
+  },
+  "rfc": [],
+  "source": {"commit": null, "license": "BSD-3-Clause", "url": "hand-written (this repo)"}
+}

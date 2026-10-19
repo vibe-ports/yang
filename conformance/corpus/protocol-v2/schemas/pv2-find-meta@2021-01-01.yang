@@ -1,0 +1,11 @@
+module pv2-find-meta {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-find-meta";
+  prefix pfm;
+
+  import ietf-yang-metadata { prefix md; }
+
+  revision 2021-01-01;
+
+  md:annotation note { type string; }
+}

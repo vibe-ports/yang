@@ -172,6 +172,9 @@ func TestRequestCheckOrder(t *testing.T) {
 		{"diff rpc before parse_only", map[string]any{"do": "diff", "data_type": "rpc", "rpc": false}, stepRequestRules["diff"], `field "rpc" must be a string`},
 		{"validate module before dparams", map[string]any{"module": false, "data_type": "x"}, stepRequestRules["validate"], `field "module" must be a string`},
 		{"validate dparams before final_only", map[string]any{"data_type": "x", "final_only": nil}, stepRequestRules["validate"], "unknown data_type"},
+		{"xpath node type before exclusivity", map[string]any{"xpath": "/*", "node": false, "detached": true}, stepRequestRules["xpath"], `field "node" must be a string`},
+		{"xpath empty node still exclusive", map[string]any{"xpath": "/*", "node": "", "detached": true}, stepRequestRules["xpath"], "xpath node and detached are mutually exclusive"},
+		{"xpath detached type after exclusivity", map[string]any{"xpath": "/*", "node": "", "detached": "true"}, stepRequestRules["xpath"], "detached must be a boolean"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			err := checkRequest(Request{BaseDir: t.TempDir()}, nil, tc.p, execUnknown, tc.rows)

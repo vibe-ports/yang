@@ -35,13 +35,14 @@ const (
 // valCtx is the state the new-node validation and the implicit nodes share: the work queues
 // (nil when not collected), the validation options and the implicit diff.
 type valCtx struct {
-	t         *Tree
-	probes    *Tree // private typed-probe construction and cumulative hash quota
-	log       *logger
-	opts      ValidateOptions
-	nodeWhen  *nodeSet // node_when
-	nodeTypes *nodeSet // node_types
-	metaTypes *[]*meta // meta_types: metadata values that need the tree
+	t            *Tree
+	probes       *Tree // private typed-probe construction and cumulative hash quota
+	log          *logger
+	xpathContext *schema.Set // explicit XPath context node; nil uses the first retained root
+	opts         ValidateOptions
+	nodeWhen     *nodeSet // node_when
+	nodeTypes    *nodeSet // node_types
+	metaTypes    *[]*meta // meta_types: metadata values that need the tree
 	// output is LYD_INTOPT_REPLY: the output of an operation is validated (datastore data passes
 	// false); op are the operation options of lyd_validate_op (zero for datastore data) and
 	// ignoreWhen its LYXP_IGNORE_WHEN of the when and must evaluations after the subtree walk

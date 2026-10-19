@@ -1,0 +1,22 @@
+{
+  "id": "protocol-v2/diff-input-output-same-name",
+  "request": {
+    "base_dir": ".",
+    "op": "sequence",
+    "searchdirs": ["schemas"],
+    "modules": [{"name": "pv2-sort-anchor"}],
+    "steps": [
+      {"do": "parse", "format": "json", "data_type": "rpc", "parse_only": true,
+       "data": "{\"pv2-sort-anchor:r\":{\"pre\":\"input\"}}"},
+      {"do": "diff", "single": true,
+       "format": "json", "data_type": "reply", "parse_only": true,
+       "rpc": "{\"pv2-sort-anchor:r\":{\"pre\":\"input\"}}",
+       "data": "{\"pv2-sort-anchor:pre\":\"output\"}"},
+      {"do": "diff_apply"},
+      {"do": "dump"}
+    ]
+  },
+  "verdict": "valid",
+  "rfc": ["RFC7950#7.14"],
+  "source": {"commit": null, "license": "BSD-3-Clause", "url": "hand-written (this repo)"}
+}

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Ported from libyang v5.8.6 src/tree_data.c (lyd_insert_node and its helpers, lyd_insert_before,
-// lyd_unlink), src/tree_data_sorted.c (lyds_insert ordering, lyds_additionally_create_rb_tree),
+// lyd_unlink, lyd_unlink_tree), src/tree_data_sorted.c (lyds_insert ordering, lyds_additionally_create_rb_tree),
 // src/tree_data_free.c (lyd_free_tree, lyd_free_siblings) and src/tree_data_common.c
 // (lyd_np_cont_dflt_*) (BSD-3-Clause, © CESNET).
 
@@ -82,9 +82,11 @@ func (t *Tree) after(a, n *Node) bool {
 	case n.schema == nil:
 		return false
 	case a.schema.Module != n.schema.Module && a.schema.DataParent() == nil && n.schema.DataParent() == nil:
-		// top-level schema nodes of different modules, at the top level or under an opaque
-		// parent (no schema parent either way): by module name
-		return strings.Compare(a.schema.Module.Name, n.schema.Module.Name) > 0
+		// Top-level nodes of the same named module from different contexts have
+		// distinct compiled module pointers. lyd_insert_get_next_anchor cannot
+		// walk from n's schema to a's foreign schema, so a is the next anchor.
+		// Different module names retain their lexicographic order.
+		return strings.Compare(a.schema.Module.Name, n.schema.Module.Name) >= 0
 	}
 	return t.schemaRank(a.schema) > t.schemaRank(n.schema)
 }
@@ -217,6 +219,13 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 	if len(l) == 0 {
 		return 0
 	}
+	if order != insertLast && !sortedSupported(n) && n.schema.DataParent() != nil &&
+		!sameSet(ctxOf(l[0]), ctxOf(n)) {
+		// lyd_insert_get_next_anchor uses its linear path when the first sibling
+		// and new node have different contexts. For children it encounters the
+		// foreign first sibling before comparing schema order, so it is the anchor.
+		return 0
+	}
 	afterN := func(a *Node) bool { return t.after(a, n) }
 	if order == insertDefault && sortedSupported(n) {
 		lo, hi := t.runBounds(sib, n)
@@ -330,6 +339,19 @@ func (s *siblings) opRebuild(t *Tree, sn *schema.Node, run []*Node) {
 // (TestParseOpDupKeepsOrder, ops/parse-json-reply-keep-order-split).
 func (t *Tree) runBounds(sib *siblings, n *Node) (lo, hi int) {
 	l := sib.list
+	if !opChild(n.schema) && len(l) > 0 && !sameSet(ctxOf(l[0]), ctxOf(n)) {
+		// lyd_find_sibling_schema can match a system-ordered run from another
+		// context by schema name, before any schema-order lookup. Its instances
+		// still take part in lyds_insert.
+		if lo = t.schemaIndex(sib, n.schema); lo >= 0 {
+			hi = lo
+			for hi < len(l) && schemaLookupMatch(l[hi].schema, n.schema, sib.ht != nil) {
+				sib.visit()
+				hi++
+			}
+			return lo, hi
+		}
+	}
 	if opChild(n.schema) || sib.schemaUnordered {
 		// Start at the native first-instance record. A copy from a user-ordered
 		// schema can have several runs; lyds_insert uses only the selected one.
@@ -884,11 +906,11 @@ func (t *Tree) opAnchor(sib *siblings, n *Node) int {
 		}
 		return len(l)
 	}
-	own := ownerModule(t.set, n)
+	own := ownerModule(ctxOf(n), n)
 	k, found := 0, false
 	for m, a := range l {
 		t.work.Add(1)
-		if ownerModule(t.set, a) != own {
+		if ownerModule(ctxOf(a), a) != own {
 			return m // lyd_owner_module differs: the data of the next module
 		}
 		for !found {
@@ -1272,6 +1294,7 @@ func (t *Tree) attach(parent *Node, sib *siblings, n *Node) {
 		n.tree = t
 	}
 	bindSubtreeWork(n, &t.work)
+	sib.addContext(n)
 	sib.gen++
 	sib.hashAdd(parent, n)
 	if n.flags&FlagDefault == 0 {
@@ -1515,6 +1538,7 @@ func unlink(n *Node) {
 			survives, _ = sib.opRemove(n, i) // neighbours still surround n
 		}
 		moved := sib.deleteAt(i)
+		sib.dropContext(n)
 		if sib.work.shifts {
 			sib.work.Add(int64(moved))
 		}
@@ -1645,6 +1669,7 @@ func (t *Tree) unlinkAllDefaults(ns, defaults []*Node) error {
 			groups[sib] = append(groups[sib], n)
 		}
 		if n.schema != nil {
+			sib.dropContext(n)
 			if removedRuns[sib] == nil {
 				removedRuns[sib] = map[*schema.Node]bool{}
 			}

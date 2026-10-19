@@ -126,7 +126,7 @@ func ParseOp(ctx context.Context, r io.Reader, f Format, s *yang.Schema, typ OpT
 			argErrOf = argErr("request (not an RPC or action)", "lyd_parse_op")
 		}
 	}
-	if argErrOf == nil && req != nil && (req.treeOf() == nil || req.treeOf().set != set) {
+	if argErrOf == nil && req != nil && !inContext(req, set) {
 		argErrOf = argErr("request (another schema snapshot)", "lyd_parse_op")
 	}
 	if argErrOf != nil {
@@ -161,7 +161,7 @@ type ValidateOpOptions struct {
 // ValidateOp changes t and, while it runs, o.Operational (the operation is linked into it and
 // unlinked again): it needs exclusive access to both.
 func (t *Tree) ValidateOp(ctx context.Context, typ OpType, o ValidateOpOptions) ([]yang.Diagnostic, error) {
-	lg := &logger{set: t.set}
+	lg := &logger{set: t.context()}
 	fail := func(err error) ([]yang.Diagnostic, error) {
 		err = lg.done(err) // logs the argument error first
 		return lg.diags, err
@@ -178,7 +178,10 @@ func (t *Tree) ValidateOp(ctx context.Context, typ OpType, o ValidateOpOptions) 
 		return fail(argErr("(data_type == LYD_TYPE_RPC_YANG) || (data_type == LYD_TYPE_NOTIF_YANG) || "+
 			"(data_type == LYD_TYPE_REPLY_YANG)", "lyd_validate_op"))
 	}
-	if o.Operational != nil && o.Operational.set != t.set {
+	if o.Operational == t {
+		o.Operational = nil // op_tree == dep_tree: a redundant dependency
+	}
+	if o.Operational != nil && o.Operational.context() != t.context() {
 		return fail(argErr("dep_tree (another schema snapshot)", "lyd_validate_op"))
 	}
 	var first *Node
@@ -189,15 +192,12 @@ func (t *Tree) ValidateOp(ctx context.Context, typ OpType, o ValidateOpOptions) 
 	if first == nil {
 		return fail(argErr("op_tree", "lyd_validate_op"))
 	}
-	if o.Operational == t {
-		o.Operational = nil // op_tree == dep_tree: a redundant dependency
-	}
 	journal := beginHashTransaction(t)
 	var dependency *hashTransaction
 	if o.Operational != nil {
 		dependency = beginHashTransaction(o.Operational)
 	}
-	diags, err := validateOp(ctx, t.set, first, o.Operational, vt, o.Budget)
+	diags, err := validateOp(ctx, t.context(), first, o.Operational, vt, o.Budget)
 	// a failed journal charge of either tree fails the operation, and both roll back
 	journal.fail(&err)
 	dependency.end(&err)

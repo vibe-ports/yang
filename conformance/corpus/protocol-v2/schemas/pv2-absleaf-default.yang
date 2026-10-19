@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module pv2-absleaf-default {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-absleaf-default";
+  prefix ad;
+
+  container c {
+    leaf t { type string; }
+    leaf r {
+      type leafref { path "/ad:c/ad:t"; }
+      default "x";
+    }
+  }
+}

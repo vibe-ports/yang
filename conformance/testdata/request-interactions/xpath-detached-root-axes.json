@@ -1,0 +1,75 @@
+{
+  "id": "protocol-v2/xpath-detached-root-axes",
+  "request": {
+    "base_dir": ".",
+    "modules": [
+      {
+        "name": "pv2-detached"
+      }
+    ],
+    "op": "sequence",
+    "searchdirs": [
+      "schemas"
+    ],
+    "steps": [
+      {
+        "data": "{\"pv2-detached:l\":[{\"k\":\"a\"},{\"k\":\"b\"}]}",
+        "data_type": "config",
+        "do": "parse",
+        "format": "json",
+        "parse_only": true
+      },
+      {
+        "do": "unlink",
+        "node": "/pv2-detached:l[k='a']"
+      },
+      {
+        "detached": true,
+        "do": "xpath",
+        "xpath": "count(following-sibling::*)"
+      },
+      {
+        "detached": true,
+        "do": "xpath",
+        "xpath": "count(preceding-sibling::*)"
+      },
+      {
+        "detached": true,
+        "do": "xpath",
+        "xpath": "count(following::*)"
+      },
+      {
+        "detached": true,
+        "do": "xpath",
+        "xpath": "count(preceding::*)"
+      },
+      {
+        "detached": true,
+        "do": "xpath",
+        "xpath": "position()"
+      },
+      {
+        "detached": true,
+        "do": "xpath",
+        "xpath": "last()"
+      },
+      {
+        "detached": true,
+        "do": "xpath",
+        "xpath": "count(/pv2-detached:l)"
+      },
+      {
+        "do": "detached_dump"
+      }
+    ]
+  },
+  "rfc": [
+    "XPath1.0#2.5"
+  ],
+  "source": {
+    "commit": null,
+    "license": "BSD-3-Clause",
+    "url": "hand-written (this repo)"
+  },
+  "verdict": "valid"
+}

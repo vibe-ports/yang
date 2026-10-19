@@ -34,8 +34,8 @@ func (t *Tree) ReverseDiff() (*Tree, error) {
 	if t == nil || t.top.len() == 0 {
 		return nil, nil
 	}
-	lg := &logger{set: t.set}
-	d := newTree(t.set)
+	lg := &logger{set: t.context()}
+	d := newTree(t.context())
 	defer d.work.beginHashWork()()
 	if _, err := d.dupNodes(t.top.first(), nil, dupRecursive, true); err != nil {
 		return nil, diffDone(lg, err)
@@ -52,7 +52,7 @@ func (t *Tree) ReverseDiff() (*Tree, error) {
 // reverseValue is lyd_diff_reverse_value: a leaf's value and its yang:orig-value swapped, the
 // default flag kept.
 func (t *Tree) reverseValue(n *Node) error {
-	oi := findYangMeta(n, "orig-value")
+	oi := findYangImplemented(n, "orig-value")
 	if oi < 0 {
 		return t.metaErr("orig-value", n)
 	}
@@ -69,7 +69,7 @@ func (t *Tree) reverseValue(n *Node) error {
 
 // reverseDefault is lyd_diff_reverse_default: the default flag and yang:orig-default swapped.
 func (t *Tree) reverseDefault(n *Node) error {
-	i := findYangMeta(n, "orig-default")
+	i := findYangImplemented(n, "orig-default")
 	if i < 0 {
 		return &opError{"LY_EINT", "Internal error."}
 	}
@@ -87,7 +87,7 @@ func (t *Tree) reverseDefault(n *Node) error {
 
 // reverseMeta is lyd_diff_reverse_meta: the values of the metadata name1 and name2 swapped.
 func (t *Tree) reverseMeta(n *Node, name1, name2 string) error {
-	i1, i2 := findYangMeta(n, name1), findYangMeta(n, name2)
+	i1, i2 := findYangImplemented(n, name1), findYangImplemented(n, name2)
 	if i1 < 0 {
 		return t.metaErr(name1, n)
 	}
@@ -104,7 +104,7 @@ func (t *Tree) reverseMeta(n *Node, name1, name2 string) error {
 
 // renameMeta is lyd_diff_rename_meta: the metadata src becomes trg (a new instance, at the end).
 func (t *Tree) renameMeta(n *Node, src, trg string) error {
-	i := findYangMeta(n, src)
+	i := findYangImplemented(n, src)
 	if i < 0 {
 		return t.metaErr(src, n)
 	}
@@ -208,6 +208,10 @@ func (t *Tree) reverseSiblingsR(sib *siblings) error {
 				}
 			}
 		case diffReplace:
+			if n.schema == nil {
+				// lyd_diff_reverse_siblings_r reads the missing schema here.
+				return &opError{"LY_EINVAL", fmt.Sprintf("Operation \"replace\" is invalid for opaque node \"%s\".", n.Name())}
+			}
 			switch n.schema.Kind {
 			case schema.Leaf:
 				if err := t.reverseValue(n); err != nil {
@@ -233,6 +237,10 @@ func (t *Tree) reverseSiblingsR(sib *siblings) error {
 				return &opError{"LY_EINT", "Internal error."}
 			}
 		case diffNone:
+			if n.schema == nil {
+				// src/diff.c:3169-3170 reads iter->schema->nodetype for NONE.
+				return &opError{"LY_EINVAL", fmt.Sprintf("Operation \"none\" is invalid for opaque node \"%s\".", n.Name())}
+			}
 			if n.isTerm() {
 				if err := t.reverseDefault(n); err != nil {
 					return err

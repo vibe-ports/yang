@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -204,6 +205,27 @@ func TestRequestInteractions(t *testing.T) {
 				if err != nil || got.Verdict() != fixture.Verdict {
 					t.Fatalf("verdict %q (%v), want %q", got.Verdict(), err, fixture.Verdict)
 				}
+				switch fixture.ID {
+				case "protocol-v2/diff-input-output-same-name":
+					steps := got["steps"].([]any)
+					diff := steps[1].(map[string]any)["diff_typed"].([]any)
+					if len(diff) != 3 || diff[1].(map[string]any)["schema"] != "/pv2-sort-anchor:r/output/pre" ||
+						diff[2].(map[string]any)["schema"] != "/pv2-sort-anchor:r/input/pre" {
+						t.Fatalf("input/output diff schema identity: %v", diff)
+					}
+					applied := steps[2].(map[string]any)["typed"].([]any)
+					if len(applied) != 2 || applied[1].(map[string]any)["schema"] != "/pv2-sort-anchor:r/output/pre" {
+						t.Fatalf("applied output schema identity: %v", applied)
+					}
+				case "protocol-v2/xpath-mixed-context-list-hash":
+					steps := got["steps"].([]any)
+					result := steps[3].(map[string]any)["result"].(map[string]any)
+					if nodes := result["nodes"].([]any); len(nodes) != 2 ||
+						!slices.Contains(nodes, any("/pv2-ctx-list:l[k='a']/v")) ||
+						!slices.Contains(nodes, any("/pv2-ctx-list:l[k='b']/v")) {
+						t.Fatalf("mixed-context XPath nodes: %v", nodes)
+					}
+				}
 				return
 			}
 			if err == nil || !strings.HasSuffix(err.Error(), " (a request-error)") {
@@ -224,6 +246,69 @@ func TestRequestInteractionsOracle(t *testing.T) {
 	for _, fixture := range requestInteractions(t) {
 		t.Run(fixture.ID, func(t *testing.T) {
 			compareRequestOutcome(t, oracle, contexts, base, fixture.Request)
+			if fixture.ID == "protocol-v2/diff-apply-cross-context-child-create" ||
+				fixture.ID == "protocol-v2/diff-apply-cross-context-userordered-create" ||
+				fixture.ID == "protocol-v2/diff-apply-cross-context-userordered-anchor" ||
+				fixture.ID == "protocol-v2/diff-merge-cross-context-parent" ||
+				fixture.ID == "protocol-v2/diff-merge-cross-context-matching-child" ||
+				fixture.ID == "protocol-v2/diff-merge-cross-context-metadata-twice" ||
+				fixture.ID == "protocol-v2/xpath-detached-root-axes" ||
+				fixture.ID == "protocol-v2/xpath-detached-state-position" ||
+				fixture.ID == "protocol-v2/diff-input-output-same-name" ||
+				fixture.ID == "protocol-v2/xpath-mixed-context-list-hash" {
+				want, err := inventoryNativeResponse(oracle, base, fixture.Request)
+				if err != nil {
+					t.Fatal(err)
+				}
+				got, err := inventoryRunWithContextCache(Request{BaseDir: base, Params: fixture.Request}, contexts)
+				if err != nil {
+					t.Fatal(err)
+				}
+				field := "typed"
+				step := 3
+				switch fixture.ID {
+				case "protocol-v2/diff-merge-cross-context-parent":
+					field, step = "diff_typed", 1
+				case "protocol-v2/diff-merge-cross-context-matching-child":
+					field, step = "diff_typed", 1
+				case "protocol-v2/diff-merge-cross-context-metadata-twice":
+					field, step = "diff_typed", 2
+				case "protocol-v2/xpath-detached-root-axes":
+					field, step = "detached_path", 9
+				case "protocol-v2/xpath-detached-state-position":
+					field, step = "detached_path", 4
+				case "protocol-v2/diff-input-output-same-name":
+					field, step = "diff_typed", 1
+				case "protocol-v2/xpath-mixed-context-list-hash":
+					field, step = "result", 3
+				}
+				wantValue := want["steps"].([]any)[step].(map[string]any)[field]
+				gotValue := got["steps"].([]any)[step].(map[string]any)[field]
+				if field == "typed" || field == "diff_typed" {
+					project := func(v any) any {
+						var nodes []any
+						for _, raw := range v.([]any) {
+							n := raw.(map[string]any)
+							projected := map[string]any{"path": n["path"], "value": n["value"]}
+							if fixture.ID == "protocol-v2/diff-input-output-same-name" {
+								projected["schema"] = n["schema"]
+								projected["meta"] = n["meta"]
+							}
+							if fixture.ID == "protocol-v2/diff-merge-cross-context-metadata-twice" {
+								projected["meta"] = n["meta"]
+							}
+							nodes = append(nodes, projected)
+						}
+						return nodes
+					}
+					wantValue, gotValue = project(wantValue), project(gotValue)
+				}
+				wb, _ := json.Marshal(wantValue)
+				gb, _ := json.Marshal(gotValue)
+				if string(wb) != string(gb) {
+					t.Errorf("step %d %s: oracle %s, engine %s", step, field, wb, gb)
+				}
+			}
 		})
 	}
 }

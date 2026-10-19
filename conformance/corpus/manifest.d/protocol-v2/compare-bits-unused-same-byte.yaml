@@ -1,0 +1,23 @@
+fixtures:
+  - id: protocol-v2/compare-bits-unused-same-byte
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # native LYB bits hashing rounds the bitmap to whole bytes
+    areas: [types, diff]
+    request:
+      op: sequence
+      searchdirs: [schemas/bits-a]
+      modules: [{name: pv2-bytebits}]
+      steps:
+        - {do: parse, format: json, data_type: data-operational, data: '{"pv2-bytebits:v":["a"]}'}
+        - do: compare
+          format: json
+          data_type: data-operational
+          target:
+            searchdirs: [schemas/bits-b]
+            modules: [{name: pv2-bytebits}]
+          data: '{"pv2-bytebits:v":["a"]}'
+    golden: golden/compare-bits-unused-same-byte.json
+    assert:
+      verdict: valid
+      deviation: null

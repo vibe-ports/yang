@@ -1,0 +1,15 @@
+fixtures:
+  - id: protocol-v2/mdapi-find-detached-invalid-name
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # lyd_find_meta API diagnostics; no RFC lookup semantics
+    areas: [codecs, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas, ../ietf]
+      modules: [{name: pv2-mdapi}]
+      steps:
+        - {do: parse, format: json, data_type: config, data_file: data/mdapi-small.json}
+        - {do: unlink, node: /pv2-mdapi:c/s}
+        - {do: find_meta, name: "pv2-mdapi:a b"}
+    golden: golden/mdapi-find-detached-invalid-name.json

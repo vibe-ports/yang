@@ -1,0 +1,16 @@
+fixtures:
+  - id: protocol-v2/unlink-dup
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # lyd_unlink_tree/lyd_dup_single retained-context API mechanics; no RFC behaviour
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas, ../ietf]
+      modules: [{name: pv2-mdapi}]
+      steps:
+        - {do: parse, format: json, data_type: config, data_file: data/mdapi-small.json}
+        - {do: unlink, node: /pv2-mdapi:c}
+        - {do: dup, detached: true, options: [recursive]}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/unlink-dup.json

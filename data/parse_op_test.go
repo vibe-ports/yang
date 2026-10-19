@@ -23,6 +23,7 @@ import (
 	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/compile"
 	"github.com/vibe-ports/yang/internal/schema"
+	"github.com/vibe-ports/yang/internal/snap"
 )
 
 const opsManifest = "../conformance/corpus/manifest.d/ops"
@@ -1097,6 +1098,19 @@ func TestParseOpDetachedParent(t *testing.T) {
 		}
 		if k := slices.Collect(op.kids.all()); len(k) != 1 || k[0].schema.Name != "al" || k[0].value.Canonical() != "25" {
 			t.Fatalf("%v: children %v", tc.f, k)
+		}
+
+		_, publicOp := opParent(t, set)
+		for _, c := range slices.Collect(publicOp.kids.all()) {
+			unlink(c)
+		}
+		if err := publicOp.parent.Remove(); err != nil {
+			t.Fatal(err)
+		}
+		res, publicDiags, err := ParseOp(context.Background(), strings.NewReader(tc.data), tc.f, snap.New(set), OpReply,
+			ParseOpOptions{Request: publicOp})
+		if err != nil || res.Tree != nil || res.Op != publicOp {
+			t.Fatalf("public %v: %v %v tree %v op %v", tc.f, err, publicDiags, res.Tree, res.Op)
 		}
 	}
 }

@@ -1,0 +1,24 @@
+module yang {
+  yang-version 1.1;
+  namespace "urn:ietf:params:xml:ns:yang:1";
+  prefix yang;
+
+  import ietf-yang-metadata {
+    prefix md;
+    revision-date 2016-08-05;
+  }
+
+  revision 2026-01-01 {
+    description
+      "Import-only revision used to distinguish latest-module lookup from the implemented
+       libyang diff-metadata module.";
+  }
+
+  typedef marker {
+    type string;
+  }
+
+  md:annotation marker {
+    type marker;
+  }
+}

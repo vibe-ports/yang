@@ -1245,7 +1245,7 @@ func requestOutcome(r Response) any {
 		for _, step := range steps {
 			s := step.(map[string]any)
 			v := map[string]any{}
-			for _, key := range []string{"do", "skipped", "rc", "diagnostics"} {
+			for _, key := range []string{"do", "skipped", "rc", "diagnostics", "result"} {
 				if x, ok := s[key]; ok {
 					v[key] = x
 				}

@@ -330,6 +330,88 @@ func TestSequenceValidateModuleDiffAnchors(t *testing.T) {
 	}
 }
 
+func TestSequenceDetachedOwnership(t *testing.T) {
+	base := func(replace map[string]any) map[string]any {
+		return map[string]any{
+			"op": "sequence", "searchdirs": []any{"schemas"},
+			"modules":         []any{map[string]any{"name": "pv2-links"}},
+			"context_options": []any{"leafref_linking"},
+			"steps": []any{
+				map[string]any{"do": "parse", "format": "json", "data_type": "config", "data_file": "data/links.json"},
+				map[string]any{"do": "link"},
+				map[string]any{"do": "unlink", "node": "/pv2-links:c/l[k='a']"},
+				replace,
+				map[string]any{"do": "links", "detached": true},
+			},
+		}
+	}
+	for _, tc := range []struct {
+		name string
+		step map[string]any
+	}{
+		{"parse replacement", map[string]any{"do": "parse", "format": "json", "data_type": "config", "data_file": "data/links.json"}},
+		{"parentless dup replacement", map[string]any{"do": "dup", "node": "/pv2-links:c", "options": []any{"recursive"}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resp, err := Yang{}.Run(Request{BaseDir: filepath.Join("corpus", "protocol-v2"), Params: base(tc.step)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			steps := resp["steps"].([]any)
+			if links := steps[len(steps)-1].(map[string]any)["leafref_links"].([]any); len(links) != 0 {
+				t.Fatalf("detached links after replacement = %#v", links)
+			}
+		})
+	}
+}
+
+func TestSequenceReinsertDetachedTargetContext(t *testing.T) {
+	target := map[string]any{
+		"searchdirs":      []any{"schemas", "../ietf"},
+		"modules":         []any{map[string]any{"name": "pv2-mdapi"}},
+		"context_options": []any{"no_yanglibrary"},
+	}
+	resp, err := Yang{}.Run(Request{BaseDir: filepath.Join("corpus", "protocol-v2"), Params: map[string]any{
+		"op": "sequence", "searchdirs": []any{"schemas", "../ietf"},
+		"modules": []any{map[string]any{"name": "pv2-mdapi"}}, "context_options": []any{"no_yanglibrary"},
+		"steps": []any{
+			map[string]any{"do": "parse", "format": "json", "data_type": "config", "data_file": "data/mdapi-small.json"},
+			map[string]any{"do": "dup", "node": "/pv2-mdapi:c", "options": []any{"recursive"}, "target": target},
+			map[string]any{"do": "unlink", "node": "/pv2-mdapi:c"},
+			map[string]any{"do": "insert", "detached": true},
+		},
+	}})
+	if err != nil || resp.Verdict() != "valid" {
+		t.Fatalf("reinsert target-context detached node: verdict %q, error %v", resp.Verdict(), err)
+	}
+	steps := resp["steps"].([]any)
+	if typed := steps[len(steps)-1].(map[string]any)["typed"].([]any); len(typed) == 0 {
+		t.Fatal("reinsertion left the target tree empty")
+	}
+}
+
+func TestSequenceDiffDetachedUserOrdered(t *testing.T) {
+	for _, path := range []string{"/pv2-detached:l[k='a']", "/pv2-detached:ll[.='a']"} {
+		resp, err := Yang{}.Run(Request{BaseDir: filepath.Join("corpus", "protocol-v2"), Params: map[string]any{
+			"op": "sequence", "searchdirs": []any{"schemas"},
+			"modules": []any{map[string]any{"name": "pv2-detached"}},
+			"steps": []any{
+				map[string]any{"do": "parse", "format": "json", "data_type": "config",
+					"data": `{"pv2-detached:l":[{"k":"a"}],"pv2-detached:ll":["a"]}`},
+				map[string]any{"do": "unlink", "node": path},
+				map[string]any{"do": "diff", "detached": true, "single": true},
+			},
+		}})
+		if err != nil || resp.Verdict() != "valid" {
+			t.Fatalf("%s: verdict %q, error %v", path, resp.Verdict(), err)
+		}
+		steps := resp["steps"].([]any)
+		if diff := steps[len(steps)-1].(map[string]any)["diff"]; diff == nil {
+			t.Fatalf("%s: nil deletion diff", path)
+		}
+	}
+}
+
 func TestDiffRejectsOperationDataType(t *testing.T) {
 	_, err := Yang{}.Run(Request{
 		BaseDir: filepath.Join("corpus", "ut-parser"),
@@ -895,6 +977,184 @@ func TestFindPathFixupRequests(t *testing.T) {
 			t.Fatalf("opaque-first delete = %v, %v; want LY_EINVAL with no diagnostics", resp, err)
 		}
 	})
+}
+
+// TestSequenceUnlinkAndFindMetaCompatibility covers the adapter-only semantics of the public
+// lyd_unlink_tree and lyd_find_meta sequence steps. The corpus fixtures pin the same requests to
+// the C oracle; these assertions keep the Go side covered before their goldens are generated.
+func TestSequenceUnlinkAndFindMetaCompatibility(t *testing.T) {
+	base := filepath.Join("corpus", "protocol-v2")
+	run := func(options []any, modules []any, steps ...any) Response {
+		t.Helper()
+		p := map[string]any{"op": "sequence", "searchdirs": []any{"schemas"}, "modules": modules, "steps": steps}
+		if options != nil {
+			p["context_options"] = options
+		}
+		r, err := (Yang{}).Run(Request{BaseDir: base, Params: p})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return r
+	}
+	module := func(name string) any { return map[string]any{"name": name} }
+	parseMD := map[string]any{"do": "parse", "format": "json", "data_type": "config", "data_file": "data/mdapi-small.json"}
+
+	for _, name := range []string{"", "num"} {
+		r := run(nil, []any{module("pv2-mdapi")}, parseMD,
+			map[string]any{"do": "find_meta", "node": "/pv2-mdapi:c/s", "name": name},
+			map[string]any{"do": "dump"})
+		steps := list(r["steps"])
+		find, dump := steps[1].(map[string]any), steps[2].(map[string]any)
+		if r.Verdict() != "valid" || find["found"] != false || len(list(find["diagnostics"])) != 0 || dump["skipped"] == true {
+			t.Errorf("find_meta(%q) = %v", name, r)
+		}
+	}
+
+	r := run(nil, []any{module("pv2-mdapi")}, parseMD,
+		map[string]any{"do": "unlink", "node": "/pv2-mdapi:c/l[k='a']/k"})
+	if r.Verdict() != "invalid" || !strings.Contains(fmt.Sprint(r["steps"]), "Cannot unlink a list key") ||
+		strings.Contains(fmt.Sprint(r["steps"]), "Cannot free a list key") {
+		t.Errorf("unlink key = %v", r)
+	}
+
+	r = run([]any{"leafref_linking"}, []any{module("pv2-links")},
+		map[string]any{"do": "parse", "format": "json", "data_type": "config", "data_file": "data/links.json"},
+		map[string]any{"do": "link"}, map[string]any{"do": "unlink", "node": "/pv2-links:c/l[k='a']"},
+		map[string]any{"do": "dump"}, map[string]any{"do": "links"})
+	steps := list(r["steps"])
+	if r.Verdict() != "valid" || !strings.Contains(fmt.Sprint(steps[4]), "/pv2-links:l[k='a']/k") ||
+		strings.Contains(steps[3].(map[string]any)["tree"].(map[string]any)["json"].(string), `"k": "a"`) {
+		t.Errorf("unlink linked subtree = %v", r)
+	}
+}
+
+// These corpus requests have oracle goldens generated only in the dev container. Assert the
+// returned node paths and diagnostic-bearing step here so native tests also exercise them.
+func TestMixedContextLookupFixtureResults(t *testing.T) {
+	m, err := LoadManifest(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		id    string
+		paths []string
+		msg   string
+	}{
+		{"protocol-v2/xpath-mixed-context-retained-container", []string{"/pv2-detached:c", "/pv2-detached:c/base", "/pv2-detached:c"}, ""},
+		{"protocol-v2/xpath-mixed-context-retained-leaflist", []string{"/pv2-detached:ll[.='a']"}, ""},
+		{"protocol-v2/mdapi-find-foreign-unknown-module", nil, `Module "unknown" not found.`},
+		{"protocol-v2/mdapi-find-foreign-invalid-name", nil, `Metadata name "a b" is not valid.`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.id, func(t *testing.T) {
+			var f *Fixture
+			for i := range m.Fixtures {
+				if m.Fixtures[i].ID == tc.id {
+					f = &m.Fixtures[i]
+					break
+				}
+			}
+			if f == nil {
+				t.Fatal("fixture not found")
+			}
+			r, err := (Yang{}).Run(Request{ID: f.ID, BaseDir: filepath.Join(m.Corpus(), f.Dir), Params: f.Request})
+			if err != nil {
+				t.Fatal(err)
+			}
+			steps := list(r["steps"])
+			if tc.msg != "" {
+				last := steps[len(steps)-1].(map[string]any)
+				diags := list(last["diagnostics"])
+				if r.Verdict() != "invalid" || len(diags) != 1 || diags[0].(map[string]any)["msg"] != tc.msg {
+					t.Fatalf("foreign metadata diagnostics: verdict %s, diagnostics %v", r.Verdict(), diags)
+				}
+				return
+			}
+			if r.Verdict() != "valid" {
+				t.Fatalf("XPath fixture verdict %s: %v", r.Verdict(), r)
+			}
+			var results []map[string]any
+			for _, raw := range steps {
+				if result, ok := raw.(map[string]any)["result"].(map[string]any); ok {
+					results = append(results, result)
+				}
+			}
+			if len(results) != len(tc.paths) {
+				t.Fatalf("XPath results: got %d, want %d", len(results), len(tc.paths))
+			}
+			for i, want := range tc.paths {
+				result := results[i]
+				if got := list(result["nodes"]); len(got) != 1 || got[0] != want {
+					t.Errorf("XPath result %d: got %v, want %q", i, got, want)
+				}
+			}
+		})
+	}
+}
+
+// These mixed-context fixtures are checked without generated goldens on the host. The oracle
+// remains the reference for the complete response when its amd64 binary is available.
+func TestMixedContextMetadataPrinterFixtureResults(t *testing.T) {
+	m, err := LoadManifest(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		id, json, xml string
+	}{
+		{"protocol-v2/mdapi-new-meta-mixed-context", `"yang:operation": "none"`, `yang:operation="none"`},
+		{"protocol-v2/print-mixed-context-with-defaults", `"ietf-netconf-with-defaults:default": true`, `:default="true"`},
+	} {
+		t.Run(tc.id, func(t *testing.T) {
+			var f *Fixture
+			for i := range m.Fixtures {
+				if m.Fixtures[i].ID == tc.id {
+					f = &m.Fixtures[i]
+					break
+				}
+			}
+			if f == nil {
+				t.Fatal("fixture not found")
+			}
+			r, err := (Yang{}).Run(Request{ID: f.ID, BaseDir: filepath.Join(m.Corpus(), f.Dir), Params: f.Request})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if r.Verdict() != "valid" {
+				t.Fatalf("fixture verdict %s: %v", r.Verdict(), r)
+			}
+			steps := list(r["steps"])
+			tree := steps[len(steps)-1].(map[string]any)["tree"].(map[string]any)
+			if got := tree["json"].(string); !strings.Contains(got, tc.json) {
+				t.Errorf("JSON missing %q: %s", tc.json, got)
+			}
+			if got := tree["xml"].(string); !strings.Contains(got, tc.xml) {
+				t.Errorf("XML missing %q: %s", tc.xml, got)
+			}
+		})
+	}
+}
+
+// TestDiffApplyYangRevisionPolicy keeps lyd_diff_find_meta's name match independent of
+// lyd_find_meta's latest-revision lookup when a newer import-only yang revision is loaded.
+func TestDiffApplyYangRevisionPolicy(t *testing.T) {
+	r, err := (Yang{}).Run(Request{BaseDir: filepath.Join("corpus", "protocol-v2"), Params: map[string]any{
+		"op": "sequence", "searchdirs": []any{"schemas"},
+		"modules": []any{map[string]any{"name": "pv2-mdapi"}, map[string]any{"name": "pv2-yang-loader"}},
+		"steps": []any{
+			map[string]any{"do": "parse", "format": "json", "data_type": "config", "data": `{"pv2-mdapi:c":{"s":"old"}}`},
+			map[string]any{"do": "diff", "format": "json", "data_type": "config", "data": `{"pv2-mdapi:c":{"s":"new"}}`},
+			map[string]any{"do": "diff_apply"}, map[string]any{"do": "dump"},
+		},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	steps := list(r["steps"])
+	dump := steps[3].(map[string]any)["tree"].(map[string]any)["json"].(string)
+	if r.Verdict() != "valid" || !strings.Contains(dump, `"s": "new"`) {
+		t.Fatalf("diff apply with two yang revisions = %v", r)
+	}
 }
 
 // TestXPathGateSelection: the M3 gate takes xpath, atoms and trim sequences, and allows only the
@@ -1532,5 +1792,38 @@ func TestPrintTreeKeepsPrinterDiagnosticOutput(t *testing.T) {
 	}
 	if got, want := r["tree"].(map[string]any)["xml"], golden["tree"].(map[string]any)["xml"]; got != want {
 		t.Fatalf("data XML = %q, want committed golden %q", got, want)
+	}
+}
+
+// step_diff collects the context of a detached first input after the request
+// context (lyoracle.c:2734): printer logs of a diff register owned by that
+// context surface in the next diff of the same detached node.
+func TestSequenceDiffDrainsDetachedContext(t *testing.T) {
+	modules := []any{map[string]any{"name": "print-failure"}}
+	parse := map[string]any{"do": "parse", "format": "json", "data_type": "data", "parse_only": true,
+		"data": `{"print-failure:c":{"s":"v","xp":"/missing:node"}}`}
+	resp, err := (Yang{}).Run(Request{BaseDir: filepath.Join("corpus", "types"), Params: map[string]any{
+		"op": "sequence", "searchdirs": []any{"schemas"}, "modules": modules,
+		"steps": []any{
+			parse,
+			map[string]any{"do": "unlink", "node": "/print-failure:c"},
+			parse,
+			map[string]any{"do": "dup", "node": "/print-failure:c", "options": []any{"recursive"},
+				"target": map[string]any{"searchdirs": []any{"schemas"}, "modules": modules}},
+			map[string]any{"do": "diff", "detached": true},
+			map[string]any{"do": "diff", "detached": true},
+		},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	steps := resp["steps"].([]any)
+	if ds := steps[4].(map[string]any)["diagnostics"].([]any); len(ds) != 0 {
+		t.Fatalf("first diff collected its own printer logs: %v", ds)
+	}
+	ds := steps[5].(map[string]any)["diagnostics"].([]any)
+	if len(ds) == 0 || ds[0].(map[string]any)["phase"] != "diff" ||
+		ds[0].(map[string]any)["msg"] != `Failed to resolve prefix "missing".` {
+		t.Fatalf("second diff did not drain the detached context: %v", steps[5])
 	}
 }

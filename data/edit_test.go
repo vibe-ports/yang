@@ -510,7 +510,8 @@ func TestNewPathAPI(t *testing.T) {
 	}
 }
 
-// TestMergeWork: merging n keyed instances into a level holding them costs O(n) dup-inst work
+// TestMergeWork: merging n keyed instances into a level holding them costs O(n) dup-inst work,
+// including the context-mix check at every sibling lookup and context bookkeeping on mutation.
 // (each instance's equal set comes from its own hash run, not from all siblings).
 func TestMergeWork(t *testing.T) {
 	set := editSet(t)
@@ -530,7 +531,7 @@ func TestMergeWork(t *testing.T) {
 	if err := tr.Merge(src); err != nil {
 		t.Fatal(err)
 	}
-	if limit := 8 * n; int(tr.work.Load()) > limit {
+	if limit := 13 * n; int(tr.work.Load()) > limit {
 		t.Fatalf("merging %d equal instances: %d units of work, limit %d", n, int(tr.work.Load()), limit)
 	}
 }

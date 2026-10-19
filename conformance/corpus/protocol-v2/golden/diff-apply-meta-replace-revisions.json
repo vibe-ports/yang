@@ -1,0 +1,323 @@
+{
+  "context_diagnostics": [],
+  "failed_step": 2,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-find-meta",
+      "revision": "2020-01-01"
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-find-meta-loader",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-mdapi",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 6,
+    "name": "LY_EINT"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-mdapi:c",
+          "schema": "/pv2-mdapi:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "pv2-find-meta",
+              "name": "note",
+              "value": "old"
+            }
+          ],
+          "opaque": null,
+          "path": "/pv2-mdapi:c/s",
+          "schema": "/pv2-mdapi:c/s",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"pv2-mdapi:c\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"s\": \"x\",\n    \"@s\": {\n      \"yang:orig-default\": false,\n      \"yang:meta-replace\": \"pv2-find-meta:note=new\",\n      \"yang:meta-orig\": \"pv2-find-meta:note=old\"\n    }\n  }\n}\n",
+        "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-mdapi\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <s yang:orig-default=\"false\" yang:meta-replace=\"pv2-find-meta:note=new\" yang:meta-orig=\"pv2-find-meta:note=old\">x</s>\n</c>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/pv2-mdapi:c",
+          "schema": "/pv2-mdapi:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "orig-default",
+              "value": "false"
+            },
+            {
+              "module": "yang",
+              "name": "meta-replace",
+              "value": "pv2-find-meta:note=new"
+            },
+            {
+              "module": "yang",
+              "name": "meta-orig",
+              "value": "pv2-find-meta:note=old"
+            }
+          ],
+          "opaque": null,
+          "path": "/pv2-mdapi:c/s",
+          "schema": "/pv2-mdapi:c/s",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-mdapi:c",
+          "schema": "/pv2-mdapi:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "pv2-find-meta",
+              "name": "note",
+              "value": "old"
+            }
+          ],
+          "opaque": null,
+          "path": "/pv2-mdapi:c/s",
+          "schema": "/pv2-mdapi:c/s",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 6,
+            "name": "LY_EINT"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Internal error (/src/libyang/src/diff.c:1753).",
+          "phase": "diff",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "diff": {
+        "json": "{\n  \"pv2-mdapi:c\": {\n    \"@\": {\n      \"yang:operation\": \"none\"\n    },\n    \"s\": \"x\",\n    \"@s\": {\n      \"yang:orig-default\": false,\n      \"yang:meta-replace\": \"pv2-find-meta:note=new\",\n      \"yang:meta-orig\": \"pv2-find-meta:note=old\"\n    }\n  }\n}\n",
+        "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-mdapi\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">\n  <s yang:orig-default=\"false\" yang:meta-replace=\"pv2-find-meta:note=new\" yang:meta-orig=\"pv2-find-meta:note=old\">x</s>\n</c>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "none"
+            }
+          ],
+          "opaque": null,
+          "path": "/pv2-mdapi:c",
+          "schema": "/pv2-mdapi:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "orig-default",
+              "value": "false"
+            },
+            {
+              "module": "yang",
+              "name": "meta-replace",
+              "value": "pv2-find-meta:note=new"
+            },
+            {
+              "module": "yang",
+              "name": "meta-orig",
+              "value": "pv2-find-meta:note=old"
+            }
+          ],
+          "opaque": null,
+          "path": "/pv2-mdapi:c/s",
+          "schema": "/pv2-mdapi:c/s",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff_apply",
+      "rc": {
+        "err": 6,
+        "name": "LY_EINT"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-mdapi:c",
+          "schema": "/pv2-mdapi:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "pv2-find-meta",
+              "name": "note",
+              "value": "old"
+            }
+          ],
+          "opaque": null,
+          "path": "/pv2-mdapi:c/s",
+          "schema": "/pv2-mdapi:c/s",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "do": "dump",
+      "skipped": true
+    }
+  ],
+  "verdict": "invalid"
+}

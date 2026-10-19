@@ -99,11 +99,7 @@ func (j *jsonPrinter) nodeModule(n *Node) string {
 	}
 	if n.opaq.Format == types.FormatXML {
 		if n.opaq.ModuleNS != "" {
-			set := n.opaq.set // node_prefix uses onode->ctx, including across an anydata payload
-			if set == nil {
-				set = j.set // hand-built opaque nodes without an attached context
-			}
-			if m := set.ByNamespace(n.opaq.ModuleNS); m != nil {
+			if m := j.nodeContext(n).ByNamespace(n.opaq.ModuleNS); m != nil {
 				return m.Name
 			}
 		}
@@ -152,7 +148,7 @@ func (j *jsonPrinter) memberOf(sn *schema.Node, mod, name string, attr bool) {
 // member2 is json_print_member2 of an opaque name (an opaque node or an attribute: moduleNS is
 // its XML namespace or JSON module name per format), the module name printed unless parent's is
 // the same; an empty name is the empty "@" member.
-func (j *jsonPrinter) member2(parent *Node, format types.Format, moduleNS, name string, attr bool) {
+func (j *jsonPrinter) member2(_ *Node, parent *Node, format types.Format, moduleNS, name string, attr bool) {
 	j.comma()
 	at := ""
 	if attr {
@@ -165,7 +161,7 @@ func (j *jsonPrinter) member2(parent *Node, format types.Format, moduleNS, name 
 	mod := moduleNS
 	if format == types.FormatXML {
 		mod = ""
-		if moduleNS != "" {
+		if moduleNS != "" && j.set != nil {
 			if m := j.set.ByNamespace(moduleNS); m != nil {
 				mod = m.Name
 			}
@@ -184,7 +180,7 @@ func (j *jsonPrinter) member2(parent *Node, format types.Format, moduleNS, name 
 
 // memberOpaq is json_print_member2 of the opaque node n.
 func (j *jsonPrinter) memberOpaq(parent, n *Node, attr bool) {
-	j.member2(parent, n.opaq.Format, n.opaq.ModuleNS, n.opaq.Name, attr)
+	j.member2(n, parent, n.opaq.Format, n.opaq.ModuleNS, n.opaq.Name, attr)
 }
 
 // str is json_print_string.
@@ -260,13 +256,13 @@ func (j *jsonPrinter) metadata(n *Node, wd *schema.Module) error {
 func (j *jsonPrinter) attributes(n *Node, inner bool) error {
 	var wd *schema.Module
 	if n.schema != nil && n.schema.Kind != schema.Container && j.opts.tagged(n) {
-		wd = j.set.Implemented(wdModule) // printed only if the context has the module
+		wd = j.nodeContext(n).Implemented(wdModule) // printed only if the node's context has the module
 	}
 	var err error
 	switch {
 	case n.schema != nil && (wd != nil || hasPrintableMeta(n)):
 		if inner {
-			j.member2(n.parent, types.FormatJSON, "", "", true)
+			j.member2(n, n.parent, types.FormatJSON, "", "", true)
 		} else {
 			j.member(n, true)
 		}
@@ -275,7 +271,7 @@ func (j *jsonPrinter) attributes(n *Node, inner bool) error {
 		err = j.metadata(n, wd)
 	case n.schema == nil && len(n.opaq.Attrs) > 0:
 		if inner {
-			j.member2(n.parent, types.FormatJSON, "", "", true)
+			j.member2(n, n.parent, types.FormatJSON, "", "", true)
 		} else {
 			j.memberOpaq(n.parent, n, true)
 		}
@@ -295,7 +291,7 @@ func (j *jsonPrinter) attributes(n *Node, inner bool) error {
 // value is printed by its hints.
 func (j *jsonPrinter) attribute(n *Node) {
 	for _, a := range n.opaq.Attrs {
-		j.member2(n, a.Format, a.ModuleNS, a.Name, false)
+		j.member2(n, n, a.Format, a.ModuleNS, a.Name, false)
 		switch h := a.Hints; {
 		case h&(types.HintString|types.HintOctNum|types.HintHexNum|types.HintNum64) != 0:
 			j.str(a.Value)
@@ -518,7 +514,7 @@ func (j *jsonPrinter) leafList(n *Node, sibs []*Node, i int) error {
 		if j.firstLL == nil {
 			var wd *schema.Module
 			if j.opts.tagged(n) {
-				wd = j.set.Implemented(wdModule)
+				wd = j.nodeContext(n).Implemented(wdModule)
 			}
 			if wd != nil || hasPrintableMeta(n) {
 				j.firstLL, j.firstLLSibs, j.firstLLIdx = n, sibs, i
@@ -538,6 +534,7 @@ func (j *jsonPrinter) metaLeafList() error {
 	for k > 0 && matching(sibs[k-1], sibs[k]) {
 		k--
 	}
+	// json_print_meta_attr_leaflist looks the module up once, in the print context
 	var wdMod *schema.Module
 	if j.opts.WithDefaults == WDAllTagged || j.opts.WithDefaults == WDImplicitTagged {
 		wdMod = j.set.Implemented(wdModule)

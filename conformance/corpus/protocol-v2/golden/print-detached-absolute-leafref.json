@@ -1,0 +1,127 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-absleaf-default",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ietf-netconf-with-defaults",
+      "revision": "2011-06-01"
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-absleaf-default:c",
+          "schema": "/pv2-absleaf-default:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-absleaf-default:c/t",
+          "schema": "/pv2-absleaf-default:c/t",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-absleaf-default:c/r",
+          "schema": "/pv2-absleaf-default:c/r",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "unlink",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": []
+    },
+    {
+      "detached_path": "/pv2-absleaf-default:c",
+      "detached_tree": {
+        "json": "{\n  \"pv2-absleaf-default:c\": {\n    \"t\": \"x\"\n  }\n}\n",
+        "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-absleaf-default\">\n  <t>x</t>\n</c>\n"
+      },
+      "diagnostics": [],
+      "do": "detached_dump",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": []
+    },
+    {
+      "detached_path": "/pv2-absleaf-default:c",
+      "detached_tree": {
+        "json": "{\n  \"pv2-absleaf-default:c\": {\n    \"t\": \"x\",\n    \"r\": \"x\",\n    \"@r\": {\n      \"ietf-netconf-with-defaults:default\": true\n    }\n  }\n}\n",
+        "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-absleaf-default\">\n  <t>x</t>\n  <r xmlns:dflt=\"urn:ietf:params:xml:ns:netconf:default:1.0\" dflt:default=\"true\">x</r>\n</c>\n"
+      },
+      "diagnostics": [],
+      "do": "detached_dump",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": []
+    }
+  ],
+  "verdict": "valid"
+}

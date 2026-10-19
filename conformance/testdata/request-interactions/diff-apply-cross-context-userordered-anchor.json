@@ -1,0 +1,66 @@
+{
+  "id": "protocol-v2/diff-apply-cross-context-userordered-anchor",
+  "request": {
+    "base_dir": ".",
+    "modules": [
+      {
+        "features": [
+          "extra"
+        ],
+        "name": "pv2-detached"
+      }
+    ],
+    "op": "sequence",
+    "searchdirs": [
+      "schemas"
+    ],
+    "steps": [
+      {
+        "data": "{\"pv2-detached:c\":{\"base\":\"old\",\"ll\":[\"a\"]}}",
+        "data_type": "config",
+        "do": "parse",
+        "format": "json",
+        "parse_only": true
+      },
+      {
+        "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-detached\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><ll yang:operation=\"create\" yang:value=\"a\">x</ll></c>",
+        "data_type": "config",
+        "do": "diff_parse",
+        "format": "xml"
+      },
+      {
+        "do": "dup",
+        "node": "/pv2-detached:c",
+        "options": [
+          "recursive"
+        ],
+        "target": {
+          "modules": [
+            {
+              "features": [
+                "extra"
+              ],
+              "name": "pv2-detached"
+            }
+          ],
+          "searchdirs": [
+            "schemas"
+          ]
+        }
+      },
+      {
+        "do": "diff_apply"
+      },
+      {
+        "do": "dump"
+      }
+    ]
+  },
+  "rfc": [],
+  "source": {
+    "commit": null,
+    "license": "BSD-3-Clause",
+    "url": "hand-written (this repo)"
+  },
+  "verdict": "invalid"
+}

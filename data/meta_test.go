@@ -360,25 +360,44 @@ func TestMetaAPI(t *testing.T) {
 
 // TestRemoveMetaCopies: removeMeta, the one lyd_free_meta_single (Meta.Remove, delYangMeta, the
 // diff merge, apply and reverse), leaves a slice taken before it as it was; findYangMeta and
-// metaOfName see only the module yang.
+// metaOfName see only the implemented module yang, while findMetaNamed follows lyd_find_meta's
+// latest-revision policy.
 func TestRemoveMetaCopies(t *testing.T) {
-	y, o := &schema.Module{Name: "yang"}, &schema.Module{Name: "other"}
-	a, b, c := &meta{mod: y, name: "key"}, &meta{mod: o, name: "key"}, &meta{mod: y, name: "key"}
-	n := &Node{meta: []*meta{b, a, c}}
+	set := &schema.Set{}
+	y := &schema.Module{Name: "yang", Revision: "2025-01-29", Owner: set, Implemented: true}
+	yLatest := &schema.Module{Name: "yang", Revision: "2026-01-01", Owner: set}
+	o := &schema.Module{Name: "other", Owner: set, Implemented: true}
+	d := &schema.Module{Name: "data", Owner: set, Implemented: true}
+	set.Modules = []*schema.Module{y, yLatest, o, d}
+	a, b := &meta{mod: y, name: "key"}, &meta{mod: o, name: "key"}
+	latest, c := &meta{mod: yLatest, name: "key"}, &meta{mod: y, name: "key"}
+	n := &Node{schema: &schema.Node{Kind: schema.Container, Name: "c", Module: d}, meta: []*meta{b, a, latest, c}}
 	if i := findYangMeta(n, "key"); i != 1 {
 		t.Fatalf("findYangMeta: %d", i)
 	}
+	if i := findYangLatest(n, "key"); i != 2 {
+		t.Fatalf("findYangLatest: %d", i)
+	}
+	if i := findYangImplemented(n, "key"); i != 1 {
+		t.Fatalf("findYangImplemented: %d", i)
+	}
 	if got := metaOfName(n, "key"); !slices.Equal(got, []*meta{a, c}) {
 		t.Fatalf("metaOfName: %v", got)
+	}
+	if got := findMetaNamed(n, "yang:key", ""); got != latest {
+		t.Fatalf("findMetaNamed: %p, want latest revision %p", got, latest)
 	}
 	old := n.meta
 	delYangMeta(n, "key")
 	removeMeta(n, c)
 	removeMeta(n, c)
-	if !slices.Equal(old, []*meta{b, a, c}) || !slices.Equal(n.meta, []*meta{b}) {
+	if !slices.Equal(old, []*meta{b, a, latest, c}) || !slices.Equal(n.meta, []*meta{b, latest}) {
 		t.Fatalf("old %v, now %v", old, n.meta)
 	}
-	if findYangMeta(n, "key") != -1 {
-		t.Fatal("yang:key left")
+	if findYangMeta(n, "key") != 1 {
+		t.Fatal("latest yang:key was not found by module name")
+	}
+	if findYangLatest(n, "key") != 1 || findYangImplemented(n, "key") != -1 {
+		t.Fatal("latest and implemented module lookup policies were conflated")
 	}
 }

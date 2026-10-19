@@ -12,6 +12,8 @@ import (
 
 	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/data"
+	"github.com/vibe-ports/yang/internal/contextopts"
+	"github.com/vibe-ports/yang/internal/snap"
 )
 
 // seqKeys are the fields of each sequence step kind runSequence handles (lyoracle.c check_step).
@@ -20,26 +22,29 @@ var seqKeys = map[string]map[string]bool{
 		"validate_options", "rpc", "keep_input", "parent"),
 	"validate": set("do", "data_type", "validate_options", "module", "final_only"),
 	"edit": set("do", "set", "delete", "new_meta", "free_meta", "insert_term", "insert_inner", "insert_list", "insert_list2", "insert_opaq", "merge_self", "merge",
-		"merge_file", "format", "data_type", "unknown", "parse_options"),
-	"dup":         set("do", "node", "node_xpath", "parent", "options", "siblings", "target", "source"),
+		"merge_file", "merge_into", "format", "data_type", "unknown", "parse_options"),
+	"dup":         set("do", "node", "node_xpath", "parent", "options", "siblings", "target", "source", "detached"),
 	"link":        set("do"),
-	"links":       set("do"),
+	"links":       set("do", "detached"),
 	"change_term": set("do", "node", "node_xpath", "child", "value", "canon"),
 	"insert": set("do", "node", "parent", "format", "data_type", "data", "data_file", "unknown", "parse_only",
-		"parse_options", "validate_options"),
-	"dump":       set("do", "with_defaults"),
-	"print_xml":  set("do"),
-	"any_direct": set("do", "case", "target"),
+		"parse_options", "validate_options", "detached", "target"),
+	"dump":          set("do", "with_defaults"),
+	"detached_dump": set("do", "with_defaults", "child"),
+	"print_xml":     set("do"),
+	"any_direct":    set("do", "case", "target"),
 	"compare": set("do", "format", "data_type", "data", "data_file", "unknown", "parse_only", "parse_options",
-		"validate_options", "first", "second", "options", "insert_opaq", "self"),
+		"validate_options", "first", "second", "options", "insert_opaq", "self", "target"),
 	"diff": set("do", "format", "data_type", "data", "data_file", "unknown", "parse_only", "parse_options",
-		"validate_options", "rpc", "keep_input", "node", "data_node", "single", "options", "merge", "merge_options", "target"),
+		"validate_options", "rpc", "keep_input", "node", "data_node", "single", "options", "merge", "merge_options", "target", "detached"),
 	"diff_parse":   set("do", "format", "data_type", "data", "data_file", "unknown", "parse_options"),
-	"diff_merge":   set("do", "format", "data_type", "data", "data_file", "unknown", "parse_options", "options", "module", "src_node", "parent"),
+	"diff_merge":   set("do", "format", "data_type", "data", "data_file", "unknown", "parse_options", "options", "module", "src_node", "parent", "detached_parent"),
 	"diff_apply":   set("do", "module"),
 	"diff_reverse": set("do"),
 	"trim":         set("do", "xpath", "vars"),
-	"xpath":        set("do", "xpath", "vars"),
+	"xpath":        set("do", "xpath", "vars", "detached", "node"),
+	"unlink":       set("do", "node", "diff_node"),
+	"find_meta":    set("do", "node", "name"),
 }
 
 var seqContextKeys = set("searchdirs", "modules", "context_options")
@@ -108,19 +113,33 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 		}
 		steps = append(steps, st)
 	}
-	var tree, diff *data.Tree  // the retained tree and the diff register
-	var diffOwner *yang.Schema // the context that owns the retained diff, when non-NULL
+	var tree, diff *data.Tree       // the retained tree and the diff register
+	var diffOwner *yang.Schema      // the context that owns the retained diff, when non-NULL
+	var detached *data.Node         // the node retained by unlink for find_meta
+	var detachedSchema *yang.Schema // the retained node's snapshot, even while tree is empty
 	out := []any{}
 	rc, failed := "LY_SUCCESS", any(nil)
-	cur := s // the retained tree's snapshot: a dup step with a target moves the tree to another
+	requestSchema := s
+	var cur *yang.Schema // recomputed from the retained first node before each step
 	// ly_err_first/ly_err_clean belong to a context. Printers and links can log after
 	// (or without) a collect(), so keep those items until that context is collected.
-	pending := map[*yang.Schema][]yang.Diagnostic{}
+	// Keyed by the compiled set: schema handles are fresh wrappers per call.
+	pending := map[any][]yang.Diagnostic{}
+	pk := func(x *yang.Schema) any {
+		if x == nil {
+			return nil
+		}
+		return snap.Set(x)
+	}
 	for i, st := range steps {
-		if cur != s && (tree == nil || empty(tree)) {
-			// the oracle's tree is NULL again and its steps use the request's context (lyoracle.c
-			// op_sequence: sctx = tree ? LYD_CTX(tree) : ctx)
-			tree, cur = nil, s
+		// lyoracle.c op_sequence: sctx = tree ? LYD_CTX(tree) : ctx.
+		// ApplyDiff may replace the first root (or the last root of A with
+		// one from B) without updating the context chosen by a prior step.
+		cur = requestSchema
+		if tree != nil && !empty(tree) {
+			cur = contextopts.TreeSchema(tree)
+		} else {
+			tree = nil
 		}
 		s := cur
 		what := str(st, "do", "")
@@ -143,14 +162,19 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 		// refusal for the same step. Skipped steps never reach these checks.
 		switch what {
 		case "edit":
-			err = checkInsertSelectors(s, tree, st)
+			err = checkInsertSelectors(s, tree, detached, st)
 		case "change_term":
 			if _, xpath, _ := strField(st, "node_xpath"); !xpath { // node_xpath: stepChange selects
 				_, err = findNode(tree, str(st, "node", ""), "change_term node")
 			}
 		case "dup":
 			_, xpath, _ := strField(st, "node_xpath")
-			if st["source"] == nil && !xpath { // node_xpath or a source tree: stepDup selects
+			switch {
+			case st["detached"] == true:
+				if detached == nil {
+					err = requestError("dup retained detached node not found")
+				}
+			case st["source"] == nil && !xpath: // node_xpath or a source tree: stepDup selects
 				_, err = findNode(tree, str(st, "node", ""), "dup node")
 			}
 			if err == nil {
@@ -172,7 +196,7 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 		if err != nil {
 			return err
 		}
-		// A skipped step never needs an API capability (lyoracle.c:2502-2506).
+		// A skipped step never needs an API capability (lyoracle.c:2935-2939).
 		if why := seqOptionUnsupported(what, st); why != "" {
 			return fmt.Errorf("%w: %s", ErrUnsupported, why)
 		}
@@ -185,6 +209,11 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 			return fmt.Errorf("%w: lyd_validate_module_final is not exported (split-validation speed path), U-0106", ErrUnsupported)
 		}
 		phase := what
+		// lyoracle.c collects collectOwner (the step's sctx unless noted) and then
+		// the foreign contexts the step touched: a source node's, the diff
+		// register's, a detached parent's.
+		collectOwner := s
+		var foreign []*yang.Schema
 		switch what {
 		case "parse":
 			phase = "" // parseOne distinguishes the request's "rpc" phase from "parse"
@@ -194,10 +223,17 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 				postPrint = append(postPrint, ds...)
 			})
 		case "edit":
-			tree, diags, rc, err = stepEdit(r, s, st, tree)
+			tree, diags, rc, err = stepEdit(r, s, st, tree, detached, detachedSchema)
 		case "dup":
-			phase = "" // source parse and duplication collect distinct diagnostic phases
-			tree, cur, diags, err = stepDup(r, s, st, tree)
+			phase = ""               // source parse and duplication collect distinct diagnostic phases
+			if st["source"] == nil { // a source tree is parsed in the step's own context
+				src := detached // lyoracle.c:2107-2111
+				if st["detached"] != true {
+					src, _, _ = dupSelect(r, s, st, tree)
+				}
+				foreign = append(foreign, contextopts.NodeSchema(src))
+			}
+			tree, _, diags, err = stepDup(r, s, st, tree, detached)
 		case "link":
 			if tree == nil || empty(tree) {
 				rc = "LY_EINVAL" // LY_CHECK_ARG_RET(NULL, tree): logged without a context
@@ -207,38 +243,38 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 				diags = diagsOf(err)
 			}
 		case "links":
-			so["leafref_links"] = linksJSON(tree)
+			if st["detached"] == true {
+				so["leafref_links"] = linksJSONNode(detached)
+			} else {
+				so["leafref_links"] = linksJSON(tree)
+			}
 		case "change_term":
 			phase = "edit"
 			diags, err = stepChange(st, tree, so)
 		case "insert":
-			tree, diags, phase, err = stepMove(r, s, st, tree)
+			var usedDetached bool
+			if st["detached"] == true && detached != nil {
+				foreign = append(foreign, contextopts.NodeSchema(detached)) // lyoracle.c:2386
+			}
+			moveSchema := s
+			if st["detached"] == true && (tree == nil || empty(tree)) && detachedSchema != nil {
+				moveSchema = detachedSchema
+			}
+			tree, diags, phase, usedDetached, err = stepMove(r, moveSchema, st, tree, detached)
+			if usedDetached && err == nil {
+				detached, detachedSchema = nil, nil
+			}
 		case "compare":
 			phase = "parse"
 			diags, err = stepCompare(r, s, st, tree, so)
-		case "xpath":
-			so["result"] = nil
-			if tree == nil || empty(tree) {
-				rc = "LY_EINVAL" // lyd_find_xpath requires a context node.
-				break
-			}
-			var nodes []*data.Node
-			var vars []data.XPathVar
-			vars, err = xpathVars(st)
-			if err == nil {
-				nodes, diags, err = tree.FindXPath(str(st, "xpath", ""), data.XPathOptions{Node: topNode(tree), Vars: vars})
-			}
-			if err == nil {
-				so["result"] = xpathResultJSON(data.XPathResult{Type: data.XPathNodeSet, Nodes: nodes})
-			}
 		case "diff":
 			phase = "" // the diagnostics carry theirs
-			diags, err = stepDiff(r, s, st, tree, &diff, &diffOwner, so, func(collectPhase string) []yang.Diagnostic {
-				prior := phased(nil, pending[s], collectPhase)
-				delete(pending, s)
+			diags, err = stepDiff(r, s, st, tree, detached, &diff, &diffOwner, so, func(owner *yang.Schema, collectPhase string) []yang.Diagnostic {
+				prior := phased(nil, pending[pk(owner)], collectPhase)
+				delete(pending, pk(owner))
 				return prior
 			}, func(owner *yang.Schema, ds []yang.Diagnostic) {
-				pending[owner] = append(pending[owner], ds...)
+				pending[pk(owner)] = append(pending[pk(owner)], ds...)
 			})
 		case "diff_parse":
 			phase = "parse"
@@ -255,21 +291,35 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 			}
 		case "diff_merge":
 			phase = ""
+			foreign = append(foreign, diffOwner) // lyoracle.c:2801
+			if st["detached_parent"] == true && detached != nil {
+				foreign = append(foreign, contextopts.NodeSchema(detached))
+			}
 			hadDiff := diff != nil
-			diags, err = stepDiffMerge(r, s, st, &diff)
+			diags, err = stepDiffMerge(r, s, st, &diff, detached)
 			if diff == nil {
 				diffOwner = nil
 			} else if !hadDiff {
-				diffOwner = s
+				// a detached parent or a populated source decides the new register's context
+				diffOwner = contextopts.TreeSchema(diff)
 			}
 		case "diff_apply":
 			phase = "diff"
-			if tree == nil {
-				if tree, err = emptyTree(s); err != nil {
+			foreign = append(foreign, diffOwner) // lyoracle.c:3013
+			if tree == nil || empty(tree) {
+				applySchema := s
+				if str(st, "module", "") == "" && diff != nil && !empty(diff) {
+					applySchema = contextopts.TreeSchema(diff)
+				}
+				if tree, err = emptyTree(applySchema); err != nil {
 					return err
 				}
 			}
-			err = tree.ApplyDiff(diff, data.ApplyDiffOptions{Module: str(st, "module", "")})
+			if name := str(st, "module", ""); name != "" && diff != nil {
+				err = contextopts.ApplyDiffModule(tree, diff, s, name)
+			} else {
+				err = tree.ApplyDiff(diff, data.ApplyDiffOptions{Module: str(st, "module", "")})
+			}
 			diags = diagsOf(err)
 		case "trim":
 			phase = "xpath"
@@ -281,8 +331,101 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 				break // lyd_trim_xpath of a NULL tree does nothing
 			}
 			diags, err = tree.TrimXPath(str(st, "xpath", ""), o)
+		case "xpath":
+			phase = "xpath"
+			so["result"] = nil
+			if tree == nil || empty(tree) {
+				rc = "LY_EINVAL" // lyd_eval_xpath4 needs a context node or tree, checked before logging.
+				break
+			}
+			node := topNode(tree) // the retained tree's first node is the default context
+			if path, present, _ := strField(st, "node"); present {
+				if st["detached"] == true {
+					return requestError("xpath node and detached are mutually exclusive")
+				}
+				if path == "@last" {
+					for n := range tree.Top() {
+						node = n
+					}
+				} else {
+					if node, err = findNode(tree, path, "xpath node"); err != nil {
+						break
+					}
+				}
+			}
+			if st["detached"] == true {
+				if detached == nil {
+					return requestError("xpath retained detached node not found")
+				}
+				node = detached
+			}
+			o := data.XPathOptions{Node: node}
+			if o.Vars, err = xpathVars(st); err != nil {
+				return err
+			}
+			var result data.XPathResult
+			result, diags, err = tree.EvalXPath(str(st, "xpath", ""), o)
+			if err == nil {
+				so["result"] = xpathResultJSON(result)
+			}
+		case "unlink":
+			phase = "edit"
+			diffPath, diffPresent, _ := strField(st, "diff_node")
+			path := str(st, "node", "")
+			if diffPresent && (diff == nil || empty(diff)) {
+				return requestError("unlink diff_node %s not found", diffPath)
+			}
+			if !diffPresent && (tree == nil || empty(tree)) {
+				return requestError("unlink node %s not found", path)
+			}
+			var selected *data.Node
+			switch {
+			case diffPresent:
+				selected, err = findNode(diff, diffPath, "unlink diff_node")
+			case path == "@top":
+				selected = topNode(tree)
+			default:
+				selected, err = findNode(tree, path, "unlink node")
+			}
+			if err == nil && selected != nil {
+				collectOwner = contextopts.NodeSchema(selected) // lyoracle.c:2994 collects only node_ctx
+				err = selected.Unlink()
+				if err == nil {
+					if detached != nil {
+						_ = detached.Remove() // the oracle frees the previous retained node on success
+					}
+					detached = selected
+					detachedSchema = contextopts.NodeSchema(detached)
+				}
+			}
+			diags = diagsOf(err)
+		case "find_meta":
+			phase = "find_meta"
+			n := detached
+			if _, present, _ := strField(st, "node"); present {
+				if n, err = findNode(tree, str(st, "node", ""), "find_meta node"); err != nil {
+					break
+				}
+			}
+			if n == nil {
+				return requestError("find_meta needs an attached node or a retained unlinked node")
+			}
+			name := str(st, "name", "")
+			if !strings.Contains(name, ":") {
+				// lyd_find_meta's argument check uses a NULL logging context
+				// (tree_data.c:2913), so the harness collects no diagnostic and observes
+				// its unchanged LY_SUCCESS instead of a return value.
+				so["found"] = false
+				break
+			}
+			collectOwner = contextopts.NodeSchema(n) // lyoracle.c:3009
+			var m *data.Meta
+			m, err = n.FindMeta(name)
+			diags = diagsOf(err)
+			so["found"] = m != nil
 		case "diff_reverse":
 			phase = "diff"
+			foreign = append(foreign, diffOwner) // lyoracle.c:2899
 			diff, err = diff.ReverseDiff()
 			diags = diagsOf(err)
 			if diff == nil {
@@ -297,7 +440,7 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 			if so["tree"], logged, err = printTreeLogged(tree, wd); err != nil {
 				return err
 			}
-			pending[s] = append(pending[s], logged...)
+			pending[pk(s)] = append(pending[pk(s)], logged...)
 		case "print_xml":
 			phase = "data" // lyoracle collects printer diagnostics as data diagnostics
 			var j, x strings.Builder
@@ -325,7 +468,7 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 			phase = "edit"
 			if str(st, "case", "") == "equal_repeated_collisions" && s.Implemented("ac-r6") == nil {
 				// lyd_new_list(NULL, ac, ...) fails before this case reads target
-				// (lyoracle.c:2158-2184). The direct counters are still emitted.
+				// (lyoracle.c:2225-2232). The direct counters are still emitted.
 				so["direct"] = map[string]any{"repeated_keys": 2, "collision_shaped_key": "Aa/BB"}
 				rc = "LY_EINVAL"
 				break
@@ -334,6 +477,54 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 				return fmt.Errorf("%w: opaque source construction has no public Go equivalent, U-0107", ErrUnsupported)
 			}
 			return fmt.Errorf("%w: native pointer-level any-value calls have no public Go equivalent, U-0112", ErrUnsupported)
+		case "detached_dump":
+			phase = "dump"
+			if detached == nil {
+				return requestError("detached_dump retained detached node not found")
+			}
+			probe := detached
+			if st["child"] == true {
+				probe = nil
+				for c := range detached.Children() {
+					probe = c
+					break
+				}
+				if probe == nil {
+					return requestError("detached_dump retained detached node not found")
+				}
+			}
+			wd, werr := wdOf(st)
+			if werr != nil {
+				return werr
+			}
+			collectOwner = contextopts.NodeSchema(probe) // lyoracle.c:3036 collects only the probe's context
+			so["detached_path"] = probe.Path()
+			so["detached_tree"], diags, err = contextopts.PrintNode(probe, uint8(wd))
+			if err != nil {
+				return unsupported(err)
+			}
+		}
+		// step_edit and step_change_term collect the first tree context. A
+		// diagnostic emitted on a retained foreign node stays in that context's
+		// queue until a later collect of it. free_meta is a void C call.
+		if what == "edit" && st["free_meta"] != nil || what == "change_term" {
+			path := str(st, "node", "")
+			if what == "edit" {
+				x, _ := st["free_meta"].(map[string]any)
+				path = str(x, "node", "")
+			}
+			if tree != nil {
+				if n, ferr := tree.Find(path); ferr == nil && n != nil {
+					owner := contextopts.NodeSchema(n)
+					if owner != nil && snap.Set(owner) != snap.Set(s) {
+						pending[pk(owner)] = append(pending[pk(owner)], diags...)
+						diags = nil
+						if what == "edit" {
+							err = nil
+						}
+					}
+				}
+			}
 		}
 		if err != nil {
 			if rc, err = rcOf(err); err != nil {
@@ -343,7 +534,7 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 		// Each branch that calls collect() consumes prior logs from the retained
 		// context before its own diagnostics. links and dump do not collect.
 		if what != "links" && what != "dump" && what != "diff" {
-			prior := pending[s]
+			prior := pending[pk(collectOwner)]
 			if phase == "" {
 				collectPhase := "parse"
 				_, hasData, _ := requestInput(r, st, "data")
@@ -357,9 +548,24 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 				prior = phased(nil, prior, collectPhase)
 			}
 			diags = append(prior, diags...)
-			delete(pending, s)
+			delete(pending, pk(collectOwner))
+			// ponytail: foreign queues go after the step's own diagnostics; a step
+			// logging into both contexts would interleave differently in C.
+			fphase := phase
+			switch {
+			case fphase == "" && what == "dup":
+				fphase = "edit" // the duplication's own collection
+			case fphase == "":
+				fphase = "diff" // diff_merge
+			}
+			for _, f := range foreign {
+				if k := pk(f); k != nil && k != pk(collectOwner) {
+					diags = append(diags, phased(nil, pending[k], fphase)...)
+					delete(pending, k)
+				}
+			}
 		}
-		pending[s] = append(pending[s], postPrint...)
+		pending[pk(s)] = append(pending[pk(s)], postPrint...)
 		so["diagnostics"] = diagsJSON(diags, phase)
 		// an error-level item means failure even if the call returned success (lyoracle.c)
 		for _, d := range diags {
@@ -376,7 +582,7 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 		}
 		if strings.HasPrefix(what, "diff") {
 			if err := diffOut(diff, so, func(ds []yang.Diagnostic) {
-				pending[diffOwner] = append(pending[diffOwner], ds...)
+				pending[pk(diffOwner)] = append(pending[pk(diffOwner)], ds...)
 			}); err != nil {
 				return err
 			}
@@ -423,11 +629,22 @@ func stepCompare(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, 
 			return nil, fmt.Errorf("%w: compare option %v", ErrUnsupported, x)
 		}
 	}
+	otherSchema := s
+	if tg, ok := st["target"].(map[string]any); ok {
+		targetSchema, _, _, verdict, err := r.buildContext(Request{ID: r.ID, BaseDir: r.BaseDir, Params: tg, buildContext: r.buildContext})
+		if err != nil {
+			return nil, err
+		}
+		if verdict != "valid" {
+			return nil, requestError("compare target context failed")
+		}
+		otherSchema = targetSchema
+	}
 	other := tree
 	var diags []yang.Diagnostic
 	if st["self"] != true {
 		var err error
-		other, diags, err = stepParse(r, s, st, execStepCompare, nil)
+		other, diags, err = stepParse(r, otherSchema, st, execStepCompare, nil)
 		if err != nil || other == nil {
 			return diags, err
 		}
@@ -496,10 +713,19 @@ func stepParse(r Request, s *yang.Schema, st map[string]any, exec executionConte
 	}
 
 	t, diags, err := parseOne(r, s, st, exec, "data", "parse", nil)
-	if err == nil && t != nil {
+	if err == nil {
+		if rerr := discardTree(tree); rerr != nil {
+			return tree, diags, rerr
+		}
 		tree = t
 	}
 	return tree, diags, err
+}
+
+// discardTree is lyd_free_all for a retained Go tree: removing every root clears all reciprocal
+// leafref links, including records kept on a separately retained detached subtree.
+func discardTree(tree *data.Tree) error {
+	return contextopts.DiscardTree(tree)
 }
 
 // stepValidate is step_validate: lyd_validate_all or lyd_validate_module with the step's flags
@@ -542,7 +768,7 @@ func stepValidate(s *yang.Schema, st map[string]any, tree *data.Tree, so map[str
 // new_meta (Tree.NewMeta), free_meta (Node.FindMeta + Meta.Remove) and merge (a parse-only parse
 // + lyd_merge_siblings). rc is set when the outcome is an LY_ERR without a diagnostic (a delete
 // that finds nothing).
-func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*data.Tree, []yang.Diagnostic, string,
+func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, detached *data.Node, detachedSchema *yang.Schema) (*data.Tree, []yang.Diagnostic, string,
 	error) {
 	rc := "LY_SUCCESS"
 	var err error
@@ -597,13 +823,13 @@ func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*d
 	case st["insert_list2"] != nil:
 		err = stepInsertList2(s, st, tree)
 	case st["insert_term"] != nil || st["insert_inner"] != nil || st["insert_list"] != nil:
-		err = stepInsert(s, st, tree)
+		err = stepInsert(s, st, tree, detached, detachedSchema)
 	case st["delete"] != nil:
 		path := str(st, "delete", "")
 		if empty(tree) {
 			return tree, nil, "LY_ENOTFOUND", nil // the oracle does not search a NULL tree
 		}
-		// lyoracle.c:2305 calls lyd_find_path from the retained first node.
+		// lyoracle.c:2644 calls lyd_find_path from the retained first node.
 		var n *data.Node
 		if n, err = tree.Find(path); err == nil {
 			if n == nil {
@@ -611,6 +837,28 @@ func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*d
 			}
 			err = n.Remove()
 		}
+	case st["merge_into"] != nil:
+		o, oerr := dataOptions(st, execStepEdit)
+		if oerr != nil {
+			return nil, nil, rc, oerr
+		}
+		o.ParseOnly = true
+		f, ferr := formatOf(st)
+		if ferr != nil {
+			return nil, nil, rc, ferr
+		}
+		in, present, ierr := requestInput(r, st, "merge_into")
+		if ierr != nil {
+			return nil, nil, rc, ierr
+		}
+		dest, diags, perr := data.Parse(context.Background(), inputReader(in, present), f, s, o)
+		if perr != nil {
+			return tree, diags, rc, perr
+		}
+		if err = dest.Merge(tree); err != nil {
+			return tree, append(diags, diagsOf(err)...), rc, err
+		}
+		return dest, diags, rc, nil
 	default:
 		o, oerr := dataOptions(st, execStepEdit)
 		if oerr != nil {
@@ -633,7 +881,19 @@ func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*d
 		err = tree.Merge(src)
 		return tree, append(diags, diagsOf(err)...), rc, err
 	}
-	return tree, diagsOf(err), rc, err
+	diags := diagsOf(err)
+	if detachedSchema != nil && snap.Set(s) != snap.Set(detachedSchema) {
+		for _, kind := range []string{"insert_term", "insert_inner", "insert_list"} {
+			o, _ := st[kind].(map[string]any)
+			if o != nil && o["detached_parent"] == true && str(o, "module", "") != "" &&
+				len(diags) == 1 && strings.HasPrefix(diags[0].Msg, "Different contexts mixed in a \"_lyd_new_") {
+				// lyoracle.c: step_edit collects sctx, while _lyd_new_* logs this
+				// context mismatch on the detached parent's foreign context.
+				return tree, nil, rc, err
+			}
+		}
+	}
+	return tree, diags, rc, err
 }
 
 // notFoundRC is lyd_find_path's return for a path Find did not find: LY_EINCOMPLETE when a leading
@@ -679,7 +939,7 @@ func pathPrefixes(path string) []string {
 // stepInsert is step_edit's insert_term, insert_inner and insert_list: the node under the node at
 // "parent" (a path) or the top-level opaque node "parent_opaq", else a top-level node of the tree
 // (lyd_new_* + lyd_insert_sibling); "module" qualifies the name.
-func stepInsert(s *yang.Schema, st map[string]any, tree *data.Tree) error {
+func stepInsert(s *yang.Schema, st map[string]any, tree *data.Tree, detached *data.Node, detachedSchema *yang.Schema) error {
 	x, kind := st["insert_term"], "term"
 	if st["insert_inner"] != nil {
 		x, kind = st["insert_inner"], "inner"
@@ -708,6 +968,18 @@ func stepInsert(s *yang.Schema, st map[string]any, tree *data.Tree) error {
 			return fmt.Errorf("insert parent_opaq %s not found (a request-error)", p)
 		}
 	}
+	if o["detached_parent"] == true {
+		if detached == nil {
+			return requestError("insert retained detached parent not found")
+		}
+		parent = detached
+		// libyang v5.8.6 src/tree_data_new.c (_lyd_new_term, lyd_new_inner,
+		// lyd_new_list3) resolves an omitted module from parent->schema->module;
+		// its constructor uses LYD_CTX(parent) even after the last root was unlinked.
+		if str(o, "module", "") == "" && detachedSchema != nil {
+			tree = data.NewTree(detachedSchema)
+		}
+	}
 	name := str(o, "name", "")
 	if m := str(o, "module", ""); m != "" {
 		name = m + ":" + name
@@ -733,39 +1005,51 @@ func stepInsert(s *yang.Schema, st map[string]any, tree *data.Tree) error {
 	return err
 }
 
-// stepDup is step_dup: Tree.Dup (DupSiblings with "siblings") of the node at "node" under the
-// node at "parent"; without a parent the copy, from its top duplicated parent, replaces the tree.
-// With "target" (searchdirs, modules, context_options) the copy goes into a tree over a second
-// context built like the request's (lyd_dup_*_to_ctx).
-func stepDup(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*data.Tree, *yang.Schema, []yang.Diagnostic,
-	error) {
+// dupSelect is step_dup's node selection without "detached": the node at "node" or the one
+// node "node_xpath" selects, in the retained tree or, with "source", in a tree parsed from it.
+func dupSelect(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*data.Node, []yang.Diagnostic, error) {
 	src := tree
 	var parseDiags []yang.Diagnostic
 	var err error
 	if source, ok := st["source"].(map[string]any); ok {
 		src, parseDiags, err = parseOne(r, s, source, execStepParse, "data", "parse", nil)
 		if err != nil {
-			return tree, s, parseDiags, err
+			return nil, parseDiags, err
 		}
 	}
-	var n *data.Node
 	if xpath, ok := st["node_xpath"].(string); ok {
 		if src == nil {
-			return nil, nil, nil, requestError("dup node_xpath %s must select exactly one node", xpath)
+			return nil, nil, requestError("dup node_xpath %s must select exactly one node", xpath)
 		}
 		nodes, _, err := src.FindXPath(xpath, data.XPathOptions{})
 		if err != nil || len(nodes) != 1 {
-			return nil, nil, nil, requestError("dup node_xpath %s must select exactly one node", xpath)
+			return nil, nil, requestError("dup node_xpath %s must select exactly one node", xpath)
 		}
-		n = nodes[0]
-	} else {
-		n, err = findNode(src, str(st, "node", ""), "dup node")
-		if err != nil {
-			if st["source"] != nil {
-				return nil, nil, nil, requestError("dup node %s not found in the source", str(st, "node", ""))
-			}
-			return nil, nil, nil, err
+		return nodes[0], parseDiags, nil
+	}
+	n, err := findNode(src, str(st, "node", ""), "dup node")
+	if err != nil && st["source"] != nil {
+		return nil, nil, requestError("dup node %s not found in the source", str(st, "node", ""))
+	}
+	return n, parseDiags, err
+}
+
+// stepDup is step_dup: Tree.Dup (DupSiblings with "siblings") of the node at "node", or the node
+// retained by unlink with "detached", under the node at "parent"; without a parent the copy,
+// from its top duplicated parent, replaces the tree.
+// With "target" (searchdirs, modules, context_options) the copy goes into a tree over a second
+// context built like the request's (lyd_dup_*_to_ctx).
+func stepDup(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, detached *data.Node) (*data.Tree, *yang.Schema, []yang.Diagnostic,
+	error) {
+	n := detached
+	var parseDiags []yang.Diagnostic
+	var err error
+	if st["detached"] == true {
+		if n == nil {
+			return nil, nil, nil, requestError("dup retained detached node not found")
 		}
+	} else if n, parseDiags, err = dupSelect(r, s, st, tree); err != nil {
+		return tree, s, parseDiags, err
 	}
 	var parent *data.Node
 	if p, present, _ := strField(st, "parent"); present {
@@ -787,8 +1071,16 @@ func stepDup(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*da
 		}
 	}
 	dst, ds := tree, s
+	if sourceSchema := contextopts.NodeSchema(n); sourceSchema != nil && st["target"] == nil {
+		ds = sourceSchema
+	}
 	if parent == nil {
-		dst = data.NewTree(s)
+		dst = data.NewTree(ds)
+	}
+	if st["target"] == nil {
+		if err := contextopts.CheckDupContexts(n, parent); err != nil {
+			return tree, s, phased(nil, diagsOf(err), "edit"), err // lyoracle.c collects it in phase edit
+		}
 	}
 	if tg, ok := st["target"].(map[string]any); ok {
 		targetSchema, _, _, verdict, err := r.buildContext(Request{ID: r.ID, BaseDir: r.BaseDir, Params: tg, buildContext: r.buildContext})
@@ -808,6 +1100,11 @@ func stepDup(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*da
 	_, diags, err := dup(n, parent, o)
 	if err != nil {
 		return tree, s, append(parseDiags, phased(nil, diagsOf(err), "edit")...), err
+	}
+	if dst != tree {
+		if err := discardTree(tree); err != nil {
+			return tree, s, append(parseDiags, phased(nil, diags, "edit")...), err
+		}
 	}
 	return dst, ds, append(parseDiags, phased(nil, diags, "edit")...), nil
 }
@@ -878,10 +1175,25 @@ func isTerm(n *data.Node) bool {
 
 // linksJSON is links_json: the leafref link records of the tree's term nodes in DFS order.
 func linksJSON(tree *data.Tree) []any {
-	out := []any{}
 	if tree == nil {
-		return out
+		return []any{}
 	}
+	var roots []*data.Node
+	for top := range tree.Top() {
+		roots = append(roots, top)
+	}
+	return linksJSONRoots(roots)
+}
+
+func linksJSONNode(root *data.Node) []any {
+	if root == nil {
+		return []any{}
+	}
+	return linksJSONRoots([]*data.Node{root})
+}
+
+func linksJSONRoots(roots []*data.Node) []any {
+	out := []any{}
 	paths := func(ns []*data.Node) []any {
 		a := []any{}
 		for _, n := range ns {
@@ -889,7 +1201,7 @@ func linksJSON(tree *data.Tree) []any {
 		}
 		return a
 	}
-	for top := range tree.Top() {
+	for _, top := range roots {
 		for n := range top.All() {
 			if !isTerm(n) {
 				continue
@@ -995,49 +1307,77 @@ func onlyPredicates(keys string) bool {
 	return true
 }
 
-// stepMove is step_insert: Tree.Insert of the node at "node" under the node at "parent", or at the
-// top level without one. With "data" the node comes from a second tree parsed as by a parse step
+// stepMove is step_insert: Tree.Insert of the node at "node", or the node retained by unlink with
+// "detached", under the node at "parent", or at the top level without one. With "data" the node
+// comes from a second tree parsed as by a parse step
 // ("node" a path in it, omitted: its first top-level node, which moves with its siblings); what is
 // left of that tree is then freed, as the oracle frees it (lyd_free_all: link records to it go).
 // The parse's diagnostics (phase parse, its warnings too) come before the insert's (phase edit).
 // lyd_insert_child's and lyd_insert_sibling's argument checks log without a context: those items
 // are not reported.
-func stepMove(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*data.Tree, []yang.Diagnostic, string,
+func stepMove(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, detached *data.Node) (*data.Tree, []yang.Diagnostic, string, bool,
 	error) {
 	var err error
 	if tree == nil {
 		if tree, err = emptyTree(s); err != nil {
-			return nil, nil, "", err
+			return nil, nil, "", false, err
+		}
+	} else if st["detached"] == true && empty(tree) && detached != nil && snap.Set(s) != snap.Set(contextopts.TreeSchema(tree)) {
+		if tree, err = emptyTree(s); err != nil {
+			return nil, nil, "", false, err
 		}
 	}
 	src, path := tree, str(st, "node", "")
+	useDetached := st["detached"] == true
 	var diags []yang.Diagnostic
 	_, hasData, err := requestInput(r, st, "data")
 	if err != nil {
-		return tree, nil, "", err
+		return tree, nil, "", false, err
 	}
 	if hasData {
-		if src, diags, err = stepParse(r, s, st, execStepInsert, nil); err != nil {
-			return tree, diags, "parse", err
+		otherSchema := s
+		if tg, ok := st["target"].(map[string]any); ok {
+			var verdict string
+			otherSchema, _, _, verdict, err = r.buildContext(Request{ID: r.ID, BaseDir: r.BaseDir, Params: tg, buildContext: r.buildContext})
+			if err != nil {
+				return tree, nil, "", false, err
+			}
+			if verdict != "valid" {
+				return tree, nil, "", false, requestError("insert target context failed")
+			}
+		}
+		if src, diags, err = stepParse(r, otherSchema, st, execStepInsert, nil); err != nil {
+			return tree, diags, "parse", false, err
 		}
 		for i := range diags {
 			diags[i].Phase = "parse"
 		}
 	}
-	n, _ := selectedNode(src, st, "node", "insert node")
+	n := detached
+	if !useDetached {
+		n, _ = selectedNode(src, st, "node", "insert node")
+	}
 	if n == nil {
-		if hasData {
-			return nil, nil, "", requestError("insert node %s not found in the data", path)
+		if useDetached {
+			return nil, nil, "", false, requestError("insert retained detached node not found")
 		}
-		return nil, nil, "", requestError("insert node %s not found", path)
+		if hasData {
+			return nil, nil, "", false, requestError("insert node %s not found in the data", path)
+		}
+		return nil, nil, "", false, requestError("insert node %s not found", path)
 	}
 	var parent *data.Node
 	if p, present, _ := strField(st, "parent"); present {
 		if parent, err = findNode(tree, p, "insert parent"); err != nil {
-			return nil, nil, "", err
+			return nil, nil, "", false, err
 		}
 	}
-	err = tree.Insert(parent, n)
+	if parent != nil && snap.Set(contextopts.NodeSchema(parent)) != snap.Set(contextopts.NodeSchema(n)) {
+		err = contextopts.CheckInsertSchema(parent, n)
+	}
+	if err == nil {
+		err = tree.Insert(parent, n)
+	}
 	ins := diagsOf(err)
 	if len(ins) == 1 && strings.HasPrefix(ins[0].Msg, "Invalid argument ") {
 		ins = nil
@@ -1048,15 +1388,15 @@ func stepMove(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*d
 	if src != tree {
 		for _, rest := range slices.Collect(src.Top()) {
 			if rerr := rest.Remove(); rerr != nil {
-				return nil, nil, "", rerr
+				return nil, nil, "", false, rerr
 			}
 		}
 	}
-	return tree, append(diags, ins...), "", err
+	return tree, append(diags, ins...), "", useDetached, err
 }
 
 // checkInsertSelectors is step_edit's module and parent lookup before construction.
-func checkInsertSelectors(s *yang.Schema, tree *data.Tree, st map[string]any) error {
+func checkInsertSelectors(s *yang.Schema, tree *data.Tree, detached *data.Node, st map[string]any) error {
 	for _, kind := range []string{"insert_term", "insert_inner", "insert_list", "insert_list2", "insert_opaq"} {
 		o, ok := st[kind].(map[string]any)
 		if !ok {
@@ -1087,6 +1427,12 @@ func checkInsertSelectors(s *yang.Schema, tree *data.Tree, st map[string]any) er
 			if parent == nil {
 				return requestError("insert parent_opaq %s not found", name)
 			}
+		}
+		if o["detached_parent"] == true {
+			if detached == nil {
+				return requestError("insert retained detached parent not found")
+			}
+			parent = detached
 		}
 		if kind == "insert_opaq" && parent != nil && isTerm(parent) {
 			return requestError("insert_opaq under the leaf %s: libyang links it over the leaf's value", parent.Name())

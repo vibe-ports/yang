@@ -86,10 +86,6 @@ func TestTreeBuild(t *testing.T) {
 			"LY_EINVAL | Invalid argument keys (lyd_new_list())."},
 		{"insert nil", tr.Insert(nil, nil), "LY_EINVAL | Invalid argument node (lyd_insert_sibling())."},
 		{"insert under another tree's node", tr.Insert(o, sl), "LY_EINVAL | Invalid argument parent (not in the tree) (lyd_insert_child())."},
-		{"insert from another snapshot", tr.Insert(nil, func() *data.Node {
-			n, _ := data.NewTree(fzContext(t).Schema()).NewInner(nil, "fz:c", data.NewOptions{})
-			return n
-		}()), "LY_EINVAL | Invalid argument node (another schema snapshot) (lyd_insert_sibling())."},
 		{"set value of a container", func() error { _, err := c.SetValue("x"); return err }(),
 			"LY_EINVAL | Invalid argument term->schema->nodetype & (0x0004|0x0008) (lyd_change_term())."},
 	} {

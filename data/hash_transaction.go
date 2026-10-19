@@ -23,6 +23,7 @@ type hashTransaction struct {
 	err  error  // a journal charge failed: the operation fails with it and rolls back
 	done func() // ends the hash-work scope opened by beginHashTransaction
 	rank map[*schema.Node]int
+	set  *schema.Set // the tree's snapshot: a diff create may retain another context's root
 	// orders are an operation's input or output children (opOrder), schema-sized
 	orders   map[orderKey][]*schema.Node
 	nodes    map[*Node]Node
@@ -55,7 +56,7 @@ func beginHashTransaction(t *Tree) *hashTransaction {
 	if t.work.journal != nil {
 		return nil
 	}
-	j := &hashTransaction{tree: t, done: t.work.beginHashWork(), rank: maps.Clone(t.rank),
+	j := &hashTransaction{tree: t, done: t.work.beginHashWork(), rank: maps.Clone(t.rank), set: t.set,
 		nodes: map[*Node]Node{}, siblings: map[*siblings]siblings{}, chains: map[*recordChain]recordChain{},
 		records: map[*record]record{}, op: map[*opEntry]opEntry{},
 		pending: map[*dirtyOrder]dirtyOrder{}, dirty: map[*dirtyOrderNode]dirtyOrderNode{},
@@ -322,6 +323,7 @@ func (j *hashTransaction) captureSiblings(s *siblings) {
 	saved.rbTree = maps.Clone(s.rbTree)
 	saved.rbGroups = maps.Clone(s.rbGroups)
 	saved.opIdx = maps.Clone(s.opIdx)
+	saved.contexts = maps.Clone(s.contexts) // a handful of contexts: not charged
 	saved.opRanks = cloneRanks(s.opRanks)
 	j.siblings[s] = saved
 	objects := 1 + uint64(len(s.list)+len(s.opq)+len(s.ht)+len(s.leaders)+len(s.firstRun)+
@@ -412,5 +414,5 @@ func (j *hashTransaction) restore() {
 	for op, saved := range j.opaq {
 		*op = saved
 	}
-	j.tree.rank, j.tree.orders = j.rank, j.orders
+	j.tree.rank, j.tree.orders, j.tree.set = j.rank, j.orders, j.set
 }

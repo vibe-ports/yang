@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
-// Package contextopts carries context operations that are intentionally not part of the public
-// API. The root yang package registers their implementations for the conformance engine.
+// Package contextopts carries internal context and data operations for the conformance engine.
+// The root yang and data packages register their implementations during initialization.
 package contextopts
 
 import "github.com/vibe-ports/yang/internal/snap"
@@ -26,3 +26,39 @@ func LoadRevision(ctx any, name string, revision *string, features []string) ([]
 	}
 	return loadRevision(ctx, name, revision, features)
 }
+
+// NodeSchema is installed by data when it is initialized.
+var NodeSchema func(any) *snap.Schema
+
+// TreeSchema returns the schema snapshot of a tree.
+var TreeSchema func(any) *snap.Schema
+
+// ApplyDiffModule retains the module selected in the sequence step's context when the
+// data tree belongs to a different snapshot.
+var ApplyDiffModule func(any, any, *snap.Schema, string) error
+
+// MergeDiffModule retains the module selected in the sequence step's context when the
+// diff tree belongs to a different snapshot.
+var MergeDiffModule func(any, any, *snap.Schema, string, bool) error
+
+// DiscardTree releases a tree and its reciprocal links in one traversal.
+var DiscardTree func(any) error
+
+// ContextDiagnostic is a diagnostic still stored on the context that emitted it.
+type ContextDiagnostic struct {
+	Context    *snap.Schema
+	Diagnostic snap.Diagnostic
+}
+
+// DrainDiffDiagnostics reads the diagnostics emitted by context-specific
+// lyd_find_meta calls during the last diff merge.
+var DrainDiffDiagnostics func(any) []ContextDiagnostic
+
+// CheckDupContexts checks ordinary duplication's operand contexts.
+var CheckDupContexts func(any, any) error
+
+// CheckInsertSchema checks the node's schema against a parent before insertion.
+var CheckInsertSchema func(any, any) error
+
+// PrintNode prints a detached node for the conformance adapter.
+var PrintNode func(any, uint8) (map[string]any, []snap.Diagnostic, error)

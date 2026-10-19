@@ -68,8 +68,13 @@ func TestMetaPublic(t *testing.T) {
 	}
 	_, err = tr.NewMeta(n, "operation", "create")
 	wantArgErr(t, "unprefixed name", "Invalid argument module || strchr(name, ':') (lyd_new_meta()).", err)
-	_, err = tr.NewMeta(nil, "fz:ann", "x")
-	wantArgErr(t, "nil node", "Invalid argument parent (lyd_new_meta()).", err)
+	detachedMeta, err := tr.NewMeta(nil, "fz:ann", "x")
+	if err != nil || detachedMeta.Module().Name() != "fz" || detachedMeta.Name() != "ann" || detachedMeta.Value() != "x" {
+		t.Errorf("nil node: %v, %v", detachedMeta, err)
+	} else {
+		detachedMeta.Remove()
+		detachedMeta.Remove()
+	}
 	other, _, _ := parse(fzContext(t).Schema(), `{"fz:c": {}}`, data.FormatJSON, data.ParseOptions{ParseOnly: true})
 	if _, err := other.NewMeta(n, "fz:ann", "x"); !errors.As(err, &ve) || ve.RC() != "LY_EINVAL" {
 		t.Errorf("another context: %v", err)
@@ -104,10 +109,15 @@ func TestMetaPublic(t *testing.T) {
 		t.Fatalf("after Remove: %s", got)
 	}
 
-	// a removed subtree keeps its metadata, found by module name
+	// A removed subtree keeps its metadata and schema context.
 	c, _ := tr.Find("/fz:c")
 	if _, err := tr.NewMeta(c, "yang:operation", "none"); err != nil {
 		t.Fatal(err)
+	}
+	before := make(map[string]string)
+	for _, name := range []string{"yang:operation", "yang:a b", "nope:x", "operation"} {
+		m, findErr := c.FindMeta(name)
+		before[name] = fmt.Sprintf("%v|%v", m != nil, findErr)
 	}
 	if err := c.Remove(); err != nil {
 		t.Fatal(err)
@@ -115,11 +125,22 @@ func TestMetaPublic(t *testing.T) {
 	if m, err := c.FindMeta("yang:operation"); err != nil || m == nil || m.Value() != "none" {
 		t.Fatalf("detached: %v %v", m, err)
 	}
-	if m, err := c.FindMeta("yang:a b"); m != nil || err != nil {
+	if m, err := c.FindMeta("yang:a b"); m != nil || !errors.As(err, &ve) ||
+		ve.Diags[0].Msg != `Metadata name "a b" is not valid.` {
 		t.Fatalf("detached, invalid name: %v %v", m, err)
+	}
+	if m, err := c.FindMeta("nope:x"); m != nil || !errors.As(err, &ve) ||
+		ve.Diags[0].Msg != `Module "nope" not found.` {
+		t.Fatalf("detached, unknown module: %v %v", m, err)
 	}
 	_, err = c.FindMeta("operation")
 	wantArgErr(t, "detached, unprefixed", "Invalid argument module || strchr(name, ':') (lyd_find_meta()).", err)
+	for name, attached := range before {
+		m, findErr := c.FindMeta(name)
+		if detached := fmt.Sprintf("%v|%v", m != nil, findErr); detached != attached {
+			t.Errorf("FindMeta(%q) attached %q, detached %q", name, attached, detached)
+		}
+	}
 }
 
 // ExampleNode_Meta reads, adds and removes metadata of a data node.

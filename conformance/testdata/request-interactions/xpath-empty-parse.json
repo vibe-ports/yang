@@ -1,0 +1,16 @@
+{
+  "id": "protocol-v2/xpath-empty-parse",
+  "verdict": "invalid",
+  "request": {
+    "base_dir": ".",
+    "op": "sequence",
+    "searchdirs": ["schemas"],
+    "modules": [{"name": "pv2-detached"}],
+    "steps": [
+      {"do": "parse", "format": "json", "data_type": "config", "parse_only": true, "data": "{}"},
+      {"do": "xpath", "xpath": "count(/*)"}
+    ]
+  },
+  "rfc": [],
+  "source": {"commit": null, "license": "BSD-3-Clause", "url": "hand-written (this repo)"}
+}

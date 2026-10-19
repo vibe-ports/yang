@@ -97,6 +97,9 @@ type Tree struct {
 	// dupLog is the logger of an exported Dup or DupSiblings while it runs: the metadata values
 	// the target snapshot rejects are logged there (lyd_dup_meta_single_to_ctx).
 	dupLog *logger
+	// Diagnostics from lyd_find_meta calls during a diff merge retain their
+	// emitting context even when a later wrapper reports the operation error.
+	diffLogs []diffLogEntry
 }
 
 // workCounter counts the work of a tree for tests (work, not time): comparisons made by
@@ -121,6 +124,19 @@ type workCounter struct {
 // newTree returns an empty tree over the compiled schema s (the public constructor over a
 // schema snapshot is design 07 D12).
 func newTree(s *schema.Set) *Tree { return &Tree{set: s} }
+
+// context is LYD_CTX(tree's first node), falling back to the constructor's
+// snapshot while the tree is empty or a hand-built schema has no Owner. Diff
+// apply may retain roots from several snapshots, so set alone does not
+// describe a populated tree.
+func (t *Tree) context() *schema.Set {
+	if n := t.top.first(); n != nil {
+		if set := ctxOf(n); set != nil {
+			return set
+		}
+	}
+	return t.set
+}
 
 // Top yields the top-level nodes in order.
 func (t *Tree) Top() iter.Seq[*Node] { return t.top.all() }
@@ -153,13 +169,26 @@ func newInner(s *schema.Node, counters ...*workCounter) *Node {
 func newOpaque(o opaque) *Node { return &Node{opaq: &o} }
 
 // Parent returns the parent node, nil at the top level.
-func (n *Node) Parent() *Node { return n.parent }
+func (n *Node) Parent() *Node {
+	if n == nil {
+		return nil
+	}
+	return n.parent
+}
 
 // Flags returns the validation flags.
-func (n *Node) Flags() Flags { return n.flags }
+func (n *Node) Flags() Flags {
+	if n == nil {
+		return 0
+	}
+	return n.flags
+}
 
 // Name returns the node name (LYD_NAME).
 func (n *Node) Name() string {
+	if n == nil {
+		return ""
+	}
 	if n.schema == nil {
 		return n.opaq.Name
 	}
@@ -167,7 +196,12 @@ func (n *Node) Name() string {
 }
 
 // Children yields ordinary children in order, excluding anydata/anyxml payloads.
-func (n *Node) Children() iter.Seq[*Node] { return n.kids.all() }
+func (n *Node) Children() iter.Seq[*Node] {
+	if n == nil {
+		return func(func(*Node) bool) {}
+	}
+	return n.kids.all()
+}
 
 // isTerm reports whether n is a leaf or leaf-list instance (LYD_NODE_TERM).
 func (n *Node) isTerm() bool {
@@ -181,6 +215,9 @@ func (n *Node) isKey() bool { return n.schema != nil && n.schema.IsKey() && n.pa
 // excluding anydata/anyxml payloads.
 func (n *Node) All() iter.Seq[*Node] {
 	return func(yield func(*Node) bool) {
+		if n == nil {
+			return
+		}
 		// explicit stack: tree depth is bounded by the input, not by the Go stack
 		stack := []*Node{n}
 		for len(stack) > 0 {

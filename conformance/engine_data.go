@@ -306,7 +306,7 @@ func dataOptions(p map[string]any, exec executionContext) (data.ParseOptions, er
 		}
 		set(&o)
 	}
-	// dparams_of always constructs both flag words (lyoracle.c:1205-1260), but callers select
+	// dparams_of always constructs both flag words (lyoracle.c:1208-1260), but callers select
 	// which one reaches libyang: parse_one suppresses vopts for parse-only data (1273-1287).
 	// Without LYD_VALIDATE_MULTI_ERROR, LY_DPARSER_ERR_GOTO stops at the first value error
 	// (parser_internal.h:39-47), in both parser_json.c:1472-1475 and parser_xml.c:768-770.

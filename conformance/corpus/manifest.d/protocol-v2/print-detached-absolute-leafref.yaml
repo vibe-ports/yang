@@ -1,0 +1,19 @@
+fixtures:
+  - id: protocol-v2/print-detached-absolute-leafref
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC6243#5", "RFC7950#9.9.2"]
+    areas: [codecs, defaults, xpath]
+    request:
+      op: sequence
+      searchdirs: [schemas, ../ietf]
+      modules: [{name: pv2-absleaf-default}, {name: ietf-netconf-with-defaults}]
+      steps:
+        - {do: parse, format: json, data_type: config, data: '{"pv2-absleaf-default:c":{"t":"x","r":"x"}}'}
+        - {do: unlink, node: /pv2-absleaf-default:c}
+        - {do: detached_dump, with_defaults: trim}
+        - {do: detached_dump, with_defaults: all-tagged}
+    golden: golden/print-detached-absolute-leafref.json
+    assert:
+      verdict: valid
+      deviation: null

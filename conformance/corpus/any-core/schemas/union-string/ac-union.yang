@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: BSD-3-Clause
+module ac-union {
+  yang-version 1.1;
+  namespace "urn:tests:any-core-union";
+  prefix au;
+
+  anydata data;
+  // A plain string in place of the union.
+  leaf-list u { type string; }
+}

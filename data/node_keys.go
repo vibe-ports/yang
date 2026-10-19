@@ -9,6 +9,9 @@ import "iter"
 // keys come first), all children of other nodes.
 func (n *Node) ChildrenNoKeys() iter.Seq[*Node] {
 	return func(yield func(*Node) bool) {
+		if n == nil {
+			return
+		}
 		keys := true
 		for c := range n.kids.all() {
 			if keys = keys && c.isKey(); keys {

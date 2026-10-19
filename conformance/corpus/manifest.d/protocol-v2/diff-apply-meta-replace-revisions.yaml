@@ -1,0 +1,19 @@
+fixtures:
+  - id: protocol-v2/diff-apply-meta-replace-revisions
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # libyang diff metadata revision lookup policy; no RFC behaviour
+    areas: [diff, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas, ../ietf]
+      modules:
+        - {name: pv2-find-meta, revision: "2020-01-01"}
+        - {name: pv2-find-meta-loader}
+        - {name: pv2-mdapi}
+      steps:
+        - {do: parse, format: json, data_type: config, data: '{"pv2-mdapi:c":{"s":"x","@s":{"pv2-find-meta:note":"old"}}}'}
+        - {do: diff, format: json, data_type: config, data: '{"pv2-mdapi:c":{"s":"x","@s":{"pv2-find-meta:note":"new"}}}', options: [meta]}
+        - {do: diff_apply}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/diff-apply-meta-replace-revisions.json

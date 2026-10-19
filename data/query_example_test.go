@@ -139,8 +139,8 @@ func ExampleXPathOptions() {
 	// eth1
 }
 
-// TestXPathAPI: the public wrappers — the not-a-node-set refusal, a foreign context node, an
-// unknown result type, and a variable reference resolved by prefix as lyxp_vars_find.
+// TestXPathAPI: the public wrappers — the not-a-node-set refusal, foreign and detached context
+// nodes, an unknown result type, and a variable reference resolved by prefix as lyxp_vars_find.
 func TestXPathAPI(t *testing.T) {
 	tr, other := qtree(), qtree()
 	if _, _, err := tr.FindXPath("count(/ex:interfaces/interface)", data.XPathOptions{}); err == nil ||
@@ -161,8 +161,10 @@ func TestXPathAPI(t *testing.T) {
 	if err := gone.Remove(); err != nil {
 		t.Fatal(err)
 	}
-	_, _, err = tr.FindXPath(".", data.XPathOptions{Node: gone})
-	einval("removed context node", err)
+	nodes, _, err := tr.FindXPath(".", data.XPathOptions{Node: gone})
+	if err != nil || len(nodes) != 1 || nodes[0] != gone {
+		t.Errorf("detached context node: %v, %v", nodes, err)
+	}
 	_, _, err = tr.EvalXPathAs(".", data.XPathType(9), data.XPathOptions{})
 	einval("unknown type", err)
 	if data.XPathType(9).String() != "XPathType(9)" {
@@ -175,5 +177,53 @@ func TestXPathAPI(t *testing.T) {
 	r, _, err = tr.EvalXPathAs("/ex:interfaces/interface/name", data.XPathString, data.XPathOptions{})
 	if err != nil || r.Type != data.XPathString || r.String != "eth0" {
 		t.Errorf("string cast: %+v %v", r, err)
+	}
+}
+
+func TestXPathDetachedRootIsSingleton(t *testing.T) {
+	models := fstest.MapFS{"d.yang": {Data: []byte(`module d {
+  namespace "urn:d"; prefix d;
+  leaf a { type string; }
+  leaf b { type string; }
+  leaf-list states { config false; type string; }
+}`)}}
+	cx, _, err := yang.NewContext(yang.Options{NoYangLibrary: true}, models)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := cx.Load("d", "", nil); err != nil {
+		t.Fatal(err)
+	}
+	tr, _, err := data.Parse(context.Background(), strings.NewReader(
+		`{"d:a":"x","d:b":"y","d:states":["one","two"]}`),
+		data.FormatJSON, cx.Schema(), data.ParseOptions{ParseOnly: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, _ := tr.Find("/d:a")
+	if err := a.Unlink(); err != nil {
+		t.Fatal(err)
+	}
+	for _, expr := range []string{
+		"count(following-sibling::*)", "count(preceding-sibling::*)",
+		"count(following::*)", "count(preceding::*)",
+	} {
+		r, _, err := tr.EvalXPath(expr, data.XPathOptions{Node: a})
+		if err != nil || r.Number != 0 {
+			t.Errorf("%s: %+v %v", expr, r, err)
+		}
+	}
+	for _, expr := range []string{"position()", "last()", "count(/d:b)"} {
+		r, _, err := tr.EvalXPath(expr, data.XPathOptions{Node: a})
+		if err != nil || r.Number != 1 {
+			t.Errorf("%s: %+v %v", expr, r, err)
+		}
+	}
+	state, _ := tr.Find("/d:states[2]")
+	if err := state.Unlink(); err != nil {
+		t.Fatal(err)
+	}
+	if got := state.Path(); got != "/d:states[1]" {
+		t.Errorf("detached path %q", got)
 	}
 }

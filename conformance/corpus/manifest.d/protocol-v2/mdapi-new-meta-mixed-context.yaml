@@ -1,0 +1,26 @@
+fixtures:
+  - id: protocol-v2/mdapi-new-meta-mixed-context
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7952#3"]
+    areas: [diff, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas, ../ietf]
+      modules: [{name: pv2-detached}]
+      steps:
+        - do: diff
+          format: json
+          data_type: config
+          target:
+            searchdirs: [schemas, ../ietf]
+            modules: [{name: pv2-detached}]
+          data: '{"pv2-detached:l":[{"k":"b"}]}'
+        - {do: parse, format: json, data_type: config, data: '{"pv2-detached:c":{"base":"a"}}'}
+        - {do: diff_apply}
+        - {do: edit, new_meta: {node: /pv2-detached:c, name: "yang:operation", value: none}}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/mdapi-new-meta-mixed-context.json
+    assert:
+      verdict: valid
+      deviation: null

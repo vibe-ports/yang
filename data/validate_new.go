@@ -36,7 +36,7 @@ func (vc *valCtx) validateNew(parent *Node, sparent *schema.Node, mod *schema.Mo
 	nodes := slices.Clone(sib.list) // autodelete only removes; removed nodes are skipped below
 	if mod != nil {
 		// lyd_owner_module: an augment's node in mod's top-level choice is mod's data
-		nodes = slices.DeleteFunc(nodes, func(n *Node) bool { return ownerModule(vc.t.set, n) != mod })
+		nodes = slices.DeleteFunc(nodes, func(n *Node) bool { return ownerModule(vc.t.context(), n) != mod })
 	}
 	dups := dupIndex{sib: sib}
 	explicit := map[*schema.Node]bool{}
@@ -146,7 +146,7 @@ func (vc *valCtx) validateCases(sib *siblings, ch *schema.Node) error {
 			return err
 		}
 		for _, n := range del {
-			freeSubtreeLinks(vc.t.set, n) // lyd_free_tree
+			freeSubtreeLinks(vc.t.context(), n) // lyd_free_tree
 		}
 	}
 	return nil
@@ -256,7 +256,7 @@ func (vc *valCtx) autodel(del []*Node, npContDiff bool) {
 		return
 	}
 	for _, n := range del {
-		freeSubtreeLinks(vc.t.set, n) // lyd_free_tree
+		freeSubtreeLinks(vc.t.context(), n) // lyd_free_tree
 	}
 }
 

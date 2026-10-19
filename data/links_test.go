@@ -18,7 +18,7 @@ import (
 func linksTree(t *testing.T, linking bool) (*Tree, *Node) {
 	t.Helper()
 	set := &schema.Set{LeafrefLinking: linking}
-	m := &schema.Module{Name: "lk", Implemented: true}
+	m := &schema.Module{Name: "lk", Owner: set, Implemented: true}
 	set.Modules = []*schema.Module{m}
 	str, u8 := &schema.Type{Base: schema.String}, &schema.Type{Base: schema.Uint8}
 	add := func(p *schema.Node, k schema.Kind, name string, ty *schema.Type) *schema.Node {
@@ -159,6 +159,18 @@ func TestLeafrefLinks(t *testing.T) {
 		if got := dumpLinks(t, tr); !reflect.DeepEqual(got, linked) {
 			t.Fatalf("link %d:\n%v", i, got)
 		}
+	}
+
+	// lyd_unlink_tree removes only the unlinked node's own record. Descendant records remain
+	// queryable through their retained LYD_CTX.
+	detached := find(t, tr, "/lk:c/l[k='a']")
+	key := detached.kids.list[0]
+	if err := detached.Unlink(); err != nil {
+		t.Fatal(err)
+	}
+	leafrefs, targets := key.LeafrefLinks()
+	if got := len(leafrefs); got != 2 || len(targets) != 0 {
+		t.Fatalf("detached key links: %d leafrefs, %d targets", got, len(targets))
 	}
 
 	// links-free-target: lyd_free_tree of l[k='a']

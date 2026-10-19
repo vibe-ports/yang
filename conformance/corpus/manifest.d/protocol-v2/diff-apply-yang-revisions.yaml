@@ -1,0 +1,16 @@
+fixtures:
+  - id: protocol-v2/diff-apply-yang-revisions
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # libyang diff metadata and module-revision lookup policy; no RFC behaviour
+    areas: [diff, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas, ../ietf]
+      modules: [{name: pv2-mdapi}, {name: pv2-yang-loader}]
+      steps:
+        - {do: parse, format: json, data_type: config, data: '{"pv2-mdapi:c":{"s":"old"}}'}
+        - {do: diff, format: json, data_type: config, data: '{"pv2-mdapi:c":{"s":"new"}}'}
+        - {do: diff_apply}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/diff-apply-yang-revisions.json

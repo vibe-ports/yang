@@ -1,0 +1,65 @@
+fixtures:
+  - id: any-core/equal-cross-context-union
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    # lyd_compare_single_data rejects on a node hash mismatch first
+    # (tree_data.c:1714). A union leaf-list hashes its member index with the
+    # member's LYB value, so an anydata payload compared against another
+    # context differs when the type there is a plain string, when the same
+    # canonical value resolves to another member type, or when only the member
+    # index changes. An identical module in the target context still compares
+    # equal.
+    rfc: [] # Core comparison semantics are libyang API contracts.
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: ac-union}]
+      context_options: [no_yanglibrary]
+      steps:
+        - do: parse
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<data xmlns="urn:tests:any-core-union"><u>1</u></data>'
+        - do: compare
+          format: xml
+          data_type: data
+          parse_only: true
+          options: []
+          data: '<data xmlns="urn:tests:any-core-union"><u>1</u></data>'
+          target: {searchdirs: [schemas], modules: [{name: ac-union}], context_options: [no_yanglibrary]}
+        - do: compare
+          format: xml
+          data_type: data
+          parse_only: true
+          options: []
+          data: '<data xmlns="urn:tests:any-core-union"><u>1</u></data>'
+          target: {searchdirs: [schemas/union-string], modules: [{name: ac-union}], context_options: [no_yanglibrary]}
+        - do: compare
+          format: xml
+          data_type: data
+          parse_only: true
+          options: []
+          data: '<data xmlns="urn:tests:any-core-union"><u>1</u></data>'
+          target: {searchdirs: [schemas/union-swapped], modules: [{name: ac-union}], context_options: [no_yanglibrary]}
+        - do: parse
+          format: xml
+          data_type: data
+          parse_only: true
+          data: '<data xmlns="urn:tests:any-core-union"><u>x</u></data>'
+        - do: compare
+          format: xml
+          data_type: data
+          parse_only: true
+          options: []
+          data: '<data xmlns="urn:tests:any-core-union"><u>x</u></data>'
+          target: {searchdirs: [schemas/union-swapped], modules: [{name: ac-union}], context_options: [no_yanglibrary]}
+        - do: compare
+          format: xml
+          data_type: data
+          parse_only: true
+          options: []
+          data: '<data xmlns="urn:tests:any-core-union"><u>x</u></data>'
+          target: {searchdirs: [schemas/union-string], modules: [{name: ac-union}], context_options: [no_yanglibrary]}
+    golden: golden/equal-cross-context-union.json

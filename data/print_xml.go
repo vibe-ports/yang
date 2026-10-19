@@ -98,8 +98,8 @@ func (x *xmlPrinter) meta(n *Node) error {
 	if n.isTerm() && x.opts.tagged(n) {
 		// the module "default" is libyang's internal one with the wd:default annotation, used only
 		// when the context has ietf-netconf-with-defaults too
-		if x.set.Module(wdModule, "") != nil {
-			if df := x.set.Module("default", ""); df != nil {
+		if x.nodeContext(n).Module(wdModule, "") != nil {
+			if df := x.nodeContext(n).Module("default", ""); df != nil {
 				prefix, _ := x.printNS(df.Namespace, df.Prefix, true, 0)
 				x.printf(" %s:default=\"true\"", prefix)
 			}
@@ -227,7 +227,7 @@ func (x *xmlPrinter) anydata(n *Node) error {
 // nsOpaq is xml_print_ns_opaq: the prefix of an opaque name's namespace (an opaque node or an
 // attribute; moduleNS is the XML namespace or the JSON module name), declared if needed; ok false
 // when the name has no namespace the printer can use or it is the default one.
-func (x *xmlPrinter) nsOpaq(format types.Format, prefix, moduleNS string, opts int) (string, bool) {
+func (x *xmlPrinter) nsOpaq(_ *Node, format types.Format, prefix, moduleNS string, opts int) (string, bool) {
 	// the prefix is libyang's new_prefix: NULL (the default namespace) unless given and not DEFAULT
 	prefixed := prefix != "" && opts&prefixDefault == 0
 	switch format {
@@ -236,7 +236,7 @@ func (x *xmlPrinter) nsOpaq(format types.Format, prefix, moduleNS string, opts i
 			return x.printNS(moduleNS, prefix, prefixed, opts)
 		}
 	case types.FormatJSON:
-		if moduleNS != "" {
+		if moduleNS != "" && x.set != nil {
 			if m := x.set.Module(moduleNS, ""); m != nil {
 				// the YANG module prefix, not the JSON one (the module name)
 				return x.printNS(m.Namespace, m.Prefix, prefixed, opts)
@@ -262,11 +262,11 @@ func (x *xmlPrinter) prefixData(pc types.PrefixCtx, opts int) {
 
 // attrs is xml_print_attr: the attributes of an opaque node with their namespaces and those of
 // their values' prefixes.
-func (x *xmlPrinter) attrs(as []attr) {
+func (x *xmlPrinter) attrs(n *Node, as []attr) {
 	for _, a := range as {
 		pref, ok := "", false
 		if a.Prefix != "" {
-			pref, ok = x.nsOpaq(a.Format, a.Prefix, a.ModuleNS, 0)
+			pref, ok = x.nsOpaq(n, a.Format, a.Prefix, a.ModuleNS, 0)
 		}
 		if a.Prefixes != nil {
 			x.prefixData(a.Prefixes, prefixRequired)
@@ -287,9 +287,9 @@ func (x *xmlPrinter) opaq(n *Node) error {
 	o := n.opaq
 	x.printf("%s<%s", x.indent(), o.Name)
 	if o.Prefix != "" || o.ModuleNS != "" {
-		x.nsOpaq(o.Format, o.Prefix, o.ModuleNS, prefixDefault)
+		x.nsOpaq(n, o.Format, o.Prefix, o.ModuleNS, prefixDefault)
 	}
-	x.attrs(o.Attrs)
+	x.attrs(n, o.Attrs)
 	children := kids(n)
 	if o.Value != "" {
 		if o.Prefixes != nil {

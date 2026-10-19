@@ -3,6 +3,7 @@
 package data
 
 import (
+	"bytes"
 	"errors"
 	"reflect"
 	"testing"
@@ -12,6 +13,39 @@ import (
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
 )
+
+func TestDetachedOpaquePath(t *testing.T) {
+	set := pjSchema()
+	for _, tc := range []struct {
+		format types.Format
+		module string
+	}{
+		{types.FormatXML, "urn:unknown"}, {types.FormatJSON, "unknown"},
+	} {
+		tr := newTree(set)
+		root := newOpaque(opaque{Name: "root", ModuleNS: tc.module, Format: tc.format, set: set})
+		child := newOpaque(opaque{Name: "child", ModuleNS: tc.module, Format: tc.format, set: set})
+		if err := tr.insert(nil, root, insertDefault); err != nil {
+			t.Fatal(err)
+		}
+		if err := tr.insert(root, child, insertDefault); err != nil {
+			t.Fatal(err)
+		}
+		if err := root.Unlink(); err != nil {
+			t.Fatal(err)
+		}
+		if got := root.Path(); got != "/root" {
+			t.Fatalf("root path: %s", got)
+		}
+		if got := child.Path(); got != "/root/child" {
+			t.Fatalf("child path: %s", got)
+		}
+		var out bytes.Buffer
+		if err := root.PrintXML(&out, PrintOptions{}); err != nil && tc.format == types.FormatXML {
+			t.Fatal(err)
+		}
+	}
+}
 
 // TestLydPath: lyd_path(LYD_PATH_STD) predicates and module prefixes (TD:2974, design 07 §1.10).
 func TestLydPath(t *testing.T) {

@@ -16,7 +16,7 @@ import (
 // stores the union type. Type.Base and Type.Typedef supply the oracle's value.type
 // and value.typedef fields.
 func (n *Node) ValueType() *yang.Type {
-	if !n.isTerm() {
+	if n == nil || !n.isTerm() {
 		return nil
 	}
 	return snap.TypeOf(n.value.Type())
@@ -37,7 +37,7 @@ type UnionMember struct {
 // internal selection index. Type is the declared member; RealType is the stored
 // type. It returns false for non-union values, including non-terminal and opaque nodes.
 func (n *Node) UnionMember() (UnionMember, bool) {
-	if !n.isTerm() || n.value.Type() == nil || n.value.Type().Base != schema.Union {
+	if n == nil || !n.isTerm() || n.value.Type() == nil || n.value.Type().Base != schema.Union {
 		return UnionMember{}, false
 	}
 	v, _ := n.value.Union().Member()
@@ -70,7 +70,7 @@ type OpaqueInfo struct {
 // It returns false for schema-bound nodes. Name and Value provide the node's
 // local name and original value.
 func (n *Node) OpaqueInfo() (OpaqueInfo, bool) {
-	if n.schema != nil {
+	if n == nil || n.schema != nil {
 		return OpaqueInfo{}, false
 	}
 	o := n.opaq
@@ -105,7 +105,7 @@ type Attr struct{ Name, Prefix, Module, Value string }
 // for schema-bound nodes or no attributes. Callers cannot mutate the tree
 // through the returned slice.
 func (n *Node) Attrs() []Attr {
-	if n.schema != nil || len(n.opaq.Attrs) == 0 {
+	if n == nil || n.schema != nil || len(n.opaq.Attrs) == 0 {
 		return nil
 	}
 	attrs := make([]Attr, len(n.opaq.Attrs))

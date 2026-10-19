@@ -549,6 +549,9 @@ func valueText(n *Node) string {
 
 // sibAt is the i-th sibling in libyang's order (schema nodes, then opaque nodes), nil past the end.
 func sibAt(sib *siblings, i int) *Node {
+	if sib == nil {
+		return nil
+	}
 	switch {
 	case i < len(sib.list):
 		return sib.list[i]

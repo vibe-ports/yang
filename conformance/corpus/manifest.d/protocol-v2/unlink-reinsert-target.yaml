@@ -1,0 +1,24 @@
+fixtures:
+  - id: protocol-v2/unlink-reinsert-target
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # retained context of an unlinked node duplicated into another libyang context
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas, ../ietf]
+      modules: [{name: pv2-mdapi}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {do: parse, format: json, data_type: config, data_file: data/mdapi-small.json}
+        - do: dup
+          node: /pv2-mdapi:c
+          options: [recursive]
+          target:
+            searchdirs: [schemas, ../ietf]
+            modules: [{name: pv2-mdapi}]
+            context_options: [no_yanglibrary]
+        - {do: unlink, node: /pv2-mdapi:c}
+        - {do: insert, detached: true}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/unlink-reinsert-target.json

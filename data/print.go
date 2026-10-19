@@ -50,8 +50,10 @@ type PrintOptions struct {
 // defaultCheck is what one print shares for isDefault: the evaluation context (one XPath budget
 // for the whole print, DefaultMaxXPathSteps) and the first budget error, which fails the print.
 type defaultCheck struct {
-	vc  *valCtx
-	err error
+	vc    *valCtx
+	views map[*Node]*Tree
+	diags []yang.Diagnostic
+	err   error
 }
 
 // npCont is lysc_is_np_cont: a non-presence container.
@@ -83,25 +85,56 @@ func (o PrintOptions) isDefault(n *Node) bool {
 	for _, d := range n.schema.Default {
 		v, diag := types.StoreDefault(n.schema, d)
 		if diag == nil && v.NeedsTree() {
-			t := n.treeOf()
-			if t == nil {
-				continue
-			}
 			dc := o.dflt
 			if dc == nil {
 				dc = &defaultCheck{}
 			}
+			t := n.treeOf()
+			if t == nil {
+				root := n
+				for root.parent != nil {
+					root = root.parent
+				}
+				if dc.views == nil {
+					dc.views = map[*Node]*Tree{}
+				}
+				t = dc.views[root]
+				if t == nil {
+					// A detached subtree is the validation root for its values. This
+					// view is read-only: printing must not link leafrefs (D-0128).
+					t = newTree(ctxOf(root))
+					if root.schema == nil {
+						t.top.opq = []*Node{root}
+					} else {
+						t.top.list = []*Node{root}
+						t.top.contexts = map[*schema.Set]int{ctxOf(root): 1}
+					}
+					dc.views[root] = t
+				}
+			}
 			if dc.err != nil {
 				return false
 			}
+			set := ctxOf(n)
+			if set == nil {
+				set = t.context() // ownerless test schema
+			}
 			if dc.vc == nil || dc.vc.t != t {
-				dc.vc = &valCtx{t: t, log: &logger{set: t.set}}
+				dc.vc = &valCtx{t: t, log: &logger{set: set}}
+			} else {
+				dc.vc.log.set = set
 			}
 			tt := &typeTree{vc: dc.vc, n: n, readOnly: true}
+			before := len(dc.vc.log.diags)
 			if v, diag = types.ValidateTree(n.schema.Type, v, tt); tt.err != nil {
 				dc.err = tt.err
+				dc.diags = append(dc.diags, dc.vc.log.diags[before:]...)
 				return false
 			}
+			if diag != nil {
+				_ = dc.vc.log.storeErr(n, nil, diag)
+			}
+			dc.diags = append(dc.diags, dc.vc.log.diags[before:]...)
 		}
 		if diag == nil && v.Canonical() == n.value.Canonical() {
 			return true
@@ -163,13 +196,13 @@ func (o PrintOptions) shouldPrint(n *Node, flags printopts.Flags) bool {
 // PrintJSON writes the top-level siblings of the tree as RFC 7951 JSON, as lyd_print_all with
 // LYD_JSON and LYD_PRINT_WITHSIBLINGS: 2-space indentation unless o.Shrink.
 func (t *Tree) PrintJSON(w io.Writer, o PrintOptions) error {
-	return printData(w, t.set, o, slices.Collect(t.top.all()), 0, true, printJSON)
+	return printData(w, t.context(), o, slices.Collect(t.top.all()), 0, true, printJSON)
 }
 
 // PrintXML writes the top-level siblings of the tree as XML, as lyd_print_all with LYD_XML and
 // LYD_PRINT_WITHSIBLINGS.
 func (t *Tree) PrintXML(w io.Writer, o PrintOptions) error {
-	return printData(w, t.set, o, slices.Collect(t.top.all()), 0, true, printXML)
+	return printData(w, t.context(), o, slices.Collect(t.top.all()), 0, true, printXML)
 }
 
 // PrintJSON writes n and its descendants, not its siblings, as RFC 7951 JSON (lyd_print_tree with
@@ -182,15 +215,12 @@ func (n *Node) PrintXML(w io.Writer, o PrintOptions) error { return n.print(w, o
 // print is lyd_print_tree: n with its real siblings, so that leaf-list arrays and empty
 // (leaf-)lists see the instances around it as libyang does.
 func (n *Node) print(w io.Writer, o PrintOptions, f func(*printer, []*Node, int) error) error {
-	root := n
-	for root.parent != nil {
-		root = root.parent
+	if n == nil {
+		return printData(w, nil, o, nil, 0, false, f)
 	}
-	if root.tree == nil {
-		return (&logger{}).done(argErr("node (not in a tree)", "lyd_print_tree")) // libyang nodes always have a context
-	}
-	sibs := slices.Collect(n.siblingsOf().all())
-	return printData(w, root.tree.set, o, sibs, slices.Index(sibs, n), false, f)
+	set := ctxOf(n)
+	sibs := slices.Collect(sibsOf(n).all())
+	return printData(w, set, o, sibs, slices.Index(sibs, n), false, f)
 }
 
 // printData runs f over sibs from index from: all of them with siblings, else only sibs[from].
@@ -322,6 +352,14 @@ func (p *printer) enter() error {
 	}
 	p.depth++
 	return nil
+}
+
+// nodeContext is LYD_CTX(n), with the print's context for ownerless test schemas.
+func (p *printer) nodeContext(n *Node) *schema.Set {
+	if set := ctxOf(n); set != nil {
+		return set
+	}
+	return p.set
 }
 
 func (p *printer) shouldPrint(n *Node) bool { return p.opts.shouldPrint(n, p.flags) }

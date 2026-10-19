@@ -43,7 +43,7 @@ func (op diffOp) String() string { return [...]string{"create", "delete", "repla
 // implicit-node and XPath budgets.
 func (t *Tree) ValidateDiff(ctx context.Context, o ValidateOptions) (diff *Tree, d []yang.Diagnostic, err error) {
 	journal := beginHashTransaction(t)
-	dt := newTree(t.set)
+	dt := newTree(t.context())
 	defer dt.work.beginHashWork()()
 	d, err = t.validateAll(ctx, o, Budget{}, dt.valDiffAdd)
 	if dt.work.hashErr != nil {
@@ -83,7 +83,7 @@ func (t *Tree) ValidateModuleDiff(ctx context.Context, module string, o Validate
 		return nil, d, err
 	}
 	journal := beginHashTransaction(t)
-	dt := newTree(t.set)
+	dt := newTree(t.context())
 	defer dt.work.beginHashWork()()
 	d, err = t.validateModule(ctx, mod, o, Budget{}, dt.valDiffAdd)
 	if dt.work.hashErr != nil {
@@ -120,6 +120,9 @@ func listPredicate(n *Node) string {
 // prevInst is the previous sibling of n when it is an instance of the same schema node.
 func prevInst(n *Node) *Node {
 	sib := n.siblingsOf()
+	if sib == nil {
+		return nil
+	}
 	for i := len(sib.list) - 1; i > 0; i-- {
 		if sib.list[i] == n {
 			if p := sib.list[i-1]; p.schema == n.schema {
@@ -153,7 +156,7 @@ func (t *Tree) valDiffAdd(n *Node, op diffOp) error {
 			a.value = str("")
 		}
 	}
-	src := newTree(t.set)
+	src := newTree(t.context())
 	if _, err := src.diffAdd(n, op, a); err != nil {
 		return err
 	}
@@ -163,12 +166,16 @@ func (t *Tree) valDiffAdd(n *Node, op diffOp) error {
 // yangMeta adds the metadata name of the module yang with the value val to n
 // (lyd_new_meta with LYD_NEW_VAL_STORE_ONLY).
 func (t *Tree) yangMeta(n *Node, name, val string) error {
-	mod := t.set.Implemented("yang")
+	set := ctxOf(n)
+	if set == nil { // a detached node of a hand-built schema has no Owner
+		set = t.context()
+	}
+	mod := set.Implemented("yang")
 	ant := annotation(mod, name)
 	if ant == nil {
 		return &opError{"LY_EINT", fmt.Sprintf("Annotation \"yang:%s\" not found.", name)} // libyang asserts the module
 	}
-	v, d := types.StoreOnly(ant.Type, val, types.FormatJSON, types.HintData, types.ModuleNames{Set: t.set}, n.schema)
+	v, d := types.StoreOnly(ant.Type, val, types.FormatJSON, types.HintData, types.ModuleNames{Set: set}, n.schema)
 	if d != nil {
 		return &opError{"LY_EVALID", d.Msg}
 	}
@@ -177,10 +184,40 @@ func (t *Tree) yangMeta(n *Node, name, val string) error {
 	return nil
 }
 
-// findYangMeta is lyd_diff_find_meta / lyd_find_meta(…, "yang:name"): the index of the metadata
-// name of the module yang of n, -1 if there is none.
+// findYangMeta is lyd_diff_find_meta: the index of the metadata name of any revision of the
+// module named yang, -1 if there is none. The C helper compares module names, not identities
+// (diff.c:165-184).
 func findYangMeta(n *Node, name string) int {
-	for i := range metasNamed(n, "yang", name) {
+	for i := range metasNamedModuleName(n, "yang", name) {
+		return i
+	}
+	return -1
+}
+
+// findYangLatest follows lyd_find_meta(NULL, "yang:name"): resolve the latest
+// revision in this node's context, then compare module identity.
+func findYangLatest(n *Node, name string) int {
+	for i := range metasNamedLatest(n, "yang", name) {
+		return i
+	}
+	return -1
+}
+
+// findYangModule compares against a module already selected by the libyang caller.
+func findYangModule(n *Node, mod *schema.Module, name string) int {
+	for i := range metasNamedModule(n, mod, name) {
+		return i
+	}
+	return -1
+}
+
+// findYangImplemented uses the implemented module object of the caller's context.
+func findYangImplemented(n *Node, name string) int {
+	set := ctxOf(n)
+	if set == nil {
+		return -1
+	}
+	for i := range metasNamedModule(n, set.Implemented("yang"), name) {
 		return i
 	}
 	return -1
@@ -189,15 +226,56 @@ func findYangMeta(n *Node, name string) int {
 // delYangMeta is lyd_diff_del_meta: the first metadata name of the module yang of n removed
 // (removeMeta).
 func delYangMeta(n *Node, name string) {
+	if n.schema == nil {
+		for i, a := range n.opaq.Attrs {
+			if yangDiffAttr(a, name) {
+				n.opaq.Attrs = slices.Delete(n.opaq.Attrs, i, i+1)
+				return
+			}
+		}
+		return
+	}
 	if i := findYangMeta(n, name); i >= 0 {
 		removeMeta(n, n.meta[i])
 	}
+}
+
+func yangDiffAttr(a attr, name string) bool {
+	return a.Name == name && (a.Format == types.FormatJSON && a.ModuleNS == "yang" ||
+		a.Format == types.FormatXML && a.ModuleNS == "urn:ietf:params:xml:ns:yang:1")
+}
+
+func hasOwnYangOp(n *Node) bool {
+	if n.schema != nil {
+		return findYangMeta(n, "operation") >= 0
+	}
+	for _, a := range n.opaq.Attrs {
+		if yangDiffAttr(a, "operation") {
+			return true
+		}
+	}
+	return false
 }
 
 // diffGetOp is lyd_diff_get_op: the operation of n or of its nearest parent with one (a parent's
 // replace does not count); found false when there is none.
 func diffGetOp(n *Node) (op diffOp, found bool) {
 	for p := n; p != nil; p = p.parent {
+		if p.schema == nil {
+			for _, a := range p.opaq.Attrs {
+				if !yangDiffAttr(a, "operation") {
+					continue
+				}
+				if a.Value == "replace" && p != n {
+					continue
+				}
+				v, ok := map[string]diffOp{"create": diffCreate, "delete": diffDelete, "replace": diffReplace, "none": diffNone}[a.Value]
+				if ok {
+					return v, true
+				}
+			}
+			continue
+		}
 		i := findYangMeta(p, "operation")
 		if i < 0 {
 			continue
@@ -217,7 +295,7 @@ func (t *Tree) diffOpOf(n *Node) (diffOp, error) {
 	op, ok := diffGetOp(n)
 	if !ok {
 		return 0, &diffError{items: []*opError{{"LY_EINVAL", fmt.Sprintf("Node \"%s\" without an operation.",
-			lydPath(t.set, n, false))}}, rc: "LY_EINT"}
+			lydPath(ctxOf(n), n, false))}}, rc: "LY_EINT"}
 	}
 	return op, nil
 }
@@ -262,6 +340,13 @@ func diffDone(lg *logger, err error) error {
 // diffChangeOp is lyd_diff_change_op.
 func (t *Tree) diffChangeOp(n *Node, op diffOp) error {
 	delYangMeta(n, "operation")
+	if n.schema == nil {
+		// lyd_diff_change_op uses lyd_new_attr, which stores a JSON-format attribute even
+		// when the opaque node was parsed from XML. XML prints it without a namespace.
+		a := attr{Name: "operation", ModuleNS: "yang", Value: op.String(), Format: types.FormatJSON, Hints: types.HintData}
+		n.opaq.Attrs = append(n.opaq.Attrs, a)
+		return nil
+	}
 	return t.yangMeta(n, "operation", op.String())
 }
 
@@ -269,6 +354,9 @@ func (t *Tree) diffChangeOp(n *Node, op diffOp) error {
 // user-ordered instance) and its parents up to the schema child of parent, connected to parent
 // or, without one, at the top of t; the topmost duplicated parent gets the operation none.
 func (t *Tree) diffDup(n *Node, op diffOp, parent *Node) (*Node, error) {
+	if n.schema == nil {
+		return nil, &opError{"LY_EINVAL", fmt.Sprintf("Cannot generate a diff for opaque node \"%s\".", n.Name())}
+	}
 	opts := dupNoMeta | dupWithFlags
 	if isUserOrdered(n.schema) {
 		opts |= dupNoLyds
@@ -276,7 +364,7 @@ func (t *Tree) diffDup(n *Node, op diffOp, parent *Node) (*Node, error) {
 	if op != diffReplace || !isUserOrdered(n.schema) || !n.schema.Config {
 		opts |= dupRecursive // a move applies to the user-ordered instance only, no descendants
 	}
-	dup, err := t.dupR(n, nil, false, insertDefault, opts)
+	dup, err := t.dupRIn(n, nil, false, insertDefault, opts, ctxOf(n))
 	if err != nil {
 		return nil, err
 	}
@@ -286,8 +374,13 @@ func (t *Tree) diffDup(n *Node, op diffOp, parent *Node) (*Node, error) {
 	}
 	top, orig := dup, n
 	for top.schema.DataParent() != nil && !compareSchemaEqual(top.schema.DataParent(), sparent, false) {
+		if orig.parent == nil {
+			// lyd_diff_dup passes the missing data parent to lyd_dup_single, which returns
+			// LY_EINVAL without a context diagnostic. Discard the partial diff.
+			return nil, rcError("LY_EINVAL")
+		}
 		orig = orig.parent
-		d, err := t.dupR(orig, nil, false, insertDefault, dupNoMeta|dupWithFlags)
+		d, err := t.dupRIn(orig, nil, false, insertDefault, dupNoMeta|dupWithFlags, ctxOf(orig))
 		if err != nil {
 			return nil, err
 		}
@@ -355,10 +448,10 @@ func (t *Tree) diffAdd(n *Node, op diffOp, a diffAttrs) (*Node, error) {
 		}
 		delYangMeta(diffParent, "operation")
 		for _, c := range diffParent.kids.nodes() {
-			if c.isKey() || findYangMeta(c, "operation") >= 0 {
+			if c.isKey() || hasOwnYangOp(c) {
 				continue
 			}
-			if err := t.yangMeta(c, "operation", diffNone.String()); err != nil {
+			if err := t.diffChangeOp(c, diffNone); err != nil {
 				return nil, err
 			}
 		}
@@ -370,7 +463,7 @@ func (t *Tree) diffAdd(n *Node, op diffOp, a diffAttrs) (*Node, error) {
 		}
 	}
 	if cur, found := diffGetOp(dup); !found || cur != op {
-		if err := t.yangMeta(dup, "operation", op.String()); err != nil {
+		if err := t.diffChangeOp(dup, op); err != nil {
 			return nil, err
 		}
 	}
@@ -440,7 +533,7 @@ type mergeOpts struct {
 func (t *Tree) diffMergeModule(src *Tree, o mergeOpts) error {
 	cache := &dupCache{}
 	for _, n := range src.top.nodes() {
-		if o.mod != nil && nodeModule(t.set, n) != o.mod {
+		if o.mod != nil && nodeModule(ctxOf(n), n) != o.mod { // lyd_owner_module(src_root), src/diff.c:2767-2770
 			continue // data of another module
 		}
 		if err := t.diffMergeR(n, nil, cache, o); err != nil {
@@ -482,6 +575,10 @@ func (t *Tree) diffMergeR(src, parent *Node, cache *dupCache, o mergeOpts) error
 		case diffDelete:
 			err = t.diffMergeDelete(dn, cur, src)
 		case diffNone:
+			if cur != diffDelete && src.schema == nil {
+				// src/diff.c:2691-2693 reads src_diff->schema before merge_none.
+				return &opError{"LY_EINVAL", fmt.Sprintf("Cannot merge operations for opaque node \"%s\".", src.Name())}
+			}
 			err = t.diffMergeNone(dn, cur, src)
 		}
 		if err != nil {
@@ -528,7 +625,17 @@ func (t *Tree) diffMergeR(src, parent *Node, cache *dupCache, o mergeOpts) error
 			opts |= dupNoLyds
 			order = insertLastBySchema
 		}
-		if dn, err = t.dupR(src, parent, false, order, opts); err != nil {
+		// lyd_diff_merge_r uses lyd_dup_single(src_diff, diff_parent, ...),
+		// whose context check precedes lyd_dup_r and any schema conversion.
+		if parent != nil && !sameSet(ctxOf(src), ctxOf(parent)) {
+			return &opError{"LY_EINVAL", "Different \"node\" and \"parent\" contexts used in node duplication."}
+		}
+		if parent == nil {
+			dn, err = t.dupRIn(src, nil, false, order, opts, ctxOf(src))
+		} else {
+			dn, err = t.dupR(src, parent, false, order, opts)
+		}
+		if err != nil {
 			return err
 		}
 		if parent == nil {
@@ -554,12 +661,12 @@ func (t *Tree) diffMergeR(src, parent *Node, cache *dupCache, o mergeOpts) error
 
 // diffMergeOpErr is LOGERR_MERGEOP.
 func (t *Tree) diffMergeOpErr(n *Node, src, trg diffOp) error {
-	return &opError{"LY_EINVAL", fmt.Sprintf("Unable to merge operation \"%s\" with \"%s\" for node \"%s\".", trg, src, lydPath(t.set, n, false))}
+	return &opError{"LY_EINVAL", fmt.Sprintf("Unable to merge operation \"%s\" with \"%s\" for node \"%s\".", trg, src, lydPath(ctxOf(n), n, false))}
 }
 
 // metaErr is LOGERR_META.
 func (t *Tree) metaErr(name string, n *Node) error {
-	return &opError{"LY_EINVAL", fmt.Sprintf("Failed to find metadata \"%s\" for node \"%s\".", name, lydPath(t.set, n, false))}
+	return &opError{"LY_EINVAL", fmt.Sprintf("Failed to find metadata \"%s\" for node \"%s\".", name, lydPath(ctxOf(n), n, false))}
 }
 
 // diffMergeCreate is lyd_diff_merge_create; with defaults (LYD_DIFF_MERGE_DEFAULTS) a leaf
@@ -582,11 +689,11 @@ func (t *Tree) diffMergeCreate(dm *Node, cur diffOp, src *Node, defaults bool) (
 		case dm.schema.Kind == schema.List:
 			name, orig = "key", "orig-key"
 		}
-		mi := findYangMeta(src, name)
+		mi := findYangLatest(src, name)
 		if mi < 0 {
 			return nil, t.metaErr("yang:"+name, src)
 		}
-		oi := findYangMeta(dm, orig)
+		oi := findYangLatest(dm, orig)
 		if oi < 0 {
 			return nil, t.metaErr("yang:"+orig, dm)
 		}
@@ -664,6 +771,9 @@ func defaultEquals(n *Node) bool {
 // lastInst is the last instance of n's schema node from n on.
 func lastInst(n *Node) *Node {
 	sib, last := n.siblingsOf(), n
+	if sib == nil {
+		return last
+	}
 	for i := sib.indexOf(sib.list, n) + 1; i < len(sib.list) && sib.list[i].schema == n.schema; i++ {
 		last = sib.list[i]
 	}
@@ -677,6 +787,9 @@ func (t *Tree) diffMergeDelete(dm *Node, cur diffOp, src *Node) error {
 	}
 	switch cur {
 	case diffCreate: // created, then deleted
+		if dm.schema == nil {
+			return &opError{"LY_EINVAL", fmt.Sprintf("Cannot merge operations for opaque node \"%s\".", src.Name())}
+		}
 		if err := t.diffChangeOp(dm, diffNone); err != nil {
 			return err
 		}
@@ -686,6 +799,9 @@ func (t *Tree) diffMergeDelete(dm *Node, cur diffOp, src *Node) error {
 			}
 		}
 	case diffReplace:
+		if dm.schema == nil {
+			return &opError{"LY_EINVAL", fmt.Sprintf("Cannot merge operations for opaque node \"%s\".", src.Name())}
+		}
 		name := "orig-value"
 		switch {
 		case isDupInstList(dm.schema):
@@ -695,14 +811,14 @@ func (t *Tree) diffMergeDelete(dm *Node, cur diffOp, src *Node) error {
 		case isUserOrdered(dm.schema):
 			name = "value"
 		default: // a leaf: back to the original value and default flag
-			oi := findYangMeta(dm, "orig-value")
+			oi := findYangLatest(dm, "orig-value")
 			if oi < 0 {
 				return t.metaErr("yang:orig-value", dm)
 			}
 			if t.changeTerm(dm, dm.meta[oi].value.Canonical()) != "" {
-				return &opError{"LY_EINVAL", fmt.Sprintf("Unexpected value of node \"%s\" in target diff.", lydPath(t.set, dm, false))}
+				return &opError{"LY_EINVAL", fmt.Sprintf("Unexpected value of node \"%s\" in target diff.", lydPath(ctxOf(dm), dm, false))}
 			}
-			di := findYangMeta(dm, "orig-default")
+			di := findYangLatest(dm, "orig-default")
 			if di < 0 {
 				return t.metaErr("yang:orig-default", dm)
 			}
@@ -728,7 +844,7 @@ func (t *Tree) diffMergeDelete(dm *Node, cur diffOp, src *Node) error {
 		return nil // a key-less list: all the descendants act as keys
 	}
 	for _, c := range dm.kids.nodes() { // the descendants yet to be merged keep the old operation
-		if c.isKey() || findYangMeta(c, "operation") >= 0 {
+		if c.isKey() || hasOwnYangOp(c) {
 			continue
 		}
 		var found *Node
@@ -782,7 +898,7 @@ func (t *Tree) diffIsRedundant(n *Node) bool {
 		if n.schema == nil {
 			return true // an opaque node with none
 		}
-		for _, m := range n.meta { // lyd_diff_is_redundant_meta: diff metadata on the node
+		for _, m := range n.meta { // libyang v5.8.6 src/diff.c: lyd_diff_is_redundant_meta
 			if strings.HasPrefix(m.name, "meta-") {
 				return false
 			}
@@ -798,7 +914,7 @@ func (t *Tree) diffIsRedundant(n *Node) bool {
 			}
 		}
 		if n.isTerm() {
-			i := findYangMeta(n, "orig-default")
+			i := findYangImplemented(n, "orig-default")
 			return i >= 0 && n.meta[i].value.Bool() == (n.flags&FlagDefault != 0)
 		}
 	}

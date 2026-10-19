@@ -64,6 +64,14 @@ func linkLeafrefNode(target, lref *Node) {
 	lref.links.targets = append(lref.links.targets, target)
 }
 
+func linkLeafrefNodeChecked(target, lref *Node) error {
+	if set := ctxOf(target); set != nil && !set.LeafrefLinking {
+		return errLinksDenied
+	}
+	linkLeafrefNode(target, lref)
+	return nil
+}
+
 // removeValue is LY_ARRAY_REMOVE_VALUE: the first n leaves the array, the last item taking its
 // place.
 func removeValue(a []*Node, n *Node) []*Node {
@@ -332,8 +340,9 @@ func (c *bulkLinkCleaner) free(n *Node) {
 func freeSubtreeLinks(_ *schema.Set, n *Node) {
 	// A payload may retain a context with linking enabled even when its outer
 	// tree has linking disabled. Destruction must visit all owned payloads.
+	cleaner := bulkLinkCleaner{}
 	for d := range n.allAny() {
-		freeLinks(d)
+		cleaner.free(d)
 	}
 }
 
@@ -341,7 +350,7 @@ func freeSubtreeLinks(_ *schema.Set, n *Node) {
 // included) is linked with the targets lyplg_type_resolve_leafref finds; a value without one is
 // skipped.
 func (t *Tree) linkLeafrefs(ctx context.Context, l *logger) error {
-	if !t.set.LeafrefLinking {
+	if !t.context().LeafrefLinking {
 		return errLinksDenied
 	}
 	vc := &valCtx{t: t, log: l, budget: xpathBudget{ctx: ctx}}
@@ -376,7 +385,9 @@ func (vc *valCtx) linkType(n *Node, v types.Value, t *schema.Type) error {
 		// unchecked here, but never gets there: Load rejects such a module ("Target of leafref
 		// ... is disabled")
 		for _, target := range targets {
-			linkLeafrefNode(target, n)
+			if err := linkLeafrefNodeChecked(target, n); err != nil {
+				return err
+			}
 		}
 	case schema.Union:
 		if u := v.Union(); u != nil {
@@ -398,7 +409,7 @@ func (vc *valCtx) linkType(n *Node, v types.Value, t *schema.Type) error {
 // also on success: a leafref path whose evaluation fails (a dangling deref()) is logged at its
 // node and the link skipped. The XPath evaluations stop when ctx is done.
 func (t *Tree) LinkLeafrefs(ctx context.Context) ([]yang.Diagnostic, error) {
-	lg := &logger{set: t.set}
+	lg := &logger{set: t.context()}
 	if t.top.len() == 0 {
 		return nil, lg.done(argErr("tree", "lyd_leafref_link_node_tree"))
 	}
@@ -416,7 +427,7 @@ func (t *Tree) LinkLeafrefs(ctx context.Context) ([]yang.Diagnostic, error) {
 // leafref, its targets, in link order; nil without a record or without
 // yang.Options.LeafrefLinking.
 func (n *Node) LeafrefLinks() (leafrefs, targets []*Node) {
-	set := setOf(n)
+	set := ctxOf(n)
 	if set == nil {
 		return nil, nil
 	}

@@ -298,6 +298,7 @@ func (t *Tree) Print(w io.Writer, f Format, o PrintOptions) error // PrintOption
 func (t *Tree) NewPath(path, value string, o NewPathOptions) (*Node, error) // o.Update
 func (t *Tree) Find(path string) (*Node, error)
 func (n *Node) Remove() error
+func (n *Node) Unlink() error
 func (t *Tree) Merge(src *Tree) error
 func Diff(first, second *Tree, o DiffOptions) (*Tree, error)          // lyd_diff_siblings of the top levels; DiffOptions{Defaults, Meta bool}
 func DiffSiblings(first, second *Node, o DiffOptions) (*Tree, error)  // lyd_diff_siblings
@@ -538,7 +539,7 @@ a fixture with `assert` (extractor, inventory §5.4).
 | metadata | annotation lookup + store, `default`, `yang:operation`, with-defaults tags | full RFC 7952 / origin inheritance M4–M5 |
 | opaque nodes | `unknown: opaque`, printing, validation error | `NewOpaq`, `Node.Attrs` and the envelopes in M5 (§6.1.5) |
 | diff | implicit diff (create/delete/none); since #137 Diff, ApplyDiff, MergeDiff, ReverseDiff (PoC #133) | anydata/anyxml values in diffs (M5) |
-| edits | NewPath(Update), Find, Remove, Merge without options | M4: NewTerm, NewInner, NewList, Insert, SetValue, Dup, DupSiblings (§6.1.2, §6.1.3); `ApplyEdit` M6 |
+| edits | NewPath(Update), Find, Remove, Unlink, Merge without options | M4: NewTerm, NewInner, NewList, Insert, SetValue, Dup, DupSiblings (§6.1.2, §6.1.3); `ApplyEdit` M6 |
 | leafref links (`LY_CTX_LEAFREF_LINKING`) | ported internally (data/links.go) | M4: `Options.LeafrefLinking`, `LeafrefLinks`, `LinkLeafrefs` (§6.1.3) |
 | extension data (`LYD_EXT`, schema-mount, yang-data, structure) | never reached: compile rejects schema-mount (U-0024); a data node of a yang-data/structure tree fails the parse with `ErrUnsupported` (U-0060) | later |
 | LYB, `lyd_parse_value_fragment` | no | out of v1 |
@@ -698,7 +699,9 @@ without changing this contract. doc.go states this rule when ValidateOp is expor
 
 - `parent` nil: the node becomes a top-level node of t. This is `lyd_new_*(NULL, …)` followed by
   `lyd_insert_sibling` into t, exactly the lyoracle `insert_term`/`insert_inner` steps (#99).
-  `parent` must be a node of t: else LY_EINVAL `argErr("parent (not in the tree)", fn)`.
+  `parent` may instead be detached if it retains t's snapshot, matching libyang's retained
+  `LYD_CTX`; an attached parent in another tree is LY_EINVAL `argErr("parent (not in the tree)",
+  fn)`.
 - `name` is `"module:node"`, or `"node"` below a parent (libyang's `module` NULL = the parent's
   module). The module must be implemented in t's snapshot. A top-level name without a module is
   `LY_CHECK_ARG_RET(parent || module)`, logged with `__func__`: LY_EINVAL "Invalid argument parent || module
@@ -722,9 +725,8 @@ without changing this contract. doc.go states this rule when ValidateOp is expor
   refusals.
 - `Insert`: n leaves the tree it is in (libyang unlinks it). If n is the first top-level node of
   another tree, all that tree's top-level nodes move (libyang inserts a whole unlinked sibling
-  list; data/move.go `sibList`). n over another snapshot than t is a port refusal (lyd_insert_child
-  and lyd_insert_sibling have no context check; a Go tree has one snapshot): LY_EINVAL
-  `argErr("node (another schema snapshot)", fn)`. The schema checks are `lyd_insert_check_schema`'s. A key cannot be inserted or moved.
+  list; data/move.go `sibList`). Top-level nodes retain their own snapshots when moved between
+  trees; the schema checks are `lyd_insert_check_schema`'s. A key cannot be inserted or moved.
 - `SetValue`: `changed` is true for LY_SUCCESS; LY_EEXIST (same value, the default flag cleared)
   and LY_ENOT (no change) are `false, nil`. The caller can tell them apart by `FlagDefault` before
   the call. An opaque node fails libyang's `term->schema` check and another non-term node the
@@ -743,14 +745,16 @@ without changing this contract. doc.go states this rule when ValidateOp is expor
 | `n.LeafrefLinks()` | `lyd_leafref_get_links(n, &rec)` (TD:3804) | read (of n's tree and of trees linked to it, §6.1) |
 | `yang.Options.LeafrefLinking` | `LY_CTX_LEAFREF_LINKING` (context.h:226) | context option |
 
-- Dup copies n (with `Recursive` its subtree) into t: under `parent` (a node of t), or with parent
-  nil as top-level nodes of t. A fresh `NewTree(s)` gives libyang's unlinked copy. With
+- Dup copies n (with `Recursive` its subtree) into t: under `parent` (a node of t or a detached
+  node retaining its snapshot), or with parent nil as top-level nodes of t. A fresh `NewTree(s)`
+  gives libyang's unlinked copy. With
   `WithParents`, the parents of n up to `parent` are copied too, and the result is the copy of n
   (libyang's `*dup`). When t's snapshot is not n's, this is the `_to_ctx` variant. That is the way
   to move a tree onto a newer snapshot after `Context.Load` (U-0045: trees pin their snapshot).
   The internal port is data/dup.go `dupTo`/`dupNodes`; D-0065 and D-0066 apply as registered.
-  Errors: LY_EINVAL for a node or parent not in a tree, a parent not in t, and libyang's context
-  messages; a schema node missing in the target snapshot is `lyd_find_schema_ctx`'s LY_ENOTFOUND.
+  Errors: LY_EINVAL for a node without a retained context, an attached parent not in t, and
+  libyang's context messages; a schema node missing in the target snapshot is
+  `lyd_find_schema_ctx`'s LY_ENOTFOUND.
 - Diagnostics: Dup and DupSiblings log on success. Across snapshots, `lyd_dup_meta_single_to_ctx`
   logs the store errors of a metadata value the target annotation rejects ("…value duplication
   failed."), drops that metadata and the duplicate still succeeds (port-map dup rows, Go test
@@ -892,7 +896,7 @@ of a registry entry. So #105 cannot pass with them unsupported; they must agree.
 | `lyd_new_list2` (keys as a predicate string) | `NewPath("/m:l[k='v']", …)` already does it, with the same predicate parser |
 | `LYD_NEW_VAL_STORE_ONLY`, `LYD_NEW_VAL_CANON`, `lyd_new_term_raw`, `lyd_new_term_bin`, `lyd_change_term_canon` | speed knobs over the JSON value form; no fixture uses them; add when a user shows a need |
 | `lyd_new_opaq`, `lyd_new_opaq2`, `lyd_new_attr*` | not in M4: exported in M5 with the envelopes (§6.1.5); internal until then (#98) |
-| `lyd_insert_before`, `lyd_insert_after`, `lyd_unlink_*` | user-ordered positioning belongs to `ApplyEdit` (M6, `yang:insert`); `Remove` covers unlinking |
+| `lyd_insert_before`, `lyd_insert_after`, `lyd_unlink_siblings` | user-ordered positioning and sibling-run operations belong to `ApplyEdit` (M6, `yang:insert`); single-tree `lyd_unlink_tree` is `Node.Unlink` |
 | `LYD_DUP_NO_LYDS` | leaves (leaf-)list instances unsorted, against the tree's own order invariant; a speed knob. seq/dup-no-lyds stays unsupported under **U-0105** |
 | `LYD_DUP_NO_EXT`, `LYD_DUP_WITH_PRIV`, `lyd_dup_meta_single` | nothing to act on (no extension data, no private pointers); metadata copies come with Dup |
 | `struct lyd_leafref_links_rec`, LY_EDENIED/LY_ENOTFOUND of `lyd_leafref_get_links` | two slices carry the record; the error cases are "no links" |

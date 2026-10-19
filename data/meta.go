@@ -249,9 +249,24 @@ func compareMeta(a, b *meta) bool {
 	return a.mod == b.mod && a.name == b.name && types.Equal(a.value, b.value)
 }
 
-// findMeta is lyd_find_meta: the first of metas that is the annotation name ("prefix:name" with
-// the latest module of that name, else of mod); nil if none (an invalid name or unknown module is
-// logged).
+// latestModule is ly_ctx_get_module_latest by name: unlike schema.Set.Module(name, ""), an
+// implemented older revision does not take precedence over a newer import-only revision.
+func latestModule(set *schema.Set, name string) *schema.Module {
+	var latest *schema.Module
+	if set == nil {
+		return nil
+	}
+	for m := range set.All(name) {
+		if latest == nil || m.Revision > latest.Revision {
+			latest = m
+		}
+	}
+	return latest
+}
+
+// findMeta is lyd_find_meta (tree_data.c:3137-3179): the first of metas that is the annotation
+// name ("prefix:name" with the latest module of that name, else of mod); nil if none (an invalid
+// name or unknown module is logged).
 func (l *logger) findMeta(metas []*meta, mod *schema.Module, name string) (*meta, error) {
 	if mod == nil && !strings.Contains(name, ":") {
 		return nil, argErr("module || strchr(name, ':')", "lyd_find_meta")
@@ -259,12 +274,19 @@ func (l *logger) findMeta(metas []*meta, mod *schema.Module, name string) (*meta
 	if len(metas) == 0 {
 		return nil, nil
 	}
+	if mod != nil && mod.Owner != nil && metas[0].mod.Owner != nil && mod.Owner != metas[0].mod.Owner {
+		return nil, l.logErr("LY_EINVAL", "Different contexts mixed in a \"lyd_find_meta\" function call.")
+	}
 	prefix, local, hasPrefix, shown, ok := parseNodeID(name)
 	if !ok {
 		return nil, l.logErr("LY_EINVAL", "Metadata name \"%s\" is not valid.", shown)
 	}
 	if hasPrefix {
-		if mod = l.set.Module(prefix, ""); mod == nil {
+		set := metas[0].mod.Owner
+		if set == nil { // hand-built schemas without module ownership retain the caller's context
+			set = l.set
+		}
+		if mod = latestModule(set, prefix); mod == nil {
 			return nil, l.logErr("LY_EINVAL", "Module \"%s\" not found.", prefix)
 		}
 	}

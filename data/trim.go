@@ -66,7 +66,7 @@ func appendTrimSubtree(dst *[]*Node, root *Node, charge func(int64) bool) bool {
 // exclusive access to t.
 func (t *Tree) TrimXPath(expr string, o XPathOptions) ([]yang.Diagnostic, error) {
 	defer t.work.beginHashWork()()
-	l := &logger{set: t.set}
+	l := &logger{set: t.context()}
 	if o.Node != nil {
 		err := l.done(l.logErr("LY_EINVAL", "Invalid argument %s (%s()).", "XPathOptions.Node (always the first top-level node)", "lyd_trim_xpath"))
 		return l.diags, err
@@ -95,7 +95,7 @@ func (t *Tree) TrimXPath(expr string, o XPathOptions) ([]yang.Diagnostic, error)
 	}
 	// lyd_trim_xpath uses lyd_find_xpath: parsing has no context-node location,
 	// although evaluation starts at the first node of the retained tree.
-	ns := jsonNS{set: t.set}
+	ns := jsonNS{set: t.context()}
 	compiled, err := xpath.Compile(expr, ns)
 	if err != nil {
 		err = l.done(queryErr(l, nil, err))

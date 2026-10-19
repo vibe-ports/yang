@@ -238,7 +238,13 @@ func (w *anyWork) createAny(t *Tree, sn *schema.Node, child *Node, value *string
 	if err := w.ctx.Err(); err != nil {
 		return nil, nil, err
 	}
-	n := &Node{schema: sn, flags: FlagNew, any: &anyValue{}, payloadSet: t.set}
+	// lyd_create_any works in schema->module->ctx, which in a mixed-context tree
+	// need not be the tree's constructor snapshot.
+	set := t.set
+	if sn.Module != nil && sn.Module.Owner != nil {
+		set = sn.Module.Owner
+	}
+	n := &Node{schema: sn, flags: FlagNew, any: &anyValue{}, payloadSet: set}
 	if n.refreshHash(&t.work); t.work.hashErr != nil { // lyd_create_any's lyd_hash
 		return nil, nil, t.work.hashErr
 	}
@@ -250,7 +256,7 @@ func (w *anyWork) createAny(t *Tree, sn *schema.Node, child *Node, value *string
 	}
 	var diags []yang.Diagnostic
 	if value != nil && (sn.Kind == schema.AnyData || tryParse && hints&0x0fff == 0) {
-		tr, parsedDiags, err := w.createAnyDatatree(t.set, *value)
+		tr, parsedDiags, err := w.createAnyDatatree(set, *value)
 		// lyd_create_any passes log=1 for required anydata parsing (:260),
 		// but log=0 for speculative anyxml parsing (:282), even on success.
 		if sn.Kind == schema.AnyData {
@@ -394,7 +400,7 @@ func (n *Node) copyAnyValue(w *anyWork, child *Node, value *string, hints types.
 			src.any.children.list = append(src.any.children.list, c)
 		}
 	}
-	d, err := newTree(set).dupWork(src, nil, false, insertDefault, 0, w)
+	d, err := newTree(set).dupWork(src, nil, false, insertDefault, 0, set, w)
 	if err != nil {
 		return err
 	}

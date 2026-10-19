@@ -384,7 +384,7 @@ func TestAnyExactNodeBudget(t *testing.T) {
 		v := value
 		mustLink(t, tr.insert(root, &Node{schema: x, any: &anyValue{text: &v}, payloadSet: tr.set}, insertLast))
 	}
-	d, err := tr.dupWork(root, nil, false, insertDefault, 0, newAnyWork(context.Background(), Budget{MaxNodes: 1}))
+	d, err := tr.dupWork(root, nil, false, insertDefault, 0, tr.dupDest(nil), newAnyWork(context.Background(), Budget{MaxNodes: 1}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -522,7 +522,11 @@ func TestAnyComparisonFirstMatch(t *testing.T) {
 			if cross {
 				dst, da, _ := anyFixture()
 				db := &schemaBuilder{t: t, set: dst.set}
-				other = db.add(da.Module, nil, schema.LeafList, "u", &schema.Type{Base: schema.String})
+				// The same union shape in the other context: lyd_hash covers the
+				// member index with the value's LYB form, so a string member never
+				// hashes like a numeric one across contexts either.
+				other = db.add(da.Module, nil, schema.LeafList, "u", &schema.Type{Base: schema.Union,
+					Union: []*schema.Type{{Base: schema.Uint8}, {Base: schema.String}}})
 			}
 			left, right := &Node{schema: a, any: &anyValue{}}, &Node{schema: a, any: &anyValue{}}
 			mustLink(t, tr.insert(nil, left, insertLast))
@@ -535,7 +539,7 @@ func TestAnyComparisonFirstMatch(t *testing.T) {
 				x, y := makeNode(h), makeNode(h)
 				if cross {
 					y.schema = other
-					v, d := types.Store(other.Type, "1", types.FormatJSON, types.HintString, nil, other)
+					v, d := types.Store(other.Type, "1", types.FormatJSON, h, nil, other)
 					if d != nil {
 						t.Fatal(d)
 					}

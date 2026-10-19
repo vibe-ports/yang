@@ -131,7 +131,7 @@ func validateOpNode(ctx context.Context, set *schema.Set, opNode *Node, dep *Tre
 		restore()
 		return nil, linkErr
 	}
-	vc := &valCtx{t: t, log: &logger{set: t.set}, nodeWhen: &nodeSet{}, nodeTypes: &nodeSet{}, metaTypes: &[]*meta{},
+	vc := &valCtx{t: t, log: &logger{set: t.context()}, nodeWhen: &nodeSet{}, nodeTypes: &nodeSet{}, metaTypes: &[]*meta{},
 		budget: xpathBudget{ctx: ctx, max: b.MaxXPathSteps}, output: oo.reply, op: oo, charge: implicitCharge(ctx, b)}
 	err := vc.validateOp(opNode)
 	restore()

@@ -1,0 +1,22 @@
+{
+  "id": "protocol-v2/diff-merge-cross-context-meta-create-conflict",
+  "request": {
+    "base_dir": ".",
+    "op": "sequence",
+    "searchdirs": ["schemas"],
+    "modules": [{"name": "pv2-mdapi"}],
+    "context_options": ["no_yanglibrary"],
+    "steps": [
+      {"do": "diff", "format": "json", "data_type": "config", "parse_only": true,
+       "data": "{\"pv2-mdapi:c\":{\"s\":\"x\"}}",
+       "target": {"searchdirs": ["schemas"], "modules": [{"name": "pv2-mdapi"}], "context_options": ["no_yanglibrary"]}},
+      {"do": "diff_merge", "format": "xml", "data_type": "config",
+       "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-mdapi\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\" yang:meta-replace=\"pv2-mdapi:num=2\" yang:meta-orig=\"pv2-mdapi:num=1\"><s yang:operation=\"none\">x</s></c>"},
+      {"do": "diff_merge", "format": "xml", "data_type": "config",
+       "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-mdapi\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\" yang:meta-create=\"pv2-mdapi:num=1\"><s yang:operation=\"none\">x</s></c>"}
+    ]
+  },
+  "rfc": [],
+  "source": {"commit": null, "license": "BSD-3-Clause", "url": "hand-written (this repo)"},
+  "verdict": "invalid"
+}

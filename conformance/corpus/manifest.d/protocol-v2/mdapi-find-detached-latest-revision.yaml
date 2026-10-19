@@ -1,0 +1,21 @@
+fixtures:
+  # lyd_find_meta resolves the prefix with ly_ctx_get_module_latest, so the metadata of the
+  # implemented 2020 revision does not match the loaded, import-only 2021 revision.
+  - id: protocol-v2/mdapi-find-detached-latest-revision
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # lyd_find_meta API revision selection; no RFC lookup semantics
+    areas: [codecs, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas, ../ietf]
+      modules:
+        - {name: pv2-find-meta, revision: "2020-01-01"}
+        - {name: pv2-find-meta-loader}
+        - {name: pv2-mdapi}
+      steps:
+        - {do: parse, format: json, data_type: config, data: '{"pv2-mdapi:c":{"s":"x","@s":{"pv2-find-meta:note":"old"}}}'}
+        - {do: find_meta, node: /pv2-mdapi:c/s, name: "pv2-find-meta:note"}
+        - {do: unlink, node: /pv2-mdapi:c/s}
+        - {do: find_meta, name: "pv2-find-meta:note"}
+    golden: golden/mdapi-find-detached-latest-revision.json

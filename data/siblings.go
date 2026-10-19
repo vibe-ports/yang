@@ -87,7 +87,8 @@ type siblings struct {
 	gen          uint64                       // changes with every insertion and removal
 	work         *workCounter                 // the tree's work counter once a node was linked: all and indexOf count visits
 
-	schemaUnordered bool // a copy or move retained a different schema order
+	schemaUnordered bool                // a copy or move retained a different schema order
+	contexts        map[*schema.Set]int // linked schema nodes by retained context; lookups only read its size
 }
 
 type recordChain struct {
@@ -269,6 +270,34 @@ func recordDrop(c *recordChain, byNode map[*Node]*record, n *Node) bool {
 func (s *siblings) visit() {
 	if s.work != nil && s.work.visits { // tests only
 		s.work.Add(1)
+	}
+}
+
+// addContext and dropContext maintain the context mix as schema siblings change. Charging the
+// update makes the context bookkeeping visible to the counted scaling tests.
+func (s *siblings) addContext(n *Node) {
+	if n.schema == nil {
+		return
+	}
+	s.touch()
+	s.visit()
+	if s.contexts == nil {
+		s.contexts = make(map[*schema.Set]int)
+	}
+	s.contexts[ctxOf(n)]++
+}
+
+func (s *siblings) dropContext(n *Node) {
+	if n.schema == nil {
+		return
+	}
+	s.touch()
+	s.visit()
+	set := ctxOf(n)
+	if s.contexts[set] == 1 {
+		delete(s.contexts, set)
+	} else {
+		s.contexts[set]--
 	}
 }
 
@@ -1351,13 +1380,23 @@ func (s *siblings) leaderUnlinkBetween(n, prev, next *Node, removing bool) {
 // schemaLookup is lyd_find_sibling_schema: its first-instance hash record, which need not be the
 // first sibling instance when runs can be split.
 func (t *Tree) schemaLookup(s *siblings, sn *schema.Node) *Node {
-	if opChild(sn) || s.schemaUnordered {
+	mixed := s.mixedContexts()
+	if (opChild(sn) || s.schemaUnordered) && !mixed &&
+		(len(s.list) == 0 || sn.Module.Owner == nil || ctxOf(s.list[0]) == sn.Module.Owner) {
 		return t.schemaLookupOperation(s, sn)
 	}
 	if i := t.schemaIndex(s, sn); i >= 0 {
 		return s.list[i]
 	}
 	return nil
+}
+
+// A diff create can leave sibling roots compiled in different contexts. The
+// hash and schema-order indexes use Go schema pointers, while libyang's
+// sibling lookup also compares schema names across contexts.
+func (s *siblings) mixedContexts() bool {
+	s.visit() // one counted check per lookup, independent of sibling count
+	return len(s.contexts) > 1
 }
 
 // documentFirst is the first instance in sibling order. Operation children use their mutation-
@@ -1383,6 +1422,18 @@ func (t *Tree) schemaIndex(s *siblings, sn *schema.Node) int {
 	if len(s.list) == 0 {
 		return -1
 	}
+	// The linear branch of lyd_find_sibling_schema compares only module and
+	// node names for foreign contexts. Its table callback compares schema lineage.
+	foreign := s.mixedContexts() || sn.Module.Owner != nil && ctxOf(s.list[0]) != nil && ctxOf(s.list[0]) != sn.Module.Owner
+	if foreign {
+		for i, n := range s.list {
+			s.visit()
+			if schemaLookupMatch(n.schema, sn, s.ht != nil) {
+				return i
+			}
+		}
+		return -1
+	}
 	if opChild(sn) || s.schemaUnordered {
 		if leader := physicalStart(s, sn, t.schemaLookupOperation(s, sn)); leader != nil {
 			return t.indexFromEnd(s.list, leader)
@@ -1400,6 +1451,20 @@ func (t *Tree) schemaIndex(s *siblings, sn *schema.Node) int {
 		return i
 	}
 	return -1
+}
+
+func schemaLookupMatch(got, want *schema.Node, table bool) bool {
+	if got == want {
+		return true
+	}
+	if got == nil || want == nil || got.Module == nil || want.Module == nil ||
+		got.Module.Owner == want.Module.Owner {
+		return false
+	}
+	if table {
+		return compareSchemaEqual(got, want, true)
+	}
+	return got.Module.Name == want.Module.Name && got.Name == want.Name
 }
 
 // isDupInstList is lysc_is_dup_inst_list: keyless lists and state leaf-lists may have equal
@@ -1432,6 +1497,14 @@ func (t *Tree) findFirstWork(s *siblings, target *Node, work *workCounter) *Node
 		return nil // schema mismatch
 	}
 	dup := isDupInstList(target.schema)
+	if target.schema != nil && s.mixedContexts() {
+		for n := range s.all() {
+			if compareSingle(t, n, target, dup) {
+				return n
+			}
+		}
+		return nil
+	}
 	if target.schema != nil && s.ht != nil {
 		if len(s.list) == 0 {
 			// a table kept after its schema children left (lyd_unlink_hash never frees it) or
@@ -1442,9 +1515,9 @@ func (t *Tree) findFirstWork(s *siblings, target *Node, work *workCounter) *Node
 		// the target's schema node in the siblings' context (libyang hashes module and node
 		// names, so a target of another context finds its instances)
 		sn := target.schema
-		if first := s.list[0]; !sameSet(setOf(first), setOf(target)) {
+		if first := s.list[0]; !sameSet(ctxOf(first), ctxOf(target)) {
 			var err error
-			if sn, err = findSchemaCtx(target.schema, setOf(first), first.parent); err != nil {
+			if sn, err = findSchemaCtx(target.schema, ctxOf(first), first.parent); err != nil {
 				return nil
 			}
 		}
@@ -1490,6 +1563,23 @@ func htValEqual(t *Tree, a, b *Node) bool {
 // Canonical value and declared-key comparisons follow separately. In particular, a
 // cross-type terminal duplicate retains its source hash even when its value changes type.
 func hashEqual(a, b *Node) bool { return a.hash == b.hash }
+
+// hashValueEqual is the value part of lyd_hash (its LYB bytes, not the canonical text) for two
+// values that may come from different contexts.
+func hashValueEqual(x, y types.Value) bool {
+	if x.Type() == y.Type() {
+		return types.Equal(x, y)
+	}
+	xh, xok := types.HashLYB(0, x)
+	yh, yok := types.HashLYB(0, y)
+	if xok && yok {
+		return xh == yh
+	}
+	// A type-specific plugin without an LYB representation here can only be
+	// safely compared across snapshots when its base type also agrees.
+	return x.Type() != nil && y.Type() != nil && x.Type().Base == y.Type().Base &&
+		x.Canonical() == y.Canonical()
+}
 
 // compareSingle is lyd_compare_single; full is LYD_COMPARE_FULL_RECURSION (Node.Equal for all
 // the options).

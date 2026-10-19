@@ -1,0 +1,16 @@
+fixtures:
+  - id: protocol-v2/unlink-reinsert
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # lyd_unlink_tree/lyd_insert_sibling retained-context API mechanics; no RFC behaviour
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas, ../ietf]
+      modules: [{name: pv2-mdapi}]
+      steps:
+        - {do: parse, format: json, data_type: config, data_file: data/mdapi-small.json}
+        - {do: unlink, node: /pv2-mdapi:c}
+        - {do: insert, detached: true}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/unlink-reinsert.json

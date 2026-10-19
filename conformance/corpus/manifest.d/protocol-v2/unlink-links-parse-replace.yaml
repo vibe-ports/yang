@@ -1,0 +1,18 @@
+fixtures:
+  - id: protocol-v2/unlink-links-parse-replace
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # lyd_free_all removal of links when a successful parse replaces the retained tree
+    areas: [types, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-links}]
+      context_options: [leafref_linking]
+      steps:
+        - {do: parse, format: json, data_type: config, data_file: data/links.json}
+        - {do: link}
+        - {do: unlink, node: "/pv2-links:c/l[k='a']"}
+        - {do: parse, format: json, data_type: config, data_file: data/links.json}
+        - {do: links, detached: true}
+    golden: golden/unlink-links-parse-replace.json

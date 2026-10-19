@@ -360,14 +360,14 @@ func TestAnyAggregateParseBudget(t *testing.T) {
 		mustLink(t, tr.insert(root, &Node{schema: x, any: &anyValue{text: &text}, payloadSet: tr.set}, insertLast))
 	}
 	for _, budget := range []Budget{{MaxBytes: 10}, {MaxNodes: 1}} {
-		_, err := tr.dupWork(root, nil, false, insertDefault, 0, newAnyWork(context.Background(), budget))
+		_, err := tr.dupWork(root, nil, false, insertDefault, 0, tr.dupDest(nil), newAnyWork(context.Background(), budget))
 		if !errors.Is(err, yang.ErrBudget) {
 			t.Fatalf("aggregate parse work escaped budget: %v", err)
 		}
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, err := tr.dupWork(root, nil, false, insertDefault, 0, newAnyWork(ctx, Budget{})); !errors.Is(err, context.Canceled) {
+	if _, err := tr.dupWork(root, nil, false, insertDefault, 0, tr.dupDest(nil), newAnyWork(ctx, Budget{})); !errors.Is(err, context.Canceled) {
 		t.Fatalf("tree copy cancel: %v", err)
 	}
 }

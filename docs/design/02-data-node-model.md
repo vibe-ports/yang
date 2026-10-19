@@ -66,7 +66,7 @@ type Tree struct { set *schema.Set; top siblings; … } // pins the schema snaps
   rare); `ponytail:` revisit with an order-statistic structure if operational trees with 100k+
   siblings show up in benchmarks.
 - Public API exposes iteration (`iter.Seq[*Node]`: `Tree.Top`, `Node.Children`, `Node.All`), path
-  lookup and typed mutators (`NewPath`, `Find`, `Remove`, `Merge`); never the slice. A `Tree` is not
+  lookup and typed mutators (`NewPath`, `Find`, `Remove`, `Unlink`, `Merge`); never the slice. A `Tree` is not
   safe for concurrent use (lookups build indexes lazily).
 
 ## Revised after M1

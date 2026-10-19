@@ -28,13 +28,11 @@ func wrap(set *schema.Set, n *Node) xpath.Node {
 	return xn{n, xpathNodeSet(set, n)}
 }
 
-// Payload roots retain their source context in payloadSet. Descendants inherit it
-// through setOf, just as LYD_CTX reads each node's own context.
+// xpathNodeSet is LYD_CTX(n) (ctxOf: a schema-bound node's compiling context, an opaque
+// node's own, a payload root's source context inherited by its descendants), with the
+// fallback for ownerless hand-built schemas.
 func xpathNodeSet(fallback *schema.Set, n *Node) *schema.Set {
-	if n.opaq != nil && n.opaq.set != nil {
-		return n.opaq.set
-	}
-	if set := setOf(n); set != nil {
+	if set := ctxOf(n); set != nil {
 		return set
 	}
 	return fallback
@@ -101,7 +99,7 @@ func (x xn) LookupPrepared(prepared xpath.InstanceProbe) ([]xpath.Node, bool, er
 	}
 	p, ok := prepared.(*xprobe)
 	sib := &x.n.kids
-	if !ok || sib.ht == nil || x.n.flags&flagDead != 0 {
+	if !ok || sib.ht == nil || sib.mixedContexts() || x.n.flags&flagDead != 0 {
 		return nil, false, nil
 	}
 	if p.set != x.set {
@@ -147,6 +145,28 @@ func (x xn) LookupPrepared(prepared xpath.InstanceProbe) ([]xpath.Node, bool, er
 	return nil, len(sib.opq) == 0, nil
 }
 
+// HashKeyValuesEqual applies lyd_hash's LYB value gate when XPath's keyed-list
+// optimization falls back to a charged mixed-context child scan.
+func (x xn) HashKeyValuesEqual(sn xpath.SchemaNode, vals []string) bool {
+	if len(vals) == 0 {
+		return true
+	}
+	s, ok := sn.(xs)
+	if !ok || x.n.schema == nil || x.n.schema.Kind != schema.List ||
+		len(s.s.Keys) < len(vals) || len(x.n.kids.list) < len(vals) {
+		return false
+	}
+	for i, text := range vals {
+		key := s.s.Keys[i]
+		value, diag := types.StoreOnly(key.Type, text, types.FormatCanon, types.HintData,
+			types.ModuleNames{Set: s.set}, key)
+		if diag != nil || !hashValueEqual(x.n.kids.list[i].value, value) {
+			return false
+		}
+	}
+	return true
+}
+
 // FirstChild is lyd_find_sibling_schema over lyd_child_any(x): the first live instance of sn.
 // It uses the index within one context and matches schema paths across contexts; a node outside
 // a tree or a dead instance declines to the evaluator's charged scan.
@@ -157,6 +177,9 @@ func (x xn) FirstChild(sn xpath.SchemaNode) (xpath.Node, bool) {
 		return nil, false
 	}
 	sib := x.childSiblings()
+	if sib.mixedContexts() {
+		return nil, false // siblings of several contexts: the evaluator's scan with SchemaLookupMatch
+	}
 	if first := sib.first(); first != nil && xpathNodeSet(x.set, first) != s.set {
 		// Siblings of another context (tree_data_common.c:1101-1135). Without a children hash
 		// table (always under anydata/anyxml) decline to the evaluator's charged walk, which
@@ -180,6 +203,17 @@ func (x xn) FirstChild(sn xpath.SchemaNode) (xpath.Node, bool) {
 		return wrap(x.set, c), true
 	}
 	return nil, false
+}
+
+// SchemaLookupMatch uses lyd_find_sibling_schema's table or linear callback
+// when XPath has to scan a sibling set under its charged work budget.
+func (x xn) SchemaLookupMatch(sn xpath.SchemaNode) bool {
+	s, ok := sn.(xs)
+	if !ok || x.n.schema == nil {
+		return false
+	}
+	sib := x.n.siblingsOf()
+	return schemaLookupMatch(x.n.schema, s.s, sib != nil && sib.ht != nil)
 }
 
 // OpaqueSchema is lyd_node_schema of an opaque node, for the name tests of the evaluator.

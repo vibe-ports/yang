@@ -1,0 +1,26 @@
+module pv2-detached-default {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-detached-default";
+  prefix pdd;
+
+  description "Tree-dependent defaults on a detached subtree.";
+
+  container c {
+    leaf-list t { type string; }
+    leaf r {
+      type leafref { path "../t"; }
+      default "x";
+    }
+    leaf iid {
+      type instance-identifier { require-instance true; }
+      default "/pdd:c/pdd:t[.='x']";
+    }
+    leaf u {
+      type union {
+        type leafref { path "../t"; }
+        type enumeration { enum other; }
+      }
+      default "x";
+    }
+  }
+}

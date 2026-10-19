@@ -1,0 +1,149 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-detached",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-detached:ll[.='a']",
+          "schema": "/pv2-detached:ll",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-detached:c",
+          "schema": "/pv2-detached:c",
+          "value": null
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "unlink",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-detached:c",
+          "schema": "/pv2-detached:c",
+          "value": null
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"pv2-detached:ll\": [\n    \"a\"\n  ],\n  \"@pv2-detached:ll\": [\n    {\n      \"yang:operation\": \"delete\",\n      \"yang:orig-value\": \"\"\n    }\n  ]\n}\n",
+        "xml": "<ll xmlns=\"urn:vibe-ports:yang:conformance:pv2-detached\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\" yang:orig-value=\"\">a</ll>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaflist",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "delete"
+            },
+            {
+              "module": "yang",
+              "name": "orig-value",
+              "value": ""
+            }
+          ],
+          "opaque": null,
+          "path": "/pv2-detached:ll[.='a']",
+          "schema": "/pv2-detached:ll",
+          "value": {
+            "canonical": "a",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": true,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-detached:c",
+          "schema": "/pv2-detached:c",
+          "value": null
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

@@ -51,21 +51,18 @@ func Parse(ctx context.Context, r io.Reader, f Format, s *yang.Schema, o ParseOp
 // list keys and config leaf-list values as predicates, the position of keyless list and state
 // leaf-list instances.
 func (n *Node) Path() string {
-	root := n
-	for root.parent != nil {
-		root = root.parent
+	if n == nil {
+		return ""
 	}
-	var set *schema.Set
-	if root.tree != nil {
-		set = root.tree.set
-	}
-	return lydPath(set, n, false)
+	return lydPath(ctxOf(n), n, false)
 }
 
 // Value is lyd_get_value: the canonical text of a leaf or leaf-list value, the text of an
 // opaque node as it was written, "" for other nodes.
 func (n *Node) Value() string {
 	switch {
+	case n == nil:
+		return ""
 	case n.schema == nil:
 		return n.opaq.Value
 	case n.isTerm():
@@ -75,7 +72,12 @@ func (n *Node) Value() string {
 }
 
 // Schema is the schema node of n, nil for an opaque node.
-func (n *Node) Schema() *yang.SchemaNode { return snap.NodeOf(n.schema) }
+func (n *Node) Schema() *yang.SchemaNode {
+	if n == nil {
+		return nil
+	}
+	return snap.NodeOf(n.schema)
+}
 
 // Validate is lyd_validate_all over the whole tree: when conditions, value checks needing the
 // tree, implicit default nodes (added to t), must, mandatory, min/max-elements, unique and
@@ -102,7 +104,7 @@ func (t *Tree) ValidateModule(ctx context.Context, module string, o ValidateOpti
 
 // validateModuleArgs applies lyd_validate_module's public module and option argument checks.
 func (t *Tree) validateModuleArgs(module string, o ValidateOptions) (*schema.Module, []yang.Diagnostic, error) {
-	mod := t.set.Implemented(module)
+	mod := t.context().Implemented(module)
 	if mod == nil {
 		// validation.c:2304 checks module with a NULL logging context.
 		err := &ValidationError{err: argErr("module", "lyd_validate_module"), rc: "LY_EINVAL"}

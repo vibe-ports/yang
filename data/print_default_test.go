@@ -15,13 +15,39 @@ import (
 	"github.com/vibe-ports/yang/internal/types"
 )
 
+// protocol-v2/print-detached-absolute-leafref covers the temporary printer
+// tree, whose root has no sibling set during an absolute XPath lookup.
+func TestPrintDetachedAbsoluteLeafrefDefault(t *testing.T) {
+	set := round12Set(t, false, "pv2-absleaf-default")
+	wd := &schema.Module{Name: wdModule, Owner: set, Namespace: "urn:ietf:params:xml:ns:netconf:with-defaults:1.0", Prefix: "wd", Implemented: true}
+	set.Modules = append(set.Modules, wd)
+	tr := round12Tree(t, set, `{"pv2-absleaf-default:c":{"t":"x","r":"x"}}`)
+	c := tr.top.first()
+	if err := c.Unlink(); err != nil {
+		t.Fatal(err)
+	}
+	for _, wd := range []WD{WDTrim, WDAllTagged} {
+		var b bytes.Buffer
+		if err := c.PrintJSON(&b, PrintOptions{WithDefaults: wd}); err != nil {
+			t.Fatalf("mode %d: %v", wd, err)
+		}
+		if wd == WDTrim && bytes.Contains(b.Bytes(), []byte(`"r"`)) {
+			t.Fatalf("default leafref was not trimmed: %s", b.String())
+		}
+		if wd == WDAllTagged && !bytes.Contains(b.Bytes(), []byte(`ietf-netconf-with-defaults:default`)) {
+			t.Fatalf("default leafref was not tagged: %s", b.String())
+		}
+	}
+}
+
 // dfltLeafrefTree is pdl (print/schemas/pdl.yang) with leaf-list t = vals and r = rv, built with
 // LY_CTX_LEAFREF_LINKING and linked (LinkLeafrefs).
 func dfltLeafrefTree(t *testing.T, rv string, vals ...string) (*Tree, *Node) {
 	t.Helper()
 	set := &schema.Set{LeafrefLinking: true}
-	m := &schema.Module{Name: "pdl", Implemented: true}
-	set.Modules = []*schema.Module{m}
+	m := &schema.Module{Name: "pdl", Owner: set, Implemented: true}
+	wd := &schema.Module{Name: wdModule, Owner: set, Namespace: "urn:ietf:params:xml:ns:netconf:with-defaults:1.0", Prefix: "wd", Implemented: true}
+	set.Modules = []*schema.Module{m, wd}
 	str := &schema.Type{Base: schema.String}
 	c := &schema.Node{Kind: schema.Container, Name: "c", Module: m, Config: true}
 	m.Top = []*schema.Node{c}
@@ -126,5 +152,38 @@ func TestPrintDefaultBudget(t *testing.T) {
 	b.Reset()
 	if err := tr.PrintJSON(&b, PrintOptions{WithDefaults: WDTrim}); err != nil || bytes.Contains(b.Bytes(), []byte(`"r"`)) {
 		t.Fatalf("default budget: %v %q", err, b.String()) // r = "x" with target x is a default: trimmed
+	}
+}
+
+// Detached default checks use the retained subtree as the value-validation root.
+func TestPrintDetachedLeafrefDefault(t *testing.T) {
+	for _, tc := range []struct {
+		target  bool
+		trimmed bool
+	}{{true, true}, {false, false}} {
+		var vals []string
+		if tc.target {
+			vals = []string{"x"}
+		}
+		tr, r := dfltLeafrefTree(t, "x", vals...)
+		c := tr.top.first()
+		if err := c.Unlink(); err != nil {
+			t.Fatal(err)
+		}
+		for _, wd := range []WD{WDTrim, WDAllTagged} {
+			var b bytes.Buffer
+			if err := c.PrintJSON(&b, PrintOptions{WithDefaults: wd}); err != nil {
+				t.Fatal(err)
+			}
+			if got := bytes.Contains(b.Bytes(), []byte(`"r"`)); wd == WDTrim && got == tc.trimmed {
+				t.Fatalf("target=%v trim=%v: %s", tc.target, got, b.String())
+			}
+			if wd == WDAllTagged && tc.target && !bytes.Contains(b.Bytes(), []byte(`ietf-netconf-with-defaults:default`)) {
+				t.Fatalf("missing default tag: %s", b.String())
+			}
+		}
+		if refs, _ := linkNames(r); len(refs) != 0 {
+			t.Fatalf("printing changed links: %v", refs)
+		}
 	}
 }

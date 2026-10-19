@@ -300,6 +300,11 @@ func TestKeyRefusal(t *testing.T) {
 	l := f.list(t, tr, c, "k1", "v")
 	key := l.kids.list[0]
 	var oe *opError
+	var ve *ValidationError
+	if err := key.Unlink(); !errors.As(err, &ve) || ve.RC() != "LY_EINVAL" ||
+		len(ve.Diags) != 1 || ve.Diags[0].Msg != `Cannot unlink a list key "k", unlink the list instance instead.` {
+		t.Fatalf("public unlink: %v", err)
+	}
 	if err := unlinkTree(key); !errors.As(err, &oe) || oe.Err != "LY_EINVAL" ||
 		oe.Msg != `Cannot unlink a list key "k", unlink the list instance instead.` {
 		t.Fatalf("unlink: %v", err)
@@ -594,7 +599,7 @@ func TestBulkWork(t *testing.T) {
 	if err := tr.unlinkAll(all); err != nil {
 		t.Fatal(err)
 	}
-	if int(tr.work.Load()) > 4*n || len(c.kids.list) != 0 || len(c.kids.ht) != 0 {
+	if int(tr.work.Load()) > 5*n || len(c.kids.list) != 0 || len(c.kids.ht) != 0 {
 		t.Fatalf("bulk unlink: %d steps, %d left, %d buckets", int(tr.work.Load()), len(c.kids.list), len(c.kids.ht))
 	}
 }

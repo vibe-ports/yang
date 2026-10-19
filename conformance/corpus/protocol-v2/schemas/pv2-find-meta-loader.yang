@@ -1,0 +1,11 @@
+// Loads pv2-find-meta@2021-01-01 as import-only after the 2020 revision was implemented.
+module pv2-find-meta-loader {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-find-meta-loader";
+  prefix pfml;
+
+  import pv2-find-meta {
+    prefix pfm;
+    revision-date 2021-01-01;
+  }
+}

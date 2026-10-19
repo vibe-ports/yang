@@ -1,0 +1,14 @@
+fixtures:
+  - id: protocol-v2/mdapi-find-attached
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # lyd_find_meta API mechanics; no RFC lookup semantics
+    areas: [codecs, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas, ../ietf]
+      modules: [{name: pv2-mdapi}]
+      steps:
+        - {do: parse, format: json, data_type: config, data_file: data/mdapi-small.json}
+        - {do: find_meta, node: /pv2-mdapi:c/s, name: "pv2-mdapi:num"}
+    golden: golden/mdapi-find-attached.json

@@ -626,7 +626,7 @@
     {
       "id": "[diff/data-operational merge null false]",
       "outcome": {
-        "request_error_class": "diff single and merge must be booleans",
+        "request_error_class": "diff single, merge, and detached must be booleans",
         "verdict": "request-error"
       },
       "request": {

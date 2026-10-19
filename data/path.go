@@ -21,8 +21,14 @@ func nodeModule(set *schema.Set, n *Node) *schema.Module {
 			return n.schema.Module
 		case n.opaq.ModuleNS == "":
 		case n.opaq.Format == types.FormatXML:
+			if set == nil {
+				return nil
+			}
 			return set.ByNamespace(n.opaq.ModuleNS)
 		default:
+			if set == nil {
+				return nil
+			}
 			return set.Implemented(n.opaq.ModuleNS)
 		}
 	}

@@ -1,0 +1,22 @@
+{
+  "id": "protocol-v2/diff-merge-cross-context-matching-child",
+  "request": {
+    "base_dir": ".",
+    "op": "sequence",
+    "searchdirs": ["schemas"],
+    "modules": [{"name": "pv2-detached", "features": ["extra"]}],
+    "context_options": ["no_yanglibrary"],
+    "steps": [
+      {"do": "diff", "format": "json", "data_type": "config", "parse_only": true,
+       "data": "{\"pv2-detached:c\":{\"base\":\"x\"}}",
+       "target": {"searchdirs": ["schemas"], "modules": [{"name": "pv2-detached", "features": ["extra"]}], "context_options": ["no_yanglibrary"]}},
+      {"do": "diff_merge", "format": "xml", "data_type": "config", "parent": "/pv2-detached:c",
+       "src_node": "/pv2-detached:c/base",
+       "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-detached\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><base yang:operation=\"replace\" yang:orig-value=\"x\">y</base></c>"},
+      {"do": "dump"}
+    ]
+  },
+  "rfc": [],
+  "source": {"commit": null, "license": "BSD-3-Clause", "url": "hand-written (this repo)"},
+  "verdict": "valid"
+}

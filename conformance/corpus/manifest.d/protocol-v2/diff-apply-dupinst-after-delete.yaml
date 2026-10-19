@@ -1,0 +1,19 @@
+fixtures:
+  # Expectation basis: libyang v5.8.6 src/tree_data_common.c:108-143 (lyd_dup_inst_next) builds
+  # each first instance's duplicate set from the live siblings, so after the diff deletes the
+  # first of three equal state leaf-list instances the remaining two get both annotations.
+  - id: protocol-v2/diff-apply-dupinst-after-delete
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # libyang diff duplicate-instance matching; no RFC behaviour
+    areas: [diff, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas, ../ietf]
+      modules: [{name: pv2-dupinst}]
+      steps:
+        - {do: parse, format: json, data_type: data, parse_only: true, data: '{"pv2-dupinst:c":{"a":"x","b":"y","d":"z","sl":[1,1,1]}}'}
+        - {do: diff_parse, format: json, data_type: data, data: '{"pv2-dupinst:c":{"@":{"yang:operation":"none"},"sl":[1,1,1],"@sl":[{"yang:operation":"delete"},{"yang:operation":"none","yang:meta-create":"pv2-dupinst:note=x"},{"yang:operation":"none","yang:meta-create":"pv2-dupinst:note=y"}]}}'}
+        - {do: diff_apply}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/diff-apply-dupinst-after-delete.json

@@ -69,11 +69,12 @@ func sibList(n *Node) *Tree {
 	return n.tree
 }
 
-// Insert is lyd_insert_child: n becomes a child of parent, a node of t; with parent nil it is
+// Insert is lyd_insert_child: n becomes a child of parent, a node of t or a detached node of its
+// snapshot; with parent nil it is
 // lyd_insert_sibling with t's first top-level node, so n becomes a top-level node of t. n leaves
-// the tree it is in; when n is the first top-level node of another tree, all that tree's
-// top-level nodes move (libyang moves a whole sibling list). Refused as an LY_EINVAL
-// *ValidationError: a list key, a node of another schema snapshot, a parent not in t, and what
+// the tree it is in (or may already be detached); when n is the first top-level node of another
+// tree, all that tree's top-level nodes move (libyang moves a whole sibling list). Refused as an
+// LY_EINVAL *ValidationError: a list key, a parent not in t, and what
 // lyd_insert_check_schema refuses (n's schema node not a child of parent's, or not top-level).
 // Oracle coverage of moves (between parents, from another tree, whole sibling lists, refusals):
 // the sequence step insert, seq/insert-*; Go tests TestTreeBuild, TestInsertChild,
@@ -84,14 +85,18 @@ func (t *Tree) Insert(parent, n *Node) error {
 	if parent == nil {
 		fn = "lyd_insert_sibling"
 	}
-	lg := &logger{set: t.set}
+	set := t.context()
+	if parent != nil {
+		set = ctxOf(parent)
+	}
+	lg := &logger{set: set}
 	switch {
 	case n == nil:
 		return lg.done(argErr("node", fn))
-	case parent != nil && treeOf(parent) != t:
+	case parent != nil && treeOf(parent) != nil && treeOf(parent) != t:
 		return lg.done(argErr("parent (not in the tree)", fn))
-	case !sameSet(setOf(n), t.set) || setOf(n) == nil:
-		return lg.done(argErr("node (another schema snapshot)", fn)) // a Go tree has one snapshot
+	case ctxOf(n) == nil:
+		return lg.done(argErr("node (without a schema snapshot)", fn))
 	}
 	if source := n.treeOf(); source != nil && source != t {
 		defer source.work.beginHashWork()()

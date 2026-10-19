@@ -1,0 +1,25 @@
+fixtures:
+  - id: protocol-v2/merge-foreign-child
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # lyd_merge_siblings preserves the source context of an unmatched child
+    areas: [operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-detached, features: [extra]}]
+      steps:
+        - {do: parse, format: json, data_type: config, data: '{"pv2-detached:c":{"extra":"x"}}'}
+        - do: insert
+          format: json
+          data_type: config
+          target:
+            searchdirs: [schemas]
+            modules: [{name: pv2-detached}]
+          data: '{"pv2-detached:l":[{"k":"keep"}]}'
+        - {do: edit, format: json, data_type: config, merge_into: '{"pv2-detached:c":{"base":"old"}}'}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/merge-foreign-child.json
+    assert:
+      verdict: valid
+      deviation: null

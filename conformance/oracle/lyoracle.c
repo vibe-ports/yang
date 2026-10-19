@@ -290,14 +290,14 @@ add_opt_str(cJSON *o, const char *key, const char *val)
     }
 }
 
-/* Move all stored errors/warnings of ctx into arr, tagged with phase, and clear them. */
+/* Move the stored errors/warnings of ctx logged after mark (NULL: all) into arr, tagged with phase, and clear them. */
 static int
-collect(const struct ly_ctx *ctx, cJSON *arr, const char *phase)
+collect_after(const struct ly_ctx *ctx, const struct ly_err_item *mark, cJSON *arr, const char *phase)
 {
-    const struct ly_err_item *e;
+    const struct ly_err_item *e, *from = mark ? mark->next : ly_err_first(ctx);
     int n = 0;
 
-    for (e = ly_err_first(ctx); e; e = e->next, n++) {
+    for (e = from; e; e = e->next, n++) {
         cJSON *d = cJSON_CreateObject();
 
         cJSON_AddStringToObject(d, "phase", phase);
@@ -313,10 +313,10 @@ collect(const struct ly_ctx *ctx, cJSON *arr, const char *phase)
         add_opt_str(d, "msg", e->msg);
         cJSON_AddItemToArray(arr, d);
     }
-    ly_err_clean((struct ly_ctx *)ctx, NULL);
+    if (from) ly_err_clean((struct ly_ctx *)ctx, (struct ly_err_item *)from); /* items up to mark stay */
     return n;
 }
-
+#define collect(ctx, arr, phase) collect_after((ctx), NULL, (arr), (phase))
 /* ---------- typed dumps (protocol 2) ---------- */
 
 /* YANG names of LY_DATA_TYPE (ly_data_type2str has descriptive names such as "16bit integer") */
@@ -1706,20 +1706,22 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
     keys_only(step, !strcmp(what, "parse") ? "do format data_type data data_file unknown parse_only "
             "parse_options validate_options rpc keep_input parent" : !strcmp(what, "validate") ? "do data_type validate_options module final_only" :
             !strcmp(what, "edit") ? "do merge merge_file merge_self set delete insert_term insert_inner insert_list insert_list2 "
-            "insert_opaq new_meta free_meta format data_type unknown parse_options" :
+            "insert_opaq new_meta free_meta format data_type unknown parse_options merge_into" :
             !strcmp(what, "change_term") ? "do node node_xpath child value canon" :
             !strcmp(what, "insert") ? "do node parent format data_type data data_file unknown parse_only parse_options "
-            "validate_options" :
-            !strcmp(what, "dump") ? "do with_defaults" : !strcmp(what, "print_xml") ? "do" : !strcmp(what, "any_direct") ? "do case target" : !strcmp(what, "dup") ? "do node node_xpath parent options siblings target source" :
+            "validate_options detached target" :
+            !strcmp(what, "detached_dump") ? "do with_defaults child" : !strcmp(what, "dump") ? "do with_defaults" : !strcmp(what, "print_xml") ? "do" : !strcmp(what, "any_direct") ? "do case target" : !strcmp(what, "dup") ? "do node node_xpath parent options siblings target source detached" :
             !strcmp(what, "compare") ? "do format data_type data data_file unknown parse_only parse_options "
-            "validate_options first second options insert_opaq self" :
+            "validate_options first second options insert_opaq self target" :
             !strcmp(what, "diff") ? "do format data_type data data_file unknown parse_only parse_options validate_options "
-            "rpc keep_input node data_node single options merge merge_options target" :
+            "rpc keep_input node data_node single options merge merge_options target detached" :
             !strcmp(what, "diff_parse") ? "do format data_type data data_file unknown parse_options" :
             !strcmp(what, "diff_merge") ? "do format data_type data data_file unknown parse_options options module "
-            "src_node parent" :
+            "src_node parent detached_parent" :
             !strcmp(what, "diff_apply") ? "do module" : !strcmp(what, "trim") ? "do xpath vars" :
-            !strcmp(what, "xpath") ? "do xpath vars" : "do",
+            !strcmp(what, "xpath") ? "do xpath vars detached node" :
+            !strcmp(what, "unlink") ? "do node diff_node" : !strcmp(what, "find_meta") ? "do node name" :
+            !strcmp(what, "links") ? "do detached" : "do",
             "unknown key \"%s\" in a sequence step");
     if (!strcmp(what, "edit")) {
         /* the parse options belong to merge only */
@@ -1733,7 +1735,7 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
                 cJSON_GetObjectItemCaseSensitive(step, "insert_opaq") ? "do insert_opaq" :
                 cJSON_GetObjectItemCaseSensitive(step, "new_meta") ? "do new_meta" :
                 cJSON_GetObjectItemCaseSensitive(step, "free_meta") ? "do free_meta" :
-                "do merge merge_file format data_type unknown parse_options",
+                "do merge merge_file merge_into format data_type unknown parse_options",
                 "key \"%s\" not allowed in this edit step");
     }
     if (!strcmp(what, "parse")) {
@@ -1773,8 +1775,9 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
         const cJSON *nm = cJSON_GetObjectItemCaseSensitive(step, "new_meta");
         const cJSON *fm = cJSON_GetObjectItemCaseSensitive(step, "free_meta");
         const cJSON *ms = cJSON_GetObjectItemCaseSensitive(step, "merge_self");
+        const char *merge_into = input_of(step, "merge_into");
 
-        if (!!merge + !!del + !!set + !!ins + !!inn + !!il + !!il2 + !!io + !!nm + !!fm + !!ms != 1) {
+        if (!!merge + !!merge_into + !!del + !!set + !!ins + !!inn + !!il + !!il2 + !!io + !!nm + !!fm + !!ms != 1) {
             die("edit step needs exactly one of merge, merge_file, set, delete, insert_term, insert_inner, insert_list, "
                     "insert_list2, insert_opaq, new_meta, free_meta%s", NULL);
         }
@@ -1795,21 +1798,21 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
         }
         if (ins || inn || il || il2 || io) {
             const cJSON *o = ins ? ins : inn ? inn : il ? il : il2 ? il2 : io, *k;
-            const char *ppath, *popaq;
+            const char *ppath, *popaq; const cJSON *dp;
 
             if (!cJSON_IsObject(o)) {
                 die("insert_* need an object with name and at most one of parent, parent_opaq%s", NULL);
             }
             /* both type-checked whatever the other fields are */
             ppath = str_of(o, "parent");
-            popaq = str_of(o, "parent_opaq");
-            if (!str_of(o, "name") || (ppath && popaq)) {
+            popaq = str_of(o, "parent_opaq"); dp = (io || il2) ? NULL : cJSON_GetObjectItemCaseSensitive(o, "detached_parent"); if (dp && !cJSON_IsBool(dp)) die("detached_parent must be a boolean%s", NULL);
+            if (!str_of(o, "name") || !!ppath + !!popaq + cJSON_IsTrue(dp) > 1) {
                 die("insert_* need an object with name and at most one of parent, parent_opaq%s", NULL);
             }
-            keys_only(o, ins ? "module parent parent_opaq name value options" :
-                    inn ? "module parent parent_opaq name options" :
-                    io ? "parent parent_opaq name value prefix module xml" :
-                    "module parent parent_opaq name keys options", "unknown key \"%s\" in an insert_* edit");
+            keys_only(o, ins ? "module parent parent_opaq detached_parent name value options" :
+                    inn ? "module parent parent_opaq detached_parent name options" :
+                    io ? "parent parent_opaq name value prefix module xml" : il2 ? "module parent parent_opaq name keys options" :
+                    "module parent parent_opaq detached_parent name keys options", "unknown key \"%s\" in an insert_* edit");
             if (io) {
                 /* lyd_new_opaq / lyd_new_opaq2: module is the module name / namespace, not a module */
                 str_of(o, "value");
@@ -1821,7 +1824,7 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
                     die("insert_opaq xml must be a boolean%s", NULL);
                 }
             } else {
-                if (!str_of(o, "module") && !ppath && !popaq) {
+                if (!str_of(o, "module") && !ppath && !popaq && !cJSON_IsTrue(dp)) {
                     die("insert_term/inner/list/list2 need a module or a parent%s", NULL);
                 }
                 flags_of(o, "options", inn ? inner_flags : newval_flags);
@@ -1846,7 +1849,7 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
                 }
             }
         }
-        if (merge) {
+        if (merge || merge_into) {
             dparams_of(step, &p);
         }
         if (set && (!cJSON_IsObject(set) || !str_of(set, "path"))) {
@@ -1876,8 +1879,8 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
         if (canon && !cJSON_IsBool(canon)) {
             die("change_term canon must be a boolean%s", NULL);
         }
-    } else if (!strcmp(what, "dump")) {
-        wd_of(step);
+    } else if (!strcmp(what, "dump") || !strcmp(what, "detached_dump")) {
+        wd_of(step); if (!strcmp(what, "detached_dump")) { const cJSON *b = cJSON_GetObjectItemCaseSensitive(step, "child"); if (b && !cJSON_IsBool(b)) die("child must be a boolean%s", NULL); }
     } else if (!strcmp(what, "print_xml")) {
         /* no fields */
     } else if (!strcmp(what, "any_direct")) {
@@ -1903,8 +1906,10 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
     } else if (!strcmp(what, "dup")) {
         const cJSON *sib = cJSON_GetObjectItemCaseSensitive(step, "siblings");
         const cJSON *source = cJSON_GetObjectItemCaseSensitive(step, "source");
+        const cJSON *det = cJSON_GetObjectItemCaseSensitive(step, "detached");
 
-        if (!str_of(step, "node") && !str_of(step, "node_xpath")) {
+        str_of(step, "node");
+        if (!str_of(step, "node") && !str_of(step, "node_xpath") && !cJSON_IsTrue(det)) {
             die("dup step needs a node path%s", NULL);
         }
         if (str_of(step, "node") && str_of(step, "node_xpath")) {
@@ -1914,6 +1919,9 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
         flags_of(step, "options", dup_flags);
         if (sib && !cJSON_IsBool(sib)) {
             die("dup siblings must be a boolean%s", NULL);
+        }
+        if (det && !cJSON_IsBool(det)) {
+            die("dup detached must be a boolean%s", NULL);
         }
         if (cJSON_GetObjectItemCaseSensitive(step, "target")) {
             const cJSON *tg = cJSON_GetObjectItemCaseSensitive(step, "target");
@@ -1933,17 +1941,36 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
             }
         }
     } else if (!strcmp(what, "insert")) {
+        const cJSON *det = cJSON_GetObjectItemCaseSensitive(step, "detached");
+        const cJSON *target = cJSON_GetObjectItemCaseSensitive(step, "target");
+
         str_of(step, "node");
         str_of(step, "parent");
+        if (det && !cJSON_IsBool(det)) {
+            die("insert detached must be a boolean%s", NULL);
+        }
         if (input_of(step, "data")) {
+            if (cJSON_IsTrue(det)) {
+                die("insert step takes data or detached, not both%s", NULL);
+            }
             dparams_of(step, &p);
             if (p.optype != LYD_TYPE_DATA_YANG) {
                 die("sequence supports datastore data types only%s", NULL);
             }
-        } else if (!str_of(step, "node")) {
-            die("insert step needs a node or data%s", NULL);
+            if (target) {
+                if (!cJSON_IsObject(target)) {
+                    die("insert target must be a context object%s", NULL);
+                }
+                keys_only(target, "searchdirs modules context_options", "unknown key \"%s\" in an insert target");
+            }
+        } else if (!str_of(step, "node") && !cJSON_IsTrue(det)) {
+            die("insert step needs a node, data, or detached%s", NULL);
+        } else if (target) {
+            die("insert target needs data%s", NULL);
         }
     } else if (!strcmp(what, "compare")) {
+        const cJSON *target = cJSON_GetObjectItemCaseSensitive(step, "target");
+
         if (cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(step, "self"))) {
             keys_only(step, "do self first second options", "unknown key \"%s\" in a same-tree comparison");
         } else {
@@ -1958,6 +1985,12 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
         str_of(step, "first");
         str_of(step, "second");
         flags_of(step, "options", compare_flags);
+        if (target) {
+            if (!cJSON_IsObject(target)) {
+                die("compare target must be a context object%s", NULL);
+            }
+            keys_only(target, "searchdirs modules context_options", "unknown key \"%s\" in a compare target");
+        }
     } else if (!strcmp(what, "diff") || !strcmp(what, "diff_parse") || !strcmp(what, "diff_merge")) {
         const cJSON *b;
 
@@ -2001,13 +2034,14 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
                 keys_only(target, "searchdirs modules context_options", "unknown key \"%s\" in a diff target");
             }
             if (((b = cJSON_GetObjectItemCaseSensitive(step, "single")) && !cJSON_IsBool(b)) ||
-                    ((b = cJSON_GetObjectItemCaseSensitive(step, "merge")) && !cJSON_IsBool(b))) {
-                die("diff single and merge must be booleans%s", NULL);
+                    ((b = cJSON_GetObjectItemCaseSensitive(step, "merge")) && !cJSON_IsBool(b)) ||
+                    ((b = cJSON_GetObjectItemCaseSensitive(step, "detached")) && !cJSON_IsBool(b))) {
+                die("diff single, merge, and detached must be booleans%s", NULL);
             }
         } else if (!strcmp(what, "diff_merge")) {
-            flags_of(step, "options", diff_merge_flags);
+            flags_of(step, "options", diff_merge_flags); if ((b = cJSON_GetObjectItemCaseSensitive(step, "detached_parent")) && !cJSON_IsBool(b)) die("detached_parent must be a boolean%s", NULL);
             str_of(step, "module");
-            if (str_of(step, "parent") && !str_of(step, "src_node")) {
+            if ((str_of(step, "parent") || cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(step, "detached_parent"))) && !str_of(step, "src_node")) {
                 die("diff_merge parent needs src_node%s", NULL);
             }
             if (str_of(step, "src_node") && str_of(step, "module")) {
@@ -2016,20 +2050,6 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
         }
     } else if (!strcmp(what, "diff_apply")) {
         str_of(step, "module");
-    } else if (!strcmp(what, "xpath")) {
-        const cJSON *jv = cJSON_GetObjectItemCaseSensitive(step, "vars"), *v;
-
-        if (!str_of(step, "xpath")) {
-            die("xpath step needs an xpath%s", NULL);
-        }
-        if (jv && !cJSON_IsObject(jv)) {
-            die("trim vars must be an object%s", NULL);
-        }
-        cJSON_ArrayForEach(v, jv) {
-            if (!cJSON_IsString(v)) {
-                die("trim vars value of %s must be a string", v->string);
-            }
-        }
     } else if (!strcmp(what, "trim")) {
         const cJSON *jv = cJSON_GetObjectItemCaseSensitive(step, "vars"), *v;
 
@@ -2044,16 +2064,53 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
                 die("trim vars value of %s must be a string", v->string);
             }
         }
-    } else if (strcmp(what, "link") && strcmp(what, "links") && strcmp(what, "diff_reverse")) {
+    } else if (!strcmp(what, "xpath")) {
+        const cJSON *v = cJSON_GetObjectItemCaseSensitive(step, "detached");
+
+        if (!str_of(step, "xpath")) {
+            die("xpath step needs an xpath%s", NULL);
+        }
+        str_of(step, "node");
+        if (str_of(step, "node") && cJSON_IsTrue(v)) {
+            die("xpath node and detached are mutually exclusive%s", NULL);
+        }
+        if (v && !cJSON_IsBool(v)) {
+            die("xpath detached must be a boolean%s", NULL);
+        }
+        v = cJSON_GetObjectItemCaseSensitive(step, "vars");
+        if (v && !cJSON_IsObject(v)) {
+            die("trim vars must be an object%s", NULL);
+        }
+        for (const cJSON *jv = v ? v->child : NULL; jv; jv = jv->next) {
+            if (!cJSON_IsString(jv)) {
+                die("trim vars value of %s must be a string", jv->string);
+            }
+        }
+    } else if (!strcmp(what, "unlink")) {
+        if (!!str_of(step, "node") == !!str_of(step, "diff_node")) {
+            die("unlink step needs exactly one node or diff_node path%s", NULL);
+        }
+    } else if (!strcmp(what, "find_meta")) {
+        str_of(step, "node");
+        if (!str_of(step, "name")) {
+            die("find_meta step needs a name%s", NULL);
+        }
+    } else if (!strcmp(what, "links")) {
+        const cJSON *det = cJSON_GetObjectItemCaseSensitive(step, "detached");
+
+        if (det && !cJSON_IsBool(det)) {
+            die("links detached must be a boolean%s", NULL);
+        }
+    } else if (strcmp(what, "link") && strcmp(what, "diff_reverse")) {
         die("unknown step %s", what);
     }
     return what;
 }
 
-/* lyd_dup_single / lyd_dup_siblings of the node at "node" into the node at "parent", or, without
- * a parent, the duplicate (with its duplicated parents) replacing the tree */
+/* lyd_dup_single / lyd_dup_siblings of the node at "node" (or the retained detached node) into
+ * the node at "parent", or, without a parent, the duplicate replacing the tree */
 static LY_ERR
-step_dup(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *diag)
+step_dup(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, struct lyd_node *detached, cJSON *diag)
 {
     const char *npath = str_of(step, "node"), *xpath = str_of(step, "node_xpath"), *ppath = str_of(step, "parent");
     const cJSON *target = cJSON_GetObjectItemCaseSensitive(step, "target");
@@ -2065,25 +2122,32 @@ step_dup(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *d
     int sib = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(step, "siblings")), ok;
     LY_ERR rc;
 
-    if (source) {
-        dparams_of(source, &p);
-        rc = parse_one(ctx, &p, input_of(source, "data"), input_of(source, "rpc"), &other, diag, "parse");
-        if (rc) {
-            lyd_free_all(other);
-            return rc;
+    if (cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(step, "detached"))) {
+        node = detached;
+    } else {
+        if (source) {
+            dparams_of(source, &p);
+            rc = parse_one(ctx, &p, input_of(source, "data"), input_of(source, "rpc"), &other, diag, "parse");
+            if (rc) {
+                lyd_free_all(other);
+                return rc;
+            }
+        }
+        struct lyd_node *selection = source ? other : *tree;
+        if (xpath) {
+            struct ly_set *set = NULL;
+
+            if (!selection || lyd_find_xpath(selection, xpath, &set) || set->count != 1) {
+                die("dup node_xpath %s must select exactly one node", xpath);
+            }
+            node = set->dnodes[0];
+            ly_set_free(set, NULL);
+        } else if (!selection || lyd_find_path(selection, npath, 0, &node)) {
+            die(source ? "dup node %s not found in the source" : "dup node %s not found", npath);
         }
     }
-    struct lyd_node *selection = source ? other : *tree;
-    if (xpath) {
-        struct ly_set *set = NULL;
-
-        if (!selection || lyd_find_xpath(selection, xpath, &set) || set->count != 1) {
-            die("dup node_xpath %s must select exactly one node", xpath);
-        }
-        node = set->dnodes[0];
-        ly_set_free(set, NULL);
-    } else if (!selection || lyd_find_path(selection, npath, 0, &node)) {
-        die(source ? "dup node %s not found in the source" : "dup node %s not found", npath);
+    if (!node) {
+        die("dup retained detached node not found%s", NULL);
     }
     if (ppath && (!*tree || lyd_find_path(*tree, ppath, 0, &parent))) {
         die("dup parent %s not found", ppath);
@@ -2104,10 +2168,10 @@ step_dup(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *d
         rc = sib ? lyd_dup_siblings_to_ctx(node, tctx, NULL, opts, &dup) :
                 lyd_dup_single_to_ctx(node, tctx, NULL, opts, &dup);
         collect(ctx, diag, "edit");
-        collect(tctx, diag, "edit");
+        if (LYD_CTX(node) != ctx) { collect(LYD_CTX(node), diag, "edit"); } if (tctx != ctx && tctx != LYD_CTX(node)) { collect(tctx, diag, "edit"); }
     } else {
         rc = sib ? lyd_dup_siblings(node, parent, opts, &dup) : lyd_dup_single(node, parent, opts, &dup);
-        collect(ctx, diag, "edit");
+        collect(ctx, diag, "edit"); if (LYD_CTX(node) != ctx) collect(LYD_CTX(node), diag, "edit");
     }
     if (!rc && !parent) {
         while (dup->parent) {
@@ -2320,22 +2384,38 @@ step_any_direct(struct ly_ctx *ctx, const cJSON *step, cJSON *out, cJSON *diag)
     return LY_EINVAL;
 }
 
-/* lyd_insert_child of the node at "node" under the node at "parent" in the tree, or without a parent
- * lyd_insert_sibling(tree, node, &tree). With "data" the node comes from a second tree parsed as by a
+/* lyd_insert_child of the node at "node" (or the retained detached node) under the node at "parent"
+ * in the tree, or without a parent lyd_insert_sibling(tree, node, &tree). With "data" the node comes from a second tree parsed as by a
  * parse step ("node": a path in it, omitted: its first top-level node, which moves with its siblings
  * as lyd_move_nodes moves them); what is left of the second tree is freed. The step's rc is the
  * parse's, else the insert's (diagnostics phases parse and edit) */
 static LY_ERR
-step_insert(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *diag)
+step_insert(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, struct lyd_node **detached, cJSON *diag)
 {
     const char *npath = str_of(step, "node"), *ppath = str_of(step, "parent"), *data = input_of(step, "data");
+    const cJSON *target = cJSON_GetObjectItemCaseSensitive(step, "target");
     struct lyd_node *other = NULL, *node = NULL, *parent = NULL, *top;
+    struct ly_ctx *other_ctx = ctx;
     struct dparams p;
     LY_ERR rc;
+    int ok;
 
-    if (data) {
+    if (cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(step, "detached"))) {
+        node = *detached;
+        if (!node) {
+            die("insert retained detached node not found%s", NULL);
+        }
+    } else if (data) {
+        if (target) {
+            cJSON *scratch = cJSON_CreateObject();
+            other_ctx = build_ctx_in(target, &ok, 0, scratch);
+            cJSON_Delete(scratch);
+            if (!ok) {
+                die("insert target context failed%s", NULL);
+            }
+        }
         dparams_of(step, &p);
-        rc = parse_one(ctx, &p, data, NULL, &other, diag, "parse");
+        rc = parse_one(other_ctx, &p, data, NULL, &other, diag, "parse");
         if (rc) {
             return rc;
         }
@@ -2367,9 +2447,12 @@ step_insert(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON
     } else {
         rc = lyd_insert_sibling(*tree, node, tree);
     }
-    collect(ctx, diag, "edit");
+    collect(ctx, diag, "edit"); if (LYD_CTX(node) != ctx) collect(LYD_CTX(node), diag, "edit");
     if (*tree) {
         *tree = lyd_first_sibling(*tree);
+    }
+    if (!rc && (node == *detached)) {
+        *detached = NULL;
     }
     /* the rest of the second tree: all of it on failure, none when its first node moved */
     if (other && (rc || (node != other))) {
@@ -2378,22 +2461,34 @@ step_insert(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON
     return rc;
 }
 
-/* lyd_compare_single of "first" in the retained tree and "second" in a parsed tree, or the
- * retained tree with self:true (selectors omitted: first top-level node). "compare" is its rc
- * (LY_SUCCESS equal, LY_ENOT not), the step's rc that of the parse or LY_SUCCESS with self:true. */
+/* lyd_compare_single of "first" in the retained tree and "second" in a parsed tree (in the
+ * "target" context when given), or the retained tree with self:true (selectors omitted: first
+ * top-level node). "compare" is its rc (LY_SUCCESS equal, LY_ENOT not), the step's rc that of the
+ * parse or LY_SUCCESS with self:true. */
 static LY_ERR
 step_compare(struct ly_ctx *ctx, const cJSON *step, struct lyd_node *tree, cJSON *diag, cJSON *s)
 {
     const char *p1 = str_of(step, "first"), *p2 = str_of(step, "second");
+    const cJSON *target = cJSON_GetObjectItemCaseSensitive(step, "target");
     struct lyd_node *other = NULL, *n1 = tree, *n2;
+    struct ly_ctx *other_ctx = ctx;
     /* compare_other parses data or constructs an otherwise-unparseable opaque root. */
     LY_ERR rc = LY_SUCCESS;
-    int self = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(step, "self"));
+    int self = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(step, "self")), ok;
+
+    if (target) {
+        cJSON *scratch = cJSON_CreateObject();
+        other_ctx = build_ctx_in(target, &ok, 0, scratch);
+        cJSON_Delete(scratch);
+        if (!ok) {
+            die("compare target context failed%s", NULL);
+        }
+    }
 
     if (self) {
         other = tree;
     } else {
-        rc = compare_other(ctx, step, &other, diag);
+        rc = compare_other(other_ctx, step, &other, diag);
     }
     if (!rc) {
         n2 = other;
@@ -2484,7 +2579,7 @@ step_validate(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJS
 }
 
 static LY_ERR
-step_edit(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *diag)
+step_edit(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, struct lyd_node *detached, cJSON *diag)
 {
     const char *merge = input_of(step, "merge"), *del = str_of(step, "delete");
     const cJSON *set = cJSON_GetObjectItemCaseSensitive(step, "set");
@@ -2536,7 +2631,7 @@ step_edit(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *
         }
         if (popaq && (!*tree || lyd_find_sibling_opaq_next(lyd_first_sibling(*tree), popaq, &parent))) {
             die("insert parent_opaq %s not found", popaq);
-        }
+        } if (cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(o, "detached_parent"))) { if (!detached) die("insert retained detached parent not found%s", NULL); parent = detached; }
         if (io && parent && parent->schema && (parent->schema->nodetype & LYD_NODE_TERM)) {
             die("insert_opaq under the leaf %s: libyang links it over the leaf's value", LYD_NAME(parent));
         }
@@ -2578,6 +2673,26 @@ step_edit(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *
         }
         if (*tree) {
             *tree = lyd_first_sibling(*tree);
+        }
+    } else if (input_of(step, "merge_into")) {
+        struct dparams p;
+        struct ly_in *in = NULL;
+        struct lyd_node *dest = NULL;
+
+        dparams_of(step, &p);
+        ly_in_new_memory(input_of(step, "merge_into"), &in);
+        rc = lyd_parse_data(ctx, NULL, in, p.fmt, p.popts | LYD_PARSE_ONLY, 0, &dest);
+        ly_in_free(in, 0);
+        collect(ctx, diag, "edit");
+        if (!rc && dest) {
+            rc = lyd_merge_siblings(&dest, *tree, 0);
+            collect(ctx, diag, "edit");
+            if (!rc) {
+                lyd_free_all(*tree);
+                *tree = dest;
+            } else {
+                lyd_free_all(dest);
+            }
         }
     } else if (merge) {
         /* parsed like data_type "edit" would be: parse-only, then merged */
@@ -2643,13 +2758,15 @@ module_of(struct ly_ctx *ctx, const cJSON *step)
 }
 
 /*
- * diff: lyd_diff_siblings (lyd_diff_tree with single) of the retained tree (or its node at "node")
+ * diff: lyd_diff_siblings (lyd_diff_tree with single) of the retained tree (or its node at "node",
+ * or the retained detached node with "detached")
  * and the parsed data (or its node at "data_node"; no data: NULL); the result replaces the diff
  * register, or with merge is merged into it (lyd_diff_merge_all, merge_options) and reported as
  * new_diff
  */
 static LY_ERR
-step_diff(struct ly_ctx *ctx, const cJSON *step, struct lyd_node *tree, struct lyd_node **diff, cJSON *diag,
+step_diff(struct ly_ctx *ctx, const cJSON *step, struct lyd_node *tree, struct lyd_node *detached,
+        struct lyd_node **diff, cJSON *diag,
         cJSON *s)
 {
     struct dparams p;
@@ -2661,7 +2778,12 @@ step_diff(struct ly_ctx *ctx, const cJSON *step, struct lyd_node *tree, struct l
     int ok;
     LY_ERR rc = LY_SUCCESS;
 
-    if (npath) {
+    if (cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(step, "detached"))) {
+        first = detached;
+        if (!first) {
+            die("diff retained detached node not found%s", NULL);
+        }
+    } else if (npath) {
         first = node_at(tree, npath, "diff node %s not found");
     }
     if (data) {
@@ -2687,14 +2809,14 @@ step_diff(struct ly_ctx *ctx, const cJSON *step, struct lyd_node *tree, struct l
     } else {
         rc = lyd_diff_siblings(first, snode, opts, &res);
     }
-    collect(ctx, diag, "diff");
+    collect(ctx, diag, "diff"); if (first && LYD_CTX(first) != ctx) collect(LYD_CTX(first), diag, "diff");
     if (second_ctx != ctx) {
         collect(second_ctx, diag, "diff");
     }
     if (!rc && cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(step, "merge"))) {
         cJSON_AddItemToObject(s, "new_diff", res ? print_tree(res, LYD_PRINT_WD_ALL, 1) : cJSON_CreateNull());
-        rc = lyd_diff_merge_all(diff, res, flags_of(step, "merge_options", diff_merge_flags));
-        collect(ctx, diag, "diff");
+        const struct ly_ctx *res_ctx = res && LYD_CTX(res) != ctx ? LYD_CTX(res) : NULL; const struct ly_err_item *mark = res_ctx ? ly_err_last(res_ctx) : NULL; rc = lyd_diff_merge_all(diff, res, flags_of(step, "merge_options", diff_merge_flags));
+        collect(ctx, diag, "diff"); if (res_ctx) collect_after(res_ctx, mark, diag, "diff"); /* the merge's logs there; new_diff's printer logs stay pending */
         lyd_free_all(res);
     } else if (!rc) {
         lyd_free_all(*diff);
@@ -2730,13 +2852,13 @@ step_diff_parse(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **diff, c
  * the register's node at "parent"
  */
 static LY_ERR
-step_diff_merge(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **diff, cJSON *diag)
+step_diff_merge(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **diff, struct lyd_node *detached, cJSON *diag)
 {
     struct dparams p;
     struct lyd_node *src = NULL, *parent = NULL;
     const char *spath = str_of(step, "src_node"), *ppath = str_of(step, "parent");
     uint16_t opts = flags_of(step, "options", diff_merge_flags);
-    const struct lys_module *mod = module_of(ctx, step);
+    const struct lys_module *mod = module_of(ctx, step); const struct ly_ctx *diff_ctx = *diff ? LYD_CTX(*diff) : NULL;
     LY_ERR rc;
 
     dparams_of(step, &p);
@@ -2745,8 +2867,8 @@ step_diff_merge(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **diff, c
     if (rc) {
         return rc;
     }
-    if (spath) {
-        if (ppath) {
+    if (spath) { if (cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(step, "detached_parent"))) { parent = detached; if (!parent) die("diff_merge retained detached parent not found%s", NULL); }
+        if (ppath && !parent) {
             parent = node_at(*diff, ppath, "diff_merge parent %s not found");
         }
         rc = lyd_diff_merge_tree(diff, parent, node_at(src, spath, "diff_merge src_node %s not found"), NULL, NULL,
@@ -2754,44 +2876,8 @@ step_diff_merge(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **diff, c
     } else {
         rc = lyd_diff_merge_module(diff, src, mod, NULL, NULL, opts);
     }
-    collect(ctx, diag, "diff");
+    collect(ctx, diag, "diff"); if (diff_ctx && diff_ctx != ctx) collect(diff_ctx, diag, "diff"); if (parent && LYD_CTX(parent) != ctx && LYD_CTX(parent) != diff_ctx) collect(LYD_CTX(parent), diag, "diff");
     lyd_free_all(src);
-    return rc;
-}
-
-/* Read-only node-set lookup against the retained tree, using its first node as context. */
-static LY_ERR
-step_xpath(struct ly_ctx *ctx, const cJSON *step, struct lyd_node *tree, cJSON *diag, cJSON *s)
-{
-    struct ly_set *set = NULL;
-    struct lyxp_var *vars = NULL;
-    const cJSON *v;
-    LY_ERR rc;
-
-    cJSON_ArrayForEach(v, cJSON_GetObjectItemCaseSensitive(step, "vars")) {
-        if (lyxp_vars_set(&vars, v->string, v->valuestring)) {
-            die("lyxp_vars_set %s failed", v->string);
-        }
-    }
-    rc = tree ? lyd_find_xpath3(tree, tree, str_of(step, "xpath"), LY_VALUE_JSON, NULL, vars, &set) : LY_EINVAL;
-    lyxp_vars_free(vars);
-
-    collect(ctx, diag, "xpath");
-    if (rc) {
-        cJSON_AddNullToObject(s, "result");
-    } else {
-        cJSON *res = cJSON_AddObjectToObject(s, "result");
-        cJSON *nodes = cJSON_AddArrayToObject(res, "nodes");
-
-        cJSON_AddStringToObject(res, "type", "node-set");
-        for (uint32_t i = 0; i < set->count; i++) {
-            char *path = lyd_path(set->dnodes[i], LYD_PATH_STD, NULL, 0);
-
-            cJSON_AddItemToArray(nodes, cJSON_CreateString(path));
-            free(path);
-        }
-    }
-    ly_set_free(set, NULL);
     return rc;
 }
 
@@ -2814,6 +2900,86 @@ step_trim(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, cJSON *
     return rc;
 }
 
+/* Evaluate from the node at "node", the retained unlinked node, or (neither) the retained tree's
+ * first node, with the retained tree as the absolute root and the step's variables. An empty
+ * retained tree is LY_EINVAL with a null result and no diagnostics. */
+static LY_ERR
+step_xpath(struct ly_ctx *ctx, const cJSON *step, struct lyd_node *tree, struct lyd_node *detached,
+        cJSON *diag, cJSON *out)
+{
+    const char *path = str_of(step, "node");
+    const struct lyd_node *node;
+    struct ly_set *set = NULL;
+    char *str = NULL;
+    long double num = 0;
+    ly_bool b = 0;
+    LY_XPATH_TYPE type;
+    LY_ERR rc;
+    cJSON *res;
+
+    struct lyxp_var *vars = NULL;
+    const cJSON *v;
+
+    if (!tree) {
+        /* lyd_eval_xpath4 needs a context node or tree: LY_EINVAL before any logging */
+        cJSON_AddNullToObject(out, "result");
+        return LY_EINVAL;
+    }
+    cJSON_ArrayForEach(v, cJSON_GetObjectItemCaseSensitive(step, "vars")) {
+        if (lyxp_vars_set(&vars, v->string, v->valuestring)) {
+            die("lyxp_vars_set %s failed", v->string);
+        }
+    }
+    if (cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(step, "detached")) && !detached) {
+        die("xpath retained detached node not found%s", NULL);
+    }
+    node = path ? (!strcmp(path, "@last") ? tree->prev :
+            node_at(tree, path, "xpath node %s not found")) :
+            (cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(step, "detached")) ? detached : tree);
+    rc = lyd_eval_xpath4(node, tree, NULL, str_of(step, "xpath"), LY_VALUE_JSON, NULL, vars,
+            &type, &set, &str, &num, &b);
+    lyxp_vars_free(vars);
+    collect(ctx, diag, "xpath");
+    if (rc) {
+        cJSON_AddNullToObject(out, "result");
+        ly_set_free(set, NULL);
+        free(str);
+        return rc;
+    }
+    res = cJSON_AddObjectToObject(out, "result");
+    switch (type) {
+    case LY_XPATH_NODE_SET: {
+        cJSON *nodes = cJSON_AddArrayToObject(res, "nodes");
+        cJSON_AddStringToObject(res, "type", "node-set");
+        for (uint32_t i = 0; i < set->count; i++) {
+            char *path = lyd_path(set->dnodes[i], LYD_PATH_STD, NULL, 0);
+            cJSON_AddItemToArray(nodes, cJSON_CreateString(path));
+            free(path);
+        }
+        break;
+    }
+    case LY_XPATH_STRING:
+        cJSON_AddStringToObject(res, "type", "string");
+        cJSON_AddStringToObject(res, "value", str);
+        break;
+    case LY_XPATH_NUMBER:
+        cJSON_AddStringToObject(res, "type", "number");
+        if (isfinite((double)num)) {
+            cJSON_AddNumberToObject(res, "value", (double)num);
+        } else {
+            cJSON_AddStringToObject(res, "value", isnan((double)num) ? "NaN" : (num > 0 ? "Infinity" : "-Infinity"));
+        }
+        break;
+    case LY_XPATH_BOOLEAN:
+        cJSON_AddStringToObject(res, "type", "boolean");
+        cJSON_AddBoolToObject(res, "value", b);
+        break;
+    }
+    ly_set_free(set, NULL);
+    free(str);
+    return LY_SUCCESS;
+}
+
 /* diff_reverse: lyd_diff_reverse_all of the diff register replaces it */
 static LY_ERR
 step_diff_reverse(struct ly_ctx *ctx, struct lyd_node **diff, cJSON *diag)
@@ -2821,7 +2987,7 @@ step_diff_reverse(struct ly_ctx *ctx, struct lyd_node **diff, cJSON *diag)
     struct lyd_node *res = NULL;
     LY_ERR rc = lyd_diff_reverse_all(*diff, &res);
 
-    collect(ctx, diag, "diff");
+    collect(ctx, diag, "diff"); if (*diff && LYD_CTX(*diff) != ctx) collect(LYD_CTX(*diff), diag, "diff");
     if (!rc) {
         lyd_free_all(*diff);
         *diff = res;
@@ -2835,7 +3001,7 @@ op_sequence(const cJSON *req)
     int ok;
     struct ly_ctx *ctx = build_ctx(req, &ok, 0), *sctx;
     const cJSON *steps = cJSON_GetObjectItemCaseSensitive(req, "steps"), *step;
-    struct lyd_node *tree = NULL, *diff = NULL;
+    struct lyd_node *tree = NULL, *diff = NULL, *detached = NULL;
     cJSON *out;
     LY_ERR rc = LY_SUCCESS;
     int i = 0, failed = -1;
@@ -2870,20 +3036,19 @@ op_sequence(const cJSON *req)
         } else if (!strcmp(what, "validate")) {
             rc = step_validate(sctx, step, &tree, diag, s);
         } else if (!strcmp(what, "edit")) {
-            rc = step_edit(sctx, step, &tree, diag);
+            rc = step_edit(sctx, step, &tree, detached, diag);
         } else if (!strcmp(what, "link")) {
             rc = lyd_leafref_link_node_tree(tree);
             collect(sctx, diag, "link");
         } else if (!strcmp(what, "links")) {
-            cJSON_AddItemToObject(s, "leafref_links", links_json(tree));
+            cJSON_AddItemToObject(s, "leafref_links", links_json(
+                    cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(step, "detached")) ? detached : tree));
         } else if (!strcmp(what, "dup")) {
-            rc = step_dup(sctx, step, &tree, diag);
+            rc = step_dup(sctx, step, &tree, detached, diag);
         } else if (!strcmp(what, "compare")) {
             rc = step_compare(sctx, step, tree, diag, s);
-        } else if (!strcmp(what, "xpath")) {
-            rc = step_xpath(sctx, step, tree, diag, s);
         } else if (!strcmp(what, "insert")) {
-            rc = step_insert(sctx, step, &tree, diag);
+            rc = step_insert(sctx, step, &tree, &detached, diag);
         } else if (!strcmp(what, "change_term")) {
             /* lyd_change_term(_canon) of the node at "node": "change" is its rc; LY_EEXIST (only the default
              * flag changed) and LY_ENOT (nothing changed) are results, not failures */
@@ -2923,18 +3088,46 @@ op_sequence(const cJSON *req)
             cJSON_AddItemToObject(s, "change", code_json(r));
             rc = (r == LY_EEXIST) || (r == LY_ENOT) ? LY_SUCCESS : r;
         } else if (!strcmp(what, "diff")) {
-            rc = step_diff(sctx, step, tree, &diff, diag, s);
+            rc = step_diff(sctx, step, tree, detached, &diff, diag, s);
         } else if (!strcmp(what, "diff_parse")) {
             rc = step_diff_parse(sctx, step, &diff, diag);
         } else if (!strcmp(what, "diff_merge")) {
-            rc = step_diff_merge(sctx, step, &diff, diag);
+            rc = step_diff_merge(sctx, step, &diff, detached, diag);
         } else if (!strcmp(what, "diff_reverse")) {
             rc = step_diff_reverse(sctx, &diff, diag);
         } else if (!strcmp(what, "trim")) {
             rc = step_trim(sctx, step, &tree, diag);
+        } else if (!strcmp(what, "xpath")) {
+            rc = step_xpath(sctx, step, tree, detached, diag, s);
+        } else if (!strcmp(what, "unlink")) {
+            const char *dpath = str_of(step, "diff_node"), *path = str_of(step, "node");
+            struct lyd_node *node = dpath ? node_at(diff, dpath, "unlink diff_node %s not found") :
+                    (!strcmp(path, "@top") ? tree : node_at(tree, path, "unlink node %s not found"));
+            if (!node) die("unlink node %s not found", path);
+
+            struct ly_ctx *node_ctx = LYD_CTX(node);
+            struct lyd_node *next = node->next;
+            rc = lyd_unlink_tree(node);
+            collect(node_ctx, diag, "edit");
+            if (rc == LY_SUCCESS) {
+                lyd_free_tree(detached); detached = node;
+                if (dpath && diff == node) diff = next;
+                else if (tree == node) tree = next;
+            }
+        } else if (!strcmp(what, "find_meta")) {
+            const char *path = str_of(step, "node");
+            struct lyd_node *node = path ? node_at(tree, path, "find_meta node %s not found") : detached;
+            struct lyd_meta *meta;
+
+            if (!node) {
+                die("find_meta needs an attached node or a retained unlinked node%s", NULL);
+            }
+            meta = lyd_find_meta(node->meta, NULL, str_of(step, "name"));
+            collect(node->meta ? node->meta->annotation->module->ctx : LYD_CTX(node), diag, "find_meta"); /* lyd_find_meta logs against its first metadata's context. */
+            cJSON_AddBoolToObject(s, "found", meta != NULL);
         } else if (!strcmp(what, "diff_apply")) {
             rc = lyd_diff_apply_module(&tree, diff, module_of(sctx, step), NULL, NULL);
-            collect(sctx, diag, "diff");
+            collect(sctx, diag, "diff"); if (diff && LYD_CTX(diff) != sctx) collect(LYD_CTX(diff), diag, "diff");
         } else if (!strcmp(what, "print_xml")) {
             cJSON *t = cJSON_CreateObject();
             char *json = NULL, *xml = NULL;
@@ -2957,7 +3150,7 @@ op_sequence(const cJSON *req)
         } else if (!strcmp(what, "any_direct")) {
             cJSON *direct = cJSON_AddObjectToObject(s, "direct");
             rc = step_any_direct(sctx, step, direct, diag);
-        } else {
+        } else if (!strcmp(what, "detached_dump")) { struct lyd_node *probe = cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(step, "child")) && detached ? lyd_child(detached) : detached; if (!probe) die("detached_dump retained detached node not found%s", NULL); char *path = lyd_path(probe, LYD_PATH_STD, NULL, 0); add_opt_str(s, "detached_path", path); free(path); cJSON_AddItemToObject(s, "detached_tree", print_tree(probe, wd_of(step), 0)); collect(LYD_CTX(probe), diag, "dump"); } else {
             cJSON_AddItemToObject(s, "tree", print_tree(tree, wd_of(step), 1));
         }
         /* an error-level item means failure even if the call returned success (void APIs such as

@@ -37,9 +37,17 @@ type ApplyDiffOptions struct {
 // refused with LY_EINVAL before t is changed, including when diff is nil (D-0116). A diff tree
 // may itself have such a split because libyang inserts generated diff nodes by their schema
 // anchors; it is accepted and walked in its stored order.
-func (t *Tree) ApplyDiff(diff *Tree, o ApplyDiffOptions) (result error) {
+func (t *Tree) ApplyDiff(diff *Tree, o ApplyDiffOptions) error {
+	var mod *schema.Module
+	if o.Module != "" {
+		mod = t.context().Implemented(o.Module)
+	}
+	return t.applyDiffWithModule(diff, o, mod)
+}
+
+func (t *Tree) applyDiffWithModule(diff *Tree, o ApplyDiffOptions, mod *schema.Module) (result error) {
 	defer t.work.beginHashWork()()
-	lg := &logger{set: t.set}
+	lg := &logger{set: t.context()}
 	if split, op := splitOpRun(t.top.first(), true); split != nil {
 		fn := "lyd_diff_apply_all"
 		if o.Module != "" {
@@ -50,11 +58,8 @@ func (t *Tree) ApplyDiff(diff *Tree, o ApplyDiffOptions) (result error) {
 	if diff == nil {
 		return nil
 	}
-	var mod *schema.Module
-	if o.Module != "" {
-		if mod = t.set.Implemented(o.Module); mod == nil {
-			return lg.done(lg.logErr("LY_EINVAL", "Module \"%s\" not found.", o.Module))
-		}
+	if o.Module != "" && mod == nil {
+		return lg.done(lg.logErr("LY_EINVAL", "Module \"%s\" not found.", o.Module))
 	}
 	if err := t.preflightBatchHash(diff); err != nil {
 		return err
@@ -78,7 +83,7 @@ func (t *Tree) ApplyDiff(diff *Tree, o ApplyDiffOptions) (result error) {
 
 // noInstErr is LOGERR_NOINST.
 func (t *Tree) noInstErr(dn *Node) error {
-	return &opError{"LY_EINVAL", fmt.Sprintf("Failed to find node \"%s\" instance in data.", lydPath(t.set, dn, false))}
+	return &opError{"LY_EINVAL", fmt.Sprintf("Failed to find node \"%s\" instance in data.", lydPath(ctxOf(dn), dn, false))}
 }
 
 // applyR is lyd_diff_apply_r: the diff node dn applied among the children of parent (nil: the
@@ -98,16 +103,26 @@ func (t *Tree) applyR(parent, dn *Node, cb func(diff, node *Node) error, cache *
 			if match = t.findMatch(sib, dn, true, cache); match == nil { // moved: there are siblings
 				return t.noInstErr(dn)
 			}
-		} else if match, err = t.dupR(dn, nil, false, insertDefault, dupNoMeta); err != nil {
-			return err
 		}
 		name, _ := anchorNames(dn.schema)
-		i := findYangMeta(dn, name)
+		i := findYangLatest(dn, name)
 		if i < 0 {
 			return t.metaErr("yang:"+name, dn)
 		}
 		anchor := dn.meta[i].value.Canonical()
-		if err := t.diffInsert(parent, match, anchor); err != nil {
+		if op == diffCreate {
+			if err := t.preflightDiffUserordCreate(parent, dn, anchor); err != nil {
+				return err
+			}
+			if match, err = diffDupCreate(dn); err != nil {
+				return err
+			}
+		}
+		insertSource := dn
+		if op == diffReplace {
+			insertSource = match // moved node already belongs to the destination context
+		}
+		if err := t.diffInsert(parent, match, insertSource, anchor); err != nil {
 			return err
 		}
 	} else {
@@ -121,12 +136,15 @@ func (t *Tree) applyR(parent, dn *Node, cb func(diff, node *Node) error, cache *
 				match.flags = match.flags&^FlagDefault | dn.flags&FlagDefault
 			}
 		case diffCreate:
-			if match, err = t.dupR(dn, nil, false, insertDefault, dupNoMeta); err != nil {
+			if match, err = diffDupCreate(dn); err != nil {
 				return err
 			}
-			if parent != nil {
+			switch {
+			case parent != nil:
 				err = t.insertChild(parent, match)
-			} else {
+			case sib.len() == 0:
+				err = t.insertDiffRoot(match, dn)
+			default:
 				err = t.insertSibling(sib.first(), match)
 			}
 			if err != nil {
@@ -149,7 +167,7 @@ func (t *Tree) applyR(parent, dn *Node, cb func(diff, node *Node) error, cache *
 				return fmt.Errorf("data: applying a replace of %s %q: %w", nodetypeStr(dn.schema.Kind), dn.Name(), ErrUnsupported)
 			}
 			if rc := t.changeTerm(match, dn.value.Canonical()); rc != "" && rc != "LY_EEXIST" {
-				return &opError{"LY_EINVAL", fmt.Sprintf("Unexpected value of node \"%s\" in data.", lydPath(t.set, match, false))}
+				return &opError{"LY_EINVAL", fmt.Sprintf("Unexpected value of node \"%s\" in data.", lydPath(ctxOf(match), match, false))}
 			}
 			match.touch()
 			match.flags = dn.flags // with the flags
@@ -174,6 +192,88 @@ func (t *Tree) applyR(parent, dn *Node, cb func(diff, node *Node) error, cache *
 		if err := t.applyR(match, c, cb, childCache); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// diffDupCreate is lyd_dup_single(diff_node, NULL, LYD_DUP_NO_META): the new
+// node keeps the diff node's context even when the destination tree is empty.
+func diffDupCreate(source *Node) (*Node, error) {
+	return newTree(ctxOf(source)).dupR(source, nil, false, insertDefault, dupNoMeta)
+}
+
+// insertDiffRoot mirrors assigning *first_node when libyang has no parent or
+// siblings. The first node gives an initially empty Tree its effective context.
+func (t *Tree) insertDiffRoot(n, source *Node) error {
+	if set := ctxOf(source); set != nil {
+		t.set = set
+	}
+	return t.insert(nil, n, insertDefault)
+}
+
+// diffSourceInsertCheck preserves lyd_insert_check_schema's pointer identity on a
+// cross-context create.
+func diffSourceInsertCheck(parent, sibling, source *Node) error {
+	if parent != nil {
+		return insertCheckSchema(parent.schema, nil, source.schema)
+	}
+	if sibling != nil {
+		return insertCheckSchema(nil, sibling.schema, source.schema)
+	}
+	return nil
+}
+
+// preflightDiffUserordCreate follows the insertion branch selected by lyd_diff_insert
+// while the source still has its original schema and context. An existing anchor
+// reaches lyd_insert_before/after (context check first); without one,
+// lyd_insert_child/sibling checks the source schema parent pointer.
+func (t *Tree) preflightDiffUserordCreate(parent, source *Node, anchor string) error {
+	sib := t.childrenOf(parent)
+	if sib.len() == 0 {
+		if parent != nil && anchor == "" {
+			return diffSourceInsertCheck(parent, nil, source)
+		}
+		return nil
+	}
+	if anchor == "" {
+		if n := t.schemaLookup(sib, source.schema); n != nil {
+			if ctxOf(n) != ctxOf(source) {
+				return &opError{"LY_EINVAL", "Different contexts mixed in a \"lyd_insert_before\" function call."}
+			}
+			return nil
+		}
+		return diffSourceInsertCheck(nil, sib.first(), source)
+	}
+	var at *Node
+	if isDupInstList(source.schema) {
+		pos := atoi(anchor)
+		if pos == 0 {
+			return &opError{"LY_EINVAL", fmt.Sprintf("Invalid user-ordered anchor value \"%s\".", anchor)}
+		}
+		for n := range t.instances(sib, source.schema) {
+			pos--
+			if pos == 0 {
+				at = n
+				break
+			}
+		}
+	} else {
+		var err error
+		// lyd_diff_insert looks up the anchor using the unconverted duplicate's
+		// schema and context, including its value and key types.
+		search := t
+		if sourceSet := ctxOf(source); sourceSet != nil && sourceSet != t.context() {
+			search = newTree(sourceSet)
+		}
+		if at, err = search.findAnchor(sib, source.schema, anchor); err != nil {
+			return err
+		}
+	}
+	if at == nil {
+		return anchorErr(source)
+	}
+	if ctxOf(at) != ctxOf(source) {
+		return &opError{"LY_EINVAL", "Different contexts mixed in a \"lyd_insert_after\" function call."}
 	}
 	return nil
 }
@@ -204,11 +304,12 @@ func atoi(s string) int {
 // diffInsert is lyd_diff_insert: n inserted among the children of parent (nil: the top level of
 // t); a user-ordered instance after the instance anchor names (its value, its key predicate, or
 // for key-less lists and state leaf-lists its 1-based position), or first without an anchor.
-func (t *Tree) diffInsert(parent, n *Node, anchor string) error {
+// source is the original diff node, before n's schema was converted to t's snapshot.
+func (t *Tree) diffInsert(parent, n, source *Node, anchor string) error {
 	sib := t.childrenOf(parent)
 	if sib.len() == 0 {
 		if parent == nil {
-			return t.insert(nil, n, insertDefault)
+			return t.insertDiffRoot(n, source)
 		}
 		if anchor != "" {
 			return anchorErr(n)
@@ -216,6 +317,9 @@ func (t *Tree) diffInsert(parent, n *Node, anchor string) error {
 		return t.insertChild(parent, n)
 	}
 	if !isUserOrdered(n.schema) {
+		if err := diffSourceInsertCheck(nil, sib.first(), source); err != nil {
+			return err
+		}
 		return t.insertSibling(sib.first(), n)
 	}
 	if anchor == "" { // before the first instance
@@ -224,6 +328,9 @@ func (t *Tree) diffInsert(parent, n *Node, anchor string) error {
 		case first == n:
 			return argErr("sibling != node", "lyd_insert_before")
 		case first != nil:
+			if ctxOf(first) != ctxOf(source) {
+				return &opError{"LY_EINVAL", "Different contexts mixed in a \"lyd_insert_before\" function call."}
+			}
 			restore, err := t.linkOrigin(n)
 			if err != nil {
 				return err
@@ -233,6 +340,9 @@ func (t *Tree) diffInsert(parent, n *Node, anchor string) error {
 			if err != nil {
 				restore()
 			}
+			return err
+		}
+		if err := diffSourceInsertCheck(nil, sib.first(), source); err != nil {
 			return err
 		}
 		return t.insertSibling(sib.first(), n)
@@ -253,12 +363,16 @@ func (t *Tree) diffInsert(parent, n *Node, anchor string) error {
 		}
 	} else {
 		var err error
-		if at, err = t.findAnchor(sib, n.schema, anchor); err != nil {
+		search := newTree(ctxOf(source))
+		if at, err = search.findAnchor(sib, n.schema, anchor); err != nil {
 			return err
 		}
 	}
 	if at == nil {
 		return anchorErr(n)
+	}
+	if ctxOf(at) != ctxOf(source) {
+		return &opError{"LY_EINVAL", "Different contexts mixed in a \"lyd_insert_after\" function call."}
 	}
 	return t.insertAfter(at, n)
 }
@@ -291,7 +405,7 @@ func (e *storeFailure) Error() string { return e.d.Msg }
 func (t *Tree) findAnchor(sib *siblings, sn *schema.Node, anchor string) (*Node, error) {
 	var target *Node
 	if sn.Kind == schema.LeafList {
-		v, d := types.Store(sn.Type, anchor, types.FormatJSON, types.HintData, types.ModuleNames{Set: t.set}, sn)
+		v, d := types.Store(sn.Type, anchor, types.FormatJSON, types.HintData, types.ModuleNames{Set: sn.Module.Owner}, sn)
 		if d != nil {
 			return nil, &storeFailure{d, sn}
 		}
@@ -306,7 +420,7 @@ func (t *Tree) findAnchor(sib *siblings, sn *schema.Node, anchor string) (*Node,
 		// or module (ly_path_compile_snode's LY_ENOTFOUND, its LYVE_XPATH item at the list,
 		// ut-new/path-12) or a variable lyd_create_list cannot find (lyxp_vars_find without
 		// variables: LOGERR LY_ENOTFOUND, ut-new/path-11)
-		preds, cd := types.CompileKeysDiag(t.set, sn, anchor)
+		preds, cd := types.CompileKeysDiag(sn.Module.Owner, sn, anchor)
 		switch {
 		case cd != nil && cd.RC() == "LY_ENOTFOUND":
 			return nil, &anchorMissing{name: sn.Name, first: cd, at: sn}
@@ -340,7 +454,7 @@ func (t *Tree) findAnchor(sib *siblings, sn *schema.Node, anchor string) (*Node,
 // was equal and only the default flag was cleared, LY_ENOT when nothing changed, else the code of
 // the failed store.
 func (t *Tree) changeTerm(n *Node, val string) string {
-	v, d := types.Store(n.schema.Type, val, types.FormatJSON, types.HintData, types.ModuleNames{Set: t.set}, n.schema)
+	v, d := types.Store(n.schema.Type, val, types.FormatJSON, types.HintData, types.ModuleNames{Set: ctxOf(n)}, n.schema)
 	if d != nil {
 		return d.RC()
 	}
@@ -367,16 +481,54 @@ func splitMetaDiff(m *meta) (name, val string, err error) {
 	return name, val, nil
 }
 
-// findMetaNamed is lyd_diff_metadata_find without logging: the metadata of n named "module:name"
-// with the canonical value val, nil if none.
+// findMetaNamed is lyd_diff_metadata_find without logging. Each repeated
+// lyd_find_meta call resolves the prefix in the context of the first metadata
+// in the remaining suffix (diff.c:1466-1485, tree_data.c:2904-2942).
 func findMetaNamed(n *Node, name, val string) *meta {
-	mod, local, _ := strings.Cut(name, ":")
-	for _, m := range metasNamed(n, mod, local) {
-		if m.value.Canonical() == val {
-			return m
+	modName, local, _ := strings.Cut(name, ":")
+	for i := 0; i < len(n.meta); {
+		set := n.meta[i].mod.Owner
+		if set == nil { // hand-built modules have no owner
+			set = ctxOf(n)
 		}
+		mod := latestModule(set, modName)
+		match := -1
+		for j := i; j < len(n.meta); j++ {
+			m := n.meta[j]
+			if m.mod == mod && m.name == local {
+				match = j
+				break
+			}
+		}
+		if match < 0 {
+			return nil
+		}
+		if n.meta[match].value.Canonical() == val {
+			return n.meta[match]
+		}
+		i = match + 1
 	}
 	return nil
+}
+
+// findMetaNamedChecked keeps lyd_find_meta's first diagnostic when a diff
+// metadata name is malformed, then returns lyd_diff_metadata_find's LY_EINT.
+func findMetaNamedChecked(n *Node, name, val, site string) (*meta, error) {
+	set := ctxOf(n)
+	if len(n.meta) > 0 && n.meta[0].mod.Owner != nil { // hand-built modules have no owner
+		set = n.meta[0].mod.Owner
+	}
+	lg := &logger{set: set}
+	_, err := lg.findMeta(n.meta, nil, name)
+	if err != nil {
+		items := make([]*opError, 0, len(lg.diags)+1)
+		for _, d := range lg.diags {
+			items = append(items, &opError{d.Err, d.Msg})
+		}
+		items = append(items, &opError{"LY_EINT", "Internal error (diff.c:" + site + ")."})
+		return nil, &diffError{items: items, rc: "LY_EINT"}
+	}
+	return findMetaNamed(n, name, val), nil
 }
 
 // findMetaVal is findMetaNamed of the diff metadata name of the module yang.
@@ -384,7 +536,7 @@ func findMetaVal(n *Node, name, val string) *meta { return findMetaNamed(n, "yan
 
 // metaNew is lyd_new_meta(NULL, n, yang, name, val, 0).
 func (t *Tree) metaNew(n *Node, name, val string) error {
-	lg := &logger{set: t.set}
+	lg := &logger{set: ctxOf(n)}
 	if _, err := lg.newMeta(n, nil, "yang:"+name, val, false); err != nil {
 		return lg.done(err)
 	}
@@ -393,7 +545,7 @@ func (t *Tree) metaNew(n *Node, name, val string) error {
 
 // metaChange is lyd_change_meta of m, a metadata instance of n.
 func (t *Tree) metaChange(n *Node, m *meta, val string) error {
-	lg := &logger{set: t.set}
+	lg := &logger{set: ctxOf(n)}
 	if _, err := lg.changeMeta(n, m, val); err != nil {
 		return lg.done(err)
 	}
@@ -436,7 +588,7 @@ func (t *Tree) applyMetadata(n, dn *Node, op diffOp) error {
 	}
 	var repl, orig []*meta
 	for _, m := range dn.meta {
-		if m.mod.Name != "yang" {
+		if m.mod != ctxOf(n).Implemented("yang") {
 			continue
 		}
 		switch m.name {
@@ -445,7 +597,7 @@ func (t *Tree) applyMetadata(n, dn *Node, op diffOp) error {
 			if err != nil {
 				return err
 			}
-			lg := &logger{set: t.set}
+			lg := &logger{set: ctxOf(n)}
 			if _, err := lg.newMeta(n, nil, name, val, false); err != nil {
 				return lg.done(err)
 			}
@@ -454,7 +606,10 @@ func (t *Tree) applyMetadata(n, dn *Node, op diffOp) error {
 			if err != nil {
 				return err
 			}
-			m2 := findMetaNamed(n, name, val)
+			m2, err := findMetaNamedChecked(n, name, val, "1601")
+			if err != nil {
+				return err
+			}
 			if m2 == nil {
 				return &opError{"LY_EINT", "Internal error."}
 			}
@@ -480,7 +635,10 @@ func (t *Tree) applyMetadata(n, dn *Node, op diffOp) error {
 		if err != nil {
 			return err
 		}
-		m2 := findMetaNamed(n, name, old)
+		m2, err := findMetaNamedChecked(n, name, old, "1753")
+		if err != nil {
+			return err
+		}
 		if m2 == nil {
 			return &opError{"LY_EINT", "Internal error."}
 		}

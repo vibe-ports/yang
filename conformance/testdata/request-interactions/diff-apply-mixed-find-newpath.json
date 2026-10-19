@@ -1,0 +1,21 @@
+{
+  "id": "protocol-v2/diff-apply-mixed-find-newpath",
+  "request": {
+    "base_dir": ".",
+    "op": "sequence",
+    "searchdirs": ["schemas"],
+    "modules": [{"name": "pv2-detached", "features": ["extra"]}],
+    "steps": [
+      {"do": "parse", "format": "json", "data_type": "config", "parse_only": true, "data": "{\"pv2-detached:l\":[{\"k\":\"a\"}]}"},
+      {"do": "diff", "format": "json", "data_type": "config", "parse_only": true, "data": "{\"pv2-detached:l\":[{\"k\":\"a\"}],\"pv2-detached:c\":{\"base\":\"x\"}}"},
+      {"do": "dup", "node": "/pv2-detached:l[k='a']", "options": ["recursive"], "target": {"searchdirs": ["schemas"], "modules": [{"name": "pv2-detached"}]}},
+      {"do": "diff_apply"},
+      {"do": "edit", "set": {"path": "/pv2-detached:c/base", "value": "y"}},
+      {"do": "xpath", "xpath": "count(/pv2-detached:l) + count(/pv2-detached:c)"},
+      {"do": "dump"}
+    ]
+  },
+  "verdict": "valid",
+  "rfc": [],
+  "source": {"commit": null, "license": "BSD-3-Clause", "url": "hand-written (this repo)"}
+}

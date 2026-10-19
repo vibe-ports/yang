@@ -1,0 +1,50 @@
+{
+  "id": "protocol-v2/xpath-detached-state-position",
+  "request": {
+    "base_dir": ".",
+    "modules": [
+      {
+        "name": "pv2-detached"
+      }
+    ],
+    "op": "sequence",
+    "searchdirs": [
+      "schemas"
+    ],
+    "steps": [
+      {
+        "data": "{\"pv2-detached:sll\":[\"a\",\"b\"]}",
+        "data_type": "data",
+        "do": "parse",
+        "format": "json",
+        "parse_only": true
+      },
+      {
+        "do": "unlink",
+        "node": "/pv2-detached:sll[1]"
+      },
+      {
+        "detached": true,
+        "do": "xpath",
+        "xpath": "count(following-sibling::*)"
+      },
+      {
+        "detached": true,
+        "do": "xpath",
+        "xpath": "count(/pv2-detached:sll)"
+      },
+      {
+        "do": "detached_dump"
+      }
+    ]
+  },
+  "rfc": [
+    "XPath1.0#2.5"
+  ],
+  "source": {
+    "commit": null,
+    "license": "BSD-3-Clause",
+    "url": "hand-written (this repo)"
+  },
+  "verdict": "valid"
+}

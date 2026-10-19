@@ -211,20 +211,20 @@ func (s schemaNS) Default() string {
 
 // queryNS is the namespace context of a query's options (lyd_eval_xpath4's format, prefix_data
 // and cur_mod), or the argument refusal of a bad one.
-func (t *Tree) queryNS(l *logger, o XPathOptions, fn string) (xpath.NamespaceCtx, error) {
+func (t *Tree) queryNS(l *logger, o XPathOptions, fn string, set *schema.Set) (xpath.NamespaceCtx, error) {
 	var cur *schema.Module
 	if o.Module != "" {
-		if cur = t.set.Implemented(o.Module); cur == nil {
+		if cur = set.Implemented(o.Module); cur == nil {
 			return nil, l.logErr("LY_EINVAL", "Invalid argument %s (%s()).", "cur_mod (not implemented)", fn)
 		}
 	}
 	switch o.Format {
 	case XPathJSON:
-		return jsonNS{set: t.set, cur: o.Module}, nil
+		return jsonNS{set: set, cur: o.Module}, nil
 	case XPathXML:
-		return newXMLPrefixes(t.set, o.Namespaces, &t.work), nil
+		return newXMLPrefixes(set, o.Namespaces, &t.work), nil
 	case XPathSchema:
-		return schemaNS{cur, t.set}, nil // a nil cur fails in evalXPath4, after the expression is parsed
+		return schemaNS{cur, set}, nil // a nil cur fails in evalXPath4, after the expression is parsed
 	}
 	return nil, l.logErr("LY_EINVAL", "Invalid argument %s (%s()).", "format (unknown)", fn)
 }
@@ -247,7 +247,7 @@ func (t *Tree) evalCompiledXPath4(l *logger, ctxNode *Node, e *xpath.Expr, src s
 	if s, ok := ns.(schemaNS); ok && s.cur == nil { // lyxp_eval's first check
 		return xpath.Result{}, l.logErr("LY_EINVAL", "Current module must be set if schema format is used.")
 	}
-	vc := &valCtx{t: t, log: l, vars: vars}
+	vc := &valCtx{t: t, log: l, vars: vars, xpathContext: t.context()}
 	if single {
 		vc.to = to
 	}
@@ -349,7 +349,7 @@ type XPathNamespace struct{ Prefix, URI string }
 // XPathOptions are the inputs of an XPath query besides the expression.
 type XPathOptions struct {
 	// Node is the context node, also the node current() returns; nil is the document root.
-	// It must be a node of the queried tree.
+	// It must be a node of the queried tree or a detached node of the same schema snapshot.
 	Node *Node
 	// Vars bind the $name references. As lyxp_vars_find, a reference takes the first variable
 	// whose name starts with it, so $ab finds a variable "abc" listed before "ab".
@@ -404,7 +404,8 @@ func (t *Tree) EvalXPath(expr string, o XPathOptions) (XPathResult, []yang.Diagn
 // diagnostics, errors, budget and concurrency as for FindXPath.
 func (t *Tree) EvalXPathAs(expr string, typ XPathType, o XPathOptions) (XPathResult, []yang.Diagnostic, error) {
 	if int(typ) >= len(xpathTypes) {
-		l := &logger{set: t.set}
+		set := t.context()
+		l := &logger{set: set}
 		err := l.done(l.logErr("LY_EINVAL", "Invalid argument %s (%s()).", "ret_type (unknown XPath type)", "lyd_eval_xpath4"))
 		return XPathResult{}, l.diags, err
 	}
@@ -414,23 +415,24 @@ func (t *Tree) EvalXPathAs(expr string, typ XPathType, o XPathOptions) (XPathRes
 // evalXPath is lyd_eval_xpath4 with its log: the diagnostics of the call, warnings and the
 // internal errors libyang logs and goes past included.
 func (t *Tree) evalXPath(expr string, o XPathOptions, single bool, to xpath.ResultType) (XPathResult, []yang.Diagnostic, error) {
-	l := &logger{set: t.set}
+	set := t.context()
+	l := &logger{set: set}
 	if o.Node != nil {
 		root := o.Node
 		for root.parent != nil {
 			root = root.parent
 		}
-		if root.tree != t {
+		if root.tree != nil && root.tree != t {
 			err := l.done(l.logErr("LY_EINVAL", "Invalid argument %s (%s()).", "ctx_node (not in the tree)", "lyd_eval_xpath4"))
 			return XPathResult{}, l.diags, err
 		}
 	}
-	ns, err := t.queryNS(l, o, "lyd_eval_xpath4")
+	ns, err := t.queryNS(l, o, "lyd_eval_xpath4", set)
 	if err != nil {
 		// lyd_eval_xpath4 parses the expression first (lyxp_expr_parse, tree_data.c), so a syntax
 		// error outranks a refused option (TestXPathParseBeforeOptions); xpath.Compile only parses
-		if _, perr := xpath.Compile(expr, jsonNS{set: t.set}); perr != nil {
-			l = &logger{set: t.set}
+		if _, perr := xpath.Compile(expr, jsonNS{set: set}); perr != nil {
+			l = &logger{set: set}
 			return XPathResult{}, l.diags, l.done(queryErr(l, o.Node, perr))
 		}
 		return XPathResult{}, l.diags, l.done(err)

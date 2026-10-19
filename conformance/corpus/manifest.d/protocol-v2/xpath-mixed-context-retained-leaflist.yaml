@@ -1,0 +1,25 @@
+fixtures:
+  - id: protocol-v2/xpath-mixed-context-retained-leaflist
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["XPath1.0#2.5"]
+    areas: [xpath, diff]
+    request:
+      op: sequence
+      searchdirs: [schemas, ../ietf]
+      modules: [{name: pv2-detached}]
+      steps:
+        - do: diff
+          format: json
+          data_type: config
+          target:
+            searchdirs: [schemas, ../ietf]
+            modules: [{name: pv2-detached}]
+          data: '{"pv2-detached:l":[{"k":"b"}]}'
+        - {do: parse, format: json, data_type: config, data: '{"pv2-detached:ll":["a"]}'}
+        - {do: diff_apply}
+        - {do: xpath, xpath: "/pv2-detached:ll[.='a']"}
+    golden: golden/xpath-mixed-context-retained-leaflist.json
+    assert:
+      verdict: valid
+      deviation: null

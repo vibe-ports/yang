@@ -7,11 +7,51 @@
 package data
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 
+	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/schema"
 )
+
+type diffLogEntry struct {
+	set  *schema.Set
+	diag yang.Diagnostic
+}
+
+// checkedYangModule is the explicit-module form of lyd_find_meta. Each call
+// performs its own context check, including repeated sibling lookups.
+func (t *Tree) checkedYangModule(n *Node, mod *schema.Module, name string) int {
+	if n == nil || len(n.meta) == 0 {
+		return -1
+	}
+	set := n.meta[0].mod.Owner
+	if set == nil { // hand-built modules have no owner
+		set = ctxOf(n)
+	}
+	lg := &logger{set: set}
+	m, _ := lg.findMeta(n.meta, mod, name)
+	for _, d := range lg.diags {
+		t.diffLogs = append(t.diffLogs, diffLogEntry{set, d})
+	}
+	if m == nil {
+		return -1
+	}
+	return slices.Index(n.meta, m)
+}
+
+func (t *Tree) withDiffLogs(err error) error {
+	var ve *ValidationError
+	if errors.As(err, &ve) && len(t.diffLogs) > 0 {
+		diags := make([]yang.Diagnostic, 0, len(t.diffLogs)+len(ve.Diags))
+		for _, item := range t.diffLogs {
+			diags = append(diags, item.diag)
+		}
+		ve.Diags = append(diags, ve.Diags...)
+	}
+	return err
+}
 
 // MergeDiffOptions are the options of MergeDiff and MergeDiffTree.
 type MergeDiffOptions struct {
@@ -53,17 +93,27 @@ type MergeDiffOptions struct {
 // intermediate diffs: Diff(first, last, DiffOptions{Defaults: true}), with Defaults for the reason
 // given at ReverseDiff. An operation's children in a diff tree may be split by schema-anchor
 // insertion; MergeDiff accepts that order, as libyang does.
-func (t *Tree) MergeDiff(src *Tree, o MergeDiffOptions) (result error) {
+func (t *Tree) MergeDiff(src *Tree, o MergeDiffOptions) error {
+	var mod *schema.Module
+	if o.Module != "" {
+		mod = t.context().Implemented(o.Module)
+	}
+	return t.mergeDiffWithModule(src, o, mod)
+}
+
+func (t *Tree) mergeDiffWithModule(src *Tree, o MergeDiffOptions, mod *schema.Module) (result error) {
 	defer t.work.beginHashWork()()
-	lg := &logger{set: t.set}
+	t.diffLogs = nil
+	lg := &logger{set: t.context()}
 	if src == nil {
 		return nil
 	}
 	mo := mergeOpts{defaults: o.Defaults, cb: o.Callback}
 	if o.Module != "" {
-		if mo.mod = t.set.Implemented(o.Module); mo.mod == nil {
+		if mod == nil {
 			return lg.done(lg.logErr("LY_EINVAL", "Module \"%s\" not found.", o.Module))
 		}
+		mo.mod = mod
 	}
 	journal := beginHashTransaction(t)
 	defer journal.end(&result)
@@ -71,21 +121,28 @@ func (t *Tree) MergeDiff(src *Tree, o MergeDiffOptions) (result error) {
 	if t.work.hashErr != nil {
 		err = t.work.hashErr
 	}
-	return diffDone(lg, err)
+	return t.withDiffLogs(diffDone(lg, err))
 }
 
 // MergeDiffTree is lyd_diff_merge_tree: the subtree src of a source diff merged into the diff t
-// under parent, a node of t (nil: the top level of t; another tree's node is LY_EINVAL); see
+// under parent, a node of t or a detached node of its snapshot (nil: the top level of t; another
+// tree's node is LY_EINVAL). An attached parent supplies the destination context even when a
+// different root is first in t; see
 // MergeDiff, whose limitations for user-ordered instances apply here too. A nil src normally
 // merges nothing. Operation-child runs in either diff may be split by schema-anchor insertion
 // and are accepted in that stored order, as in libyang.
 func (t *Tree) MergeDiffTree(parent, src *Node, o MergeDiffOptions) (result error) {
 	defer t.work.beginHashWork()()
-	lg := &logger{set: t.set}
+	t.diffLogs = nil
+	dest := t.context()
+	if parent != nil && ctxOf(parent) != nil {
+		dest = ctxOf(parent)
+	}
+	lg := &logger{set: dest}
 	if src == nil {
 		return nil
 	}
-	if parent != nil && treeOf(parent) != t {
+	if parent != nil && treeOf(parent) != nil && treeOf(parent) != t {
 		return diffDone(lg, argErr("parent (not a node of the diff)", "lyd_diff_merge_tree"))
 	}
 	journal := beginHashTransaction(t)
@@ -94,7 +151,7 @@ func (t *Tree) MergeDiffTree(parent, src *Node, o MergeDiffOptions) (result erro
 	if t.work.hashErr != nil {
 		err = t.work.hashErr
 	}
-	return diffDone(lg, err)
+	return t.withDiffLogs(diffDone(lg, err))
 }
 
 // anchorNames are the user-ordered anchor metadata of the instances of sn: position for key-less
@@ -110,8 +167,8 @@ func anchorNames(sn *schema.Node) (name, orig string) {
 }
 
 // copyYangMeta is lyd_dup_meta_single of the metadata name of the module yang of src onto n.
-func copyYangMeta(src, n *Node, name string) bool {
-	i := findYangMeta(src, name)
+func copyYangMeta(src, n *Node, name string, mod *schema.Module) bool {
+	i := findYangModule(src, mod, name)
 	if i < 0 {
 		return false
 	}
@@ -123,34 +180,42 @@ func copyYangMeta(src, n *Node, name string) bool {
 
 // diffMergeReplace is lyd_diff_merge_replace: the source operation replace merged into dm.
 func (t *Tree) diffMergeReplace(dm *Node, cur diffOp, src *Node) error {
+	// src/diff.c:2060-2063 selects the latest yang revision in the target context.
+	mod := latestModule(ctxOf(dm), "yang")
 	switch cur {
 	case diffReplace, diffCreate:
+		if dm.schema == nil {
+			return &opError{"LY_EINVAL", fmt.Sprintf("Operation \"replace\" is invalid for opaque node \"%s\".", src.Name())}
+		}
 		switch dm.schema.Kind {
 		case schema.List, schema.LeafList:
 			// created or moved somewhere, now moved elsewhere: the anchor replaced, the original
 			// one kept
 			name, _ := anchorNames(dm.schema)
-			if err := t.propagateMeta(dm, name); err != nil {
+			if err := t.propagateMeta(dm, name, mod); err != nil {
 				return err
 			}
 			delYangMeta(dm, name)
-			if !copyYangMeta(src, dm, name) {
+			if i := t.checkedYangModule(src, mod, name); i >= 0 {
+				m := *src.meta[i]
+				dm.meta = append(dm.meta, &m)
+			} else {
 				return t.metaErr(name, src)
 			}
 		case schema.Leaf:
 			if compareSingle(t, dm, src, false) {
-				return &opError{"LY_EINVAL", fmt.Sprintf("Unexpected value of node \"%s\" in target diff.", lydPath(t.set, dm, false))}
+				return &opError{"LY_EINVAL", fmt.Sprintf("Unexpected value of node \"%s\" in target diff.", lydPath(ctxOf(dm), dm, false))}
 			}
 			if t.changeTerm(dm, src.value.Canonical()) != "" {
 				return &opError{"LY_EINT", "Internal error."}
 			}
 			if cur == diffReplace {
 				// back to the original value: no change at all
-				oi := findYangMeta(dm, "orig-value")
+				oi := t.checkedYangModule(dm, mod, "orig-value")
 				if oi < 0 {
 					return t.metaErr("orig-value", dm)
 				}
-				lg := &logger{set: t.set}
+				lg := &logger{set: ctxOf(dm)}
 				eq, err := lg.valueCompare(dm, dm.meta[oi].value.Canonical())
 				if err != nil {
 					return &opError{lg.diags[0].Err, lg.diags[0].Msg}
@@ -168,6 +233,9 @@ func (t *Tree) diffMergeReplace(dm *Node, cur diffOp, src *Node) error {
 			return fmt.Errorf("data: merging a replace of %s %q: %w", nodetypeStr(dm.schema.Kind), dm.schema.Name, ErrUnsupported)
 		}
 	case diffNone:
+		if dm.schema == nil {
+			return &opError{"LY_EINVAL", fmt.Sprintf("Operation \"replace\" is invalid for opaque node \"%s\".", src.Name())}
+		}
 		switch dm.schema.Kind {
 		case schema.List: // moved now
 			if err := t.diffChangeOp(dm, diffReplace); err != nil {
@@ -177,10 +245,12 @@ func (t *Tree) diffMergeReplace(dm *Node, cur diffOp, src *Node) error {
 			if isDupInstList(dm.schema) {
 				name, orig = "position", "orig-position"
 			}
-			if !copyYangMeta(src, dm, orig) {
+			_ = t.checkedYangModule(src, mod, orig)
+			if !copyYangMeta(src, dm, orig, mod) {
 				return t.metaErr(orig, src)
 			}
-			if !copyYangMeta(src, dm, name) {
+			_ = t.checkedYangModule(src, mod, name)
+			if !copyYangMeta(src, dm, name, mod) {
 				return t.metaErr(name, src)
 			}
 		case schema.Leaf: // only the default flag changed, now the value too
@@ -201,22 +271,24 @@ func (t *Tree) diffMergeReplace(dm *Node, cur diffOp, src *Node) error {
 
 // propagateMeta is lyd_diff_propagate_meta: the siblings from dm on whose anchor name points at
 // dm get dm's anchor, before dm's changes.
-func (t *Tree) propagateMeta(dm *Node, name string) error {
+func (t *Tree) propagateMeta(dm *Node, name string, mod *schema.Module) error {
 	for _, it := range fromNode(dm) {
-		i := findYangMeta(it, name)
+		i := t.checkedYangModule(it, mod, name)
 		if i < 0 {
 			continue
 		}
 		if dm.schema.Kind == schema.LeafList {
 			if it.meta[i].value.Canonical() == dm.value.Canonical() {
 				delYangMeta(it, name)
-				copyYangMeta(dm, it, name)
+				_ = t.checkedYangModule(dm, mod, name)
+				copyYangMeta(dm, it, name, mod)
 			}
 			continue
 		}
 		if it.meta[i].value.Canonical() == listPredicate(dm) {
-			lg := &logger{set: t.set}
-			if _, err := lg.changeMeta(it, it.meta[i], dm.meta[findYangMeta(dm, name)].value.Canonical()); err != nil {
+			lg := &logger{set: ctxOf(dm)}
+			_ = t.checkedYangModule(dm, mod, name)
+			if _, err := lg.changeMeta(it, it.meta[i], dm.meta[findYangModule(dm, mod, name)].value.Canonical()); err != nil {
 				return &opError{lg.diags[0].Err, lg.diags[0].Msg}
 			}
 		}
@@ -230,7 +302,7 @@ func (t *Tree) propagateMeta(dm *Node, name string) error {
 // libyang's "no move" check (lyd_compare_meta of the two) never fires; neither does it here.
 func (t *Tree) isRedundantUserordMove(dm, child *Node) bool {
 	name, orig := anchorNames(dm.schema)
-	oi, vi := findYangMeta(dm, orig), findYangMeta(dm, name)
+	oi, vi := findYangLatest(dm, orig), findYangLatest(dm, name)
 	if oi < 0 || vi < 0 {
 		return false // libyang asserts them
 	}
@@ -244,15 +316,18 @@ func (t *Tree) isRedundantUserordMove(dm, child *Node) bool {
 		return true
 	}
 	sib := dm.siblingsOf()
+	if sib == nil {
+		return false
+	}
 	all := slices.Concat(sib.list, sib.opq)
 	at := slices.Index(all, dm)
 	for k := 1; k < len(all); k++ { // the previous siblings, cyclically (prev of the first is the last)
 		it := all[(at-k+len(all))%len(all)]
-		mi, io := findYangMeta(dm, name), findYangMeta(it, orig)
+		mi, io := findYangLatest(dm, name), findYangLatest(it, orig)
 		if mi < 0 || io < 0 || dm.meta[mi].value.Canonical() != it.meta[io].value.Canonical() {
 			continue
 		}
-		mo, iv := findYangMeta(dm, orig), findYangMeta(it, name)
+		mo, iv := findYangLatest(dm, orig), findYangLatest(it, name)
 		if mo < 0 || iv < 0 {
 			continue
 		}
@@ -268,10 +343,21 @@ func (t *Tree) isRedundantUserordMove(dm, child *Node) bool {
 	return false
 }
 
-// metaOfName is the diff metadata of n of the module yang named name (lyd_diff_meta_store).
+// metaOfName collects diff metadata using n's own implemented yang module,
+// as lyd_diff_reverse_metadata_diff does (diff.c:3204-3222).
 func metaOfName(n *Node, name string) []*meta {
+	var mod *schema.Module
+	if set := ctxOf(n); set != nil {
+		mod = set.Implemented("yang")
+	}
+	return metaOfModule(n, mod, name)
+}
+
+// metaOfModule collects only metadata of the caller-selected module. Merge
+// passes the source's implemented yang module for both source and target.
+func metaOfModule(n *Node, mod *schema.Module, name string) []*meta {
 	var out []*meta
-	for _, m := range metasNamed(n, "yang", name) {
+	for _, m := range metasNamedModule(n, mod, name) {
 		out = append(out, m)
 	}
 	return out
@@ -280,13 +366,14 @@ func metaOfName(n *Node, name string) []*meta {
 // diffMergeMetadata is lyd_diff_merge_metadata: the diff metadata of src (meta-create,
 // meta-delete, meta-replace with meta-orig) merged into those of trg.
 func (t *Tree) diffMergeMetadata(src, trg *Node) error {
-	trgRepl, trgOrig := metaOfName(trg, "meta-replace"), metaOfName(trg, "meta-orig")
+	mod := ctxOf(src).Implemented("yang")
+	trgRepl, trgOrig := metaOfModule(trg, mod, "meta-replace"), metaOfModule(trg, mod, "meta-orig")
 	if err := alignReplaceOrig(trgRepl, trgOrig); err != nil {
 		return err
 	}
 	var srcRepl, srcOrig []*meta
 	for _, m := range slices.Clone(src.meta) {
-		if m.mod.Name != "yang" {
+		if m.mod != mod {
 			continue
 		}
 		val := m.value.Canonical()
@@ -298,6 +385,11 @@ func (t *Tree) diffMergeMetadata(src, trg *Node) error {
 			case m1 != nil: // create + delete: no change
 				removeMeta(trg, m1)
 			case i >= 0: // create + replace: a create of the new value
+				// lyd_new_meta(NULL, trg_diff, mod, ...) uses the source's
+				// implemented yang module, which must share the target context.
+				if !sameSet(mod.Owner, ctxOf(trg)) {
+					return &opError{"LY_EINVAL", "Different contexts mixed in a \"lyd_new_meta\" function call."}
+				}
 				if err := t.metaNew(trg, "meta-create", trgRepl[i].value.Canonical()); err != nil {
 					return err
 				}

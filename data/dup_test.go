@@ -5,6 +5,7 @@ package data
 import (
 	"context"
 	"errors"
+	"os"
 	"path/filepath"
 	"reflect"
 	"slices"
@@ -12,9 +13,76 @@ import (
 	"testing"
 
 	"github.com/vibe-ports/yang"
+	"github.com/vibe-ports/yang/internal/compile"
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
 )
+
+// TestDupMixedRootParentContext keeps an A container after a B root. The parent,
+// not the first root, supplies the destination context for schema and metadata.
+func TestDupMixedRootParentContext(t *testing.T) {
+	load := func() *schema.Set {
+		c, _, err := compile.NewContext(compile.Options{NoYangLibrary: true}, os.DirFS(filepath.Join(pv2Dir, "schemas")))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, diags, err := c.Load("pv2-detached", "", nil); err != nil {
+			t.Fatal(err, diags)
+		}
+		return c.Snapshot()
+	}
+	a, b := load(), load()
+	parse := func(set *schema.Set, input string) *Tree {
+		tr, diags, err := parseJSONString(set, input, Reject, false)
+		if err != nil {
+			t.Fatal(err, diags)
+		}
+		return tr
+	}
+	tr := parse(a, `{"pv2-detached:c":{"ll":["a"]}}`)
+	before := parse(b, `{}`)
+	after := parse(b, `{"pv2-detached:l":[{"k":"b"}]}`)
+	diff, err := Diff(before, after, DiffOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := tr.ApplyDiff(diff, ApplyDiffOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	parent := findNode(t, tr, "/pv2-detached:c")
+	source := findNode(t, tr, "/pv2-detached:c/ll[.='a']")
+	if first := tr.top.first(); ctxOf(first) != b || ctxOf(parent) != a {
+		t.Fatalf("contexts: first %p, parent %p; want B then A", ctxOf(first), ctxOf(parent))
+	}
+	if _, err := tr.NewMeta(source, "yang:operation", "none"); err != nil {
+		t.Fatal(err)
+	}
+	d, diags, err := tr.Dup(source, parent, DupOptions{})
+	if err != nil || len(diags) != 0 {
+		t.Fatalf("Dup = %v, %v", err, diags)
+	}
+	if ctxOf(d) != a || d.schema != source.schema || len(d.meta) != 1 || d.meta[0].mod != source.meta[0].mod {
+		t.Fatalf("copy has wrong destination schema or metadata: %v", d)
+	}
+	if _, _, err := tr.DupSiblings(source, parent, DupOptions{}); err != nil {
+		t.Fatalf("DupSiblings: %v", err)
+	}
+	// The public to-context route converts B nodes into the supplied A parent.
+	foreignTree := parse(b, `{"pv2-detached:c":{"ll":["z","y"]}}`)
+	foreign := findNode(t, foreignTree, "/pv2-detached:c/ll[.='z']")
+	if _, err := treeOf(foreign).NewMeta(foreign, "yang:operation", "none"); err != nil {
+		t.Fatal(err)
+	}
+	converted, diags, err := tr.Dup(foreign, parent, DupOptions{})
+	if err != nil || len(diags) != 0 || converted.schema.Module.Owner != a || len(converted.meta) != 1 || converted.meta[0].mod != source.meta[0].mod {
+		t.Fatalf("converted copy = %v, %v", converted, err)
+	}
+	y := findNode(t, foreignTree, "/pv2-detached:c/ll[.='y']")
+	converted, diags, err = tr.DupSiblings(y, parent, DupOptions{})
+	if err != nil || len(diags) != 0 || ctxOf(converted) != a || converted.Value() != "y" {
+		t.Fatalf("converted siblings = %v, %v, %v", converted, diags, err)
+	}
+}
 
 // dupFixture is a pv2-edit tree: c/a, two list instances (one with v), two leaf-list values and
 // the NP container np with d.
@@ -140,6 +208,26 @@ func TestDupSiblings(t *testing.T) {
 		if d.flags != o.flags || len(d.meta) != o.metas || len(d.kids.nodes()) != 0 {
 			t.Errorf("opts %b: flags %b meta %d kids %d", o.opts, d.flags, len(d.meta), len(d.kids.nodes()))
 		}
+	}
+}
+
+// TestDupDetachedContext: lyd_dup_single accepts an unlinked node because it retains LYD_CTX.
+func TestDupDetachedContext(t *testing.T) {
+	f := newFixture()
+	f.a.Owner, f.b.Owner = f.set, f.set
+	tr, c := f.cont(t)
+	if err := tr.insert(c, f.term(t, f.z, "z"), insertDefault); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Unlink(); err != nil {
+		t.Fatal(err)
+	}
+	d, _, err := tr.Dup(c, nil, DupOptions{Recursive: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d == c || d.schema != c.schema || len(d.kids.list) != 1 || d.kids.list[0].value.Canonical() != "z" {
+		t.Fatalf("duplicate = %#v", d)
 	}
 }
 

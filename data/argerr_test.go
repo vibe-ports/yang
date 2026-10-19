@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 
@@ -52,6 +53,56 @@ func TestArgErrors(t *testing.T) {
 	if err := c.Remove(); err != nil {
 		t.Fatal(err)
 	}
-	wantArgErr(t, "print a detached node", "Invalid argument node (not in a tree) (lyd_print_tree()).",
-		c.PrintJSON(&bytes.Buffer{}, data.PrintOptions{}))
+	var out bytes.Buffer
+	if err := c.PrintJSON(&out, data.PrintOptions{Shrink: true}); err != nil || out.String() != `{"fz:c":{"s":"x"}}` {
+		t.Errorf("print a detached node: %q, %v", out.String(), err)
+	}
+}
+
+// TestNilNodeAPI exercises the zero-node side of every exported Node receiver family. Libyang's
+// NULL-aware accessors return their zero result, its free/unlink calls succeed, and its printers
+// emit an empty document; observers represented by direct C field access are total in the Go API.
+func TestNilNodeAPI(t *testing.T) {
+	var n *data.Node
+	if n.Parent() != nil || n.Flags() != 0 || n.Name() != "" || n.Path() != "" || n.Value() != "" || n.Schema() != nil {
+		t.Error("nil node scalar observer did not return its zero value")
+	}
+	if len(slices.Collect(n.Children())) != 0 || len(slices.Collect(n.ChildrenNoKeys())) != 0 || len(slices.Collect(n.All())) != 0 ||
+		len(slices.Collect(n.Meta())) != 0 {
+		t.Error("nil node iterator was not empty")
+	}
+	if n.ValueType() != nil {
+		t.Error("nil ValueType was not nil")
+	}
+	if _, ok := n.UnionMember(); ok {
+		t.Error("nil UnionMember reported a member")
+	}
+	if _, ok := n.OpaqueInfo(); ok || n.Attrs() != nil {
+		t.Error("nil opaque observer was not empty")
+	}
+	if leafrefs, targets := n.LeafrefLinks(); leafrefs != nil || targets != nil {
+		t.Error("nil LeafrefLinks was not empty")
+	}
+	if !n.Equal(nil, data.CompareOptions{}) {
+		t.Error("two nil nodes were not equal")
+	}
+	if err := n.Remove(); err != nil {
+		t.Errorf("nil Remove: %v", err)
+	}
+	if err := n.Unlink(); err != nil {
+		t.Errorf("nil Unlink: %v", err)
+	}
+	if m, err := n.FindMeta("fz:ann"); m != nil || err != nil {
+		t.Errorf("nil FindMeta: %v, %v", m, err)
+	}
+	if _, err := n.SetValue("x"); err == nil {
+		t.Error("nil SetValue succeeded")
+	}
+	var jsonOut, xmlOut bytes.Buffer
+	if err := n.PrintJSON(&jsonOut, data.PrintOptions{Shrink: true}); err != nil || jsonOut.String() != `{}` {
+		t.Errorf("nil PrintJSON: %q, %v", jsonOut.String(), err)
+	}
+	if err := n.PrintXML(&xmlOut, data.PrintOptions{Shrink: true}); err != nil || xmlOut.String() != "" {
+		t.Errorf("nil PrintXML: %q, %v", xmlOut.String(), err)
+	}
 }

@@ -102,6 +102,64 @@ func TestInsertChild(t *testing.T) {
 	}
 }
 
+// TestInsertDetachedContext: LYD_CTX keeps the schema context after lyd_unlink_tree, including
+// when an unlinked top-level subtree moves into a tree with another first-root context.
+func TestInsertDetachedContext(t *testing.T) {
+	f := newFixture()
+	f.a.Owner, f.b.Owner = f.set, f.set
+	tr, c := f.cont(t)
+	if err := c.Unlink(); err != nil {
+		t.Fatal(err)
+	}
+	if err := tr.Insert(nil, c); err != nil {
+		t.Fatalf("reinsert: %v", err)
+	}
+	if tr.top.first() != c {
+		t.Fatal("reinserted node is not the tree root")
+	}
+	if err := c.Unlink(); err != nil {
+		t.Fatal(err)
+	}
+	other := newFixture()
+	dst := newTree(other.set)
+	if err := dst.Insert(nil, c); err != nil || dst.top.first() != c || ctxOf(c) != f.set {
+		t.Fatalf("cross-context insertion of a detached root: %v", err)
+	}
+}
+
+// TestDetachedParentAPIs: libyang gets the context from a detached parent and permits new,
+// insert, duplicate, and XPath context-node operations on it.
+func TestDetachedParentAPIs(t *testing.T) {
+	f := newFixture()
+	f.a.Owner, f.b.Owner = f.set, f.set
+	tr, c := f.cont(t)
+	if err := c.Unlink(); err != nil {
+		t.Fatal(err)
+	}
+	z, err := tr.NewTerm(c, "z", "x", NewOptions{})
+	if err != nil || z.parent != c {
+		t.Fatalf("NewTerm under detached parent = %v, %v", z, err)
+	}
+	list, err := tr.NewList(c, "l", []string{"k"}, NewOptions{})
+	if err != nil || list.parent != c {
+		t.Fatalf("NewList under detached parent = %v, %v", list, err)
+	}
+	if err := z.Unlink(); err != nil {
+		t.Fatal(err)
+	}
+	if err := tr.Insert(c, z); err != nil || z.parent != c {
+		t.Fatalf("Insert under detached parent: parent %v, error %v", z.parent, err)
+	}
+	dup, _, err := tr.Dup(z, c, DupOptions{})
+	if err != nil || dup.parent != c || dup == z {
+		t.Fatalf("Dup under detached parent = %v, %v", dup, err)
+	}
+	r, _, err := tr.EvalXPath(`string(z)`, XPathOptions{Node: c})
+	if err != nil || r.Type != XPathString || r.String != "x" {
+		t.Fatalf("XPath with detached context = %+v, %v", r, err)
+	}
+}
+
 // TestMergeSorted: lyds_merge, one case per RB-tree combination, ties included.
 func TestMergeSorted(t *testing.T) {
 	f := newFixture()

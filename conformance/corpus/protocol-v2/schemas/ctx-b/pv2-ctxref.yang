@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module pv2-ctxref {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-ctxref";
+  prefix cr;
+
+  list l {
+    key k;
+    leaf k { type uint8; }
+  }
+  leaf r {
+    type leafref { path "/cr:l/cr:k"; }
+  }
+}

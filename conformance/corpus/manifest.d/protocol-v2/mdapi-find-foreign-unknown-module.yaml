@@ -1,0 +1,25 @@
+fixtures:
+  - id: protocol-v2/mdapi-find-foreign-unknown-module
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # lyd_find_meta resolves and logs in the first metadata's context
+    areas: [diff, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas, ../ietf]
+      modules: [{name: pv2-mdapi}]
+      steps:
+        - do: diff
+          format: json
+          data_type: config
+          target:
+            searchdirs: [schemas, ../ietf]
+            modules: [{name: pv2-mdapi}]
+          data: '{"pv2-mdapi:c":{"s":"x"}}'
+        - do: diff_merge
+          format: json
+          data_type: config
+          data: '{"pv2-mdapi:c":{"@":{"yang:operation":"none"},"s":"x","@s":{"yang:meta-create":"pv2-mdapi:num=4"}}}'
+        - {do: unlink, diff_node: /pv2-mdapi:c/s}
+        - {do: find_meta, name: "unknown:note"}
+    golden: golden/mdapi-find-foreign-unknown-module.json

@@ -25,8 +25,8 @@ type requestRule struct {
 
 // executionContext is chosen by the top-level or sequence-step dispatcher. It is never inferred
 // from an unrelated request field: root operations have no keys_only check, so fields such as
-// "do" are ignored there (lyoracle.c:3080-3102), while check_step owns "do" for sequence steps
-// (lyoracle.c:1700-1723, 2737-2769).
+// "do" are ignored there (lyoracle.c:3273-3295), while check_step owns "do" for sequence steps
+// (lyoracle.c:1700-1725, 2737-2769).
 type executionContext uint8
 
 const (
@@ -51,11 +51,13 @@ const (
 	execStepDiffApply
 	execStepDiffReverse
 	execStepTrim
+	execStepXPath
 	execStepLink
 	execStepLinks
 	execStepPrintXML
 	execStepAnyDirect
-	execStepXPath
+	execStepUnlink
+	execStepFindMeta
 )
 
 var rootExecutionContexts = map[string]executionContext{
@@ -65,13 +67,14 @@ var rootExecutionContexts = map[string]executionContext{
 
 var stepExecutionContexts = map[string]executionContext{
 	"parse": execStepParse, "validate": execStepValidate, "edit": execStepEdit,
-	"change_term": execStepChangeTerm, "dump": execStepDump, "dup": execStepDup,
+	"change_term": execStepChangeTerm, "dump": execStepDump, "detached_dump": execStepDump, "dup": execStepDup,
 	"insert": execStepInsert, "compare": execStepCompare, "diff": execStepDiff,
 	"diff_parse": execStepDiffParse, "diff_merge": execStepDiffMerge,
 	"diff_apply": execStepDiffApply, "diff_reverse": execStepDiffReverse,
 	"trim": execStepTrim, "link": execStepLink, "links": execStepLinks,
 	"print_xml": execStepPrintXML, "any_direct": execStepAnyDirect,
-	"xpath": execStepXPath,
+	"xpath":  execStepXPath,
+	"unlink": execStepUnlink, "find_meta": execStepFindMeta,
 }
 
 func (x executionContext) name() string {
@@ -127,8 +130,8 @@ func requestBools(keys ...string) func(*requestCheck) error {
 				if _, ok := v.(bool); !ok {
 					switch c.exec {
 					case execStepDiff:
-						return requestError("diff single and merge must be booleans")
-					case execStepDup, execStepChangeTerm:
+						return requestError("diff single, merge, and detached must be booleans")
+					case execStepDup, execStepChangeTerm, execStepInsert, execStepLinks, execStepXPath:
 						return requestError("%s %s must be a boolean", c.exec.name(), k)
 					}
 					if k == "xml" {
@@ -175,7 +178,7 @@ func requestEnum(key, fallback, allowed string) func(*requestCheck) error {
 	}
 }
 
-// requestInput is input_of (lyoracle.c:257-268), including str_of's null
+// requestInput is input_of (lyoracle.c:257-267), including str_of's null
 // semantics and the conflict check BEFORE reading the file. Empty strings are
 // present values. A missing input is distinct from an empty input.
 func requestInput(r Request, p map[string]any, key string) (string, bool, error) {
@@ -320,11 +323,11 @@ var diffRequestRules = []requestRule{
 		}
 		return nil
 	}}, // request prelude; lyoracle.c:1650
-	{1281, requestParent}, // execution phase; lyoracle.c:1653 calls parse_one with NULL rpc_src
+	{1281, requestParent}, // execution phase; lyoracle.c:1281 parse_one, called at 1653 with a NULL rpc_src
 }
 
 var sequenceRequestRules = []requestRule{
-	{2814, func(c *requestCheck) error { // request phase; lyoracle.c:2847
+	{2900, func(c *requestCheck) error { // request phase; lyoracle.c:3013
 		if _, ok := c.p["steps"].([]any); !ok {
 			return requestError("sequence needs a steps array")
 		}
@@ -339,7 +342,7 @@ var stepEntryRules = []requestRule{
 		}
 		return nil
 	}},
-	{1706, func(c *requestCheck) error { // request phase; lyoracle.c:1706-1723 keys_only, unknown kinds allow only do
+	{1706, func(c *requestCheck) error { // request phase; lyoracle.c:1706-1725 keys_only, unknown kinds allow only do
 		keys := seqKeys[str(c.p, "do", "")]
 		if keys == nil {
 			keys = set("do")
@@ -354,23 +357,29 @@ var stepEntryRules = []requestRule{
 }
 var stepRequestRules = map[string][]requestRule{
 	"edit": {
-		{1726, requestEditKeys},             // request phase; lyoracle.c:1726-1737
-		{1766, requestRead("merge", false)}, // request phase; lyoracle.c:1766
-		{1766, requestStrings("delete")},    // request phase; lyoracle.c:1766
-		{1777, requestEdit},                 // request phase; lyoracle.c:1777-1857 nested edit objects
+		{1728, requestEditKeys},             // request phase; lyoracle.c:1728-1739
+		{1768, requestRead("merge", false)}, // request phase; lyoracle.c:1768
+		{1768, requestStrings("delete")},    // request phase; lyoracle.c:1768
+		{1778, requestRead("merge_into", false)},
+		{1780, requestEdit}, // request phase; lyoracle.c:1780-1860 nested edit objects
 	},
 	"change_term": {
-		{1864, requestChangeSelector}, // request phase; lyoracle.c:1864
-		{1876, requestBools("canon")}, // request phase; lyoracle.c:1876
+		{1867, requestChangeSelector}, // request phase; lyoracle.c:1867
+		{1879, requestBools("canon")}, // request phase; lyoracle.c:1879
 	},
 	"dump": {
-		{1880, requestStrings("with_defaults")},                                                          // request phase; lyoracle.c:1880 wd_of
-		{1880, requestEnum("with_defaults", "explicit", "explicit trim all all-tagged implicit-tagged")}, // request phase; lyoracle.c:1880
+		{1883, requestStrings("with_defaults")},                                                          // request phase; lyoracle.c:1883 wd_of
+		{1883, requestEnum("with_defaults", "explicit", "explicit trim all all-tagged implicit-tagged")}, // request phase; lyoracle.c:1883
 	},
-	"print_xml": {{1881, requestNoop}},
+	"detached_dump": {
+		{1883, requestStrings("with_defaults")},
+		{1883, requestEnum("with_defaults", "explicit", "explicit trim all all-tagged implicit-tagged")},
+		{1883, requestBools("child")},
+	},
+	"print_xml": {{1884, requestNoop}},
 	"any_direct": {
-		{1885, requestRequired("any_direct needs a case", "case")},
-		{1895, func(c *requestCheck) error { // lyoracle.c:1895 has its own wording
+		{1888, requestRequired("any_direct needs a case", "case")},
+		{1898, func(c *requestCheck) error { // lyoracle.c:1898 has its own wording
 			v := str(c.p, "case", "")
 			for _, s := range strings.Fields("nil_boundaries text_nul node_then_empty equal_repeated_collisions equal_mixed_parent_payload dup_payload_parent_context trim_payload_links merge_mixed_into_tree dup_siblings_into_empty_anydata dup_siblings_into_empty_anyxml dup_into_default_any_parent") {
 				if s == v {
@@ -379,7 +388,7 @@ var stepRequestRules = map[string][]requestRule{
 			}
 			return requestError("unknown any_direct case %s", v)
 		}},
-		{1884, func(c *requestCheck) error {
+		{1887, func(c *requestCheck) error {
 			if v, ok := c.p["target"]; ok {
 				tg, good := v.(map[string]any)
 				if !good {
@@ -391,40 +400,66 @@ var stepRequestRules = map[string][]requestRule{
 		}},
 	},
 	"dup": {
-		{1907, requestDupSelector},       // request phase; lyoracle.c:1907
-		{1913, requestStrings("parent")}, // request phase; lyoracle.c:1913
-		{1914, requestFlags("options", "recursive no_meta with_parents with_flags no_lyds")}, // request phase; lyoracle.c:1914
-		{1915, requestBools("siblings")}, // request phase; lyoracle.c:1915
-		{1918, requestDupTarget},         // request phase; lyoracle.c:1918-1924
-		{1927, requestDupSource},         // request phase; lyoracle.c:1926-1934
+		{1911, requestDupSelector},       // request phase; lyoracle.c:1911
+		{1918, requestStrings("parent")}, // request phase; lyoracle.c:1918
+		{1919, requestFlags("options", "recursive no_meta with_parents with_flags no_lyds")}, // request phase; lyoracle.c:1919
+		{1920, requestBools("siblings", "detached")},                                         // request phase; lyoracle.c:1920
+		{1926, requestDupTarget}, // request phase; lyoracle.c:1926-1932
+		{1935, requestDupSource}, // request phase; lyoracle.c:1934-1942
 	},
-	"xpath": {{2022, requestRequired("xpath step needs an xpath", "xpath")}, {2022, requestVars}}, // request phase; lyoracle.c:2022
 	"trim": {
-		{2008, requestRequired("trim step needs an xpath", "xpath")}, // request phase; lyoracle.c:2000
-		{2011, requestVars}, // request phase; lyoracle.c:2003-2009
+		{2056, requestRequired("trim step needs an xpath", "xpath")}, // request phase; lyoracle.c:2056
+		{2059, requestVars}, // request phase; lyoracle.c:2059-2066
 	},
-	"link":         {{2033, requestNoop}}, // request phase; lyoracle.c:2011 no fields beyond keys_only
-	"links":        {{2033, requestNoop}}, // request phase; lyoracle.c:2011
-	"diff_reverse": {{2033, requestNoop}}, // request phase; lyoracle.c:2011
+	"xpath": {
+		{2070, requestRequired("xpath step needs an xpath", "xpath")}, // request phase; lyoracle.c:2070
+		{2073, requestStrings("node")},
+		{2074, func(c *requestCheck) error {
+			if _, present, _ := strField(c.p, "node"); present && c.p["detached"] == true {
+				return requestError("xpath node and detached are mutually exclusive")
+			}
+			return nil
+		}},
+		{2077, requestBools("detached")},
+		{2080, requestVars}, // request phase; lyoracle.c:2080-2088
+	},
+	"link":         {{2104, requestNoop}},              // request phase; lyoracle.c:2104 unknown-kind tail
+	"links":        {{2098, requestBools("detached")}}, // request phase; lyoracle.c:2098 links selector
+	"diff_reverse": {{2104, requestNoop}},              // request phase; lyoracle.c:2104 unknown-kind tail
+	"unlink": {
+		{2090, requestStrings("node", "diff_node")},
+		{2091, func(c *requestCheck) error {
+			_, nodePresent, _ := strField(c.p, "node")
+			_, diffPresent, _ := strField(c.p, "diff_node")
+			if nodePresent == diffPresent {
+				return requestError("unlink step needs exactly one node or diff_node path")
+			}
+			return nil
+		}},
+	},
+	"find_meta": {
+		{2094, requestStrings("node")},
+		{2095, requestRequired("find_meta step needs a name", "name")},
+	},
 
 	"parse": {
-		{1740, requestParams},             // request phase; lyoracle.c:1740
-		{1741, requestParseOnly},          // request phase; lyoracle.c:1741
-		{1745, requestRead("rpc", false)}, // request phase; lyoracle.c:1745
-		{1745, requestReply},              // request phase; lyoracle.c:1745
-		{1748, requestStepData},           // request phase; lyoracle.c:1748
+		{1742, requestParams},             // request phase; lyoracle.c:1742
+		{1743, requestParseOnly},          // request phase; lyoracle.c:1743
+		{1747, requestRead("rpc", false)}, // request phase; lyoracle.c:1747
+		{1747, requestReply},              // request phase; lyoracle.c:1747
+		{1750, requestStepData},           // request phase; lyoracle.c:1750
 	},
 	"validate": {
-		{1753, requestStrings("module")},   // request phase; lyoracle.c:1753
-		{1755, requestParams},              // request phase; lyoracle.c:1755
-		{1756, requestBools("final_only")}, // request phase; lyoracle.c:1756 null is NOT a bool
-		{1759, func(c *requestCheck) error { // request phase; lyoracle.c:1759
+		{1755, requestStrings("module")},   // request phase; lyoracle.c:1755
+		{1757, requestParams},              // request phase; lyoracle.c:1757
+		{1758, requestBools("final_only")}, // request phase; lyoracle.c:1758 null is NOT a bool
+		{1761, func(c *requestCheck) error { // request phase; lyoracle.c:1761
 			if c.p["final_only"] == true && c.p["module"] == nil {
 				return requestError("final_only needs module")
 			}
 			return nil
 		}},
-		{1762, func(c *requestCheck) error { // request phase; lyoracle.c:1762 original context, before any step executes
+		{1764, func(c *requestCheck) error { // request phase; lyoracle.c:1764 original context, before any step executes
 			if c.p["module"] != nil && c.schema.Implemented(str(c.p, "module", "")) == nil {
 				return requestError("validate module %s not implemented", c.p["module"])
 			}
@@ -432,23 +467,28 @@ var stepRequestRules = map[string][]requestRule{
 		}},
 	},
 	"insert": {
-		{1913, requestStrings("node", "parent")}, // request phase; lyoracle.c:1901-1902
-		{1915, requestRead("data", false)},       // request phase; lyoracle.c:1903
-		{1916, func(c *requestCheck) error { // request phase; lyoracle.c:1904-1913
+		{1947, requestStrings("node", "parent")}, // request phase; lyoracle.c:1947-1948
+		{1949, requestBools("detached")},
+		{1952, requestRead("data", false)}, // request phase; lyoracle.c:1952
+		{1953, func(c *requestCheck) error { // request phase; lyoracle.c:1953-1967
 			if c.inputs["data"] {
+				if c.p["detached"] == true {
+					return requestError("insert step takes data or detached, not both")
+				}
 				if err := requestParams(c); err != nil {
 					return err
 				}
 				return requestDatastore(c)
 			}
-			if c.p["node"] == nil {
-				return requestError("insert step needs a node or data")
+			if c.p["node"] == nil && c.p["detached"] != true {
+				return requestError("insert step needs a node, data, or detached")
 			}
 			return nil
 		}},
+		{1960, requestInsertTarget},
 	},
 	"compare": {
-		{1947, func(c *requestCheck) error { // request phase; lyoracle.c:1947-1957
+		{1974, func(c *requestCheck) error { // request phase; lyoracle.c:1974-1984
 			if c.p["self"] == true {
 				return requestKeys(c.p, "do self first second options")
 			}
@@ -460,64 +500,66 @@ var stepRequestRules = map[string][]requestRule{
 			}
 			return requestCompareInput(c)
 		}},
-		{1958, requestStrings("first", "second")},                       // request phase; lyoracle.c:1958-1959
-		{1960, requestFlags("options", "full_recursion defaults opaq")}, // request phase; lyoracle.c:1960
+		{1985, requestStrings("first", "second")},                       // request phase; lyoracle.c:1985-1986
+		{1987, requestFlags("options", "full_recursion defaults opaq")}, // request phase; lyoracle.c:1987
+		{1988, requestCompareTarget},                                    // request phase; lyoracle.c:1988-1992
 	},
 	"diff": {
-		{1946, requestParams},             // request phase; lyoracle.c:1938
-		{1960, requestRead("rpc", false)}, // request phase; lyoracle.c:1955 BEFORE the parse_only check
-		{1962, requestParseOnly},          // request phase; lyoracle.c:1957
-		{1966, requestReply},              // request phase; lyoracle.c:1958
-		{1969, func(c *requestCheck) error { // request phase; lyoracle.c:1961 presence, not IsTrue
+		{1971, requestParams},             // request phase; lyoracle.c:1952
+		{1987, requestRead("rpc", false)}, // request phase; lyoracle.c:1982 BEFORE the parse_only check
+		{1995, requestParseOnly},          // request phase; lyoracle.c:1984
+		{1999, requestReply},              // request phase; lyoracle.c:1985
+		{2002, func(c *requestCheck) error { // request phase; lyoracle.c:1994 presence, not IsTrue
 			if _, exists := c.p["keep_input"]; exists && !c.inputs["rpc"] {
 				return requestError("diff step: keep_input only with rpc")
 			}
 			return nil
 		}},
-		{1973, requestFlags("options", "defaults meta")},  // request phase; lyoracle.c:1965
-		{1974, requestFlags("merge_options", "defaults")}, // request phase; lyoracle.c:1966
-		{1989, requestStrings("node", "data_node")},       // request phase; lyoracle.c:1981-1982
-		{1977, requestTarget},                             // request phase; lyoracle.c:1969-1979
-		{1989, requestBools("single", "merge")},           // request phase; lyoracle.c:1981-1983
+		{2006, requestFlags("options", "defaults meta")},    // request phase; lyoracle.c:1998
+		{2007, requestFlags("merge_options", "defaults")},   // request phase; lyoracle.c:1999
+		{2022, requestStrings("node", "data_node")},         // request phase; lyoracle.c:2014-2015
+		{2010, requestTarget},                               // request phase; lyoracle.c:2002-2012
+		{2022, requestBools("single", "merge", "detached")}, // request phase; lyoracle.c:2014-2016
 	},
 	"diff_parse": {
-		{1946, requestParams},    // request phase; lyoracle.c:1938
-		{1947, requestDatastore}, // request phase; lyoracle.c:1939
-		{1957, requestStepData},  // request phase; lyoracle.c:1942
+		{1971, requestParams},    // request phase; lyoracle.c:1952
+		{1974, requestDatastore}, // request phase; lyoracle.c:1956
+		{1984, requestStepData},  // request phase; lyoracle.c:1959
 	},
 	"diff_merge": {
-		{1946, requestParams},                       // request phase; lyoracle.c:1938
-		{1947, requestDatastore},                    // request phase; lyoracle.c:1939
-		{1957, requestStepData},                     // request phase; lyoracle.c:1942
-		{1994, requestFlags("options", "defaults")}, // request phase; lyoracle.c:1986
-		{1995, requestStrings("module")},            // request phase; lyoracle.c:1987
-		{1996, requestMergeSelectors},               // request phase; lyoracle.c:1988-1992
+		{1971, requestParams},                       // request phase; lyoracle.c:1952
+		{1974, requestDatastore},                    // request phase; lyoracle.c:1956
+		{1984, requestStepData},                     // request phase; lyoracle.c:1959
+		{2042, requestFlags("options", "defaults")}, // request phase; lyoracle.c:2042
+		{2042, requestBools("detached_parent")},
+		{2043, requestStrings("module")}, // request phase; lyoracle.c:2043
+		{2044, requestMergeSelectors},    // request phase; lyoracle.c:2044-2049
 	},
-	"diff_apply": {{2004, requestStrings("module")}}, // request phase; lyoracle.c:1996
+	"diff_apply": {{2052, requestStrings("module")}}, // request phase; lyoracle.c:2052
 }
 
 // These checks happen only when a step executes. In particular, diff.data is
 // not read by check_step unless target is present, and module_of uses the
 // retained tree's context, unlike validate's preflight lookup.
 var stepExecutionRules = map[string][]requestRule{
-	"dup": {{2069, func(c *requestCheck) error { // step_dup: source dparams_of runs after preflight and before source input/selection
+	"dup": {{2129, func(c *requestCheck) error { // step_dup: source dparams_of runs after preflight and before source input/selection
 		if source, ok := c.p["source"].(map[string]any); ok {
 			c.p = source
 			return requestParams(c)
 		}
 		return nil
 	}}},
-	"diff":       {{2433, requestRead("data", false)}}, // execution phase; lyoracle.c:2428 step_diff
-	"diff_merge": {{2524, requestModule}},              // execution phase; lyoracle.c:2519 module_of
-	"diff_apply": {{2848, requestModule}},              // execution phase; lyoracle.c:2843 module_of
-	"any_direct": {{2258, requestAnyDirectTarget}},     // execution phase; lyoracle.c:2258,3211 before build_ctx_in
+	"diff":       {{2528, requestRead("data", false)}}, // execution phase; lyoracle.c:2523 step_diff
+	"diff_merge": {{2619, requestModule}},              // execution phase; lyoracle.c:2614 module_of
+	"diff_apply": {{3014, requestModule}},              // execution phase; lyoracle.c:3009 module_of
+	"any_direct": {{2322, requestAnyDirectTarget}},     // execution phase; lyoracle.c:2322,3404 before build_ctx_in
 }
 
 func requestAnyDirectTarget(c *requestCheck) error {
 	which := str(c.p, "case", "")
 	// step_any_direct constructs its first ac-r6 node before it calls
 	// check_equal_order_contexts, where the target is consumed
-	// (lyoracle.c:2225-2251, 3208-3216). A missing module returns LY_EINVAL
+	// (lyoracle.c:2289-2315, 3211-3219). A missing module returns LY_EINVAL
 	// first, leaving the target request check unreachable.
 	if which == "equal_repeated_collisions" && c.schema != nil && c.schema.Implemented("ac-r6") == nil {
 		return nil
@@ -589,11 +631,48 @@ func requestTarget(c *requestCheck) error {
 	}
 	return nil
 }
+
+func requestCompareTarget(c *requestCheck) error {
+	v, exists := c.p["target"]
+	if !exists {
+		return nil
+	}
+	tg, ok := v.(map[string]any)
+	if !ok {
+		return requestError("compare target must be a context object")
+	}
+	for _, key := range slices.Sorted(maps.Keys(tg)) {
+		if !seqContextKeys[key] {
+			return requestError("unknown key %q in a compare target", key)
+		}
+	}
+	return nil
+}
+
+func requestInsertTarget(c *requestCheck) error {
+	v, exists := c.p["target"]
+	if !exists {
+		return nil
+	}
+	if !c.inputs["data"] {
+		return requestError("insert target needs data")
+	}
+	tg, ok := v.(map[string]any)
+	if !ok {
+		return requestError("insert target must be a context object")
+	}
+	for _, key := range slices.Sorted(maps.Keys(tg)) {
+		if !seqContextKeys[key] {
+			return requestError("unknown key %q in an insert target", key)
+		}
+	}
+	return nil
+}
 func requestMergeSelectors(c *requestCheck) error {
 	if err := requestStrings("parent")(c); err != nil {
 		return err
 	}
-	if c.p["parent"] != nil {
+	if c.p["parent"] != nil || c.p["detached_parent"] == true {
 		if err := requestStrings("src_node")(c); err != nil {
 			return err
 		}
@@ -709,7 +788,7 @@ func requestDupSelector(c *requestCheck) error {
 	if err != nil {
 		return err
 	}
-	if !hasNode && !hasXPath {
+	if !hasNode && !hasXPath && c.p["detached"] != true {
 		return requestError("dup step needs a node path")
 	}
 	if hasNode && hasXPath {
@@ -772,16 +851,19 @@ func requestEditKeys(c *requestCheck) error {
 			return nil
 		}
 	}
-	return requestKeys(c.p, "do merge merge_file format data_type unknown parse_options")
+	return requestKeys(c.p, "do merge merge_file merge_into format data_type unknown parse_options")
 }
 
-// requestEdit follows check_step's nested object checks, lyoracle.c:1777-1857.
-// Merge invokes dparams_of in request preflight (lyoracle.c:1849-1850),
+// requestEdit follows check_step's nested object checks, lyoracle.c:1780-1860.
+// Merge invokes dparams_of in request preflight (lyoracle.c:1852-1853),
 // and again during execution (2352). Module in the other edits is str_of,
 // not a lookup in the request context.
 func requestEdit(c *requestCheck) error {
 	n, kind := 0, ""
 	if c.inputs["merge"] {
+		n++
+	}
+	if c.inputs["merge_into"] {
 		n++
 	}
 	if c.p["delete"] != nil {
@@ -800,8 +882,8 @@ func requestEdit(c *requestCheck) error {
 		return requestError("edit step needs exactly one of merge, merge_file, set, delete, insert_term, insert_inner, insert_list, insert_list2, insert_opaq, new_meta, free_meta")
 	}
 	if kind == "" {
-		if c.inputs["merge"] {
-			return requestParams(c) // request phase: lyoracle.c:1850 check_step
+		if c.inputs["merge"] || c.inputs["merge_into"] {
+			return requestParams(c) // request phase: lyoracle.c:1853 check_step
 		}
 		return nil
 	}
@@ -859,17 +941,24 @@ func requestInsert(c *requestCheck, kind string) error {
 	if err := requestStrings("parent", "parent_opaq")(c); err != nil {
 		return err
 	}
+	if kind != "insert_opaq" && kind != "insert_list2" {
+		if err := requestBools("detached_parent")(c); err != nil {
+			return err
+		}
+	}
 	if err := requestRequired("insert_* need an object with name and at most one of parent, parent_opaq", "name")(c); err != nil {
 		return err
 	}
-	if o["parent"] != nil && o["parent_opaq"] != nil {
+	if (o["parent"] != nil && o["parent_opaq"] != nil) ||
+		kind != "insert_list2" && kind != "insert_opaq" && o["detached_parent"] == true &&
+			(o["parent"] != nil || o["parent_opaq"] != nil) {
 		return requestError("insert_* need an object with name and at most one of parent, parent_opaq")
 	}
 	keys := map[string]string{
-		"insert_term":  "module parent parent_opaq name value options",
-		"insert_inner": "module parent parent_opaq name options",
+		"insert_term":  "module parent parent_opaq detached_parent name value options",
+		"insert_inner": "module parent parent_opaq detached_parent name options",
 		"insert_opaq":  "parent parent_opaq name value prefix module xml",
-		"insert_list":  "module parent parent_opaq name keys options",
+		"insert_list":  "module parent parent_opaq detached_parent name keys options",
 		"insert_list2": "module parent parent_opaq name keys options",
 	}
 	if err := requestKeys(o, keys[kind]); err != nil {
@@ -887,7 +976,7 @@ func requestInsert(c *requestCheck, kind string) error {
 	if err := requestStrings("module")(c); err != nil {
 		return err
 	}
-	if o["module"] == nil && o["parent"] == nil && o["parent_opaq"] == nil {
+	if o["module"] == nil && o["parent"] == nil && o["parent_opaq"] == nil && o["detached_parent"] != true {
 		return requestError("insert_term/inner/list/list2 need a module or a parent")
 	}
 	flags := "output store_only canon"
@@ -953,7 +1042,7 @@ func requestCompareInput(c *requestCheck) error {
 	if !ok {
 		return requestError("compare insert_opaq needs an object with name and module")
 	}
-	// lyoracle.c:3132-3135 checks name/module before the key list.
+	// lyoracle.c:3325-3328 checks name/module before the key list.
 	sub := &requestCheck{r: c.r, p: o, schema: c.schema, inputs: map[string]bool{}, exec: c.exec}
 	if err := requestRequired("compare insert_opaq needs an object with name and module", "name", "module")(sub); err != nil {
 		return err

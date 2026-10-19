@@ -1,0 +1,171 @@
+{
+  "context_diagnostics": [],
+  "failed_step": 3,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2-mdapi",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 3,
+    "name": "LY_EINVAL"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"pv2-mdapi:c\": {\n    \"@\": {\n      \"yang:operation\": \"create\"\n    },\n    \"s\": \"x\"\n  }\n}\n",
+        "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-mdapi\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">\n  <s>x</s>\n</c>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            }
+          ],
+          "opaque": null,
+          "path": "/pv2-mdapi:c",
+          "schema": "/pv2-mdapi:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/pv2-mdapi:c/s",
+          "schema": "/pv2-mdapi:c/s",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": []
+    },
+    {
+      "diagnostics": [],
+      "diff": {
+        "json": "{\n  \"pv2-mdapi:c\": {\n    \"@\": {\n      \"yang:operation\": \"create\"\n    },\n    \"s\": \"x\",\n    \"@s\": {\n      \"yang:meta-create\": \"pv2-mdapi:num=4\"\n    }\n  }\n}\n",
+        "xml": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-mdapi\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">\n  <s yang:meta-create=\"pv2-mdapi:num=4\">x</s>\n</c>\n"
+      },
+      "diff_typed": [
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "operation",
+              "value": "create"
+            }
+          ],
+          "opaque": null,
+          "path": "/pv2-mdapi:c",
+          "schema": "/pv2-mdapi:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": false,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [
+            {
+              "module": "yang",
+              "name": "meta-create",
+              "value": "pv2-mdapi:num=4"
+            }
+          ],
+          "opaque": null,
+          "path": "/pv2-mdapi:c/s",
+          "schema": "/pv2-mdapi:c/s",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ],
+      "do": "diff_merge",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": []
+    },
+    {
+      "diagnostics": [],
+      "do": "unlink",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": []
+    },
+    {
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 3,
+            "name": "LY_EINVAL"
+          },
+          "data_path": null,
+          "level": "error",
+          "line": 0,
+          "msg": "Metadata name \"a b\" is not valid.",
+          "phase": "find_meta",
+          "schema_path": null,
+          "vecode": 0,
+          "vecode_name": "LYVE_SUCCESS"
+        }
+      ],
+      "do": "find_meta",
+      "found": false,
+      "rc": {
+        "err": 3,
+        "name": "LY_EINVAL"
+      },
+      "typed": []
+    }
+  ],
+  "verdict": "invalid"
+}

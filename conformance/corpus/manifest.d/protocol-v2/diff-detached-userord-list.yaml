@@ -1,0 +1,15 @@
+fixtures:
+  - id: protocol-v2/diff-detached-userord-list
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # lyd_diff_tree on an unlinked user-ordered list; no RFC behaviour
+    areas: [diff, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pv2-detached}]
+      steps:
+        - {do: parse, format: json, data_type: config, data: '{"pv2-detached:l":[{"k":"a"}]}' }
+        - {do: unlink, node: "/pv2-detached:l[k='a']"}
+        - {do: diff, detached: true, single: true}
+    golden: golden/diff-detached-userord-list.json

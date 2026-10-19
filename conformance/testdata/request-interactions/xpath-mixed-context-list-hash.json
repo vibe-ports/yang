@@ -1,0 +1,21 @@
+{
+  "id": "protocol-v2/xpath-mixed-context-list-hash",
+  "request": {
+    "base_dir": ".",
+    "op": "sequence",
+    "searchdirs": ["schemas"],
+    "modules": [{"name": "pv2-ctx-list"}],
+    "steps": [
+      {"do": "diff", "format": "json", "data_type": "config", "parse_only": true,
+       "target": {"searchdirs": ["schemas"], "modules": [{"name": "pv2-ctx-list"}]},
+       "data": "{\"pv2-ctx-list:l\":[{\"k\":\"b\",\"a\":\"a2\",\"b\":\"b2\",\"v\":\"v2\"}]}"},
+      {"do": "parse", "format": "json", "data_type": "config", "parse_only": true,
+       "data": "{\"pv2-ctx-list:l\":[{\"k\":\"a\",\"a\":\"a1\",\"b\":\"b1\",\"v\":\"v1\"}]}"},
+      {"do": "diff_apply"},
+      {"do": "xpath", "xpath": "/pv2-ctx-list:l/v"}
+    ]
+  },
+  "verdict": "valid",
+  "rfc": ["XPath1.0#2.5"],
+  "source": {"commit": null, "license": "BSD-3-Clause", "url": "hand-written (this repo)"}
+}

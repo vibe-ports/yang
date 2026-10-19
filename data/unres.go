@@ -37,7 +37,14 @@ type xpathBudget struct {
 
 // eval evaluates e for the context node ctx (nil: the document root) over tree t, charging the
 // steps; a budget overrun or a cancellation aborts (never a diagnostic).
-func (vc *valCtx) eval(e *xpath.Expr, ctx *Node, root xpath.RootKind, ignoreWhen bool) (xpath.Result, error) {
+func (vc *valCtx) xpathSet() *schema.Set {
+	if vc.xpathContext != nil {
+		return vc.xpathContext
+	}
+	return vc.t.context()
+}
+
+func (vc *valCtx) eval(e *xpath.Expr, ctx *Node, root xpath.RootKind, ignoreWhen bool, owner ...*schema.Set) (xpath.Result, error) {
 	b := &vc.budget
 	if b.ctx != nil {
 		if err := b.ctx.Err(); err != nil {
@@ -62,8 +69,14 @@ func (vc *valCtx) eval(e *xpath.Expr, ctx *Node, root xpath.RootKind, ignoreWhen
 	if per <= 0 {
 		return xpath.Result{}, fmt.Errorf("%w: more than %d XPath steps", yang.ErrBudget, limit)
 	}
-	r, err := e.EvalTo(xpath.EvalContext{Ctx: b.ctx, Node: wrap(vc.t.set, ctx), Tree: vc.topNodes(), Root: root,
-		IgnoreWhen: ignoreWhen, Schema: info{vc.t.set}, Deref: vc.deref, MaxSteps: int(per), Vars: vc.vars}, vc.to)
+	set := vc.xpathSet()
+	if len(owner) > 0 && owner[0] != nil {
+		set = owner[0]
+	} else if vc.xpathContext == nil && ctxOf(ctx) != nil {
+		set = ctxOf(ctx)
+	}
+	r, err := e.EvalTo(xpath.EvalContext{Ctx: b.ctx, Node: wrap(set, ctx), Tree: vc.topNodes(), Root: root,
+		IgnoreWhen: ignoreWhen, Schema: info{set}, Deref: vc.deref, MaxSteps: int(per), Vars: vc.vars}, vc.to)
 	b.steps += r.Steps
 	for range r.InternalErrors { // LOGINT, logged and gone past as libyang
 		_ = vc.log.logErr("LY_EINT", msgXPathInt)
@@ -88,7 +101,7 @@ func (vc *valCtx) topNodes() []xpath.Node {
 	}
 	vc.top = vc.top[:0]
 	for n := range vc.t.top.all() {
-		vc.top = append(vc.top, wrap(vc.t.set, n)) // dead nodes are WhenFalse (xn.When)
+		vc.top = append(vc.top, wrap(vc.xpathSet(), n)) // dead nodes are WhenFalse (xn.When)
 	}
 	vc.topGen = vc.t.top.gen
 	vc.topBuilds++
@@ -147,7 +160,7 @@ func (vc *valCtx) whenOf(n *Node, sn *schema.Node, root *xpath.RootKind) (*schem
 			if root != nil {
 				rk = *root
 			}
-			r, err := vc.eval(e, ctx, rk, vc.ignoreWhen)
+			r, err := vc.eval(e, ctx, rk, vc.ignoreWhen, ctxOf(n))
 			if err != nil {
 				return nil, vc.xpathErr(err, ctx)
 			}
@@ -357,7 +370,7 @@ func (p *whenPass) finish() error {
 		return err
 	}
 	for _, n := range p.dead {
-		freeSubtreeLinks(p.vc.t.set, n) // lyd_free_tree
+		freeSubtreeLinks(p.vc.t.context(), n) // lyd_free_tree
 	}
 	return nil
 }
@@ -523,11 +536,14 @@ func (tt *typeTree) LeafrefTarget(t *schema.Type, v types.Value) (bool, error) {
 		}
 		return false, err
 	}
-	if found && tt.vc.t.set.LeafrefLinking && !tt.readOnly {
+	if found && ctxOf(tt.n) != nil && ctxOf(tt.n).LeafrefLinking && !tt.readOnly {
 		// lyplg_type_validate_tree_leafref: a resolved require-instance leafref is linked with
 		// its targets (lyd_link_leafref_node)
 		for _, target := range targets {
-			linkLeafrefNode(target, tt.n)
+			if err := linkLeafrefNodeChecked(target, tt.n); err != nil {
+				tt.err = err
+				return false, nil
+			}
 		}
 	}
 	return found, nil
@@ -619,7 +635,7 @@ func (vc *valCtx) leafrefTargets(n *Node, t *schema.Type, v types.Value) (bool, 
 	if err != nil {
 		return false, nil, err
 	}
-	r, err := vc.eval(e, n, xpath.RootAll, true)
+	r, err := vc.eval(e, n, xpath.RootAll, true, ctxOf(n))
 	if err != nil {
 		return false, nil, err
 	}
@@ -680,11 +696,14 @@ func (vc *valCtx) pathEval(p types.Path) *Node {
 					if pr.Position > 0 && pr.Position <= uint64(len(run)) {
 						node = run[pr.Position-1]
 					}
-				} else if i := vc.t.schemaIndex(sib, seg.Node); i >= 0 && pr.Position > 0 && pr.Position <= uint64(len(sib.list)-i) { //nolint:gosec // i < len
-					// A positional predicate needs the slot; non-operation schemaIndex is
-					// logarithmic, followed by this constant-time instance check.
-					if c := sib.list[i+int(pr.Position)-1]; c.schema == seg.Node { //nolint:gosec // bounded above
-						node = c
+				} else if pr.Position > 0 {
+					pos := pr.Position
+					for c := range vc.t.instances(sib, seg.Node) {
+						pos--
+						if pos == 0 {
+							node = c
+							break
+						}
 					}
 				}
 			case types.PredLeafList:
@@ -751,7 +770,7 @@ func (vc *valCtx) derefType(n *Node, v types.Value, t *schema.Type, log bool) ([
 		}
 		out := make([]xpath.Node, len(nodes))
 		for i, target := range nodes {
-			out[i] = wrap(vc.t.set, target)
+			out[i] = wrap(ctxOf(target), target)
 		}
 		return out, nil
 	case schema.InstanceID:
@@ -763,7 +782,7 @@ func (vc *valCtx) derefType(n *Node, v types.Value, t *schema.Type, log bool) ([
 			return nil, fail("Invalid instance-identifier \"%s\" value - required instance not found.",
 				n.value.Canonical())
 		}
-		return []xpath.Node{wrap(vc.t.set, target)}, nil
+		return []xpath.Node{wrap(vc.xpathSet(), target)}, nil
 	case schema.Union:
 		if u := v.Union(); u != nil {
 			mv, _ := u.Member()
@@ -843,7 +862,7 @@ func (vc *valCtx) dummyWhen(parent *Node, sn *schema.Node) (*schema.When, error)
 	iw := vc.ignoreWhen
 	vc.ignoreWhen = false
 	defer func() { vc.ignoreWhen = iw }()
-	dummy := newOpaque(opaque{Name: sn.Name, ModuleNS: sn.Module.Name, Format: types.FormatJSON, set: vc.t.set})
+	dummy := newOpaque(opaque{Name: sn.Name, ModuleNS: sn.Module.Name, Format: types.FormatJSON, set: sn.Module.Owner})
 	if err := vc.t.insert(parent, dummy, insertDefault); err != nil {
 		return nil, err
 	}

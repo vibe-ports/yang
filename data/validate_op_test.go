@@ -25,6 +25,53 @@ import (
 
 var reIntPath = regexp.MustCompile(`Internal error \([^):]*/`)
 
+// TestValidateOpDependencyEffectiveContext covers a dependency whose first root changes to B
+// after diff application while its constructor snapshot remains A.
+func TestValidateOpDependencyEffectiveContext(t *testing.T) {
+	load := func() *schema.Set {
+		c, _, err := compile.NewContext(compile.Options{NoYangLibrary: true}, os.DirFS("../conformance/corpus/ut-parser/opv.1"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, diags, err := c.Load("opv", "", nil); err != nil {
+			t.Fatal(err, diags)
+		}
+		return c.Snapshot()
+	}
+	a, b := load(), load()
+	parse := func(set *schema.Set, input string) *Tree {
+		tr, diags, err := parseJSONString(set, input, Reject, false)
+		if err != nil {
+			t.Fatal(err, diags)
+		}
+		return tr
+	}
+	oper := parse(a, `{"opv:item":[{"name":"x"}]}`)
+	mode := parse(b, `{"opv:mode":"on"}`)
+	diff, err := Diff(nil, mode, DiffOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := oper.ApplyDiff(diff, ApplyDiffOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if oper.set != a || oper.context() != b || ctxOf(oper.top.list[1]) != a {
+		t.Fatal("dependency did not retain A root after new B first root")
+	}
+	op, _, _, err := parseOp(context.Background(), strings.NewReader(`{"opv:alarm":{"level":1}}`), b, FormatJSON, opNotif, nil, Reject)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diags, err := op.ValidateOp(context.Background(), OpNotif, ValidateOpOptions{Operational: oper}); err != nil {
+		t.Fatalf("ValidateOp: %v, %v", err, diags)
+	}
+	// A tree passed as its own dependency is redundant even if its stored set is stale.
+	op.set = a
+	if diags, err := op.ValidateOp(context.Background(), OpNotif, ValidateOpOptions{Operational: op}); err == nil || strings.Contains(err.Error(), "another schema snapshot") {
+		t.Fatalf("self dependency: %v, %v", err, diags)
+	}
+}
+
 // TestValidateOpGoldens replays operation fixtures as the oracle's parse_one does with
 // validation: the operational tree parsed only (lyd_parse_data with LYD_PARSE_ONLY), the
 // operation parsed (lyd_parse_op; a reply into its rpc when the fixture has one), then

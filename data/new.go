@@ -108,18 +108,20 @@ func (b newBuilder) sameContext(parent *Node, mod *schema.Module, fn string) err
 	return nil
 }
 
-// ctxOf is LYD_CTX(n): its tree's set or, detached, the set its schema node's module belongs to
-// (schema.Module.Owner) or an opaque node's own; nil when unknown (modules of hand-built sets).
+// ctxOf is LYD_CTX(n): a schema-bound node always belongs to the context that
+// compiled its schema, even when linked into a tree with nodes from another
+// context. Opaque nodes retain their own context.
 func ctxOf(n *Node) *schema.Set {
-	switch s := setOf(n); {
-	case s != nil:
-		return s
-	case n.schema != nil:
+	if n == nil {
+		return nil
+	}
+	if n.schema != nil && n.schema.Module.Owner != nil {
 		return n.schema.Module.Owner
-	case n.opaq != nil:
+	}
+	if n.opaq != nil && n.opaq.set != nil {
 		return n.opaq.set
 	}
-	return nil
+	return setOf(n)
 }
 
 // inContext reports whether n belongs to the context set (LYD_CTX(n) == set), also when n is
@@ -485,18 +487,24 @@ type NewOptions struct {
 }
 
 // builder checks the arguments the exported tree-building calls add to libyang's (parent a node
-// of t, the module of a "module:node" name implemented in t's snapshot) and splits the name:
-// the module (nil: the parent's) and the node name.
+// of t or a detached node of its snapshot, the module of a "module:node" name implemented in t's
+// snapshot) and splits the name: the module (nil: the parent's) and the node name.
 func (t *Tree) builder(parent *Node, name, fn string) (newBuilder, *schema.Module, string, error) {
-	b := newBuilder{set: t.set, log: &logger{set: t.set}, work: &t.work, tree: t}
-	if parent != nil && treeOf(parent) != t {
+	prefix, local, qualified := strings.Cut(name, ":")
+	set := t.context()
+	if parent != nil && !qualified {
+		if own := ctxOf(parent); own != nil {
+			set = own
+		}
+	}
+	b := newBuilder{set: set, log: &logger{set: set}, work: &t.work, tree: t}
+	if parent != nil && treeOf(parent) != nil && treeOf(parent) != t {
 		return b, nil, "", b.log.done(argErr("parent (not in the tree)", fn))
 	}
-	prefix, local, ok := strings.Cut(name, ":")
-	if !ok {
+	if !qualified {
 		return b, nil, name, nil
 	}
-	mod := t.set.Implemented(prefix)
+	mod := set.Implemented(prefix)
 	if mod == nil {
 		return b, nil, "", b.log.done(argErr("module (not implemented)", fn))
 	}
@@ -520,8 +528,9 @@ func (t *Tree) placed(b newBuilder, parent, n *Node, err error) (*Node, error) {
 }
 
 // NewTerm is lyd_new_term: a leaf or leaf-list instance of name with the JSON-format value, a
-// child of parent (a node of t) or, with parent nil, a top-level node of t (then
-// lyd_insert_sibling). name is "module:node", or "node" below a parent (the parent's module); the
+// child of parent (a node of t, or a detached node of its snapshot) or, with parent nil, a
+// top-level node of t (then lyd_insert_sibling). name is "module:node", or "node" below a parent
+// (the parent's module); the
 // module must be implemented in t's snapshot. Errors are a *ValidationError with libyang's
 // diagnostics and return code: a name that does not resolve is "Term node … not found."
 // (LY_ENOTFOUND), a value the type rejects the type's diagnostics.
@@ -569,7 +578,7 @@ func (t *Tree) NewList(parent *Node, name string, keys []string, o NewOptions) (
 func (n *Node) SetValue(value string) (changed bool, err error) {
 	var set *schema.Set
 	if n != nil {
-		set = setOf(n)
+		set = ctxOf(n)
 	}
 	b := newBuilder{set: set, log: &logger{set: set}}
 	err = b.log.done(b.changeTerm(n, value, false))

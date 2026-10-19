@@ -1,0 +1,25 @@
+fixtures:
+  - id: protocol-v2/print-mixed-context-with-defaults
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC6243#5"]
+    areas: [codecs, defaults, diff]
+    request:
+      op: sequence
+      searchdirs: [schemas, ../ietf]
+      modules: [{name: pv2-detached}, {name: pv2-edit}, {name: ietf-netconf-with-defaults}]
+      steps:
+        - do: diff
+          format: json
+          data_type: config
+          target:
+            searchdirs: [schemas, ../ietf]
+            modules: [{name: pv2-detached}]
+          data: '{"pv2-detached:l":[{"k":"b"}]}'
+        - {do: parse, format: json, data_type: config, data: '{"pv2-edit:c":{"a":"x"}}'}
+        - {do: diff_apply}
+        - {do: dump, with_defaults: all-tagged}
+    golden: golden/print-mixed-context-with-defaults.json
+    assert:
+      verdict: valid
+      deviation: null

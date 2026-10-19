@@ -4,9 +4,13 @@ package conformance
 
 import (
 	"fmt"
+	"slices"
+	"strings"
 
 	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/data"
+	"github.com/vibe-ports/yang/internal/contextopts"
+	"github.com/vibe-ports/yang/internal/snap"
 )
 
 // diffOptions are lyoracle.c diff_flags.
@@ -96,11 +100,11 @@ func runDiff(r Request, s *yang.Schema, resp map[string]any, exec executionConte
 }
 
 // stepDiff is lyoracle.c step_diff: lyd_diff_siblings (lyd_diff_tree with single) of the tree
-// (or its node at "node") and the parsed data (or its node at "data_node"); the result replaces
-// the diff register, or with merge is merged into it (reported as new_diff). The diagnostics carry
-// their phase (parse, diff).
-func stepDiff(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, reg **data.Tree,
-	regOwner **yang.Schema, so map[string]any, collectPending func(string) []yang.Diagnostic,
+// (or its node at "node", or the retained detached node with "detached") and the parsed data (or
+// its node at "data_node"); the result replaces the diff register, or with merge is merged into it
+// (reported as new_diff). The diagnostics carry their phase (parse, diff).
+func stepDiff(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, detached *data.Node, reg **data.Tree,
+	regOwner **yang.Schema, so map[string]any, collectPending func(*yang.Schema, string) []yang.Diagnostic,
 	logPrint func(*yang.Schema, []yang.Diagnostic)) ([]yang.Diagnostic, error) {
 	_, hasData, err := requestInput(r, st, "data")
 	if err != nil {
@@ -115,7 +119,12 @@ func stepDiff(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, reg
 		return nil, err
 	}
 	first := topNode(tree)
-	if path, ok := st["node"].(string); ok {
+	if st["detached"] == true {
+		if detached == nil {
+			return nil, requestError("diff retained detached node not found")
+		}
+		first = detached
+	} else if path, ok := st["node"].(string); ok {
 		if first, err = findNode(tree, path, "diff node"); err != nil {
 			return nil, err
 		}
@@ -124,7 +133,6 @@ func stepDiff(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, reg
 	var secondTree *data.Tree
 	secondSchema := s
 	var diags []yang.Diagnostic
-	crossContext := false
 	if hasData {
 		// step_diff resolves data_node only after parse_one succeeds.
 		if p, ok := st["target"].(map[string]any); ok {
@@ -136,7 +144,6 @@ func stepDiff(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, reg
 				return nil, requestError("diff target context failed")
 			}
 			secondSchema = targetSchema
-			crossContext = secondSchema != s
 		}
 		if secondSchema == s {
 			collectPhase := "parse"
@@ -144,7 +151,7 @@ func stepDiff(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, reg
 			if (typ == data.OpRPC || typ == data.OpReply) && st["rpc"] != nil {
 				collectPhase = "rpc"
 			}
-			diags = append(diags, collectPending(collectPhase)...)
+			diags = append(diags, collectPending(s, collectPhase)...)
 		}
 		t, d, perr := parseOne(r, secondSchema, st, execStepDiff, "data", "parse", nil)
 		diags = append(diags, d...)
@@ -154,16 +161,16 @@ func stepDiff(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, reg
 		second = topNode(t)
 		secondTree = t
 	}
-	// lyoracle.c:2382 resolves data_node even when no data was supplied.
+	// lyoracle.c:2747 resolves data_node even when no data was supplied.
 	if path, ok := st["data_node"].(string); ok {
 		if second, err = findNode(secondTree, path, "diff data_node"); err != nil {
 			return nil, err
 		}
 	}
-	// lyoracle.c:2366-2386 permits populated trees from separate contexts.
+	// lyoracle.c:2731-2752 permits populated trees from separate contexts.
 	// DiffSiblings/DiffTree deliberately refuse this matching (D-0069, #236).
 	// Preserve parse and selector failures above, and the supported NULL cases.
-	if crossContext && first != nil && second != nil {
+	if first != nil && second != nil && snap.Set(contextopts.NodeSchema(first)) != snap.Set(contextopts.NodeSchema(second)) {
 		return nil, fmt.Errorf("%w: cross-context diff of populated trees (D-0069)", ErrUnsupported)
 	}
 	diff := data.DiffSiblings
@@ -172,15 +179,24 @@ func stepDiff(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, reg
 	}
 	res, err := diff(first, second, o)
 	// step_diff collects the retained context after diffing, including when
-	// the parsed second tree belonged to a separate target context.
-	diags = append(diags, collectPending("diff")...)
+	// the parsed second tree belonged to a separate target context, then the
+	// context of a foreign first input (lyoracle.c:2734).
+	diags = append(diags, collectPending(s, "diff")...)
+	if first != nil && snap.Set(contextopts.NodeSchema(first)) != snap.Set(s) {
+		diags = append(diags, collectPending(contextopts.NodeSchema(first), "diff")...)
+	}
 	if err != nil {
 		return phased(diags, diagsOf(err), "diff"), err
 	}
 	// A diff node is built in the context of whichever non-NULL input supplied it.
 	// The target owns it when the retained tree is empty.
+	// A populated diff belongs to the context of its own nodes (a retained detached
+	// first input may come from another snapshot).
 	resOwner := s
-	if first == nil && second != nil {
+	switch {
+	case res != nil && !empty(res):
+		resOwner = contextopts.TreeSchema(res)
+	case first == nil && second != nil:
 		resOwner = secondSchema
 	}
 	if b, _ := st["merge"].(bool); !b {
@@ -199,7 +215,7 @@ func stepDiff(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, reg
 		}
 		// step_diff prints new_diff before the merge's collect(ctx, ..., "diff").
 		// Its printer logs stay in the context of the new diff until collected.
-		if resOwner == s {
+		if snap.Set(resOwner) == snap.Set(s) {
 			diags = phased(diags, printed, "diff")
 		} else {
 			logPrint(resOwner, printed)
@@ -267,7 +283,7 @@ func parseDiff(r Request, s *yang.Schema, st map[string]any, exec executionConte
 
 // stepDiffMerge is lyoracle.c step_diff_merge: the parsed source merged into the register
 // (MergeDiff with the module filter, or MergeDiffTree of src_node under parent).
-func stepDiffMerge(r Request, s *yang.Schema, st map[string]any, reg **data.Tree) ([]yang.Diagnostic, error) {
+func stepDiffMerge(r Request, s *yang.Schema, st map[string]any, reg **data.Tree, detached *data.Node) ([]yang.Diagnostic, error) {
 	o, err := mergeOptions(st, "options")
 	if err != nil {
 		return nil, err
@@ -280,9 +296,14 @@ func stepDiffMerge(r Request, s *yang.Schema, st map[string]any, reg **data.Tree
 	}
 	var merge func(*data.Tree) error
 	if path, ok := st["src_node"].(string); ok {
-		// lyoracle.c:2446-2450 resolves parent before src_node.
+		// lyoracle.c:2792-2796 resolves parent before src_node.
 		var parent *data.Node
-		if pp, ok := st["parent"].(string); ok {
+		if st["detached_parent"] == true {
+			parent = detached
+			if parent == nil {
+				return nil, requestError("diff_merge retained detached parent not found")
+			}
+		} else if pp, ok := st["parent"].(string); ok {
 			if parent, err = findNode(*reg, pp, "diff_merge parent"); err != nil {
 				return nil, err
 			}
@@ -292,11 +313,49 @@ func stepDiffMerge(r Request, s *yang.Schema, st map[string]any, reg **data.Tree
 			return nil, err
 		}
 		merge = func(t *data.Tree) error { return t.MergeDiffTree(parent, sn, o) }
+		if *reg == nil && parent != nil {
+			s = contextopts.NodeSchema(parent)
+		}
 	} else {
-		merge = func(t *data.Tree) error { return t.MergeDiff(src, o) }
+		merge = func(t *data.Tree) error {
+			if o.Module != "" && src != nil {
+				return contextopts.MergeDiffModule(t, src, s, o.Module, o.Defaults)
+			}
+			return t.MergeDiff(src, o)
+		}
 	}
-	err = mergeInto(s, reg, merge)
-	return phased(diags, diagsOf(err), "diff"), err
+	mergeSchema := s
+	if o.Module == "" && src != nil && !empty(src) && (st["detached_parent"] != true || *reg != nil) {
+		mergeSchema = contextopts.TreeSchema(src)
+	}
+	err = mergeInto(mergeSchema, reg, merge)
+	mergeDiags := diagsOf(err)
+	logged := contextopts.DrainDiffDiagnostics(*reg)
+	if len(logged) > 0 {
+		// step_diff_merge drains the request context before the retained diff
+		// context. lyd_find_meta logs on its metadata context; the merge
+		// wrapper logs on the source and LOGERR_META on the target diff.
+		var source, target []yang.Diagnostic
+		for _, item := range logged {
+			if item.Context != nil && snap.Set(item.Context) == snap.Set(s) {
+				source = append(source, item.Diagnostic)
+			} else {
+				target = append(target, item.Diagnostic)
+			}
+		}
+		if len(mergeDiags) >= len(logged) { // withDiffLogs prepends these to the public error
+			mergeDiags = mergeDiags[len(logged):]
+		}
+		for _, d := range mergeDiags {
+			if strings.HasPrefix(d.Msg, "Merging operation ") {
+				source = append(source, d)
+			} else {
+				target = append(target, d)
+			}
+		}
+		mergeDiags = slices.Concat(source, target)
+	}
+	return phased(diags, mergeDiags, "diff"), err
 }
 
 // findNode mirrors lyoracle's lyd_find_path(tree, path, 0, ...): operation paths

@@ -613,6 +613,9 @@ func (p *xmlParser) subtreeOpaq(prefix, name string, parent *Node) (node *Node, 
 // siblings, this is the first sibling after the instances of n's schema node.
 func (t *Tree) nextAnchor(n *Node) *Node {
 	sib := n.siblingsOf()
+	if sib == nil {
+		return nil
+	}
 	if sib.schemaUnordered || opChild(n.schema) {
 		var at int
 		if opChild(n.schema) {

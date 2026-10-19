@@ -298,7 +298,7 @@ func TestDuplicateWork(t *testing.T) {
 		if err := vc.validateNew(parent, nil, mod); err != nil {
 			t.Fatal(err)
 		}
-		if int(tr.work.Load()) > 2*n {
+		if int(tr.work.Load()) > 3*n {
 			t.Fatalf("top %v: %d probes for %d siblings", top, int(tr.work.Load()), n)
 		}
 	}

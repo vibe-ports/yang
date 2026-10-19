@@ -33,16 +33,16 @@ type inventoryRow struct {
 }
 
 var requestInventory = []inventoryRow{
-	{"step:parse", "parent", "2423,2435,2436", "string", "", "Execution-only parent selector: operation data only, excludes rpc and requires parse_only; parsed into the retained node."},
-	{"step:parse", "rpc", "2432", "input", "", "Execution: parent excludes a separate rpc input."},
-	{"step:parse", "data", "2438", "input", "", "Execution: input parsed into the retained parent."},
-	{"schema data xpath diff sequence atoms", "op", "3080", "enum", "schema data xpath diff sequence atoms", "Required dispatch; absent/null missing op; empty/bogus unknown op; checked before context."},
-	{"schema data xpath diff sequence atoms", "base_dir", "3082", "directory", "", "Absent/null keep process directory; empty/bogus cannot chdir; valid directory selects file/search base before dispatch."},
-	{"step:change_term", "node_xpath", "1864,2891", "string", "", "Exactly one of node/node_xpath must be non-null; execution XPath must select exactly one retained node."},
-	{"step:change_term", "child", "1861,2904", "positive-integer", "", "Optional one-based actual child position; present requires an integer from 1 through INT32_MAX; execution requires that child to exist."},
-	{"step:edit", "merge_self", "1726,1775,2501", "bool", "", "Exactly one edit; present must be true. Recursively duplicate retained siblings and merge them back during execution."},
-	{"step:xpath", "vars", "2020,2771", "object", "", "Absent no variables; present null/nonobject request-error; every value must be a string XPath expression."},
-	{"step:xpath", "vars.v", "2020,2771", "var", "", "Dynamic key v represents ANY variable name; non-string including null request-error; string values are evaluated as XPath expressions."},
+	{"step:parse", "parent", "2518,2530,2531", "string", "", "Execution-only parent selector: operation data only, excludes rpc and requires parse_only; parsed into the retained node."},
+	{"step:parse", "rpc", "2527", "input", "", "Execution: parent excludes a separate rpc input."},
+	{"step:parse", "data", "2533", "input", "", "Execution: input parsed into the retained parent."},
+	{"schema data xpath diff sequence atoms", "op", "3273", "enum", "schema data xpath diff sequence atoms", "Required dispatch; absent/null missing op; empty/bogus unknown op; checked before context."},
+	{"schema data xpath diff sequence atoms", "base_dir", "3275", "directory", "", "Absent/null keep process directory; empty/bogus cannot chdir; valid directory selects file/search base before dispatch."},
+	{"step:change_term", "node_xpath", "1867,3056", "string", "", "Exactly one of node/node_xpath must be non-null; execution XPath must select exactly one retained node."},
+	{"step:change_term", "child", "1864,3069", "positive-integer", "", "Optional one-based actual child position; present requires an integer from 1 through INT32_MAX; execution requires that child to exist."},
+	{"step:edit", "merge_self", "1728,1777,2596", "bool", "", "Exactly one edit; present must be true. Recursively duplicate retained siblings and merge them back during execution."},
+	{"step:xpath", "vars", "2080,2928", "object", "", "Absent no variables; present null/nonobject request-error; every value must be a string XPath expression."},
+	{"step:xpath", "vars.v", "2080,2928", "var", "", "Dynamic key v represents ANY variable name; non-string including null request-error; string values are evaluated as XPath expressions."},
 	{"schema data xpath diff sequence atoms", "context_options", "1094", "flags", "all_implemented ref_implemented no_yanglibrary enable_imp_features compile_obsolete leafref_extended leafref_linking builtin_plugins_only pattern_compat", "Context creation; pattern_compat maps to zero in C. Target context is execution-only after step preflight."},
 	{"schema data xpath diff sequence atoms", "searchdirs", "1101", "iteration", "", "cJSON_ArrayForEach: absent/null/scalars have no children; arrays and object values iterate; every child must name an accessible directory or request-error."},
 	{"schema data xpath diff sequence atoms", "modules", "1091", "iteration", "", "cJSON_ArrayForEach: absent/null/scalars load none; array/object children each read as a module. Load failures are schema-error (invalid for schema op)."},
@@ -78,16 +78,17 @@ var requestInventory = []inventoryRow{
 	{"xpath", "data", "1529", "input", "", "Optional: absent/null no input. xpath passes NULL to parse_one; diff data read during execution (preflight only with target); insert falls back to retained node; edit needs exactly one edit. RPC allowed only for reply steps, ignored for top-level datastore/notif."},
 	{"diff", "first", "1645", "input", "", "Required input: absent/null request-error."},
 	{"diff", "second", "1646", "input", "", "Required input: absent/null request-error."},
-	{"step:parse", "data", "1748,2445", "input", "", "Required input: absent/null request-error."},
-	{"step:parse", "rpc", "1745,2445", "input", "", "Optional: absent/null no input. xpath passes NULL to parse_one; diff data read during execution (preflight only with target); insert falls back to retained node; edit needs exactly one edit. RPC allowed only for reply steps, ignored for top-level datastore/notif."},
-	{"step:insert", "data", "1938,2331", "input", "", "Optional: absent/null no input. xpath passes NULL to parse_one; diff data read during execution (preflight only with target); insert falls back to retained node; edit needs exactly one edit. RPC allowed only for reply steps, ignored for top-level datastore/notif."},
-	{"step:compare", "data", "3115,1954,2396", "input", "", "Exactly one of data and insert_opaq is required."},
-	{"step:diff", "data", "1998,2657", "input", "", "Optional: absent/null no input. xpath passes NULL to parse_one; diff data read during execution (preflight only with target); insert falls back to retained node; edit needs exactly one edit. RPC allowed only for reply steps, ignored for top-level datastore/notif."},
-	{"step:diff", "rpc", "1974,2679", "input", "", "Optional: absent/null no input. xpath passes NULL to parse_one; diff data read during execution (preflight only with target); insert falls back to retained node; edit needs exactly one edit. RPC allowed only for reply steps, ignored for top-level datastore/notif."},
-	{"step:diff_parse step:diff_merge", "data", "1968,2719,2744", "input", "", "Required input: absent/null request-error."},
-	{"step:edit", "merge", "1766,2489", "input", "", "Optional: absent/null no input. xpath passes NULL to parse_one; diff data read during execution (preflight only with target); insert falls back to retained node; edit needs exactly one edit. RPC allowed only for reply steps, ignored for top-level datastore/notif."},
+	{"step:parse", "data", "1750,2540", "input", "", "Required input: absent/null request-error."},
+	{"step:parse", "rpc", "1747,2540", "input", "", "Optional: absent/null no input. xpath passes NULL to parse_one; diff data read during execution (preflight only with target); insert falls back to retained node; edit needs exactly one edit. RPC allowed only for reply steps, ignored for top-level datastore/notif."},
+	{"step:insert", "data", "1952,2395", "input", "", "Optional: absent/null no input. xpath passes NULL to parse_one; diff data read during execution (preflight only with target); insert falls back to retained node; edit needs exactly one edit. RPC allowed only for reply steps, ignored for top-level datastore/notif."},
+	{"step:compare", "data", "3308,1981,2491", "input", "", "Exactly one of data and insert_opaq is required."},
+	{"step:diff", "data", "2031,2774", "input", "", "Optional: absent/null no input. xpath passes NULL to parse_one; diff data read during execution (preflight only with target); insert falls back to retained node; edit needs exactly one edit. RPC allowed only for reply steps, ignored for top-level datastore/notif."},
+	{"step:diff", "rpc", "2007,2801", "input", "", "Optional: absent/null no input. xpath passes NULL to parse_one; diff data read during execution (preflight only with target); insert falls back to retained node; edit needs exactly one edit. RPC allowed only for reply steps, ignored for top-level datastore/notif."},
+	{"step:diff_parse step:diff_merge", "data", "2001,2841,2866", "input", "", "Required input: absent/null request-error."},
+	{"step:edit", "merge", "1768,2584", "input", "", "Optional: absent/null no input. xpath passes NULL to parse_one; diff data read during execution (preflight only with target); insert falls back to retained node; edit needs exactly one edit. RPC allowed only for reply steps, ignored for top-level datastore/notif."},
 	{"data", "print_subtree", "1441", "string", "", "Optional path selects output subtree after parse."},
-	{"data step:dump", "with_defaults", "1364,1442,1880,2940,2962", "enum", "explicit trim all all-tagged implicit-tagged", "Absent/null explicit; changes printed defaults."},
+	{"data step:dump step:detached_dump", "with_defaults", "1364,1442,1883,3133,3155,3153,3154", "enum", "explicit trim all all-tagged implicit-tagged", "Absent/null explicit; changes printed defaults."},
+	{"step:detached_dump", "child", "1883,3153", "bool", "true false", "Inspect the first child of the retained detached root."},
 	{"data", "print_options", "1442", "flags", "shrink empty_leaf_list empty_cont json_no_nested_prefix", "OR into printer options."},
 	{"diff", "diff_options", "1657", "flags", "defaults meta", "Execution only after BOTH inputs parse successfully."},
 	{"xpath", "xpath", "1495", "string", "", "Required; empty/bogus evaluated after parsing data; parse failure bypasses evaluation."},
@@ -97,109 +98,121 @@ var requestInventory = []inventoryRow{
 	{"xpath", "namespaces", "1503", "array", "", "Presence requires array even null; checked after successful parse; permitted only with xpath_format xml."},
 	{"xpath", "namespaces[].prefix", "1547", "string", "", "Only read with xpath_format xml after successful data parse; absent/null/empty use default namespace."},
 	{"xpath", "namespaces[].uri", "1547", "string", "", "Only read with xpath_format xml; absent/null request-error; empty is a valid string."},
-	{"xpath step:trim", "vars", "1510,2034,2806", "object", "", "Absent no variables; present null/nonobject request-error; every value must be string (including empty)."},
-	{"xpath step:trim", "vars.v", "1510,2034,2806", "var", "", "Dynamic key v represents ANY variable name; non-string including null request-error; absent no binding; string including empty accepted."},
-	{"sequence", "steps", "2837", "array", "", "Required array, including empty. All steps preflight before execution."},
-	{"atoms", "xpath", "2997", "string", "", "Exactly one of xpath/path non-null. Evaluates schema atoms."},
-	{"atoms", "path", "2997", "string", "", "Exactly one of xpath/path non-null. Evaluates compiled path atoms; only output option used."},
-	{"atoms", "context_path", "2997,3014", "string", "", "Optional schema node; not found (including empty) request-error."},
-	{"atoms", "atom_options", "2998", "flags", "schema output no_match_error", "Absent zero. Path ignores schema/no_match_error; xpath uses all flags."},
-	{"step:parse step:validate step:edit step:change_term step:dump step:print_xml step:any_direct step:dup step:insert step:compare step:diff step:diff_parse step:diff_merge step:diff_apply step:diff_reverse step:trim step:link step:links", "do", "1700,2855", "enum", "parse validate edit change_term dump print_xml any_direct dup insert compare diff diff_parse diff_merge diff_apply diff_reverse trim link links", "Required string; absent/null step without do; unknown string request-error after keys_only. All step keys restricted at 1706-1723."},
-	{"step:any_direct", "case", "1885,2128", "enum", "nil_boundaries text_nul node_then_empty equal_repeated_collisions dup_payload_parent_context trim_payload_links merge_mixed_into_tree dup_siblings_into_empty_anydata dup_siblings_into_empty_anyxml dup_into_default_any_parent", "Required direct-call probe selector."},
-	{"step:any_direct", "target", "1884,2252,3204", "object", "", "Optional second context; required by the cross-context probes."},
+	{"xpath step:trim", "vars", "1510,2054,2892", "object", "", "Absent no variables; present null/nonobject request-error; every value must be string (including empty)."},
+	{"xpath step:trim", "vars.v", "1510,2054,2892", "var", "", "Dynamic key v represents ANY variable name; non-string including null request-error; absent no binding; string including empty accepted."},
+	{"sequence", "steps", "3003", "array", "", "Required array, including empty. All steps preflight before execution."},
+	{"atoms", "xpath", "3190", "string", "", "Exactly one of xpath/path non-null. Evaluates schema atoms."},
+	{"atoms", "path", "3190", "string", "", "Exactly one of xpath/path non-null. Evaluates compiled path atoms; only output option used."},
+	{"atoms", "context_path", "3190,3207", "string", "", "Optional schema node; not found (including empty) request-error."},
+	{"atoms", "atom_options", "3191", "flags", "schema output no_match_error", "Absent zero. Path ignores schema/no_match_error; xpath uses all flags."},
+	{"step:parse step:validate step:edit step:change_term step:dump step:print_xml step:any_direct step:dup step:insert step:compare step:diff step:diff_parse step:diff_merge step:diff_apply step:diff_reverse step:trim step:xpath step:link step:links step:unlink step:find_meta", "do", "1700,3021", "enum", "parse validate edit change_term dump print_xml any_direct dup insert compare diff diff_parse diff_merge diff_apply diff_reverse trim xpath link links unlink find_meta", "Required string; absent/null step without do; unknown string request-error after keys_only. All step keys restricted at 1706-1725."},
+	{"step:any_direct", "case", "1888,2192", "enum", "nil_boundaries text_nul node_then_empty equal_repeated_collisions dup_payload_parent_context trim_payload_links merge_mixed_into_tree dup_siblings_into_empty_anydata dup_siblings_into_empty_anyxml dup_into_default_any_parent", "Required direct-call probe selector."},
+	{"step:any_direct", "target", "1887,2316,3397", "object", "", "Optional second context; required by the cross-context probes."},
 	{"target:any_direct", "context_options", "1094", "flags", "all_implemented ref_implemented no_yanglibrary enable_imp_features compile_obsolete leafref_extended leafref_linking builtin_plugins_only pattern_compat", "Second context creation for pointer-level probes."},
 	{"target:any_direct", "searchdirs", "1101", "iteration", "", "Second context search paths."},
 	{"target:any_direct", "modules", "1091", "iteration", "", "Second context modules."},
 	{"target:any_direct", "modules[].name", "1113", "string", "", "Required target module name."},
 	{"target:any_direct", "modules[].revision", "1113", "string", "", "Optional target revision."},
 	{"target:any_direct", "modules[].features", "1114", "features", "", "Optional target features."},
-	{"step:validate", "module", "1753,2457", "string", "", "Optional; preflight lookup in original context; empty/unknown request-error."},
-	{"step:validate", "final_only", "1752,1756,2458", "bool", "", "Absent false; true requires module and uses final-only validator."},
-	{"step:change_term", "node", "1866,2916,1864,2902", "string", "", "Required; execution lookup must find node."},
-	{"step:change_term", "value", "1866,2918", "string", "", "Required string including empty; change term during execution."},
-	{"step:change_term", "canon", "1860,2917", "bool", "", "Absent false; true selects canonical value API."},
-	{"step:dup", "node", "1907,2058,1910,2086", "string", "", "Required; execution selects node to duplicate."},
-	{"step:dup", "parent", "1913,1921,2058", "string", "", "Optional; cannot coexist with target; selects parent during execution."},
-	{"step:dup", "options", "1914,2064", "flags", "recursive no_meta with_parents with_flags no_lyds", "Dup flags; absent zero."},
-	{"step:dup", "siblings", "1904,1915,2065", "bool", "", "Absent false; true duplicates siblings."},
-	{"step:dup", "target", "1918,1919,1924,2059,1931", "object", "", "Presence requires context object and no parent; allowed keys searchdirs modules context_options; built during execution."},
-	{"step:insert", "node", "1936,1943,2331", "string", "", "Required unless data input present; absent selects first source node; empty path passed to lookup."},
-	{"step:insert", "parent", "1937,2331", "string", "", "Optional destination parent; absent/null top level; empty still looked up."},
-	{"step:compare", "first", "1958,2387", "string", "", "Optional path in retained tree; absent first sibling."},
-	{"step:compare", "second", "1959,2387", "string", "", "Optional path in parsed tree; absent first sibling."},
-	{"step:compare", "options", "1960,2407", "flags", "full_recursion defaults opaq", "Comparison flags."},
-	{"step:compare", "insert_opaq", "3114", "object", "", "Exactly one of data and insert_opaq is required; the latter constructs the second comparison root."},
-	{"compare:insert_opaq", "name", "3132,3146,3149", "string", "", "Required opaque local name."},
-	{"compare:insert_opaq", "module", "3132,3147,3150", "string", "", "Required module name or XML namespace."},
-	{"compare:insert_opaq", "value", "3136,3146,3149", "string", "", "Optional opaque value."},
-	{"compare:insert_opaq", "prefix", "3137,3146,3149", "string", "", "Optional opaque prefix."},
-	{"compare:insert_opaq", "xml", "3138", "bool", "", "Absent false selects lyd_new_opaq; true selects lyd_new_opaq2."},
-	{"step:diff", "target", "1972,2001,2656", "object", "", "Presence requires context object, datastore type, data input. Build target during execution."},
-	{"step:diff", "keep_input", "1973,1983", "truth", "", "Presence (even null/false) requires rpc; true keeps request children."},
-	{"step:diff", "options", "1987,2660", "flags", "defaults meta", "Diff flags."},
-	{"step:diff", "merge_options", "1988,2696", "flags", "defaults", "Syntax always checked; used only with merge true."},
-	{"step:diff", "node", "1989,2657", "string", "", "Optional retained node selector."},
-	{"step:diff", "data_node", "1990,2657", "string", "", "Optional second-tree selector."},
-	{"step:diff", "single", "2003,2685", "bool", "", "Absent false; true diff_tree instead of siblings."},
-	{"step:diff", "merge", "2004,2694", "bool", "", "Absent false; true merges result into diff register."},
-	{"step:diff_merge", "options", "2008,2738", "flags", "defaults", "Diff merge flags."},
-	{"step:diff_merge", "module", "2009,2013,2636", "string", "", "Optional implemented module; cannot coexist with src_node; lookup execution-only."},
-	{"step:diff_merge", "parent", "2010,2737", "string", "", "Optional selector requires src_node; execution lookup."},
-	{"step:diff_merge", "src_node", "2010,2013,2737", "string", "", "Optional source selector; mutually exclusive with module."},
-	{"step:diff_apply", "module", "2018,2636", "string", "", "Optional module; lookup during execution."},
-	{"step:trim", "xpath", "2036,2811", "string", "", "Required expression; execution trim."},
-	{"step:edit", "set", "1727,1767,1852,2490", "object", "", "Exactly one edit. Presence selects keys_only do + this key (1727-1736); null counts present except delete/merge use str_of. Nested object checked preflight; delete needs string."},
-	{"step:edit", "delete", "1728,1766,2489", "string", "", "Exactly one edit. Presence selects keys_only do + this key (1727-1736); null counts present except delete/merge use str_of. Nested object checked preflight; delete needs string."},
-	{"step:edit", "insert_term", "1729,1768,2491", "object", "", "Exactly one edit. Presence selects keys_only do + this key (1727-1736); null counts present except delete/merge use str_of. Nested object checked preflight; delete needs string."},
-	{"step:edit", "insert_inner", "1730,1769,2492", "object", "", "Exactly one edit. Presence selects keys_only do + this key (1727-1736); null counts present except delete/merge use str_of. Nested object checked preflight; delete needs string."},
-	{"step:edit", "insert_list", "1731,1770,2493", "object", "", "Exactly one edit. Presence selects keys_only do + this key (1727-1736); null counts present except delete/merge use str_of. Nested object checked preflight; delete needs string."},
-	{"step:edit", "insert_list2", "1732,1771,2494", "object", "", "Exactly one edit. Presence selects keys_only do + this key (1727-1736); null counts present except delete/merge use str_of. Nested object checked preflight; delete needs string."},
-	{"step:edit", "insert_opaq", "1733,1772,2495", "object", "", "Exactly one edit. Presence selects keys_only do + this key (1727-1736); null counts present except delete/merge use str_of. Nested object checked preflight; delete needs string."},
-	{"step:edit", "new_meta", "1734,1773,2496", "object", "", "Exactly one edit. Presence selects keys_only do + this key (1727-1736); null counts present except delete/merge use str_of. Nested object checked preflight; delete needs string."},
-	{"step:edit", "free_meta", "1735,1774,2497", "object", "", "Exactly one edit. Presence selects keys_only do + this key (1727-1736); null counts present except delete/merge use str_of. Nested object checked preflight; delete needs string."},
-	{"edit:set", "path", "1852,2596", "string", "", "Required path; execution NewPath UPDATE."},
-	{"edit:set", "value", "1857,2596", "string", "", "Optional NULL value; empty is literal empty value."},
-	{"edit:new_meta edit:free_meta", "node", "1788,2513,2514", "string", "", "Required; execution node lookup."},
-	{"edit:new_meta edit:free_meta", "name", "1788,2517,2519", "string", "", "Required module-qualified name containing colon (empty fails)."},
-	{"edit:new_meta", "value", "1792,2517", "string", "", "Required including empty."},
-	{"edit:insert_term edit:insert_inner edit:insert_list edit:insert_list2 edit:insert_opaq", "parent", "1804,2525", "string", "", "Optional; cannot coexist with parent_opaq; execution lookup."},
-	{"edit:insert_term edit:insert_inner edit:insert_list edit:insert_list2 edit:insert_opaq", "parent_opaq", "1805,2525", "string", "", "Optional opaque parent XPath; exactly one node during execution."},
-	{"edit:insert_term edit:insert_inner edit:insert_list edit:insert_list2 edit:insert_opaq", "name", "1806,2526", "string", "", "Required local node name including empty; schema lookup execution."},
-	{"edit:insert_term edit:insert_inner edit:insert_list edit:insert_list2 edit:insert_opaq", "module", "1817,1824,2525", "string", "", "Required for opaq; otherwise needs module or either parent. Implemented-module lookup execution; opaq uses namespace string."},
-	{"edit:insert_term", "value", "1830,2547", "string", "", "Required including empty; value parsed during execution."},
-	{"edit:insert_term edit:insert_list edit:insert_list2", "options", "1827,2528", "flags", "output store_only canon", "Creation flags; absent zero."},
-	{"edit:insert_inner", "options", "1827,2528", "flags", "output", "Output selector; absent zero."},
-	{"edit:insert_list", "keys", "1836,2555", "keys", "", "Absent no keys; present must be array <=16 strings/nulls. NULL key values passed into lyd_new_list."},
-	{"edit:insert_list2", "keys", "1834,2551", "string", "", "Optional predicate string; absent/null passed as NULL."},
-	{"edit:insert_opaq", "value", "1815,2572,2574", "string", "", "Optional value."},
-	{"edit:insert_opaq", "prefix", "1816,2572,2574", "string", "", "Optional prefix."},
-	{"edit:insert_opaq", "xml", "1820,2571", "bool", "", "Absent false JSON namespace; true XML namespace."},
-	{"step:parse step:validate step:edit step:change_term step:dump step:dup step:insert step:compare step:diff step:diff_parse step:diff_merge step:diff_apply step:diff_reverse step:trim step:link step:links step:xpath", "do", "1700,2855", "enum", "parse validate edit change_term dump dup insert compare diff diff_parse diff_merge diff_apply diff_reverse trim link links xpath", "Required string; absent/null step without do; unknown string request-error after keys_only. All step keys restricted at 1706-1722."},
-	{"step:dup", "node_xpath", "1907,1910,2058", "string", "", "Alternative single-node XPath selector, including operation output nodes."},
-	{"step:dup", "source", "1905,1926,2060", "object", "", "If present, requires an object with data and parse_only true; excludes target. Its data is checked during preflight, but parse parameters are checked during execution."},
-	{"step:dup", "source.format", "1214,2069", "enum", "json xml", "Absent/null defaults to json; nonstring, empty or unknown strings fail during execution before source parsing."},
-	{"step:dup", "source.data_type", "1210,1223,2069", "enum", "config data-operational data get getconfig edit rpc reply notif rpc-netconf notif-netconf reply-netconf rpc-restconf notif-restconf reply-restconf", "Absent/null defaults to data-operational. Type/enum checks happen during execution before source parsing; envelopes require parse_only true."},
-	{"step:dup", "source.unknown", "1210,1216,2069", "enum", "reject skip opaque", "Absent/null defaults to reject; nonstring, empty or unknown strings fail during execution before source parsing."},
-	{"step:dup", "source.data", "1927,2070", "input", "", "Required input, read during preflight before keys_only and target exclusion; reread after dparams_of during execution. Empty is present; parse failure stops selection and duplication."},
-	{"step:dup", "source.parse_only", "1219,1927", "truth", "", "Must be true, so an operation source is parsed without validation."},
-	{"step:dup", "source.rpc", "2070", "input", "", "Optional request tree for a separately parsed reply; read after source parameters and data at execution, with no preflight reply-only restriction."},
-	{"step:dup", "source.keep_input", "1220,2069", "truth", "", "Only JSON true retains RPC input children; other values are false and are not type-checked."},
-	{"step:compare", "self", "1947,2391", "truth", "", "Only JSON true compares two nodes in the retained tree, permitting only do/self/first/second/options; other values preserve parsed-tree comparison."},
-	{"step:xpath", "xpath", "2022,2776", "string", "", "Required node-set expression; execution reads retained tree with its first node as context, without changing it. Empty tree returns LY_EINVAL and null result without diagnostics or a libyang call."},
+	{"step:validate", "module", "1755,2552", "string", "", "Optional; preflight lookup in original context; empty/unknown request-error."},
+	{"step:validate", "final_only", "1754,1758,2553", "bool", "", "Absent false; true requires module and uses final-only validator."},
+	{"step:change_term", "node", "1869,3081,1867,3067,3055", "string", "", "Required; execution lookup must find node."},
+	{"step:change_term", "value", "1869,3083,1867", "string", "", "Required string including empty; change term during execution."},
+	{"step:change_term", "canon", "1863,3082", "bool", "", "Absent false; true selects canonical value API."},
+	{"step:dup", "node", "1911,2115,1915,2159,1912", "string", "", "Required unless detached is true; execution selects the attached node to duplicate."},
+	{"step:dup", "parent", "1918,1929,2115", "string", "", "Optional; cannot coexist with target; selects parent during execution."},
+	{"step:dup", "options", "1919,2121", "flags", "recursive no_meta with_parents with_flags no_lyds", "Dup flags; absent zero."},
+	{"step:dup", "siblings", "1907,1920,2122", "bool", "", "Absent false; true duplicates siblings."},
+	{"step:dup", "target", "1926,1927,1932,2116,1939", "object", "", "Presence requires context object and no parent; allowed keys searchdirs modules context_options; built during execution."},
+	{"step:insert", "node", "1947,1960,2395,1966", "string", "", "Required unless data input or detached is present; absent with data selects its first source node; empty path passed to lookup."},
+	{"step:insert", "parent", "1948,2395", "string", "", "Optional destination parent; absent/null top level; empty still looked up."},
+	{"step:compare", "first", "1985,2471", "string", "", "Optional path in retained tree; absent first sibling."},
+	{"step:compare", "second", "1986,2471", "string", "", "Optional path in parsed tree; absent first sibling."},
+	{"step:compare", "options", "1987,2502", "flags", "full_recursion defaults opaq", "Comparison flags."},
+	{"step:compare", "insert_opaq", "3307", "object", "", "Exactly one of data and insert_opaq is required; the latter constructs the second comparison root."},
+	{"compare:insert_opaq", "name", "3325,3339,3342", "string", "", "Required opaque local name."},
+	{"compare:insert_opaq", "module", "3325,3340,3343", "string", "", "Required module name or XML namespace."},
+	{"compare:insert_opaq", "value", "3329,3339,3342", "string", "", "Optional opaque value."},
+	{"compare:insert_opaq", "prefix", "3330,3339,3342", "string", "", "Optional opaque prefix."},
+	{"compare:insert_opaq", "xml", "3331", "bool", "", "Absent false selects lyd_new_opaq; true selects lyd_new_opaq2."},
+	{"step:diff", "target", "2005,2034,2773", "object", "", "Presence requires context object, datastore type, data input. Build target during execution."},
+	{"step:diff", "keep_input", "2006,2016", "truth", "", "Presence (even null/false) requires rpc; true keeps request children."},
+	{"step:diff", "options", "2020,2777", "flags", "defaults meta", "Diff flags."},
+	{"step:diff", "merge_options", "2021,2818", "flags", "defaults", "Syntax always checked; used only with merge true."},
+	{"step:diff", "node", "2022,2774", "string", "", "Optional retained node selector."},
+	{"step:diff", "data_node", "2023,2774", "string", "", "Optional second-tree selector."},
+	{"step:diff", "single", "2036,2807", "bool", "", "Absent false; true diff_tree instead of siblings."},
+	{"step:diff", "merge", "2037,2816", "bool", "", "Absent false; true merges result into diff register."},
+	{"step:diff_merge", "options", "2042,2860", "flags", "defaults", "Diff merge flags."},
+	{"step:diff_merge", "module", "2043,2047,2751", "string", "", "Optional implemented module; cannot coexist with src_node; lookup execution-only."},
+	{"step:diff_merge", "parent", "2044,2859", "string", "", "Optional selector requires src_node; execution lookup."},
+	{"step:diff_merge", "src_node", "2044,2047,2859", "string", "", "Optional source selector; mutually exclusive with module."},
+	{"step:diff_apply", "module", "2052,2751", "string", "", "Optional module; lookup during execution."},
+	{"step:trim", "xpath", "2056,2897", "string", "", "Required expression; execution trim."},
+	{"step:edit", "set", "1729,1769,1855,2585,1728", "object", "", "Exactly one edit. Presence selects keys_only do + this key (1727-1736); null counts present except delete/merge use str_of. Nested object checked preflight; delete needs string."},
+	{"step:edit", "delete", "1730,1768,2584", "string", "", "Exactly one edit. Presence selects keys_only do + this key (1727-1736); null counts present except delete/merge use str_of. Nested object checked preflight; delete needs string."},
+	{"step:edit", "insert_term", "1731,1770,2586", "object", "", "Exactly one edit. Presence selects keys_only do + this key (1727-1736); null counts present except delete/merge use str_of. Nested object checked preflight; delete needs string."},
+	{"step:edit", "insert_inner", "1732,1771,2587", "object", "", "Exactly one edit. Presence selects keys_only do + this key (1727-1736); null counts present except delete/merge use str_of. Nested object checked preflight; delete needs string."},
+	{"step:edit", "insert_list", "1733,1772,2588", "object", "", "Exactly one edit. Presence selects keys_only do + this key (1727-1736); null counts present except delete/merge use str_of. Nested object checked preflight; delete needs string."},
+	{"step:edit", "insert_list2", "1734,1773,2589", "object", "", "Exactly one edit. Presence selects keys_only do + this key (1727-1736); null counts present except delete/merge use str_of. Nested object checked preflight; delete needs string."},
+	{"step:edit", "insert_opaq", "1735,1774,2590", "object", "", "Exactly one edit. Presence selects keys_only do + this key (1727-1736); null counts present except delete/merge use str_of. Nested object checked preflight; delete needs string."},
+	{"step:edit", "new_meta", "1736,1775,2591", "object", "", "Exactly one edit. Presence selects keys_only do + this key (1727-1736); null counts present except delete/merge use str_of. Nested object checked preflight; delete needs string."},
+	{"step:edit", "free_meta", "1737,1776,2592", "object", "", "Exactly one edit. Presence selects keys_only do + this key (1727-1736); null counts present except delete/merge use str_of. Nested object checked preflight; delete needs string."},
+	{"edit:set", "path", "1855,2711", "string", "", "Required path; execution NewPath UPDATE."},
+	{"edit:set", "value", "1860,2711", "string", "", "Optional NULL value; empty is literal empty value."},
+	{"edit:new_meta edit:free_meta", "node", "1791,2608,2609", "string", "", "Required; execution node lookup."},
+	{"edit:new_meta edit:free_meta", "name", "1791,2612,2614", "string", "", "Required module-qualified name containing colon (empty fails)."},
+	{"edit:new_meta", "value", "1795,2612", "string", "", "Required including empty."},
+	{"edit:insert_term edit:insert_inner edit:insert_list edit:insert_list2 edit:insert_opaq", "parent", "1807,2620", "string", "", "Optional; cannot coexist with parent_opaq; execution lookup."},
+	{"edit:insert_term edit:insert_inner edit:insert_list edit:insert_list2 edit:insert_opaq", "parent_opaq", "1808,2620", "string", "", "Optional opaque parent XPath; exactly one node during execution."},
+	{"edit:insert_term edit:insert_inner edit:insert_list edit:insert_list2 edit:insert_opaq", "name", "1809,2621", "string", "", "Required local node name including empty; schema lookup execution."},
+	{"edit:insert_term edit:insert_inner edit:insert_list edit:insert_list2 edit:insert_opaq", "module", "1820,1827,2620", "string", "", "Required for opaq; otherwise needs module or either parent. Implemented-module lookup execution; opaq uses namespace string."},
+	{"edit:insert_term", "value", "1833,2642", "string", "", "Required including empty; value parsed during execution."},
+	{"edit:insert_term edit:insert_list edit:insert_list2", "options", "1830,2623", "flags", "output store_only canon", "Creation flags; absent zero."},
+	{"edit:insert_inner", "options", "1830,2623", "flags", "output", "Output selector; absent zero."},
+	{"edit:insert_list", "keys", "1839,2650", "keys", "", "Absent no keys; present must be array <=16 strings/nulls. NULL key values passed into lyd_new_list."},
+	{"edit:insert_list2", "keys", "1837,2646", "string", "", "Optional predicate string; absent/null passed as NULL."},
+	{"edit:insert_opaq", "value", "1818,2667,2669", "string", "", "Optional value."},
+	{"edit:insert_opaq", "prefix", "1819,2667,2669", "string", "", "Optional prefix."},
+	{"edit:insert_opaq", "xml", "1823,2666", "bool", "", "Absent false JSON namespace; true XML namespace."},
+	{"step:parse step:validate step:edit step:change_term step:dump step:dup step:insert step:compare step:diff step:diff_parse step:diff_merge step:diff_apply step:diff_reverse step:trim step:link step:links step:xpath", "do", "1700,3021", "enum", "parse validate edit change_term dump dup insert compare diff diff_parse diff_merge diff_apply diff_reverse trim link links xpath", "Required string; absent/null step without do; unknown string request-error after keys_only. All step keys restricted at 1706-1722."},
+	{"step:dup", "node_xpath", "1912,1915,2115", "string", "", "Alternative single-node XPath selector, including operation output nodes."},
+	{"step:dup", "source", "1908,1934,2117", "object", "", "If present, requires an object with data and parse_only true; excludes target. Its data is checked during preflight, but parse parameters are checked during execution."},
+	{"step:dup", "source.format", "1214,2129", "enum", "json xml", "Absent/null defaults to json; nonstring, empty or unknown strings fail during execution before source parsing."},
+	{"step:dup", "source.data_type", "1210,1223,2129", "enum", "config data-operational data get getconfig edit rpc reply notif rpc-netconf notif-netconf reply-netconf rpc-restconf notif-restconf reply-restconf", "Absent/null defaults to data-operational. Type/enum checks happen during execution before source parsing; envelopes require parse_only true."},
+	{"step:dup", "source.unknown", "1210,1216,2129", "enum", "reject skip opaque", "Absent/null defaults to reject; nonstring, empty or unknown strings fail during execution before source parsing."},
+	{"step:dup", "source.data", "1935,2130", "input", "", "Required input, read during preflight before keys_only and target exclusion; reread after dparams_of during execution. Empty is present; parse failure stops selection and duplication."},
+	{"step:dup", "source.parse_only", "1219,1935", "truth", "", "Must be true, so an operation source is parsed without validation."},
+	{"step:dup", "source.rpc", "2130", "input", "", "Optional request tree for a separately parsed reply; read after source parameters and data at execution, with no preflight reply-only restriction."},
+	{"step:dup", "source.keep_input", "1220,2129", "truth", "", "Only JSON true retains RPC input children; other values are false and are not type-checked."},
+	{"step:compare", "self", "1974,2477", "truth", "", "Only JSON true compares two nodes in the retained tree, permitting only do/self/first/second/options; other values preserve parsed-tree comparison."},
+	{"step:xpath", "xpath", "2056,2898,2070,2939", "string", "", "Required expression with optional vars; evaluated against the retained tree from the node at node, the detached node when selected, or the tree's first node. Empty tree returns LY_EINVAL and null result without diagnostics."},
+	{"step:insert", "target", "1945,2396", "object", "", "Optional source context when inserting parsed data."},
+	{"step:dup step:insert step:links step:diff", "detached", "1909,1944,2038,2099,2125,2403,2781,3045", "bool", "", "Absent false; true selects the node/subtree retained by unlink. Insert clears the retained register on success; diff uses it as the first input."},
+	{"step:compare", "target", "1972,2472", "object", "", "Optional source context for cross-context comparison."},
+	{"step:diff_merge", "detached_parent", "2042,2044,2870", "bool", "true false", "Use the retained detached node as diff_merge_tree parent."},
+	{"step:xpath", "node", "2073,2074,2910", "string", "", "Optional attached XPath context node; @last selects the final root, including one from a foreign context."},
+	{"step:xpath", "detached", "2068,2910,2933,2938", "bool", "true false", "Use the unlinked node as XPath context; absolute paths still use the retained tree. Mutually exclusive with node."},
+	{"step:unlink", "node", "2090,3103", "string", "", "Required unless diff_node is set; execution unlinks and retains the selected data node."},
+	{"step:unlink", "diff_node", "2090,3103", "string", "", "Required unless node is set; execution unlinks and retains the selected diff-register node."},
+	{"step:find_meta", "node", "2094,3118", "string", "", "Optional attached-node selector; absent uses the node retained by unlink."},
+	{"step:find_meta", "name", "2095,3125", "string", "", "Required metadata name; execution calls lyd_find_meta."},
+	{"step:edit", "merge_into", "1778,2677,2683", "string", "", "Parse a destination in the retained tree context and merge the retained tree into it."},
+	{"edit:insert_term edit:insert_inner edit:insert_list", "detached_parent", "1808,2634", "bool", "true false", "Select the node retained by unlink as the constructor parent; mutually exclusive with parent and parent_opaq."},
 	{"data xpath diff", "operational_file", "1400,260", "file", "", "str_of null semantics; empty is a filename and fails open. Any present inline + file (including empty) conflicts before read; valid file supplies its bytes. Absent/null skip load; empty/value parse with ONLY and unknown skip; failure operational-error before body."},
 	{"data", "data_file", "1448,260", "file", "", "str_of null semantics; empty is a filename and fails open. Any present inline + file (including empty) conflicts before read; valid file supplies its bytes. Required input: absent/null request-error."},
 	{"data", "rpc_file", "1451,260", "file", "", "str_of null semantics; empty is a filename and fails open. Any present inline + file (including empty) conflicts before read; valid file supplies its bytes. Optional: absent/null no input. xpath passes NULL to parse_one; diff data read during execution (preflight only with target); insert falls back to retained node; edit needs exactly one edit. RPC allowed only for reply steps, ignored for top-level datastore/notif."},
 	{"xpath", "data_file", "1529,260", "file", "", "str_of null semantics; empty is a filename and fails open. Any present inline + file (including empty) conflicts before read; valid file supplies its bytes. Optional: absent/null no input. xpath passes NULL to parse_one; diff data read during execution (preflight only with target); insert falls back to retained node; edit needs exactly one edit. RPC allowed only for reply steps, ignored for top-level datastore/notif."},
 	{"diff", "first_file", "1645,260", "file", "", "str_of null semantics; empty is a filename and fails open. Any present inline + file (including empty) conflicts before read; valid file supplies its bytes. Required input: absent/null request-error."},
 	{"diff", "second_file", "1646,260", "file", "", "str_of null semantics; empty is a filename and fails open. Any present inline + file (including empty) conflicts before read; valid file supplies its bytes. Required input: absent/null request-error."},
-	{"step:parse", "data_file", "1748,2445,260", "file", "", "str_of null semantics; empty is a filename and fails open. Any present inline + file (including empty) conflicts before read; valid file supplies its bytes. Required input: absent/null request-error."},
-	{"step:parse", "rpc_file", "1745,2445,260", "file", "", "str_of null semantics; empty is a filename and fails open. Any present inline + file (including empty) conflicts before read; valid file supplies its bytes. Optional: absent/null no input. xpath passes NULL to parse_one; diff data read during execution (preflight only with target); insert falls back to retained node; edit needs exactly one edit. RPC allowed only for reply steps, ignored for top-level datastore/notif."},
-	{"step:insert", "data_file", "1938,2331,260", "file", "", "str_of null semantics; empty is a filename and fails open. Any present inline + file (including empty) conflicts before read; valid file supplies its bytes. Optional: absent/null no input. xpath passes NULL to parse_one; diff data read during execution (preflight only with target); insert falls back to retained node; edit needs exactly one edit. RPC allowed only for reply steps, ignored for top-level datastore/notif."},
-	{"step:compare", "data_file", "3115,260,1954,2396", "file", "", "str_of null semantics; empty is a filename and fails open. Any present inline + file (including empty) conflicts before read; valid file supplies its bytes. Exactly one of data and insert_opaq is required."},
-	{"step:diff", "data_file", "1998,2657,260", "file", "", "str_of null semantics; empty is a filename and fails open. Any present inline + file (including empty) conflicts before read; valid file supplies its bytes. Optional: absent/null no input. xpath passes NULL to parse_one; diff data read during execution (preflight only with target); insert falls back to retained node; edit needs exactly one edit. RPC allowed only for reply steps, ignored for top-level datastore/notif."},
-	{"step:diff", "rpc_file", "1974,2679,260", "file", "", "str_of null semantics; empty is a filename and fails open. Any present inline + file (including empty) conflicts before read; valid file supplies its bytes. Optional: absent/null no input. xpath passes NULL to parse_one; diff data read during execution (preflight only with target); insert falls back to retained node; edit needs exactly one edit. RPC allowed only for reply steps, ignored for top-level datastore/notif."},
-	{"step:diff_parse step:diff_merge", "data_file", "1968,2719,2744,260", "file", "", "str_of null semantics; empty is a filename and fails open. Any present inline + file (including empty) conflicts before read; valid file supplies its bytes. Required input: absent/null request-error."},
-	{"step:edit", "merge_file", "1766,2489,260", "file", "", "str_of null semantics; empty is a filename and fails open. Any present inline + file (including empty) conflicts before read; valid file supplies its bytes. Optional: absent/null no input. xpath passes NULL to parse_one; diff data read during execution (preflight only with target); insert falls back to retained node; edit needs exactly one edit. RPC allowed only for reply steps, ignored for top-level datastore/notif."},
+	{"step:parse", "data_file", "1750,2540,260", "file", "", "str_of null semantics; empty is a filename and fails open. Any present inline + file (including empty) conflicts before read; valid file supplies its bytes. Required input: absent/null request-error."},
+	{"step:parse", "rpc_file", "1747,2540,260", "file", "", "str_of null semantics; empty is a filename and fails open. Any present inline + file (including empty) conflicts before read; valid file supplies its bytes. Optional: absent/null no input. xpath passes NULL to parse_one; diff data read during execution (preflight only with target); insert falls back to retained node; edit needs exactly one edit. RPC allowed only for reply steps, ignored for top-level datastore/notif."},
+	{"step:insert", "data_file", "1952,2395,260", "file", "", "str_of null semantics; empty is a filename and fails open. Any present inline + file (including empty) conflicts before read; valid file supplies its bytes. Optional: absent/null no input. xpath passes NULL to parse_one; diff data read during execution (preflight only with target); insert falls back to retained node; edit needs exactly one edit. RPC allowed only for reply steps, ignored for top-level datastore/notif."},
+	{"step:compare", "data_file", "3308,260,1981,2491", "file", "", "str_of null semantics; empty is a filename and fails open. Any present inline + file (including empty) conflicts before read; valid file supplies its bytes. Exactly one of data and insert_opaq is required."},
+	{"step:diff", "data_file", "2031,2774,260", "file", "", "str_of null semantics; empty is a filename and fails open. Any present inline + file (including empty) conflicts before read; valid file supplies its bytes. Optional: absent/null no input. xpath passes NULL to parse_one; diff data read during execution (preflight only with target); insert falls back to retained node; edit needs exactly one edit. RPC allowed only for reply steps, ignored for top-level datastore/notif."},
+	{"step:diff", "rpc_file", "2007,2801,260", "file", "", "str_of null semantics; empty is a filename and fails open. Any present inline + file (including empty) conflicts before read; valid file supplies its bytes. Optional: absent/null no input. xpath passes NULL to parse_one; diff data read during execution (preflight only with target); insert falls back to retained node; edit needs exactly one edit. RPC allowed only for reply steps, ignored for top-level datastore/notif."},
+	{"step:diff_parse step:diff_merge", "data_file", "2001,2841,2866,260", "file", "", "str_of null semantics; empty is a filename and fails open. Any present inline + file (including empty) conflicts before read; valid file supplies its bytes. Required input: absent/null request-error."},
+	{"step:edit", "merge_file", "1768,2584,260", "file", "", "str_of null semantics; empty is a filename and fails open. Any present inline + file (including empty) conflicts before read; valid file supplies its bytes. Optional: absent/null no input. xpath passes NULL to parse_one; diff data read during execution (preflight only with target); insert falls back to retained node; edit needs exactly one edit. RPC allowed only for reply steps, ignored for top-level datastore/notif."},
 }
 
 // inventoryCase is a mutation location in a valid small request. Prefix steps
@@ -324,9 +337,10 @@ func inventorySeeds() []inventorySeed {
 	p := inventoryCommon("data")
 	p["data_type"], p["rpc"], p["keep_input"], p["data"], p["parse_only"] = "rpc", inventoryRPC, true, `{"n":1}`, true
 	out = append(out, inventorySeed{"data/rpc-with-request", "data", p, nil, 0})
-	for _, kind := range strings.Fields("parse validate edit change_term dump print_xml any_direct dup insert compare diff diff_parse diff_merge diff_apply diff_reverse trim link links xpath") {
+	for _, kind := range strings.Fields("parse validate edit change_term dump print_xml any_direct dup insert compare diff diff_parse diff_merge diff_apply diff_reverse trim xpath link links unlink find_meta") {
 		p := inventoryCommon("sequence")
 		st := map[string]any{"do": kind}
+		parseData := inventoryData
 		switch kind {
 		case "parse", "compare", "diff":
 			st["data"], st["parse_only"] = inventoryData, true
@@ -342,15 +356,23 @@ func inventorySeeds() []inventorySeed {
 			st["node"], st["value"] = "/pv2:c/mode", "off"
 		case "dup":
 			st["node"], st["options"] = "/pv2:c", []any{"recursive"}
-		case "trim", "xpath":
+		case "trim":
 			st["xpath"] = "/pv2:c/l"
 		case "any_direct":
 			st["case"] = "nil_boundaries"
+		case "xpath":
+			st["xpath"] = "count(/pv2:c)"
+		case "unlink":
+			st["node"] = "/pv2:c/mode"
+		case "find_meta":
+			st["node"], st["name"] = "/pv2:c", "pv2-meta:ann"
+			p["modules"] = append(list(p["modules"]), map[string]any{"name": "pv2-meta"})
+			parseData = `{"pv2:c":{"@":{"pv2-meta:ann":"x"},"mode":"on","l":[{"k":"a"}]}}`
 		}
 		if kind == "link" || kind == "links" {
 			p["context_options"] = []any{"no_yanglibrary", "leafref_linking"}
 		}
-		p["steps"] = []any{map[string]any{"do": "parse", "data": inventoryData, "parse_only": true}, st, map[string]any{"do": "dump"}}
+		p["steps"] = []any{map[string]any{"do": "parse", "data": parseData, "parse_only": true}, st, map[string]any{"do": "dump"}}
 		out = append(out, inventorySeed{"step/" + kind, "step:" + kind, p, []string{"steps", "1"}, 0})
 		if kind == "dup" || kind == "diff" || kind == "any_direct" {
 			q := inventoryClone(p)
@@ -727,7 +749,7 @@ func TestRequestInventoryPathCoverage(t *testing.T) {
 }
 
 func TestRequestInventoryRootIgnoredKeys(t *testing.T) {
-	stepKinds := strings.Fields("parse validate edit change_term dump print_xml any_direct dup insert compare diff diff_parse diff_merge diff_apply diff_reverse trim link links xpath")
+	stepKinds := strings.Fields("parse validate edit change_term dump print_xml any_direct dup insert compare diff diff_parse diff_merge diff_apply diff_reverse trim xpath link links unlink find_meta")
 	seeds := inventorySeeds()
 	rootScopes := set("schema", "data", "xpath", "diff", "sequence", "atoms")
 	seenScopes := map[string]bool{}
@@ -824,7 +846,7 @@ func TestRequestInventory(t *testing.T) {
 	}
 	for i, line := range strings.Split(string(source), "\n") {
 		n := i + 1
-		if n == 1163 || n == 1166 || n == 1431 || n == 2966 || n == 2967 {
+		if n == 1163 || n == 1166 || n == 1431 || n == 3159 || n == 3160 {
 			continue
 		}
 		for _, match := range read.FindAllStringSubmatch(line, -1) {
@@ -859,7 +881,7 @@ func TestRequestInventory(t *testing.T) {
 	}
 	fmt.Fprintf(&md, "\n%d distinct key paths; %d explicit key × scope read pairs.\n", len(keys), len(readPairs))
 	fmt.Fprintf(&md, "\n%d declarative rows; %d scopes; %d seeds; %d key × seed pairs; %d generated cases (including execution skipped variants).\n", len(requestInventory), len(scopes), len(seeds), pairs, cases)
-	md.WriteString("\nExcluded reads are response internals, not input keys: 1163/1166 (module accepted/name), 1431 (verdict), 2966/2967 (diagnostic level/code/err). Dynamic variable names use representative v. Path-valued keys add valid-abs, spaced-abs, valid-rel, missing-abs, missing-rel and malformed classes; XPath has every data-type seed and data has an RPC-with-request seed. Values are representative classes for unbounded strings, arrays and objects, not an exhaustive enumeration of contents. The C oracle may reject or crash on malformed unchecked nested inputs; a signal matching exactly one registered DEV crash class is checked against that deviation's result, while unregistered crashes and all other transport failures remain mismatches.\n")
+	md.WriteString("\nExcluded reads are response internals, not input keys: 1163/1166 (module accepted/name), 1431 (verdict), 3159/3160 (diagnostic level/code/err). Dynamic variable names use representative v. Path-valued keys add valid-abs, spaced-abs, valid-rel, missing-abs, missing-rel and malformed classes; XPath has every data-type seed and data has an RPC-with-request seed. Values are representative classes for unbounded strings, arrays and objects, not an exhaustive enumeration of contents. The C oracle may reject or crash on malformed unchecked nested inputs; a signal matching exactly one registered DEV crash class is checked against that deviation's result, while unregistered crashes and all other transport failures remain mismatches.\n")
 
 	scopeNames := make([]string, 0, len(scopes))
 	for scope := range scopes {
@@ -921,21 +943,22 @@ func TestRequestInventorySeeds(t *testing.T) {
 // of seqKeys. dparams_of reads some additional keys, but keys_only rejects
 // those keys before that helper is called for this step kind.
 var inventoryStepKeys = map[string]string{
-	"parse":       "do format data_type data data_file unknown parse_only parse_options validate_options rpc keep_input parent",
-	"validate":    "do data_type validate_options module final_only",
-	"edit":        "do merge merge_file merge_self set delete insert_term insert_inner insert_list insert_list2 insert_opaq new_meta free_meta format data_type unknown parse_options",
-	"change_term": "do node node_xpath child value canon",
-	"insert":      "do node parent format data_type data data_file unknown parse_only parse_options validate_options",
-	"dump":        "do with_defaults",
-	"print_xml":   "do",
-	"any_direct":  "do case target",
-	"dup":         "do node parent options siblings target node_xpath source",
-	"compare":     "do format data_type data data_file unknown parse_only parse_options validate_options first second options insert_opaq self",
-	"diff":        "do format data_type data data_file unknown parse_only parse_options validate_options rpc keep_input node data_node single options merge merge_options target",
-	"diff_parse":  "do format data_type data data_file unknown parse_options",
-	"diff_merge":  "do format data_type data data_file unknown parse_options options module src_node parent",
-	"xpath":       "do xpath vars",
-	"diff_apply":  "do module", "trim": "do xpath vars", "link": "do", "links": "do", "diff_reverse": "do",
+	"parse":         "do format data_type data data_file unknown parse_only parse_options validate_options rpc keep_input parent",
+	"validate":      "do data_type validate_options module final_only",
+	"edit":          "do merge merge_file merge_self set delete insert_term insert_inner insert_list insert_list2 insert_opaq new_meta free_meta format data_type unknown parse_options merge_into",
+	"change_term":   "do node node_xpath child value canon",
+	"insert":        "do node parent format data_type data data_file unknown parse_only parse_options validate_options detached target",
+	"dump":          "do with_defaults",
+	"detached_dump": "do with_defaults child",
+	"print_xml":     "do",
+	"any_direct":    "do case target",
+	"dup":           "do node node_xpath parent options siblings target source detached",
+	"compare":       "do format data_type data data_file unknown parse_only parse_options validate_options first second options insert_opaq self target",
+	"diff":          "do format data_type data data_file unknown parse_only parse_options validate_options rpc keep_input node data_node single options merge merge_options target detached",
+	"diff_parse":    "do format data_type data data_file unknown parse_options",
+	"diff_merge":    "do format data_type data data_file unknown parse_options options module src_node parent detached_parent",
+	"diff_apply":    "do module", "trim": "do xpath vars", "xpath": "do xpath vars detached node", "link": "do", "links": "do detached", "diff_reverse": "do",
+	"unlink": "do node diff_node", "find_meta": "do node name",
 }
 
 func inventoryPhase(scope string, row inventoryRow) string {

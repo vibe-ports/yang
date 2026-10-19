@@ -1,0 +1,21 @@
+{
+  "id": "protocol-v2/diff-merge-cross-context-parent",
+  "request": {
+    "base_dir": ".",
+    "modules": [{"name": "pv2-detached", "features": ["extra"]}],
+    "op": "sequence",
+    "searchdirs": ["schemas"],
+    "steps": [
+      {"do": "diff", "format": "json", "data_type": "config",
+        "data": "{\"pv2-detached:c\":{\"base\":\"old\"}}",
+        "target": {"modules": [{"name": "pv2-detached", "features": ["extra"]}], "searchdirs": ["schemas"]}},
+      {"do": "diff_merge", "format": "xml", "data_type": "config", "parent": "/pv2-detached:c",
+        "src_node": "/pv2-detached:c/extra",
+        "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-detached\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><extra yang:operation=\"create\">x</extra></c>"},
+      {"do": "dump"}
+    ]
+  },
+  "rfc": [],
+  "source": {"commit": null, "license": "BSD-3-Clause", "url": "hand-written (this repo)"},
+  "verdict": "invalid"
+}
