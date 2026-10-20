@@ -28,7 +28,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func nativeRequestRunner(t *testing.T) func(string, map[string]any) (Response, error) {
+func nativeRequestRunner(t testing.TB) func(string, map[string]any) (Response, error) {
 	t.Helper()
 	oracle, err := filepath.Abs(OracleBinary("oracle"))
 	if err != nil {

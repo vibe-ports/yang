@@ -1,5 +1,33 @@
 # Request differential replay and triage
 
+## Fuzz the native oracle
+
+The `oracle` build tag enables `FuzzOracleRequestDifferential`. It maps up to 256
+input bytes to a `sequence` request using the fixed `pv2` or `pv2-edit` corpus
+schema, JSON or XML data, and one of parse, validate, print, diff, merge, dup,
+or new_path. The input limit prevents unbounded work during fuzzing. The target
+compares each native response with the Go engine using the conformance report's
+normalization. Only existing, predicate-matched
+registered deviations are exempt. The failure prints the complete request JSON.
+
+Build the pinned native oracle and run from the conformance module in the dev
+container (the canonical oracle architecture is linux/amd64):
+
+```sh
+DEV_PLATFORM=linux/amd64 ./dev make oracle
+DEV_PLATFORM=linux/amd64 ./dev sh -c 'cd conformance && TZ=UTC YANG_ORACLE_CACHE= YANG_ORACLE_REQUIRED=1 go test -tags oracle -run "^$" -fuzz "^FuzzOracleRequestDifferential$" -fuzztime 5m -timeout 30m'
+```
+
+Go writes a minimized failing byte input under
+`conformance/testdata/fuzz/FuzzOracleRequestDifferential/`. Replay it with
+`go test -tags oracle -run '^FuzzOracleRequestDifferential/<file>$' -v` and copy
+the printed `request` JSON into a new
+`corpus/manifest.d/<set>/<name>.yaml` fixture with its source, RFC and area
+metadata. Place any input files under that fixture's corpus directory. Generate
+the golden only through `make oracle-golden` on linux/amd64; never edit golden
+files by hand. Record a library mismatch in the PR rather than weakening the
+fuzz comparison.
+
 ## Scope
 
 The M4 exit gate requires agreement for its validation and operation corpus

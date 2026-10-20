@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-func nativeRequestRunner(t *testing.T) func(string, map[string]any) (Response, error) {
+func nativeRequestRunner(t testing.TB) func(string, map[string]any) (Response, error) {
 	t.Helper()
 	t.Skip("set YANG_ORACLE_CACHE to replay native differential responses offline")
 	return nil

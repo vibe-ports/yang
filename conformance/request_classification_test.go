@@ -21,6 +21,7 @@ func TestRequestClassification(t *testing.T) {
 		artefact, category, class string
 	}{
 		{name: "match", want: valid, got: valid, category: "MATCH", class: "equal"},
+		{name: "matching-request-error", want: Response{"verdict": "request-error", "request_error": "dup node /pv2:c not found", "protocol": "v2", "modules": []any{}, "steps": []any{}}, err: fmt.Errorf("dup node /pv2:c not found (a request-error)"), category: "MATCH", class: "equal"},
 		{name: "wrong-tree", want: valid, got: Response{"verdict": "valid", "tree": map[string]any{"json": "{\"wrong\":true}\n", "xml": ""}}, category: "A", class: "output"},
 		{name: "wrong-xml", want: valid, got: Response{"verdict": "valid", "tree": map[string]any{"json": "{}\n", "xml": "<wrong/>"}}, category: "A", class: "output"},
 		{name: "missing-diff", want: Response{"verdict": "valid", "diff": map[string]any{"json": "{}"}}, got: Response{"verdict": "valid"}, category: "A", class: "output"},

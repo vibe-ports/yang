@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("\x00\x01\x01\x06\x00<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\"><a>\xff</a><b>0</b></c>")

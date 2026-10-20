@@ -41,7 +41,7 @@ type requestOracleRunner struct {
 	mu        sync.Mutex
 }
 
-func requestOracle(t *testing.T) (*requestOracleRunner, string) {
+func requestOracle(t testing.TB) (*requestOracleRunner, string) {
 	t.Helper()
 	runner := &requestOracleRunner{}
 	if path := os.Getenv("YANG_ORACLE_CACHE"); path != "" {
