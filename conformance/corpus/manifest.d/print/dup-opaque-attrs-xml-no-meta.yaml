@@ -1,0 +1,28 @@
+fixtures:
+  # LYD_DUP_NO_META drops opaque XML attributes while copying the nodes into another context.
+  - id: print/dup-opaque-attrs-xml-no-meta
+    dir: print
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: []   # libyang duplication API and opaque parsing mode have no RFC behavior
+    areas: [codecs, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: pj}, {name: pk}]
+      context_options: [no_yanglibrary]
+      steps:
+        - do: parse
+          format: xml
+          data_type: config
+          parse_only: true
+          unknown: opaque
+          data_file: data/opaque-attrs.xml
+        - do: dup
+          node: /pj:c
+          options: [recursive, no_meta]
+          target:
+            searchdirs: [schemas]
+            modules: [{name: pj}, {name: pk}]
+            context_options: [no_yanglibrary]
+        - do: dump
+    golden: golden/dup-opaque-attrs-xml-no-meta.json

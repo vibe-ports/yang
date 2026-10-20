@@ -1,18 +1,37 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Ported from libyang v5.8.6 src/tree_data.c (lyd_dup, lyd_dup_r, lyd_dup_get_local_parent,
 // lyd_dup_single, lyd_dup_single_to_ctx, lyd_dup_siblings, lyd_dup_siblings_to_ctx,
-// lyd_dup_meta_single_to_ctx, lyd_find_schema_ctx, lyd_compare_schema_equal,
-// lyd_compare_schema_parents_equal, lyd_compare_single_schema) (BSD-3-Clause, © CESNET).
+// lyd_dup_meta_single_to_ctx, lyd_dup_attr_single, lyd_find_schema_ctx, lyd_compare_schema_equal,
+// lyd_compare_schema_parents_equal, lyd_compare_single_schema), src/tree_data_common.c
+// (ly_dup_prefix_data) (BSD-3-Clause, © CESNET).
 
 package data
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 
 	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
 )
+
+// dupAttr is lyd_dup_attr_single (tree_data.c:1921-1959): copy the XML value's
+// namespace data for the target context (ly_dup_prefix_data, tree_data_common.c:1253-1308).
+func dupAttr(a attr, target *schema.Set) attr {
+	switch pc := a.Prefixes.(type) {
+	case types.XMLNamespaces:
+		pc.Set = target
+		pc.NS = maps.Clone(pc.NS)
+		pc.Order = slices.Clone(pc.Order)
+		a.Prefixes = pc
+	case types.ModuleNames:
+		pc.Set = target
+		a.Prefixes = pc
+	}
+	return a
+}
 
 // dupOpts are the LYD_DUP_* options. LYD_DUP_NO_EXT and LYD_DUP_WITH_PRIV have nothing to act on
 // (no extension data trees, no private pointers).
@@ -169,7 +188,9 @@ func (t *Tree) dupR(n, parent *Node, top bool, order insertOrder, opts dupOpts) 
 		o.set = t.set // the target context
 		o.Attrs = nil
 		if opts&dupNoMeta == 0 { // lyd_dup_attr_single
-			o.Attrs = append([]attr(nil), n.opaq.Attrs...)
+			for _, a := range n.opaq.Attrs {
+				o.Attrs = append(o.Attrs, dupAttr(a, t.set))
+			}
 		}
 		d.opaq = &o
 		if opts&dupRecursive != 0 {

@@ -11,6 +11,7 @@ import (
 
 	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/schema"
+	"github.com/vibe-ports/yang/internal/types"
 )
 
 // dupFixture is a pv2-edit tree: c/a, two list instances (one with v), two leaf-list values and
@@ -400,5 +401,45 @@ func TestDupMetaContexts(t *testing.T) {
 		if len(d.meta) != c.want || c.want == 1 && (d.meta[0].value.Canonical() != "abc" || d.meta[0] == s.meta[0]) {
 			t.Errorf("%s: %d metadata", c.name, len(d.meta))
 		}
+	}
+}
+
+// TestDupOpaqueAttrs covers lyd_dup_attr_single: XML value prefixes survive a
+// copy into another context, and the copy owns its namespace snapshot.
+func TestDupOpaqueAttrs(t *testing.T) {
+	src := pjSchema()
+	tr, diags, err := parseXMLString(src,
+		`<c xmlns="urn:pj"><q xmlns:p="urn:pj" p:ann="p:x" xml:lang="en">v</q></c>`, Opaque, false)
+	if err != nil {
+		t.Fatal(err, diags)
+	}
+	n := findNode(t, tr, "/pj:c").kids.nodes()[0]
+	if len(n.opaq.Attrs) != 2 {
+		t.Fatalf("source attributes: %+v", n.opaq.Attrs)
+	}
+	trg := pjSchema()
+	d, err := dupTo(n, trg, nil, 0, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(d.opaq.Attrs) != 2 || d.opaq.Attrs[0].Name != "ann" ||
+		d.opaq.Attrs[0].Value != "p:x" || d.opaq.Attrs[1].Name != "xml:lang" {
+		t.Fatalf("duplicate attributes: %+v", d.opaq.Attrs)
+	}
+	sp := n.opaq.Attrs[0].Prefixes.(types.XMLNamespaces)
+	dp := d.opaq.Attrs[0].Prefixes.(types.XMLNamespaces)
+	if sp.Set != src || dp.Set != trg || dp.NS["p"] != "urn:pj" || dp.Resolve("p") != trg.Implemented("pj") {
+		t.Fatalf("duplicate prefix context: source=%+v target=%+v", sp, dp)
+	}
+	dp.NS["p"] = "urn:changed"
+	if sp.NS["p"] != "urn:pj" {
+		t.Fatal("duplicate shares the source namespace map")
+	}
+	without, err := dupTo(n, trg, nil, dupNoMeta, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(without.opaq.Attrs) != 0 {
+		t.Fatalf("without metadata: %+v", without.opaq.Attrs)
 	}
 }
