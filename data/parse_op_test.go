@@ -19,7 +19,6 @@ import (
 	"sync"
 	"testing"
 	"testing/fstest"
-	"time"
 
 	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/compile"
@@ -1102,8 +1101,8 @@ func TestParseOpDetachedParent(t *testing.T) {
 	}
 }
 
-// TestParseOpRollback: a reply that fails after many parsed nodes removes them all again in
-// linear time, and the parent's own children stay.
+// TestParseOpRollback: a reply that fails after many parsed nodes removes them all again with
+// linear counted work, and the parent's own children stay.
 func TestParseOpRollback(t *testing.T) {
 	c, _, err := compile.NewContext(compile.Options{NoYangLibrary: true}, fstest.MapFS{"rb.yang": {Data: []byte(
 		`module rb { yang-version 1.1; namespace urn:rb; prefix rb;
@@ -1118,12 +1117,14 @@ func TestParseOpRollback(t *testing.T) {
 	for _, m := range c.Modules {
 		set.Modules = append(set.Modules, m.Schema)
 	}
-	run := func(n int) time.Duration {
+	run := func(n int) int64 {
 		tree, op, diags, err := parseOp(context.Background(), strings.NewReader(`{"rb:r":{"in":"keep"}}`), set,
 			FormatJSON, opRPC, nil, Reject)
 		if err != nil {
 			t.Fatal(err, diags)
 		}
+		tree.work.Store(0)
+		tree.work.visits, tree.work.shifts = true, true
 		var b strings.Builder
 		// XML: every element is a parsed node of its own (lydxml_subtree_r adds each to the
 		// parsed set), so the rollback removes all of them
@@ -1132,22 +1133,18 @@ func TestParseOpRollback(t *testing.T) {
 			fmt.Fprintf(&b, "%d</v><v xmlns=\"urn:rb\">", i%250)
 		}
 		b.WriteString(`bad</v>`)
-		start := time.Now()
 		_, _, _, err = parseOp(context.Background(), strings.NewReader(b.String()), set, FormatXML, opReply, op, Reject)
-		d := time.Since(start)
+		work := tree.work.Load()
 		if err == nil {
 			t.Fatal("the bad value was accepted")
 		}
 		if got := treeJSON(t, tree); got != `{"rb:r":{"in":"keep"}}` {
 			t.Fatalf("after rollback: %s", got)
 		}
-		return d
+		return work
 	}
 	small, large := run(2000), run(32000)
-	for range 2 { // the fastest of three runs
-		small, large = min(small, run(2000)), min(large, run(32000))
-	}
-	if large > 40*small {
-		t.Fatalf("rollback of 2000 nodes %v, of 32000 %v: not linear", small, large)
+	if small <= 0 || large > 20*small { // 16x input, with room for fixed setup work
+		t.Fatalf("rollback work for 2000 nodes %d, for 32000 nodes %d: not linear", small, large)
 	}
 }
