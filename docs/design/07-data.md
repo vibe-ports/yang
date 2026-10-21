@@ -504,7 +504,7 @@ only via `DEV_PLATFORM=linux/amd64 ./dev make oracle-golden`.
 all 31 m1/invalid-*, m1/sequence-when-auto-delete, basic/{range,mandatory-missing,leafref,when-false,
 must-apptag,valid-all-tagged}, protocol-v2/{implicit-defaults,unknown-*,opaque-xml-ns-*,when-auto-
 delete,union-member,choice-default-case,sequence-edits}, when/order-{a-after-b,b-after-a}, the
-`types/*` data fixtures (codec ↔ types plumbing). protocol-v2/anydata-* are out (U-0043).
+`types/*` data fixtures (codec ↔ types plumbing). protocol-v2/anydata-* parse since #107 (JSON) and #108 (XML).
 
 **New fixtures** (stream F; ids are proposals, "+" = valid):
 
@@ -534,7 +534,7 @@ a fixture with `assert` (extractor, inventory §5.4).
 |---|---|---|
 | datastore data JSON/XML, all `data_type`s except operations | yes | — |
 | rpc/action/notification/reply (`lyd_parse_op`, `lyd_validate_op`) | data-tree parse rejects op nodes as libyang does | M4: `ParseOp`, `ValidateOp` (§6.1.1); U-0044 goes with #97 (§6.1.6) |
-| anydata/anyxml | instance → `ErrUnsupported` (U-0043) | M5 |
+| anydata/anyxml | instances parsed in JSON and XML input (`lydjson_parse_any`, `lydxml_subtree_any`; `ParseOptions.AnyDataStrict`) | public any edits, diff values and pointer-level probes: U-0112 |
 | metadata | annotation lookup + store, `default`, `yang:operation`, with-defaults tags | full RFC 7952 / origin inheritance M4–M5 |
 | opaque nodes | `unknown: opaque`, printing, validation error | `NewOpaq`, `Node.Attrs` and the envelopes in M5 (§6.1.5) |
 | diff | implicit diff (create/delete/none); since #137 Diff, ApplyDiff, MergeDiff, ReverseDiff (PoC #133) | anydata/anyxml values in diffs (M5) |
@@ -845,7 +845,7 @@ Against:
   `<rpc-error>` construction, message-id bookkeeping). Each would need a scope fence.
 - RESTCONF error replies are `yang-data` extension data (`LYD_TYPE_REPLY_RESTCONF` docs), which
   is out until U-0023/U-0060 move, so RESTCONF support would be partial.
-- NETCONF `<config>` and `<data>` payloads are anyxml/anydata (U-0043, M5), so a NETCONF
+- NETCONF `<config>` and `<data>` payloads are anyxml/anydata (parsed in JSON and XML since #107/#108), so a NETCONF
   `edit-config` or `get` parse is not useful before M5 anyway.
 
 **Decided: yes, in v1, in M5, not M4.** Take the NETCONF XML envelopes (rpc,
@@ -858,7 +858,7 @@ func (n *Node) Attrs() []Attr                           // read; opaque nodes on
 type OpaqOptions struct{ Prefix, Module, Namespace string } // Module: lyd_new_opaq (JSON), Namespace: lyd_new_opaq2 (XML)
 func (t *Tree) NewOpaq(parent *Node, name, value string, o OpaqOptions) (*Node, error) // mutation
 ```
-#95 moved to M5, next to anydata (U-0043), where `<config>`/`<data>` first parse; #94 belongs
+#95 moved to M5, next to anydata (then U-0043, retired with #107/#108), where `<config>`/`<data>` first parse; #94 belongs
 with it, since it has nothing to check before the envelopes. Keep
 everything above the envelope layer (sessions, framing, error-reply building, envelope printing)
 out of v1, as PLAN §1 now says. `ParseOp`'s result struct and `OpType` let this land without breaking §6.1.1.
@@ -879,8 +879,8 @@ of a registry entry. So #105 cannot pass with them unsupported; they must agree.
    then ValidateOp runs with it as `Operational`, then the `operation_parent` check (§6.1.1). Then
    ut-validation-ops/{rpc-01, action-01…03, reply-01…03, when-rpc-reply-01} and the 10 ut-parser
    operation fixtures leave `unsupported`. Those whose payload is anydata/anyxml (the edit-config /
-   edit-data `config` of ut-parser/{json,xml}-rpc-01) move to U-0043 instead, the engine's
-   existing anydata reason. That is a re-labelling, not a new id.
+   edit-data `config` of ut-parser/{json,xml}-rpc-01) moved to U-0043 instead (the engine's
+   anydata reason then; retired once #107/#108 parsed the payloads). That is a re-labelling, not a new id.
 4. #97 deletes the U-0044 row of §7 and this table's mention, and adds no deviations.md row. The
    id is retired, not reused. `agreeFloor` rises by the fixtures that moved.
 5. #105 checks that no fixture or reason string cites U-0044.
@@ -925,7 +925,6 @@ entries owned by this stream: **D-0001** (candidate: `when` reading a top-level 
 | U-0040 | input size budget | libyang reads anything |
 | U-0041 | node-count budget | — |
 | U-0042 | cumulative XPath step budget per Parse/Validate | — |
-| U-0043 | XML anydata/anyxml instances → `ErrUnsupported` until #108; JSON instances are parsed by #107 | — |
 | U-0044 | engine: operation `data_type`s unsupported until M4 | — |
 | U-0045 | a `Tree` pins the schema snapshot it was parsed with; libyang trees see the live context (`LYD_CTX`) | — |
 

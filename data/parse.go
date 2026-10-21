@@ -63,8 +63,8 @@ type ParseOptions struct {
 	StoreOnly bool
 	// JSONNull is LYD_PARSE_JSON_NULL: a JSON null value creates nothing.
 	JSONNull bool
-	// AnyDataStrict is LYD_PARSE_ANYDATA_STRICT: anydata and anyxml payloads are parsed with
-	// libyang's strict schema lookup instead of falling back to opaque nodes.
+	// AnyDataStrict is LYD_PARSE_ANYDATA_STRICT: anydata and anyxml payloads, in JSON and XML
+	// input, are parsed with libyang's strict schema lookup instead of falling back to opaque nodes.
 	AnyDataStrict bool
 	// JSONStringDatatypes is LYD_PARSE_JSON_STRING_DATATYPES: JSON numbers and booleans may
 	// come as strings.

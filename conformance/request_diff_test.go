@@ -523,7 +523,6 @@ var inventoryGapClasses = map[string]struct {
 	request func(map[string]any) bool
 }{
 	"ordered-input":              {id: "D-0058", reasons: []string{"LYD_PARSE_ORDERED input order"}},
-	"anydata-anyxml":             {id: "U-0043", reasons: []string{"anydata", "anyxml"}},
 	"any-direct":                 {id: "U-0112", exact: "unsupported: native pointer-level any-value calls have no public Go equivalent, U-0112", request: inventoryAnyDirectStep},
 	"any-direct-opaque-source":   {id: "U-0107", exact: "unsupported: opaque source construction has no public Go equivalent, U-0107", request: inventoryAnyDirectStep},
 	"compare-insert-opaq":        {id: "U-0107", exact: "unsupported: compare insert_opaq (lyd_new_opaq / lyd_new_opaq2 are exported in M5 with the envelopes, U-0107)", request: inventoryCompareInsertOpaqStep},

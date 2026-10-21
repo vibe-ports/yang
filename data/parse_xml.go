@@ -5,10 +5,8 @@ package data
 
 import (
 	"errors"
-	"fmt"
 	"math"
 
-	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/ly"
 	"github.com/vibe-ports/yang/internal/lyxml"
 	"github.com/vibe-ports/yang/internal/schema"
@@ -29,8 +27,7 @@ type xmlParser struct {
 // parseXML is lyd_parse_xml: every top-level element (only the first one under
 // LYD_INTOPT_NO_SIBLINGS) as children of lc.parent (the top level when nil), and the operation
 // checks of an operation parse, an rpc-or-action parse first opening a YANG "action" element.
-// NETCONF envelopes are not ported; anydata/anyxml instances fail with yang.ErrUnsupported
-// (deviations.md U-0043).
+// NETCONF envelopes are not ported.
 func parseXML(lc *lydCtx, in []byte) error {
 	x, err := lyxml.New(in)
 	if err != nil {
@@ -577,8 +574,12 @@ func (p *xmlParser) getSnode(parent *Node, prefix, name string) (*schema.Node, e
 	}
 	mod := set.ByNamespace(ns)
 	switch {
-	case mod == nil:
+	case mod == nil && nsOK:
 		return nil, lc.log.val(parent, "", ly.Reference, "No module with namespace \"%s\" in the context.", ns)
+	case mod == nil && prefix != "":
+		return nil, lc.log.val(parent, "", ly.Reference, "No module with namespace \"%s\" in the context.", prefix)
+	case mod == nil:
+		return nil, lc.log.val(parent, "", ly.Reference, "No default namespace in the context.")
 	case sparent != nil:
 		return nil, lc.log.val(parent, "", ly.Reference, "Node \"%s\" not found as a child of \"%s\" node.", name, sparent.Name)
 	}
@@ -710,6 +711,58 @@ func (p *xmlParser) subtreeInner(sn *schema.Node, parent *Node) (*Node, error) {
 	return node, rc
 }
 
+// subtreeAny is lydxml_subtree_any. The first text token decides the representation:
+// whitespace (including an empty element) starts a data tree, while anyxml may retain
+// non-whitespace text (an element after that text is not rejected here, as in libyang; only an
+// opaque payload node checks mixed content). Payload elements use the same lexer and namespace scope as the
+// enclosing document; they are owned by the any node, outside ordinary traversal.
+func (p *xmlParser) subtreeAny(sn *schema.Node, parent *Node) (*Node, error) {
+	lc, x := p.lc, p.x
+	var value *string
+	if !x.WSOnly {
+		if sn.Kind == schema.AnyData {
+			text := x.Value
+			if len(text) > 20 {
+				text = text[:20]
+			}
+			return nil, lc.log.val(parent, "", ly.Syntax,
+				"Text value \"%s\" inside an anydata node \"%s\" found.", text, sn.Name)
+		}
+		value = &x.Value
+	}
+	if err := lc.countNode(); err != nil {
+		return nil, err
+	}
+	node, _, err := newAnyWork(lc.ctx, lc.opts.Budget).createAny(lc.tree, sn, nil, value, 0, true, false)
+	if err != nil {
+		return nil, err
+	}
+	node.flags = lc.newFlags()
+	lc.nodeInsert(parent, nil, node)
+	if err := p.next(); err != nil {
+		return node, err
+	}
+	if value == nil {
+		strict, opaq, anyContent := p.strict, p.opaq, lc.opts.anyContent
+		defer func() { p.strict, p.opaq, lc.opts.anyContent = strict, opaq, anyContent }()
+		p.strict = lc.opts.AnyDataStrict
+		if !p.strict {
+			p.opaq = true
+		}
+		lc.opts.anyContent = true
+		var rc error
+		for x.Status == lyxml.Element {
+			if r := p.subtree(node); r != nil {
+				if rc = r; lc.fatal(r) {
+					return node, rc
+				}
+			}
+		}
+		return node, rc
+	}
+	return node, nil
+}
+
 // freeFailed is the cleanup condition of lydxml_subtree_opaq, _term and _inner after their error
 // r: an opaque node always, a schema node unless the error is a validation error that
 // LYD_VALIDATE_MULTI_ERROR goes past, a list instance also when it lacks keys. Errors after the
@@ -768,8 +821,7 @@ func (p *xmlParser) subtree(parent *Node) error {
 	case sn.Kind == schema.Leaf || sn.Kind == schema.LeafList:
 		node, r = p.subtreeTerm(sn, parent)
 	case isAny(sn):
-		return fmt.Errorf("%w: %s %q instance (anydata/anyxml data, deviations.md U-0043)",
-			yang.ErrUnsupported, nodetypeStr(sn.Kind), sn.Name)
+		node, r = p.subtreeAny(sn, parent)
 	default:
 		node, r = p.subtreeInner(sn, parent)
 	}

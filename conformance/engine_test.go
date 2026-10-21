@@ -507,19 +507,6 @@ func xpathKind(req map[string]any) string {
 // xpathUnsupported are the xpath fixtures that may stay unsupported after M3, each with the
 // deviations.md id its reason must name.
 var xpathUnsupported = map[string]string{
-	"ut-xpath/anydata-01":                    "U-0043", // anydata/anyxml data instances (M5)
-	"any-core/xpath-anyxml-mixed-text-first": "U-0043",
-	"any-core/xpath-anyxml-child-only":       "U-0043",
-	"any-core/xpath-anydata-hash-child":      "U-0043",
-	"any-core/xpath-anydata-key-predicate":   "U-0043",
-
-	"any-core/xpath-copied-key-predicate":       "U-0043",
-	"any-core/xpath-copied-opaque-descendant":   "U-0043",
-	"any-core/xpath-copied-redundant-parent":    "U-0043",
-	"any-core/xpath-copied-first-instance-name": "U-0043",
-	"any-core/xpath-copied-module-missing":      "U-0043",
-	"any-core/xpath-copied-prefixed-key":        "U-0043",
-
 	// native evidence for TrimXPath's run and link cleanup; the Go side is TestRBTreeRunEmptied
 	// and the Go-expressible seq/trim-lyds-all-indexed, seq/trim-links-lkorder-* fixtures
 	// step 2 parses with LYD_PARSE_ORDERED (D-0058) before step 3's LYD_DUP_NO_LYDS (U-0105): the
@@ -617,12 +604,6 @@ func validationKind(f Fixture) string {
 var validationUnsupported = map[string]string{
 	// U-0110: ParseOp.Request requires an RPC/action, unlike the oracle parent.
 	"protocol-v2/reply-non-operation-parent": "U-0110",
-	// U-0043: XML anydata/anyxml instances await #108.
-	"ops/parse-xml-rpc-01": "U-0043",
-	"ut-parser/xml-rpc-01": "U-0043",
-	// anyxml "filter" payloads (#103 import of test_filter_attributes).
-	"ut-parser/xml-filter-attributes-01": "U-0043",
-	"ut-parser/xml-filter-attributes-02": "U-0043",
 	// U-0112: public any edits and pointer-level probes await a later API.
 	"any-core/create-invalid-json":           "U-0112",
 	"any-core/create-invalid-text":           "U-0112",
@@ -630,9 +611,6 @@ var validationUnsupported = map[string]string{
 	"any-core/create-xml-scan-error-anydata": "U-0112",
 	"any-core/create-xml-scan-error-anyxml":  "U-0112",
 	"any-core/create-warning-xml-key-order":  "U-0112",
-	"any-core/dup-xml-text-reparse":          "U-0043",
-	"any-core/equal-mixed-tree":              "U-0043",
-	"any-core/equal-xml-prefixes":            "U-0043",
 	"any-core/equal-xml-scan-error":          "U-0107",
 	"any-core/any-text-embedded-nul":         "U-0112",
 	"any-core/dup-node-then-empty-object":    "U-0112",
@@ -643,18 +621,10 @@ var validationUnsupported = map[string]string{
 	"any-core/merge-mixed-into-tree":         "U-0112",
 	"any-core/dup-into-anydata":              "U-0107",
 	"any-core/dup-into-default-any-parent":   "U-0112",
-	"any-core/dup-mixed-missing-module":      "U-0043",
-	"any-core/dup-text-with-child":           "U-0043",
 	"any-core/equal-mixed-parent-payload":    "U-0112",
 	"any-core/dup-into-anyxml":               "U-0107",
 	"ut-new/any-create-json":                 "U-0112",
 	"ut-new/any-create-xml":                  "U-0112",
-	// U-0043: these payloads are XML input and await #108.
-	"any-core/print-opaq-ctx":                   "U-0043",
-	"any-core/xpath-copied-redundant-parent":    "U-0043",
-	"any-core/xpath-copied-first-instance-name": "U-0043",
-	"any-core/xpath-copied-prefixed-key":        "U-0043",
-	"any-core/xpath-copied-module-missing":      "U-0043",
 	// D-0058: LYD_PARSE_ORDERED input order is not exported.
 	"seq/trim-links-referrer-first": "D-0058",
 	// U-0105: LYD_DUP_NO_LYDS is not exported.
@@ -711,10 +681,6 @@ var validationUnsupported = map[string]string{
 	"ut-new/insert-58": "U-0109",
 	"ut-new/insert-59": "U-0109",
 	"ut-new/path-05":   "U-0109",
-
-	// Parsed anydata payloads still require the U-0043 input parsers.
-	"any-core/xpath-copied-key-predicate":     "U-0043",
-	"any-core/xpath-copied-opaque-descendant": "U-0043",
 }
 
 // validationAllowed reports whether fixture id may be unsupported with this reason.
@@ -922,8 +888,7 @@ func TestXPathGateSelection(t *testing.T) {
 		xpathKind(trim) != "trim" || xpathKind(other) != "" || xpathKind(map[string]any{"op": "data"}) != "" {
 		t.Error("gate selection")
 	}
-	if !xpathAllowed("ut-xpath/anydata-01", "not supported: anydata (deviations.md U-0043)") ||
-		xpathAllowed("ut-xpath/anydata-01", "some other reason") || xpathAllowed("ut-xpath/axes-01", "U-0043") {
+	if xpathAllowed("ut-xpath/anydata-01", "D-0058") || xpathAllowed("ut-xpath/axes-01", "D-0058") {
 		t.Error("allowlist")
 	}
 }
@@ -946,8 +911,9 @@ func TestValidationGateSelection(t *testing.T) {
 			t.Errorf("%v: %q, want %q", c.f, got, c.want)
 		}
 	}
-	if !validationAllowed("ut-parser/xml-rpc-01", "anyxml \"config\" instance (deviations.md U-0043)") ||
-		validationAllowed("ut-parser/xml-rpc-01", "some other reason") || validationAllowed("ops/parse-xml-reply-01", "U-0043") {
+	if !validationAllowed("protocol-v2/reply-non-operation-parent", "reply into a non-operation parent (U-0110)") ||
+		validationAllowed("protocol-v2/reply-non-operation-parent", "some other reason") ||
+		validationAllowed("ops/parse-xml-reply-01", "U-0110") {
 		t.Error("allowlist")
 	}
 }

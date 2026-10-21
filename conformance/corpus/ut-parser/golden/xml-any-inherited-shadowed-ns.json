@@ -1,0 +1,138 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"a:anyx\": {\n    \"inner\": \"p:text\",\n    \"@inner\": {\n      \"attr\": \"p:value\"\n    },\n    \"outer\": \"p:text\"\n  }\n}\n",
+    "xml": "<anyx xmlns=\"urn:tests:a\">\n  <inner xmlns=\"urn:inner\" xmlns:p=\"urn:inner\" p:attr=\"p:value\">p:text</inner>\n  <outer xmlns=\"urn:outer\" xmlns:p=\"urn:outer\">p:text</outer>\n</anyx>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:c",
+      "schema": "/a:c",
+      "value": null
+    },
+    {
+      "any": {
+        "text": "{\n  \"inner\": \"p:text\",\n  \"@inner\": {\n    \"attr\": \"p:value\"\n  },\n  \"outer\": \"p:text\"\n}\n",
+        "value_type": "datatree"
+      },
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "anyxml",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:anyx",
+      "schema": "/a:anyx",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [
+        {
+          "module": "urn:inner",
+          "name": "attr",
+          "value": "p:value"
+        }
+      ],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "inner",
+        "namespace": "urn:inner",
+        "prefix": "p"
+      },
+      "path": "/a:anyx/inner",
+      "schema": null,
+      "value": {
+        "canonical": "p:text",
+        "hints": [
+          "string"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "outer",
+        "namespace": "urn:outer",
+        "prefix": "p"
+      },
+      "path": "/a:anyx/outer",
+      "schema": null,
+      "value": {
+        "canonical": "p:text",
+        "hints": [
+          "string"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:foo2",
+      "schema": "/a:foo2",
+      "value": {
+        "canonical": "default-val",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

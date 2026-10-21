@@ -1,0 +1,20 @@
+fixtures:
+  - id: ut-parser/xml-any-multiple-siblings
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.10"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [a.2]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      data: '<any xmlns="urn:tests:a"><first xmlns="urn:first"/><second xmlns="urn:second"/><third xmlns="urn:third"/></any>'
+      unknown: skip
+      validate_options: [present]
+    golden: golden/xml-any-multiple-siblings.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.10"]
+      deviation: null

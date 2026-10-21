@@ -1,0 +1,112 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"a:anyx\": {\n    \"any\": {\n      \"foo\": \"nested\"\n    }\n  }\n}\n",
+    "xml": "<anyx xmlns=\"urn:tests:a\">\n  <any>\n    <foo>nested</foo>\n  </any>\n</anyx>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:c",
+      "schema": "/a:c",
+      "value": null
+    },
+    {
+      "any": {
+        "text": "{\n  \"a:any\": {\n    \"foo\": \"nested\"\n  }\n}\n",
+        "value_type": "datatree"
+      },
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "anyxml",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:anyx",
+      "schema": "/a:anyx",
+      "value": null
+    },
+    {
+      "any": {
+        "text": "{\n  \"a:foo\": \"nested\"\n}\n",
+        "value_type": "datatree"
+      },
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "anydata",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:anyx/any",
+      "schema": "/a:any",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:anyx/any/foo",
+      "schema": "/a:foo",
+      "value": {
+        "canonical": "nested",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:foo2",
+      "schema": "/a:foo2",
+      "value": {
+        "canonical": "default-val",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

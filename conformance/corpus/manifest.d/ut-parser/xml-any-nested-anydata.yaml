@@ -1,0 +1,20 @@
+fixtures:
+  - id: ut-parser/xml-any-nested-anydata
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.10", "RFC7950#7.11"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [a.2]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      data: '<anyx xmlns="urn:tests:a"><any><foo>nested</foo></any></anyx>'
+      unknown: skip
+      validate_options: [present]
+    golden: golden/xml-any-nested-anydata.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.10", "RFC7950#7.11"]
+      deviation: null

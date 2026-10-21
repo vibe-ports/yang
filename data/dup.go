@@ -217,8 +217,7 @@ func (t *Tree) dupWork(n, parent *Node, top bool, order insertOrder, opts dupOpt
 			// lyd_dup_r resolves the schema and duplicates metadata before
 			// lyd_any_copy_value checks its inputs (tree_data.c:2235-2324).
 			if f.src.any != nil {
-				if err := guardAnyCopyInput(f.src.any.children.first(), f.src.any.text,
-					"trg/child/value", "lyd_any_copy_value"); err != nil {
+				if err := guardAnyCopyInput(f.src.any.children.first(), f.src.any.text); err != nil {
 					return nil, err
 				}
 			}

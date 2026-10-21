@@ -68,15 +68,22 @@ func TestAnyCopyRejectsMixedInput(t *testing.T) {
 		t.Helper()
 		var op *opError
 		var validation *ValidationError
+		var rc rcError
 		if errors.As(err, &validation) && validation.RC() == "LY_EINVAL" {
+			return
+		}
+		if errors.As(err, &rc) && rc == "LY_EINVAL" {
 			return
 		}
 		if !errors.As(err, &op) || op.Err != "LY_EINVAL" {
 			t.Fatalf("%s: got %v, want LY_EINVAL", name, err)
 		}
 	}
-	_, _, err := newTree(tr.set).Dup(src, nil, DupOptions{})
+	_, diags, err := newTree(tr.set).Dup(src, nil, DupOptions{})
 	check("dup", err)
+	if len(diags) != 0 {
+		t.Fatalf("mixed-input dup logged diagnostics: %+v", diags)
+	}
 	check("merge new", newTree(tr.set).Merge(tr))
 	mergeDst := newTree(tr.set)
 	old := "old text"
@@ -115,7 +122,8 @@ func TestAnyMixedDupMissingModulePrecedesCopyError(t *testing.T) {
 		t.Fatalf("cross-context dup: got %v, want LY_ENOTFOUND and missing-module diagnostic", err)
 	}
 	_, err = dupTo(src, srcTree.set, nil, 0, false)
-	if !errors.As(err, &op) || op.Err != "LY_EINVAL" {
+	var rc rcError
+	if !errors.As(err, &rc) || rc != "LY_EINVAL" {
 		t.Fatalf("same-context dup: got %v, want LY_EINVAL", err)
 	}
 }

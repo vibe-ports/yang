@@ -151,12 +151,12 @@ func TestParseXML(t *testing.T) {
 	}
 }
 
-// TestParseXMLUnsupported: anydata/anyxml instances are yang.ErrUnsupported (U-0043); an RPC in
-// datastore data is rejected as libyang does; a lexer failure libyang does not log is a
-// *ValidationError without diagnostics wrapping the lexer's error.
-func TestParseXMLUnsupported(t *testing.T) {
+// TestParseXMLAnyAndErrors: anydata accepts payload children; an RPC in datastore data is
+// rejected as libyang does; a lexer failure libyang does not log is a *ValidationError
+// without diagnostics wrapping the lexer's error.
+func TestParseXMLAnyAndErrors(t *testing.T) {
 	set := pjSchema()
-	if _, diags, err := parseXMLString(set, `<ad xmlns="urn:pj"><x/></ad>`, Reject, true); !errors.Is(err, yang.ErrUnsupported) || len(diags) != 0 {
+	if tr, diags, err := parseXMLString(set, `<ad xmlns="urn:pj"><x/></ad>`, Reject, true); err != nil || len(diags) != 0 || tr.top.first().any.children.len() != 1 {
 		t.Fatalf("anydata: %v %v", err, diags)
 	}
 	pj := set.Modules[1]

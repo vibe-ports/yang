@@ -75,7 +75,13 @@ func lydPathPositions(set *schema.Set, n *Node, noLastPred bool, positions map[*
 	for d := len(chain) - 1; d >= 0; d-- {
 		it := chain[d]
 		b.WriteByte('/')
-		if mod := nodeModule(set, it); mod != nodeModule(set, it.parent) && mod != nil {
+		// lyd_node_module resolves in each node's own LYD_CTX: a payload copied from another
+		// context keeps its source modules, so they differ from the enclosing tree's.
+		var prev *schema.Module
+		if it.parent != nil {
+			prev = nodeModule(xpathNodeSet(set, it.parent), it.parent)
+		}
+		if mod := nodeModule(xpathNodeSet(set, it), it); mod != prev && mod != nil {
 			b.WriteString(mod.Name)
 			b.WriteByte(':')
 		}

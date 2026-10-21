@@ -1,0 +1,16 @@
+fixtures:
+  - id: ut-parser/xml-any-mixed-content
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.11"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [a.2]
+      modules: [{name: a}]
+      format: xml
+      data_type: data
+      data: '<anyx xmlns="urn:tests:a"><outer>text<inner/></outer></anyx>'
+      unknown: skip
+      validate_options: [present]
+    golden: golden/xml-any-mixed-content.json

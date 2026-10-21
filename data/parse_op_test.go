@@ -242,9 +242,6 @@ func TestParseOpGoldens(t *testing.T) {
 			} else {
 				tree, _, diags, err = parseOp(context.Background(), strings.NewReader(f.data), set, format, typ, nil, f.unknown)
 			}
-			if errors.Is(err, yang.ErrUnsupported) {
-				t.Skip(err) // anydata/anyxml instances (U-0043)
-			}
 			if (err == nil) != (want.Verdict == "valid") {
 				t.Fatalf("err %v, verdict %s", err, want.Verdict)
 			}

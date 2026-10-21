@@ -25,14 +25,14 @@ usable and measured; operations and anydata payloads are not done yet.
 | Validation: types, leafref, instance-identifier, mandatory, min/max-elements, unique, must, when (with auto-delete), choice/case, NMDA operational mode | supported | libyang's diagnostics: LY_ERR / LY_VECODE names, data path, error-app-tag |
 | Defaults and with-defaults printing (RFC 6243: explicit, trim, report-all, report-all-tagged) | supported | |
 | RFC 7952 metadata | partial | parsed, validated and printed; `Node.Meta`, `Node.FindMeta`, `Tree.NewMeta`, `Meta.Value`, `Meta.Remove`; other metadata helpers are not public (#115) |
-| XPath 1.0 + YANG functions | supported | must/when/leafref; data queries `Tree.FindXPath`, `EvalXPath`, `EvalXPathAs` and `Tree.TrimXPath` (JSON-format expressions, variables); schema atoms `Schema.FindXPathAtoms`, `FindPathAtoms`. every xpath, atoms and trim fixture agrees with libyang or is a recorded deviation; the one unsupported fixture queries anydata data (U-0043) |
+| XPath 1.0 + YANG functions | supported | must/when/leafref; data queries `Tree.FindXPath`, `EvalXPath`, `EvalXPathAs` and `Tree.TrimXPath` (JSON-format expressions, variables); schema atoms `Schema.FindXPathAtoms`, `FindPathAtoms`. every xpath, atoms and trim fixture agrees with libyang or is a recorded deviation |
 | Tree edits: `NewTree`, `NewPath`, `Merge`, `Remove`, `Find` | partial | absolute paths, merge without options |
 | Node comparison: `Node.Equal` (lyd_compare_single) | partial | full-recursion, defaults and opaque options; nodes of two contexts compared by names and canonical values |
 | Schema helpers: `SchemaNode.IsKey`, `IsDupInstList`, `DefaultSet`, `UserOrdered`; `Node.ChildrenNoKeys` | supported | |
 | Validation diff (`Tree.ValidateDiff`) | partial | the implicit diff of a validation only |
-| anydata / anyxml instances | **unsupported** | the schema nodes compile, data instances fail with `ErrUnsupported` (U-0043) |
+| anydata / anyxml instances | partial | parsed from JSON and XML input (`ParseOptions.AnyDataStrict` is LYD_PARSE_ANYDATA_STRICT), printed, compared, duplicated and merged; public value edits, diff value operations and pointer-level calls are not public (U-0112) |
 | RPC / action / notification data and replies, external operational tree | **unsupported** | planned |
-| Diff, apply, merge of diffs, reverse: `data.Diff`, `DiffSiblings`, `DiffTree`, `Tree.ApplyDiff`, `MergeDiff`, `MergeDiffTree`, `ReverseDiff` | supported | anydata values in diffs come with M5 (U-0043); libyang's limits with user-ordered entries are mirrored ([migrating-from-libyang.md](docs/migrating-from-libyang.md#inherited-libyang-limitations)) |
+| Diff, apply, merge of diffs, reverse: `data.Diff`, `DiffSiblings`, `DiffTree`, `Tree.ApplyDiff`, `MergeDiff`, `MergeDiffTree`, `ReverseDiff` | supported | anydata values in diffs are `ErrUnsupported` (U-0112); libyang's limits with user-ordered entries are mirrored ([migrating-from-libyang.md](docs/migrating-from-libyang.md#inherited-libyang-limitations)) |
 | `lyd_merge` options, NETCONF edit-config (`ApplyEdit`) | **unsupported** | planned (#127, #117) |
 | yang-library build and ingest | **unsupported** | planned; the `ietf-yang-library` module itself is loaded |
 | Command-line tool (yanglint) | **unsupported** | there is no CLI yet |
@@ -174,9 +174,9 @@ summary, and `make compat-report` reproduces it locally:
 Of the 80 unsupported fixtures, 19 are `sequence` fixtures (edit and revalidate a retained tree)
 that use steps package `data` has no public API for (duplication, leafref links, `lyd_new_term`
 inserts) or that contain anydata. 54 `data` fixtures are inputs the port refuses, mainly
-anydata/anyxml instances (U-0043), the operational datastore and RPC/notification/reply data.
+anydata/anyxml instances (U-0043, since retired: M5 parses them), the operational datastore and RPC/notification/reply data.
 6 `schema` fixtures are unsupported, all for schema mount (U-0024), and 1 `xpath` fixture is
-unsupported because it queries an anydata instance (U-0043). Two conformance tests in `make ci`
+unsupported because it queries an anydata instance (U-0043, since retired). Two conformance tests in `make ci`
 enforce the milestone exits. One fails when a schema fixture is unsupported for any reason outside
 the v1 limits (YIN, schema mount, OpenConfig POSIX patterns and the compile budgets). The other
 fails when an xpath, atoms or trim fixture differs, or is unsupported without a listed deviation.

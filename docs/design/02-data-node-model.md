@@ -17,7 +17,7 @@ libyang v5.8.6 `lyd_node_inner/term/any/opaq`, node flags `LYD_DEFAULT`, `LYD_WH
 - Node kinds: container, leaf, leaf-list entry, list entry, anydata/anyxml, opaque (unknown or
   not-yet-schema-bound node from lenient parsing, needed for RPC envelopes and parse-only mode —
   libyang `lyd_node_opaq`). M1 has opaque nodes for the `unknown: opaque` policy; anydata/anyxml
-  instances are `ErrUnsupported` until M5 (U-0043), operations until M4.
+  instances parse in JSON and XML since M5 (#107, #108), operations since M4.
 - Per-node flags exactly as libyang, because they carry validation history:
   - `Default` — implicit node added by validation, an NP container with only default descendants, or
     an explicit node tagged `ietf-netconf-with-defaults:default="true"` (the metadata is dropped);

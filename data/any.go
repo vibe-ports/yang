@@ -27,7 +27,7 @@ func init() {
 		}
 		view := anyview.Value{}
 		switch n.anyType() {
-		case anyValueDataTree:
+		case anyValueDataTree, anyValueMixed: // lyoracle: a->child wins over a stored value
 			view.Type = "datatree"
 			for c := range n.any.children.all() {
 				view.Children = append(view.Children, c)
@@ -100,9 +100,10 @@ type anyValue struct {
 
 // guardAnyCopyInput is lyd_any_copy_value's input check (tree_data_new.c:326).
 // Call it before clearing a destination, duplicating children, or parsing text.
-func guardAnyCopyInput(child *Node, value *string, arg, fn string) error {
+func guardAnyCopyInput(child *Node, value *string) error {
 	if child != nil && value != nil {
-		return argErr(arg, fn)
+		// LY_CHECK_ARG_RET without a context returns LY_EINVAL without logging.
+		return rcError("LY_EINVAL")
 	}
 	return nil
 }
@@ -185,7 +186,6 @@ func newAnyWork(ctx context.Context, b Budget) *anyWork {
 
 // createAnyDatatree is lyd_create_any_datatree. Only object/XML text is tried;
 // parse-only opaque mode preserves unknown nodes and allows unqualified roots.
-// Nested XML any syntax is still explicitly unsupported until the XML parser PR.
 // Return diagnostics even on success so callers can implement libyang's log
 // argument: tree_data_new.c:203-206 saves/disables logging for !log, and
 // :226-229 restores it. Required construction keeps them; speculative calls do not.
@@ -232,8 +232,8 @@ func (w *anyWork) createAny(t *Tree, sn *schema.Node, child *Node, value *string
 	if !isAny(sn) {
 		return nil, nil, argErr("schema/child/value", "lyd_create_any")
 	}
-	if err := guardAnyCopyInput(child, value, "schema/child/value", "lyd_create_any"); err != nil {
-		return nil, nil, err
+	if child != nil && value != nil {
+		return nil, nil, argErr("schema/child/value", "lyd_create_any")
 	}
 	if err := w.ctx.Err(); err != nil {
 		return nil, nil, err
@@ -371,7 +371,7 @@ func (n *Node) copyAnyValue(w *anyWork, child *Node, value *string, hints types.
 	if n == nil || !isAny(n.schema) {
 		return argErr("trg/child/value", "lyd_any_copy_value")
 	}
-	if err := guardAnyCopyInput(child, value, "trg/child/value", "lyd_any_copy_value"); err != nil {
+	if err := guardAnyCopyInput(child, value); err != nil {
 		return err
 	}
 	set := ctxOf(n)

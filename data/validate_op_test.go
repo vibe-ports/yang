@@ -97,9 +97,6 @@ func TestValidateOpGoldens(t *testing.T) {
 				tree, op, diags, err = parseOp(ctx, strings.NewReader(f.data), set, format, typ, nil, f.unknown)
 				all = append(all, diags...)
 			}
-			if errors.Is(err, yang.ErrUnsupported) {
-				t.Skip(err) // anydata/anyxml instances (U-0043)
-			}
 			if err == nil {
 				var diags []yang.Diagnostic
 				diags, err = validateOp(ctx, set, tree.top.list[0], oper, typ, Budget{})
