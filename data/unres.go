@@ -88,7 +88,7 @@ func (vc *valCtx) topNodes() []xpath.Node {
 	}
 	vc.top = vc.top[:0]
 	for n := range vc.t.top.all() {
-		vc.top = append(vc.top, xn{n, vc.t.set}) // dead nodes are WhenFalse (xn.When)
+		vc.top = append(vc.top, wrap(vc.t.set, n)) // dead nodes are WhenFalse (xn.When)
 	}
 	vc.topGen = vc.t.top.gen
 	vc.topBuilds++
@@ -655,7 +655,7 @@ func (vc *valCtx) derefType(n *Node, v types.Value, t *schema.Type, log bool) ([
 		}
 		out := make([]xpath.Node, len(nodes))
 		for i, target := range nodes {
-			out[i] = xn{target, vc.t.set}
+			out[i] = wrap(vc.t.set, target)
 		}
 		return out, nil
 	case schema.InstanceID:
@@ -664,7 +664,7 @@ func (vc *valCtx) derefType(n *Node, v types.Value, t *schema.Type, log bool) ([
 			return nil, fail("Invalid instance-identifier \"%s\" value - required instance not found.",
 				n.value.Canonical())
 		}
-		return []xpath.Node{xn{target, vc.t.set}}, nil
+		return []xpath.Node{wrap(vc.t.set, target)}, nil
 	case schema.Union:
 		if u := v.Union(); u != nil {
 			mv, _ := u.Member()

@@ -1,0 +1,18 @@
+fixtures:
+  - id: any-core/xpath-anyxml-child-only
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.11", "XPath1.0#4.2"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: ac-r6}]
+      context_options: [no_yanglibrary]
+      format: xml
+      data_type: data
+      parse_only: true
+      data: '<xml xmlns="urn:tests:any-core-r6"><target>value</target></xml>'
+      xpath: 'string(/ac-r6:xml)'
+    golden: golden/xpath-anyxml-child-only.json
+    assert: {verdict: valid, rfc: ["RFC7950#7.11", "XPath1.0#4.2"]}

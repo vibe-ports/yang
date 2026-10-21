@@ -695,7 +695,7 @@ func (s *siblings) leaderUnlinkBetween(n, prev, next *Node, removing bool) {
 //
 //	move.go:293 moveNodes                   lyd_move_nodes_by_schema (tree_data.c:909,917) hash
 //	diff.go:667 diffMergeDelete             lyd_diff_merge_delete                  hash
-//	xpathnode.go:84 FirstChild              moveto_node_hash_child                 hash
+//	xpathnode.go FirstChild                 eval_name_test_try_compile_predicate_append (xpath.c:7963) hash
 //	edit.go:149 evalPartial                 ly_path_eval_partial                   hash
 //	edit.go:307 newPath                     lyd_new_path_                          hash
 //	edit.go:625 mergeSibling                lyd_merge_sibling_r                    hash

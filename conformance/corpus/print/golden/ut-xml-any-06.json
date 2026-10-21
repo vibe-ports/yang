@@ -1,0 +1,98 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "defs",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "types",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "defaults",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"types:any\": {\n    \"cont2\": [null]\n  }\n}\n",
+    "xml": "<any xmlns=\"urn:tests:types\">\n  <cont2/>\n</any>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/types:cont",
+      "schema": "/types:cont",
+      "value": null
+    },
+    {
+      "any": {
+        "text": "{\n  \"types:cont2\": [null]\n}\n",
+        "value_type": "datatree"
+      },
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "anydata",
+      "meta": [],
+      "opaque": null,
+      "path": "/types:any",
+      "schema": "/types:any",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "cont2",
+        "namespace": "urn:tests:types",
+        "prefix": null
+      },
+      "path": "/types:any/cont2",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "string",
+          "empty"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

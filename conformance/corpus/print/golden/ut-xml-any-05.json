@@ -1,0 +1,126 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "defs",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "types",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "defaults",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"types:any\": {\n    \"leaflisttarget\": [\n      \" ahoj   \",\n      \" nazdar \",\n      \" \u010cau    \"\n    ]\n  }\n}\n",
+    "xml": "<any xmlns=\"urn:tests:types\">\n  <leaflisttarget> ahoj   </leaflisttarget>\n  <leaflisttarget> nazdar </leaflisttarget>\n  <leaflisttarget> \u010cau    </leaflisttarget>\n</any>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/types:cont",
+      "schema": "/types:cont",
+      "value": null
+    },
+    {
+      "any": {
+        "text": "{\n  \"types:leaflisttarget\": [\n    \" ahoj   \",\n    \" nazdar \",\n    \" \u010cau    \"\n  ]\n}\n",
+        "value_type": "datatree"
+      },
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "anydata",
+      "meta": [],
+      "opaque": null,
+      "path": "/types:any",
+      "schema": "/types:any",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/types:any/leaflisttarget[.=' ahoj   ']",
+      "schema": "/types:leaflisttarget",
+      "value": {
+        "canonical": " ahoj   ",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/types:any/leaflisttarget[.=' nazdar ']",
+      "schema": "/types:leaflisttarget",
+      "value": {
+        "canonical": " nazdar ",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaflist",
+      "meta": [],
+      "opaque": null,
+      "path": "/types:any/leaflisttarget[.=' \u010cau    ']",
+      "schema": "/types:leaflisttarget",
+      "value": {
+        "canonical": " \u010cau    ",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

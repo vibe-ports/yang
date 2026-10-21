@@ -6,6 +6,8 @@
 package data
 
 import (
+	"bytes"
+	"context"
 	"strings"
 
 	"github.com/vibe-ports/yang/internal/schema"
@@ -24,22 +26,44 @@ func wrap(set *schema.Set, n *Node) xpath.Node {
 	if n == nil {
 		return nil
 	}
-	return xn{n, set}
+	return xn{n, xpathNodeSet(set, n)}
+}
+
+// Payload roots retain their source context in payloadSet. Descendants inherit it
+// through setOf, just as LYD_CTX reads each node's own context.
+func xpathNodeSet(fallback *schema.Set, n *Node) *schema.Set {
+	if n.opaq != nil && n.opaq.set != nil {
+		return n.opaq.set
+	}
+	if set := setOf(n); set != nil {
+		return set
+	}
+	return fallback
 }
 
 func (x xn) Parent() xpath.Node { return wrap(x.set, x.n.parent) }
 
+// Ordinary child and descendant axes and the predicate's first-instance lookup
+// enter any payloads. The hash lookup below reads only lyd_child's sibling list.
 func (x xn) Children() []xpath.Node {
 	if x.n.flags&flagDead != 0 {
 		return nil // deleted by the running when pass: its subtree is gone for XPath too
 	}
-	out := make([]xpath.Node, 0, x.n.kids.len())
-	for c := range x.n.kids.all() {
+	sib := x.childSiblings()
+	out := make([]xpath.Node, 0, sib.len())
+	for c := range sib.all() {
 		if c.flags&flagDead == 0 {
-			out = append(out, xn{c, x.set})
+			out = append(out, wrap(x.set, c))
 		}
 	}
 	return out
+}
+
+func (x xn) childSiblings() *siblings {
+	if x.n.any != nil {
+		return &x.n.any.children
+	}
+	return &x.n.kids
 }
 
 // LookupChild is the children hash table lookup of moveto_node_hash_child (lyd_find_sibling_val /
@@ -50,10 +74,34 @@ func (x xn) Children() []xpath.Node {
 // instances (duplicate state instances, which also need document order), and a miss while
 // opaque children could be the fallback.
 func (x xn) LookupChild(sn xpath.SchemaNode, vals []string) ([]xpath.Node, bool) {
+	// moveto_node_hash_child passes lyd_child(x), which excludes any payloads.
+	// A handled miss also prevents the evaluator's Children() fallback scan.
+	if x.n.any != nil {
+		return nil, true
+	}
 	s, ok := sn.(xs)
 	sib := &x.n.kids
 	if !ok || sib.ht == nil || x.n.flags&flagDead != 0 {
 		return nil, false
+	}
+	if s.set != x.set {
+		// A name test compiled from one context can be applied to another
+		// context's node in a union. Translate it before probing the hash: the
+		// table's records match by lyd_compare_schema_equal with all the parents
+		// (lyd_hash_table_schema_val_equal, lyd_hash_table_val_equal).
+		mapped, err := findSchemaCtx(s.s, x.set, x.n)
+		if err != nil || mapped == nil || !compareSchemaEqual(mapped, s.s, true) {
+			// LY_ENOTFOUND, then lyd_find_sibling_opaq_next. Not a decline: the
+			// evaluator's scan would match the unequal node by module and name.
+			for _, c := range sib.opq {
+				sib.visit()
+				if c.flags&flagDead == 0 && c.Name() == s.s.Name {
+					return []xpath.Node{wrap(x.set, c)}, true
+				}
+			}
+			return nil, true
+		}
+		s.s = mapped
 	}
 	k := idxKey{s: s.s}
 	if s.s.Kind == schema.LeafList && len(vals) == 1 {
@@ -72,26 +120,42 @@ func (x xn) LookupChild(sn xpath.SchemaNode, vals []string) ([]xpath.Node, bool)
 	case c != nil && c.count > 1, !live && len(sib.opq) > 0:
 		return nil, false
 	case live:
-		return []xpath.Node{xn{first, x.set}}, true
+		return []xpath.Node{wrap(x.set, first)}, true
 	}
 	return nil, true
 }
 
-// FirstChild is lyd_find_sibling_schema over the children of x: their first live instance of sn,
-// found by the binary search of the sorted sibling list (declined for a node outside a tree or
-// with dead children of sn, which the scan skips).
+// FirstChild is lyd_find_sibling_schema over lyd_child_any(x): the first live instance of sn.
+// It uses the index within one context and matches schema paths across contexts; a node outside
+// a tree or a dead instance declines to the evaluator's charged scan.
 func (x xn) FirstChild(sn xpath.SchemaNode) (xpath.Node, bool) {
 	s, ok := sn.(xs)
 	t := treeOf(x.n)
 	if !ok || t == nil || x.n.flags&flagDead != 0 {
 		return nil, false
 	}
-	c := t.schemaLookup(&x.n.kids, s.s) // an operation's children: the instance index, no scan
+	sib := x.childSiblings()
+	if first := sib.first(); first != nil && xpathNodeSet(x.set, first) != s.set {
+		// Siblings of another context (tree_data_common.c:1101-1135). Without a children hash
+		// table (always under anydata/anyxml) decline to the evaluator's charged walk, which
+		// compares the module and node name only and stops at the first opaque node. With one,
+		// the record's lyd_compare_schema_equal compares kinds, names and modules up all the
+		// parents: map sn into this context and look the mapped node up.
+		if sib.ht == nil || x.n.any != nil {
+			return nil, false
+		}
+		mapped, err := findSchemaCtx(s.s, x.set, x.n)
+		if err != nil || mapped == nil || !compareSchemaEqual(mapped, s.s, true) {
+			return nil, true
+		}
+		s.s = mapped
+	}
+	c := t.schemaLookup(sib, s.s) // an operation's children: the instance index, no scan
 	if c == nil {
 		return nil, true
 	}
 	if c.flags&flagDead == 0 {
-		return xn{c, x.set}, true
+		return wrap(x.set, c), true
 	}
 	return nil, false
 }
@@ -120,11 +184,89 @@ func (x xn) Value() xpath.Value {
 	if x.n.opaq != nil {
 		return opqVal(x.n.opaq.Value) // lyd_get_value of an opaque node: its text
 	}
+	if isAny(x.n.schema) {
+		return xpathAnyValue{x.n}
+	}
 	if !x.n.isTerm() {
 		return nil
 	}
 	return xval{x.n.value, x.n.schema}
 }
+
+// xpathAnyValue implements cast_string_recursive: stored text wins over children.
+// Serialization failures are returned to the evaluator rather than hidden by Value().
+type xpathAnyValue struct{ n *Node }
+
+func (v xpathAnyValue) String() string {
+	s, _ := v.StringWithBudget(context.Background(), nil, nil)
+	return s
+}
+
+func (v xpathAnyValue) StringWithBudget(ctx context.Context, step, byteStep func() error) (string, error) {
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
+	if v.n.any != nil && v.n.any.text != nil {
+		if err := chargeXPathBytes(len(*v.n.any.text), byteStep); err != nil {
+			return "", err
+		}
+		return *v.n.any.text, nil
+	}
+	if v.n.any == nil || v.n.any.children.len() == 0 {
+		return "", nil
+	}
+	// cast_string_recursive calls lyd_print_all on the any node's child forest.
+	// lyd_print_all climbs to the top-level forest and prints every sibling.
+	root := v.n
+	for root.parent != nil {
+		if step != nil {
+			if err := step(); err != nil {
+				return "", err
+			}
+		}
+		root = root.parent
+	}
+	sib := root.siblingsOf()
+	var nodes []*Node
+	if sib == nil {
+		if step != nil {
+			if err := step(); err != nil {
+				return "", err
+			}
+		}
+		nodes = []*Node{root} // detached top-level node is its whole forest
+	} else {
+		for n := range sib.all() {
+			if step != nil {
+				if err := step(); err != nil {
+					return "", err
+				}
+			}
+			nodes = append(nodes, n)
+		}
+	}
+	var b bytes.Buffer
+	err := printData(&b, ctxOf(root), PrintOptions{step: step, byteStep: byteStep}, nodes, 0, true, printXML)
+	if err != nil {
+		return "", err
+	}
+	return b.String(), nil
+}
+
+func chargeXPathBytes(n int, step func() error) error {
+	if step != nil {
+		for i := 0; i < (n+63)/64; i++ {
+			if err := step(); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (xpathAnyValue) Identity() (xpath.Ident, bool) { return xpath.Ident{}, false }
+func (xpathAnyValue) Enum() (int, bool)             { return 0, false }
+func (xpathAnyValue) Bits() ([]string, bool)        { return nil, false }
 
 // Meta is the node's metadata (lyd_node.meta) for the attribute axis and lang().
 func (x xn) Meta() []xpath.Meta {
@@ -233,6 +375,14 @@ func (x xs) Config() bool             { return !configR(x.s) }
 func (x xs) Namespace() string        { return x.s.Module.Namespace }
 func (x xs) Path() string             { return x.s.LogPath() }
 func (x xs) Parent() xpath.SchemaNode { return wrapSchema(x.set, x.s.Parent) }
+
+// SameContext and Implements make xs a context-aware schema node for the evaluator.
+func (x xs) SameContext(o xpath.SchemaNode) bool {
+	y, ok := o.(xs)
+	return ok && y.set == x.set
+}
+
+func (x xs) Implements(module string) bool { return x.set == nil || x.set.Implemented(module) != nil }
 
 func (x xs) Keys() []string {
 	var k []string
@@ -447,6 +597,12 @@ func (i info) HasIdentity(id xpath.Ident) bool { return i.ident(id) != nil }
 func (i info) IsDerived(base, id xpath.Ident) bool {
 	b, d := i.ident(base), i.ident(id)
 	return b != nil && d != nil && types.IsDerived(b, d)
+}
+
+// Contains reports whether sn belongs to this context (lysc_node.module->ctx == set->ctx).
+func (i info) Contains(sn xpath.SchemaNode) bool {
+	x, ok := sn.(xs)
+	return !ok || x.set == i.set
 }
 
 func (i info) TopLevel(module, name string) []xpath.SchemaNode {

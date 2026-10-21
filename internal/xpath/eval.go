@@ -539,12 +539,16 @@ func (ev *evaluator) schemaTarget(set value, nt nameTest, s step) (sn SchemaNode
 			}
 		} else {
 			sn := it.n.Schema()
+			// lysc_data_parent(*found) != node->schema: pointer identity, so an equal parent
+			// of another context is searched again and its match gives up (xpath.c:8239)
 			if sn == nil || found != nil && foundParent == sn {
 				continue // opaque, or this parent was searched already
 			}
 			mod := nt.mod
-			if mod == "" {
-				mod = sn.Module() // JSON: inherit the module of the context node
+			if mod == "" || ev.jsonFormat() && !implements(sn, mod) {
+				// JSON: inherit the module of the context node; also when the node's context
+				// does not implement the prefix's module (moveto_m NULL, xpath.c:8384-8392)
+				mod = sn.Module()
 			}
 			cand = sn.Child(mod, nt.name)
 			if found == nil {
@@ -570,6 +574,56 @@ func (ev *evaluator) schemaTarget(set value, nt nameTest, s step) (sn SchemaNode
 		}
 	}
 	return found, vals, true
+}
+
+// jsonFormat reports LY_VALUE_JSON, whose unprefixed names match any module.
+func (ev *evaluator) jsonFormat() bool {
+	_, xml := ev.ns.(PrefixedOnly)
+	return !xml && ev.ns.Default() == ""
+}
+
+// inQueryContext reports whether sn is of set->ctx, the context the expression's prefixes
+// resolve in; without a context-aware SchemaInfo every node is.
+func (ev *evaluator) inQueryContext(sn SchemaNode) bool {
+	c, ok := ev.ec.Schema.(interface{ Contains(SchemaNode) bool })
+	return !ok || c.Contains(sn)
+}
+
+// implements is ly_ctx_get_module_implemented(LYD_CTX(node), module) != NULL for a node of
+// schema sn; a schema node without a context implements every module.
+func implements(sn SchemaNode, module string) bool {
+	c, ok := sn.(contextSchema)
+	return !ok || c.Implements(module)
+}
+
+// siblingSchema is the match of lyd_find_sibling_schema's walk without a children hash table
+// (tree_data_common.c:1117-1135): the same schema node within one context, the same module and
+// node name across contexts (no kinds, no parents). A sibling list without a table is the top
+// level, an anydata/anyxml payload or a node with fewer than LYD_HT_MIN_ITEMS schema children.
+func siblingSchema(c, sn SchemaNode) bool {
+	if c == nil || c == sn {
+		return c != nil
+	}
+	if x, ok := c.(contextSchema); !ok || x.SameContext(sn) {
+		return false
+	}
+	return c.Module() == sn.Module() && c.Name() == sn.Name()
+}
+
+// sameSchema is lyd_compare_schema_equal with cmp_parents (lyd_compare_single_schema, the
+// children hash table's lyd_hash_table_schema_val_equal): the same schema node, or across
+// contexts the same kind, module and name at each schema level.
+func sameSchema(a, b SchemaNode) bool {
+	for a != nil && b != nil {
+		if a == b {
+			return true
+		}
+		if a.Kind() != b.Kind() || a.Module() != b.Module() || a.Name() != b.Name() {
+			return false
+		}
+		a, b = a.Parent(), b.Parent()
+	}
+	return a == nil && b == nil
 }
 
 // hashPredicates is eval_name_test_try_compile_predicates: the key values of a list step that
@@ -601,10 +655,15 @@ func (ev *evaluator) hashPredicates(sn SchemaNode, preds []ast, set value) (vals
 		}
 		// eval_name_test_try_compile_predicate_key: the key's module and name
 		nt, err := ev.resolveName(st.name)
+		if err != nil || nt.mod != "" && !ev.inQueryContext(sn) {
+			// mod != key->module compares pointers: a prefix (or a schema expression's own
+			// module) resolves in set->ctx, never to the module of a list of another context
+			return nil, false
+		}
 		if nt.mod == "" {
 			nt.mod = sn.Module() // JSON: the list's module
 		}
-		if err != nil || nt.name != k || nt.mod != sn.Module() {
+		if nt.name != k || nt.mod != sn.Module() {
 			return nil, false
 		}
 		if slices.ContainsFunc(c.args[1:], hasLogOp) || !ev.atomsOK(c.args[1], sn) {
@@ -641,7 +700,7 @@ func (ev *evaluator) hashPredicates(sn SchemaNode, preds []ast, set value) (vals
 	return vals, true
 }
 
-// firstInstance is lyd_find_sibling_schema over the children of the first context node (the
+// firstInstance is lyd_find_sibling_schema over lyd_child_any of the first context node (the
 // document root: the tree): its first instance of sn, nil if there is none.
 func (ev *evaluator) firstInstance(set value, sn SchemaNode) Node {
 	if len(set.nodes) == 0 {
@@ -662,11 +721,16 @@ func (ev *evaluator) firstInstance(set value, sn SchemaNode) Node {
 		}
 		kids = it.n.Children()
 	}
+	// the walk without a children hash table: the top level, or a node whose FirstLookup
+	// declined (the data adapter answers itself for every sibling list that has a table)
 	for _, c := range kids {
 		if ev.tick() != nil {
 			return nil
 		}
-		if c.Schema() == sn {
+		if c.Schema() == nil {
+			break // opaque nodes are last, the walk stops at the first
+		}
+		if siblingSchema(c.Schema(), sn) {
 			return c
 		}
 	}
@@ -782,12 +846,17 @@ func (ev *evaluator) hashChild(set value, sn SchemaNode, name string, vals []str
 		keys = append(keys, sn.Child(sn.Module(), k))
 	}
 	matches := func(c Node) bool { // lyd_find_sibling_first / lyd_find_sibling_val
-		if c.Schema() != sn {
+		if len(keys) == 0 {
+			// lyd_find_sibling_val without a value is lyd_find_sibling_schema; a scan means no
+			// children hash table, or one the ChildLookup has already mapped this name into
+			return siblingSchema(c.Schema(), sn)
+		}
+		if !sameSchema(c.Schema(), sn) { // lyd_compare_single_schema
 			return false
 		}
 		kids := c.Children()
 		for i, ks := range keys {
-			j := slices.IndexFunc(kids, func(k Node) bool { return k.Schema() == ks })
+			j := slices.IndexFunc(kids, func(k Node) bool { return sameSchema(k.Schema(), ks) })
 			if j < 0 || valueOf(kids[j]).String() != vals[i] {
 				return false
 			}
@@ -820,6 +889,9 @@ func (ev *evaluator) hashChild(set value, sn SchemaNode, name string, vals []str
 			case itRoot:
 				kids = ev.ec.Tree
 			case itElem:
+				if sn := it.n.Schema(); sn != nil && (sn.Kind() == KindAnydata || sn.Kind() == KindAnyxml) {
+					continue // lyd_child, even when the adapter has no ChildLookup
+				}
 				kids = it.n.Children()
 			}
 			for _, c := range kids {
@@ -1415,59 +1487,124 @@ func (ev *evaluator) toString(v value) string {
 }
 
 // stringValue is cast_node_set_to_string of one item: a metadata value, else cast_string_elem,
-// libyang's own string-value, an indented dump of the subtree's term values.
+// libyang's own string-value, an indented dump of the subtree's term values. Every byte of the
+// result (values, indentation, newlines) is charged before it is appended (castBuf).
 func (ev *evaluator) stringValue(it item) string {
 	if it.t == itMeta {
 		return orNoValue(ev.meta(it).Value).String()
 	}
-	var b strings.Builder
-	var rec func(n Node, indent int)
-	rec = func(n Node, indent int) {
-		if ev.tick() != nil {
-			return
-		}
-		sn := n.Schema()
-		if ev.ec.Root == RootConfig && sn != nil && !sn.Config() {
-			return
-		}
-		kind := KindLeaf
-		switch {
-		case sn != nil:
-			kind = sn.Kind()
-		case len(n.Children()) > 0:
-			kind = KindContainer
-		}
-		switch kind {
-		case KindLeaf, KindLeafList:
-			b.WriteString(strings.Repeat("  ", indent))
-			empty := b.Len() == 0
-			b.WriteString(valueOf(n).String())
-			if !empty {
-				b.WriteByte('\n')
+	b := castBuf{ev: ev}
+	type visit struct {
+		n      Node
+		indent int
+	}
+	rec := func(n Node, indent int) {
+		stack := []visit{{n, indent}}
+		for len(stack) > 0 {
+			v := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			if ev.tick() != nil {
+				return
 			}
-		case KindAnydata, KindAnyxml:
-			for line := range strings.SplitSeq(valueOf(n).String(), "\n") {
-				if line != "" { // strtok skips empty lines (D-0012: libyang crashes on empty content)
-					b.WriteString(strings.Repeat("  ", indent) + line + "\n")
+			sn := v.n.Schema()
+			if ev.ec.Root == RootConfig && sn != nil && !sn.Config() {
+				continue
+			}
+			kind := KindLeaf
+			var children []Node
+			switch {
+			case sn != nil:
+				kind = sn.Kind()
+			default:
+				children = v.n.Children()
+				if len(children) > 0 {
+					kind = KindContainer
 				}
 			}
-		default: // containers, lists, operations (D-0012: libyang fails internally on an action)
-			b.WriteByte('\n')
-			for _, c := range n.Children() {
-				rec(c, indent+1)
+			switch kind {
+			case KindLeaf, KindLeafList:
+				// the value alone at the start of the string has no newline
+				if !b.line(v.indent, ev.nodeValueString(v.n), b.b.Len()+v.indent != 0) {
+					return
+				}
+			case KindAnydata, KindAnyxml:
+				for line := range strings.SplitSeq(ev.nodeValueString(v.n), "\n") {
+					// strtok skips empty lines (D-0012: libyang crashes on empty content)
+					if ev.tick() != nil || line != "" && !b.line(v.indent, line, true) {
+						return
+					}
+				}
+			default: // containers, lists, operations (D-0012: libyang fails internally on an action)
+				if children == nil {
+					children = v.n.Children()
+				}
+				if !b.line(0, "", true) {
+					return
+				}
+				for i := len(children) - 1; i >= 0; i-- {
+					stack = append(stack, visit{children[i], v.indent + 1})
+				}
 			}
 		}
 	}
 	if it.t == itRoot {
-		b.WriteByte('\n')
+		b.line(0, "", true)
 		for _, c := range ev.ec.Tree {
 			rec(c, 1)
 		}
-		b.WriteByte('\n')
+		b.line(0, "", true)
 	} else {
 		rec(it.n, 0)
 	}
-	return b.String()
+	if ev.err != nil {
+		return ""
+	}
+	return b.b.String()
+}
+
+// castBuf is cast_string_realloc's growing string under the step budget: each 64 bytes are
+// charged before they are appended, so a budget stops the cast before its text exists.
+type castBuf struct {
+	ev      *evaluator
+	b       strings.Builder
+	charged int
+}
+
+// line appends indent levels of two spaces, s and, with nl, a newline; false: out of budget.
+func (c *castBuf) line(indent int, s string, nl bool) bool {
+	n := 2*indent + len(s)
+	if nl {
+		n++
+	}
+	for need := (c.b.Len() + n + 63) / 64; c.charged < need; c.charged++ {
+		if c.ev.tick() != nil {
+			return false
+		}
+	}
+	for range indent {
+		c.b.WriteString("  ")
+	}
+	c.b.WriteString(s)
+	if nl {
+		c.b.WriteByte('\n')
+	}
+	return true
+}
+
+// nodeValueString lets data-backed any values charge their printer traversal to
+// this evaluation. Ordinary term values retain the Value interface's fast path.
+func (ev *evaluator) nodeValueString(n Node) string {
+	v := valueOf(n)
+	if cast, ok := v.(interface {
+		StringWithBudget(context.Context, func() error, func() error) (string, error)
+	}); ok {
+		s, err := cast.StringWithBudget(ev.ctx, ev.tick, ev.tick)
+		if err != nil {
+			ev.err = err
+		}
+		return s
+	}
+	return v.String()
 }
 
 // ---- comparison (moveto_op_comp) ----

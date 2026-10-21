@@ -1,0 +1,154 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "defs",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "types",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "defaults",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "subtree": {
+    "json": "{\n  \"types:any\": {\n    \"cont\": {\n      \"defs:elem1\": {\n        \"types:elem2\": \"\\u000A      \",\n        \"@types:elem2\": {\n          \"defs:attr1\": \"defaults:val\",\n          \"attr2\": \"/defaults:node/defs:node2\"\n        }\n      }\n    }\n  }\n}\n",
+    "xml": "<any xmlns=\"urn:tests:types\">\n  <cont>\n    <elem1 xmlns=\"urn:tests:defs\">\n      <elem2 xmlns=\"urn:tests:types\" xmlns:defs=\"urn:tests:defs\" xmlns:defaults=\"urn:defaults\" defs:attr1=\"defaults:val\" attr2=\"/defaults:node/defs:node2\">\n      </elem2>\n    </elem1>\n  </cont>\n</any>\n"
+  },
+  "tree": {
+    "json": "{\n  \"types:any\": {\n    \"cont\": {\n      \"defs:elem1\": {\n        \"types:elem2\": \"\\u000A      \",\n        \"@types:elem2\": {\n          \"defs:attr1\": \"defaults:val\",\n          \"attr2\": \"/defaults:node/defs:node2\"\n        }\n      }\n    }\n  }\n}\n",
+    "xml": "<any xmlns=\"urn:tests:types\">\n  <cont>\n    <elem1 xmlns=\"urn:tests:defs\">\n      <elem2 xmlns=\"urn:tests:types\" xmlns:defs=\"urn:tests:defs\" xmlns:defaults=\"urn:defaults\" defs:attr1=\"defaults:val\" attr2=\"/defaults:node/defs:node2\">\n      </elem2>\n    </elem1>\n  </cont>\n</any>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/types:cont",
+      "schema": "/types:cont",
+      "value": null
+    },
+    {
+      "any": {
+        "text": "{\n  \"types:cont\": {\n    \"defs:elem1\": {\n      \"types:elem2\": \"\\u000A      \",\n      \"@types:elem2\": {\n        \"defs:attr1\": \"defaults:val\",\n        \"attr2\": \"/defaults:node/defs:node2\"\n      }\n    }\n  }\n}\n",
+        "value_type": "datatree"
+      },
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "anydata",
+      "meta": [],
+      "opaque": null,
+      "path": "/types:any",
+      "schema": "/types:any",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/types:any/cont",
+      "schema": "/types:cont",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "elem1",
+        "namespace": "urn:tests:defs",
+        "prefix": "defs"
+      },
+      "path": "/types:any/cont/defs:elem1",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "string"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [
+        {
+          "module": "urn:tests:defs",
+          "name": "attr1",
+          "value": "defaults:val"
+        },
+        {
+          "module": null,
+          "name": "attr2",
+          "value": "/defaults:node/defs:node2"
+        }
+      ],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "elem2",
+        "namespace": "urn:tests:types",
+        "prefix": null
+      },
+      "path": "/types:any/cont/defs:elem1/types:elem2",
+      "schema": null,
+      "value": {
+        "canonical": "\n      ",
+        "hints": [
+          "string"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

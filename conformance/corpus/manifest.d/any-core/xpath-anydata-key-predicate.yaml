@@ -1,0 +1,18 @@
+fixtures:
+  - id: any-core/xpath-anydata-key-predicate
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.10", "XPath1.0#2.5"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: ac-lookup}]
+      context_options: [no_yanglibrary]
+      format: xml
+      data_type: data
+      parse_only: true
+      data: '<a xmlns="urn:tests:any-core-lookup"><l><k>x</k></l></a><c xmlns="urn:tests:any-core-lookup"><l><k>x</k></l></c>'
+      xpath: "count((/ac-lookup:a | /ac-lookup:c)/ac-lookup:l[k='x'])"
+    golden: golden/xpath-anydata-key-predicate.json
+    assert: {verdict: valid, rfc: ["RFC7950#7.10", "XPath1.0#2.5"]}

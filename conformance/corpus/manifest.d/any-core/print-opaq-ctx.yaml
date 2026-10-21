@@ -1,0 +1,16 @@
+fixtures:
+  - id: any-core/print-opaq-ctx
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7951#4"]
+    areas: [codecs, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: ac}, {name: ac-context}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, unknown: opaque, data: '<data xmlns="urn:tests:any-core"><parent xmlns="urn:tests:any-core-context"><v>x</v></parent></data>'}
+        - {do: dup, node: /ac:data, options: [], target: {searchdirs: [schemas], modules: [{name: ac}], context_options: [no_yanglibrary]}}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/print-opaq-ctx.json

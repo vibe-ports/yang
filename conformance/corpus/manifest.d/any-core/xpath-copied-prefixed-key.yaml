@@ -1,0 +1,21 @@
+fixtures:
+  - id: any-core/xpath-copied-prefixed-key
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # Cross-context payload lookup is a libyang API contract.
+    areas: [xpath, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: ac-lookup}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<a xmlns="urn:tests:any-core-lookup"><c><l><k>x</k></l></c></a>'}
+        - {do: dup, node: /ac-lookup:a, options: [], target: {searchdirs: [schemas], modules: [{name: ac-lookup}], context_options: [no_yanglibrary]}}
+        # the found list is the payload's (parse context): an unprefixed key takes its module
+        # and the step is hashed on k = 'x' (1); a prefixed key resolves in the dup target's
+        # context, mod != key->module (xpath.c:7882) gives up hashing and the evaluated
+        # predicate ('x' = k) != 'zz' is false (0)
+        - {do: trim, xpath: "/*[count(/ac-lookup:a/ac-lookup:c/ac-lookup:l[k='x' != 'zz']) = 1 and count(/ac-lookup:a/ac-lookup:c/ac-lookup:l[ac-lookup:k='x' != 'zz']) = 0]"}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/xpath-copied-prefixed-key.json

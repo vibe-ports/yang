@@ -1,0 +1,21 @@
+fixtures:
+  - id: any-core/xpath-copied-redundant-parent
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # Cross-context payload lookup is a libyang API contract.
+    areas: [xpath, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: ac-lookup}]
+      context_options: [no_yanglibrary]
+      steps:
+        # the payload c stays in the parse context; the destination c is in the dup target's
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<a xmlns="urn:tests:any-core-lookup"><c><l><k>x</k></l></c></a>'}
+        - {do: dup, node: /ac-lookup:a, options: [], target: {searchdirs: [schemas], modules: [{name: ac-lookup}], context_options: [no_yanglibrary]}}
+        - {do: insert, format: xml, data_type: data, parse_only: true, data: '<c xmlns="urn:tests:any-core-lookup"><l><k>x</k></l></c>'}
+        # equal parents of two contexts: libyang searches both (xpath.c:8239 compares pointers),
+        # gives up hashing and evaluates the predicate: ('x' = k) != 'zz' is false for both
+        - {do: trim, xpath: "/*[count((/ac-lookup:a/ac-lookup:c | /ac-lookup:c)/ac-lookup:l[k='x' != 'zz']) = 0]"}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/xpath-copied-redundant-parent.json

@@ -1,0 +1,17 @@
+fixtures:
+  - id: any-core/print-anyxml-array-text
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.11", "RFC7951#5.3"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: ac}]
+      context_options: [no_yanglibrary]
+      format: json
+      data_type: data
+      parse_only: true
+      data: '{"ac:xml":"[1,2]"}'
+    golden: golden/print-anyxml-array-text.json
+    assert: {verdict: valid, rfc: ["RFC7950#7.11", "RFC7951#5.3"]}

@@ -1,0 +1,17 @@
+fixtures:
+  - id: any-core/xpath-copied-opaque-descendant
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # Opaque node context retention is a libyang API contract.
+    areas: [xpath, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: ac}, {name: ac-xpath-ctx}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, unknown: opaque, data: '<data xmlns="urn:tests:any-core"><c xmlns="urn:tests:any-core-xpath-ctx"><v>bad</v></c></data>'}
+        - {do: dup, node: /ac:data, options: [], target: {searchdirs: [schemas], modules: [{name: ac}], context_options: [no_yanglibrary]}}
+        - {do: trim, xpath: '/*[count(descendant::node()) = 2]'}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/xpath-copied-opaque-descendant.json

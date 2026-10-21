@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: BSD-3-Clause
+module ac-shadow {
+  yang-version 1.1;
+  namespace "urn:tests:any-core-shadow";
+  prefix sh;
+
+  anydata a;
+
+  list l {
+    key "k";
+    leaf k { type string; }
+  }
+
+  container c {
+    presence "a list named like the top-level one";
+    list l {
+      key "k";
+      leaf k { type string; }
+    }
+  }
+
+  container p {
+    presence "payload parent of x";
+    leaf x { type string; }
+  }
+}

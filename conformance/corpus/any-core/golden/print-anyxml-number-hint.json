@@ -1,0 +1,43 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ac",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"ac:xml\": 55\n}\n",
+    "xml": "<xml xmlns=\"urn:tests:any-core\">55</xml>\n"
+  },
+  "typed": [
+    {
+      "any": {
+        "text": "55",
+        "value_type": "string"
+      },
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "anyxml",
+      "meta": [],
+      "opaque": null,
+      "path": "/ac:xml",
+      "schema": "/ac:xml",
+      "value": null
+    }
+  ],
+  "verdict": "valid"
+}

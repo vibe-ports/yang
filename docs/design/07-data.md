@@ -346,6 +346,13 @@ func (t *Tree) EvalXPath(expr string, o XPathOptions) (XPathResult, []yang.Diagn
 func (t *Tree) EvalXPathAs(expr string, typ XPathType, o XPathOptions) (XPathResult, []yang.Diagnostic, error) // lyd_eval_xpath4, one output: cast;
                                                                                           // lyd_eval_xpath, _xpath2, _xpath3 = XPathBoolean
 ```
+| libyang entry point | Go entry point | Context used |
+|---|---|---|
+| `lyd_find_xpath`, `lyd_find_xpath2`, `lyd_find_xpath3` | `Tree.FindXPath` | `o.Node` when supplied; otherwise the document root. The accessible forest is the whole `Tree`. |
+| `lyd_eval_xpath4` (result's own type) | `Tree.EvalXPath` | `o.Node` when supplied; otherwise the document root. The accessible forest is the whole `Tree`. |
+| `lyd_eval_xpath4` (requested result type); `lyd_eval_xpath`, `lyd_eval_xpath2`, `lyd_eval_xpath3` (boolean) | `Tree.EvalXPathAs` | `o.Node` when supplied; otherwise the document root. The accessible forest is the whole `Tree`. |
+| `lyd_trim_xpath` | `Tree.TrimXPath` | The first top-level node is the context and `current()` node; the accessible forest is the whole `Tree`. |
+
 Expressions are JSON format by default (`LY_VALUE_JSON`, prefixes are module names). #171 adds
 `lyd_eval_xpath4`'s `format`, `prefix_data` and `cur_mod` as three `XPathOptions` fields:
 `Format XPathFormat` (`XPathJSON`, `XPathXML`, `XPathSchema`), `Namespaces []XPathNamespace`

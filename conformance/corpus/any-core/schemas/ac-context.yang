@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: BSD-3-Clause
+module ac-context {
+  yang-version 1.1;
+  namespace "urn:tests:any-core-context";
+  prefix ap;
+
+  leaf v { type string; }
+}

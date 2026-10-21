@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+module ac-xpath-ctx {
+  yang-version 1.1;
+  namespace "urn:tests:any-core-xpath-ctx";
+  prefix ax;
+
+  container c {
+    presence "Source-context payload";
+    leaf v { type uint8; }
+  }
+}

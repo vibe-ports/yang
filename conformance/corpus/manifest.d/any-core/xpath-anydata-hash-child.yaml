@@ -1,0 +1,18 @@
+fixtures:
+  - id: any-core/xpath-anydata-hash-child
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.10", "XPath1.0#2.5"]
+    areas: [xpath]
+    request:
+      op: xpath
+      searchdirs: [schemas]
+      modules: [{name: ac}]
+      context_options: [no_yanglibrary]
+      format: xml
+      data_type: data
+      parse_only: true
+      data: '<data xmlns="urn:tests:any-core"><value>hidden</value></data><c xmlns="urn:tests:any-core"><value>real</value></c>'
+      xpath: 'count((/ac:data | /ac:c)/ac:value)'
+    golden: golden/xpath-anydata-hash-child.json
+    assert: {verdict: valid, rfc: ["RFC7950#7.10", "XPath1.0#2.5"]}

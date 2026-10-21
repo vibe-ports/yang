@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Ported from libyang v5.8.6 src/tree_data_new.c (BSD-3-Clause, © CESNET).
+// Ported from libyang v5.8.6 src/tree_data_new.c and src/tree_data_common.c (BSD-3-Clause, © CESNET).
 
 package data
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -16,6 +17,57 @@ import (
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
 )
+
+// AnyValueString returns the content of an anydata or anyxml node in format.
+// A payload tree is printed with all its siblings and default printer options;
+// stored text is returned unchanged. The boolean distinguishes absent content
+// from an explicitly stored empty string.
+// Ported from lyd_any_value_str (tree_data_common.c).
+func (n *Node) AnyValueString(format Format) (string, bool, error) {
+	return n.anyValueString(format, nil)
+}
+
+func (n *Node) anyValueString(format Format, step func() error) (string, bool, error) {
+	if n == nil || !isAny(n.schema) {
+		return "", false, (&logger{}).done(argErr("any", "lyd_any_value_str"))
+	}
+	if n.any == nil {
+		return "", false, nil
+	}
+	if n.any.children.len() == 0 {
+		if n.any.text == nil {
+			return "", false, nil
+		}
+		return *n.any.text, true, nil
+	}
+	if format != FormatJSON && format != FormatXML {
+		return "", false, (&logger{}).done(argErr("format", "lyd_any_value_str"))
+	}
+	var b bytes.Buffer
+	var children []*Node
+	if step == nil {
+		children = slices.Collect(n.any.children.all())
+	} else {
+		for c := range n.any.children.all() {
+			if err := step(); err != nil {
+				return "", false, err
+			}
+			children = append(children, c)
+		}
+	}
+	set := ctxOf(children[0])
+	if set == nil {
+		set = ctxOf(n)
+	}
+	fn := printJSON
+	if format == FormatXML {
+		fn = printXML
+	}
+	if err := printData(&b, set, PrintOptions{step: step}, children, 0, true, fn); err != nil {
+		return "", false, err
+	}
+	return b.String(), true, nil
+}
 
 // anyValue is lyd_node_any's child/value/hints. Ordinary traversal uses Node.kids,
 // which stays empty for an any node. Only this node owns children and text.

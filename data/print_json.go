@@ -99,7 +99,11 @@ func (j *jsonPrinter) nodeModule(n *Node) string {
 	}
 	if n.opaq.Format == types.FormatXML {
 		if n.opaq.ModuleNS != "" {
-			if m := j.set.ByNamespace(n.opaq.ModuleNS); m != nil {
+			set := n.opaq.set // node_prefix uses onode->ctx, including across an anydata payload
+			if set == nil {
+				set = j.set // hand-built opaque nodes without an attached context
+			}
+			if m := set.ByNamespace(n.opaq.ModuleNS); m != nil {
 				return m.Name
 			}
 		}
@@ -185,24 +189,24 @@ func (j *jsonPrinter) memberOpaq(parent, n *Node, attr bool) {
 
 // str is json_print_string.
 func (j *jsonPrinter) str(s string) {
-	j.buf.WriteByte('"')
+	j.buf.appendByte('"')
 	for i := 0; i < len(s); i++ {
 		switch c := s[i]; {
 		case c == '"':
-			j.buf.WriteString(`\"`)
+			j.buf.appendString(`\"`)
 		case c == '\\':
-			j.buf.WriteString(`\\`)
+			j.buf.appendString(`\\`)
 		case c == '\r':
-			j.buf.WriteString(`\r`)
+			j.buf.appendString(`\r`)
 		case c == '\t':
-			j.buf.WriteString(`\t`)
+			j.buf.appendString(`\t`)
 		case c < 0x20 || c == 0x7f: // iscntrl
 			j.printf(`\u%04X`, c)
 		default:
-			j.buf.WriteByte(c)
+			j.buf.appendByte(c)
 		}
 	}
-	j.buf.WriteByte('"')
+	j.buf.appendByte('"')
 }
 
 // value is json_print_value: the stored value in JSON form, by the base type of the stored (union:
@@ -220,9 +224,9 @@ func (j *jsonPrinter) value(v types.Value, local *schema.Module) error {
 		if text == "" {
 			text = "null"
 		}
-		j.buf.WriteString(text)
+		j.buf.appendString(text)
 	case schema.Empty:
-		j.buf.WriteString("[null]")
+		j.buf.appendString("[null]")
 	default:
 		return fmt.Errorf("data: no JSON form for a %s value", leafBase(v))
 	}
@@ -297,12 +301,12 @@ func (j *jsonPrinter) attribute(n *Node) {
 			j.str(a.Value)
 		case h&(types.HintBoolean|types.HintDecNum) != 0:
 			if a.Value == "" {
-				j.buf.WriteString("null")
+				j.buf.appendString("null")
 			} else {
-				j.buf.WriteString(a.Value)
+				j.buf.appendString(a.Value)
 			}
 		case h&types.HintEmpty != 0:
-			j.buf.WriteString("[null]")
+			j.buf.appendString("[null]")
 		default:
 			j.str(a.Value) // no hints: a string
 		}
@@ -317,6 +321,58 @@ func (j *jsonPrinter) leaf(n *Node) error {
 	}
 	j.levelDone()
 	return j.attributes(n, false) // as a sibling
+}
+
+// anyContent is json_print_any_content: payload trees are JSON objects whose
+// members are printed in their own sibling run. A text payload keeps its input
+// value hints, which distinguish JSON scalar tokens from strings.
+func (j *jsonPrinter) anyContent(n *Node) error {
+	if n.schema.Kind == schema.AnyData && n.any != nil && n.any.text != nil {
+		lg := &logger{set: j.set}
+		return lg.done(lg.logErr("LY_EINT", "Internal error (printer_json.c:621)."))
+	}
+	if n.any != nil && n.any.children.len() != 0 {
+		j.printf("{%s", j.nl())
+		j.level++
+		prevParent, prevSiblings := j.parent, j.siblings
+		j.parent, j.siblings = n, false
+		for i, children := 0, slices.Collect(n.any.children.all()); i < len(children); i++ {
+			if err := j.node(children, i); err != nil {
+				j.parent, j.siblings = prevParent, prevSiblings
+				j.level--
+				return err
+			}
+		}
+		j.parent, j.siblings = prevParent, prevSiblings
+		j.level--
+		j.printf("%s%s}", j.nl(), j.indent())
+		return nil
+	}
+	if n.any != nil && n.any.text != nil {
+		s := *n.any.text
+		if n.any.hints&(types.HintDecNum|types.HintBoolean|hintList|hintLeafList) != 0 {
+			j.buf.appendString(s)
+		} else {
+			j.str(s)
+		}
+		return nil
+	}
+	if n.any != nil && n.any.hints&types.HintEmpty != 0 {
+		j.buf.appendString("null")
+	} else {
+		j.buf.appendString("{}")
+	}
+	return nil
+}
+
+// any is json_print_any: its metadata is an outer sibling member.
+func (j *jsonPrinter) any(n *Node) error {
+	j.member(n, false)
+	if err := j.anyContent(n); err != nil {
+		return err
+	}
+	j.levelDone()
+	return j.attributes(n, false)
 }
 
 // inner is json_print_inner: the object of a container, list instance or opaque inner node.
@@ -399,7 +455,7 @@ func (j *jsonPrinter) isLastInst(n *Node, sibs []*Node, i int) bool {
 // leafListEmpty is json_print_leaf_list_empty: an empty array of the list or leaf-list sn.
 func (j *jsonPrinter) leafListEmpty(sn *schema.Node) {
 	j.memberOf(sn, sn.Module.Name, sn.Name, false)
-	j.buf.WriteString("[") // json_print_array_open with LY_PRINT_SHRINK: no empty line
+	j.buf.appendString("[") // json_print_array_open with LY_PRINT_SHRINK: no empty line
 	j.open = append(j.open, nil)
 	j.level++
 	j.arrayClose()
@@ -566,9 +622,9 @@ func (j *jsonPrinter) opaq(sibs []*Node, i int) error {
 	} else {
 		switch {
 		case h&types.HintEmpty != 0:
-			j.buf.WriteString("[null]")
+			j.buf.appendString("[null]")
 		case h&(types.HintBoolean|types.HintDecNum) != 0 && h&types.HintNum64 == 0:
-			j.buf.WriteString(o.Value)
+			j.buf.appendString(o.Value)
 		default:
 			j.str(o.Value) // a string or a large number
 		}
@@ -591,6 +647,10 @@ func (j *jsonPrinter) opaq(sibs []*Node, i int) error {
 
 // node is json_print_node.
 func (j *jsonPrinter) node(sibs []*Node, i int) error {
+	if err := j.enter(); err != nil {
+		return err
+	}
+	defer func() { j.depth-- }()
 	n := sibs[i]
 	if !j.shouldPrint(n) {
 		if j.isLastInst(n, sibs, i) {
@@ -609,8 +669,10 @@ func (j *jsonPrinter) node(sibs []*Node, i int) error {
 		err = j.leaf(n)
 	case n.schema.Kind == schema.LeafList || n.schema.Kind == schema.List:
 		err = j.leafList(n, sibs, i)
+	case isAny(n.schema):
+		err = j.any(n)
 	default:
-		err = fmt.Errorf("%w: anydata or anyxml node %q", ErrUnsupported, n.Name())
+		err = fmt.Errorf("%w: node kind %v", ErrUnsupported, n.schema.Kind)
 	}
 	if err != nil {
 		return err

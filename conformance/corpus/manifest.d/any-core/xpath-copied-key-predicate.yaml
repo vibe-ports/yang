@@ -1,0 +1,18 @@
+fixtures:
+  - id: any-core/xpath-copied-key-predicate
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # Cross-context payload lookup is a libyang API contract.
+    areas: [xpath, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: ac-lookup}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<a xmlns="urn:tests:any-core-lookup"><l><k>x</k></l></a>'}
+        - {do: dup, node: /ac-lookup:a, options: [], target: {searchdirs: [schemas], modules: [{name: ac-lookup}], context_options: [no_yanglibrary]}}
+        - {do: insert, format: xml, data_type: data, parse_only: true, data: '<c xmlns="urn:tests:any-core-lookup"><l><k>x</k></l></c>'}
+        - {do: trim, xpath: "/*[count((/ac-lookup:a | /ac-lookup:c)/ac-lookup:l[k='x']) = 1]"}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/xpath-copied-key-predicate.json

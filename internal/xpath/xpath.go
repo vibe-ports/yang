@@ -87,6 +87,7 @@ type Node interface {
 // ChildLookup is an optional interface of a Node: finding its children through an
 // index, as libyang does through the parent's children hash table
 // (moveto_node_hash_child with lyd_find_sibling_first / lyd_find_sibling_val).
+// For anydata/anyxml, this lookup uses lyd_child and excludes the payload.
 // Without it the evaluator scans Children() for every step whose schema node it
 // knows, which costs O(siblings) per step.
 type ChildLookup interface {
@@ -111,10 +112,19 @@ type OpaqueSchema interface {
 	OpaqueSchema() (sn SchemaNode, hasWhen bool)
 }
 
-// FirstLookup is an optional interface of a Node: its first child instance of sn found through
-// an index (lyd_find_sibling_schema), nil if it has none. ok=false declines: the evaluator scans.
+// FirstLookup is an optional interface of a Node: its first lyd_child_any instance of sn found
+// through an index (lyd_find_sibling_schema), nil if it has none. ok=false declines: the evaluator scans.
 type FirstLookup interface {
 	FirstChild(sn SchemaNode) (n Node, ok bool)
+}
+
+// contextSchema is an optional interface of a SchemaNode that knows its context
+// (lysc_node.module->ctx): data from several contexts (anydata payloads copied from another
+// context) is matched by pointer within one context and by module and node name across them.
+// Without it every schema node is taken to be of one context.
+type contextSchema interface {
+	SameContext(o SchemaNode) bool // both of one context
+	Implements(module string) bool // ly_ctx_get_module_implemented in this node's context
 }
 
 // MetaNode is an optional interface of a Node: its RFC 7952 metadata (lyd_node.meta), which

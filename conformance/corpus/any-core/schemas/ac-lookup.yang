@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: BSD-3-Clause
+module ac-lookup {
+  yang-version 1.1;
+  namespace "urn:tests:any-core-lookup";
+  prefix al;
+
+  anydata a;
+
+  container c {
+    presence "keyed-list lookup";
+    list l {
+      key "k";
+      leaf k { type string; }
+    }
+  }
+}

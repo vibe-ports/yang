@@ -1,0 +1,27 @@
+fixtures:
+  - id: print/ut-xml-any-06
+    dir: print
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_printer_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause} # test_anydata:172-177
+    rfc: ["RFC7950#7.10"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [schemas]
+      modules: [{name: defs}, {name: types}, {name: defaults}]
+      format: xml
+      data_type: data
+      unknown: opaque
+      validate_options: [present]
+      data: |
+        <any xmlns="urn:tests:types">
+          <cont2/>
+        </any>
+    golden: golden/ut-xml-any-06.json
+    assert:
+      verdict: valid
+      result: |
+        <any xmlns="urn:tests:types">
+          <cont2/>
+        </any>
+      rfc: ["RFC7950#7.10"]
+      deviation: null

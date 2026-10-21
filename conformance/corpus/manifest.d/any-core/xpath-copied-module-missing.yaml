@@ -1,0 +1,19 @@
+fixtures:
+  - id: any-core/xpath-copied-module-missing
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # Cross-context payload lookup is a libyang API contract.
+    areas: [xpath, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: ac-shadow}]
+      context_options: [no_yanglibrary]
+      steps:
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<a xmlns="urn:tests:any-core-shadow"><p><x>v</x></p></a>'}
+        - {do: dup, node: /ac-shadow:a, options: [], target: {searchdirs: [schemas], modules: [{name: ac-shadow}, {name: ac-other}], context_options: [no_yanglibrary]}}
+        # ac-other is not in the payload's context: moveto_m is NULL and the JSON name test
+        # inherits the context node's module, so ac-other:x finds ac-shadow:x by hash: 1
+        - {do: trim, xpath: "/*[count(/ac-shadow:a/ac-shadow:p/ac-other:x) = 1]"}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/xpath-copied-module-missing.json

@@ -1,0 +1,322 @@
+{
+  "context_diagnostics": [],
+  "failed_step": null,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ac-lookup",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "steps": [
+    {
+      "diagnostics": [],
+      "do": "parse",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": {
+            "text": "{\n  \"ac-lookup:c\": {\n    \"l\": [\n      {\n        \"k\": \"x\"\n      }\n    ]\n  }\n}\n",
+            "value_type": "datatree"
+          },
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "anydata",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-lookup:a",
+          "schema": "/ac-lookup:a",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-lookup:a/c",
+          "schema": "/ac-lookup:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-lookup:a/c/l[k='x']",
+          "schema": "/ac-lookup:c/l",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-lookup:a/c/l[k='x']/k",
+          "schema": "/ac-lookup:c/l/k",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "dup",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": {
+            "text": "{\n  \"ac-lookup:c\": {\n    \"l\": [\n      {\n        \"k\": \"x\"\n      }\n    ]\n  }\n}\n",
+            "value_type": "datatree"
+          },
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "anydata",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-lookup:a",
+          "schema": "/ac-lookup:a",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-lookup:a/ac-lookup:c",
+          "schema": "/ac-lookup:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-lookup:a/ac-lookup:c/l[k='x']",
+          "schema": "/ac-lookup:c/l",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-lookup:a/ac-lookup:c/l[k='x']/k",
+          "schema": "/ac-lookup:c/l/k",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "trim",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "typed": [
+        {
+          "any": {
+            "text": "{\n  \"ac-lookup:c\": {\n    \"l\": [\n      {\n        \"k\": \"x\"\n      }\n    ]\n  }\n}\n",
+            "value_type": "datatree"
+          },
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "anydata",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-lookup:a",
+          "schema": "/ac-lookup:a",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-lookup:a/ac-lookup:c",
+          "schema": "/ac-lookup:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-lookup:a/ac-lookup:c/l[k='x']",
+          "schema": "/ac-lookup:c/l",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-lookup:a/ac-lookup:c/l[k='x']/k",
+          "schema": "/ac-lookup:c/l/k",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    },
+    {
+      "diagnostics": [],
+      "do": "dump",
+      "rc": {
+        "err": 0,
+        "name": "LY_SUCCESS"
+      },
+      "tree": {
+        "json": "{\n  \"ac-lookup:a\": {\n    \"ac-lookup:c\": {\n      \"l\": [\n        {\n          \"k\": \"x\"\n        }\n      ]\n    }\n  }\n}\n",
+        "xml": "<a xmlns=\"urn:tests:any-core-lookup\">\n  <c>\n    <l>\n      <k>x</k>\n    </l>\n  </c>\n</a>\n"
+      },
+      "typed": [
+        {
+          "any": {
+            "text": "{\n  \"ac-lookup:c\": {\n    \"l\": [\n      {\n        \"k\": \"x\"\n      }\n    ]\n  }\n}\n",
+            "value_type": "datatree"
+          },
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "anydata",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-lookup:a",
+          "schema": "/ac-lookup:a",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "container",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-lookup:a/ac-lookup:c",
+          "schema": "/ac-lookup:c",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "list",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-lookup:a/ac-lookup:c/l[k='x']",
+          "schema": "/ac-lookup:c/l",
+          "value": null
+        },
+        {
+          "any": null,
+          "flags": {
+            "default": false,
+            "new": true,
+            "when_true": false
+          },
+          "kind": "leaf",
+          "meta": [],
+          "opaque": null,
+          "path": "/ac-lookup:a/ac-lookup:c/l[k='x']/k",
+          "schema": "/ac-lookup:c/l/k",
+          "value": {
+            "canonical": "x",
+            "type": "string",
+            "typedef": null,
+            "union_member": null
+          }
+        }
+      ]
+    }
+  ],
+  "verdict": "valid"
+}

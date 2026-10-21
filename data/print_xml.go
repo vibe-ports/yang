@@ -50,15 +50,15 @@ func (x *xmlPrinter) dump(s string, attr bool) {
 	for i := 0; i < len(s); i++ {
 		switch c := s[i]; {
 		case c == '&':
-			x.buf.WriteString("&amp;")
+			x.buf.appendString("&amp;")
 		case c == '<':
-			x.buf.WriteString("&lt;")
+			x.buf.appendString("&lt;")
 		case c == '>':
-			x.buf.WriteString("&gt;")
+			x.buf.appendString("&gt;")
 		case c == '"' && attr:
-			x.buf.WriteString("&quot;")
+			x.buf.appendString("&quot;")
 		default:
-			x.buf.WriteByte(c)
+			x.buf.appendByte(c)
 		}
 	}
 }
@@ -125,7 +125,7 @@ func (x *xmlPrinter) meta(n *Node) error {
 		prefix, _ := x.printNS(m.mod.Namespace, m.mod.Prefix, true, prefixRequired)
 		x.printf(" %s:%s=\"", prefix, m.name)
 		x.dump(value, true)
-		x.buf.WriteString("\"")
+		x.buf.appendString("\"")
 	}
 	return nil
 }
@@ -153,7 +153,7 @@ func (x *xmlPrinter) term(n *Node) error {
 		x.printf("/>%s", x.nl())
 		return nil
 	}
-	x.buf.WriteString(">")
+	x.buf.appendString(">")
 	x.dump(value, false)
 	x.printf("</%s>%s", n.schema.Name, x.nl())
 	return nil
@@ -185,6 +185,42 @@ func (x *xmlPrinter) inner(n *Node) error {
 	}
 	x.level--
 	x.printf("%s</%s>%s", x.indent(), n.schema.Name, x.nl())
+	return nil
+}
+
+// anydata is xml_print_anydata. Explicitly walk every payload sibling with
+// the sibling flag cleared, retaining the caller's formatting and WD mode.
+func (x *xmlPrinter) anydata(n *Node) error {
+	if n.schema.Kind == schema.AnyData && n.any != nil && n.any.text != nil {
+		lg := &logger{set: x.set}
+		return lg.done(lg.logErr("LY_EINT", "Internal error (printer_xml.c:444)."))
+	}
+	if err := x.open(n); err != nil {
+		return err
+	}
+	switch {
+	case n.any != nil && n.any.children.len() != 0:
+		prevSiblings := x.siblings
+		x.siblings = false
+		x.printf(">%s", x.nl())
+		x.level++
+		for c := range n.any.children.all() {
+			if err := x.node(c); err != nil {
+				x.level--
+				x.siblings = prevSiblings
+				return err
+			}
+		}
+		x.level--
+		x.siblings = prevSiblings
+		x.printf("%s</%s>%s", x.indent(), n.Name(), x.nl())
+	case n.any != nil && n.any.text != nil && *n.any.text != "":
+		x.buf.appendString(">")
+		x.dump(*n.any.text, false)
+		x.printf("</%s>%s", n.Name(), x.nl())
+	default:
+		x.printf("/>%s", x.nl())
+	}
 	return nil
 }
 
@@ -241,7 +277,7 @@ func (x *xmlPrinter) attrs(as []attr) {
 			x.printf(" %s=\"", a.Name)
 		}
 		x.dump(a.Value, true)
-		x.buf.WriteString("\"")
+		x.buf.appendString("\"")
 	}
 }
 
@@ -259,7 +295,7 @@ func (x *xmlPrinter) opaq(n *Node) error {
 		if o.Prefixes != nil {
 			x.prefixData(o.Prefixes, prefixRequired)
 		}
-		x.buf.WriteString(">")
+		x.buf.appendString(">")
 		x.dump(o.Value, false)
 	}
 	switch {
@@ -286,6 +322,10 @@ func (x *xmlPrinter) opaq(n *Node) error {
 
 // node is xml_print_node: the namespaces it declares go out of scope with it.
 func (x *xmlPrinter) node(n *Node) error {
+	if err := x.enter(); err != nil {
+		return err
+	}
+	defer func() { x.depth-- }()
 	if !x.shouldPrint(n) {
 		return nil
 	}
@@ -299,8 +339,10 @@ func (x *xmlPrinter) node(n *Node) error {
 		err = x.inner(n)
 	case n.schema.Kind == schema.Leaf || n.schema.Kind == schema.LeafList:
 		err = x.term(n)
+	case isAny(n.schema):
+		err = x.anydata(n)
 	default:
-		err = fmt.Errorf("%w: anydata or anyxml node %q", ErrUnsupported, n.Name())
+		err = fmt.Errorf("%w: node kind %v", ErrUnsupported, n.schema.Kind)
 	}
 	x.ns = x.ns[:count]
 	return err

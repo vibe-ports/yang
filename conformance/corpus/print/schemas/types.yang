@@ -1,0 +1,13 @@
+module types {
+  yang-version 1.1;
+  namespace "urn:tests:types";
+  prefix t;
+  import defs { prefix defs; }
+
+  container cont {
+    leaf leaftarget { type empty; }
+    leaf-list leaflisttarget { type uint8; max-elements 5; }
+  }
+  leaf-list leaflisttarget { type string; }
+  anydata any;
+}

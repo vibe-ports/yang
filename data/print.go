@@ -10,14 +10,15 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"strings"
 
+	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/printopts"
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
 )
 
-// ErrUnsupported is returned for a node the printers do not handle (anydata and anyxml are not
-// part of M1).
+// ErrUnsupported is returned for a node the printers do not handle.
 var ErrUnsupported = errors.New("data: not supported")
 
 // WD is a with-defaults mode (LYD_PRINT_WD_*, RFC 6243).
@@ -41,7 +42,9 @@ type PrintOptions struct {
 	EmptyLeafList bool // LYD_PRINT_EMPTY_LEAF_LIST: JSON prints lists and leaf-lists without instances as []
 	WithDefaults  WD
 
-	dflt *defaultCheck // set by printData: the evaluation state shared by one print
+	dflt     *defaultCheck // set by printData: the evaluation state shared by one print
+	step     func() error  // XPath casts charge each printed node and poll cancellation
+	byteStep func() error  // XPath casts charge each 64 output bytes before allocation
 }
 
 // defaultCheck is what one print shares for isDefault: the evaluation context (one XPath budget
@@ -198,7 +201,8 @@ func printData(w io.Writer, set *schema.Set, o PrintOptions, sibs []*Node, from 
 		o.dflt = &defaultCheck{}
 	}
 	p := &printer{set: set, opts: o, flags: flags, siblings: siblings}
-	if err := f(p, sibs, from); err != nil {
+	p.buf.byteStep = o.byteStep
+	if err := runPrint(f, p, sibs, from); err != nil {
 		var d *types.Diag
 		if errors.As(err, &d) {
 			// lyd_print_mem leaves bytes produced before a type-printer failure.
@@ -246,15 +250,113 @@ type printer struct {
 	flags      printopts.Flags
 	siblings   bool          // LYD_PRINT_SIBLINGS: lyd_print_all, else lyd_print_tree
 	printDiags []*types.Diag // xml_print_meta may log without stopping the printer
-	buf        bytes.Buffer
+	buf        printBuffer
 	level      int // indentation level
+	depth      int // recursion bound for constructed payloads deeper than their schema
+}
+
+// printBuffer charges output in 64-byte units before bytes.Buffer can grow.
+// The private panic stops the printer at the exact failed write; runPrint only
+// catches this sentinel and leaves other panics visible.
+type printBuffer struct {
+	buf      bytes.Buffer
+	byteStep func() error
+	charged  int
+}
+
+type printBudgetStop struct{ err error }
+
+func (b *printBuffer) reserve(n int) {
+	if b.byteStep == nil || n == 0 {
+		return
+	}
+	for need := (b.buf.Len() + n + 63) / 64; b.charged < need; b.charged++ {
+		if err := b.byteStep(); err != nil {
+			panic(printBudgetStop{err})
+		}
+	}
+}
+
+func (b *printBuffer) Write(p []byte) (int, error) {
+	b.reserve(len(p))
+	return b.buf.Write(p)
+}
+
+func (b *printBuffer) appendString(s string) {
+	b.reserve(len(s))
+	_, _ = b.buf.WriteString(s)
+}
+
+func (b *printBuffer) appendByte(c byte) {
+	b.reserve(1)
+	_ = b.buf.WriteByte(c)
+}
+
+func (b *printBuffer) Bytes() []byte { return b.buf.Bytes() }
+
+func runPrint(f func(*printer, []*Node, int) error, p *printer, sibs []*Node, from int) (err error) {
+	defer func() {
+		if v := recover(); v != nil {
+			if stop, ok := v.(printBudgetStop); ok {
+				err = stop.err
+			} else {
+				panic(v)
+			}
+		}
+	}()
+	return f(p, sibs, from)
+}
+
+// A constructed data forest is not bounded by schema depth. The printer's
+// recursive frames stop here before the Go stack can grow without limit.
+const maxPrintDepth = 1024
+
+func (p *printer) enter() error {
+	if p.opts.step != nil {
+		if err := p.opts.step(); err != nil {
+			return err
+		}
+	}
+	if p.depth >= maxPrintDepth {
+		return fmt.Errorf("%w: print depth exceeds %d", yang.ErrBudget, maxPrintDepth)
+	}
+	p.depth++
+	return nil
 }
 
 func (p *printer) shouldPrint(n *Node) bool { return p.opts.shouldPrint(n, p.flags) }
 
 func (p *printer) format() bool { return !p.opts.Shrink }
 
-func (p *printer) printf(format string, a ...any) { fmt.Fprintf(&p.buf, format, a...) }
+// printf handles the printer's fixed %s and %04X formats without staging an
+// untrusted string in fmt's buffer before the byte budget sees it.
+func (p *printer) printf(format string, a ...any) {
+	arg := 0
+	for {
+		i := strings.IndexByte(format, '%')
+		if i < 0 {
+			p.buf.appendString(format)
+			return
+		}
+		p.buf.appendString(format[:i])
+		format = format[i+1:]
+		switch {
+		case strings.HasPrefix(format, "s"):
+			p.buf.appendString(a[arg].(string))
+			format = format[1:]
+		case strings.HasPrefix(format, "04X"):
+			v := a[arg].(byte)
+			p.buf.appendString("00")
+			const hex = "0123456789ABCDEF"
+			p.buf.appendByte(hex[v>>4])
+			p.buf.appendByte(hex[v&15])
+			format = format[3:]
+		default:
+			panic("unsupported printer format")
+		}
+		arg++
+	}
+}
 
 // nl is the newline of a formatted print.
 func (p *printer) nl() string {

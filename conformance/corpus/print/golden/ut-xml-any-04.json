@@ -1,0 +1,103 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "defs",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "types",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "defaults",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"types:any\": {\n    \"ahoj\": \"\\u000A       ahoj jak se vede < how are you  \",\n    \"@ahoj\": {\n      \"attr\": \"<test\"\n    }\n  }\n}\n",
+    "xml": "<any xmlns=\"urn:tests:types\">\n  <ahoj attr=\"&lt;test\">\n       ahoj jak se vede &lt; how are you  </ahoj>\n</any>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": true,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/types:cont",
+      "schema": "/types:cont",
+      "value": null
+    },
+    {
+      "any": {
+        "text": "{\n  \"types:ahoj\": \"\\u000A       ahoj jak se vede < how are you  \",\n  \"@ahoj\": {\n    \"attr\": \"<test\"\n  }\n}\n",
+        "value_type": "datatree"
+      },
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "anydata",
+      "meta": [],
+      "opaque": null,
+      "path": "/types:any",
+      "schema": "/types:any",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [
+        {
+          "module": null,
+          "name": "attr",
+          "value": "<test"
+        }
+      ],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "ahoj",
+        "namespace": "urn:tests:types",
+        "prefix": null
+      },
+      "path": "/types:any/ahoj",
+      "schema": null,
+      "value": {
+        "canonical": "\n       ahoj jak se vede < how are you  ",
+        "hints": [
+          "string"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

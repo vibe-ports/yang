@@ -1,0 +1,22 @@
+fixtures:
+  - id: any-core/xpath-copied-first-instance-name
+    dir: any-core
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # Cross-context payload lookup is a libyang API contract.
+    areas: [xpath, operations]
+    request:
+      op: sequence
+      searchdirs: [schemas]
+      modules: [{name: ac-shadow}]
+      context_options: [no_yanglibrary]
+      steps:
+        # the payload holds the top-level list l of the parse context
+        - {do: parse, format: xml, data_type: data, parse_only: true, data: '<a xmlns="urn:tests:any-core-shadow"><l><k>x</k></l></a>'}
+        - {do: dup, node: /ac-shadow:a, options: [], target: {searchdirs: [schemas], modules: [{name: ac-shadow}], context_options: [no_yanglibrary]}}
+        - {do: insert, format: xml, data_type: data, parse_only: true, data: '<c xmlns="urn:tests:any-core-shadow"><l><k>x</k></l></c>'}
+        # predicate compilation finds the first instance of c/l under a by module and name only
+        # (lyd_find_sibling_schema without a hash table, tree_data_common.c:1127-1135), so the
+        # step is hashed and the payload, outside lyd_child, is not searched: 1
+        - {do: trim, xpath: "/*[count((/ac-shadow:a | /ac-shadow:c)/ac-shadow:l[k='x']) = 1]"}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/xpath-copied-first-instance-name.json
