@@ -1,0 +1,15 @@
+fixtures:
+  - id: seq/xml-control-after-end-tag-start
+    dir: protocol-v2
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: [] # The lexer diagnostic and return code are libyang-specific.
+    areas: [codecs]
+    request:
+      context_options: [no_yanglibrary]
+      modules: [{name: pv2}]
+      op: sequence
+      searchdirs: [schemas]
+      steps:
+        - {data: "<c xmlns='urn:vibe-ports:yang:conformance:pv2'></\x0f", data_type: config, do: parse, format: xml, parse_only: true}
+        - {do: dump, with_defaults: explicit}
+    golden: golden/seq-xml-control-after-end-tag-start.json

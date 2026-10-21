@@ -416,7 +416,7 @@ func (lc *lydCtx) lexErr(err error) error {
 	case errors.As(err, &xe):
 		switch {
 		case xe.Msg == "":
-			return &ValidationError{err: err} // libyang fails without logging: no diagnostic of its own
+			return &ValidationError{err: err, rc: xe.RC} // libyang fails without logging: no diagnostic of its own
 		case xe.Code == ly.Success:
 			_ = lc.log.logErr("LY_EINVAL", "%s", xe.Msg)
 		default:

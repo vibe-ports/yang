@@ -38,6 +38,7 @@ type Error struct {
 	Code ly.Code
 	Msg  string
 	Line uint64
+	RC   string // libyang return code when a silent lexer error has no diagnostic to carry it
 	err  error
 }
 
@@ -820,7 +821,8 @@ func (c *Ctx) openElement(prefix, name string) error {
 	for c.cur() != 0 {
 		r, n := c.getUTF8(c.pos)
 		if n == 0 {
-			return &Error{Line: c.line} // libyang fails here without logging
+			// xml.c:742-783 returns ly_getutf8's LY_EINVAL without logging.
+			return &Error{Line: c.line, RC: "LY_EINVAL"}
 		}
 		if !isNameStart(r) {
 			break

@@ -186,10 +186,37 @@ func TestErrors(t *testing.T) {
 }
 
 func TestSilentInvalidUTF8(t *testing.T) { // open_element fails without a message
-	_, _, err := walk(t, "<a \xff>")
-	var e *Error
-	if !errors.As(err, &e) || e.Msg != "" || e.Code != ly.Success {
-		t.Fatalf("err = %#v", err)
+	for _, src := range []string{"<a \xff>", "<A \x0f", "<A xmlns:p='urn:p' \x0f"} {
+		_, _, err := walk(t, src)
+		var e *Error
+		if !errors.As(err, &e) || e.Msg != "" || e.Code != ly.Success || e.RC != "LY_EINVAL" {
+			t.Errorf("input %q: err = %#v", src, err)
+		}
+	}
+}
+
+func TestControlByteOtherLexerPositions(t *testing.T) {
+	for _, tc := range []struct {
+		name, src, msg string
+	}{
+		{"after opening bracket", "<\x0f", "Invalid character 0xf."},
+		{"in element name", "<a\x0f", "Invalid character 0xf."},
+		{"in attribute name", "<a b\x0f", "Invalid character 0xf."},
+		{"after closing bracket", "<a></\x0f", "Invalid character 0xf."},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, _, err := walk(t, tc.src)
+			var e *Error
+			if !errors.As(err, &e) || e.Msg != tc.msg || e.Code != ly.Syntax || e.RC != "" {
+				t.Fatalf("err = %#v, want %q", err, tc.msg)
+			}
+		})
+	}
+	for _, src := range []string{"<?p \x0f?><a/>", "<!-- \x0f --><a/>"} {
+		_, _, err := walk(t, src)
+		if err != nil {
+			t.Errorf("input %q: %v", src, err)
+		}
 	}
 }
 

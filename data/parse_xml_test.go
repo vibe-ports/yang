@@ -177,9 +177,32 @@ func TestParseXMLUnsupported(t *testing.T) {
 	_, diags, err = parseXMLString(set, "<c xmlns=\"urn:pj\" \xff/>", Reject, true)
 	var ve *ValidationError
 	var xe *lyxml.Error
-	if !errors.As(err, &ve) || len(ve.Diags) != 0 || !errors.As(err, &xe) || len(diags) != 0 ||
+	if !errors.As(err, &ve) || ve.RC() != "LY_EINVAL" || len(ve.Diags) != 0 || !errors.As(err, &xe) || len(diags) != 0 ||
 		err.Error() != xe.Error() {
 		t.Fatalf("silent lexer error: %v %v", err, diags)
+	}
+}
+
+func TestParseXMLControlByteReturnCodes(t *testing.T) {
+	set := pjSchema()
+	for _, tc := range []struct {
+		name, input, rc string
+		diags           int
+	}{
+		{"after element name", "<A \x0f", "LY_EINVAL", 0},
+		{"after namespace attribute", "<c xmlns='urn:pj' xmlns:p='urn:p' \x0f", "LY_EINVAL", 0},
+		{"after opening bracket", "<\x0f", "LY_EVALID", 1},
+		{"in element name", "<c\x0f", "LY_EVALID", 1},
+		{"in attribute name", "<c xmlns='urn:pj' a\x0f", "LY_EVALID", 1},
+		{"after closing bracket", "<c xmlns='urn:pj'></\x0f", "LY_EVALID", 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, diags, err := parseXMLString(set, tc.input, Reject, true)
+			var ve *ValidationError
+			if !errors.As(err, &ve) || ve.RC() != tc.rc || len(diags) != tc.diags {
+				t.Fatalf("rc and diagnostics = %v, %v; want %s and %d diagnostics", err, diags, tc.rc, tc.diags)
+			}
+		})
 	}
 }
 

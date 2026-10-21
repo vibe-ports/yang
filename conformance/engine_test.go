@@ -179,6 +179,34 @@ func TestSequenceParseReplyIntoRequestKeepsInput(t *testing.T) {
 	}
 }
 
+func TestSequenceXMLControlByteReturnCode(t *testing.T) {
+	for _, tc := range []struct {
+		name, input, rc string
+		diags           int
+	}{
+		{"after element name", "<A \x0f", "LY_EINVAL", 0},
+		{"after opening bracket", "<\x0f", "LY_EVALID", 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resp, err := Yang{}.Run(Request{BaseDir: "corpus/protocol-v2", Params: map[string]any{
+				"context_options": []any{"no_yanglibrary"},
+				"modules":         []any{map[string]any{"name": "pv2"}},
+				"op":              "sequence",
+				"searchdirs":      []any{"schemas"},
+				"steps": []any{map[string]any{"data": tc.input, "data_type": "config", "do": "parse",
+					"format": "xml", "parse_only": true}, map[string]any{"do": "dump", "with_defaults": "explicit"}},
+			}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			parse := list(resp["steps"])[0].(map[string]any)
+			if resp.Verdict() != "invalid" || inventoryRCName(parse["rc"]) != tc.rc || len(list(parse["diagnostics"])) != tc.diags {
+				t.Fatalf("response = %v; want %s and %d diagnostics", resp, tc.rc, tc.diags)
+			}
+		})
+	}
+}
+
 func TestDataRPCParentIsUnsupportedU0106(t *testing.T) {
 	_, err := Yang{}.Run(Request{
 		BaseDir: filepath.Join("corpus", "ut-parser"),
