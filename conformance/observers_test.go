@@ -12,9 +12,9 @@ func TestTypedObserverFieldsCompared(t *testing.T) {
 		op   string
 		want []string
 	}{
-		{"data", []string{"typed.any", "request_typed.any"}},
-		{"diff", []string{"typed.any"}},
-		{"sequence", []string{"typed.any", "diff_typed.any"}},
+		{"data", nil},
+		{"diff", nil},
+		{"sequence", nil},
 	} {
 		if got := (Yang{}).SkippedFields(tc.op); !reflect.DeepEqual(got, tc.want) {
 			t.Errorf("%s skips %v, want %v", tc.op, got, tc.want)

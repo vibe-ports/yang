@@ -276,11 +276,11 @@ func TestParseJSONRepeatedKeyMustOrder(t *testing.T) {
 	}
 }
 
-// TestParseJSONUnsupported: anydata/anyxml instances are yang.ErrUnsupported (U-0043); RPCs in
-// datastore data are rejected as libyang does.
-func TestParseJSONUnsupported(t *testing.T) {
+// TestParseJSONAnyAndOperation: anydata objects are parsed and RPCs in datastore
+// data are rejected as libyang does.
+func TestParseJSONAnyAndOperation(t *testing.T) {
 	set := pjSchema()
-	if _, diags, err := parseJSONString(set, `{"pj:ad": {"x": 1}}`, Reject, true); !errors.Is(err, yang.ErrUnsupported) || len(diags) != 0 {
+	if tr, diags, err := parseJSONString(set, `{"pj:ad": {"x": 1}}`, Reject, true); err != nil || len(diags) != 0 || tr == nil || tr.top.first().any.children.len() != 1 {
 		t.Fatalf("anydata: %v %v", err, diags)
 	}
 	pj := set.Modules[1]

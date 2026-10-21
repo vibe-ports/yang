@@ -417,7 +417,7 @@ func (t *Tree) attrs(first, second *Node, o DiffOptions) (diffOp, diffAttrs, err
 			default:
 				return 0, a, errNoChange
 			}
-		default: // anydata, anyxml: their values come with M5 (U-0043)
+		default: // anydata, anyxml values await the public diff surface (U-0112)
 			return 0, a, fmt.Errorf("data: diff of %s %q: %w", nodetypeStr(sn.schema.Kind), sn.schema.Name, ErrUnsupported)
 		}
 	}

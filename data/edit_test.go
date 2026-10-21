@@ -64,7 +64,7 @@ func typedLine(set *schema.Set, n *Node) string {
 func typedDump(tr *Tree) []string {
 	out := []string{}
 	for top := range tr.Top() {
-		for n := range top.All() {
+		for n := range top.allAny() {
 			out = append(out, typedLine(tr.set, n))
 		}
 	}

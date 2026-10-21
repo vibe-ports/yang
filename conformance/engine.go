@@ -28,26 +28,12 @@ type Yang struct{}
 
 type contextBuilder func(Request) (*yang.Schema, map[string]any, []map[string]any, string, error)
 
-// SkippedFields implements FieldSkipper: the YANG printer of compiled modules is not ported;
-// the typed dump of data trees compares all fields except anydata values.
+// SkippedFields implements FieldSkipper: the YANG printer of compiled modules is not ported.
 func (Yang) SkippedFields(op string) []string {
-	switch op {
-	case "schema":
+	if op == "schema" {
 		return []string{"compiled"}
-	case "data":
-		return append(typedSkipped("typed"), typedSkipped("request_typed")...)
-	case "diff":
-		return typedSkipped("typed")
-	case "sequence":
-		return append(typedSkipped("typed"), typedSkipped("diff_typed")...)
 	}
 	return nil
-}
-
-// typedSkipped are the fields of a typed dump (in the response field f) the engine does not
-// produce: see SkippedFields.
-func typedSkipped(f string) []string {
-	return []string{f + ".any"}
 }
 
 // ctxOptions are the oracle's context_options this engine supports.

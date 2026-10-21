@@ -46,7 +46,7 @@ func TestUnsupportedRequestErrorOrdering(t *testing.T) {
 	netconf := fmt.Errorf("%w: notification envelope data_type notif-netconf (conformance engine capability gap, U-0110)", ErrUnsupported)
 	restconf := fmt.Errorf("%w: notification envelope data_type notif-restconf (conformance engine capability gap, U-0110)", ErrUnsupported)
 	rpc := fmt.Errorf("%w: an rpc request with data_type rpc (ParseOpOptions.Request is for replies only, deviations.md U-0106)", ErrUnsupported)
-	anyDirect := fmt.Errorf("%w: native pointer-level any-value calls have no public Go equivalent, U-0043", ErrUnsupported)
+	anyDirect := fmt.Errorf("%w: native pointer-level any-value calls have no public Go equivalent, U-0112", ErrUnsupported)
 	for _, tc := range []struct {
 		name, oracleError, category, class string
 		request                            map[string]any
@@ -102,12 +102,12 @@ func TestAnyDirectMatrixGapClassification(t *testing.T) {
 		name, reason, class string
 		request             map[string]any
 	}{
-		{"direct", "native pointer-level any-value calls have no public Go equivalent, U-0043", "any-direct", step("any_direct", nil)},
-		{"direct-mixed-merge", "native pointer-level any-value calls have no public Go equivalent, U-0043", "any-direct", step("any_direct", map[string]any{"case": "merge_mixed_into_tree"})},
+		{"direct", "native pointer-level any-value calls have no public Go equivalent, U-0112", "any-direct", step("any_direct", nil)},
+		{"direct-mixed-merge", "native pointer-level any-value calls have no public Go equivalent, U-0112", "any-direct", step("any_direct", map[string]any{"case": "merge_mixed_into_tree"})},
 		{"opaque-source", "opaque source construction has no public Go equivalent, U-0107", "any-direct-opaque-source", step("any_direct", map[string]any{"case": "dup_siblings_into_empty_anydata"})},
 		{"compare", "compare insert_opaq (lyd_new_opaq / lyd_new_opaq2 are exported in M5 with the envelopes, U-0107)", "compare-insert-opaq", step("compare", map[string]any{"insert_opaq": map[string]any{"name": "n"}})},
-		{"wrong-step", "native pointer-level any-value calls have no public Go equivalent, U-0043", "unclassified", step("dup", nil)},
-		{"wrong-reason", "native pointer-level any-value calls have no public Go equivalent, U-0043 (changed)", "unclassified", step("any_direct", nil)},
+		{"wrong-step", "native pointer-level any-value calls have no public Go equivalent, U-0112", "unclassified", step("dup", nil)},
+		{"wrong-reason", "native pointer-level any-value calls have no public Go equivalent, U-0112 (changed)", "unclassified", step("any_direct", nil)},
 		{"compare-without-opaque", "compare insert_opaq (lyd_new_opaq / lyd_new_opaq2 are exported in M5 with the envelopes, U-0107)", "unclassified", step("compare", nil)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

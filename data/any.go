@@ -14,9 +14,30 @@ import (
 	"strings"
 
 	"github.com/vibe-ports/yang"
+	"github.com/vibe-ports/yang/internal/anyview"
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
 )
+
+func init() {
+	anyview.Register(func(v any) (anyview.Value, bool) {
+		n, ok := v.(*Node)
+		if !ok || n == nil || !isAny(n.schema) {
+			return anyview.Value{}, false
+		}
+		view := anyview.Value{}
+		switch n.anyType() {
+		case anyValueDataTree:
+			view.Type = "datatree"
+			for c := range n.any.children.all() {
+				view.Children = append(view.Children, c)
+			}
+		case anyValueText:
+			view.Type, view.Text = "string", *n.any.text
+		}
+		return view, true
+	})
+}
 
 // AnyValueString returns the content of an anydata or anyxml node in format.
 // A payload tree is printed with all its siblings and default printer options;
@@ -164,7 +185,7 @@ func newAnyWork(ctx context.Context, b Budget) *anyWork {
 
 // createAnyDatatree is lyd_create_any_datatree. Only object/XML text is tried;
 // parse-only opaque mode preserves unknown nodes and allows unqualified roots.
-// Nested any syntax is still explicitly unsupported until the parser PRs.
+// Nested XML any syntax is still explicitly unsupported until the XML parser PR.
 // Return diagnostics even on success so callers can implement libyang's log
 // argument: tree_data_new.c:203-206 saves/disables logging for !log, and
 // :226-229 restores it. Required construction keeps them; speculative calls do not.

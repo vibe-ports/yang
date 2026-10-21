@@ -346,10 +346,10 @@ func (t *Tree) newPath(lg *logger, path, value string, o NewPathOptions) (*Node,
 				continue
 			}
 			node, err = t.createTerm(lg, last, seg.Node, value)
-		default: // rpc, action, notification, anydata: operations are M4, anydata M5
+		default: // rpc, action, notification, anydata: any construction awaits its public API
 			limit := ""
 			if seg.Node.Kind == schema.AnyData || seg.Node.Kind == schema.AnyXML {
-				limit = " (U-0043)"
+				limit = " (U-0112)"
 			}
 			err = fmt.Errorf("data: creating %s %q is not supported%s: %w", nodetypeStr(seg.Node.Kind), seg.Node.Name, limit, errors.ErrUnsupported)
 		}

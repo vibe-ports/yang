@@ -91,8 +91,8 @@ func m4Input(a, b, order uint8) string {
 	if order&4 != 0 {
 		name = "y"
 	}
-	// U-0043: anydata instances are not supported by Parse, so the schema
-	// includes the node but the round-trip inputs do not instantiate it.
+	// The schema includes an anydata node, but these round-trip inputs focus on
+	// the ordinary child ordering and do not instantiate it.
 	return `{"m:c":{"s":"` + fmt.Sprint(a%4) + `","l":` + list + `,"u":` + ll +
 		`,"sys":["a","b"],"` + name + `":"` + fmt.Sprint(b%4) + `"}}`
 }

@@ -1,0 +1,20 @@
+fixtures:
+  - id: ut-parser/json-anydata-mixed-known-opaque
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.10", "RFC7951#5.3"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: json
+      data_type: data
+      data: '{"a:any":{"a:foo":"known","x:other":{"nested":1}}}'
+      unknown: reject
+      validate_options: [present]
+    golden: golden/json-anydata-mixed-known-opaque.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.10", "RFC7951#5.3"]
+      deviation: null

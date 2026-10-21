@@ -88,7 +88,9 @@ func runDiff(r Request, s *yang.Schema, resp map[string]any, exec executionConte
 		if resp["diff"], err = printTree(diff, data.WDAll); err != nil {
 			return err
 		}
-		resp["typed"] = typedJSON(diff)
+		if resp["typed"], err = typedJSON(diff); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -320,6 +322,6 @@ func diffOut(reg *data.Tree, so map[string]any, logPrint func([]yang.Diagnostic)
 		return err
 	}
 	logPrint(printed)
-	so["diff_typed"] = typedJSON(reg)
-	return nil
+	so["diff_typed"], err = typedJSON(reg)
+	return err
 }

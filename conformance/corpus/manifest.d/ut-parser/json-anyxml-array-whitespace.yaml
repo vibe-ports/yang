@@ -1,0 +1,19 @@
+fixtures:
+  - id: ut-parser/json-anyxml-array-whitespace
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}
+    rfc: ["RFC7950#7.11", "RFC7951#5.3"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: json
+      data_type: data
+      data: '{"a:axml":[ null, {"k": [1,  2]} ]}'
+      validate_options: [present]
+    golden: golden/json-anyxml-array-whitespace.json
+    assert:
+      verdict: valid
+      rfc: ["RFC7950#7.11", "RFC7951#5.3"]
+      deviation: null

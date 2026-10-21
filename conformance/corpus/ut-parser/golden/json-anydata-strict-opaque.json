@@ -1,0 +1,115 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"a:any\": {\n    \"c\": {\n      \"y\": [\n        300\n      ]\n    },\n    \"foo3\": \"abc\"\n  }\n}\n",
+    "xml": "<any xmlns=\"urn:tests:a\">\n  <c>\n    <y>300</y>\n  </c>\n  <foo3>abc</foo3>\n</any>\n"
+  },
+  "typed": [
+    {
+      "any": {
+        "text": "{\n  \"a:c\": {\n    \"y\": [\n      300\n    ]\n  },\n  \"a:foo3\": \"abc\"\n}\n",
+        "value_type": "datatree"
+      },
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "anydata",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:any",
+      "schema": "/a:any",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:any/c",
+      "schema": "/a:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "a",
+        "name": "y",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/a:any/c/y",
+      "schema": null,
+      "value": {
+        "canonical": "300",
+        "hints": [
+          "decnum",
+          "leaflist"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "a",
+        "name": "foo3",
+        "namespace": null,
+        "prefix": "a"
+      },
+      "path": "/a:any/foo3",
+      "schema": null,
+      "value": {
+        "canonical": "abc",
+        "hints": [
+          "string",
+          "num64"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

@@ -63,6 +63,9 @@ type ParseOptions struct {
 	StoreOnly bool
 	// JSONNull is LYD_PARSE_JSON_NULL: a JSON null value creates nothing.
 	JSONNull bool
+	// AnyDataStrict is LYD_PARSE_ANYDATA_STRICT: anydata and anyxml payloads are parsed with
+	// libyang's strict schema lookup instead of falling back to opaque nodes.
+	AnyDataStrict bool
 	// JSONStringDatatypes is LYD_PARSE_JSON_STRING_DATATYPES: JSON numbers and booleans may
 	// come as strings.
 	JSONStringDatatypes bool
@@ -89,7 +92,7 @@ const (
 // parseOpts are the LYD_PARSE_* options, the internal ones included.
 type parseOpts struct {
 	ParseOptions
-	anyContent bool // LYD_INTOPT_ANY, only for the internal any-value text helper
+	anyContent bool // LYD_INTOPT_ANY, for any payload nodes in JSON and internal text parsing
 	zeroNodes  bool // an internal aggregate budget with no remaining capacity; zero Budget means default
 	ordered    bool // LYD_PARSE_ORDERED: input is in schema order, siblings are appended
 	storeOnly  bool // LYD_PARSE_STORE_ONLY: no restriction checks of values

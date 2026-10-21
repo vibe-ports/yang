@@ -149,7 +149,7 @@ func (t *Tree) diffMergeReplace(dm *Node, cur diffOp, src *Node) error {
 				}
 			}
 			dm.flags = dm.flags&^FlagDefault | src.flags&FlagDefault
-		default: // anydata, anyxml: their values are M5 (U-0043)
+		default: // anydata, anyxml values await the public diff surface (U-0112)
 			return fmt.Errorf("data: merging a replace of %s %q: %w", nodetypeStr(dm.schema.Kind), dm.schema.Name, ErrUnsupported)
 		}
 	case diffNone:

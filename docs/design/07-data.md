@@ -925,7 +925,7 @@ entries owned by this stream: **D-0001** (candidate: `when` reading a top-level 
 | U-0040 | input size budget | libyang reads anything |
 | U-0041 | node-count budget | — |
 | U-0042 | cumulative XPath step budget per Parse/Validate | — |
-| U-0043 | anydata/anyxml instances → `ErrUnsupported` until M5 | — |
+| U-0043 | XML anydata/anyxml instances → `ErrUnsupported` until #108; JSON instances are parsed by #107 | — |
 | U-0044 | engine: operation `data_type`s unsupported until M4 | — |
 | U-0045 | a `Tree` pins the schema snapshot it was parsed with; libyang trees see the live context (`LYD_CTX`) | — |
 

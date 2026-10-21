@@ -617,66 +617,44 @@ func validationKind(f Fixture) string {
 var validationUnsupported = map[string]string{
 	// U-0110: ParseOp.Request requires an RPC/action, unlike the oracle parent.
 	"protocol-v2/reply-non-operation-parent": "U-0110",
-	// U-0043: anydata/anyxml data instances (M5).
-	"ops/parse-json-rpc-01": "U-0043",
-	"ops/parse-xml-rpc-01":  "U-0043",
-	"ut-parser/json-rpc-01": "U-0043",
-	"ut-parser/xml-rpc-01":  "U-0043",
+	// U-0043: XML anydata/anyxml instances await #108.
+	"ops/parse-xml-rpc-01": "U-0043",
+	"ut-parser/xml-rpc-01": "U-0043",
 	// anyxml "filter" payloads (#103 import of test_filter_attributes).
 	"ut-parser/xml-filter-attributes-01": "U-0043",
 	"ut-parser/xml-filter-attributes-02": "U-0043",
-	"protocol-v2/sequence-edits":         "U-0043",
-	"protocol-v2/when-auto-delete":       "U-0043",
-	// U-0043: the any-value core fixtures (anydata PR 2) need the anydata parsers and
-	// NewPath creation (PRs 4-6); they gate once those land.
-	"any-core/create-invalid-json":              "U-0043",
-	"any-core/create-invalid-text":              "U-0043",
-	"any-core/create-invalid-xml":               "U-0043",
-	"any-core/create-xml-scan-error-anydata":    "U-0043",
-	"any-core/create-xml-scan-error-anyxml":     "U-0043",
-	"any-core/create-warning-xml-key-order":     "U-0043",
-	"any-core/dup-cross-context":                "U-0043",
+	// U-0112: public any edits and pointer-level probes await a later API.
+	"any-core/create-invalid-json":           "U-0112",
+	"any-core/create-invalid-text":           "U-0112",
+	"any-core/create-invalid-xml":            "U-0112",
+	"any-core/create-xml-scan-error-anydata": "U-0112",
+	"any-core/create-xml-scan-error-anyxml":  "U-0112",
+	"any-core/create-warning-xml-key-order":  "U-0112",
+	"any-core/dup-xml-text-reparse":          "U-0043",
+	"any-core/equal-mixed-tree":              "U-0043",
+	"any-core/equal-xml-prefixes":            "U-0043",
+	"any-core/equal-xml-scan-error":          "U-0107",
+	"any-core/any-text-embedded-nul":         "U-0112",
+	"any-core/dup-node-then-empty-object":    "U-0112",
+	"any-core/dup-payload-parent-context":    "U-0112",
+	"any-core/equal-wide-system-ordered":     "U-0112",
+	"any-core/nil-any-boundaries":            "U-0112",
+	"any-core/trim-payload-links":            "U-0112",
+	"any-core/merge-mixed-into-tree":         "U-0112",
+	"any-core/dup-into-anydata":              "U-0107",
+	"any-core/dup-into-default-any-parent":   "U-0112",
+	"any-core/dup-mixed-missing-module":      "U-0043",
+	"any-core/dup-text-with-child":           "U-0043",
+	"any-core/equal-mixed-parent-payload":    "U-0112",
+	"any-core/dup-into-anyxml":               "U-0107",
+	"ut-new/any-create-json":                 "U-0112",
+	"ut-new/any-create-xml":                  "U-0112",
+	// U-0043: these payloads are XML input and await #108.
 	"any-core/print-opaq-ctx":                   "U-0043",
-	"any-core/dup-empty-hints":                  "U-0043",
-	"any-core/dup-payload-options":              "U-0043",
-	"any-core/dup-shallow-tree":                 "U-0043",
-	"any-core/dup-text-hints":                   "U-0043",
-	"any-core/dup-xml-text-reparse":             "U-0043",
-	"any-core/equal-empty-hints":                "U-0043",
-	"any-core/equal-mixed-tree":                 "U-0043",
-	"any-core/equal-nonempty-empty":             "U-0043",
-	"any-core/equal-text-hints":                 "U-0043",
-	"any-core/equal-tree-shallow":               "U-0043",
-	"any-core/equal-xml-prefixes":               "U-0043",
-	"any-core/equal-xml-scan-error":             "U-0107",
-	"any-core/merge-equal-hints":                "U-0043",
-	"any-core/merge-fill-empty-text":            "U-0043",
-	"any-core/merge-fill-empty-tree":            "U-0043",
-	"any-core/merge-mixed-into-tree":            "U-0043",
-	"any-core/merge-replace-tree":               "U-0043",
-	"any-core/validation-excludes-payload":      "U-0043",
-	"any-core/any-text-embedded-nul":            "U-0043",
-	"any-core/dup-node-then-empty-object":       "U-0043",
-	"any-core/dup-payload-parent-context":       "U-0043",
-	"any-core/equal-wide-system-ordered":        "U-0043",
-	"any-core/nil-any-boundaries":               "U-0043",
-	"any-core/trim-payload-links":               "U-0043",
-	"any-core/dup-into-anydata":                 "U-0107",
-	"any-core/dup-into-default-any-parent":      "U-0043",
-	"any-core/dup-mixed-missing-module":         "U-0043",
-	"any-core/dup-text-with-child":              "U-0043",
 	"any-core/xpath-copied-redundant-parent":    "U-0043",
 	"any-core/xpath-copied-first-instance-name": "U-0043",
 	"any-core/xpath-copied-prefixed-key":        "U-0043",
 	"any-core/xpath-copied-module-missing":      "U-0043",
-	"any-core/equal-mixed-parent-payload":       "U-0043",
-	"any-core/dup-into-anyxml":                  "U-0107",
-	"any-core/print-anyxml-number-hint":         "U-0043",
-	"any-core/print-anyxml-boolean-hint":        "U-0043",
-	"any-core/print-anyxml-string-hint":         "U-0043",
-	"any-core/print-anyxml-array-text":          "U-0043",
-	"ut-new/any-create-json":                    "U-0043",
-	"ut-new/any-create-xml":                     "U-0043",
 	// D-0058: LYD_PARSE_ORDERED input order is not exported.
 	"seq/trim-links-referrer-first": "D-0058",
 	// U-0105: LYD_DUP_NO_LYDS is not exported.
@@ -852,7 +830,7 @@ func TestEmptyRevisionUsesExistingContextForParserChecks(t *testing.T) {
 	}
 }
 
-// TestTypedCompared: only anydata is skipped; observer fields remain compared.
+// TestTypedCompared: typed fields, including any values, remain compared.
 func TestTypedCompared(t *testing.T) {
 	r := Response{"typed": []any{map[string]any{"path": "/a:x", "flags": map[string]any{"new": false},
 		"value": map[string]any{"canonical": "1", "type": "uint8", "typedef": nil, "union_member": nil, "hints": []any{}},
@@ -860,14 +838,14 @@ func TestTypedCompared(t *testing.T) {
 	got, skipped := withoutSkipped(r, Yang{}.SkippedFields("data"))
 	want := Response{"typed": []any{map[string]any{"path": "/a:x", "flags": map[string]any{"new": false},
 		"value": map[string]any{"canonical": "1", "type": "uint8", "typedef": nil, "union_member": nil, "hints": []any{}},
-		"meta":  []any{}, "opaque": nil}}}
-	if d := diffResponses(want, got); d != "" || !slices.Equal(skipped, []string{"typed.any"}) || r["typed"].([]any)[0].(map[string]any)["any"] == nil {
+		"meta":  []any{}, "opaque": nil, "any": map[string]any{"value": "payload"}}}}
+	if d := diffResponses(want, got); d != "" || len(skipped) != 0 {
 		t.Fatalf("%s %v %v", d, got, skipped)
 	}
-	for _, field := range []string{"type", "typedef", "union_member", "hints", "meta", "opaque", "flags"} {
+	for _, field := range []string{"type", "typedef", "union_member", "hints", "meta", "opaque", "flags", "any"} {
 		got, _ := withoutSkipped(r, Yang{}.SkippedFields("data"))
 		node := got["typed"].([]any)[0].(map[string]any)
-		if slices.Contains([]string{"meta", "opaque", "flags"}, field) {
+		if slices.Contains([]string{"meta", "opaque", "flags", "any"}, field) {
 			node[field] = "changed"
 		} else {
 			node["value"].(map[string]any)[field] = "changed"

@@ -1,0 +1,17 @@
+fixtures:
+  - id: ut-parser/json-anydata-strict-unprefixed
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: an unprefixed unknown member directly in an anydata, anydata_strict; lydjson_get_snode takes the parent's module
+    rfc: ["RFC7950#7.10", "RFC7951#5.3"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: json
+      data_type: data
+      data: '{"a:any":{"missing":1}}'
+      parse_only: true
+      parse_options: [anydata_strict]
+      unknown: skip
+    golden: golden/json-anydata-strict-unprefixed.json

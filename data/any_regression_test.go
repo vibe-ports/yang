@@ -155,8 +155,9 @@ func TestAnyMixedComparedAndMergedWithTree(t *testing.T) {
 	}
 }
 
-// The engine cannot yet replay any-core fixtures (U-0043), so compare the
-// internal payload directly with the oracle's flags after reparsing text.
+// This pointer-level fixture cannot yet be replayed by the engine (U-0112),
+// so compare the internal payload with the oracle's flags after reparsing text.
+
 func TestAnyReparseFlagsGolden(t *testing.T) {
 	g := anyGoldenSteps(t, "dup-xml-text-reparse")
 	if len(g) != 3 || len(g[0].Typed) != 1 || g[0].Typed[0].Any == nil || len(g[1].Typed) != 2 {

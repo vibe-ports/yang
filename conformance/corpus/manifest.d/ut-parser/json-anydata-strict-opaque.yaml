@@ -1,0 +1,17 @@
+fixtures:
+  - id: ut-parser/json-anydata-strict-opaque
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # hand-written: anydata_strict keeps an inherited LYD_PARSE_OPAQ, so an invalid known payload value becomes opaque
+    rfc: ["RFC7950#7.10", "RFC7951#5.3"]
+    areas: [codecs]
+    request:
+      op: data
+      searchdirs: [a.1]
+      modules: [{name: a}]
+      format: json
+      data_type: data
+      data: '{"a:any":{"a:foo3":"abc","a:c":{"y":[300]}}}'
+      parse_only: true
+      parse_options: [anydata_strict]
+      unknown: opaque
+    golden: golden/json-anydata-strict-opaque.json

@@ -21,6 +21,7 @@ import (
 type jsonParser struct {
 	lc           *lydCtx
 	lx           *lyjson.Lexer
+	input        []byte
 	strict, opaq bool
 	// opqFirst is the first opaque child of a parent (nil: the top level) with a name and module
 	// name, for parseAttribute. JSON opaque nodes are only ever appended, so the first one stays.
@@ -44,8 +45,7 @@ func (p *jsonParser) insertOpaq(parent, n *Node) {
 // parseJSON is lyd_parse_json without a bare value: every member of the top-level object (only
 // the first one under LYD_INTOPT_NO_SIBLINGS) as children of lc.parent (the top level when nil),
 // then the metadata that still wait for their node, and the operation checks of an operation
-// parse. RESTCONF envelopes are not ported; anydata/anyxml instances fail with
-// yang.ErrUnsupported (deviations.md U-0043).
+// parse. RESTCONF envelopes are not ported.
 func parseJSON(lc *lydCtx, in []byte) error {
 	lx, err := lyjson.New(in)
 	if err != nil {
@@ -54,7 +54,7 @@ func parseJSON(lc *lydCtx, in []byte) error {
 	}
 	lc.log.pushInput(func() int { return int(lx.Line()) }) //nolint:gosec // line numbers fit
 	defer lc.log.popInput()
-	p := &jsonParser{lc: lc, lx: lx, strict: lc.opts.Unknown == Reject, opaq: lc.opts.Unknown == Opaque,
+	p := &jsonParser{lc: lc, lx: lx, input: in, strict: lc.opts.Unknown == Reject, opaq: lc.opts.Unknown == Opaque,
 		opqFirst: map[opqKey]*Node{}}
 	if lc.parent != nil {
 		// the parent's existing opaque children are found by name as libyang's sibling search
@@ -203,12 +203,12 @@ func (p *jsonParser) getSnode(isAttr bool, prefix, name string, parent *Node) (*
 	}
 	switch {
 	case prefix != "":
-	case lc.opts.anyContent:
-	case parent != nil:
+	case parent != nil: // before anyContent, as in libyang: a payload member takes its parent's module
 		mod = nil
 		if parent.schema != nil {
 			mod = parent.schema.Module
 		}
+	case lc.opts.anyContent:
 	default:
 		if isAttr {
 			name = "@" + name
@@ -966,6 +966,83 @@ func (p *jsonParser) parseInstanceTerm(sn *schema.Node, h types.Hints, parent *N
 	return node, rc
 }
 
+// parseAny is lydjson_parse_any: object payloads are parsed in the same lexer
+// under the any node; other anyxml values are stored with their JSON hints.
+func (p *jsonParser) parseAny(sn *schema.Node, parent *Node, status *lyjson.Token) (*Node, error) {
+	lc := p.lc
+	switch *status {
+	case lyjson.TokenObject:
+	case lyjson.TokenArray, lyjson.TokenNumber, lyjson.TokenString, lyjson.TokenFalse,
+		lyjson.TokenTrue, lyjson.TokenNull:
+		if sn.Kind == schema.AnyData {
+			return nil, errNot
+		}
+	default:
+		return nil, errNot
+	}
+	if err := lc.countNode(); err != nil {
+		return nil, err
+	}
+	var value *string
+	var hints types.Hints
+	switch *status {
+	case lyjson.TokenArray:
+		// The lexer has consumed '[' and skipped whitespace before the first
+		// value. libyang captures from here and prepends '[', so only this
+		// initial whitespace is omitted from the stored array text.
+		start := p.lx.Offset()
+		if err := p.dataSkip(); err != nil {
+			return nil, err
+		}
+		end := p.lx.Offset()
+		for end > start && strings.ContainsRune(" \t\r\n", rune(p.input[end-1])) {
+			end--
+		}
+		s := "[" + string(p.input[start:end])
+		value, hints = &s, hintList|hintLeafList
+	case lyjson.TokenString:
+		s := p.lx.Value()
+		value, hints = &s, types.HintString|types.HintNum64
+	case lyjson.TokenNumber:
+		s := p.lx.Value()
+		value, hints = &s, types.HintDecNum
+	case lyjson.TokenFalse, lyjson.TokenTrue:
+		s := p.lx.Value()
+		value, hints = &s, types.HintBoolean
+	case lyjson.TokenNull:
+		hints = types.HintEmpty
+	}
+	w := newAnyWork(lc.ctx, lc.opts.Budget)
+	node, _, err := w.createAny(lc.tree, sn, nil, value, hints, true, false)
+	if err != nil {
+		return nil, err
+	}
+	node.flags = lc.newFlags()
+	lc.nodeInsert(parent, nil, node)
+	if *status != lyjson.TokenObject {
+		return node, nil
+	}
+	strict, opaq, anyContent := p.strict, p.opaq, lc.opts.anyContent
+	defer func() { p.strict, p.opaq, lc.opts.anyContent = strict, opaq, anyContent }()
+	// LYD_PARSE_ANYDATA_STRICT adds STRICT and keeps an inherited OPAQ; otherwise STRICT off, OPAQ on.
+	p.strict, p.opaq, lc.opts.anyContent = lc.opts.AnyDataStrict, opaq || !lc.opts.AnyDataStrict, true
+	var rc error
+	for {
+		if r := p.subtree(node); r != nil {
+			if rc = r; lc.fatal(r) {
+				return node, rc
+			}
+		}
+		if *status = p.lx.Status(); *status != lyjson.TokenObjectNext {
+			break
+		}
+	}
+	if r := p.metadataFinish(node); r != nil {
+		return node, r
+	}
+	return node, rc
+}
+
 // parseInstance is lydjson_parse_instance: one instance of sn, or an opaque node when the input
 // does not fit it and LYD_PARSE_OPAQ is set.
 func (p *jsonParser) parseInstance(parent *Node, sn *schema.Node, name, prefix string, status *lyjson.Token) (*Node, error) {
@@ -981,8 +1058,7 @@ func (p *jsonParser) parseInstance(parent *Node, sn *schema.Node, name, prefix s
 		case sn.Kind == schema.Leaf || sn.Kind == schema.LeafList:
 			node, rc = p.parseInstanceTerm(sn, h, parent, status)
 		case isAny(sn):
-			return nil, fmt.Errorf("%w: %s %q instance (anydata/anyxml data, deviations.md U-0043)",
-				yang.ErrUnsupported, nodetypeStr(sn.Kind), sn.Name)
+			node, rc = p.parseAny(sn, parent, status)
 		default:
 			node, rc = p.parseInstanceInner(sn, parent, status)
 		}

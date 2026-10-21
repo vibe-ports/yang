@@ -46,7 +46,7 @@ var seqContextKeys = set("searchdirs", "modules", "context_options")
 // seqUnsupported are the oracle's step kinds and edits package data has no public API for.
 var seqUnsupported = map[string]string{
 	"insert_opaq": "(lyd_new_opaq / lyd_new_opaq2 are exported in M5 with the envelopes, U-0107)",
-	"any_direct":  "(native pointer-level any-value calls have no public Go equivalent, U-0043)",
+	"any_direct":  "(native pointer-level any-value calls have no public Go equivalent, U-0112)",
 }
 
 // seqOptionUnsupported is the reason a step's options cannot be expressed with the public API,
@@ -311,7 +311,7 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 			if c := str(st, "case", ""); c == "dup_siblings_into_empty_anydata" || c == "dup_siblings_into_empty_anyxml" {
 				return fmt.Errorf("%w: opaque source construction has no public Go equivalent, U-0107", ErrUnsupported)
 			}
-			return fmt.Errorf("%w: native pointer-level any-value calls have no public Go equivalent, U-0043", ErrUnsupported)
+			return fmt.Errorf("%w: native pointer-level any-value calls have no public Go equivalent, U-0112", ErrUnsupported)
 		}
 		if err != nil {
 			if rc, err = rcOf(err); err != nil {
@@ -348,7 +348,9 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 		so["rc"] = codeJSON(rc)
 		so["typed"] = []any{}
 		if tree != nil {
-			so["typed"] = typedJSON(tree)
+			if so["typed"], err = typedJSON(tree); err != nil {
+				return err
+			}
 		}
 		if strings.HasPrefix(what, "diff") {
 			if err := diffOut(diff, so, func(ds []yang.Diagnostic) {

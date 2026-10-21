@@ -135,7 +135,7 @@ func (t *Tree) applyR(parent, dn *Node, cb func(diff, node *Node) error, cache *
 			if match = t.findMatch(sib, dn, true, cache); match == nil {
 				return t.noInstErr(dn)
 			}
-			if isAny(dn.schema) { // their values are M5 (U-0043)
+			if isAny(dn.schema) { // their values await the public diff surface (U-0112)
 				return fmt.Errorf("data: applying a replace of %s %q: %w", nodetypeStr(dn.schema.Kind), dn.Name(), ErrUnsupported)
 			}
 			if rc := t.changeTerm(match, dn.value.Canonical()); rc != "" && rc != "LY_EEXIST" {

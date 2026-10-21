@@ -210,7 +210,7 @@ func (t *Tree) reverseSiblingsR(sib *siblings) error {
 				if err := t.reverseDefault(n); err != nil {
 					return err
 				}
-			case schema.AnyData, schema.AnyXML: // their values are M5 (U-0043)
+			case schema.AnyData, schema.AnyXML: // their values await the public diff surface (U-0112)
 				return fmt.Errorf("data: reversing a replace of %s %q: %w", nodetypeStr(n.schema.Kind), n.Name(), ErrUnsupported)
 			case schema.LeafList:
 				if err := t.reverseDefault(n); err != nil {

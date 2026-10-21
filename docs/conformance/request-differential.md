@@ -123,8 +123,8 @@ from the earlier r7 cache evidence above. Pairwise counts are reported separatel
 | B class | Registry ID | Capability gap | Single-field |
 |---|---|---|---:|
 | `ordered-input` | D-0058 | `LYD_PARSE_ORDERED` input ordering | 39 |
-| `anydata-anyxml` | U-0043 | Actual anydata/anyxml payload instances | 0 |
-| `any-direct` | U-0043 | `any_direct` step: native pointer-level any-value calls | 210 |
+| `anydata-anyxml` | U-0043 | XML anydata/anyxml payload instances | 0 |
+| `any-direct` | U-0112 | `any_direct` step: native pointer-level any-value calls | 210 |
 | `dup-no-lyds` | U-0105 | Duplication without value ordering | 2 |
 | `split-validation` | U-0106 | Final-only / not-final validation entry points | 7 |
 | `operation-parent` | U-0106 | Operation input into an existing parent, or reply into an opaque request | 581 |
@@ -152,7 +152,7 @@ Notification envelopes are B under that row, not library behaviour deviations.
 The eight logged empty-envelope input-presence failures
 (JSON/XML, both envelopes, root/sequence parse) are also B under U-0110; they
 belong to the separate presence test and are not added to matrix totals.
-Existing IDs retain their scope. In particular, U-0043 covers actual payloads,
+Existing IDs retain their scope. In particular, U-0043 covers XML payloads,
 not merely the `anydata_strict` option, and U-0107 covers opaque construction,
 not envelope parsing.
 

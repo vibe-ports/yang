@@ -12,6 +12,7 @@ import (
 
 	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/data"
+	"github.com/vibe-ports/yang/internal/anyview"
 	"github.com/vibe-ports/yang/internal/printopts"
 )
 
@@ -31,10 +32,8 @@ var dataPresets = map[string]func(*data.ParseOptions){
 }
 
 var parseFlags = map[string]func(*data.ParseOptions){
-	"when_true": func(o *data.ParseOptions) { o.WhenTrue = true },
-	// This option changes only anydata payload parsing. Parse itself refuses
-	// anydata instances under U-0043; ordinary nodes are unaffected.
-	"anydata_strict":        func(*data.ParseOptions) {},
+	"when_true":             func(o *data.ParseOptions) { o.WhenTrue = true },
+	"anydata_strict":        func(o *data.ParseOptions) { o.AnyDataStrict = true },
 	"only":                  func(o *data.ParseOptions) { o.ParseOnly = true },
 	"no_state":              func(o *data.ParseOptions) { o.NoState = true },
 	"store_only":            func(o *data.ParseOptions) { o.StoreOnly = true },
@@ -136,7 +135,9 @@ func runData(r Request, s *yang.Schema, resp map[string]any, exec executionConte
 		if resp["tree"], err = printRequestTree(tree, nil, p, wd); err != nil {
 			return err
 		}
-		resp["typed"] = typedJSON(tree)
+		if resp["typed"], err = typedJSON(tree); err != nil {
+			return err
+		}
 		return printRequestSubtree(tree, p, resp, wd)
 	}
 	return nil
@@ -295,13 +296,16 @@ func empty(t *data.Tree) bool {
 	return true
 }
 
-// typedJSON is lyoracle.c typed_json without the skipped fields (Yang.SkippedFields).
-func typedJSON(tree *data.Tree) []any {
+// typedJSON is lyoracle.c typed_json, including any values and payload descendants.
+func typedJSON(tree *data.Tree) ([]any, error) {
 	out := []any{}
 	for top := range tree.Top() {
-		for n := range top.All() {
+		stack := []*data.Node{top}
+		for len(stack) > 0 {
+			n := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
 			f := n.Flags()
-			o := map[string]any{"path": n.Path(), "schema": nil, "kind": "opaque", "value": nil, "opaque": nil,
+			o := map[string]any{"path": n.Path(), "schema": nil, "kind": "opaque", "value": nil, "opaque": nil, "any": nil,
 				"flags": map[string]any{"default": f&data.FlagDefault != 0, "when_true": f&data.FlagWhenTrue != 0,
 					"new": f&data.FlagNew != 0}}
 			sn := n.Schema()
@@ -337,10 +341,34 @@ func typedJSON(tree *data.Tree) []any {
 				meta = append(meta, map[string]any{"module": module, "name": m.Name(), "value": m.Value()})
 			}
 			o["meta"] = meta
+			children := []*data.Node{}
+			if view, ok := anyview.Inspect(n); ok {
+				value := map[string]any{"value_type": view.Type, "text": view.Text}
+				if view.Type == "datatree" {
+					text, present, err := n.AnyValueString(data.FormatJSON)
+					if err != nil {
+						return nil, unsupported(err)
+					}
+					if present {
+						value["text"] = text
+					}
+				}
+				o["any"] = value
+				for _, child := range view.Children {
+					children = append(children, child.(*data.Node))
+				}
+			} else {
+				for child := range n.Children() {
+					children = append(children, child)
+				}
+			}
 			out = append(out, o)
+			for i := len(children) - 1; i >= 0; i-- {
+				stack = append(stack, children[i])
+			}
 		}
 	}
-	return out
+	return out, nil
 }
 
 // valueTypeRef is lyoracle.c add_type_ref, for a stored or declared member type.
@@ -442,7 +470,9 @@ func runOp(r Request, s *yang.Schema, resp map[string]any, typ data.OpType, oper
 				data.ParseOpOptions{Unknown: unknown, Request: req.Op})
 			diags = append(diags, diagsJSON(d, "data")...)
 			if perr != nil {
-				resp["request_typed"] = typedJSON(req.Tree) // what the failed reply left of the request
+				if resp["request_typed"], err = typedJSON(req.Tree); err != nil { // what the failed reply left of the request
+					return err
+				}
 			}
 		}
 	} else {
@@ -478,7 +508,9 @@ func runOp(r Request, s *yang.Schema, resp map[string]any, typ data.OpType, oper
 	if resp["tree"], err = printRequestTree(res.Tree, first, p, wd); err != nil {
 		return err
 	}
-	resp["typed"] = typedJSON(res.Tree)
+	if resp["typed"], err = typedJSON(res.Tree); err != nil {
+		return err
+	}
 	return printRequestSubtree(res.Tree, p, resp, wd)
 }
 
