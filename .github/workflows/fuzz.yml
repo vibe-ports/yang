@@ -1,15 +1,27 @@
 name: fuzz
 on:
   schedule:
-    - cron: "17 2 * * 1"
+    - cron: "17 2 * * *"
   workflow_dispatch:
-permissions:
-  contents: read
-  packages: read
+    inputs:
+      target:
+        description: "Optional package/FuzzName, for example data/FuzzM4DiffApply"
+        required: false
+        type: string
+      fuzztime:
+        description: "Time per target (default 4m)"
+        required: false
+        default: "4m"
+        type: string
+permissions: {}
 jobs:
   fuzz:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    runs-on: ubuntu-24.04 # amd64, matching ci.yml and the canonical oracle architecture
+    timeout-minutes: 44
+    permissions:
+      contents: read
+      packages: read
+      issues: write # Only this job files crasher issues; it never pushes commits.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -21,13 +33,152 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: devcontainers/ci@513af61f4de4f75d37e4438f184ba4358f0fc1ca # v0.3.1900000450
+        env:
+          FUZZ_TARGET: ${{ inputs.target || '' }}
+          FUZZ_TIME: ${{ inputs.fuzztime || '4m' }}
         with:
           imageName: ghcr.io/vibe-ports/yang-dev
           cacheFrom: ghcr.io/vibe-ports/yang-dev
           push: never
-          runCmd: make fuzz FUZZTIME=20s
+          # Leave platform unset: devcontainers/ci otherwise requests an OCI export,
+          # which the runner's default Docker driver cannot provide.
+          env: |
+            FUZZ_TARGET
+            FUZZ_TIME
+          runCmd: |
+            set -euo pipefail
+            root=$PWD
+            targets=()
+            # Discover both modules from go test -list; the oracle target needs its build tag.
+            for module in . conformance; do
+              packages=$(cd "$module" && go list ./...)
+              for pkg in $packages; do
+                dir=$(cd "$module" && go list -f '{{.Dir}}' "$pkg")
+                rel=${dir#"$root"/}
+                if [[ "$module" == conformance ]]; then
+                  listed=$(cd "$module" && go test -tags oracle -list '^Fuzz' "$pkg")
+                else
+                  listed=$(go test -list '^Fuzz' "$pkg")
+                fi
+                while IFS= read -r name; do
+                  [[ "$name" =~ ^Fuzz[A-Za-z0-9_]+$ ]] || continue
+                  id="$rel/$name"
+                  [[ "$dir" == "$root" ]] && id=$name
+                  targets+=("$id|$module|$pkg|$rel|$name")
+                done <<< "$listed"
+              done
+            done
+            ((${#targets[@]} > 0)) || { echo 'No fuzz targets found' >&2; exit 1; }
+            mapfile -t targets < <(printf '%s\n' "${targets[@]}" | sort)
+            fuzztime=${FUZZ_TIME:-4m}
+            [[ "$fuzztime" =~ ^([1-9][0-9]*)(s|m)$ ]] || { echo 'Invalid fuzztime' >&2; exit 1; }
+            ((${#BASH_REMATCH[1]} <= 2)) || { echo 'Fuzztime exceeds job budget' >&2; exit 1; }
+            seconds=${BASH_REMATCH[1]}
+            [[ ${BASH_REMATCH[2]} == m ]] && seconds=$((seconds * 60))
+            limit=360
+            [[ -n "${FUZZ_TARGET:-}" ]] && limit=1800
+            ((seconds <= limit)) || { echo 'Fuzztime exceeds job budget' >&2; exit 1; }
+            if [[ -n "${FUZZ_TARGET:-}" ]]; then
+              selected=()
+              for entry in "${targets[@]}"; do
+                [[ "${entry%%|*}" == "$FUZZ_TARGET" ]] && selected+=("$entry")
+              done
+              ((${#selected[@]} == 1)) || { echo "Unknown target: $FUZZ_TARGET" >&2; exit 1; }
+            else
+              # Five consecutive sorted targets per UTC day-of-year; reset on January 1.
+              groups=$(((${#targets[@]} + 4) / 5))
+              day=$(date -u +%j)
+              start=$((((10#$day - 1) % groups) * 5))
+              selected=("${targets[@]:start:5}")
+              echo "UTC day $day: group $((start / 5 + 1))/$groups (${#selected[@]} targets)"
+            fi
+            printf '%s\n' "${selected[@]}"
+            : > .fuzz-failures.tsv
+            for entry in "${selected[@]}"; do
+              IFS='|' read -r id module pkg rel name <<< "$entry"
+              if [[ "$module" == conformance ]]; then make oracle; break; fi
+            done
+            for entry in "${selected[@]}"; do
+              IFS='|' read -r id module pkg rel name <<< "$entry"
+              seed_dir="$rel/testdata/fuzz/$name"
+              marker=$(mktemp)
+              echo "== $id ($fuzztime)"
+              if [[ "$module" == conformance ]]; then
+                (cd conformance && TZ=UTC YANG_ORACLE_CACHE= YANG_ORACLE_REQUIRED=1 \
+                  go test -tags oracle -run '^$' -fuzz "^$name$" -fuzztime "$fuzztime" "$pkg") && ok=1 || ok=0
+              else
+                go test -run '^$' -fuzz "^$name$" -fuzztime "$fuzztime" "$pkg" && ok=1 || ok=0
+              fi
+              if ((ok == 0)); then
+                seed=''
+                [[ -d "$seed_dir" ]] && seed=$(find "$seed_dir" -maxdepth 1 -type f -newer "$marker" -print -quit)
+                printf '%s\t%s\t%s\t%s\t%s\n' "$id" "$module" "$pkg" "$name" "$seed" >> .fuzz-failures.tsv
+              fi
+              rm -f "$marker"
+            done
+            [[ ! -s .fuzz-failures.tsv ]]
       - if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: fuzz-crashers
           path: "**/testdata/fuzz/**"
+          retention-days: 30
+      - name: File or update crasher issues
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import base64
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+          import tempfile
+
+          failures = Path('.fuzz-failures.tsv')
+          if not failures.exists():
+              raise SystemExit('Fuzz failed before a target ran; no crasher issue to file')
+          repo = os.environ['GITHUB_REPOSITORY']
+          run_url = f"{os.environ['GITHUB_SERVER_URL']}/{repo}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
+          for line in failures.read_text().splitlines():
+              target_id, module, pkg, name, seed = line.split('\t')
+              title = f'fuzz crasher: {target_id}'
+              if module == 'conformance':
+                  rerun = ("DEV_PLATFORM=linux/amd64 ./dev bash -lc "
+                           f"'make oracle && cd conformance && YANG_ORACLE_CACHE= YANG_ORACLE_REQUIRED=1 "
+                           f"go test -tags oracle -run ^$ -fuzz ^{name}$ -fuzztime=4m {pkg}'")
+              else:
+                  rerun = f"./dev go test -run '^$' -fuzz '^{name}$' -fuzztime=4m {pkg}"
+              body = [f'Latest failing run: {run_url}', f'Target: `{target_id}`',
+                      'Full crasher corpus: `fuzz-crashers` artifact on that run.',
+                      f'Re-run: `{rerun}`']
+              if seed and Path(seed).is_file():
+                  data = Path(seed).read_bytes()
+                  if len(data) <= 16384:
+                      body += [f'Commit as `{seed}` after decoding this complete Go fuzz seed:',
+                               f"```sh\nmkdir -p {Path(seed).parent}\n"
+                               f"base64 -d > {seed} <<'SEED'\n"
+                               f"{base64.b64encode(data).decode()}\nSEED\n```"]
+                  else:
+                      body.append(f'`{seed}` is {len(data)} bytes (over the 16 KiB inline cap); download it from the artifact.')
+              else:
+                  body.append('No new seed file was captured; inspect the run log and artifact.')
+              with tempfile.NamedTemporaryFile(mode='w', suffix='.md') as file:
+                  file.write('\n\n'.join(body) + '\n')
+                  file.flush()
+                  result = subprocess.run(['gh', 'issue', 'list', '--repo', repo, '--state', 'all',
+                                           '--limit', '10000',
+                                           '--json', 'number,title,state'], check=True, capture_output=True, text=True)
+                  matches = [issue for issue in json.loads(result.stdout) if issue['title'] == title]
+                  if matches:
+                      issue = matches[0]
+                      if issue['state'] == 'CLOSED':
+                          subprocess.run(['gh', 'issue', 'reopen', str(issue['number']), '--repo', repo], check=True)
+                      # Keep earlier inputs in comments even after the artifact expires.
+                      subprocess.run(['gh', 'issue', 'comment', str(issue['number']), '--repo', repo,
+                                      '--body-file', file.name], check=True)
+                  else:
+                      subprocess.run(['gh', 'issue', 'create', '--repo', repo, '--title', title,
+                                      '--body-file', file.name], check=True)
+          PY
