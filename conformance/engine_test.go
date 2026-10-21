@@ -30,8 +30,10 @@ func TestDataOptionsPresetsMatchDparamsOf(t *testing.T) {
 	config.NoState, config.Validate.NoState = true, true
 	get := neutral
 	get.ParseOnly = true
+	get.Validate = data.ValidateOptions{}
 	getconfig := neutral
 	getconfig.ParseOnly, getconfig.NoState = true, true
+	getconfig.Validate = data.ValidateOptions{}
 
 	for _, tc := range []struct {
 		name string
@@ -62,6 +64,47 @@ func TestDataOptionsPresetsMatchDparamsOf(t *testing.T) {
 			}
 			if got != tc.want {
 				t.Errorf("dataOptions(%v) = %+v, want %+v", p, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestSequenceParseOnlyStopsAfterFirstInvalidValue(t *testing.T) {
+	for _, tc := range []struct {
+		name, format, input, wantPath, wantMessage string
+	}{
+		{"json", "json", `{"pv2:c":{"u":"","dec":"48"}}`, "/pv2:c/u", "Invalid union value"},
+		{"xml", "xml", `<c xmlns="urn:vibe-ports:yang:conformance:pv2"><u></u><dec>48</dec></c>`, "/pv2:c/u", "Invalid union value"},
+		{"valid-before-invalid", "json", `{"pv2:c":{"dec":"1","u":""}}`, "/pv2:c/u", "Invalid union value"},
+		{"range-before-union", "json", `{"pv2:c":{"dec":"48","u":""}}`, "/pv2:c/dec", "Unsatisfied range"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resp, err := (Yang{}).Run(Request{BaseDir: filepath.Join("corpus", "protocol-v2"), Params: map[string]any{
+				"op": "sequence", "searchdirs": []any{"schemas"},
+				"modules":         []any{map[string]any{"name": "pv2"}},
+				"context_options": []any{"no_yanglibrary"},
+				"steps": []any{
+					map[string]any{"do": "parse", "format": tc.format, "data_type": "config", "parse_only": true, "data": tc.input},
+					map[string]any{"do": "dump", "with_defaults": "explicit"},
+				},
+			}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := resp["failed_step"]; fmt.Sprint(got) != "0" {
+				t.Errorf("failed_step = %v, want 0", got)
+			}
+			steps := resp["steps"].([]any)
+			parse := steps[0].(map[string]any)
+			if got := parse["rc"].(map[string]any)["name"]; got != "LY_EVALID" {
+				t.Errorf("parse rc = %v, want LY_EVALID", got)
+			}
+			diags := parse["diagnostics"].([]any)
+			if len(diags) != 1 {
+				t.Fatalf("diagnostics = %#v, want one value error", diags)
+			}
+			if msg := fmt.Sprint(diags[0]); !strings.Contains(msg, tc.wantMessage) || !strings.Contains(msg, tc.wantPath) {
+				t.Errorf("first diagnostic = %s, want %s at %s", msg, tc.wantMessage, tc.wantPath)
 			}
 		})
 	}

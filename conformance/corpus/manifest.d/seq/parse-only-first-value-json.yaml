@@ -1,0 +1,8 @@
+fixtures:
+  - id: seq/parse-only-first-value-json
+    dir: protocol-v2
+    source: {url: "https://github.com/vibe-ports/yang/issues/272", commit: null, license: BSD-3-Clause}
+    rfc: [] # libyang parser error continuation
+    areas: [types, operations]
+    request: {"context_options":["no_yanglibrary"],"modules":[{"name":"pv2"}],"op":"sequence","searchdirs":["schemas"],"steps":[{"data":"{\"pv2:c\":{\"u\":\"\",\"dec\":\"48\"}}","data_type":"config","do":"parse","format":"json","parse_only":true},{"do":"dump","with_defaults":"explicit"}]}
+    golden: golden/seq-parse-only-first-value-json.json

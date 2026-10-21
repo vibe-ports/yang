@@ -1,0 +1,51 @@
+{
+  "context_diagnostics": [],
+  "failed_step": 0,
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "pv2",
+      "revision": null
+    }
+  ],
+  "op": "sequence",
+  "protocol": 2,
+  "rc": {
+    "err": 7,
+    "name": "LY_EVALID"
+  },
+  "steps": [
+    {
+      "diagnostics": [
+        {
+          "apptag": null,
+          "code": {
+            "err": 7,
+            "name": "LY_EVALID"
+          },
+          "data_path": "/pv2:c/u",
+          "level": "error",
+          "line": 1,
+          "msg": "Invalid union value \"\" - no matching subtype found:\n    ly2 integers: Invalid type int8 empty value.\n    ly2 integers: Invalid type uint8 empty value.\n    ly2 string: Unsatisfied length - string \"\" length is not allowed.\n",
+          "phase": "parse",
+          "schema_path": null,
+          "vecode": 9,
+          "vecode_name": "LYVE_DATA"
+        }
+      ],
+      "do": "parse",
+      "rc": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "typed": []
+    },
+    {
+      "do": "dump",
+      "skipped": true
+    }
+  ],
+  "verdict": "invalid"
+}

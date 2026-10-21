@@ -168,7 +168,7 @@ func str(p map[string]any, k, def string) string {
 }
 
 // dataOptions is lyoracle.c dparams_of: the data_type preset, unknown policy,
-// parse_only, parse_options and validate_options (LYD_VALIDATE_MULTI_ERROR always set).
+// parse_only, parse_options and validate_options (LYD_VALIDATE_MULTI_ERROR initially set).
 func dataOptions(p map[string]any, exec executionContext) (data.ParseOptions, error) {
 	o := data.ParseOptions{Validate: data.ValidateOptions{MultiError: true}}
 	// An absent data_type selects data-operational (lyoracle.c:1215).
@@ -191,10 +191,16 @@ func dataOptions(p map[string]any, exec executionContext) (data.ParseOptions, er
 		set(&o)
 	}
 	// dparams_of always constructs both flag words (lyoracle.c:1205-1260), but callers select
-	// which one reaches libyang: parse_one suppresses vopts for parse-only data (1273-1287),
+	// which one reaches libyang: parse_one suppresses vopts for parse-only data (1273-1287).
+	// Without LYD_VALIDATE_MULTI_ERROR, LY_DPARSER_ERR_GOTO stops at the first value error
+	// (parser_internal.h:39-47), in both parser_json.c:1472-1475 and parser_xml.c:768-770.
+	// The same flag word reaches the LYB parser, whose lyb_parse_node_leaf returns the first
+	// term error directly (parser_lyb.c:1428-1430, 1624-1632).
+	//
 	// edit merge passes popts and zero vopts (2193-2229), and validate passes vopts only
 	// (2160-2188). The dispatch-owned context is authoritative; a root "do" key is ignored.
 	if (o.ParseOnly || o.StoreOnly || exec == execStepEdit) && exec != execStepValidate {
+		o.Validate = data.ValidateOptions{}
 		return o, nil
 	}
 	for _, f := range list(p["validate_options"]) {
