@@ -3,6 +3,6 @@
   "verdict":{"type":"string","enum":["approve","changes"]},
   "summary":{"type":"string"},
   "findings":{"type":"array","items":{"type":"object","additionalProperties":false,
-   "required":["severity","file","line","problem","fix"],
-   "properties":{"severity":{"type":"string","enum":["high","med","low"]},"file":{"type":"string"},
+   "required":["severity","scope","file","line","problem","fix"],
+   "properties":{"severity":{"type":"string","enum":["high","med","low"]},"scope":{"type":"string","enum":["blocking","follow-up"]},"file":{"type":"string"},
     "line":{"type":"integer"},"problem":{"type":"string"},"fix":{"type":"string"}}}}}}

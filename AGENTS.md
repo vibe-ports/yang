@@ -95,6 +95,10 @@ Flag, most severe first, with file:line and a concrete fix:
 5. Hand-edited goldens; tests that only restate the implementation.
 6. Private details (hosts, paths, personal data, employer) or secrets.
 Do not comment on style that gofmt/golangci-lint already enforce.
+Scope each finding: **blocking** if it is a regression or concerns behaviour the change adds or
+modifies (when unsure, blocking); **follow-up** if the same defect exists on `main` and the change
+does not touch it, or the fix is beyond the change's purpose. Only blocking findings fail the merge
+gate; the maintainer files every follow-up as an issue with its reproducer.
 
 ## Git
 - Work on a branch, open a PR to `main`. Small PRs (≈ one C file or one feature).

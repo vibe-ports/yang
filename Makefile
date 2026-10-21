@@ -10,6 +10,7 @@ ci: mod-verify fmt-check vet lint nocgo test test-386 test-go-min test-oracle te
 test-gates:
 	scripts/test-gates
 	scripts/test-claim
+	scripts/test-astra-gate
 	scripts/test-lyfn
 	scripts/test-goldens-remote
 

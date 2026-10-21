@@ -4,7 +4,8 @@
 #   scripts/astra review --trusted            review fetched origin/main...HEAD (no other base)
 #   scripts/astra design FILE...              critique a design note / task plan
 # Env: ASTRA_MODEL (gpt-6-astra), ASTRA_EFFORT (xhigh), ASTRA_PR (PR number → post as comment).
-# Exit 1 if any high finding or verdict "changes" — usable as a gate.
+# Exit 1 if any blocking finding (or, for design, verdict "changes") — usable as a gate.
+# Review findings carry a scope: blocking ones gate the merge, follow-ups are filed as issues.
 #
 # Merge-gate reviews use --trusted, run as main's copy on a checkout of the PR head:
 #   ASTRA_PR=<n> bash <(git show origin/main:scripts/astra) review --trusted
@@ -62,7 +63,12 @@ case $cmd in
     base=${1:-origin/main}
     prompt="Review the change set \`git diff $base...HEAD\` (commit $sha) of this repo as an adversarial
 reviewer. $rules Focus: correctness vs libyang/RFC, missing oracle fixtures for changed behaviour,
-provenance headers + docs/port-map.md rows, API surface, error handling, concurrency, private data." ;;
+provenance headers + docs/port-map.md rows, API surface, error handling, concurrency, private data.
+Give every finding a scope. blocking: a regression, or a defect in behaviour this change adds or
+modifies (including code paths it newly reaches, missing oracle fixtures for that behaviour, and
+anything in the rules list for the changed lines). follow-up: a defect in behaviour the change
+does not touch (it exists on origin/main too), or work beyond what the change sets out to do. When
+unsure, it is blocking. The verdict is approve exactly when no finding is blocking." ;;
   design)
     [[ $# -gt 0 ]] || { echo "design needs files" >&2; exit 2; }
     prompt="Critique this design/task plan before implementation: $*. $rules Focus: wrong RFC/libyang
@@ -74,24 +80,9 @@ codex exec -m "$model" -c model_reasoning_effort="${ASTRA_EFFORT:-xhigh}" "${cod
   -s read-only --ephemeral --output-schema "$schema" -o "$out" "$prompt" </dev/null >"$out.log" 2>&1 ||
   { echo "codex failed:" >&2; tail -20 "$out.log" >&2; exit 2; }
 
-report=$(python3 - "$out" "$model" "$sha" "$cmd" "$trusted" "$label" <<'PY'
-import json, re, sys
-r = json.load(open(sys.argv[1])); model, sha, cmd, trusted, label = sys.argv[2:7]
-if r.get("verdict") not in ("approve", "changes") or not isinstance(r.get("findings"), list):
-    sys.exit("invalid codex answer")
-n = lambda s: re.sub(r"(?im)^(\s*)VERDICT\s*:", r"\1verdict -", str(s))  # no forged attestations
-bad = r["verdict"] != "approve" or any(f["severity"] == "high" for f in r["findings"])
-verdict = "changes" if bad else "approve"
-print(f"### {model} {cmd} of `{label}`: **{verdict}**\n\n{n(r['summary'])}\n")
-for f in r["findings"]:
-    print(f"- **{f['severity']}** `{n(f['file'])}:{f['line']}` — {n(f['problem'])} → {n(f['fix'])}")
-if cmd == "review" and trusted:
-    print(f"\nVERDICT: {verdict} {sha} (codex-{model})")
-elif cmd == "review":
-    print("\n(untrusted run: not a merge-gate attestation; use --trusted)")
-sys.exit(1 if bad else 0)
-PY
-) && rc=0 || rc=$?
+gate=scripts/astra-gate.py
+if [[ -n $trusted ]]; then gate=$(mktemp); trap 'rm -f "$out" "$out.log" "$schema" "$gate"' EXIT; git show origin/main:scripts/astra-gate.py >"$gate"; fi
+report=$(python3 "$gate" "$out" "$model" "$sha" "$cmd" "$trusted" "$label") && rc=0 || rc=$?
 echo "$report"
 [[ -n ${ASTRA_PR:-} ]] && gh pr comment "$ASTRA_PR" --body "$report" >/dev/null
 exit $rc

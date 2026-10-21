@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Regression tests for scripts/astra-gate.py (the merge-gate decision).
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+t=$(mktemp -d); trap 'rm -rf "$t"' EXIT
+fail=0
+check() { # name want-exit cmd json
+  printf '%s' "$4" >"$t/a.json"
+  if python3 scripts/astra-gate.py "$t/a.json" m sha "$3" 1 lbl >"$t/out" 2>&1; then got=0; else got=$?; fi
+  if [[ $got != "$2" ]]; then echo "FAIL $1: exit $got, want $2"; cat "$t/out"; fail=1; else echo "ok   $1"; fi
+}
+F() { printf '{"severity":"%s","scope":"%s","file":"a.go","line":1,"problem":"p","fix":"f"}' "$1" "$2"; }
+check "approve, no findings" 0 review '{"verdict":"approve","summary":"s","findings":[]}'
+check "changes, no findings fails closed" 1 review '{"verdict":"changes","summary":"incomplete","findings":[]}'
+check "blocking finding" 1 review "{\"verdict\":\"changes\",\"summary\":\"s\",\"findings\":[$(F med blocking)]}"
+check "approve with follow-up only" 0 review "{\"verdict\":\"approve\",\"summary\":\"s\",\"findings\":[$(F high follow-up)]}"
+check "approve claimed but blocking present" 1 review "{\"verdict\":\"approve\",\"summary\":\"s\",\"findings\":[$(F low blocking)]}"
+check "changes with follow-ups only fails closed" 1 review "{\"verdict\":\"changes\",\"summary\":\"s\",\"findings\":[$(F med follow-up)]}"
+check "design high" 1 design "{\"verdict\":\"approve\",\"summary\":\"s\",\"findings\":[$(F high follow-up)]}"
+grep -q 'VERDICT: approve sha (codex-m)' <(printf '%s' '{"verdict":"approve","summary":"s","findings":[]}' >"$t/a.json"; python3 scripts/astra-gate.py "$t/a.json" m sha review 1 lbl) && echo "ok   attestation line" || { echo "FAIL attestation line"; fail=1; }
+exit $fail

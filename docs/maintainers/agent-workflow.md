@@ -38,7 +38,7 @@ family → less correlated blind spots). **codex gpt-5.6-sol/luna** writes indep
    review of `main...HEAD` ending with `VERDICT: <approve|changes> <full HEAD sha> (codex-<model>)`.
    `--trusted` always covers the fetched `origin/main...HEAD` and takes the rules from main's
    `AGENTS.md`, so a PR can neither narrow its review nor rewrite its review rules. Claude fixes or rebuts each finding
-   **in the PR**. Re-run until no `high` and verdict `approve`; after 3 rounds without convergence
+   **in the PR**. Re-run until no blocking finding and verdict `approve` (follow-up findings, defects the change does not touch, become issues instead of rounds); after 3 rounds without convergence
    the maintainer decides. The automatic Claude (`ai-review`) and Codex-app reviews are extra
    eyes; their verdicts are advisory.
 4. **Merge gate** (AGENTS.md, [maintaining.md](maintaining.md) "Merge gate"): `scripts/merge-pr <n>`, run as
