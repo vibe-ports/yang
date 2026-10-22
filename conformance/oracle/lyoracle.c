@@ -2385,7 +2385,7 @@ step_any_direct(struct ly_ctx *ctx, const cJSON *step, cJSON *out, cJSON *diag)
 }
 
 /* lyd_insert_child of the node at "node" (or the retained detached node) under the node at "parent"
- * in the tree, or without a parent lyd_insert_sibling(tree, node, &tree). With "data" the node comes from a second tree parsed as by a
+ * in the tree ("@top": its first top-level node, also an opaque one), or without a parent lyd_insert_sibling(tree, node, &tree). With "data" the node comes from a second tree parsed as by a
  * parse step ("node": a path in it, omitted: its first top-level node, which moves with its siblings
  * as lyd_move_nodes moves them); what is left of the second tree is freed. The step's rc is the
  * parse's, else the insert's (diagnostics phases parse and edit) */
@@ -2429,7 +2429,7 @@ step_insert(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, struc
     } else if (!*tree || lyd_find_path(*tree, npath, 0, &node)) {
         die("insert node %s not found", npath);
     }
-    if (ppath && (!*tree || lyd_find_path(*tree, ppath, 0, &parent))) {
+    if (ppath && !strcmp(ppath, "@top") && *tree) { parent = *tree; } else if (ppath && (!*tree || lyd_find_path(*tree, ppath, 0, &parent))) {
         die("insert parent %s not found", ppath);
     }
     /* libyang links a node into its own subtree without a check (D-0112): refuse the request */

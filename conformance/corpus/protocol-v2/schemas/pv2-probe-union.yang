@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo): hash-leafref-probe's fallback
+// union with a member that also rejects the value, so every member fails.
+module pv2-probe-union {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-probe-union";
+  prefix ppu;
+
+  import e { prefix e; }
+
+  container c {
+    leaf selector { type string; }
+    leaf fallback {
+      type union {
+        type leafref { path "/e:li[e:id=current()/../ppu:selector]/e:id"; }
+        type uint8;
+      }
+    }
+  }
+}

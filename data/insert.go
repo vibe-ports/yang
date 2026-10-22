@@ -991,41 +991,62 @@ func (t *Tree) insert(parent, n *Node, order insertOrder) error {
 // insertPos may perform when it first builds a sorted run. It observes the run
 // before sorting it, so a failed hash charge cannot reorder visible siblings.
 func (t *Tree) preflightInsertPosition(sib *siblings, n *Node, order insertOrder) error {
-	if order != insertDefault || !sortedSupported(n) || len(sib.list) == 0 ||
-		sib.ht == nil || sib.hasRB(n.schema) {
-		return t.work.hashErr
+	amount, err := t.insertPositionBound(sib, n, order)
+	if err != nil {
+		return err
+	}
+	return t.reserveHash(amount)
+}
+
+// insertPositionBound is preflightInsertPosition's amount: zero when insertPos
+// replays no registrations. Otherwise it also covers the following link
+// (linkBound without a key, plus a displaced captured prefix), so a link that
+// follows insertPos's visible changes cannot fail.
+func (t *Tree) insertPositionBound(sib *siblings, n *Node, order insertOrder) (uint64, error) {
+	if order != insertDefault || !sortedSupported(n) || len(sib.list) == 0 || sib.hasRB(n.schema) {
+		return 0, t.work.hashErr
 	}
 	lo, hi := t.runBounds(sib, n)
 	if t.work.hashErr != nil {
-		return t.work.hashErr
+		return 0, t.work.hashErr
 	}
-	if lo == hi || sib.rbTree[sib.list[lo]] || sib.ht == nil {
-		return nil
+	if lo == hi || sib.rbTree[sib.list[lo]] {
+		return 0, nil
 	}
+	// insertPos now sorts the run and builds its RB state, replaying old
+	// registrations of an indexed set, all before link. Reserve the link in the
+	// same check (at any position: it is not known yet), including the child
+	// table an unindexed set creates, so it cannot fail after those changes.
 	var amount uint64
-	for _, old := range sib.list[lo+1 : hi] {
-		if !old.hashed {
-			amount = addHashBound(amount, indexWorkBound(old, nil, nil, &t.work))
+	if sib.ht != nil {
+		for _, old := range sib.list[lo+1 : hi] {
+			if !old.hashed {
+				amount = addHashBound(amount, indexWorkBound(old, nil, nil, &t.work))
+			}
 		}
 	}
-	// insertPos replays old registrations and builds RB state before link.
-	// Reserve the incoming discriminator in the same check so a later link
-	// cannot fail after those visible changes.
-	amount = addHashBound(amount, indexWorkBound(n, nil, nil, &t.work))
-	if parent := sib.list[0].parent; parent != nil && parent.schema != nil &&
-		parent.schema.Kind == schema.List {
+	parent := sib.list[0].parent
+	if parent != nil && parent.schema != nil && (sib.ht != nil || len(sib.list)+1 >= htMinItems) {
+		amount = addHashBound(amount, indexWorkBound(n, nil, nil, &t.work))
+		if sib.ht == nil {
+			for _, old := range sib.list {
+				amount = addHashBound(amount, indexWorkBound(old, nil, nil, &t.work))
+			}
+		}
+	}
+	if parent != nil && parent.schema != nil && parent.schema.Kind == schema.List {
 		if ps := parent.siblingsOf(); ps != nil && ps.ht != nil {
 			amount = addHashBound(amount, indexBatchInsertedBound(parent, []*Node{n}, &t.work))
+			if parent.keyN < len(parent.schema.Keys) {
+				// The sort can move any child into the incomplete compared prefix.
+				amount = addHashBound(amount, indexAnyOrderBound(parent, n, &t.work))
+			}
+		}
+		if parent.lkeyFrozen == nil {
+			amount = addHashBound(amount, uint64(parent.lkeyN)) //nolint:gosec // a child count is nonnegative
 		}
 	}
-	if t.work.hashErr != nil {
-		return t.work.hashErr
-	}
-	if err := t.work.checkHashWork(amount); err != nil {
-		t.work.hashErr = err
-		return err
-	}
-	return nil
+	return amount, t.work.hashErr
 }
 
 // preflightInsertAnchor resolves the cold schema hashes that insertPos may
@@ -1074,20 +1095,19 @@ func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) error {
 	if t.work.hashErr != nil {
 		return t.work.hashErr
 	}
-	if n.schema != nil && n.schema.IsKey() && parent != nil {
-		if err := t.work.checkTermHash(parent, n.schema, n.value, at); err != nil {
-			t.work.hashErr = err
-			return err
-		}
-	} else if n.schema != nil && parent != nil && parent.schema != nil && parent.schema.Kind == schema.List &&
-		at < parent.lkeyN && parent.lkeyFrozen == nil {
+	if n.schema != nil && !n.schema.IsKey() && parent != nil && parent.schema != nil &&
+		parent.schema.Kind == schema.List && at < parent.lkeyN && parent.lkeyFrozen == nil {
 		// Displacing a captured prefix copies its nodes before publishing the
 		// non-key. Reserve that work while the insertion can still fail cleanly.
 		if err := t.work.chargeHash(uint64(parent.lkeyN)); err != nil { //nolint:gosec // a child count is nonnegative
 			return err
 		}
 	}
-	if err := t.preflightLinkIndex(parent, sib, n, at); err != nil {
+	amount, err := t.linkBound(parent, sib, n, at)
+	if err != nil {
+		return err
+	}
+	if err := t.reserveHash(amount); err != nil {
 		return err
 	}
 	t.touch(sib)
@@ -1139,10 +1159,27 @@ func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) error {
 	return t.work.hashErr
 }
 
-// preflightLinkIndex reserves every destination discriminator before a move
-// unlinks its source record. link calls it again after placement is chosen;
-// immutable name components are cached and the check itself spends no work.
-func (t *Tree) preflightLinkIndex(parent *Node, sib *siblings, n *Node, at int) error {
+// linkBound is all the hash work link performs for n at position at: the key
+// link with its list and ancestor rehash (termHashBound), and every destination
+// discriminator, including a child table the link creates. Callers check it
+// as one total; separate checks could each pass while their sum does not.
+func (t *Tree) linkBound(parent *Node, sib *siblings, n *Node, at int) (uint64, error) {
+	var amount uint64
+	if n.schema != nil && n.schema.IsKey() && parent != nil {
+		a, err := t.work.termHashBound(parent, n.schema, n.value, at)
+		if err != nil {
+			t.work.hashErr = err
+			return 0, err
+		}
+		amount = a
+	}
+	amount = addHashBound(amount, t.linkIndexBound(parent, sib, n, at))
+	return amount, t.work.hashErr
+}
+
+// linkIndexBound bounds the destination discriminators of n at position at;
+// immutable name components are cached and the bound itself spends no work.
+func (t *Tree) linkIndexBound(parent *Node, sib *siblings, n *Node, at int) uint64 {
 	var amount uint64
 	if n.schema != nil && parent != nil && parent.schema != nil &&
 		(sib.ht != nil || len(sib.list)+1 >= htMinItems) {
@@ -1155,14 +1192,22 @@ func (t *Tree) preflightLinkIndex(parent *Node, sib *siblings, n *Node, at int) 
 	}
 	if parent != nil && parent.schema != nil && parent.schema.Kind == schema.List &&
 		(n.schema == nil || n.schema.IsKey() || parent.keyN < len(parent.schema.Keys)) {
-		if ps := parent.siblingsOf(); ps != nil && ps.ht != nil && parent.schema != nil &&
-			parent.schema.Kind == schema.List {
+		if ps := parent.siblingsOf(); ps != nil && ps.ht != nil {
 			position := at
 			if n.schema == nil {
 				position = len(parent.kids.list) + len(parent.kids.opq)
 			}
 			amount = addHashBound(amount, indexInsertedBound(parent, n, position, &t.work))
 		}
+	}
+	return amount
+}
+
+// reserveHash checks amount against the remaining operation quota; a failure is
+// sticky for the operation.
+func (t *Tree) reserveHash(amount uint64) error {
+	if t.work.hashErr != nil {
+		return t.work.hashErr
 	}
 	if err := t.work.checkHashWork(amount); err != nil {
 		t.work.hashErr = err
@@ -1175,10 +1220,11 @@ func (t *Tree) preflightLinkIndex(parent *Node, sib *siblings, n *Node, at int) 
 // sorted destination run, so it must not run before the source is known safe.
 func (t *Tree) preflightMoveDestination(parent, n *Node) error {
 	sib := t.childrenOf(parent)
-	if err := t.preflightInsertPosition(sib, n, insertDefault); err != nil {
+	// One total: insertPos's replays, the source removal and the destination.
+	amount, err := t.insertPositionBound(sib, n, insertDefault)
+	if err != nil {
 		return err
 	}
-	var amount uint64
 	if n.schema != nil && parent != nil && parent.schema != nil &&
 		(sib.ht != nil || len(sib.list)+1 >= htMinItems) {
 		amount = addHashBound(amount, indexWorkBound(n, nil, nil, &t.work))
@@ -1195,19 +1241,17 @@ func (t *Tree) preflightMoveDestination(parent, n *Node) error {
 			amount = addHashBound(amount, indexInsertedBound(parent, n, 0, &t.work))
 		}
 	}
+	if parent != nil && parent.schema != nil && parent.schema.Kind == schema.List && n.schema != nil &&
+		!n.schema.IsKey() && parent.lkeyFrozen == nil {
+		// link may displace the captured prefix (its chargeHash); the position is not known yet
+		amount = addHashBound(amount, uint64(parent.lkeyN)) //nolint:gosec // a child count is nonnegative
+	}
 	if old := n.parent; old != nil && old.schema != nil && old.schema.Kind == schema.List {
 		if ps := old.siblingsOf(); ps != nil && ps.ht != nil {
 			amount = addHashBound(amount, indexRemovedBound(old, n, &t.work))
 		}
 	}
-	if t.work.hashErr != nil {
-		return t.work.hashErr
-	}
-	if err := t.work.checkHashWork(amount); err != nil {
-		t.work.hashErr = err
-		return err
-	}
-	return nil
+	return t.reserveHash(amount)
 }
 
 // restoreLink puts a previously linked node back after a failed move or

@@ -59,18 +59,28 @@ func addHashBound(total, next uint64) uint64 {
 // checkTermHash preflights a key link at its final position. A partial positional
 // prefix has no native hash event, even if many copies of its first key follow it.
 func (w *workCounter) checkTermHash(parent *Node, sn *schema.Node, value types.Value, insertionAt ...int) error {
+	amount, err := w.termHashBound(parent, sn, value, insertionAt...)
+	if err != nil {
+		return err
+	}
+	return w.checkHashWork(amount)
+}
+
+// termHashBound is the hash work checkTermHash reserves, for callers that add
+// it to the rest of one link's work and check the total once.
+func (w *workCounter) termHashBound(parent *Node, sn *schema.Node, value types.Value, insertionAt ...int) (uint64, error) {
 	if sn.Kind == schema.LeafList {
-		return w.checkHashWork(types.HashLYBWorkBound(value))
+		return types.HashLYBWorkBound(value), nil
 	}
 	if !sn.IsKey() || parent == nil || parent.schema == nil || len(insertionAt) == 0 {
-		return nil
+		return 0, nil
 	}
 	at := insertionAt[0]
 	if at < parent.lkeyN && parent.lkeyFrozen == nil {
 		// beforeKeyLink copies the captured prefix before publishing the key.
 		prefix := uint64(parent.lkeyN) //nolint:gosec // a count of existing nodes cannot be negative
 		if err := w.chargeHash(prefix); err != nil {
-			return err
+			return 0, err
 		}
 	}
 	// Inspect only the declared positional prefix before considering hash inputs.
@@ -78,7 +88,7 @@ func (w *workCounter) checkTermHash(parent *Node, sn *schema.Node, value types.V
 	for i, key := range parent.schema.Keys {
 		w.Add(1)
 		if err := w.chargeHash(1); err != nil {
-			return err
+			return 0, err
 		}
 		var current *schema.Node
 		switch {
@@ -90,13 +100,13 @@ func (w *workCounter) checkTermHash(parent *Node, sn *schema.Node, value types.V
 			current = parent.kids.list[i-1].schema
 		}
 		if current != key {
-			return nil
+			return 0, nil
 		}
 	}
 	// keyLinked can restart from the list's schema prefix after insertion.
 	schemaHashWork(parent.schema, w)
 	if w.hashErr != nil {
-		return w.hashErr
+		return 0, w.hashErr
 	}
 	// A displaced snapshot or an incomplete old prefix rehashes all leading
 	// keys. An intact prefix hashes only the new suffix.
@@ -108,7 +118,7 @@ func (w *workCounter) checkTermHash(parent *Node, sn *schema.Node, value types.V
 	for i := start; i <= len(parent.kids.list); i++ {
 		w.Add(1)
 		if err := w.chargeHash(1); err != nil {
-			return err
+			return 0, err
 		}
 		if i == at {
 			amount = addHashBound(amount, types.HashLYBWorkBound(value))
@@ -126,10 +136,27 @@ func (w *workCounter) checkTermHash(parent *Node, sn *schema.Node, value types.V
 	if ps := parent.siblingsOf(); ps != nil && ps.ht != nil {
 		amount = addHashBound(amount, indexInsertedBound(parent, &Node{schema: sn, value: value}, at, w))
 		if w.hashErr != nil {
-			return w.hashErr
+			return 0, w.hashErr
 		}
 	}
-	return w.checkHashWork(amount)
+	// keyLinked ends with reindexComparedParent(parent): an outer list whose
+	// compared prefix exposes parent is reindexed in its own siblings.
+	if gp := parent.parent; gp != nil && gp.schema != nil && gp.schema.Kind == schema.List &&
+		gp.keyN < len(gp.schema.Keys) {
+		if gs := gp.siblingsOf(); gs != nil && gs.ht != nil {
+			for i := range gp.schema.Keys {
+				w.Add(1)
+				if positionalChild(gp, i) == parent {
+					amount = addHashBound(amount, indexWorkBound(gp, nil, nil, w))
+					break
+				}
+			}
+			if w.hashErr != nil {
+				return 0, w.hashErr
+			}
+		}
+	}
+	return amount, nil
 }
 
 // checkChangedHash returns the pending native hash work without reserving it:

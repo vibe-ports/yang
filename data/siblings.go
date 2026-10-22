@@ -7,6 +7,7 @@
 package data
 
 import (
+	"cmp"
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
@@ -549,6 +550,40 @@ func indexInsertedBound(list, inserted *Node, at int, work *workCounter) uint64 
 			amount = addHashBound(amount, 32)
 		}
 		amount = addHashBound(amount, 16+2*uint64(len(child.Value())))
+	}
+	return amount
+}
+
+// indexAnyOrderBound bounds list's discriminator with inserted among its
+// children, whatever order they take: the len(Keys) largest compared
+// contributions of all children. A sort of a run can move any child into an
+// incomplete list's positional prefix (positionalChild).
+func indexAnyOrderBound(list, inserted *Node, work *workCounter) uint64 {
+	if list == nil || list.schema == nil || list.schema.Kind != schema.List || list.schema.Keyless() || !list.lkeyOK {
+		return 0
+	}
+	contribution := func(c *Node) uint64 {
+		if work != nil {
+			work.Add(1)
+		}
+		amount := addHashBound(16, 2*uint64(len(c.Value())))
+		if c.schema != nil {
+			indexNameDigest(c.schema, work) // cached per schema node: warmed before the sort
+			amount = addHashBound(amount, 32)
+		}
+		return amount
+	}
+	all := []uint64{contribution(inserted)}
+	for _, c := range list.kids.list {
+		all = append(all, contribution(c))
+	}
+	for _, c := range list.kids.opq {
+		all = append(all, contribution(c))
+	}
+	slices.SortFunc(all, func(a, b uint64) int { return cmp.Compare(b, a) })
+	var amount uint64
+	for _, a := range all[:min(len(all), len(list.schema.Keys))] {
+		amount = addHashBound(amount, a)
 	}
 	return amount
 }

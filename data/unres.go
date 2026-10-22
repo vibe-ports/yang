@@ -467,7 +467,7 @@ func (vc *valCtx) incomplete(n *Node, t *schema.Type, val types.Value) (types.Va
 		return val, tt.err // budget or cancellation
 	}
 	if d != nil {
-		for _, probe := range tt.probes {
+		for _, probe := range tt.logged(t) {
 			_ = vc.xpathErr(probe, n)
 		}
 		return val, vc.log.item(n, nil, false, d.RC(), codeOf(d.Code), d.AppTag, d.Msg)
@@ -517,6 +517,16 @@ type typeTree struct {
 	probes []error // value-probe diagnostics, committed only if validation fails
 	// readOnly skips the leafref linking (printing must not change the tree, D-0128)
 	readOnly bool
+}
+
+// logged is the probe diagnostics validation of type t would have logged. A
+// union's members are tried only by union_find_type, which turns logging off
+// for all of them (plugins_types/union.c:342-343), so none of their probes is.
+func (tt *typeTree) logged(t *schema.Type) []error {
+	if t.Base == schema.Union {
+		return nil
+	}
+	return tt.probes
 }
 
 // LeafrefTarget is lyplg_type_resolve_leafref without the targets: the path with a value

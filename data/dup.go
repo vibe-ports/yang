@@ -279,9 +279,11 @@ func (t *Tree) dupWork(n, parent *Node, top bool, order insertOrder, opts dupOpt
 			children = children[:keys]
 		}
 		for i := len(children) - 1; i >= 0; i-- {
-			cs := sourceSet
-			if children[i].payloadSet != nil {
-				cs = children[i].payloadSet
+			// lyd_dup_r converts each child from LYD_CTX(child) (tree_data.c:2232-2235):
+			// a node inserted from another context keeps its own.
+			cs := ctxOf(children[i])
+			if cs == nil {
+				cs = sourceSet
 			}
 			stack = append(stack, dupFrame{tree: childTree, src: children[i], parent: d,
 				sourceSet: cs, dest: childDest, order: insertLast, opts: childOpts, payload: isAny(d.schema)})
@@ -306,11 +308,6 @@ func (t *Tree) dupLink(f dupFrame) error {
 	if f.parent == nil && !f.top {
 		return nil
 	}
-	if d.schema != nil && d.schema.IsKey() && f.parent != nil && (f.parent.parent != nil || f.parent.tree != nil) {
-		if err := t.work.checkTermHash(f.parent, d.schema, d.value); err != nil {
-			return err
-		}
-	}
 	// lyd_any_copy_value duplicates the forest before assigning its parent
 	// pointers, so linking a payload must not clear the any node's own Default
 	// flag through npContDfltDel.
@@ -324,6 +321,14 @@ func (t *Tree) dupLink(f dupFrame) error {
 		// across contexts whose key/schema order differs. Bypass insertPos's
 		// schema-order constraint (D-0058 applies to ordered parsing).
 		sib := t.childrenOf(f.parent)
+		// markUnsorted is visible: reserve the whole link before it.
+		amount, boundErr := t.linkBound(f.parent, sib, d, len(sib.list))
+		if boundErr != nil {
+			return boundErr
+		}
+		if err := t.reserveHash(amount); err != nil {
+			return err
+		}
 		if sortedSupported(d) && len(sib.list) > 0 &&
 			sib.list[len(sib.list)-1].schema == d.schema && sib.list[len(sib.list)-1].inRB {
 			leader := sib.list[len(sib.list)-1]
@@ -696,7 +701,10 @@ func (t *Tree) dupPublic(n, parent *Node, o DupOptions, siblings bool, fn string
 		return nil, nil, lg.done(&opError{"LY_EINVAL", "Duplicating a node that is not in a tree."})
 	case parent != nil && treeOf(parent) != nil && treeOf(parent) != t:
 		return nil, nil, lg.done(argErr("parent (not in the tree)", fn))
-	case parent != nil && ctxOf(parent) != t.set:
+	case parent != nil && ctxOf(parent) != ctxOf(n) && ctxOf(parent) != t.set:
+		// A source in parent's context is lyd_dup_single, which compares only
+		// those two (tree_data.c:2513); otherwise lyd_dup_single_to_ctx into
+		// t's context requires parent there too (tree_data.c:2526).
 		return nil, nil, lg.done(&opError{"LY_EINVAL", "Different \"trg_ctx\" and \"parent\" contexts used in node duplication."})
 	case parent != nil && parent.schema != nil && !isInner(parent.schema) && !isAny(parent.schema) && !o.WithParents &&
 		(n.schema == nil || !n.schema.IsKey()):

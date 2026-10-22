@@ -814,10 +814,16 @@ func (lc *lydCtx) appendSorted(parent, n *Node) (bool, error) {
 	if err := lc.tree.work.hashErr; err != nil {
 		return false, err
 	}
-	if err := lc.tree.preflightInsertPosition(sib, n, insertDefault); err != nil {
+	// One check for the run's replays and n's link: both follow the reorder below.
+	amount, err := lc.tree.insertPositionBound(sib, n, insertDefault)
+	if err != nil {
 		return false, err
 	}
-	if err := lc.tree.preflightLinkIndex(parent, sib, n, at); err != nil {
+	link, err := lc.tree.linkBound(parent, sib, n, at)
+	if err != nil {
+		return false, err
+	}
+	if err := lc.tree.reserveHash(addHashBound(amount, link)); err != nil {
 		return false, err
 	}
 	if ord == nil || lc.dirtyOrd[k] == nil && dirtySize(ord.root) != len(run) {

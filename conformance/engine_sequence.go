@@ -1308,7 +1308,8 @@ func onlyPredicates(keys string) bool {
 }
 
 // stepMove is step_insert: Tree.Insert of the node at "node", or the node retained by unlink with
-// "detached", under the node at "parent", or at the top level without one. With "data" the node
+// "detached", under the node at "parent" ("@top": the first top-level node, also an opaque one),
+// or at the top level without one. With "data" the node
 // comes from a second tree parsed as by a parse step
 // ("node" a path in it, omitted: its first top-level node, which moves with its siblings); what is
 // left of that tree is then freed, as the oracle frees it (lyd_free_all: link records to it go).
@@ -1367,7 +1368,9 @@ func stepMove(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, det
 		return nil, nil, "", false, requestError("insert node %s not found", path)
 	}
 	var parent *data.Node
-	if p, present, _ := strField(st, "parent"); present {
+	if p, present, _ := strField(st, "parent"); present && p == "@top" && topNode(tree) != nil {
+		parent = topNode(tree) // the first top-level node, also an opaque one
+	} else if present {
 		if parent, err = findNode(tree, p, "insert parent"); err != nil {
 			return nil, nil, "", false, err
 		}

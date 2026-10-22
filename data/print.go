@@ -132,7 +132,7 @@ func (o PrintOptions) isDefault(n *Node) bool {
 				return false
 			}
 			if diag != nil {
-				for _, probe := range tt.probes {
+				for _, probe := range tt.logged(n.schema.Type) {
 					_ = dc.vc.xpathErr(probe, n) // lyxp_eval's LOGERR precedes the plugin's message
 				}
 				_ = dc.vc.log.storeErr(n, nil, diag)

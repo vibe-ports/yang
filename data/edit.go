@@ -414,13 +414,15 @@ func (t *Tree) newPath(lg *logger, path, value string, o NewPathOptions) (*Node,
 			return nil, err
 		}
 	}
-	if err := t.preflightNewPathHash(p[idx:], node, value); err != nil {
-		return nil, err
-	}
+	var position uint64
 	if idx < len(p) {
-		if err := t.preflightInsertPosition(t.childrenOf(node), &Node{schema: p[idx].Node}, insertDefault); err != nil {
+		var err error
+		if position, err = t.insertPositionBound(t.childrenOf(node), &Node{schema: p[idx].Node}, insertDefault); err != nil {
 			return nil, err
 		}
+	}
+	if err := t.preflightNewPathHash(p[idx:], node, value, position); err != nil {
+		return nil, err
 	}
 	var first, last *Node
 	created := false
@@ -491,14 +493,15 @@ func (t *Tree) newPath(lg *logger, path, value string, o NewPathOptions) (*Node,
 }
 
 // preflightNewPathHash reserves the hashes of all remaining path segments
-// before a newly created ancestor can enter an indexed sibling set.
-func (t *Tree) preflightNewPathHash(segments types.Path, parent *Node, value string) error {
+// before a newly created ancestor can enter an indexed sibling set, together
+// with position, the first insertion's insertPositionBound.
+func (t *Tree) preflightNewPathHash(segments types.Path, parent *Node, value string, position uint64) error {
 	if len(segments) == 0 {
 		return nil
 	}
 	indexed := parent != nil && parent.schema != nil &&
 		(parent.kids.ht != nil || len(parent.kids.list)+1 >= htMinItems)
-	var amount uint64
+	amount := position
 	if indexed && parent.kids.ht == nil {
 		for _, old := range parent.kids.list {
 			amount = addHashBound(amount, indexWorkBound(old, nil, nil, &t.work))
