@@ -219,6 +219,7 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 	if len(l) == 0 {
 		return 0
 	}
+	t.markMixed(sib, l[0].parent, n)
 	if order != insertLast && !sortedSupported(n) && n.schema.DataParent() != nil &&
 		!sameSet(ctxOf(l[0]), ctxOf(n)) {
 		// lyd_insert_get_next_anchor uses its linear path when the first sibling
@@ -230,6 +231,11 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 	if order == insertDefault && sortedSupported(n) {
 		lo, hi := t.runBounds(sib, n)
 		if lo == hi {
+			if n.schema.DataParent() != nil && !sib.schemaUnordered && !sameSet(ctxOf(l[0]), ctxOf(n)) {
+				// no leader, lyd_insert_node_ordby_schema: as for the other children above, the
+				// linear anchor walk stops at the foreign first sibling
+				return 0
+			}
 			return hi // no instance yet: by schema, no RB tree for a single instance
 		}
 		n.inRB = true
@@ -245,15 +251,16 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 				return t.compareSorted(a, b)
 			})
 			sib.transferRun(oldLeader, l[lo])
-			if sib.firstRun[n.schema] == oldLeader {
-				sib.firstRun[n.schema] = l[lo]
+			rs := oldLeader.schema // the run's own schema node: n may belong to another context
+			if sib.firstRun[rs] == oldLeader {
+				sib.firstRun[rs] = l[lo]
 			}
 			for _, a := range l[lo:hi] {
 				a.inRB = true
 			}
 			if sib.opIdx != nil {
-				if sib.opIdx[n.schema].gaps == 0 {
-					sib.opRebuild(t, n.schema, l[lo:hi]) // only this run was reordered
+				if d := sib.opIdx[rs]; d != nil && d.gaps == 0 {
+					sib.opRebuild(t, rs, l[lo:hi]) // only this run was reordered
 				} else {
 					sib.opBuild(t) // retain other runs copied from a user-ordered schema
 				}
@@ -339,11 +346,18 @@ func (s *siblings) opRebuild(t *Tree, sn *schema.Node, run []*Node) {
 // (TestParseOpDupKeepsOrder, ops/parse-json-reply-keep-order-split).
 func (t *Tree) runBounds(sib *siblings, n *Node) (lo, hi int) {
 	l := sib.list
-	if !opChild(n.schema) && len(l) > 0 && !sameSet(ctxOf(l[0]), ctxOf(n)) {
+	if !opChild(n.schema) && len(l) > 0 && (len(sib.contexts) > 1 || !sameSet(ctxOf(l[0]), ctxOf(n))) {
 		// lyd_find_sibling_schema can match a system-ordered run from another
 		// context by schema name, before any schema-order lookup. Its instances
-		// still take part in lyds_insert.
-		if lo = t.schemaIndex(sib, n.schema); lo >= 0 {
+		// still take part in lyds_insert. With a children table the leader is the bucket's
+		// first registered record (leaderFirstMixed).
+		lo = -1
+		if leader := sib.leaderFirstMixed(n.schema); sib.ht != nil && sib.schemaUnordered && leader != nil {
+			lo = t.indexFromEnd(l, leader)
+		} else if sib.ht == nil || !sib.schemaUnordered {
+			lo = t.schemaIndex(sib, n.schema)
+		}
+		if lo >= 0 {
 			hi = lo
 			for hi < len(l) && schemaLookupMatch(l[hi].schema, n.schema, sib.ht != nil) {
 				sib.visit()
@@ -394,14 +408,85 @@ func (t *Tree) runEnd(sib *siblings, lo int) int {
 	return hi
 }
 
+// markUnordered switches sib to the anchor and first-instance lookups of unordered siblings,
+// before an insertion breaks schema order. Until then ordinary runs were contiguous, so their
+// first-instance records are materialized first.
+func (t *Tree) markUnordered(sib *siblings) {
+	if sib.schemaUnordered {
+		return
+	}
+	t.touch(sib)
+	sib.schemaUnordered = true
+	if sib.ht != nil {
+		sib.leaderMaterialize(sib.logical())
+	}
+}
+
+// climbOrder is lys_getnext(sn, sparent, NULL, 0) repeated (tree_schema.c:275-330) when sparent
+// is not sn's schema parent: the schema siblings following sn at each level, climbing through
+// its schema parents; past the top level the walk restarts at sparent's first child (children).
+func climbOrder(sn, sparent *schema.Node, children []*schema.Node) []*schema.Node {
+	var out []*schema.Node
+	for cur := sn; ; {
+		dp := cur.DataParent()
+		var top []*schema.Node
+		if dp == nil {
+			top = cur.Module.Top
+		}
+		level := slices.Collect(schema.GetNext(dp, top, 0))
+		if i := slices.Index(level, cur); i >= 0 {
+			out = append(out, level[i+1:]...)
+		}
+		switch dp {
+		case sparent:
+			return out
+		case nil:
+			return append(out, children...)
+		}
+		cur = dp
+	}
+}
+
+// markMixed marks sib unordered when n's schema parent is not lyd_node_schema(parent): a root
+// that lyd_new_path_create put beside a nested parent, or its copy. Schema ranks of different
+// parents do not compare, while lyd_insert_get_next_anchor walks such siblings like any other.
+func (t *Tree) markMixed(sib *siblings, parent, n *Node) {
+	if sib.schemaUnordered || parent == nil || n.schema == nil {
+		return
+	}
+	ps := parent.schema
+	switch {
+	case ps == nil:
+		ps = nodeSchema(ctxOf(parent), parent)
+	case ps.Kind == schema.AnyData || ps.Kind == schema.AnyXML:
+		return // a value tree's roots
+	}
+	// Siblings of another context: libyang's lookups follow the children table's registration
+	// order (lyd_find_sibling_schema), which the first-instance records keep only once the
+	// siblings are unordered; their runs were contiguous until now, so they are materialized.
+	if !compareSchemaEqual(n.schema.DataParent(), ps, true) ||
+		len(sib.list) > 0 && !sameSet(ctxOf(sib.list[0]), ctxOf(n)) {
+		t.markUnordered(sib)
+	}
+}
+
 // unorderedAnchor follows lyd_insert_get_next_anchor for ordinary siblings retained in source
 // order. With a children table, choose the closest following schema with an instance; without
 // one, walk the document and schema together. These differ on reordered children.
 func (t *Tree) unorderedAnchor(sib *siblings, n *Node) int {
 	dp := n.schema.DataParent()
-	if sib.ht != nil {
-		order := t.opOrder(dp, false)
-		for r := t.schemaRank(n.schema) + 1; r < len(order); r++ {
+	// The children_ht branch needs LYD_CTX(first_sibling) == LYD_CTX(new_node)
+	// (tree_data.c:522-523); a foreign first sibling takes the linear walk.
+	if sib.ht != nil && (len(sib.list) == 0 || sameSet(ctxOf(sib.list[0]), ctxOf(n))) {
+		order, from := t.opOrder(dp, false), t.schemaRank(n.schema)+1
+		if len(sib.list) > 0 && sib.list[0].parent != nil {
+			if sp := sib.list[0].parent.schema; sp != nil && dp != sp {
+				// A root beside a nested parent (lyd_new_path_create) or a node of another
+				// context: lys_getnext(new_node->schema, sparent) does not start in sparent.
+				order, from = climbOrder(n.schema, sp, t.opOrder(sp, false)), 0
+			}
+		}
+		for r := from; r < len(order); r++ {
 			t.work.Add(1)
 			if leader := physicalStart(sib, order[r], t.schemaLookup(sib, order[r])); leader != nil {
 				return t.indexFromEnd(sib.list, leader)
@@ -1006,6 +1091,7 @@ func (t *Tree) insertPositionBound(sib *siblings, n *Node, order insertOrder) (u
 	if order != insertDefault || !sortedSupported(n) || len(sib.list) == 0 || sib.hasRB(n.schema) {
 		return 0, t.work.hashErr
 	}
+	t.markMixed(sib, sib.list[0].parent, n)
 	lo, hi := t.runBounds(sib, n)
 	if t.work.hashErr != nil {
 		return 0, t.work.hashErr
@@ -1056,6 +1142,7 @@ func (t *Tree) preflightInsertAnchor(parent, n *Node) error {
 		return t.work.hashErr
 	}
 	sib := t.childrenOf(parent)
+	t.markMixed(sib, parent, n)
 	if opChild(n.schema) || sib.schemaUnordered {
 		instances := sib.opInst(n.schema)
 		if len(instances) == 0 || len(instances) == 1 && instances[0] == n {
@@ -1131,14 +1218,10 @@ func (t *Tree) link(parent *Node, sib *siblings, n *Node, at int) error {
 		}
 		if !sib.schemaUnordered && !opChild(n.schema) &&
 			(at > 0 && t.after(sib.list[at-1], n) || at < len(sib.list) && t.after(n, sib.list[at])) {
-			// LAST copies and whole-run moves may retain source schema order. Before the
-			// first inversion, ordinary runs were contiguous; materialize their records
-			// before this insertion can split them.
-			sib.schemaUnordered = true
-			if hadHT {
-				sib.leaderBuild(sib.logical())
-			}
+			// LAST copies and whole-run moves may retain source schema order.
+			t.markUnordered(sib)
 		}
+		t.markMixed(sib, parent, n) // a LAST copy appends without an anchor
 		t.beforeKeyLink(parent, n, at)
 		moved := sib.insertAt(at, n)
 		if t.work.shifts {

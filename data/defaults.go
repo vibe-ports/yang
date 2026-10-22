@@ -139,7 +139,12 @@ func (vc *valCtx) stop(err error) bool {
 // parent (lys_getnext with no options: choices and cases entered), in schema order.
 func (vc *valCtx) getnextData(sib *siblings, parent *schema.Node, yield func(*Node) bool) {
 	for sn := range schema.GetNext(parent, nil, 0) {
-		for n := range vc.t.instances(sib, sn) {
+		// lys_getnext_data returns lyd_find_sibling_val's match itself, which may belong to
+		// another context, then the following siblings of the same schema node pointer.
+		for i, n := range vc.t.instanceRun(sib, sn) {
+			if i > 0 && n.schema != sn {
+				break
+			}
 			if !yield(n) {
 				return
 			}

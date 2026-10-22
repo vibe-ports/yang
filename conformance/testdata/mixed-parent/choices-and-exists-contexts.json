@@ -1,0 +1,1898 @@
+{
+ "source": {
+  "url": "hand-written (this repo)",
+  "commit": null,
+  "license": "BSD-3-Clause"
+ },
+ "cases": [
+  {
+   "id": "seq/mixed-parent-choice-foreign-ll-htFalse-validate",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-mixchoice"
+     },
+     {
+      "name": "pv2-ma"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-mixchoice"
+        },
+        {
+         "name": "pv2-ma"
+        }
+       ]
+      },
+      "data": "{\"pv2-mixchoice:c\": {\"ll\": [\"m\"]}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"pv2-ma:x\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-mixchoice:c\": {\"x\": \"1\"}}"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "validate"
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-choice-foreign-ll-htFalse-set-other-case",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-mixchoice"
+     },
+     {
+      "name": "pv2-ma"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-mixchoice"
+        },
+        {
+         "name": "pv2-ma"
+        }
+       ]
+      },
+      "data": "{\"pv2-mixchoice:c\": {\"ll\": [\"m\"]}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"pv2-ma:x\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-mixchoice:c\": {\"x\": \"1\"}}"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-mixchoice:c",
+       "path": "y",
+       "value": "2"
+      }
+     },
+     {
+      "do": "validate"
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 6
+  },
+  {
+   "id": "seq/mixed-parent-choice-foreign-ll-htFalse-delete-case",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-mixchoice"
+     },
+     {
+      "name": "pv2-ma"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-mixchoice"
+        },
+        {
+         "name": "pv2-ma"
+        }
+       ]
+      },
+      "data": "{\"pv2-mixchoice:c\": {\"ll\": [\"m\"]}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"pv2-ma:x\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-mixchoice:c\": {\"x\": \"1\"}}"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "delete": "/pv2-mixchoice:c/x"
+     },
+     {
+      "do": "validate"
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-choice-foreign-ll-htFalse-update-x",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-mixchoice"
+     },
+     {
+      "name": "pv2-ma"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-mixchoice"
+        },
+        {
+         "name": "pv2-ma"
+        }
+       ]
+      },
+      "data": "{\"pv2-mixchoice:c\": {\"ll\": [\"m\"]}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"pv2-ma:x\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-mixchoice:c\": {\"x\": \"1\"}}"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-mixchoice:c",
+       "path": "x",
+       "value": "3"
+      }
+     },
+     {
+      "do": "validate"
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-choice-foreign-ll-htTrue-validate",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-mixchoice"
+     },
+     {
+      "name": "pv2-ma"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-mixchoice"
+        },
+        {
+         "name": "pv2-ma"
+        }
+       ]
+      },
+      "data": "{\"pv2-mixchoice:c\": {\"ll\": [\"m\"]}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"pv2-ma:x\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-mixchoice:c\": {\"x\": \"1\", \"b\": \"b\", \"ll\": [\"p\", \"q\"]}}"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "validate"
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-choice-foreign-ll-htTrue-set-other-case",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-mixchoice"
+     },
+     {
+      "name": "pv2-ma"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-mixchoice"
+        },
+        {
+         "name": "pv2-ma"
+        }
+       ]
+      },
+      "data": "{\"pv2-mixchoice:c\": {\"ll\": [\"m\"]}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"pv2-ma:x\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-mixchoice:c\": {\"x\": \"1\", \"b\": \"b\", \"ll\": [\"p\", \"q\"]}}"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-mixchoice:c",
+       "path": "y",
+       "value": "2"
+      }
+     },
+     {
+      "do": "validate"
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 6
+  },
+  {
+   "id": "seq/mixed-parent-choice-foreign-ll-htTrue-delete-case",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-mixchoice"
+     },
+     {
+      "name": "pv2-ma"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-mixchoice"
+        },
+        {
+         "name": "pv2-ma"
+        }
+       ]
+      },
+      "data": "{\"pv2-mixchoice:c\": {\"ll\": [\"m\"]}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"pv2-ma:x\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-mixchoice:c\": {\"x\": \"1\", \"b\": \"b\", \"ll\": [\"p\", \"q\"]}}"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "delete": "/pv2-mixchoice:c/x"
+     },
+     {
+      "do": "validate"
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-choice-foreign-ll-htTrue-update-x",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-mixchoice"
+     },
+     {
+      "name": "pv2-ma"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-mixchoice"
+        },
+        {
+         "name": "pv2-ma"
+        }
+       ]
+      },
+      "data": "{\"pv2-mixchoice:c\": {\"ll\": [\"m\"]}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"pv2-ma:x\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-mixchoice:c\": {\"x\": \"1\", \"b\": \"b\", \"ll\": [\"p\", \"q\"]}}"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-mixchoice:c",
+       "path": "x",
+       "value": "3"
+      }
+     },
+     {
+      "do": "validate"
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-choice-foreign-b-htFalse-validate",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-mixchoice"
+     },
+     {
+      "name": "pv2-ma"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-mixchoice"
+        },
+        {
+         "name": "pv2-ma"
+        }
+       ]
+      },
+      "data": "{\"pv2-mixchoice:c\": {\"b\": \"fb\"}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"pv2-ma:x\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-mixchoice:c\": {\"x\": \"1\"}}"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "validate"
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-choice-foreign-b-htFalse-set-other-case",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-mixchoice"
+     },
+     {
+      "name": "pv2-ma"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-mixchoice"
+        },
+        {
+         "name": "pv2-ma"
+        }
+       ]
+      },
+      "data": "{\"pv2-mixchoice:c\": {\"b\": \"fb\"}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"pv2-ma:x\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-mixchoice:c\": {\"x\": \"1\"}}"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-mixchoice:c",
+       "path": "y",
+       "value": "2"
+      }
+     },
+     {
+      "do": "validate"
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 6
+  },
+  {
+   "id": "seq/mixed-parent-choice-foreign-b-htFalse-delete-case",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-mixchoice"
+     },
+     {
+      "name": "pv2-ma"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-mixchoice"
+        },
+        {
+         "name": "pv2-ma"
+        }
+       ]
+      },
+      "data": "{\"pv2-mixchoice:c\": {\"b\": \"fb\"}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"pv2-ma:x\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-mixchoice:c\": {\"x\": \"1\"}}"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "delete": "/pv2-mixchoice:c/x"
+     },
+     {
+      "do": "validate"
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-choice-foreign-b-htFalse-update-x",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-mixchoice"
+     },
+     {
+      "name": "pv2-ma"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-mixchoice"
+        },
+        {
+         "name": "pv2-ma"
+        }
+       ]
+      },
+      "data": "{\"pv2-mixchoice:c\": {\"b\": \"fb\"}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"pv2-ma:x\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-mixchoice:c\": {\"x\": \"1\"}}"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-mixchoice:c",
+       "path": "x",
+       "value": "3"
+      }
+     },
+     {
+      "do": "validate"
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-choice-foreign-b-htTrue-validate",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-mixchoice"
+     },
+     {
+      "name": "pv2-ma"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-mixchoice"
+        },
+        {
+         "name": "pv2-ma"
+        }
+       ]
+      },
+      "data": "{\"pv2-mixchoice:c\": {\"b\": \"fb\"}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"pv2-ma:x\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-mixchoice:c\": {\"x\": \"1\", \"ll\": [\"p\", \"q\", \"r\"]}}"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "validate"
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-choice-foreign-b-htTrue-set-other-case",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-mixchoice"
+     },
+     {
+      "name": "pv2-ma"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-mixchoice"
+        },
+        {
+         "name": "pv2-ma"
+        }
+       ]
+      },
+      "data": "{\"pv2-mixchoice:c\": {\"b\": \"fb\"}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"pv2-ma:x\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-mixchoice:c\": {\"x\": \"1\", \"ll\": [\"p\", \"q\", \"r\"]}}"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-mixchoice:c",
+       "path": "y",
+       "value": "2"
+      }
+     },
+     {
+      "do": "validate"
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 6
+  },
+  {
+   "id": "seq/mixed-parent-choice-foreign-b-htTrue-delete-case",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-mixchoice"
+     },
+     {
+      "name": "pv2-ma"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-mixchoice"
+        },
+        {
+         "name": "pv2-ma"
+        }
+       ]
+      },
+      "data": "{\"pv2-mixchoice:c\": {\"b\": \"fb\"}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"pv2-ma:x\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-mixchoice:c\": {\"x\": \"1\", \"ll\": [\"p\", \"q\", \"r\"]}}"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "delete": "/pv2-mixchoice:c/x"
+     },
+     {
+      "do": "validate"
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-choice-foreign-b-htTrue-update-x",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-mixchoice"
+     },
+     {
+      "name": "pv2-ma"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-mixchoice"
+        },
+        {
+         "name": "pv2-ma"
+        }
+       ]
+      },
+      "data": "{\"pv2-mixchoice:c\": {\"b\": \"fb\"}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"pv2-ma:x\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-mixchoice:c\": {\"x\": \"1\", \"ll\": [\"p\", \"q\", \"r\"]}}"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-mixchoice:c",
+       "path": "x",
+       "value": "3"
+      }
+     },
+     {
+      "do": "validate"
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-choice-foreign-y-htFalse-validate",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-mixchoice"
+     },
+     {
+      "name": "pv2-ma"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-mixchoice"
+        },
+        {
+         "name": "pv2-ma"
+        }
+       ]
+      },
+      "data": "{\"pv2-mixchoice:c\": {\"y\": \"fy\"}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"pv2-ma:x\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-mixchoice:c\": {\"x\": \"1\"}}"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "validate"
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 5
+  },
+  {
+   "id": "seq/mixed-parent-choice-foreign-y-htFalse-set-other-case",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-mixchoice"
+     },
+     {
+      "name": "pv2-ma"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-mixchoice"
+        },
+        {
+         "name": "pv2-ma"
+        }
+       ]
+      },
+      "data": "{\"pv2-mixchoice:c\": {\"y\": \"fy\"}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"pv2-ma:x\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-mixchoice:c\": {\"x\": \"1\"}}"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-mixchoice:c",
+       "path": "y",
+       "value": "2"
+      }
+     },
+     {
+      "do": "validate"
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 6
+  },
+  {
+   "id": "seq/mixed-parent-choice-foreign-y-htFalse-delete-case",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-mixchoice"
+     },
+     {
+      "name": "pv2-ma"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-mixchoice"
+        },
+        {
+         "name": "pv2-ma"
+        }
+       ]
+      },
+      "data": "{\"pv2-mixchoice:c\": {\"y\": \"fy\"}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"pv2-ma:x\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-mixchoice:c\": {\"x\": \"1\"}}"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "delete": "/pv2-mixchoice:c/x"
+     },
+     {
+      "do": "validate"
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-choice-foreign-y-htFalse-update-x",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-mixchoice"
+     },
+     {
+      "name": "pv2-ma"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-mixchoice"
+        },
+        {
+         "name": "pv2-ma"
+        }
+       ]
+      },
+      "data": "{\"pv2-mixchoice:c\": {\"y\": \"fy\"}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"pv2-ma:x\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-mixchoice:c\": {\"x\": \"1\"}}"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-mixchoice:c",
+       "path": "x",
+       "value": "3"
+      }
+     },
+     {
+      "do": "validate"
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 6
+  },
+  {
+   "id": "seq/mixed-parent-choice-foreign-y-htTrue-validate",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-mixchoice"
+     },
+     {
+      "name": "pv2-ma"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-mixchoice"
+        },
+        {
+         "name": "pv2-ma"
+        }
+       ]
+      },
+      "data": "{\"pv2-mixchoice:c\": {\"y\": \"fy\"}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"pv2-ma:x\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-mixchoice:c\": {\"x\": \"1\", \"b\": \"b\", \"ll\": [\"p\", \"q\"]}}"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "validate"
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 5
+  },
+  {
+   "id": "seq/mixed-parent-choice-foreign-y-htTrue-set-other-case",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-mixchoice"
+     },
+     {
+      "name": "pv2-ma"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-mixchoice"
+        },
+        {
+         "name": "pv2-ma"
+        }
+       ]
+      },
+      "data": "{\"pv2-mixchoice:c\": {\"y\": \"fy\"}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"pv2-ma:x\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-mixchoice:c\": {\"x\": \"1\", \"b\": \"b\", \"ll\": [\"p\", \"q\"]}}"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-mixchoice:c",
+       "path": "y",
+       "value": "2"
+      }
+     },
+     {
+      "do": "validate"
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 6
+  },
+  {
+   "id": "seq/mixed-parent-choice-foreign-y-htTrue-delete-case",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-mixchoice"
+     },
+     {
+      "name": "pv2-ma"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-mixchoice"
+        },
+        {
+         "name": "pv2-ma"
+        }
+       ]
+      },
+      "data": "{\"pv2-mixchoice:c\": {\"y\": \"fy\"}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"pv2-ma:x\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-mixchoice:c\": {\"x\": \"1\", \"b\": \"b\", \"ll\": [\"p\", \"q\"]}}"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "delete": "/pv2-mixchoice:c/x"
+     },
+     {
+      "do": "validate"
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-choice-foreign-y-htTrue-update-x",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-mixchoice"
+     },
+     {
+      "name": "pv2-ma"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-mixchoice"
+        },
+        {
+         "name": "pv2-ma"
+        }
+       ]
+      },
+      "data": "{\"pv2-mixchoice:c\": {\"y\": \"fy\"}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"pv2-ma:x\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-mixchoice:c\": {\"x\": \"1\", \"b\": \"b\", \"ll\": [\"p\", \"q\"]}}"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-mixchoice:c",
+       "path": "x",
+       "value": "3"
+      }
+     },
+     {
+      "do": "validate"
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 6
+  },
+  {
+   "id": "seq/mixed-parent-exists-updateFalse-parentNone",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas/ctx-a",
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "aa"
+     },
+     {
+      "name": "pv2-detached"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-detached",
+         "features": [
+          "extra"
+         ]
+        }
+       ]
+      },
+      "data": "{\"pv2-detached:c\":{\"base\":\"f\",\"extra\":\"x\"}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"aa:keep\":\"a\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/pv2-detached:c/base",
+       "value": "y",
+       "update": false
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EEXIST",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-exists-updateFalse-parentpv2-detached-c",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas/ctx-a",
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "aa"
+     },
+     {
+      "name": "pv2-detached"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-detached",
+         "features": [
+          "extra"
+         ]
+        }
+       ]
+      },
+      "data": "{\"pv2-detached:c\":{\"base\":\"f\",\"extra\":\"x\"}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"aa:keep\":\"a\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "base",
+       "value": "y",
+       "parent": "/pv2-detached:c",
+       "update": false
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-exists-updateTrue-parentNone",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas/ctx-a",
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "aa"
+     },
+     {
+      "name": "pv2-detached"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-detached",
+         "features": [
+          "extra"
+         ]
+        }
+       ]
+      },
+      "data": "{\"pv2-detached:c\":{\"base\":\"f\",\"extra\":\"x\"}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"aa:keep\":\"a\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/pv2-detached:c/base",
+       "value": "y"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-exists-updateTrue-parentpv2-detached-c",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas/ctx-a",
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "aa"
+     },
+     {
+      "name": "pv2-detached"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-detached",
+         "features": [
+          "extra"
+         ]
+        }
+       ]
+      },
+      "data": "{\"pv2-detached:c\":{\"base\":\"f\",\"extra\":\"x\"}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"aa:keep\":\"a\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "base",
+       "value": "y",
+       "parent": "/pv2-detached:c"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  }
+ ]
+}

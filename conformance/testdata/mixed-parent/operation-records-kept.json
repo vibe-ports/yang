@@ -1,0 +1,95 @@
+{
+  "id": "seq/mixed-parent-operation-records-kept",
+  "source": {
+    "url": "hand-written (this repo)",
+    "commit": null,
+    "license": "BSD-3-Clause"
+  },
+  "request": {
+    "op": "sequence",
+    "searchdirs": [
+      "../ut-parser/rb.1",
+      "schemas"
+    ],
+    "modules": [
+      {
+        "name": "opidx239"
+      },
+      {
+        "name": "n"
+      }
+    ],
+    "steps": [
+      {
+        "do": "parse",
+        "format": "json",
+        "data_type": "rpc",
+        "unknown": "reject",
+        "parse_only": true,
+        "data": "{\"opidx239:l\":{\"a\":\"1\",\"a2\":\"2\",\"@v\":[{\"opidx239:id\":\"v1\"},{\"opidx239:id\":\"v2\"}],\"v\":[1,2]}}"
+      },
+      {
+        "do": "edit",
+        "insert_term": {
+          "module": "opidx239",
+          "parent": "/opidx239:l",
+          "name": "o",
+          "value": "o",
+          "options": [
+            "output"
+          ]
+        }
+      },
+      {
+        "do": "edit",
+        "insert_term": {
+          "module": "opidx239",
+          "parent": "/opidx239:l",
+          "name": "v",
+          "value": "3"
+        }
+      },
+      {
+        "do": "edit",
+        "delete": "/opidx239:l/v[.='1']"
+      },
+      {
+        "do": "edit",
+        "set": {
+          "parent": "/opidx239:l/a",
+          "path": "/n:root",
+          "value": "r"
+        }
+      },
+      {
+        "do": "edit",
+        "insert_term": {
+          "module": "opidx239",
+          "parent": "/opidx239:l",
+          "name": "between",
+          "value": "x"
+        }
+      },
+      {
+        "do": "dump"
+      }
+    ]
+  },
+  "want_rc": "LY_SUCCESS",
+  "want_json_order": [
+    "\"n:root\"",
+    "\"a\"",
+    "\"a2\"",
+    "\"o\"",
+    "\"between\""
+  ],
+  "want_xml_order": [
+    "<root",
+    "<a>",
+    "<a2>",
+    "oi:id=\"v2\">2",
+    "<o>",
+    "<between>",
+    "<v>3"
+  ]
+}

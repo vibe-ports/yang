@@ -1508,8 +1508,7 @@ func TestAtomsContextPathWhitespace(t *testing.T) {
 }
 
 // lyd_new_path checks (path[0] == '/') || parent before tokenizing: with an empty retained tree
-// (no parent) a leading space is LY_EINVAL; with a retained parent the original path reaches
-// lyd_new_path_ with that parent, which Tree.NewPath cannot take: B relative-set-parent (#255).
+// (no parent) a leading space is LY_EINVAL; with a retained parent the original path is parsed.
 func TestSequenceSetLeadingSpace(t *testing.T) {
 	base := func(steps ...any) map[string]any {
 		return map[string]any{"op": "sequence", "searchdirs": []any{"schemas"}, "modules": []any{map[string]any{"name": "pv2"}},
@@ -1521,8 +1520,8 @@ func TestSequenceSetLeadingSpace(t *testing.T) {
 		t.Fatalf("empty tree: %v, %v; want the step to fail", r, err)
 	}
 	parse := map[string]any{"do": "parse", "data": `{"pv2:c":{"mode":"off"}}`, "parse_only": true}
-	if _, err := (Yang{}).Run(Request{BaseDir: filepath.Join("corpus", "protocol-v2"), Params: base(parse, set)}); inventoryGap(err) != "relative-set-parent" {
-		t.Fatalf("retained parent: %v; want B relative-set-parent", err)
+	if r, err := (Yang{}).Run(Request{BaseDir: filepath.Join("corpus", "protocol-v2"), Params: base(parse, set)}); err != nil || r["verdict"] != "valid" {
+		t.Fatalf("retained parent: %v, %v; want valid", r, err)
 	}
 }
 
@@ -1585,10 +1584,8 @@ func TestEmptyRevisionProbe(t *testing.T) {
 	}
 }
 
-// A relative set under a retained parent is unsupported (U-0110 relative-set-parent, #255):
-// Tree.NewPath has no parent argument, and rewriting the path diverges from lyd_new_path's
-// diagnostics; a whitespace-led path too, since trimming it shifts libyang's positions. Without a
-// retained tree a relative path keeps lyd_new_path's LY_EINVAL argument check.
+// A relative set under a retained parent keeps lyd_new_path's original path text and diagnostics.
+// Without a retained tree a relative path keeps its LY_EINVAL argument check.
 func TestRelativeSetParent(t *testing.T) {
 	run := func(module string, steps ...any) (Response, error) {
 		return (Yang{}).Run(Request{BaseDir: filepath.Join("corpus", "protocol-v2"), Params: map[string]any{
@@ -1599,19 +1596,20 @@ func TestRelativeSetParent(t *testing.T) {
 	}
 	opaque := map[string]any{"do": "parse", "data": `{"pv2:nosuch":"x"}`, "unknown": "opaque", "parse_only": true}
 	for name, tc := range map[string]struct {
-		module string
-		steps  []any
+		module  string
+		steps   []any
+		verdict string
 	}{
-		"quoted key parent": {"a", []any{map[string]any{"do": "parse", "data": `{"a:l1":[{"a":"x'y\"z","b":"b","c":"c"}]}`, "parse_only": true}, set("c")}},
-		"opaque parent":     {"pv2", []any{opaque, set("mode")}},
-		"opaque malformed":  {"pv2", []any{opaque, set("[")}},
-		"missing key":       {"pv2", []any{set("/pv2:c/mode"), set("l")}},
-		"empty path":        {"pv2", []any{set("/pv2:c/mode"), set("")}},
-		"spaced absolute":   {"pv2", []any{set("/pv2:c/mode"), set(" /pv2:c/x")}},
-		"spaced malformed":  {"pv2", []any{set("/pv2:c/mode"), set(" /pv2:c/#")}},
+		"quoted key parent": {"a", []any{map[string]any{"do": "parse", "data": `{"a:l1":[{"a":"x'y\"z","b":"b","c":"c"}]}`, "parse_only": true}, set("c")}, "valid"},
+		"opaque parent":     {"pv2", []any{opaque, set("mode")}, "invalid"},
+		"opaque malformed":  {"pv2", []any{opaque, set("[")}, "invalid"},
+		"missing key":       {"pv2", []any{set("/pv2:c/mode"), set("l")}, "invalid"},
+		"empty path":        {"pv2", []any{set("/pv2:c/mode"), set("")}, "invalid"},
+		"spaced absolute":   {"pv2", []any{set("/pv2:c/mode"), set(" /pv2:c/x")}, "valid"},
+		"spaced malformed":  {"pv2", []any{set("/pv2:c/mode"), set(" /pv2:c/#")}, "invalid"},
 	} {
-		if _, err := run(tc.module, tc.steps...); !errors.Is(err, ErrUnsupported) || inventoryGap(err) != "relative-set-parent" {
-			t.Errorf("%s: err = %v", name, err)
+		if r, err := run(tc.module, tc.steps...); err != nil || r["verdict"] != tc.verdict {
+			t.Errorf("%s: response = %v, err = %v", name, r, err)
 		}
 	}
 	r, err := run("pv2", set("mode"))
@@ -1796,7 +1794,7 @@ func TestPrintTreeKeepsPrinterDiagnosticOutput(t *testing.T) {
 }
 
 // step_diff collects the context of a detached first input after the request
-// context (lyoracle.c:2734): printer logs of a diff register owned by that
+// context (lyoracle.c:2762): printer logs of a diff register owned by that
 // context surface in the next diff of the same detached node.
 func TestSequenceDiffDrainsDetachedContext(t *testing.T) {
 	modules := []any{map[string]any{"name": "print-failure"}}
@@ -1825,5 +1823,102 @@ func TestSequenceDiffDrainsDetachedContext(t *testing.T) {
 	if len(ds) == 0 || ds[0].(map[string]any)["phase"] != "diff" ||
 		ds[0].(map[string]any)["msg"] != `Failed to resolve prefix "missing".` {
 		t.Fatalf("second diff did not drain the detached context: %v", steps[5])
+	}
+}
+
+func TestRelativeSetParentGoldens(t *testing.T) {
+	m := load(t)
+	wanted := map[string]bool{
+		"seq/set-relative-quoted-parent":    true,
+		"seq/set-relative-opaque-parent":    true,
+		"seq/set-relative-missing-key":      true,
+		"seq/set-relative-opaque-malformed": true,
+		"seq/set-spaced-malformed":          true,
+	}
+	for _, f := range m.Fixtures {
+		if !wanted[f.ID] {
+			continue
+		}
+		delete(wanted, f.ID)
+		t.Run(f.ID, func(t *testing.T) {
+			got, err := (Yang{}).Run(Request{ID: f.ID, BaseDir: fixtureDir(m, f), Params: f.Request})
+			if err != nil {
+				t.Fatal(err)
+			}
+			want, err := LoadGolden(m.GoldenPath(f))
+			if err != nil {
+				t.Fatal(err)
+			}
+			wm, gm := want, got
+			wm, _ = withoutSkipped(wm, Yang{}.SkippedFields("sequence"))
+			gm, _ = withoutSkipped(gm, Yang{}.SkippedFields("sequence"))
+			if d := diffResponses(wm, gm); d != "" {
+				t.Fatal(d)
+			}
+			// The corpus comparator omits diagnostic text. These cases pin the original path and
+			// lexer offset, so compare their messages too.
+			ws, gs := list(want["steps"]), list(got["steps"])
+			for i := range ws {
+				wd, gd := list(ws[i].(map[string]any)["diagnostics"]), list(gs[i].(map[string]any)["diagnostics"])
+				for j := range wd {
+					w, g := wd[j].(map[string]any)["msg"], gd[j].(map[string]any)["msg"]
+					if w != g {
+						t.Errorf("step %d diagnostic %d: got %q, want %q", i, j, g, w)
+					}
+				}
+			}
+		})
+	}
+	for id := range wanted {
+		t.Errorf("missing fixture %s", id)
+	}
+}
+
+// #267 review round 3: a set parent that lyd_find_path cannot reach logs its lookup error, and
+// lyoracle.c's lyd_path fallback still inserts; the step keeps that diagnostic and so reports
+// LY_EVALID (seq/new-path-parent-opaque-lookup-log).
+func TestSetParentFallbackKeepsLookupLog(t *testing.T) {
+	r, err := (Yang{}).Run(Request{BaseDir: filepath.Join("corpus", "protocol-v2"), Params: map[string]any{
+		"op": "sequence", "searchdirs": []any{"schemas"},
+		"modules": []any{map[string]any{"name": "pv2-edit"}, map[string]any{"name": "n"}},
+		"steps": []any{
+			map[string]any{"do": "parse", "data": `{"pv2-edit:c":{"unknown":"x"}}`, "unknown": "opaque", "parse_only": true},
+			map[string]any{"do": "edit", "set": map[string]any{"parent": "/pv2-edit:c/unknown", "path": "/n:root", "value": "r"}},
+		}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	step := list(r["steps"])[1].(map[string]any)
+	ds := list(step["diagnostics"])
+	if len(ds) != 1 || ds[0].(map[string]any)["msg"] != `Not found node "unknown" in path.` ||
+		step["rc"].(map[string]any)["name"] != "LY_EVALID" {
+		t.Fatalf("step = %v", step)
+	}
+	if !strings.Contains(fmt.Sprint(step["typed"]), "/pv2-edit:c/n:root") {
+		t.Fatalf("root not inserted: %v", step["typed"])
+	}
+}
+
+// #267 review round 4: a set parent from another context fails lyd_new_path's context check,
+// which logs in the parent's context; step_edit collects sctx only, so the step has no
+// diagnostic (seq/new-path-parent-foreign-context-log).
+func TestSetParentForeignContextLog(t *testing.T) {
+	r, err := (Yang{}).Run(Request{BaseDir: filepath.Join("corpus", "protocol-v2"), Params: map[string]any{
+		"op": "sequence", "searchdirs": []any{"schemas/ctx-a", "schemas"},
+		"modules": []any{map[string]any{"name": "aa"}, map[string]any{"name": "pv2-detached"}},
+		"steps": []any{
+			map[string]any{"do": "diff", "format": "json", "data_type": "config", "data": `{"pv2-detached:c":{"extra":"x"}}`,
+				"target": map[string]any{"searchdirs": []any{"schemas"},
+					"modules": []any{map[string]any{"name": "pv2-detached", "features": []any{"extra"}}}}},
+			map[string]any{"do": "parse", "format": "json", "data_type": "config", "parse_only": true, "data": `{"aa:keep":"a"}`},
+			map[string]any{"do": "diff_apply"},
+			map[string]any{"do": "edit", "set": map[string]any{"parent": "/pv2-detached:c", "path": "base", "value": "y"}},
+		}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	step := list(r["steps"])[3].(map[string]any)
+	if len(list(step["diagnostics"])) != 0 || step["rc"].(map[string]any)["name"] != "LY_EINVAL" {
+		t.Fatalf("step = %v", step)
 	}
 }

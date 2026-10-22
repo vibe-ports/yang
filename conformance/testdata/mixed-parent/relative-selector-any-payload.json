@@ -1,0 +1,45 @@
+{
+  "id": "seq/new-path-parent-relative-selector-any-payload",
+  "source": {
+    "url": "hand-written (this repo)",
+    "commit": null,
+    "license": "BSD-3-Clause"
+  },
+  "request": {
+    "op": "sequence",
+    "searchdirs": [
+      "schemas"
+    ],
+    "modules": [
+      {
+        "name": "a"
+      }
+    ],
+    "steps": [
+      {
+        "do": "parse",
+        "data": "{\"a:any\":{\"a:foo\":1}}",
+        "parse_only": true
+      },
+      {
+        "do": "edit",
+        "set": {
+          "parent": "a:foo",
+          "path": "/a:any/a:foo",
+          "value": "2"
+        }
+      },
+      {
+        "do": "edit",
+        "delete": "a:foo"
+      },
+      {
+        "do": "dump"
+      }
+    ]
+  },
+  "want_rc": "LY_SUCCESS",
+  "want_json_order": [
+    "\"a:any\""
+  ]
+}

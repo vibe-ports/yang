@@ -1,0 +1,18 @@
+{
+  "id": "seq/mixed-parent-hash-anchor-root-walk",
+  "source": {"url": "hand-written (this repo)", "commit": null, "license": "BSD-3-Clause"},
+  "request": {
+    "op": "sequence",
+    "searchdirs": ["schemas"],
+    "modules": [{"name": "pv2-edit"}, {"name": "pv2-ma"}],
+    "steps": [
+      {"do": "parse", "data": "{\"pv2-edit:c\":{\"a\":\"x\",\"b\":1,\"l\":[{\"k\":\"x\"}],\"ll\":[\"p\"]}}", "parse_only": true},
+      {"do": "edit", "set": {"parent": "/pv2-edit:c/l[k='x']", "path": "/pv2-ma:x", "value": "root"}},
+      {"do": "edit", "set": {"parent": "/pv2-edit:c", "path": "nl", "value": "3"}},
+      {"do": "dump"}
+    ]
+  },
+  "want_rc": "LY_SUCCESS",
+  "want_json_order": ["\"pv2-ma:x\"", "\"a\"", "\"b\"", "\"l\"", "\"ll\"", "\"nl\""],
+  "want_xml_order": ["<x ", "<a>", "<b>", "<l>", "<ll>", "<nl>"]
+}

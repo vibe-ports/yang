@@ -1,0 +1,67 @@
+{
+  "id": "seq/mixed-parent-recursive-dup-then-edit",
+  "source": {
+    "url": "hand-written (this repo)",
+    "commit": null,
+    "license": "BSD-3-Clause"
+  },
+  "request": {
+    "op": "sequence",
+    "searchdirs": [
+      "schemas"
+    ],
+    "modules": [
+      {
+        "name": "pv2-edit"
+      },
+      {
+        "name": "n"
+      }
+    ],
+    "steps": [
+      {
+        "do": "parse",
+        "data": "{\"pv2-edit:c\":{\"a\":\"x\",\"l\":[{\"k\":\"x\"}]}}",
+        "parse_only": true
+      },
+      {
+        "do": "edit",
+        "set": {
+          "parent": "/pv2-edit:c/l[k='x']",
+          "path": "/n:root",
+          "value": "r"
+        }
+      },
+      {
+        "do": "dup",
+        "node": "/pv2-edit:c",
+        "options": [
+          "recursive"
+        ]
+      },
+      {
+        "do": "edit",
+        "set": {
+          "path": "b",
+          "value": "1"
+        }
+      },
+      {
+        "do": "dump"
+      }
+    ]
+  },
+  "want_rc": "LY_SUCCESS",
+  "want_json_order": [
+    "\"b\"",
+    "\"n:root\"",
+    "\"a\"",
+    "\"l\""
+  ],
+  "want_xml_order": [
+    "<b>",
+    "<root",
+    "<a>",
+    "<l>"
+  ]
+}

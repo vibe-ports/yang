@@ -161,13 +161,13 @@ func stepDiff(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, det
 		second = topNode(t)
 		secondTree = t
 	}
-	// lyoracle.c:2747 resolves data_node even when no data was supplied.
+	// lyoracle.c:2775 resolves data_node even when no data was supplied.
 	if path, ok := st["data_node"].(string); ok {
 		if second, err = findNode(secondTree, path, "diff data_node"); err != nil {
 			return nil, err
 		}
 	}
-	// lyoracle.c:2731-2752 permits populated trees from separate contexts.
+	// lyoracle.c:2759-2780 permits populated trees from separate contexts.
 	// DiffSiblings/DiffTree deliberately refuse this matching (D-0069, #236).
 	// Preserve parse and selector failures above, and the supported NULL cases.
 	if first != nil && second != nil && snap.Set(contextopts.NodeSchema(first)) != snap.Set(contextopts.NodeSchema(second)) {
@@ -180,7 +180,7 @@ func stepDiff(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, det
 	res, err := diff(first, second, o)
 	// step_diff collects the retained context after diffing, including when
 	// the parsed second tree belonged to a separate target context, then the
-	// context of a foreign first input (lyoracle.c:2734).
+	// context of a foreign first input (lyoracle.c:2762).
 	diags = append(diags, collectPending(s, "diff")...)
 	if first != nil && snap.Set(contextopts.NodeSchema(first)) != snap.Set(s) {
 		diags = append(diags, collectPending(contextopts.NodeSchema(first), "diff")...)
@@ -296,7 +296,7 @@ func stepDiffMerge(r Request, s *yang.Schema, st map[string]any, reg **data.Tree
 	}
 	var merge func(*data.Tree) error
 	if path, ok := st["src_node"].(string); ok {
-		// lyoracle.c:2792-2796 resolves parent before src_node.
+		// lyoracle.c:2820-2824 resolves parent before src_node.
 		var parent *data.Node
 		if st["detached_parent"] == true {
 			parent = detached

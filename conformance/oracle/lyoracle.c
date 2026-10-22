@@ -1856,8 +1856,14 @@ check_step(const struct ly_ctx *ctx, const cJSON *step)
             die("set needs an object with path%s", NULL);
         }
         if (set) {
-            keys_only(set, "path value", "unknown key \"%s\" in set");
+            const cJSON *update = cJSON_GetObjectItemCaseSensitive(set, "update");
+
+            keys_only(set, "path value parent update", "unknown key \"%s\" in set");
             str_of(set, "value");
+            str_of(set, "parent");
+            if (update && !cJSON_IsBool(update)) {
+                die("update must be a boolean%s", NULL);
+            }
         }
     } else if (!strcmp(what, "change_term")) {
         const cJSON *canon = cJSON_GetObjectItemCaseSensitive(step, "canon");
@@ -2708,7 +2714,29 @@ step_edit(struct ly_ctx *ctx, const cJSON *step, struct lyd_node **tree, struct 
             rc = lyd_merge_siblings(tree, node, LYD_MERGE_DESTRUCT);
         }
     } else if (set) {
-        rc = lyd_new_path(*tree, ctx, str_of(set, "path"), str_of(set, "value"), LYD_NEW_PATH_UPDATE, &node);
+        struct lyd_node *parent = *tree, *top, *n;
+        const char *ppath = str_of(set, "parent");
+        uint32_t opts = cJSON_IsFalse(cJSON_GetObjectItemCaseSensitive(set, "update")) ? 0 : LYD_NEW_PATH_UPDATE;
+
+        if (ppath && (!*tree || lyd_find_path(*tree, ppath, 0, &parent))) {
+            /* lyd_find_path does not descend through opaque nodes: match lyd_path() instead */
+            parent = NULL;
+            LY_LIST_FOR(*tree, top) {
+                LYD_TREE_DFS_BEGIN(top, n) {
+                    char *path = lyd_path(n, LYD_PATH_STD, NULL, 0);
+
+                    if (!parent && path && !strcmp(path, ppath)) {
+                        parent = n;
+                    }
+                    free(path);
+                    LYD_TREE_DFS_END(top, n);
+                }
+            }
+            if (!parent) {
+                die("set parent %s not found", ppath);
+            }
+        }
+        rc = lyd_new_path(parent, ctx, str_of(set, "path"), str_of(set, "value"), opts, &node);
         if (!rc && !*tree && node) {
             while (node->parent) {
                 node = node->parent;

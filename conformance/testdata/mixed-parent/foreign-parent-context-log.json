@@ -1,0 +1,67 @@
+{
+  "id": "seq/new-path-parent-foreign-context-log",
+  "source": {
+    "url": "hand-written (this repo)",
+    "commit": null,
+    "license": "BSD-3-Clause"
+  },
+  "request": {
+    "op": "sequence",
+    "searchdirs": [
+      "schemas/ctx-a",
+      "schemas"
+    ],
+    "modules": [
+      {
+        "name": "aa"
+      },
+      {
+        "name": "pv2-detached"
+      }
+    ],
+    "steps": [
+      {
+        "do": "diff",
+        "format": "json",
+        "data_type": "config",
+        "target": {
+          "searchdirs": [
+            "schemas"
+          ],
+          "modules": [
+            {
+              "name": "pv2-detached",
+              "features": [
+                "extra"
+              ]
+            }
+          ]
+        },
+        "data": "{\"pv2-detached:c\":{\"extra\":\"x\"}}"
+      },
+      {
+        "do": "parse",
+        "format": "json",
+        "data_type": "config",
+        "parse_only": true,
+        "data": "{\"aa:keep\":\"a\"}"
+      },
+      {
+        "do": "diff_apply"
+      },
+      {
+        "do": "edit",
+        "set": {
+          "parent": "/pv2-detached:c",
+          "path": "base",
+          "value": "y"
+        }
+      },
+      {
+        "do": "dump"
+      }
+    ]
+  },
+  "want_rc": "LY_EINVAL",
+  "want_failed_step": 3
+}

@@ -1,0 +1,16 @@
+{
+  "id": "seq/set-relative-opaque-schema-parent",
+  "source": {"url": "hand-written (this repo)", "commit": null, "license": "BSD-3-Clause"},
+  "request": {
+    "op": "sequence",
+    "searchdirs": ["schemas"],
+    "modules": [{"name": "pv2"}],
+    "steps": [
+      {"do": "parse", "data": "{\"pv2:c\":\"x\"}", "unknown": "opaque", "parse_only": true},
+      {"do": "edit", "set": {"path": "mode", "value": "on"}},
+      {"do": "dump"}
+    ]
+  },
+  "want_verdict": "valid",
+  "want_path": "/pv2:c/mode"
+}

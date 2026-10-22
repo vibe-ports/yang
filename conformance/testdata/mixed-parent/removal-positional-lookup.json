@@ -1,0 +1,21 @@
+{
+  "id": "seq/mixed-parent-removal-positional-lookup",
+  "source": {"url": "hand-written (this repo)", "commit": null, "license": "BSD-3-Clause"},
+  "request": {
+    "op": "sequence",
+    "searchdirs": ["schemas"],
+    "modules": [{"name": "pv2-edit"}, {"name": "a"}],
+    "steps": [
+      {"do": "edit", "set": {"path": "/pv2-edit:c/sll", "value": "old"}},
+      {"do": "edit", "set": {"parent": "/pv2-edit:c/sll[.='old']", "path": "/a:foo", "value": "42"}},
+      {"do": "edit", "set": {"path": "/pv2-edit:c/sll", "value": "x"}},
+      {"do": "edit", "set": {"path": "/pv2-edit:c/sll", "value": "y"}},
+      {"do": "edit", "delete": "/pv2-edit:c/sll[.='x']"},
+      {"do": "edit", "set": {"path": "/pv2-edit:c/sll[1]", "value": "first"}},
+      {"do": "dump"}
+    ]
+  },
+  "want_rc": "LY_SUCCESS",
+  "want_json_order": ["\"y\"", "\"a:foo\"", "\"first\""],
+  "want_xml_order": ["<sll>y", "<foo", "<sll>first"]
+}

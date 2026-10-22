@@ -1,0 +1,552 @@
+{
+ "source": {
+  "url": "hand-written (this repo)",
+  "commit": null,
+  "license": "BSD-3-Clause"
+ },
+ "cases": [
+  {
+   "id": "seq/mixed-parent-foreign-pos-htFalse-mixedFalse",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "data",
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      },
+      "data": "{\"pv2-edit:c\": {\"st\": [{\"x\": \"b1\"}]}}",
+      "parse_only": true
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "data",
+      "parse_only": true,
+      "data": "{\"n:root\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-edit:c\": {\"a\": \"x\", \"st\": [{\"x\": \"a1\"}]}}",
+      "data_type": "data"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "st[1]/x",
+       "value": "z"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "st[2]/x",
+       "value": "w"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-foreign-pos-htFalse-mixedTrue",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "data",
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      },
+      "data": "{\"pv2-edit:c\": {\"st\": [{\"x\": \"b1\"}]}}",
+      "parse_only": true
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "data",
+      "parse_only": true,
+      "data": "{\"n:root\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-edit:c\": {\"a\": \"x\", \"st\": [{\"x\": \"a1\"}]}}",
+      "data_type": "data"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/a",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "st[1]/x",
+       "value": "z"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "st[2]/x",
+       "value": "w"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 8
+  },
+  {
+   "id": "seq/mixed-parent-foreign-pos-htTrue-mixedFalse",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "data",
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      },
+      "data": "{\"pv2-edit:c\": {\"st\": [{\"x\": \"b1\"}]}}",
+      "parse_only": true
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "data",
+      "parse_only": true,
+      "data": "{\"n:root\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-edit:c\": {\"a\": \"x\", \"st\": [{\"x\": \"a1\"}], \"b\": 1, \"ll\": [\"p\"]}}",
+      "data_type": "data"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "st[1]/x",
+       "value": "z"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "st[2]/x",
+       "value": "w"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-foreign-pos-htTrue-mixedTrue",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "data",
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      },
+      "data": "{\"pv2-edit:c\": {\"st\": [{\"x\": \"b1\"}]}}",
+      "parse_only": true
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "data",
+      "parse_only": true,
+      "data": "{\"n:root\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-edit:c\": {\"a\": \"x\", \"st\": [{\"x\": \"a1\"}], \"b\": 1, \"ll\": [\"p\"]}}",
+      "data_type": "data"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/a",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "st[1]/x",
+       "value": "z"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "st[2]/x",
+       "value": "w"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-foreign-upd-mixedFalse",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "data",
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      },
+      "data": "{\"pv2-edit:c\": {\"b\": 1}}",
+      "parse_only": true
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "data",
+      "parse_only": true,
+      "data": "{\"n:root\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-edit:c\": {\"a\": \"x\"}}",
+      "data_type": "data"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "300"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "7"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 5
+  },
+  {
+   "id": "seq/mixed-parent-foreign-upd-mixedTrue",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "data",
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      },
+      "data": "{\"pv2-edit:c\": {\"b\": 1}}",
+      "parse_only": true
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "data",
+      "parse_only": true,
+      "data": "{\"n:root\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-edit:c\": {\"a\": \"x\"}}",
+      "data_type": "data"
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/a",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "300"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "7"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 6
+  }
+ ]
+}

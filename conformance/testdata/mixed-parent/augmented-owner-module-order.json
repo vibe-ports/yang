@@ -1,0 +1,17 @@
+{
+  "id": "seq/mixed-parent-augmented-owner-module-order",
+  "source": {"url": "hand-written (this repo)", "commit": null, "license": "BSD-3-Clause"},
+  "request": {
+    "op": "sequence",
+    "searchdirs": ["schemas"],
+    "modules": [{"name": "m"}, {"name": "z"}, {"name": "n"}],
+    "steps": [
+      {"do": "parse", "data": "{\"m:c\":{\"z:extra\":\"e\"}}", "parse_only": true},
+      {"do": "edit", "set": {"parent": "/m:c/z:extra", "path": "/n:root", "value": "r"}},
+      {"do": "dump"}
+    ]
+  },
+  "want_rc": "LY_SUCCESS",
+  "want_json_order": ["\"z:extra\"", "\"n:root\""],
+  "want_xml_order": ["<extra", "<root"]
+}

@@ -1,0 +1,6 @@
+module n {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:n";
+  prefix n;
+  leaf root { type string; }
+}

@@ -1,0 +1,52 @@
+{
+  "id": "seq/new-path-parent-any-payload-positional",
+  "source": {
+    "url": "hand-written (this repo)",
+    "commit": null,
+    "license": "BSD-3-Clause"
+  },
+  "request": {
+    "op": "sequence",
+    "searchdirs": [
+      "schemas"
+    ],
+    "modules": [
+      {
+        "name": "a"
+      }
+    ],
+    "steps": [
+      {
+        "do": "parse",
+        "data": "{\"a:any\":{\"a:foo\":1,\"a:ll2\":[\"one\"]}}",
+        "parse_only": true
+      },
+      {
+        "do": "edit",
+        "set": {
+          "parent": "/a:any/ll2[1]",
+          "path": "/a:ll2[2]",
+          "value": "two"
+        }
+      },
+      {
+        "do": "edit",
+        "set": {
+          "parent": "/a:any/foo",
+          "path": "/a:ll2[3]",
+          "value": "three"
+        }
+      },
+      {
+        "do": "dump"
+      }
+    ]
+  },
+  "want_rc": "LY_SUCCESS",
+  "want_json_order": [
+    "\"foo\": 1",
+    "\"one\"",
+    "\"two\"",
+    "\"three\""
+  ]
+}

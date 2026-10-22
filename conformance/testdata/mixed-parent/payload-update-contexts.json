@@ -1,0 +1,511 @@
+{
+ "source": {
+  "url": "hand-written (this repo)",
+  "commit": null,
+  "license": "BSD-3-Clause"
+ },
+ "cases": [
+  {
+   "id": "seq/mixed-parent-payload-foreignFalse-65536-parenta-any",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "a"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"a:any\":{\"a:foo\":1}}",
+      "parse_only": true
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/a:any",
+       "path": "a:foo",
+       "value": "65536"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/a:foo",
+       "value": "3"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 1
+  },
+  {
+   "id": "seq/mixed-parent-payload-foreignFalse-65536-parenta-foo",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "a"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"a:any\":{\"a:foo\":1}}",
+      "parse_only": true
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "a:foo",
+       "path": "/a:any/a:foo",
+       "value": "65536"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/a:foo",
+       "value": "3"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 1
+  },
+  {
+   "id": "seq/mixed-parent-payload-foreignFalse-7-parenta-any",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "a"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"a:any\":{\"a:foo\":1}}",
+      "parse_only": true
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/a:any",
+       "path": "a:foo",
+       "value": "7"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/a:foo",
+       "value": "3"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-payload-foreignFalse-7-parenta-foo",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "a"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"a:any\":{\"a:foo\":1}}",
+      "parse_only": true
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "a:foo",
+       "path": "/a:any/a:foo",
+       "value": "7"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/a:foo",
+       "value": "3"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-payload-foreignFalse-selector-into-payload",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "a"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"a:any\":{\"a:foo\":1}}",
+      "parse_only": true
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/a:any/foo",
+       "path": "x",
+       "value": "1"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 1
+  },
+  {
+   "id": "seq/mixed-parent-payload-foreignTrue-65536-parenta-any",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "a"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"a:any\":{\"a:foo\":1}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/a:any",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "a"
+        }
+       ]
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/a:any",
+       "path": "a:foo",
+       "value": "65536"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/a:foo",
+       "value": "3"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 2
+  },
+  {
+   "id": "seq/mixed-parent-payload-foreignTrue-65536-parenta-foo",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "a"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"a:any\":{\"a:foo\":1}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/a:any",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "a"
+        }
+       ]
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "a:foo",
+       "path": "/a:any/a:foo",
+       "value": "65536"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/a:foo",
+       "value": "3"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 2
+  },
+  {
+   "id": "seq/mixed-parent-payload-foreignTrue-7-parenta-any",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "a"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"a:any\":{\"a:foo\":1}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/a:any",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "a"
+        }
+       ]
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/a:any",
+       "path": "a:foo",
+       "value": "7"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/a:foo",
+       "value": "3"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-payload-foreignTrue-7-parenta-foo",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "a"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"a:any\":{\"a:foo\":1}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/a:any",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "a"
+        }
+       ]
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "a:foo",
+       "path": "/a:any/a:foo",
+       "value": "7"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/a:foo",
+       "value": "3"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 2
+  },
+  {
+   "id": "seq/mixed-parent-payload-foreignTrue-selector-into-payload",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "a"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"a:any\":{\"a:foo\":1}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/a:any",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "a"
+        }
+       ]
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/a:any/foo",
+       "path": "x",
+       "value": "1"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 2
+  }
+ ]
+}

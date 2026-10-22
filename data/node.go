@@ -100,6 +100,9 @@ type Tree struct {
 	// Diagnostics from lyd_find_meta calls during a diff merge retain their
 	// emitting context even when a later wrapper reports the operation error.
 	diffLogs []diffLogEntry
+	// updateCtx is the context of the term the last NewPath updated (_lyd_change_term logs
+	// its store chain in LYD_CTX(term)); nil when it updated none.
+	updateCtx *schema.Set
 }
 
 // workCounter counts the work of a tree for tests (work, not time): comparisons made by

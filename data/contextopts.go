@@ -18,6 +18,12 @@ func init() {
 		}
 		return nil
 	}
+	contextopts.NewPathUpdateContext = func(v any) *snap.Schema {
+		if t, _ := v.(*Tree); t != nil && t.updateCtx != nil {
+			return snap.New(t.updateCtx)
+		}
+		return nil
+	}
 	contextopts.TreeSchema = func(v any) *snap.Schema {
 		t, _ := v.(*Tree)
 		if t != nil {

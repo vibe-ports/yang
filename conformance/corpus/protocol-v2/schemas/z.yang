@@ -1,0 +1,7 @@
+module z {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:z";
+  prefix z;
+  import m { prefix m; }
+  augment "/m:c" { leaf extra { type string; } }
+}

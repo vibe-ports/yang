@@ -1732,7 +1732,6 @@
     },
     {
       "id": "[edit/set path empty false]",
-      "gap": "relative-set-parent",
       "outcome": {
         "context_diagnostics": [],
         "failed_step": 1,
@@ -1822,7 +1821,6 @@
     },
     {
       "id": "[edit/set path bogus false]",
-      "gap": "relative-set-parent",
       "outcome": {
         "context_diagnostics": [],
         "failed_step": 1,

@@ -21,6 +21,11 @@ import (
 
 // NewPathOptions are the lyd_new_path options of the port (LYD_NEW_PATH_*).
 type NewPathOptions struct {
+	// Parent is lyd_new_path's parent: the node a relative path resolves from. It must belong
+	// to the receiver tree; an absolute path searches from the tree root, but a missing root is
+	// inserted beside Parent, as in libyang. An opaque node is allowed. Adding this field
+	// breaks unkeyed NewPathOptions literals.
+	Parent *Node
 	// Update is LYD_NEW_PATH_UPDATE: an existing leaf (or state leaf-list instance) gets the new
 	// value instead of the "already exists" error.
 	Update bool
@@ -50,13 +55,18 @@ func (l *logger) done(err error) error {
 	return err
 }
 
-// NewPath is lyd_new_path on the top level of t: it creates the nodes of the absolute JSON path
+// NewPath is lyd_new_path: it creates the nodes of a JSON path
 // that do not exist yet, value being the value of a created leaf or leaf-list (JSON format), and
-// returns the first created node (nil when nothing was created or changed). An existing term is
-// an error unless it is a default node or o.Update is set; then its value is changed
+// returns the first created node, or the changed node on update (nil when nothing changed).
+// An existing term is an error unless it is a default node or o.Update is set; then its value is changed
 // (lyd_change_term: its Default flag and that of its NP-container ancestors cleared, New set
 // when the value changed). The keys of a created list instance come from the path's predicate.
-// Errors are a *ValidationError with libyang's diagnostics.
+// With o.Parent, a relative path starts at that node and an absolute path searches from the
+// root. If its first segment is missing, libyang inserts it beside o.Parent.
+// A parent detached from t or belonging to another tree is rejected with LY_EINVAL and the
+// message "Parent node does not belong to this tree." A parent from another context uses
+// libyang's "Different contexts mixed in a \"lyd_new_path\" function call." diagnostic.
+// Other errors are a *ValidationError with libyang's diagnostics.
 func (t *Tree) NewPath(path, value string, o NewPathOptions) (*Node, error) {
 	defer t.work.beginHashWork()()
 	lg := &logger{set: t.context()}
@@ -66,6 +76,7 @@ func (t *Tree) NewPath(path, value string, o NewPathOptions) (*Node, error) {
 	if t.work.hashLimit != 0 || t.work.hashTrace != nil || len(value) >= 1<<20 || len(path) >= 1<<20 {
 		journal = beginHashTransaction(t)
 	}
+	t.updateCtx = nil
 	n, err := t.newPath(lg, path, value, o)
 	if t.work.hashErr != nil {
 		err = t.work.hashErr
@@ -237,7 +248,7 @@ func (t *Tree) findPath(lg *logger, path string) (*Node, error) {
 	}
 	sib := &t.top
 	if relative {
-		sib = &ctx.kids
+		sib = t.childrenOf(ctx) // ly_path_eval_partial: lyd_child_any(ctx_node)
 	}
 	n, idx, err := t.evalPartialFrom(lg, sib, p)
 	switch {
@@ -297,7 +308,7 @@ func (t *Tree) evalPartialFrom(lg *logger, sib *siblings, p types.Path) (*Node, 
 		if n == nil {
 			return prev, u, nil
 		}
-		prev, sib = n, &n.kids
+		prev, sib = n, t.childrenOf(n) // lyd_child_any: into an anydata value tree too
 	}
 	return prev, len(p), nil
 }
@@ -310,22 +321,43 @@ func (t *Tree) evalPartialFrom(lg *logger, sib *siblings, p types.Path) (*Node, 
 // hash-bucket lookups for non-duplicate instances take their bucket instead.
 func (t *Tree) instances(s *siblings, sn *schema.Node) func(func(*Node) bool) {
 	return func(yield func(*Node) bool) {
-		var run []*Node
-		if opChild(sn) || s.schemaUnordered {
-			run = t.opRun(s, sn)
-		} else if i := t.schemaIndex(s, sn); i >= 0 {
-			run = s.list[i:]
-		}
-		if len(run) == 0 {
-			return
-		}
 		// LYD_LIST_FOR_INST tests the requested pointer on the first node too.
-		for _, n := range run {
+		for _, n := range t.instanceRun(s, sn) {
 			if n.schema != sn || !yield(n) {
 				return
 			}
 		}
 	}
+}
+
+// instanceRun is the siblings from lyd_find_sibling_schema's (or lyd_find_sibling_val's)
+// match for sn on; the caller decides how far the run of sn goes.
+func (t *Tree) instanceRun(s *siblings, sn *schema.Node) []*Node {
+	var run []*Node
+	// With siblings of several contexts lyd_find_sibling_schema also matches a node of
+	// another context (by name and schema parents), so the walk can start, and stop, at a
+	// foreign instance the schema-pointer records do not see: the first registered record
+	// of the children table, or without one the first sibling.
+	mixed := s.schemaUnordered && !opChild(sn) && s.foreignFor(sn)
+	switch {
+	case mixed && s.ht != nil && s.firstRecordSchema(sn):
+		if leader := s.leaderFirstMixed(sn); leader != nil {
+			run = s.list[t.indexFromEnd(s.list, leader):]
+		}
+	case mixed:
+		// A single instance (leaf, container, ...) has no first-instance record: the
+		// schema lookup that matches other contexts by name finds it.
+		if n := t.schemaLookup(s, sn); n != nil {
+			run = s.list[t.indexFromEnd(s.list, n):]
+		}
+	case (opChild(sn) || s.schemaUnordered) && !mixed:
+		run = t.opRun(s, sn)
+	default:
+		if i := t.schemaIndex(s, sn); i >= 0 {
+			run = s.list[i:]
+		}
+	}
+	return run
 }
 
 // createList is lyd_create_list: an unlinked list instance with the predicate's keys, each stored
@@ -373,14 +405,26 @@ func (t *Tree) lookupList(seg types.PathSegment) (*Node, *types.Diag, *schema.No
 	return t.createList(seg, true)
 }
 
-// newPath is lyd_new_path_ with lyd_new_path_create (no parent node, absolute path; the top
-// level of t is the parent's siblings).
+// newPath is lyd_new_path_ with lyd_new_path_create. Relative paths start at the parent's
+// children; absolute paths start at the tree root even when a parent is supplied.
 func (t *Tree) newPath(lg *logger, path, value string, o NewPathOptions) (*Node, error) {
-	if path == "" || path[0] != '/' {
+	if o.Parent != nil {
+		if c := ctxOf(o.Parent); c != nil && c != t.context() {
+			return nil, lg.logErr("LY_EINVAL", "Different contexts mixed in a \"lyd_new_path\" function call.")
+		}
+		root := o.Parent
+		for root.parent != nil {
+			root = root.parent
+		}
+		if root.tree != t {
+			return nil, lg.logErr("LY_EINVAL", "Parent node does not belong to this tree.")
+		}
+	}
+	if (path == "" || path[0] != '/') && o.Parent == nil {
 		return nil, argErr("(path[0] == '/') || parent", "lyd_new_path")
 	}
-	var ctxNode *schema.Node // lyd_node_schema(parent): the first top-level node
-	if len(t.top.list) > 0 {
+	ctxNode := nodeSchema(t.context(), o.Parent)
+	if o.Parent == nil && len(t.top.list) > 0 {
 		ctxNode = t.top.list[0].schema
 	}
 	p, msg, at := types.CompilePath(t.context(), ctxNode, path, false, true)
@@ -391,26 +435,54 @@ func (t *Tree) newPath(lg *logger, path, value string, o NewPathOptions) (*Node,
 	if err != nil {
 		return nil, err
 	}
+	// ly_path_parse skips XML whitespace before deciding whether the path is absolute.
+	absolute := strings.HasPrefix(strings.TrimLeft(path, " \t\n\r"), "/")
 	var node *Node
+	sib := &t.top
+	if !absolute {
+		sib = t.childrenOf(o.Parent) // lyd_child_any(parent)
+	}
 	idx := 0
-	if t.top.len() > 0 {
+	if sib.len() > 0 {
 		var n *Node
-		if n, idx, err = t.evalPartial(lg, search); err != nil {
+		if n, idx, err = t.evalPartialFrom(lg, sib, search); err != nil {
 			return nil, err
 		}
 		if idx == len(search) && len(search) == len(p) {
 			// the node exists: update it or, a default node, set it
 			if !o.Update && n.flags&FlagDefault == 0 {
-				return nil, lg.val(n, "", ly.Reference, "Path \"%s\" already exists.", path)
+				_ = lg.val(n, "", ly.Reference, "Path \"%s\" already exists.", path)
+				return nil, rcError("LY_EEXIST") // LOGVAL, then ret = LY_EEXIST
 			} else if o.Update && n.schema.IsKey() {
 				return nil, nil // the key value is in the predicate, it cannot change
 			}
 			return t.newPathUpdate(lg, n, value)
 		}
-		node = n // nil when nothing matched: create from the top level
+		node = n
+	}
+	beside := false
+	if node == nil && o.Parent != nil {
+		// LY_ENOTFOUND: lyd_new_path_create creates from the parent when the first segment
+		// has a data parent; otherwise it passes the parent as lyd_insert_node's sibling,
+		// so a missing absolute root joins the parent's siblings (tree_data_new.c:1615-1619,
+		// 1772-1774).
+		if p[0].Node.DataParent() != nil {
+			node = o.Parent
+		} else {
+			node, beside = o.Parent.parent, true
+		}
 	}
 	if idx < len(p) && isDupInstList(p[idx].Node) && len(p[idx].Preds) > 0 && p[idx].Preds[0].Kind == types.PredPosition {
-		if err := t.checkPosition(lg, node, p[idx]); err != nil {
+		// LYD_LIST_FOR_INST(node ? lyd_child(node) : parent, ...): beside the parent, its own
+		// siblings (an anydata value tree for a payload node)
+		inst := &t.top
+		switch {
+		case beside:
+			inst = o.Parent.siblingsOf()
+		case node != nil:
+			inst = &node.kids
+		}
+		if err := t.checkPosition(lg, inst, p[idx]); err != nil {
 			return nil, err
 		}
 	}
@@ -563,11 +635,7 @@ func (t *Tree) preflightNewPathHash(segments types.Path, parent *Node, value str
 
 // checkPosition is the position check of lyd_new_path_create: a key-less list or state
 // leaf-list instance can be created at most right after the existing ones.
-func (t *Tree) checkPosition(lg *logger, parent *Node, seg types.PathSegment) error {
-	sib := &t.top
-	if parent != nil {
-		sib = &parent.kids
-	}
+func (t *Tree) checkPosition(lg *logger, sib *siblings, seg types.PathSegment) error {
 	count := uint64(0)
 	for range t.instances(sib, seg.Node) {
 		count++
@@ -577,11 +645,13 @@ func (t *Tree) checkPosition(lg *logger, parent *Node, seg types.PathSegment) er
 	case count+1 >= pos:
 		return nil
 	case count == 0:
-		return lg.val(nil, "", ly.Reference, "Cannot create \"%s\" on position %d, no instances exist.", seg.Node.Name, pos)
+		_ = lg.val(nil, "", ly.Reference, "Cannot create \"%s\" on position %d, no instances exist.", seg.Node.Name, pos)
 	case count > 1:
-		return lg.val(nil, "", ly.Reference, "Cannot create \"%s\" on position %d, only %d instances exist.", seg.Node.Name, pos, count)
+		_ = lg.val(nil, "", ly.Reference, "Cannot create \"%s\" on position %d, only %d instances exist.", seg.Node.Name, pos, count)
+	default:
+		_ = lg.val(nil, "", ly.Reference, "Cannot create \"%s\" on position %d, only %d instance exists.", seg.Node.Name, pos, count)
 	}
-	return lg.val(nil, "", ly.Reference, "Cannot create \"%s\" on position %d, only %d instance exists.", seg.Node.Name, pos, count)
+	return rcError("LY_EINVAL") // LOGVAL, then ret = LY_EINVAL
 }
 
 // checkFindPath is lyd_new_path_check_find_lypath (without LYD_NEW_PATH_OPAQ): lists need their
@@ -655,6 +725,7 @@ func (t *Tree) newPathUpdate(lg *logger, n *Node, value string) (*Node, error) {
 		return nil, nil // an inner node has nothing to update
 	}
 	// _lyd_change_term
+	t.updateCtx = ctxOf(n)
 	v, d := types.Store(n.schema.Type, value, types.FormatJSON, types.HintData, types.ModuleNames{Set: ctxOf(n)}, n.schema)
 	if d != nil {
 		return nil, lg.storeErr(n, n.schema, d)

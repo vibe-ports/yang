@@ -1,0 +1,46 @@
+{
+  "id": "seq/new-path-parent-any-payload-update",
+  "source": {
+    "url": "hand-written (this repo)",
+    "commit": null,
+    "license": "BSD-3-Clause"
+  },
+  "request": {
+    "op": "sequence",
+    "searchdirs": [
+      "schemas"
+    ],
+    "modules": [
+      {
+        "name": "a"
+      }
+    ],
+    "steps": [
+      {
+        "do": "parse",
+        "data": "{\"a:any\":{\"a:foo\":1}}",
+        "parse_only": true
+      },
+      {
+        "do": "edit",
+        "set": {
+          "parent": "/a:any",
+          "path": "a:foo",
+          "value": "2"
+        }
+      },
+      {
+        "do": "dump"
+      }
+    ]
+  },
+  "want_rc": "LY_SUCCESS",
+  "want_json_order": [
+    "\"a:any\"",
+    "\"foo\": 2"
+  ],
+  "want_xml_order": [
+    "<any",
+    "<foo>2</foo>"
+  ]
+}

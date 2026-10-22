@@ -1,0 +1,39 @@
+{
+  "id": "seq/new-path-parent-positional-einval",
+  "source": {
+    "url": "hand-written (this repo)",
+    "commit": null,
+    "license": "BSD-3-Clause"
+  },
+  "request": {
+    "op": "sequence",
+    "searchdirs": [
+      "schemas"
+    ],
+    "modules": [
+      {
+        "name": "pv2-edit"
+      }
+    ],
+    "steps": [
+      {
+        "do": "parse",
+        "data": "{\"pv2-edit:c\":{\"a\":\"x\",\"st\":[{\"x\":\"s1\"}]}}",
+        "parse_only": true
+      },
+      {
+        "do": "edit",
+        "set": {
+          "parent": "/pv2-edit:c",
+          "path": "st[3]",
+          "value": ""
+        }
+      },
+      {
+        "do": "dump"
+      }
+    ]
+  },
+  "want_rc": "LY_EINVAL",
+  "want_failed_step": 1
+}

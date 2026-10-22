@@ -1,0 +1,7679 @@
+{
+ "source": {
+  "url": "hand-written (this repo)",
+  "commit": null,
+  "license": "BSD-3-Clause"
+ },
+ "cases": [
+  {
+   "id": "seq/mixed-parent-matrix-same-htFalse-opqFalse-nested-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"]}}",
+      "parse_only": true
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-matrix-same-htFalse-opqFalse-nested-root-then-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"]}}",
+      "parse_only": true
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='q']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "a",
+       "value": "z"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-matrix-same-htFalse-opqFalse-nested-root-n",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"]}}",
+      "parse_only": true
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/n:root",
+       "value": "r"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-matrix-same-htFalse-opqFalse-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"]}}",
+      "parse_only": true
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='a0']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "l[k='w']",
+       "value": ""
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-matrix-same-htFalse-opqFalse-top-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"]}}",
+      "parse_only": true
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/pv2-ma:x",
+       "value": "t"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "t"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-first-htFalse-opqFalse-nested-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-first-htFalse-opqFalse-nested-root-then-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='q']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "a",
+       "value": "z"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-first-htFalse-opqFalse-nested-root-n",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/n:root",
+       "value": "r"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-first-htFalse-opqFalse-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='a0']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "l[k='w']",
+       "value": ""
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-first-htFalse-opqFalse-top-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/pv2-ma:x",
+       "value": "t"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "t"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-child-htFalse-opqFalse-nested-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><np yang:operation=\"create\"><d>4</d></np></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-child-htFalse-opqFalse-nested-root-then-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><np yang:operation=\"create\"><d>4</d></np></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='q']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "a",
+       "value": "z"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-child-htFalse-opqFalse-nested-root-n",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><np yang:operation=\"create\"><d>4</d></np></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/n:root",
+       "value": "r"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-child-htFalse-opqFalse-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><np yang:operation=\"create\"><d>4</d></np></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='a0']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "l[k='w']",
+       "value": ""
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-child-htFalse-opqFalse-top-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><np yang:operation=\"create\"><d>4</d></np></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/pv2-ma:x",
+       "value": "t"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "t"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-ll-htFalse-opqFalse-nested-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><ll yang:operation=\"create\">a</ll></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-ll-htFalse-opqFalse-nested-root-then-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><ll yang:operation=\"create\">a</ll></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='q']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "a",
+       "value": "z"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-ll-htFalse-opqFalse-nested-root-n",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><ll yang:operation=\"create\">a</ll></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/n:root",
+       "value": "r"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-ll-htFalse-opqFalse-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><ll yang:operation=\"create\">a</ll></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='a0']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "l[k='w']",
+       "value": ""
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-ll-htFalse-opqFalse-top-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><ll yang:operation=\"create\">a</ll></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/pv2-ma:x",
+       "value": "t"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "t"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-first-htFalse-opqFalse-nested-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "9"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-first-htFalse-opqFalse-nested-root-then-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "9"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='q']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "a",
+       "value": "z"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-first-htFalse-opqFalse-nested-root-n",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "9"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/n:root",
+       "value": "r"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-first-htFalse-opqFalse-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "9"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='a0']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "l[k='w']",
+       "value": ""
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-first-htFalse-opqFalse-top-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "9"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/pv2-ma:x",
+       "value": "t"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "t"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-same-htFalse-opqTrue-nested-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-matrix-same-htFalse-opqTrue-nested-root-then-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='q']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "a",
+       "value": "z"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-matrix-same-htFalse-opqTrue-nested-root-n",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/n:root",
+       "value": "r"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-matrix-same-htFalse-opqTrue-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='a0']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "l[k='w']",
+       "value": ""
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-matrix-same-htFalse-opqTrue-top-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/pv2-ma:x",
+       "value": "t"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "t"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-first-htFalse-opqTrue-nested-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-first-htFalse-opqTrue-nested-root-then-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='q']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "a",
+       "value": "z"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-first-htFalse-opqTrue-nested-root-n",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/n:root",
+       "value": "r"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-first-htFalse-opqTrue-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='a0']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "l[k='w']",
+       "value": ""
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-first-htFalse-opqTrue-top-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/pv2-ma:x",
+       "value": "t"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "t"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-child-htFalse-opqTrue-nested-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><np yang:operation=\"create\"><d>4</d></np></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-child-htFalse-opqTrue-nested-root-then-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><np yang:operation=\"create\"><d>4</d></np></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='q']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "a",
+       "value": "z"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-child-htFalse-opqTrue-nested-root-n",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><np yang:operation=\"create\"><d>4</d></np></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/n:root",
+       "value": "r"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-child-htFalse-opqTrue-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><np yang:operation=\"create\"><d>4</d></np></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='a0']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "l[k='w']",
+       "value": ""
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-child-htFalse-opqTrue-top-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><np yang:operation=\"create\"><d>4</d></np></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/pv2-ma:x",
+       "value": "t"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "t"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-ll-htFalse-opqTrue-nested-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><ll yang:operation=\"create\">a</ll></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-ll-htFalse-opqTrue-nested-root-then-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><ll yang:operation=\"create\">a</ll></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='q']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "a",
+       "value": "z"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-ll-htFalse-opqTrue-nested-root-n",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><ll yang:operation=\"create\">a</ll></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/n:root",
+       "value": "r"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-ll-htFalse-opqTrue-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><ll yang:operation=\"create\">a</ll></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='a0']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "l[k='w']",
+       "value": ""
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-ll-htFalse-opqTrue-top-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><ll yang:operation=\"create\">a</ll></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/pv2-ma:x",
+       "value": "t"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "t"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-first-htFalse-opqTrue-nested-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "9"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-first-htFalse-opqTrue-nested-root-then-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "9"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='q']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "a",
+       "value": "z"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-first-htFalse-opqTrue-nested-root-n",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "9"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/n:root",
+       "value": "r"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-first-htFalse-opqTrue-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "9"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='a0']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "l[k='w']",
+       "value": ""
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-first-htFalse-opqTrue-top-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "9"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/pv2-ma:x",
+       "value": "t"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "t"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-same-htTrue-opqFalse-nested-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1]}}",
+      "parse_only": true
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-matrix-same-htTrue-opqFalse-nested-root-then-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1]}}",
+      "parse_only": true
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='q']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "a",
+       "value": "z"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-matrix-same-htTrue-opqFalse-nested-root-n",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1]}}",
+      "parse_only": true
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/n:root",
+       "value": "r"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-matrix-same-htTrue-opqFalse-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1]}}",
+      "parse_only": true
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='a0']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "l[k='w']",
+       "value": ""
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-matrix-same-htTrue-opqFalse-top-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1]}}",
+      "parse_only": true
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/pv2-ma:x",
+       "value": "t"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "t"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-first-htTrue-opqFalse-nested-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-first-htTrue-opqFalse-nested-root-then-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='q']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "a",
+       "value": "z"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-first-htTrue-opqFalse-nested-root-n",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/n:root",
+       "value": "r"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-first-htTrue-opqFalse-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='a0']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "l[k='w']",
+       "value": ""
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-first-htTrue-opqFalse-top-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/pv2-ma:x",
+       "value": "t"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "t"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-child-htTrue-opqFalse-nested-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><np yang:operation=\"create\"><d>4</d></np></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-child-htTrue-opqFalse-nested-root-then-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><np yang:operation=\"create\"><d>4</d></np></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='q']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "a",
+       "value": "z"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-child-htTrue-opqFalse-nested-root-n",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><np yang:operation=\"create\"><d>4</d></np></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/n:root",
+       "value": "r"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-child-htTrue-opqFalse-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><np yang:operation=\"create\"><d>4</d></np></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='a0']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "l[k='w']",
+       "value": ""
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-child-htTrue-opqFalse-top-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><np yang:operation=\"create\"><d>4</d></np></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/pv2-ma:x",
+       "value": "t"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "t"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-ll-htTrue-opqFalse-nested-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><ll yang:operation=\"create\">a</ll></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-ll-htTrue-opqFalse-nested-root-then-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><ll yang:operation=\"create\">a</ll></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='q']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "a",
+       "value": "z"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-ll-htTrue-opqFalse-nested-root-n",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><ll yang:operation=\"create\">a</ll></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/n:root",
+       "value": "r"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-ll-htTrue-opqFalse-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><ll yang:operation=\"create\">a</ll></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='a0']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "l[k='w']",
+       "value": ""
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-ll-htTrue-opqFalse-top-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><ll yang:operation=\"create\">a</ll></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/pv2-ma:x",
+       "value": "t"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "t"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-first-htTrue-opqFalse-nested-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "9"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-first-htTrue-opqFalse-nested-root-then-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "9"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='q']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "a",
+       "value": "z"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-first-htTrue-opqFalse-nested-root-n",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "9"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/n:root",
+       "value": "r"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-first-htTrue-opqFalse-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "9"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='a0']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "l[k='w']",
+       "value": ""
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-first-htTrue-opqFalse-top-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1]}}",
+      "parse_only": true
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "9"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/pv2-ma:x",
+       "value": "t"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "t"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-same-htTrue-opqTrue-nested-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-matrix-same-htTrue-opqTrue-nested-root-then-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='q']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "a",
+       "value": "z"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-matrix-same-htTrue-opqTrue-nested-root-n",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/n:root",
+       "value": "r"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-matrix-same-htTrue-opqTrue-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='a0']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "l[k='w']",
+       "value": ""
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-matrix-same-htTrue-opqTrue-top-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/pv2-ma:x",
+       "value": "t"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "t"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-first-htTrue-opqTrue-nested-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-first-htTrue-opqTrue-nested-root-then-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='q']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "a",
+       "value": "z"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-first-htTrue-opqTrue-nested-root-n",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/n:root",
+       "value": "r"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-first-htTrue-opqTrue-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='a0']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "l[k='w']",
+       "value": ""
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-first-htTrue-opqTrue-top-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/pv2-ma:x",
+       "value": "t"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "t"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-child-htTrue-opqTrue-nested-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><np yang:operation=\"create\"><d>4</d></np></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-child-htTrue-opqTrue-nested-root-then-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><np yang:operation=\"create\"><d>4</d></np></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='q']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "a",
+       "value": "z"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-child-htTrue-opqTrue-nested-root-n",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><np yang:operation=\"create\"><d>4</d></np></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/n:root",
+       "value": "r"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-child-htTrue-opqTrue-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><np yang:operation=\"create\"><d>4</d></np></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='a0']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "l[k='w']",
+       "value": ""
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-child-htTrue-opqTrue-top-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><np yang:operation=\"create\"><d>4</d></np></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/pv2-ma:x",
+       "value": "t"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "t"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-ll-htTrue-opqTrue-nested-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><ll yang:operation=\"create\">a</ll></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-ll-htTrue-opqTrue-nested-root-then-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><ll yang:operation=\"create\">a</ll></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='q']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "a",
+       "value": "z"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-ll-htTrue-opqTrue-nested-root-n",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><ll yang:operation=\"create\">a</ll></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/n:root",
+       "value": "r"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-ll-htTrue-opqTrue-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><ll yang:operation=\"create\">a</ll></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='a0']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "l[k='w']",
+       "value": ""
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-ll-htTrue-opqTrue-top-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><ll yang:operation=\"create\">a</ll></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/pv2-ma:x",
+       "value": "t"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "t"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-first-htTrue-opqTrue-nested-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "9"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-first-htTrue-opqTrue-nested-root-then-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "9"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/pv2-ma:x",
+       "value": "root"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='q']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "a",
+       "value": "z"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-first-htTrue-opqTrue-nested-root-n",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "9"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c/l[k='x']",
+       "path": "/n:root",
+       "value": "r"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-first-htTrue-opqTrue-child",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "9"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "3"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "ll[.='a0']",
+       "value": ""
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "l[k='w']",
+       "value": ""
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  },
+  {
+   "id": "seq/mixed-parent-matrix-foreign-new-first-htTrue-opqTrue-top-root",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff_parse",
+      "format": "xml",
+      "data_type": "config",
+      "data": "<c xmlns=\"urn:vibe-ports:yang:conformance:pv2-edit\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\"><a yang:operation=\"create\">f</a></c>"
+     },
+     {
+      "do": "parse",
+      "data": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"], \"nl\": [1], \"zzz\": \"o\"}}",
+      "parse_only": true,
+      "unknown": "opaque"
+     },
+     {
+      "do": "dup",
+      "node": "/pv2-edit:c",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      }
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "9"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/pv2-ma:x",
+       "value": "t"
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "t"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 3
+  }
+ ]
+}

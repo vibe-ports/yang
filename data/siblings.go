@@ -90,6 +90,7 @@ type siblings struct {
 
 	schemaUnordered bool                // a copy or move retained a different schema order
 	contexts        map[*schema.Set]int // linked schema nodes by retained context; lookups only read its size
+	leaderSeq       uint64              // the last first-instance registration (record.seq)
 }
 
 type recordChain struct {
@@ -107,6 +108,7 @@ type record struct {
 	chain       *recordChain
 	prev, next  *record
 	order       uint64
+	seq         uint64 // first-instance records: registration order across all schema nodes
 	left, right *record
 	height      int
 	more        []uint64 // later registrations of this node with the same recorded hash
@@ -1002,6 +1004,29 @@ func (s *siblings) firstRecordSchema(sn *schema.Node) bool {
 	return sn != nil && (sn.Kind == schema.List || sn.Kind == schema.LeafList) && (s.schemaUnordered || opChild(sn))
 }
 
+// leaderMaterialize registers the ordinary run starts in sibling order when the siblings first
+// leave schema order: until then their runs were contiguous, so libyang's records are the run
+// starts. Operation children already have records, which need not follow document order
+// (D-0117); they are kept.
+func (s *siblings) leaderMaterialize(order []*Node) {
+	s.touch()
+	seen := map[*schema.Node]bool{}
+	var prev *schema.Node
+	for _, n := range order {
+		if s.work != nil {
+			s.work.Add(1)
+		}
+		if !opChild(n.schema) && s.firstRecordSchema(n.schema) && n.schema != prev {
+			if !seen[n.schema] {
+				s.firstRun[n.schema] = n
+				seen[n.schema] = true
+			}
+			s.leaderAppend(n.schema, n)
+		}
+		prev = n.schema
+	}
+}
+
 // leaderBuild is lyd_insert_hash_add's empty_ht branch: every run start is registered in sibling
 // order. It runs when the table is created or ordinary siblings first leave schema order.
 func (s *siblings) leaderBuild(order []*Node) {
@@ -1052,7 +1077,30 @@ func (s *siblings) leaderAppend(sn *schema.Node, n *Node) bool {
 		c = &recordChain{}
 		s.leaders[sn] = c
 	}
-	return recordAppend(c, s.leaderByNode, n)
+	if !recordAppend(c, s.leaderByNode, n) {
+		return false
+	}
+	s.leaderSeq++
+	c.last.seq = s.leaderSeq
+	return true
+}
+
+// leaderFirstMixed is lyd_find_sibling_schema's children_ht lookup in siblings of several
+// contexts: the bucket holds the first instances of every schema node with sn's module and
+// node names, in registration order, and lyd_hash_table_schema_val_equal accepts the first one
+// whose schema compares equal with its parents (tree_data_common.c:1069-1112).
+func (s *siblings) leaderFirstMixed(sn *schema.Node) *Node {
+	var best *record
+	for k, c := range s.leaders {
+		s.visit()
+		if c.first != nil && (best == nil || c.first.seq < best.seq) && compareSchemaEqual(sn, k, true) {
+			best = c.first
+		}
+	}
+	if best == nil {
+		return nil
+	}
+	return best.node
 }
 
 func (s *siblings) leaderDrop(sn *schema.Node, n *Node) bool {
@@ -1459,8 +1507,7 @@ func (t *Tree) schemaIndex(s *siblings, sn *schema.Node) int {
 	}
 	// The linear branch of lyd_find_sibling_schema compares only module and
 	// node names for foreign contexts. Its table callback compares schema lineage.
-	foreign := s.mixedContexts() || sn.Module.Owner != nil && ctxOf(s.list[0]) != nil && ctxOf(s.list[0]) != sn.Module.Owner
-	if foreign {
+	if s.foreignFor(sn) {
 		for i, n := range s.list {
 			s.visit()
 			if schemaLookupMatch(n.schema, sn, s.ht != nil) {
@@ -1486,6 +1533,13 @@ func (t *Tree) schemaIndex(s *siblings, sn *schema.Node) int {
 		return i
 	}
 	return -1
+}
+
+// foreignFor reports whether a lookup of sn in s compares schema names, as
+// lyd_find_sibling_schema does for siblings of another context than sn.
+func (s *siblings) foreignFor(sn *schema.Node) bool {
+	return len(s.list) > 0 && (s.mixedContexts() ||
+		sn.Module.Owner != nil && ctxOf(s.list[0]) != nil && ctxOf(s.list[0]) != sn.Module.Owner)
 }
 
 func schemaLookupMatch(got, want *schema.Node, table bool) bool {

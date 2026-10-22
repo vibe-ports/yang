@@ -26,7 +26,7 @@ usable and measured; operations and anydata payloads are not done yet.
 | Defaults and with-defaults printing (RFC 6243: explicit, trim, report-all, report-all-tagged) | supported | |
 | RFC 7952 metadata | partial | parsed, validated and printed; `Node.Meta`, `Node.FindMeta`, `Tree.NewMeta`, `Meta.Value`, `Meta.Remove`; other metadata helpers are not public (#115) |
 | XPath 1.0 + YANG functions | supported | must/when/leafref; data queries `Tree.FindXPath`, `EvalXPath`, `EvalXPathAs` and `Tree.TrimXPath` (JSON-format expressions, variables); schema atoms `Schema.FindXPathAtoms`, `FindPathAtoms`. every xpath, atoms and trim fixture agrees with libyang or is a recorded deviation |
-| Tree edits: `NewTree`, `NewPath`, `Merge`, `Remove`, `Unlink`, `Find` | partial | absolute paths, merge without options |
+| Tree edits: `NewTree`, `NewPath`, `Merge`, `Remove`, `Unlink`, `Find` | partial | absolute paths and relative `NewPath` paths with `NewPathOptions.Parent`; merge without options |
 | Node comparison: `Node.Equal` (lyd_compare_single) | partial | full-recursion, defaults and opaque options; nodes of two contexts compared by names and canonical values |
 | Schema helpers: `SchemaNode.IsKey`, `IsDupInstList`, `DefaultSet`, `UserOrdered`; `Node.ChildrenNoKeys` | supported | |
 | Validation diff (`Tree.ValidateDiff`) | partial | the implicit diff of a validation only |

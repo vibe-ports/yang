@@ -1,0 +1,75 @@
+{
+  "id": "seq/mixed-parent-opaque-parent-root-walk",
+  "source": {
+    "url": "hand-written (this repo)",
+    "commit": null,
+    "license": "BSD-3-Clause"
+  },
+  "request": {
+    "op": "sequence",
+    "searchdirs": [
+      "schemas"
+    ],
+    "modules": [
+      {
+        "name": "pv2-edit"
+      },
+      {
+        "name": "a"
+      }
+    ],
+    "steps": [
+      {
+        "do": "parse",
+        "data": "{\"pv2-edit:c\":\"x\"}",
+        "unknown": "opaque",
+        "parse_only": true
+      },
+      {
+        "do": "edit",
+        "set": {
+          "path": "a",
+          "value": "v"
+        }
+      },
+      {
+        "do": "edit",
+        "set": {
+          "path": "b",
+          "value": "1"
+        }
+      },
+      {
+        "do": "edit",
+        "set": {
+          "parent": "/pv2-edit:c/a",
+          "path": "/a:foo",
+          "value": "42"
+        }
+      },
+      {
+        "do": "edit",
+        "set": {
+          "path": "np/d",
+          "value": "7"
+        }
+      },
+      {
+        "do": "dump"
+      }
+    ]
+  },
+  "want_rc": "LY_SUCCESS",
+  "want_json_order": [
+    "\"np\"",
+    "\"a:foo\"",
+    "\"a\"",
+    "\"b\""
+  ],
+  "want_xml_order": [
+    "<np>",
+    "<foo",
+    "<a>",
+    "<b>"
+  ]
+}

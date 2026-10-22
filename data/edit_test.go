@@ -510,6 +510,106 @@ func TestNewPathAPI(t *testing.T) {
 	}
 }
 
+func TestNewPathParent(t *testing.T) {
+	f := newFixture()
+	tr := newTree(f.set)
+	c := newInner(f.c)
+	mustLink(t, tr.insert(nil, c, insertDefault))
+	list := f.list(t, tr, c, "a'\"b", "")
+	if n, err := tr.NewPath("v", "one", NewPathOptions{Parent: list}); err != nil || n == nil || n.Parent() != list {
+		t.Fatalf("relative path from quoted list: %v, %v", n, err)
+	}
+	if n, err := tr.NewPath("/b:top", "root", NewPathOptions{Parent: list}); err != nil || n == nil || n.Parent() != c {
+		t.Fatalf("absolute path with parent: %v, %v", n, err)
+	}
+	if n, err := tr.Find("/b:top"); err != nil || n != nil {
+		t.Fatalf("absolute lookup of root inserted beside nested parent: %v, %v", n, err)
+	}
+	first := f.term(t, f.first, "old")
+	mustLink(t, tr.insert(nil, first, insertDefault))
+	if n, err := tr.NewPath("/a:first", "changed", NewPathOptions{Parent: list, Update: true}); err != nil || n != first || n.value.Canonical() != "changed" {
+		t.Fatalf("absolute update of existing root: %v, %v", n, err)
+	}
+	if n, err := tr.NewPath("z", "child", NewPathOptions{Parent: c}); err != nil || n == nil || n.Parent() != c {
+		t.Fatalf("first created relative node: %v, %v", n, err)
+	}
+	if n, err := tr.NewPath("z", "changed", NewPathOptions{Parent: c, Update: true}); err != nil || n == nil || n.value.Canonical() != "changed" {
+		t.Fatalf("changed relative node: %v, %v", n, err)
+	}
+	if n, err := tr.NewPath("z", "changed", NewPathOptions{Parent: c, Update: true}); err != nil || n != nil {
+		t.Fatalf("unchanged relative node: %v, %v", n, err)
+	}
+	if n, err := tr.NewPath("l[k='new']/v", "deep", NewPathOptions{Parent: c}); err != nil || n == nil || n.schema != f.l || n.Parent() != c {
+		t.Fatalf("first created relative ancestor: %v, %v", n, err)
+	}
+	op := newOpaque(opaque{Name: "c", ModuleNS: "b", Format: types.FormatJSON})
+	mustLink(t, tr.insert(nil, op, insertDefault))
+	if nodeSchema(f.set, op) != f.c {
+		t.Fatal("opaque parent schema not resolved")
+	}
+	if n, err := tr.NewPath("z", "opaque child", NewPathOptions{Parent: op}); err != nil || n == nil || n.Parent() != op {
+		t.Fatalf("opaque parent with schema: %v, %v", n, err)
+	}
+	listSchema := &schema.Node{Kind: schema.List, Name: "root-list", Module: f.b, Config: true}
+	keySchema := &schema.Node{Kind: schema.Leaf, Name: "k", Module: f.b, Parent: listSchema, Type: f.str, Config: true}
+	listSchema.Children, listSchema.Keys = []*schema.Node{keySchema}, []*schema.Node{keySchema}
+	leafListSchema := &schema.Node{Kind: schema.LeafList, Name: "root-ll", Module: f.b, Type: f.str, Config: true}
+	stateLeafListSchema := &schema.Node{Kind: schema.LeafList, Name: "root-state-ll", Module: f.b, Type: f.str}
+	f.b.Top = append(f.b.Top, listSchema, leafListSchema, stateLeafListSchema)
+	for _, tc := range []struct {
+		path   string
+		value  string
+		parent *Node
+	}{
+		{"/b:root-list[k='one']", "", list},
+		{"/b:root-ll[.='one']", "", list},
+		{"/b:root-ll[.='two']", "", list},
+		{"/b:root-state-ll[1]", "one", list},
+		{"/b:root-state-ll[2]", "two", list},
+	} {
+		if n, err := tr.NewPath(tc.path, tc.value, NewPathOptions{Parent: tc.parent}); err != nil || n == nil || n.Parent() != c {
+			t.Fatalf("absolute list or leaf-list beside nested parent %s: %v, %v", tc.path, n, err)
+		}
+	}
+	nestedOpaque := newOpaque(opaque{Name: "unknown", ModuleNS: "b", Format: types.FormatJSON})
+	mustLink(t, tr.insert(c, nestedOpaque, insertDefault))
+	if n, err := tr.NewPath("/b:root-ll[.='opaque']", "", NewPathOptions{Parent: nestedOpaque}); err != nil || n == nil || n.Parent() != c {
+		t.Fatalf("absolute leaf-list beside nested opaque parent: %v, %v", n, err)
+	}
+	for _, tc := range []struct {
+		name   string
+		parent *Node
+		want   string
+	}{
+		{"detached", newInner(f.c), "Parent node does not belong to this tree."},
+		{"detached subtree child", func() *Node {
+			other := newInner(f.c)
+			child := newInner(f.c)
+			child.parent = other
+			return child
+		}(), "Parent node does not belong to this tree."},
+		{"another tree, same snapshot", func() *Node {
+			other := newTree(f.set)
+			n := newInner(f.c)
+			mustLink(t, other.insert(nil, n, insertDefault))
+			return n
+		}(), "Parent node does not belong to this tree."},
+		{"another context", func() *Node {
+			other := newTree(newFixture().set)
+			n := newInner(f.c)
+			mustLink(t, other.insert(nil, n, insertDefault))
+			return n
+		}(), `Different contexts mixed in a "lyd_new_path" function call.`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var ve *ValidationError
+			if _, err := tr.NewPath("z", "x", NewPathOptions{Parent: tc.parent}); !errors.As(err, &ve) || ve.RC() != "LY_EINVAL" || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("foreign parent: %v", err)
+			}
+		})
+	}
+}
+
 // TestMergeWork: merging n keyed instances into a level holding them costs O(n) dup-inst work,
 // including the context-mix check at every sibling lookup and context bookkeeping on mutation.
 // (each instance's equal set comes from its own hash run, not from all siblings).

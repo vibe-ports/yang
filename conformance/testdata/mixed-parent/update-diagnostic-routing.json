@@ -1,0 +1,2177 @@
+{
+ "source": {
+  "url": "hand-written (this repo)",
+  "commit": null,
+  "license": "BSD-3-Clause"
+ },
+ "cases": [
+  {
+   "id": "seq/mixed-parent-payload-route-local-type-path18",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas",
+     "../ut-new/e.1",
+     "../ut-new/f.1",
+     "../ut-new/h.1"
+    ],
+    "modules": [
+     {
+      "name": "a"
+     },
+     {
+      "name": "e"
+     },
+     {
+      "name": "f"
+     },
+     {
+      "name": "h"
+     }
+    ],
+    "context_options": [
+     "no_yanglibrary"
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "data",
+      "parse_only": true,
+      "data": "{\"a:any\": {\"h:ih\": \"/e:r\", \"a:foo\": 1}}"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/a:any",
+       "path": "h:ih",
+       "value": "/h:ln[id=\"/f:lp[p='2001:0db8::/64']\"]"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/a:foo",
+       "value": "3"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 1
+  },
+  {
+   "id": "seq/mixed-parent-payload-route-local-store-range",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas",
+     "../ut-new/e.1",
+     "../ut-new/f.1",
+     "../ut-new/h.1"
+    ],
+    "modules": [
+     {
+      "name": "a"
+     },
+     {
+      "name": "e"
+     },
+     {
+      "name": "f"
+     },
+     {
+      "name": "h"
+     }
+    ],
+    "context_options": [
+     "no_yanglibrary"
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "data",
+      "parse_only": true,
+      "data": "{\"a:any\": {\"h:ih\": \"/e:r\", \"a:foo\": 1}}"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/a:any",
+       "path": "a:foo",
+       "value": "65536"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/a:foo",
+       "value": "3"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 1
+  },
+  {
+   "id": "seq/mixed-parent-payload-route-local-store-ok",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas",
+     "../ut-new/e.1",
+     "../ut-new/f.1",
+     "../ut-new/h.1"
+    ],
+    "modules": [
+     {
+      "name": "a"
+     },
+     {
+      "name": "e"
+     },
+     {
+      "name": "f"
+     },
+     {
+      "name": "h"
+     }
+    ],
+    "context_options": [
+     "no_yanglibrary"
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "data",
+      "parse_only": true,
+      "data": "{\"a:any\": {\"h:ih\": \"/e:r\", \"a:foo\": 1}}"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/a:any",
+       "path": "a:foo",
+       "value": "5"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/a:foo",
+       "value": "3"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-payload-route-local-eexist",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas",
+     "../ut-new/e.1",
+     "../ut-new/f.1",
+     "../ut-new/h.1"
+    ],
+    "modules": [
+     {
+      "name": "a"
+     },
+     {
+      "name": "e"
+     },
+     {
+      "name": "f"
+     },
+     {
+      "name": "h"
+     }
+    ],
+    "context_options": [
+     "no_yanglibrary"
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "data",
+      "parse_only": true,
+      "data": "{\"a:any\": {\"h:ih\": \"/e:r\", \"a:foo\": 1}}"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/a:any",
+       "path": "a:foo",
+       "value": "5",
+       "update": false
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/a:foo",
+       "value": "3"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EEXIST",
+   "want_failed_step": 1
+  },
+  {
+   "id": "seq/mixed-parent-payload-route-local-path-compile",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas",
+     "../ut-new/e.1",
+     "../ut-new/f.1",
+     "../ut-new/h.1"
+    ],
+    "modules": [
+     {
+      "name": "a"
+     },
+     {
+      "name": "e"
+     },
+     {
+      "name": "f"
+     },
+     {
+      "name": "h"
+     }
+    ],
+    "context_options": [
+     "no_yanglibrary"
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "data",
+      "parse_only": true,
+      "data": "{\"a:any\": {\"h:ih\": \"/e:r\", \"a:foo\": 1}}"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/a:any",
+       "path": "a:foo[",
+       "value": "5"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/a:foo",
+       "value": "3"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 1
+  },
+  {
+   "id": "seq/mixed-parent-payload-route-local-path-unknown",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas",
+     "../ut-new/e.1",
+     "../ut-new/f.1",
+     "../ut-new/h.1"
+    ],
+    "modules": [
+     {
+      "name": "a"
+     },
+     {
+      "name": "e"
+     },
+     {
+      "name": "f"
+     },
+     {
+      "name": "h"
+     }
+    ],
+    "context_options": [
+     "no_yanglibrary"
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "data",
+      "parse_only": true,
+      "data": "{\"a:any\": {\"h:ih\": \"/e:r\", \"a:foo\": 1}}"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/a:any",
+       "path": "a:nosuch",
+       "value": "5"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/a:foo",
+       "value": "3"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 1
+  },
+  {
+   "id": "seq/mixed-parent-payload-route-local-parent-payload-sel",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas",
+     "../ut-new/e.1",
+     "../ut-new/f.1",
+     "../ut-new/h.1"
+    ],
+    "modules": [
+     {
+      "name": "a"
+     },
+     {
+      "name": "e"
+     },
+     {
+      "name": "f"
+     },
+     {
+      "name": "h"
+     }
+    ],
+    "context_options": [
+     "no_yanglibrary"
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "data",
+      "parse_only": true,
+      "data": "{\"a:any\": {\"h:ih\": \"/e:r\", \"a:foo\": 1}}"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "a:foo",
+       "path": "/a:any/a:foo",
+       "value": "65536"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/a:foo",
+       "value": "3"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 1
+  },
+  {
+   "id": "seq/mixed-parent-payload-route-local-create-bad",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas",
+     "../ut-new/e.1",
+     "../ut-new/f.1",
+     "../ut-new/h.1"
+    ],
+    "modules": [
+     {
+      "name": "a"
+     },
+     {
+      "name": "e"
+     },
+     {
+      "name": "f"
+     },
+     {
+      "name": "h"
+     }
+    ],
+    "context_options": [
+     "no_yanglibrary"
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "data",
+      "parse_only": true,
+      "data": "{\"a:any\": {\"h:ih\": \"/e:r\", \"a:foo\": 1}}"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/a:any",
+       "path": "h:ih2",
+       "value": "x"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/a:foo",
+       "value": "3"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 1
+  },
+  {
+   "id": "seq/mixed-parent-payload-route-payload-foreign-type-path18",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas",
+     "../ut-new/e.1",
+     "../ut-new/f.1",
+     "../ut-new/h.1"
+    ],
+    "modules": [
+     {
+      "name": "a"
+     },
+     {
+      "name": "e"
+     },
+     {
+      "name": "f"
+     },
+     {
+      "name": "h"
+     }
+    ],
+    "context_options": [
+     "no_yanglibrary"
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "data",
+      "parse_only": true,
+      "data": "{\"a:any\": {\"h:ih\": \"/e:r\", \"a:foo\": 1}}"
+     },
+     {
+      "do": "dup",
+      "node": "/a:any",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas",
+        "../ut-new/e.1",
+        "../ut-new/f.1",
+        "../ut-new/h.1"
+       ],
+       "modules": [
+        {
+         "name": "a"
+        },
+        {
+         "name": "e"
+        },
+        {
+         "name": "f"
+        },
+        {
+         "name": "h"
+        }
+       ],
+       "context_options": [
+        "no_yanglibrary"
+       ]
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/a:any",
+       "path": "h:ih",
+       "value": "/h:ln[id=\"/f:lp[p='2001:0db8::/64']\"]"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/a:foo",
+       "value": "3"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 2
+  },
+  {
+   "id": "seq/mixed-parent-payload-route-payload-foreign-store-range",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas",
+     "../ut-new/e.1",
+     "../ut-new/f.1",
+     "../ut-new/h.1"
+    ],
+    "modules": [
+     {
+      "name": "a"
+     },
+     {
+      "name": "e"
+     },
+     {
+      "name": "f"
+     },
+     {
+      "name": "h"
+     }
+    ],
+    "context_options": [
+     "no_yanglibrary"
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "data",
+      "parse_only": true,
+      "data": "{\"a:any\": {\"h:ih\": \"/e:r\", \"a:foo\": 1}}"
+     },
+     {
+      "do": "dup",
+      "node": "/a:any",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas",
+        "../ut-new/e.1",
+        "../ut-new/f.1",
+        "../ut-new/h.1"
+       ],
+       "modules": [
+        {
+         "name": "a"
+        },
+        {
+         "name": "e"
+        },
+        {
+         "name": "f"
+        },
+        {
+         "name": "h"
+        }
+       ],
+       "context_options": [
+        "no_yanglibrary"
+       ]
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/a:any",
+       "path": "a:foo",
+       "value": "65536"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/a:foo",
+       "value": "3"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 2
+  },
+  {
+   "id": "seq/mixed-parent-payload-route-payload-foreign-store-ok",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas",
+     "../ut-new/e.1",
+     "../ut-new/f.1",
+     "../ut-new/h.1"
+    ],
+    "modules": [
+     {
+      "name": "a"
+     },
+     {
+      "name": "e"
+     },
+     {
+      "name": "f"
+     },
+     {
+      "name": "h"
+     }
+    ],
+    "context_options": [
+     "no_yanglibrary"
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "data",
+      "parse_only": true,
+      "data": "{\"a:any\": {\"h:ih\": \"/e:r\", \"a:foo\": 1}}"
+     },
+     {
+      "do": "dup",
+      "node": "/a:any",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas",
+        "../ut-new/e.1",
+        "../ut-new/f.1",
+        "../ut-new/h.1"
+       ],
+       "modules": [
+        {
+         "name": "a"
+        },
+        {
+         "name": "e"
+        },
+        {
+         "name": "f"
+        },
+        {
+         "name": "h"
+        }
+       ],
+       "context_options": [
+        "no_yanglibrary"
+       ]
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/a:any",
+       "path": "a:foo",
+       "value": "5"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/a:foo",
+       "value": "3"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-payload-route-payload-foreign-eexist",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas",
+     "../ut-new/e.1",
+     "../ut-new/f.1",
+     "../ut-new/h.1"
+    ],
+    "modules": [
+     {
+      "name": "a"
+     },
+     {
+      "name": "e"
+     },
+     {
+      "name": "f"
+     },
+     {
+      "name": "h"
+     }
+    ],
+    "context_options": [
+     "no_yanglibrary"
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "data",
+      "parse_only": true,
+      "data": "{\"a:any\": {\"h:ih\": \"/e:r\", \"a:foo\": 1}}"
+     },
+     {
+      "do": "dup",
+      "node": "/a:any",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas",
+        "../ut-new/e.1",
+        "../ut-new/f.1",
+        "../ut-new/h.1"
+       ],
+       "modules": [
+        {
+         "name": "a"
+        },
+        {
+         "name": "e"
+        },
+        {
+         "name": "f"
+        },
+        {
+         "name": "h"
+        }
+       ],
+       "context_options": [
+        "no_yanglibrary"
+       ]
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/a:any",
+       "path": "a:foo",
+       "value": "5",
+       "update": false
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/a:foo",
+       "value": "3"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EEXIST",
+   "want_failed_step": 2
+  },
+  {
+   "id": "seq/mixed-parent-payload-route-payload-foreign-path-compile",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas",
+     "../ut-new/e.1",
+     "../ut-new/f.1",
+     "../ut-new/h.1"
+    ],
+    "modules": [
+     {
+      "name": "a"
+     },
+     {
+      "name": "e"
+     },
+     {
+      "name": "f"
+     },
+     {
+      "name": "h"
+     }
+    ],
+    "context_options": [
+     "no_yanglibrary"
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "data",
+      "parse_only": true,
+      "data": "{\"a:any\": {\"h:ih\": \"/e:r\", \"a:foo\": 1}}"
+     },
+     {
+      "do": "dup",
+      "node": "/a:any",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas",
+        "../ut-new/e.1",
+        "../ut-new/f.1",
+        "../ut-new/h.1"
+       ],
+       "modules": [
+        {
+         "name": "a"
+        },
+        {
+         "name": "e"
+        },
+        {
+         "name": "f"
+        },
+        {
+         "name": "h"
+        }
+       ],
+       "context_options": [
+        "no_yanglibrary"
+       ]
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/a:any",
+       "path": "a:foo[",
+       "value": "5"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/a:foo",
+       "value": "3"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 2
+  },
+  {
+   "id": "seq/mixed-parent-payload-route-payload-foreign-path-unknown",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas",
+     "../ut-new/e.1",
+     "../ut-new/f.1",
+     "../ut-new/h.1"
+    ],
+    "modules": [
+     {
+      "name": "a"
+     },
+     {
+      "name": "e"
+     },
+     {
+      "name": "f"
+     },
+     {
+      "name": "h"
+     }
+    ],
+    "context_options": [
+     "no_yanglibrary"
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "data",
+      "parse_only": true,
+      "data": "{\"a:any\": {\"h:ih\": \"/e:r\", \"a:foo\": 1}}"
+     },
+     {
+      "do": "dup",
+      "node": "/a:any",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas",
+        "../ut-new/e.1",
+        "../ut-new/f.1",
+        "../ut-new/h.1"
+       ],
+       "modules": [
+        {
+         "name": "a"
+        },
+        {
+         "name": "e"
+        },
+        {
+         "name": "f"
+        },
+        {
+         "name": "h"
+        }
+       ],
+       "context_options": [
+        "no_yanglibrary"
+       ]
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/a:any",
+       "path": "a:nosuch",
+       "value": "5"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/a:foo",
+       "value": "3"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 2
+  },
+  {
+   "id": "seq/mixed-parent-payload-route-payload-foreign-parent-payload-sel",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas",
+     "../ut-new/e.1",
+     "../ut-new/f.1",
+     "../ut-new/h.1"
+    ],
+    "modules": [
+     {
+      "name": "a"
+     },
+     {
+      "name": "e"
+     },
+     {
+      "name": "f"
+     },
+     {
+      "name": "h"
+     }
+    ],
+    "context_options": [
+     "no_yanglibrary"
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "data",
+      "parse_only": true,
+      "data": "{\"a:any\": {\"h:ih\": \"/e:r\", \"a:foo\": 1}}"
+     },
+     {
+      "do": "dup",
+      "node": "/a:any",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas",
+        "../ut-new/e.1",
+        "../ut-new/f.1",
+        "../ut-new/h.1"
+       ],
+       "modules": [
+        {
+         "name": "a"
+        },
+        {
+         "name": "e"
+        },
+        {
+         "name": "f"
+        },
+        {
+         "name": "h"
+        }
+       ],
+       "context_options": [
+        "no_yanglibrary"
+       ]
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "a:foo",
+       "path": "/a:any/a:foo",
+       "value": "65536"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/a:foo",
+       "value": "3"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EINVAL",
+   "want_failed_step": 2
+  },
+  {
+   "id": "seq/mixed-parent-payload-route-payload-foreign-create-bad",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas",
+     "../ut-new/e.1",
+     "../ut-new/f.1",
+     "../ut-new/h.1"
+    ],
+    "modules": [
+     {
+      "name": "a"
+     },
+     {
+      "name": "e"
+     },
+     {
+      "name": "f"
+     },
+     {
+      "name": "h"
+     }
+    ],
+    "context_options": [
+     "no_yanglibrary"
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "data",
+      "parse_only": true,
+      "data": "{\"a:any\": {\"h:ih\": \"/e:r\", \"a:foo\": 1}}"
+     },
+     {
+      "do": "dup",
+      "node": "/a:any",
+      "options": [
+       "recursive"
+      ],
+      "target": {
+       "searchdirs": [
+        "schemas",
+        "../ut-new/e.1",
+        "../ut-new/f.1",
+        "../ut-new/h.1"
+       ],
+       "modules": [
+        {
+         "name": "a"
+        },
+        {
+         "name": "e"
+        },
+        {
+         "name": "f"
+        },
+        {
+         "name": "h"
+        }
+       ],
+       "context_options": [
+        "no_yanglibrary"
+       ]
+      }
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/a:any",
+       "path": "h:ih2",
+       "value": "x"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/a:foo",
+       "value": "3"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 2
+  },
+  {
+   "id": "seq/mixed-parent-foreign-route-local-store-range",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"n:root\":\"r0\",\"pv2-edit:c\":{\"a\":\"x\",\"b\":1}}"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "300"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "q"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 1
+  },
+  {
+   "id": "seq/mixed-parent-foreign-route-local-store-ok",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"n:root\":\"r0\",\"pv2-edit:c\":{\"a\":\"x\",\"b\":1}}"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "7"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "q"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-foreign-route-local-eexist",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"n:root\":\"r0\",\"pv2-edit:c\":{\"a\":\"x\",\"b\":1}}"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "7",
+       "update": false
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "q"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EEXIST",
+   "want_failed_step": 1
+  },
+  {
+   "id": "seq/mixed-parent-foreign-route-local-path-compile",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"n:root\":\"r0\",\"pv2-edit:c\":{\"a\":\"x\",\"b\":1}}"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b[",
+       "value": "7"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "q"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 1
+  },
+  {
+   "id": "seq/mixed-parent-foreign-route-local-path-unknown",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"n:root\":\"r0\",\"pv2-edit:c\":{\"a\":\"x\",\"b\":1}}"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "nosuch",
+       "value": "7"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "q"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 1
+  },
+  {
+   "id": "seq/mixed-parent-foreign-route-local-create-bad",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"n:root\":\"r0\",\"pv2-edit:c\":{\"a\":\"x\",\"b\":1}}"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "x"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "q"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 1
+  },
+  {
+   "id": "seq/mixed-parent-foreign-route-local-abs-store-range",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"n:root\":\"r0\",\"pv2-edit:c\":{\"a\":\"x\",\"b\":1}}"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/pv2-edit:c/b",
+       "value": "300"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "q"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 1
+  },
+  {
+   "id": "seq/mixed-parent-foreign-route-foreign-store-range",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      },
+      "data": "{\"pv2-edit:c\":{\"b\":1}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"n:root\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-edit:c\":{\"a\":\"x\"}}"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "300"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "q"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 4
+  },
+  {
+   "id": "seq/mixed-parent-foreign-route-foreign-store-ok",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      },
+      "data": "{\"pv2-edit:c\":{\"b\":1}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"n:root\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-edit:c\":{\"a\":\"x\"}}"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "7"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "q"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_SUCCESS"
+  },
+  {
+   "id": "seq/mixed-parent-foreign-route-foreign-eexist",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      },
+      "data": "{\"pv2-edit:c\":{\"b\":1}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"n:root\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-edit:c\":{\"a\":\"x\"}}"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b",
+       "value": "7",
+       "update": false
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "q"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EEXIST",
+   "want_failed_step": 4
+  },
+  {
+   "id": "seq/mixed-parent-foreign-route-foreign-path-compile",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      },
+      "data": "{\"pv2-edit:c\":{\"b\":1}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"n:root\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-edit:c\":{\"a\":\"x\"}}"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "b[",
+       "value": "7"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "q"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 4
+  },
+  {
+   "id": "seq/mixed-parent-foreign-route-foreign-path-unknown",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      },
+      "data": "{\"pv2-edit:c\":{\"b\":1}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"n:root\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-edit:c\":{\"a\":\"x\"}}"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "nosuch",
+       "value": "7"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "q"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 4
+  },
+  {
+   "id": "seq/mixed-parent-foreign-route-foreign-create-bad",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      },
+      "data": "{\"pv2-edit:c\":{\"b\":1}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"n:root\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-edit:c\":{\"a\":\"x\"}}"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "parent": "/pv2-edit:c",
+       "path": "np/d",
+       "value": "x"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "q"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 4
+  },
+  {
+   "id": "seq/mixed-parent-foreign-route-foreign-abs-store-range",
+   "request": {
+    "op": "sequence",
+    "searchdirs": [
+     "schemas"
+    ],
+    "modules": [
+     {
+      "name": "pv2-edit"
+     },
+     {
+      "name": "pv2-ma"
+     },
+     {
+      "name": "n"
+     }
+    ],
+    "steps": [
+     {
+      "do": "diff",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "target": {
+       "searchdirs": [
+        "schemas"
+       ],
+       "modules": [
+        {
+         "name": "pv2-edit"
+        },
+        {
+         "name": "pv2-ma"
+        },
+        {
+         "name": "n"
+        }
+       ]
+      },
+      "data": "{\"pv2-edit:c\":{\"b\":1}}"
+     },
+     {
+      "do": "parse",
+      "format": "json",
+      "data_type": "config",
+      "parse_only": true,
+      "data": "{\"n:root\":\"r0\"}"
+     },
+     {
+      "do": "diff_apply"
+     },
+     {
+      "do": "edit",
+      "merge_into": "{\"pv2-edit:c\":{\"a\":\"x\"}}"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/pv2-edit:c/b",
+       "value": "300"
+      }
+     },
+     {
+      "do": "dump"
+     },
+     {
+      "do": "edit",
+      "set": {
+       "path": "/n:root",
+       "value": "q"
+      }
+     },
+     {
+      "do": "dump"
+     }
+    ]
+   },
+   "want_rc": "LY_EVALID",
+   "want_failed_step": 4
+  }
+ ]
+}

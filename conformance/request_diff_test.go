@@ -533,7 +533,6 @@ var inventoryGapClasses = map[string]struct {
 	"canonical-values":           {id: "U-0108", reasons: []string{"change_term canon", "LYD_NEW_VAL_STORE_ONLY and _CANON"}},
 	"list2":                      {id: "U-0109", reasons: []string{"insert_list2"}},
 	"reply-non-operation-parent": {id: "U-0110", reasons: []string{"reply into a non-operation parent"}},
-	"relative-set-parent":        {id: "U-0110", reasons: []string{"relative set under a retained parent"}},
 	"notification-netconf":       {id: "U-0110", reasons: []string{"notification envelope data_type notif-netconf"}},
 	"notification-restconf":      {id: "U-0110", reasons: []string{"notification envelope data_type notif-restconf"}},
 	"rpc-netconf":                {id: "U-0110", reasons: []string{"envelope data_type rpc-netconf"}},

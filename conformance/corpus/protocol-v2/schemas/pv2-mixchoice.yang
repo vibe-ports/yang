@@ -1,0 +1,22 @@
+module pv2-mixchoice {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-mixchoice";
+  prefix pmc;
+
+  description
+    "Hand-written module for choice validation over siblings of two contexts (#267).";
+
+  container c {
+    choice ch {
+      mandatory true;
+      case one {
+        leaf x { type string; }
+      }
+      case two {
+        leaf y { type string; }
+      }
+    }
+    leaf b { type string; }
+    leaf-list ll { type string; }
+  }
+}

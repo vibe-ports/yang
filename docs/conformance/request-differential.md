@@ -139,7 +139,6 @@ from the earlier r7 cache evidence above. Pairwise counts are reported separatel
 | `rpc-restconf` | U-0110 | `rpc-restconf` data type outside a plain `data` request, as `rpc-netconf` | not re-run |
 | `reply-restconf` | U-0110 | `reply-restconf` data type outside a plain `data` request, as `rpc-netconf` | not re-run |
 | `reply-non-operation-parent` | U-0110 | Reply into a parent that is not an RPC/action; `ParseOpOptions.Request` rejects it before parsing | 0 |
-| `relative-set-parent` | U-0110 | A `set` path that does not start with `/` (relative, or led by whitespace) under a retained parent: `lyd_new_path` takes the original text with the parent, which `Tree.NewPath` cannot take (#255). Rewriting or trimming the path diverged from libyang's diagnostics (original path text, lexer positions, syntax before schema, opaque and quoted-key parents), so the engine does not emulate it. Without a retained tree, a relative path keeps `lyd_new_path`'s LY_EINVAL argument check (fixtures seq/set-relative-quoted-parent, -opaque-parent, -opaque-malformed, -missing-key, seq/set-spaced-malformed) | not re-run |
 | `cross-context-diff` | D-0069 | Diff matching between populated trees from separate schema snapshots (#236) | 0 |
 | **Total** | | | **not re-run** |
 
@@ -269,9 +268,9 @@ behaviour needed to seed the flag before validation. The A fixes also preserve
 input presence, reproduce preflight error classes and deterministic key order,
 check selectors and constructor preconditions, reproduce target schema failures,
 and remove inherited trim-XPath locations. A relative set under a retained parent
-was first resolved by rewriting its path; that emulation is gone, and the request is
-B `relative-set-parent` (U-0110, #255). The remaining fixes are retained; B
-capabilities remain unsupported.
+now passes the original text and parent through `NewPathOptions.Parent` (#255),
+including opaque parents and whitespace-led paths. The remaining B capabilities
+remain unsupported.
 Fifty-three representative native execution records remain runnable without an
 oracle/cache in `TestLoggedRequestExecution`.
 

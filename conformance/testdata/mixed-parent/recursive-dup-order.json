@@ -1,0 +1,18 @@
+{
+  "id": "seq/mixed-parent-recursive-dup-order",
+  "source": {"url": "hand-written (this repo)", "commit": null, "license": "BSD-3-Clause"},
+  "request": {
+    "op": "sequence",
+    "searchdirs": ["schemas"],
+    "modules": [{"name": "pv2-edit"}, {"name": "a"}],
+    "steps": [
+      {"do": "parse", "data": "{\"pv2-edit:c\":{\"a\":\"first\",\"l\":[{\"k\":\"x\"}]}}", "parse_only": true},
+      {"do": "edit", "set": {"parent": "/pv2-edit:c/l[k='x']", "path": "/a:foo", "value": "42"}},
+      {"do": "dup", "node": "/pv2-edit:c", "options": ["recursive"]},
+      {"do": "dump"}
+    ]
+  },
+  "want_rc": "LY_SUCCESS",
+  "want_json_order": ["\"a:foo\"", "\"a\"", "\"l\""],
+  "want_xml_order": ["<foo", "<a>", "<l>"]
+}

@@ -196,7 +196,7 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 		if err != nil {
 			return err
 		}
-		// A skipped step never needs an API capability (lyoracle.c:2935-2939).
+		// A skipped step never needs an API capability (lyoracle.c:2963-2967).
 		if why := seqOptionUnsupported(what, st); why != "" {
 			return fmt.Errorf("%w: %s", ErrUnsupported, why)
 		}
@@ -227,7 +227,7 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 		case "dup":
 			phase = ""               // source parse and duplication collect distinct diagnostic phases
 			if st["source"] == nil { // a source tree is parsed in the step's own context
-				src := detached // lyoracle.c:2107-2111
+				src := detached // lyoracle.c:2113-2117
 				if st["detached"] != true {
 					src, _, _ = dupSelect(r, s, st, tree)
 				}
@@ -254,7 +254,7 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 		case "insert":
 			var usedDetached bool
 			if st["detached"] == true && detached != nil {
-				foreign = append(foreign, contextopts.NodeSchema(detached)) // lyoracle.c:2386
+				foreign = append(foreign, contextopts.NodeSchema(detached)) // lyoracle.c:2392
 			}
 			moveSchema := s
 			if st["detached"] == true && (tree == nil || empty(tree)) && detachedSchema != nil {
@@ -291,7 +291,7 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 			}
 		case "diff_merge":
 			phase = ""
-			foreign = append(foreign, diffOwner) // lyoracle.c:2801
+			foreign = append(foreign, diffOwner) // lyoracle.c:2829
 			if st["detached_parent"] == true && detached != nil {
 				foreign = append(foreign, contextopts.NodeSchema(detached))
 			}
@@ -305,7 +305,7 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 			}
 		case "diff_apply":
 			phase = "diff"
-			foreign = append(foreign, diffOwner) // lyoracle.c:3013
+			foreign = append(foreign, diffOwner) // lyoracle.c:3041
 			if tree == nil || empty(tree) {
 				applySchema := s
 				if str(st, "module", "") == "" && diff != nil && !empty(diff) {
@@ -388,7 +388,7 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 				selected, err = findNode(tree, path, "unlink node")
 			}
 			if err == nil && selected != nil {
-				collectOwner = contextopts.NodeSchema(selected) // lyoracle.c:2994 collects only node_ctx
+				collectOwner = contextopts.NodeSchema(selected) // lyoracle.c:3022 collects only node_ctx
 				err = selected.Unlink()
 				if err == nil {
 					if detached != nil {
@@ -418,14 +418,14 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 				so["found"] = false
 				break
 			}
-			collectOwner = contextopts.NodeSchema(n) // lyoracle.c:3009
+			collectOwner = contextopts.NodeSchema(n) // lyoracle.c:3037
 			var m *data.Meta
 			m, err = n.FindMeta(name)
 			diags = diagsOf(err)
 			so["found"] = m != nil
 		case "diff_reverse":
 			phase = "diff"
-			foreign = append(foreign, diffOwner) // lyoracle.c:2899
+			foreign = append(foreign, diffOwner) // lyoracle.c:2927
 			diff, err = diff.ReverseDiff()
 			diags = diagsOf(err)
 			if diff == nil {
@@ -468,7 +468,7 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 			phase = "edit"
 			if str(st, "case", "") == "equal_repeated_collisions" && s.Implemented("ac-r6") == nil {
 				// lyd_new_list(NULL, ac, ...) fails before this case reads target
-				// (lyoracle.c:2225-2232). The direct counters are still emitted.
+				// (lyoracle.c:2231-2238). The direct counters are still emitted.
 				so["direct"] = map[string]any{"repeated_keys": 2, "collision_shaped_key": "Aa/BB"}
 				rc = "LY_EINVAL"
 				break
@@ -497,7 +497,7 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 			if werr != nil {
 				return werr
 			}
-			collectOwner = contextopts.NodeSchema(probe) // lyoracle.c:3036 collects only the probe's context
+			collectOwner = contextopts.NodeSchema(probe) // lyoracle.c:3064 collects only the probe's context
 			so["detached_path"] = probe.Path()
 			so["detached_tree"], diags, err = contextopts.PrintNode(probe, uint8(wd))
 			if err != nil {
@@ -523,6 +523,37 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 							err = nil
 						}
 					}
+				}
+			}
+		}
+		// lyd_new_path's LY_CHECK_CTX_EQUAL_RET logs in the selected parent's context
+		// (LOGERR(CTX1)); step_edit collects only sctx, so that item waits in the parent's queue.
+		const newPathMixed = `Different contexts mixed in a "lyd_new_path" function call.`
+		if x, _ := st["set"].(map[string]any); what == "edit" && x != nil && tree != nil && len(diags) > 0 &&
+			diags[len(diags)-1].Msg == newPathMixed {
+			parent := topNode(tree)
+			if p, present, _ := strField(x, "parent"); present {
+				if n, ferr := tree.Find(p); ferr == nil && n != nil {
+					parent = n
+				} else {
+					parent = pathNode(tree, p)
+				}
+			}
+			if owner := contextopts.NodeSchema(parent); owner != nil && snap.Set(owner) != snap.Set(s) {
+				pending[pk(owner)] = append(pending[pk(owner)], diags[len(diags)-1])
+				diags = diags[:len(diags)-1]
+			}
+		}
+		// An update's store chain is logged by _lyd_change_term in the updated term's own
+		// context (LYD_CTX(term)), which may be a foreign one step_edit does not collect. The
+		// lookup of a set parent and lyd_new_path's own checks (path, existence) log in the
+		// calling context and stay; an update is the call's last operation, so its chain is the
+		// tail of the call's diagnostics.
+		if x, _ := st["set"].(map[string]any); what == "edit" && x != nil && tree != nil {
+			if owner := contextopts.NewPathUpdateContext(tree); owner != nil && snap.Set(owner) != snap.Set(s) {
+				if n := min(len(diagsOf(err)), len(diags)); n > 0 {
+					pending[pk(owner)] = append(pending[pk(owner)], diags[len(diags)-n:]...)
+					diags = diags[:len(diags)-n]
 				}
 			}
 		}
@@ -772,6 +803,7 @@ func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, det
 	error) {
 	rc := "LY_SUCCESS"
 	var err error
+	var findDiags []yang.Diagnostic // a set parent's lookup log, before lyd_new_path's
 	if tree == nil {
 		if tree, err = emptyTree(s); err != nil {
 			return nil, nil, rc, err
@@ -789,19 +821,22 @@ func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, det
 	case st["set"] != nil:
 		x, _ := st["set"].(map[string]any)
 		path := str(x, "path", "")
-		// lyoracle passes the retained first node as lyd_new_path's parent (NULL for an empty
-		// tree). lyd_new_path checks (path[0] == '/') || parent before it tokenizes
-		// (tree_data_new.c:1868), so without a parent the path goes to NewPath unchanged and a
-		// leading space is its LY_EINVAL argument error. With a parent, any path that does not
-		// start with '/' (relative, or whitespace-led and absolute only to the lexer) reaches
-		// lyd_new_path_ with that parent and the original text, which Tree.NewPath cannot take:
-		// it has no parent argument (#255), and trimming or rewriting the path changes libyang's
-		// diagnostics (positions, path text), so the engine does not emulate it.
-		if topNode(tree) != nil && (path == "" || path[0] != '/') {
-			return nil, nil, rc, fmt.Errorf("%w: relative set under a retained parent, or a path with leading "+
-				"whitespace (Tree.NewPath has no parent argument, #255, U-0110)", ErrUnsupported)
+		// lyoracle passes the retained first node as lyd_new_path's parent. Keep the original
+		// path text so parsing and diagnostics use its leading whitespace and relative form.
+		parent := topNode(tree)
+		if p, present, _ := strField(x, "parent"); present {
+			var ferr error
+			if parent, ferr = tree.Find(p); ferr != nil || parent == nil {
+				// lyd_find_path does not descend through opaque nodes; lyoracle.c then
+				// selects the first node whose lyd_path is the parent text. The lookup's
+				// log stays in the step's collected diagnostics.
+				if parent = pathNode(tree, p); parent == nil {
+					return nil, nil, rc, requestError("set parent %s not found", p)
+				}
+				findDiags = diagsOf(ferr)
+			}
 		}
-		_, err = tree.NewPath(path, str(x, "value", ""), data.NewPathOptions{Update: true})
+		_, err = tree.NewPath(path, str(x, "value", ""), data.NewPathOptions{Parent: parent, Update: x["update"] != false})
 	case st["new_meta"] != nil || st["free_meta"] != nil:
 		x, _ := st["new_meta"].(map[string]any)
 		if x == nil {
@@ -829,7 +864,7 @@ func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, det
 		if empty(tree) {
 			return tree, nil, "LY_ENOTFOUND", nil // the oracle does not search a NULL tree
 		}
-		// lyoracle.c:2644 calls lyd_find_path from the retained first node.
+		// lyoracle.c:2650 calls lyd_find_path from the retained first node.
 		var n *data.Node
 		if n, err = tree.Find(path); err == nil {
 			if n == nil {
@@ -882,6 +917,9 @@ func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, det
 		return tree, append(diags, diagsOf(err)...), rc, err
 	}
 	diags := diagsOf(err)
+	if findDiags != nil {
+		diags = slices.Concat(findDiags, diags)
+	}
 	if detachedSchema != nil && snap.Set(s) != snap.Set(detachedSchema) {
 		for _, kind := range []string{"insert_term", "insert_inner", "insert_list"} {
 			o, _ := st[kind].(map[string]any)
@@ -1481,6 +1519,22 @@ func checkInsertListKeys(s *yang.Schema, parent *data.Node, o map[string]any) er
 	}
 	if sn != nil && sn.Kind() == yang.KindList && len(keys) < len(slices.Collect(sn.Keys())) {
 		return requestError("insert_list %s has fewer keys than the list", o["name"])
+	}
+	return nil
+}
+
+// pathNode is the first node of t, in DFS order, whose data path is path. Like lyoracle.c's
+// LYD_TREE_DFS_BEGIN selector fallback it does not enter anydata payloads.
+func pathNode(t *data.Tree, path string) *data.Node {
+	if t == nil {
+		return nil
+	}
+	for top := range t.Top() {
+		for n := range top.All() {
+			if n.Path() == path {
+				return n
+			}
+		}
 	}
 	return nil
 }

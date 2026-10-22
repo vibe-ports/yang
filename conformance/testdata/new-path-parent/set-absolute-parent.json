@@ -1,0 +1,16 @@
+{
+  "id": "seq/set-absolute-parent",
+  "source": {"url": "hand-written (this repo)", "commit": null, "license": "BSD-3-Clause"},
+  "request": {
+    "op": "sequence",
+    "searchdirs": ["schemas"],
+    "modules": [{"name": "a"}],
+    "steps": [
+      {"do": "parse", "data": "{\"a:l1\":[{\"a\":\"x\",\"b\":\"b\"}]}", "parse_only": true},
+      {"do": "edit", "set": {"path": "/a:foo", "value": "42"}},
+      {"do": "dump"}
+    ]
+  },
+  "want_verdict": "valid",
+  "want_path": "/a:foo"
+}

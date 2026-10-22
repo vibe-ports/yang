@@ -11,9 +11,7 @@ fixtures:
       steps:
         - {do: parse, data: '{"pv2:c":{"mode":"on"}}', parse_only: true}
         # With the retained parent, lyd_new_path_ lexes the original path: the position of the
-        # invalid character counts the leading space. The engine reports a set path that does
-        # not start with '/' under a retained parent unsupported (U-0110 class
-        # relative-set-parent: Tree.NewPath has no parent argument, #255).
+        # invalid character counts the leading space.
         - {do: edit, set: {path: " /pv2:c/#", value: "x"}}
         - {do: dump}
     golden: golden/seq-set-spaced-malformed.json

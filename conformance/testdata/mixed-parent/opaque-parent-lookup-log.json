@@ -1,0 +1,43 @@
+{
+  "id": "seq/new-path-parent-opaque-lookup-log",
+  "source": {
+    "url": "hand-written (this repo)",
+    "commit": null,
+    "license": "BSD-3-Clause"
+  },
+  "request": {
+    "op": "sequence",
+    "searchdirs": [
+      "schemas"
+    ],
+    "modules": [
+      {
+        "name": "pv2-edit"
+      },
+      {
+        "name": "n"
+      }
+    ],
+    "steps": [
+      {
+        "do": "parse",
+        "data": "{\"pv2-edit:c\":{\"unknown\":\"x\"}}",
+        "unknown": "opaque",
+        "parse_only": true
+      },
+      {
+        "do": "edit",
+        "set": {
+          "parent": "/pv2-edit:c/unknown",
+          "path": "/n:root",
+          "value": "r"
+        }
+      },
+      {
+        "do": "dump"
+      }
+    ]
+  },
+  "want_rc": "LY_EVALID",
+  "want_failed_step": 1
+}

@@ -57,7 +57,7 @@ it; the issue tracks the public API.
 | `LYD_PRINT_WD_EXPLICIT`, `_TRIM`, `_ALL`, `_ALL_TAG`, `_IMPL_TAG` | `PrintOptions.WithDefaults`: `data.WDExplicit`, `WDTrim`, `WDAll`, `WDAllTagged`, `WDImplicitTagged` |
 | `lyd_free_all` | nothing: garbage collected |
 | an empty tree (`struct lyd_node *tree = NULL`) | `data.NewTree(schema)` (a zero `Tree` has no schema) |
-| `lyd_new_path(NULL, ctx, path, value, opts, &node)` | `Tree.NewPath(path, value, data.NewPathOptions{...})`; `LYD_NEW_PATH_UPDATE` is `NewPathOptions.Update` |
+| `lyd_new_path(parent, ctx, path, value, opts, &node)` | `Tree.NewPath(path, value, data.NewPathOptions{Parent: parent, Update: true})` for a parent in that tree; omit `Parent` for a NULL parent. Relative paths start at `Parent`, absolute paths at the root. `Update` is `LYD_NEW_PATH_UPDATE`. The `Parent` field breaks unkeyed `NewPathOptions` literals. |
 | `lyd_new_list`, `lyd_new_list2`, `lyd_new_list3` | not public yet (#98, M4): create the instance with `Tree.NewPath("/mod:a/l[k='v']", "", ...)`, the keys come from the predicate |
 | `lyd_new_term`, `lyd_new_inner` | not public yet (#98, M4): use `Tree.NewPath` |
 | `lyd_dup_single`, `lyd_dup_siblings` | not public yet (#92, M4) |

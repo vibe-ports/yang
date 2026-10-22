@@ -30,6 +30,10 @@ func LoadRevision(ctx any, name string, revision *string, features []string) ([]
 // NodeSchema is installed by data when it is initialized.
 var NodeSchema func(any) *snap.Schema
 
+// NewPathUpdateContext returns the context of the term the tree's last NewPath updated (it
+// logs that update's store diagnostics), nil when that call updated no term.
+var NewPathUpdateContext func(any) *snap.Schema
+
 // TreeSchema returns the schema snapshot of a tree.
 var TreeSchema func(any) *snap.Schema
 

@@ -1,0 +1,85 @@
+{
+  "id": "seq/mixed-parent-foreign-first-sibling-root",
+  "source": {
+    "url": "hand-written (this repo)",
+    "commit": null,
+    "license": "BSD-3-Clause"
+  },
+  "request": {
+    "op": "sequence",
+    "searchdirs": [
+      "schemas"
+    ],
+    "modules": [
+      {
+        "name": "pv2-edit"
+      },
+      {
+        "name": "pv2-ma"
+      },
+      {
+        "name": "n"
+      }
+    ],
+    "steps": [
+      {
+        "do": "diff",
+        "format": "json",
+        "data_type": "config",
+        "target": {
+          "searchdirs": [
+            "schemas"
+          ],
+          "modules": [
+            {
+              "name": "pv2-edit"
+            },
+            {
+              "name": "pv2-ma"
+            },
+            {
+              "name": "n"
+            }
+          ]
+        },
+        "data": "{\"pv2-edit:c\":{\"a\":\"f\"}}"
+      },
+      {
+        "do": "parse",
+        "format": "json",
+        "data_type": "config",
+        "parse_only": true,
+        "data": "{\"n:root\":\"r\"}"
+      },
+      {
+        "do": "diff_apply"
+      },
+      {
+        "do": "edit",
+        "merge_into": "{\"pv2-edit:c\": {\"b\": 1, \"l\": [{\"k\": \"x\"}], \"ll\": [\"p\"]}}"
+      },
+      {
+        "do": "dump"
+      },
+      {
+        "do": "edit",
+        "set": {
+          "parent": "/pv2-edit:c/l[k='x']",
+          "path": "/pv2-ma:x",
+          "value": "root"
+        }
+      },
+      {
+        "do": "dump"
+      }
+    ]
+  },
+  "want_rc": "LY_SUCCESS",
+  "want_json_order": [
+    "\"pv2-edit:a\"",
+    "\"b\"",
+    "\"l\"",
+    "\"ll\"",
+    "\"pv2-ma:x\""
+  ]
+}
