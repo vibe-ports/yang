@@ -48,30 +48,14 @@ func (p *jsonParser) insertOpaq(parent, n *Node) error {
 // parseJSON is lyd_parse_json without a bare value: every member of the top-level object (only
 // the first one under LYD_INTOPT_NO_SIBLINGS) as children of lc.parent (the top level when nil),
 // then the metadata that still wait for their node, and the operation checks of an operation
-// parse. RESTCONF envelopes are not ported.
+// parse. The RESTCONF envelopes are parseJSONRestconf's.
 func parseJSON(lc *lydCtx, in []byte) error {
-	lx, err := lyjson.New(in)
+	p, pop, err := newJSONParser(lc, in)
 	if err != nil {
-		_ = lc.lexErr(err)
-		return errLoggedFatal // no parser context: lyd_parse stops
+		return err
 	}
-	lc.log.pushInput(func() int { return int(lx.Line()) }) //nolint:gosec // line numbers fit
-	defer lc.log.popInput()
-	p := &jsonParser{lc: lc, lx: lx, input: in, strict: lc.opts.Unknown == Reject, opaq: lc.opts.Unknown == Opaque,
-		opqFirst: map[opqKey]*Node{}}
-	if lc.parent != nil {
-		// the parent's existing opaque children are found by name as libyang's sibling search
-		// finds them: the first one of each name and module
-		for _, n := range lc.parent.kids.opq {
-			if k := (opqKey{lc.parent, n.opaq.Name, n.opaq.ModuleNS}); p.opqFirst[k] == nil {
-				p.opqFirst[k] = n
-			}
-		}
-	}
-	if st := lx.Status(); st != lyjson.TokenObject { // lyd_parse_json_init
-		_ = lc.log.val(nil, "", ly.SyntaxJSON, "Expected top-level JSON object or correct bare value, but %s found.", st)
-		return errLoggedFatal
-	}
+	defer pop()
+	lx := p.lx
 	if err := lc.findOperation(); err != nil {
 		return errLoggedFatal
 	}
@@ -103,6 +87,34 @@ func parseJSON(lc *lydCtx, in []byte) error {
 		rc = r
 	}
 	return rc
+}
+
+// newJSONParser is lyd_parse_json_init without a bare value: the parser context over in, whose
+// top-level value must be an object; pop ends its line numbers in the log.
+func newJSONParser(lc *lydCtx, in []byte) (p *jsonParser, pop func(), err error) {
+	lx, err := lyjson.New(in)
+	if err != nil {
+		_ = lc.lexErr(err)
+		return nil, nil, errLoggedFatal // no parser context: the parse stops
+	}
+	lc.log.pushInput(func() int { return int(lx.Line()) }) //nolint:gosec // line numbers fit
+	p = &jsonParser{lc: lc, lx: lx, input: in, strict: lc.opts.Unknown == Reject, opaq: lc.opts.Unknown == Opaque,
+		opqFirst: map[opqKey]*Node{}}
+	if lc.parent != nil {
+		// the parent's existing opaque children are found by name as libyang's sibling search
+		// finds them: the first one of each name and module
+		for _, n := range lc.parent.kids.opq {
+			if k := (opqKey{lc.parent, n.opaq.Name, n.opaq.ModuleNS}); p.opqFirst[k] == nil {
+				p.opqFirst[k] = n
+			}
+		}
+	}
+	if st := lx.Status(); st != lyjson.TokenObject {
+		_ = lc.log.val(nil, "", ly.SyntaxJSON, "Expected top-level JSON object or correct bare value, but %s found.", st)
+		lc.log.popInput()
+		return nil, nil, errLoggedFatal
+	}
+	return p, lc.log.popInput, nil
 }
 
 // next is lyjson_ctx_next with its error logged (lexErr).

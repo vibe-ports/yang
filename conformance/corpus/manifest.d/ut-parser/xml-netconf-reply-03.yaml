@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-parser/xml-netconf-reply-03
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_netconf_reply_or_notification:895 (an error reply)
+    rfc: ["RFC6241#4.1", "RFC6241#4.2", "RFC6241#4.3"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2, ../ietf]
+      modules: [{name: "a"}, {name: "ietf-netconf", revision: "2011-06-01"}]
+      format: "xml"
+      data_type: "reply-netconf"
+      data: "<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" message-id=\"55\">\n  <rpc-error>\n    <error-type>rpc</error-type>\n    <error-tag>missing-attribute</error-tag>\n    <error-severity>error</error-severity>\n    <error-path xmlns:a=\"urn:tests:a\">/a:c/a:x</error-path>\n    <error-info>\n      <bad-attribute>message-id</bad-attribute>\n      <bad-element>rpc</bad-element>\n    </error-info>\n  </rpc-error>\n</rpc-reply>\n"
+      rpc: "<c xmlns=\"urn:tests:a\">\n  <act>\n    <al>value</al>\n  </act>\n</c>\n"
+      keep_input: true
+      parse_only: true
+      unknown: "reject"
+    golden: golden/xml-netconf-reply-03.json
+    assert:
+      verdict: valid
+      rfc: ["RFC6241#4.1", "RFC6241#4.2", "RFC6241#4.3"]
+      deviation: null

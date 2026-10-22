@@ -27,8 +27,12 @@ var dataPresets = map[string]func(*data.ParseOptions){
 	"rpc":              func(*data.ParseOptions) {},                                               // lyoracle.c:1235-1236
 	"reply":            func(*data.ParseOptions) {},                                               // lyoracle.c:1237-1238
 	"notif":            func(*data.ParseOptions) {},                                               // lyoracle.c:1239-1240
-	"notif-netconf":    func(*data.ParseOptions) {},                                               // lyoracle.c:1241-1242
-	"notif-restconf":   func(*data.ParseOptions) {},                                               // lyoracle.c:1243-1244
+	"rpc-netconf":      func(*data.ParseOptions) {},                                               // lyoracle.c:1240-1243
+	"notif-netconf":    func(*data.ParseOptions) {},                                               // lyoracle.c:1240-1243
+	"reply-netconf":    func(*data.ParseOptions) {},                                               // lyoracle.c:1240-1243
+	"rpc-restconf":     func(*data.ParseOptions) {},                                               // lyoracle.c:1240-1243
+	"notif-restconf":   func(*data.ParseOptions) {},                                               // lyoracle.c:1240-1243
+	"reply-restconf":   func(*data.ParseOptions) {},                                               // lyoracle.c:1240-1243
 }
 
 var parseFlags = map[string]func(*data.ParseOptions){
@@ -74,6 +78,92 @@ var printFlags = map[string]struct {
 // opTypes are lyoracle.c dparams_of's operation data types.
 var opTypes = map[string]data.OpType{"rpc": data.OpRPC, "reply": data.OpReply, "notif": data.OpNotif}
 
+// envelopeTypes are lyoracle.c dparams_of's NETCONF and RESTCONF message data types.
+var envelopeTypes = map[string]data.OpType{"rpc-netconf": data.OpRPCNetconf, "notif-netconf": data.OpNotifNetconf,
+	"reply-netconf": data.OpReplyNetconf, "rpc-restconf": data.OpRPCRestconf, "notif-restconf": data.OpNotifRestconf,
+	"reply-restconf": data.OpReplyRestconf}
+
+// runEnvelope is lyoracle.c op_data for a NETCONF or RESTCONF message (parse_one, lines 1291-1320):
+// the types that need a request parse into the parsed rpc, the others alone; the printed and typed
+// tree is the envelope, op_typed the tree of the operation (or of the request). print_subtree
+// stays unsupported (U-0110).
+func runEnvelope(r Request, s *yang.Schema, resp map[string]any, typ data.OpType) error {
+	p := r.Params
+	if err := checkRequest(r, s, p, execData, dataRequestRules); err != nil {
+		return err
+	}
+	unknown, ok := unknownPolicies[str(p, "unknown", "reject")]
+	if !ok {
+		return fmt.Errorf("%w: unknown %v", ErrUnsupported, p["unknown"])
+	}
+	wd, err := wdOf(p)
+	if err != nil {
+		return err
+	}
+	f, err := formatOf(p)
+	if err != nil {
+		return err
+	}
+	in, present, err := requestInput(r, p, "data")
+	if err != nil {
+		return err
+	}
+	rpcIn, given, err := requestInput(r, p, "rpc")
+	if err != nil {
+		return err
+	}
+	keep, _ := p["keep_input"].(bool)
+	ctx := context.Background()
+	diags := list(resp["diagnostics"])
+	o := data.ParseOpOptions{Unknown: unknown}
+	var req data.OpResult
+	var perr error
+	if given && (typ == data.OpReplyNetconf || typ == data.OpRPCRestconf || typ == data.OpReplyRestconf) {
+		var rd []yang.Diagnostic
+		req, rd, perr, err = parseRequest(ctx, rpcIn, f, s, unknown, keep)
+		diags = append(diags, diagsJSON(rd, "rpc")...)
+		if err != nil {
+			return err
+		}
+		o.Request = req.Op
+	}
+	var res data.OpResult
+	if perr == nil {
+		var d []yang.Diagnostic
+		res, d, perr = data.ParseOp(ctx, inputReader(in, present), f, s, typ, o)
+		diags = append(diags, diagsJSON(d, "data")...)
+		if perr != nil && o.Request != nil {
+			if resp["request_typed"], err = typedJSON(req.Tree); err != nil { // what the failed parse left of the request
+				return err
+			}
+		}
+	}
+	rc, err := rcOf(perr)
+	if err != nil {
+		return err
+	}
+	resp["diagnostics"] = diags
+	resp["verdict"], resp["rc"] = "valid", codeJSON(rc)
+	resp["tree"] = nil
+	if rc != "LY_SUCCESS" {
+		resp["verdict"] = "invalid"
+		return nil
+	}
+	var env *data.Node
+	for n := range res.Envelope.Top() {
+		env = n
+		break
+	}
+	if resp["tree"], err = printRequestTree(res.Envelope, env, p, wd); err != nil {
+		return err
+	}
+	if resp["typed"], err = typedJSON(res.Envelope); err != nil {
+		return err
+	}
+	resp["op_typed"], err = typedJSON(res.Tree)
+	return err
+}
+
 // runData is lyoracle.c op_data for datastore data: lyd_parse_data with the preset's flags and
 // LYD_VALIDATE_MULTI_ERROR, then the printed tree (none for an empty tree: libyang's is NULL).
 func runData(r Request, s *yang.Schema, resp map[string]any, exec executionContext) error {
@@ -94,6 +184,9 @@ func runData(r Request, s *yang.Schema, resp map[string]any, exec executionConte
 	dataType := str(p, "data_type", "data-operational")
 	if typ, ok := opTypes[dataType]; ok {
 		return runOp(r, s, resp, typ, oper)
+	}
+	if typ, ok := envelopeTypes[dataType]; ok && p["print_subtree"] == nil {
+		return runEnvelope(r, s, resp, typ)
 	}
 	if err := checkRequest(r, s, p, exec, dataRequestRules); err != nil {
 		return err

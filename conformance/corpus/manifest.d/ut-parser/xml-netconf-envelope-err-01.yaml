@@ -1,0 +1,20 @@
+fixtures:
+  - id: ut-parser/xml-netconf-envelope-err-01
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # lyd_parse_xml_netconf: no <rpc> in the base namespace (LY_ENOT)
+    rfc: ["RFC6241#4.1", "RFC6241#4.2"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "rpc-netconf"
+      data: "<rpc xmlns=\"urn:tests:a\"/>"
+      parse_only: true
+      unknown: "reject"
+    golden: golden/xml-netconf-envelope-err-01.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC6241#4.1", "RFC6241#4.2"]
+      deviation: null

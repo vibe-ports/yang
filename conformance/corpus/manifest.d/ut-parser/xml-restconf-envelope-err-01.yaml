@@ -1,0 +1,21 @@
+fixtures:
+  - id: ut-parser/xml-restconf-envelope-err-01
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # lyd_parse_xml_netconf: RESTCONF output in another module's namespace (LY_ENOT)
+    rfc: ["RFC8040#3.6.2"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "reply-restconf"
+      data: "<output xmlns=\"urn:tests:b\"><al>25</al></output>"
+      rpc: "<c xmlns=\"urn:tests:a\"><act/></c>"
+      parse_only: true
+      unknown: "reject"
+    golden: golden/xml-restconf-envelope-err-01.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC8040#3.6.2"]
+      deviation: null

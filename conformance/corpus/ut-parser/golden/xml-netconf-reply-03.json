@@ -1,0 +1,287 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ietf-netconf",
+      "revision": "2011-06-01"
+    }
+  ],
+  "op": "data",
+  "op_typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:c",
+      "schema": "/a:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "action",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:c/act",
+      "schema": "/a:c/act",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:c/act/al",
+      "schema": "/a:c/act/input/al",
+      "value": {
+        "canonical": "value",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"ietf-netconf:rpc-reply\": {\n    \"@\": {\n      \"message-id\": \"55\"\n    },\n    \"rpc-error\": {\n      \"error-type\": \"rpc\",\n      \"error-tag\": \"missing-attribute\",\n      \"error-severity\": \"error\",\n      \"error-path\": \"/a:c/x\",\n      \"error-info\": {\n        \"bad-attribute\": \"message-id\",\n        \"bad-element\": \"rpc\"\n      }\n    }\n  }\n}\n",
+    "xml": "<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" message-id=\"55\">\n  <rpc-error>\n    <error-type>rpc</error-type>\n    <error-tag>missing-attribute</error-tag>\n    <error-severity>error</error-severity>\n    <error-path xmlns:a=\"urn:tests:a\">/a:c/a:x</error-path>\n    <error-info>\n      <bad-attribute>message-id</bad-attribute>\n      <bad-element>rpc</bad-element>\n    </error-info>\n  </rpc-error>\n</rpc-reply>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [
+        {
+          "module": null,
+          "name": "message-id",
+          "value": "55"
+        }
+      ],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "rpc-reply",
+        "namespace": "urn:ietf:params:xml:ns:netconf:base:1.0",
+        "prefix": null
+      },
+      "path": "/ietf-netconf:rpc-reply",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf:rpc-reply/rpc-error",
+      "schema": "/ietf-netconf:rpc-error",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf:rpc-reply/rpc-error/error-type",
+      "schema": "/ietf-netconf:rpc-error/error-type",
+      "value": {
+        "canonical": "rpc",
+        "type": "enumeration",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf:rpc-reply/rpc-error/error-tag",
+      "schema": "/ietf-netconf:rpc-error/error-tag",
+      "value": {
+        "canonical": "missing-attribute",
+        "type": "enumeration",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf:rpc-reply/rpc-error/error-severity",
+      "schema": "/ietf-netconf:rpc-error/error-severity",
+      "value": {
+        "canonical": "error",
+        "type": "enumeration",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/ietf-netconf:rpc-reply/rpc-error/error-path",
+      "schema": "/ietf-netconf:rpc-error/error-path",
+      "value": {
+        "canonical": "/a:c/x",
+        "type": "string",
+        "typedef": "xpath1.0",
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "error-info",
+        "namespace": "urn:ietf:params:xml:ns:netconf:base:1.0",
+        "prefix": null
+      },
+      "path": "/ietf-netconf:rpc-reply/rpc-error/error-info",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "string"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "bad-attribute",
+        "namespace": "urn:ietf:params:xml:ns:netconf:base:1.0",
+        "prefix": null
+      },
+      "path": "/ietf-netconf:rpc-reply/rpc-error/error-info/bad-attribute",
+      "schema": null,
+      "value": {
+        "canonical": "message-id",
+        "hints": [
+          "string"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "bad-element",
+        "namespace": "urn:ietf:params:xml:ns:netconf:base:1.0",
+        "prefix": null
+      },
+      "path": "/ietf-netconf:rpc-reply/rpc-error/error-info/bad-element",
+      "schema": null,
+      "value": {
+        "canonical": "rpc",
+        "hints": [
+          "string"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

@@ -1,0 +1,98 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    }
+  ],
+  "op": "data",
+  "op_typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "notif",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:n2",
+      "schema": "/a:n2",
+      "value": null
+    }
+  ],
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"ietf-restconf:notification\": {\n    \"eventTime\": \"2013-12-21T00:01:00Z\"\n  }\n}\n",
+    "xml": "<notification>\n  <eventTime>2013-12-21T00:01:00Z</eventTime>\n</notification>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": "ietf-restconf",
+        "name": "notification",
+        "namespace": null,
+        "prefix": "ietf-restconf"
+      },
+      "path": "/notification",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [
+          "string"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "json",
+        "module": null,
+        "name": "eventTime",
+        "namespace": null,
+        "prefix": null
+      },
+      "path": "/notification/eventTime",
+      "schema": null,
+      "value": {
+        "canonical": "2013-12-21T00:01:00Z",
+        "hints": [
+          "string"
+        ],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

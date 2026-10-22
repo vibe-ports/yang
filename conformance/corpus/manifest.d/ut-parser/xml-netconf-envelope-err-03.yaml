@@ -1,0 +1,21 @@
+fixtures:
+  - id: ut-parser/xml-netconf-envelope-err-03
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # lydxml_env_netconf_reply: data after <ok/>
+    rfc: ["RFC6241#4.1", "RFC6241#4.2"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "reply-netconf"
+      data: "<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><ok/><al xmlns=\"urn:tests:a\">1</al></rpc-reply>"
+      rpc: "<c xmlns=\"urn:tests:a\"><act/></c>"
+      parse_only: true
+      unknown: "reject"
+    golden: golden/xml-netconf-envelope-err-03.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC6241#4.1", "RFC6241#4.2"]
+      deviation: null

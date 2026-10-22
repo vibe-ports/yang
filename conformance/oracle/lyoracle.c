@@ -1237,17 +1237,17 @@ dparams_of(const cJSON *req, struct dparams *p)
         p->optype = LYD_TYPE_REPLY_YANG;
     } else if (!strcmp(p->type, "notif")) {
         p->optype = LYD_TYPE_NOTIF_YANG;
-    } else if (!strcmp(p->type, "notif-netconf")) {
-        p->optype = LYD_TYPE_NOTIF_NETCONF;
-    } else if (!strcmp(p->type, "notif-restconf")) {
-        p->optype = LYD_TYPE_NOTIF_RESTCONF;
+    } else if (!strcmp(p->type, "rpc-netconf") || !strcmp(p->type, "notif-netconf") || !strcmp(p->type, "reply-netconf") ||
+            !strcmp(p->type, "rpc-restconf") || !strcmp(p->type, "notif-restconf") || !strcmp(p->type, "reply-restconf")) {
+        p->optype = (strstr(p->type, "restconf") ? LYD_TYPE_RPC_RESTCONF : LYD_TYPE_RPC_NETCONF) +
+                (p->type[0] == 'n' ? 1 : p->type[2] == 'p' ? 2 : 0); /* enum lyd_type order: rpc, notif, reply */
     } else {
         die("unknown data_type %s", p->type);
     }
     if (p->parse_only) {
         p->popts |= LYD_PARSE_ONLY;
     }
-    if (((p->optype == LYD_TYPE_NOTIF_NETCONF) || (p->optype == LYD_TYPE_NOTIF_RESTCONF)) && !p->parse_only) {
+    if ((p->optype >= LYD_TYPE_RPC_NETCONF) && !p->parse_only) {
         /* lyd_validate_op takes the YANG types only */
         die("data_type %s needs parse_only", p->type);
     }
@@ -1274,7 +1274,7 @@ parse_one(struct ly_ctx *ctx, const struct dparams *p, const char *data, const c
         struct lyd_node **tree, cJSON *diag, const char *phase)
 {
     struct ly_in *in = NULL;
-    struct lyd_node *op = NULL;
+    struct lyd_node *op = NULL, *envp = NULL;
     LY_ERR rc;
 
     *tree = NULL;
@@ -1288,9 +1288,9 @@ parse_one(struct ly_ctx *ctx, const struct dparams *p, const char *data, const c
     }
 
     /* operations: lyd_parse_op accepts only STRICT/OPAQ */
-    if (((p->optype == LYD_TYPE_REPLY_YANG) || (p->optype == LYD_TYPE_RPC_YANG)) && rpc_src) {
+    if (((p->optype == LYD_TYPE_REPLY_YANG) || (p->optype == LYD_TYPE_RPC_YANG) || (p->optype == LYD_TYPE_REPLY_NETCONF) ||
+            (p->optype == LYD_TYPE_RPC_RESTCONF) || (p->optype == LYD_TYPE_REPLY_RESTCONF)) && rpc_src) {
         struct ly_in *rin = NULL;
-
         ly_in_new_memory(rpc_src, &rin);
         rc = lyd_parse_op(ctx, NULL, rin, p->fmt, LYD_TYPE_RPC_YANG, p->popts & (LYD_PARSE_STRICT | LYD_PARSE_OPAQ),
                 tree, &op);
@@ -1309,14 +1309,14 @@ parse_one(struct ly_ctx *ctx, const struct dparams *p, const char *data, const c
         }
         /* the reply, or (data_type rpc) the input again, parsed under the request */
         rc = lyd_parse_op(ctx, parent, in, p->fmt, p->optype, p->popts & (LYD_PARSE_STRICT | LYD_PARSE_OPAQ),
-                NULL, NULL);
+                (p->optype > LYD_TYPE_REPLY_YANG) ? &envp : NULL, NULL);
         if (rc) {
-            req_typed = typed_json(*tree);
-        }
+            req_typed = typed_json(*tree); lyd_free_all(envp); /* a kept envelope is not reported */
+        } else if (envp) { env_op = op; *tree = envp; } /* *tree is the envelope, the request with the message op_typed */
     } else {
         rc = lyd_parse_op(ctx, NULL, in, p->fmt, p->optype, p->popts & (LYD_PARSE_STRICT | LYD_PARSE_OPAQ), tree, &op);
-        if (!rc && ((p->optype == LYD_TYPE_NOTIF_NETCONF) || (p->optype == LYD_TYPE_NOTIF_RESTCONF))) {
-            env_op = op; /* *tree is the envelope, the notification a tree of its own */
+        if (!rc && (p->optype >= LYD_TYPE_RPC_NETCONF)) {
+            env_op = op; /* *tree is the envelope, the operation a tree of its own */
         }
     }
     if (!rc && !p->parse_only) {

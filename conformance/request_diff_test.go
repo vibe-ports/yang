@@ -536,6 +536,10 @@ var inventoryGapClasses = map[string]struct {
 	"relative-set-parent":        {id: "U-0110", reasons: []string{"relative set under a retained parent"}},
 	"notification-netconf":       {id: "U-0110", reasons: []string{"notification envelope data_type notif-netconf"}},
 	"notification-restconf":      {id: "U-0110", reasons: []string{"notification envelope data_type notif-restconf"}},
+	"rpc-netconf":                {id: "U-0110", reasons: []string{"envelope data_type rpc-netconf"}},
+	"reply-netconf":              {id: "U-0110", reasons: []string{"envelope data_type reply-netconf"}},
+	"rpc-restconf":               {id: "U-0110", reasons: []string{"envelope data_type rpc-restconf"}},
+	"reply-restconf":             {id: "U-0110", reasons: []string{"envelope data_type reply-restconf"}},
 	"cross-context-diff":         {id: "D-0069", reasons: []string{"cross-context diff of populated trees"}},
 }
 

@@ -1,0 +1,43 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [
+    {
+      "apptag": null,
+      "code": {
+        "err": 7,
+        "name": "LY_EVALID"
+      },
+      "data_path": "/ietf-netconf:copy-config/source/config/a:l1[a='val_a'][b='val_b'][c='5']/cont/e/@ietf-netconf:operation",
+      "level": "error",
+      "line": 13,
+      "msg": "Invalid enumeration value \"merge2\".",
+      "phase": "data",
+      "schema_path": null,
+      "vecode": 9,
+      "vecode_name": "LYVE_DATA"
+    }
+  ],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ietf-netconf",
+      "revision": "2011-06-01"
+    }
+  ],
+  "op": "data",
+  "protocol": 2,
+  "rc": {
+    "err": 7,
+    "name": "LY_EVALID"
+  },
+  "tree": null,
+  "verdict": "invalid"
+}

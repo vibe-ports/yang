@@ -1,0 +1,20 @@
+fixtures:
+  - id: ut-parser/xml-netconf-envelope-err-04
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # lydxml_envelope: text in the <notification> element
+    rfc: ["RFC5277#4"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "notif-netconf"
+      data: "<notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\">x<eventTime>2010-12-06T08:00:01Z</eventTime></notification>"
+      parse_only: true
+      unknown: "reject"
+    golden: golden/xml-netconf-envelope-err-04.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC5277#4"]
+      deviation: null

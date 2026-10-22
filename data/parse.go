@@ -141,6 +141,10 @@ type lydCtx struct {
 	// error it logged and went past (the YANG action element, lydxml_envelope) does not fail it
 	rcOnly bool
 	parsed []*Node // the nodes parsed directly under parent (lyd_parse_op's parsed set)
+	// dataType is lyd_parse_op's data_type, which the NETCONF and RESTCONF parsers dispatch on;
+	// env is the tree of the envelope they parsed (lyd_parse_op's envp), nil until then.
+	dataType opType
+	env      *Tree
 	// dirty holds, per sibling set, the system-ordered runs appended in parser order after
 	// the first out-of-order value; dirtySibs is the order the sets first got one. Runs are stably
 	// sorted before any parser reader can observe their order; a flush touches only its own set.
@@ -191,30 +195,44 @@ type opOpts struct {
 
 func (o opOpts) any() bool { return o.rpc || o.action || o.notif || o.reply }
 
-// opType is the operation lyd_parse_op parses (LYD_TYPE_*_YANG).
+// opType is the operation lyd_parse_op parses (enum lyd_type without LYD_TYPE_DATA_YANG, in its
+// order).
 type opType uint8
 
 const (
-	opRPC   opType = iota + 1 // LYD_TYPE_RPC_YANG: an rpc or action
-	opNotif                   // LYD_TYPE_NOTIF_YANG
-	opReply                   // LYD_TYPE_REPLY_YANG
+	opRPC           opType = iota + 1 // LYD_TYPE_RPC_YANG: an rpc or action
+	opNotif                           // LYD_TYPE_NOTIF_YANG
+	opReply                           // LYD_TYPE_REPLY_YANG
+	opRPCNetconf                      // LYD_TYPE_RPC_NETCONF: an <rpc> message
+	opNotifNetconf                    // LYD_TYPE_NOTIF_NETCONF: a <notification> message
+	opReplyNetconf                    // LYD_TYPE_REPLY_NETCONF: an <rpc-reply> message
+	opRPCRestconf                     // LYD_TYPE_RPC_RESTCONF: the "input" message-body
+	opNotifRestconf                   // LYD_TYPE_NOTIF_RESTCONF: the JSON "notification" message
+	opReplyRestconf                   // LYD_TYPE_REPLY_RESTCONF: the "output" message-body
 )
 
-// parseOp is lyd_parse_op for the YANG operation types (no NETCONF/RESTCONF envelopes): the
-// operation in format f, parsed only (LYD_PARSE_ONLY), with the unknown-node policy (Skip is
+// parseOp is lyd_parse_op for the YANG operation types (parseOpWith also takes the NETCONF and
+// RESTCONF messages): the operation in format f, parsed only (LYD_PARSE_ONLY), with the unknown-node policy (Skip is
 // libyang's parse options 0: unknown nodes are dropped). With parent nil the result is a new tree holding the
 // operation and its parents; with parent, the nodes are parsed as its children (a reply into
 // its rpc or action) and the tree is parent's. op is the operation node. On error the nodes
 // parsed are removed again (from parent's tree) and the tree is nil.
 func parseOp(ctx context.Context, r io.Reader, s *schema.Set, f Format, t opType, parent *Node,
 	unknown UnknownPolicy) (tree *Tree, op *Node, diags []yang.Diagnostic, err error) {
-	return parseOpWith(ctx, r, s, f, t, parent, unknown, Budget{})
+	tree, op, _, diags, err = parseOpWith(ctx, r, s, f, t, parent, unknown, Budget{})
+	return tree, op, diags, err
 }
 
-// parseOpWith is parseOp with the resource limits b.
+// parseOpWith is parseOp with the resource limits b, for the NETCONF and RESTCONF messages too
+// (lyd_parse_xml_netconf, lyd_parse_json_restconf): env is then the tree of the envelope nodes,
+// returned also on error once the envelopes were parsed (lyd_parse_op's "special situation").
 func parseOpWith(ctx context.Context, r io.Reader, s *schema.Set, f Format, t opType, parent *Node,
-	unknown UnknownPolicy, b Budget) (tree *Tree, op *Node, diags []yang.Diagnostic, err error) {
+	unknown UnknownPolicy, b Budget) (tree *Tree, op *Node, env *Tree, diags []yang.Diagnostic, err error) {
 	var oo opOpts
+	fp := parseJSON
+	if f == FormatXML {
+		fp = parseXML
+	}
 	switch t {
 	case opRPC:
 		oo.rpc, oo.action = true, true
@@ -222,13 +240,17 @@ func parseOpWith(ctx context.Context, r io.Reader, s *schema.Set, f Format, t op
 		oo.notif = true
 	case opReply:
 		oo.reply = true
+	case opRPCNetconf, opNotifNetconf, opReplyNetconf, opRPCRestconf, opNotifRestconf, opReplyRestconf:
+		// a protocol message: the envelope parser sets the internal options
+		fp = parseJSONRestconf
+		if f == FormatXML {
+			fp = parseXMLNetconf
+		}
 	default:
-		return nil, nil, nil, fmt.Errorf("data: unknown operation type %d", t)
+		return nil, nil, nil, nil, fmt.Errorf("data: unknown operation type %d", t)
 	}
-	oo.noSiblings = parent == nil
-	fp := parseJSON
-	if f == FormatXML {
-		fp = parseXML
+	if oo.any() {
+		oo.noSiblings = parent == nil
 	}
 	var journal *hashTransaction
 	if parent != nil {
@@ -239,7 +261,7 @@ func parseOpWith(ctx context.Context, r io.Reader, s *schema.Set, f Format, t op
 	var lc *lydCtx
 	o := parseOpts{ParseOptions: ParseOptions{Unknown: unknown, ParseOnly: true, Budget: b}}
 	tree, diags, err = parseWith(ctx, r, s, o, fp, func(c *lydCtx) {
-		lc, c.op, c.parent, c.rcOnly = c, oo, parent, true
+		lc, c.op, c.parent, c.rcOnly, c.dataType = c, oo, parent, true, t
 		if parent != nil {
 			c.parsedParentGen = parent.kids.gen
 			if pt := parent.treeOf(); pt != nil {
@@ -262,12 +284,15 @@ func parseOpWith(ctx context.Context, r io.Reader, s *schema.Set, f Format, t op
 				ve.Diags = diags
 			}
 		}
-		return nil, nil, diags, err
+		if lc != nil {
+			env = lc.env
+		}
+		return nil, nil, env, diags, err
 	}
 	if parent != nil {
 		tree = parent.treeOf() // libyang returns no tree with a parent; nil for a detached parent
 	}
-	return tree, lc.opNode, diags, nil
+	return tree, lc.opNode, lc.env, diags, nil
 }
 
 // freeParsed frees the nodes parsed under lc.parent again (lyd_parse_op's cleanup of its parsed

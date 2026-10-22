@@ -4,7 +4,6 @@
 package data
 
 import (
-	"errors"
 	"math"
 
 	"github.com/vibe-ports/yang/internal/ly"
@@ -24,28 +23,40 @@ type xmlParser struct {
 	nsMap map[string][]string // prefix -> URIs, innermost last
 }
 
+// newXMLParser is the parser context of lyd_parse_xml and lyd_parse_xml_netconf over in
+// (lyxml_ctx_new); pop ends its line numbers in the log.
+func newXMLParser(lc *lydCtx, in []byte) (p *xmlParser, pop func(), err error) {
+	x, err := lyxml.New(in)
+	if err != nil {
+		return nil, nil, lc.lexErr(err) // LYVE_SYNTAX or a limit: the parse stops
+	}
+	lc.log.pushInput(func() int { return int(x.Line()) }) //nolint:gosec // line numbers fit
+	p = &xmlParser{lc: lc, x: x, strict: lc.opts.Unknown == Reject, opaq: lc.opts.Unknown == Opaque,
+		nsMap: map[string][]string{}}
+	p.syncNS()
+	return p, lc.log.popInput, nil
+}
+
 // parseXML is lyd_parse_xml: every top-level element (only the first one under
 // LYD_INTOPT_NO_SIBLINGS) as children of lc.parent (the top level when nil), and the operation
 // checks of an operation parse, an rpc-or-action parse first opening a YANG "action" element.
-// NETCONF envelopes are not ported.
+// The NETCONF envelopes are parseXMLNetconf's.
 func parseXML(lc *lydCtx, in []byte) error {
-	x, err := lyxml.New(in)
+	p, pop, err := newXMLParser(lc, in)
 	if err != nil {
-		return lc.lexErr(err) // LYVE_SYNTAX or a limit: lyd_parse stops
+		return err
 	}
-	lc.log.pushInput(func() int { return int(x.Line()) }) //nolint:gosec // line numbers fit
-	defer lc.log.popInput()
-	p := &xmlParser{lc: lc, x: x, strict: lc.opts.Unknown == Reject, opaq: lc.opts.Unknown == Opaque,
-		nsMap: map[string][]string{}}
-	p.syncNS()
+	defer pop()
+	x := p.x
 	if err := lc.findOperation(); err != nil {
 		return errLoggedFatal
 	}
 	closeElem := false
 	if lc.op.rpc && lc.op.action {
-		// can be either: try to parse "action"; libyang clears LYD_INTOPT_RPC only in its local
-		// copy of the options, which the checks of an rpc inside the element never read
-		if r := p.envelope("action", "urn:ietf:params:xml:ns:yang:1"); r == nil {
+		// can be either: try to parse "action" (its envelope node is freed again); libyang clears
+		// LYD_INTOPT_RPC only in its local copy of the options, which the checks of an rpc inside
+		// the element never read
+		if _, r := p.envelope("action", nsYang); r == nil {
 			closeElem = true
 		}
 	}
@@ -87,38 +98,6 @@ func parseXML(lc *lydCtx, in []byte) error {
 		lc.opNode = nil // no data nodes were parsed
 	}
 	return rc
-}
-
-// errNotEnvelope is lydxml_envelope's LY_ENOT: the current element is not the envelope.
-var errNotEnvelope = errors.New("data: not the envelope element")
-
-// envelope is lydxml_envelope for an envelope element without a value: when the current element
-// is name in namespace uri, it is opened and its attributes read (the opaque envelope node
-// libyang creates is freed by its only caller here, so none is made). errNotEnvelope when it is
-// another element.
-func (p *xmlParser) envelope(name, uri string) error {
-	x := p.x
-	if x.Status != lyxml.Element || x.Name != name {
-		return errNotEnvelope
-	}
-	ns, ok := p.getNS(x.Prefix)
-	if !ok {
-		return p.namespaceErr(nil, x.Prefix, "")
-	} else if ns != uri {
-		return errNotEnvelope
-	}
-	if err := p.next(); err != nil {
-		return err
-	}
-	if x.Status == lyxml.Attribute {
-		if _, err := p.attrs(nil); err != nil {
-			return err
-		}
-	}
-	if !x.WSOnly {
-		return p.lc.log.val(nil, "", ly.Syntax, "Unexpected value \"%s\" in the \"%s\" element.", x.Value, name)
-	}
-	return p.next()
 }
 
 // next is lyxml_ctx_next with its error logged (lexErr).

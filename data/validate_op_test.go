@@ -48,6 +48,9 @@ func TestValidateOpGoldens(t *testing.T) {
 	}
 	for _, path := range paths {
 		name := filepath.Base(filepath.Dir(path)) + "/" + strings.TrimSuffix(filepath.Base(path), ".yaml")
+		if strings.Contains(name, "netconf-") || strings.Contains(name, "restconf-") {
+			continue // the NETCONF/RESTCONF messages are parse-only (envelope_test.go)
+		}
 		t.Run(name, func(t *testing.T) {
 			f := readOpsFixture(t, path)
 			b, err := os.ReadFile(filepath.Join("../conformance/corpus", f.dir, f.golden))

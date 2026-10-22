@@ -1,0 +1,21 @@
+fixtures:
+  - id: ut-parser/json-restconf-rpc-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_json.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_restconf_rpc:930 (the edit-data request of lyd_new_path is an empty one)
+    rfc: ["RFC8040#3.6.1"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1, ../ietf]
+      modules: [{name: "a"}, {name: "ietf-netconf-nmda", revision: "2019-01-07"}]
+      format: "json"
+      data_type: "rpc-restconf"
+      data: "{\"ietf-netconf-nmda:input\":{\"datastore\":\"ietf-datastores:running\",\"config\":{\"a:cp\":{\"z\":[null],\"@z\":{\"ietf-netconf:operation\":\"replace\"}},\"a:l1\":[{\"@\":{\"ietf-netconf:operation\":\"replace\"},\"a\":\"val_a\",\"b\":\"val_b\",\"c\":\"val_c\"}]}}}"
+      rpc: "{\"ietf-netconf-nmda:edit-data\":{}}"
+      parse_only: true
+      unknown: "reject"
+    golden: golden/json-restconf-rpc-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC8040#3.6.1"]
+      deviation: null

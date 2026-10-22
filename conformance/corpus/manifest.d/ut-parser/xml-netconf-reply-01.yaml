@@ -1,0 +1,22 @@
+fixtures:
+  - id: ut-parser/xml-netconf-reply-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_netconf_reply_or_notification:862 (a data reply)
+    rfc: ["RFC6241#4.1", "RFC6241#4.2", "RFC7950#7.15.2"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2, ../ietf]
+      modules: [{name: "a"}, {name: "ietf-netconf", revision: "2011-06-01"}]
+      format: "xml"
+      data_type: "reply-netconf"
+      data: "<rpc-reply message-id=\"55\" xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\n  <al xmlns=\"urn:tests:a\">25</al>\n</rpc-reply>\n"
+      rpc: "<c xmlns=\"urn:tests:a\">\n  <act>\n    <al>value</al>\n  </act>\n</c>\n"
+      keep_input: true
+      parse_only: true
+      unknown: "reject"
+    golden: golden/xml-netconf-reply-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC6241#4.1", "RFC6241#4.2", "RFC7950#7.15.2"]
+      deviation: null

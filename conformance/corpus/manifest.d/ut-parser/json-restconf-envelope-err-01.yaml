@@ -1,0 +1,20 @@
+fixtures:
+  - id: ut-parser/json-restconf-envelope-err-01
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # lydjson_envelope: an empty object
+    rfc: ["RFC8040#6.4"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.1]
+      modules: [{name: "a"}]
+      format: "json"
+      data_type: "notif-restconf"
+      data: "{}"
+      parse_only: true
+      unknown: "reject"
+    golden: golden/json-restconf-envelope-err-01.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC8040#6.4"]
+      deviation: null

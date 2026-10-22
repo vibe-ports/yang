@@ -134,6 +134,10 @@ from the earlier r7 cache evidence above. Pairwise counts are reported separatel
 | `list2` | U-0109 | `lyd_new_list2` inputs/diagnostics unavailable through `NewPath` | 12 |
 | `notification-netconf` | U-0110 | Engine parsing of the NETCONF notification envelope | 1,419 |
 | `notification-restconf` | U-0110 | Engine parsing of the RESTCONF notification envelope | 1,419 |
+| `rpc-netconf` | U-0110 | `rpc-netconf` data type outside a plain `data` request (xpath, sequence parse/diff, `print_subtree`): the engine parses NETCONF messages only in `runEnvelope` (#95) | not re-run |
+| `reply-netconf` | U-0110 | `reply-netconf` data type outside a plain `data` request, as `rpc-netconf` | not re-run |
+| `rpc-restconf` | U-0110 | `rpc-restconf` data type outside a plain `data` request, as `rpc-netconf` | not re-run |
+| `reply-restconf` | U-0110 | `reply-restconf` data type outside a plain `data` request, as `rpc-netconf` | not re-run |
 | `reply-non-operation-parent` | U-0110 | Reply into a parent that is not an RPC/action; `ParseOpOptions.Request` rejects it before parsing | 0 |
 | `relative-set-parent` | U-0110 | A `set` path that does not start with `/` (relative, or led by whitespace) under a retained parent: `lyd_new_path` takes the original text with the parent, which `Tree.NewPath` cannot take (#255). Rewriting or trimming the path diverged from libyang's diagnostics (original path text, lexer positions, syntax before schema, opaque and quoted-key parents), so the engine does not emulate it. Without a retained tree, a relative path keeps `lyd_new_path`'s LY_EINVAL argument check (fixtures seq/set-relative-quoted-parent, -opaque-parent, -opaque-malformed, -missing-key, seq/set-spaced-malformed) | not re-run |
 | `cross-context-diff` | D-0069 | Diff matching between populated trees from separate schema snapshots (#236) | 0 |
@@ -148,6 +152,10 @@ does not include these 290 cases.
 U-0110 is the single new unsupported-registry row for request-matrix engine
 coverage gaps, tracked in [#247](https://github.com/vibe-ports/yang/issues/247).
 Notification envelopes are B under that row, not library behaviour deviations.
+So are the four other NETCONF/RESTCONF message data types (#95) outside a plain
+`data` request: the linux/amd64 single-field run of #288 found 24 such cases
+(the `valid-*` data_type values under the xpath, parse and diff seeds); plain
+`data` requests of all six message types run through the engine's `runEnvelope`.
 The eight logged empty-envelope input-presence failures
 (JSON/XML, both envelopes, root/sequence parse) are also B under U-0110; they
 belong to the separate presence test and are not added to matrix totals.

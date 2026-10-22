@@ -1,0 +1,20 @@
+fixtures:
+  - id: ut-parser/xml-netconf-envelope-err-06
+    dir: ut-parser
+    source: {url: "hand-written (this repo)", commit: null, license: BSD-3-Clause}   # lyd_parse_xml_netconf: a second operation in <rpc>
+    rfc: ["RFC6241#4.1", "RFC6241#4.2"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2]
+      modules: [{name: "a"}]
+      format: "xml"
+      data_type: "rpc-netconf"
+      data: "<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><action xmlns=\"urn:ietf:params:xml:ns:yang:1\"><c xmlns=\"urn:tests:a\"><act/></c><c xmlns=\"urn:tests:a\"><act/></c></action></rpc>"
+      parse_only: true
+      unknown: "reject"
+    golden: golden/xml-netconf-envelope-err-06.json
+    assert:
+      verdict: invalid
+      rfc: ["RFC6241#4.1", "RFC6241#4.2"]
+      deviation: null

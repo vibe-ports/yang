@@ -1,0 +1,21 @@
+fixtures:
+  - id: ut-parser/xml-restconf-rpc-01
+    dir: ut-parser
+    source: {url: "https://github.com/CESNET/libyang/blob/v5.8.6/tests/utests/data/test_parser_xml.c", commit: 47351e59e2965e350f9d4098f15ecbe6b3850f6f, license: BSD-3-Clause}   # test_restconf_rpc:925 (the edit-data request of lyd_new_path is an empty one)
+    rfc: ["RFC8040#3.6.1"]
+    areas: [codecs]
+    request:
+      op: "data"
+      searchdirs: [a.2, ../ietf]
+      modules: [{name: "a"}, {name: "ietf-netconf-nmda", revision: "2019-01-07"}]
+      format: "xml"
+      data_type: "rpc-restconf"
+      data: "<input xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-nmda\"><datastore xmlns:ds=\"urn:ietf:params:xml:ns:yang:ietf-datastores\">ds:running</datastore><config><cp xmlns=\"urn:tests:a\"><z xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:operation=\"replace\"/></cp><l1 xmlns=\"urn:tests:a\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:operation=\"replace\"><a>val_a</a><b>val_b</b><c>val_c</c></l1></config></input>"
+      rpc: "<edit-data xmlns=\"urn:ietf:params:xml:ns:yang:ietf-netconf-nmda\"/>"
+      parse_only: true
+      unknown: "reject"
+    golden: golden/xml-restconf-rpc-01.json
+    assert:
+      verdict: valid
+      rfc: ["RFC8040#3.6.1"]
+      deviation: null

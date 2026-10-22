@@ -221,10 +221,15 @@ func requestRead(key string, required bool) func(*requestCheck) error {
 func requestParams(c *requestCheck) error { return c.run(dparamsRules) }
 func requestOperation(c *requestCheck) bool {
 	switch str(c.p, "data_type", "data-operational") {
-	case "rpc", "reply", "notif", "notif-netconf", "notif-restconf":
+	case "rpc", "reply", "notif", "rpc-netconf", "notif-netconf", "reply-netconf", "rpc-restconf", "notif-restconf", "reply-restconf":
 		return true
 	}
 	return false
+}
+
+// envelopeType reports a NETCONF or RESTCONF message data type (LYD_TYPE_*_NETCONF/_RESTCONF).
+func envelopeType(t string) bool {
+	return strings.HasSuffix(t, "-netconf") || strings.HasSuffix(t, "-restconf")
 }
 func requestDatastore(c *requestCheck) error {
 	if requestOperation(c) {
@@ -261,10 +266,10 @@ var dparamsRules = []requestRule{
 	{1216, requestEnum("unknown", "reject", "reject skip opaque")}, // caller phase: request preflight or execution; lyoracle.c:1216 enum_of
 	// parse_only and keep_input use cJSON_IsTrue at 1219-1220: no type check.
 	{1221, requestStrings("rpc_parent")}, // caller phase: request preflight or execution; lyoracle.c:1221 str_of
-	{1223, requestEnum("data_type", "data-operational", "config data-operational data get getconfig edit rpc reply notif notif-netconf notif-restconf")}, // caller phase: request preflight or execution; lyoracle.c:1223-1245
+	{1223, requestEnum("data_type", "data-operational", "config data-operational data get getconfig edit rpc reply notif rpc-netconf notif-netconf reply-netconf rpc-restconf notif-restconf reply-restconf")}, // caller phase: request preflight or execution; lyoracle.c:1223-1245
 	{1250, func(c *requestCheck) error { // caller phase: request preflight or execution; lyoracle.c:1250-1252
 		t := str(c.p, "data_type", "")
-		if (t == "notif-netconf" || t == "notif-restconf") && c.p["parse_only"] != true {
+		if envelopeType(t) && c.p["parse_only"] != true {
 			return requestError("data_type %s needs parse_only", t)
 		}
 		return nil

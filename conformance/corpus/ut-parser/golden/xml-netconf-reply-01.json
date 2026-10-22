@@ -1,0 +1,132 @@
+{
+  "context_diagnostics": [],
+  "diagnostics": [],
+  "libyang": "5.8.6",
+  "modules": [
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "a",
+      "revision": null
+    },
+    {
+      "accepted": true,
+      "diagnostics": [],
+      "name": "ietf-netconf",
+      "revision": "2011-06-01"
+    }
+  ],
+  "op": "data",
+  "op_typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "container",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:c",
+      "schema": "/a:c",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "action",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:c/act",
+      "schema": "/a:c/act",
+      "value": null
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:c/act/al",
+      "schema": "/a:c/act/output/al",
+      "value": {
+        "canonical": "25",
+        "type": "uint8",
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": true,
+        "when_true": false
+      },
+      "kind": "leaf",
+      "meta": [],
+      "opaque": null,
+      "path": "/a:c/act/al",
+      "schema": "/a:c/act/input/al",
+      "value": {
+        "canonical": "value",
+        "type": "string",
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "protocol": 2,
+  "rc": {
+    "err": 0,
+    "name": "LY_SUCCESS"
+  },
+  "tree": {
+    "json": "{\n  \"ietf-netconf:rpc-reply\": \"\",\n  \"@ietf-netconf:rpc-reply\": {\n    \"message-id\": \"55\"\n  }\n}\n",
+    "xml": "<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" message-id=\"55\"/>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [
+        {
+          "module": null,
+          "name": "message-id",
+          "value": "55"
+        }
+      ],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "rpc-reply",
+        "namespace": "urn:ietf:params:xml:ns:netconf:base:1.0",
+        "prefix": null
+      },
+      "path": "/ietf-netconf:rpc-reply",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
+  "verdict": "valid"
+}

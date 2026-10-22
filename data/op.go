@@ -13,7 +13,8 @@ import (
 	"github.com/vibe-ports/yang/internal/snap"
 )
 
-// OpType is the operation ParseOp and ValidateOp handle (libyang's LYD_TYPE_*_YANG).
+// OpType is the operation ParseOp and ValidateOp handle (libyang's enum lyd_type); ValidateOp
+// takes the YANG types only.
 type OpType uint8
 
 // Operation types; zero is invalid.
@@ -21,6 +22,22 @@ const (
 	OpRPC   OpType = iota + 1 // an rpc or an action (LYD_TYPE_RPC_YANG)
 	OpNotif                   // a notification (LYD_TYPE_NOTIF_YANG)
 	OpReply                   // the reply of an rpc or action (LYD_TYPE_REPLY_YANG)
+	// OpRPCNetconf is a NETCONF <rpc> message with an rpc, or an action in a YANG <action>
+	// element (LYD_TYPE_RPC_NETCONF, XML only).
+	OpRPCNetconf
+	// OpNotifNetconf is a NETCONF <notification> message with its eventTime
+	// (LYD_TYPE_NOTIF_NETCONF, XML only; also the XML encoding of a RESTCONF notification).
+	OpNotifNetconf
+	// OpReplyNetconf is a NETCONF <rpc-reply> message, <ok/>, <rpc-error> elements or the output
+	// of Request (LYD_TYPE_REPLY_NETCONF, XML only). Unknown nodes are kept as opaque nodes.
+	OpReplyNetconf
+	// OpRPCRestconf is the RESTCONF "input" message-body of Request (LYD_TYPE_RPC_RESTCONF).
+	OpRPCRestconf
+	// OpNotifRestconf is a RESTCONF "ietf-restconf:notification" with its eventTime
+	// (LYD_TYPE_NOTIF_RESTCONF, JSON only).
+	OpNotifRestconf
+	// OpReplyRestconf is the RESTCONF "output" message-body of Request (LYD_TYPE_REPLY_RESTCONF).
+	OpReplyRestconf
 )
 
 // ParseOpOptions are the options of ParseOp.
@@ -28,9 +45,11 @@ type ParseOpOptions struct {
 	// Unknown is the unknown-node policy: Reject = LYD_PARSE_STRICT, Opaque = LYD_PARSE_OPAQ,
 	// Skip = neither (unknown nodes are dropped).
 	Unknown UnknownPolicy
-	// Request is, for OpReply only, the rpc or action node the reply belongs to (lyd_parse_op's
-	// parent): the output parameters become its children. Its input children are kept; remove
-	// them first if the reply should hold only the output.
+	// Request is lyd_parse_op's parent, the rpc or action node the parsed parameters become
+	// children of: optional for OpReply, required for OpReplyNetconf, OpRPCRestconf and
+	// OpReplyRestconf (a RESTCONF message-body does not name its operation), refused otherwise.
+	// Its existing children are kept; remove them first if the result should hold only the
+	// parsed ones.
 	Request *Node
 	Budget  Budget
 }
@@ -38,20 +57,27 @@ type ParseOpOptions struct {
 // OpResult is what ParseOp parsed.
 type OpResult struct {
 	Tree *Tree // the operation with its parents (a nested action or notification), or Request's tree
-	Op   *Node // the rpc, action or notification node
+	Op   *Node // the rpc, action or notification node, or Request
+	// Envelope holds the protocol nodes of a NETCONF or RESTCONF message as opaque nodes with
+	// their attributes (the <rpc> with its <action>, <rpc-reply> with <ok/> or <rpc-error>,
+	// <notification> or "ietf-restconf:notification" with its eventTime, "input", "output"): a
+	// tree apart from the operation, nil for the YANG types.
+	Envelope *Tree
 }
 
-// ParseOp is lyd_parse_op for the YANG operation types: one rpc, action, notification or reply
-// in format f against the schema snapshot s. It only parses (LYD_PARSE_ONLY is forced); validate
-// the result with Tree.ValidateOp. An action or a nested notification comes with its parents.
-// Without o.Request a reply is the whole operation node with its output parameters (and
-// parents); with it, the input holds only the output parameters, parsed as children of Request.
+// ParseOp is lyd_parse_op: one rpc, action, notification or reply, or a NETCONF or RESTCONF
+// message holding one, in format f against the schema snapshot s. It only parses
+// (LYD_PARSE_ONLY is forced); validate the result with Tree.ValidateOp and the matching YANG
+// type. An action or a nested notification comes with its parents. Without o.Request a reply is
+// the whole operation node with its output parameters (and parents); with it, the input holds
+// only the output parameters, parsed as children of Request.
 // The diagnostics are returned in log order, warnings included; err is nil when the parse
 // succeeded, else a *ValidationError, or an error wrapping yang.ErrBudget or ctx.Err(). A failed
-// parse returns no result. With Request it removes what libyang's cleanup removes, not
-// necessarily all it added: lyd_parse_op frees its parsed set, which for JSON holds only the last
-// instance of each member (earlier instances of a leaf-list or list stay in Request's tree) and
-// for XML each top-level element, so Request's tree may stay modified after a failure.
+// parse returns no result but the Envelope, which libyang keeps once the envelope parsed. With
+// Request it removes what libyang's cleanup removes, not necessarily all it added: lyd_parse_op
+// frees its parsed set, which for JSON holds only the last instance of each member (earlier
+// instances of a leaf-list or list stay in Request's tree) and for XML each top-level element,
+// so Request's tree may stay modified after a failure.
 func ParseOp(ctx context.Context, r io.Reader, f Format, s *yang.Schema, typ OpType, o ParseOpOptions) (OpResult, []yang.Diagnostic, error) {
 	fail := func(set *schema.Set, err error) (OpResult, []yang.Diagnostic, error) {
 		lg := &logger{set: set}
@@ -62,38 +88,58 @@ func ParseOp(ctx context.Context, r io.Reader, f Format, s *yang.Schema, typ OpT
 		return fail(nil, argErr("ctx || parent", "lyd_parse_op"))
 	}
 	set := snap.Set(s)
-	var t opType
-	switch typ {
-	case OpRPC:
-		t = opRPC
-	case OpNotif:
-		t = opNotif
-	case OpReply:
-		t = opReply
-	default:
+	if typ < OpRPC || typ > OpReplyRestconf {
 		return fail(set, argErr("data_type", "lyd_parse_op"))
 	}
 	if f != FormatJSON && f != FormatXML {
 		return fail(set, argErr("format", "lyd_parse_op"))
 	}
-	if req := o.Request; req != nil {
+	req := o.Request
+	var argErrOf error
+	switch typ {
+	case OpRPCNetconf, OpNotifNetconf, OpNotifRestconf: // lyd_parse_op's checks, in its order
 		switch {
+		case typ != OpNotifRestconf && f != FormatXML:
+			argErrOf = argErr("format == LYD_XML", "lyd_parse_op")
+		case typ == OpNotifRestconf && f != FormatJSON:
+			argErrOf = argErr("format == LYD_JSON", "lyd_parse_op")
+		case req != nil:
+			argErrOf = argErr("!parent", "lyd_parse_op")
+		}
+	case OpReplyNetconf, OpRPCRestconf, OpReplyRestconf:
+		switch {
+		case typ == OpReplyNetconf && f != FormatXML:
+			argErrOf = argErr("format == LYD_XML", "lyd_parse_op")
+		case req == nil:
+			argErrOf = argErr("parent", "lyd_parse_op")
+		case req.schema == nil:
+			argErrOf = argErr("parent->schema", "lyd_parse_op")
+		case req.schema.Kind != schema.RPC && req.schema.Kind != schema.Action:
+			argErrOf = argErr("parent->schema->nodetype & (LYS_RPC | LYS_ACTION)", "lyd_parse_op")
+		}
+	default: // the YANG types: the port's own checks
+		switch {
+		case req == nil:
 		case typ != OpReply:
-			return fail(set, argErr("request (only with a reply)", "lyd_parse_op"))
+			argErrOf = argErr("request (only with a reply)", "lyd_parse_op")
 		case req.schema == nil || req.schema.Kind != schema.RPC && req.schema.Kind != schema.Action:
-			return fail(set, argErr("request (not an RPC or action)", "lyd_parse_op"))
-		case req.treeOf() == nil || req.treeOf().set != set:
-			return fail(set, argErr("request (another schema snapshot)", "lyd_parse_op"))
+			argErrOf = argErr("request (not an RPC or action)", "lyd_parse_op")
 		}
 	}
-	tree, op, diags, err := parseOpWith(ctx, r, set, f, t, o.Request, o.Unknown, o.Budget)
+	if argErrOf == nil && req != nil && (req.treeOf() == nil || req.treeOf().set != set) {
+		argErrOf = argErr("request (another schema snapshot)", "lyd_parse_op")
+	}
+	if argErrOf != nil {
+		return fail(set, argErrOf)
+	}
+	tree, op, env, diags, err := parseOpWith(ctx, r, set, f, opType(typ), req, o.Unknown, o.Budget)
 	if err != nil {
-		return OpResult{}, diags, err
+		return OpResult{Envelope: env}, diags, err
 	}
-	if o.Request != nil {
-		return OpResult{Tree: o.Request.treeOf(), Op: o.Request}, diags, nil
+	if req != nil {
+		return OpResult{Tree: req.treeOf(), Op: req, Envelope: env}, diags, nil
 	}
-	return OpResult{Tree: tree, Op: op}, diags, nil
+	return OpResult{Tree: tree, Op: op, Envelope: env}, diags, nil
 }
 
 // ValidateOpOptions are the options of ValidateOp.
