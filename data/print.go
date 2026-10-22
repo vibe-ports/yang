@@ -132,6 +132,9 @@ func (o PrintOptions) isDefault(n *Node) bool {
 				return false
 			}
 			if diag != nil {
+				for _, probe := range tt.probes {
+					_ = dc.vc.xpathErr(probe, n) // lyxp_eval's LOGERR precedes the plugin's message
+				}
 				_ = dc.vc.log.storeErr(n, nil, diag)
 			}
 			dc.diags = append(dc.diags, dc.vc.log.diags[before:]...)

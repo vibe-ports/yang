@@ -187,3 +187,25 @@ func TestPrintDetachedLeafrefDefault(t *testing.T) {
 		}
 	}
 }
+
+// TestPrintDetachedLeafDefaultRootError: the default check of a detached non-top-level leafref
+// logs lyxp_eval's LY_EINVAL root error before the plugin's LY_EVALID (lysc_value_cmp, xpath.c:9954).
+func TestPrintDetachedLeafDefaultRootError(t *testing.T) {
+	_, r := dfltLeafrefTree(t, "x", "x")
+	if err := r.Unlink(); err != nil {
+		t.Fatal(err)
+	}
+	o := PrintOptions{WithDefaults: WDTrim, dflt: &defaultCheck{}}
+	var b bytes.Buffer
+	if err := r.PrintJSON(&b, o); err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, d := range o.dflt.diags {
+		got = append(got, d.Err)
+	}
+	if !slices.Equal(got, []string{"LY_EINVAL", "LY_EVALID"}) ||
+		o.dflt.diags[0].Msg != `Data node "r" has no parent but is not instance of a top-level schema node.` {
+		t.Fatalf("diagnostics: %+v", o.dflt.diags)
+	}
+}

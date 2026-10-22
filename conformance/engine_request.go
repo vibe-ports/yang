@@ -404,8 +404,8 @@ var stepRequestRules = map[string][]requestRule{
 		{1918, requestStrings("parent")}, // request phase; lyoracle.c:1918
 		{1919, requestFlags("options", "recursive no_meta with_parents with_flags no_lyds")}, // request phase; lyoracle.c:1919
 		{1920, requestBools("siblings", "detached")},                                         // request phase; lyoracle.c:1920
-		{1926, requestDupTarget}, // request phase; lyoracle.c:1926-1932
-		{1935, requestDupSource}, // request phase; lyoracle.c:1934-1942
+		{1926, requestDupTarget},                                                             // request phase; lyoracle.c:1926-1932
+		{1935, requestDupSource},                                                             // request phase; lyoracle.c:1934-1942
 	},
 	"trim": {
 		{2056, requestRequired("trim step needs an xpath", "xpath")}, // request phase; lyoracle.c:2056
