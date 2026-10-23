@@ -46,6 +46,27 @@ func TestParseJSONAnyObjectKeepsMixedPayloadAndMetadata(t *testing.T) {
 	}
 }
 
+func TestParseJSONAnyMetadataAfterPayloadIsDeferred(t *testing.T) {
+	set := pjSchema()
+	for _, anyName := range []string{"ad", "ax"} {
+		t.Run(anyName, func(t *testing.T) {
+			if anyName == "ax" {
+				pj := set.Modules[1]
+				pj.Top = append(pj.Top, &schema.Node{Kind: schema.AnyXML, Name: anyName, Module: pj, Config: true})
+			}
+			input := `{"pj:` + anyName + `":{"pj:top":"known","@pj:top":{}}}`
+			tr, err := parseAnyJSONTest(t, set, input, ParseOptions{Unknown: Reject, ParseOnly: true})
+			if err != nil {
+				t.Fatal(err)
+			}
+			payload := tr.top.first().any.children.first()
+			if payload == nil || payload.schema == nil || payload.schema.Name != "top" {
+				t.Fatalf("payload child: %#v", payload)
+			}
+		})
+	}
+}
+
 func TestParseJSONAnyStrictAndNull(t *testing.T) {
 	set := pjSchema()
 	if _, err := parseAnyJSONTest(t, set, `{"pj:ad":{"missing":1}}`, ParseOptions{AnyDataStrict: true}); err == nil {

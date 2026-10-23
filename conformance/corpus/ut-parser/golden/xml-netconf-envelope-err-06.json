@@ -32,6 +32,63 @@
     "err": 7,
     "name": "LY_EVALID"
   },
-  "tree": null,
+  "tree": {
+    "json": "{\n  \"rpc\": {\n    \"yang:action\": \"\"\n  }\n}\n",
+    "xml": "<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">\n  <action xmlns=\"urn:ietf:params:xml:ns:yang:1\"/>\n</rpc>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "rpc",
+        "namespace": "urn:ietf:params:xml:ns:netconf:base:1.0",
+        "prefix": null
+      },
+      "path": "/rpc",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    },
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "action",
+        "namespace": "urn:ietf:params:xml:ns:yang:1",
+        "prefix": null
+      },
+      "path": "/rpc/yang:action",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
   "verdict": "invalid"
 }

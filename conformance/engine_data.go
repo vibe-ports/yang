@@ -145,22 +145,28 @@ func runEnvelope(r Request, s *yang.Schema, resp map[string]any, typ data.OpType
 	resp["diagnostics"] = diags
 	resp["verdict"], resp["rc"] = "valid", codeJSON(rc)
 	resp["tree"] = nil
+	if res.Envelope != nil {
+		var env *data.Node
+		for n := range res.Envelope.Top() {
+			env = n
+			break
+		}
+		if resp["tree"], err = printRequestTree(res.Envelope, env, p, wd); err != nil {
+			return err
+		}
+		if resp["typed"], err = typedJSON(res.Envelope); err != nil {
+			return err
+		}
+	}
 	if rc != "LY_SUCCESS" {
 		resp["verdict"] = "invalid"
 		return nil
 	}
-	var env *data.Node
-	for n := range res.Envelope.Top() {
-		env = n
-		break
+	top := res.Op
+	for top.Parent() != nil {
+		top = top.Parent()
 	}
-	if resp["tree"], err = printRequestTree(res.Envelope, env, p, wd); err != nil {
-		return err
-	}
-	if resp["typed"], err = typedJSON(res.Envelope); err != nil {
-		return err
-	}
-	resp["op_typed"], err = typedJSON(res.Tree)
+	resp["op_typed"], err = typedJSONFrom(res.Tree, top)
 	return err
 }
 
@@ -391,8 +397,21 @@ func empty(t *data.Tree) bool {
 
 // typedJSON is lyoracle.c typed_json, including any values and payload descendants.
 func typedJSON(tree *data.Tree) ([]any, error) {
+	return typedJSONFrom(tree, nil)
+}
+
+// typedJSONFrom is typed_json when its C tree argument points into a top-level sibling list:
+// start and its following siblings are observed, but siblings before start are not.
+func typedJSONFrom(tree *data.Tree, start *data.Node) ([]any, error) {
 	out := []any{}
+	started := start == nil
 	for top := range tree.Top() {
+		if top == start {
+			started = true
+		}
+		if !started {
+			continue
+		}
 		stack := []*data.Node{top}
 		for len(stack) > 0 {
 			n := stack[len(stack)-1]

@@ -1311,7 +1311,7 @@ parse_one(struct ly_ctx *ctx, const struct dparams *p, const char *data, const c
         rc = lyd_parse_op(ctx, parent, in, p->fmt, p->optype, p->popts & (LYD_PARSE_STRICT | LYD_PARSE_OPAQ),
                 (p->optype > LYD_TYPE_REPLY_YANG) ? &envp : NULL, NULL);
         if (rc) {
-            req_typed = typed_json(*tree); lyd_free_all(envp); /* a kept envelope is not reported */
+            req_typed = typed_json(*tree); lyd_free_all(*tree); *tree = envp; envp = NULL; /* report a retained envelope */
         } else if (envp) { env_op = op; *tree = envp; } /* *tree is the envelope, the request with the message op_typed */
     } else {
         rc = lyd_parse_op(ctx, NULL, in, p->fmt, p->optype, p->popts & (LYD_PARSE_STRICT | LYD_PARSE_OPAQ), tree, &op);
@@ -1351,7 +1351,7 @@ parse_one(struct ly_ctx *ctx, const struct dparams *p, const char *data, const c
 done:
     ly_in_free(in, 0);
     collect(ctx, diag, phase);
-    if (rc) {
+    if (rc && (p->optype < LYD_TYPE_RPC_NETCONF)) {
         lyd_free_all(*tree);
         *tree = NULL;
     }

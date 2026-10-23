@@ -32,6 +32,37 @@
     "err": 7,
     "name": "LY_EVALID"
   },
-  "tree": null,
+  "tree": {
+    "json": "{\n  \"notification\": \"\"\n}\n",
+    "xml": "<notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\"/>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "notification",
+        "namespace": "urn:ietf:params:xml:ns:netconf:notification:1.0",
+        "prefix": null
+      },
+      "path": "/notification",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
   "verdict": "invalid"
 }

@@ -54,6 +54,8 @@ func TestParseXML(t *testing.T) {
 			`LY_EVALID LYVE_REFERENCE /pj:c||1: Node "q" not found as a child of "c" node.`}},
 		{"text-in-inner", rej, true, `<c` + pj + `>txt<s>a</s></c>`, []string{
 			`LY_EVALID LYVE_SYNTAX ||1: Text value "txt" inside an inner node "c" found.`}},
+		{"text-in-anydata-truncated", rej, false, `<ad` + pj + `>abcdefghijklmnopqrstuvwxyz</ad>`, []string{
+			`LY_EVALID LYVE_SYNTAX ||1: Text value "abcdefghijklmnopqrst" inside an anydata node "ad" found.`}},
 		{"child-in-term", rej, true, `<c` + pj + `><s>a<x/></s></c>`, []string{
 			`LY_EVALID LYVE_SYNTAX /pj:c/s||1: Child element "x" inside a terminal node "s" found.`}},
 		// whitespace-only text is the value of a term, not of an inner node

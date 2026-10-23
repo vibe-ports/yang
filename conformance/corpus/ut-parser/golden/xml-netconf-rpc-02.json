@@ -38,6 +38,48 @@
     "err": 7,
     "name": "LY_EVALID"
   },
-  "tree": null,
+  "tree": {
+    "json": "{\n  \"ietf-netconf:rpc\": \"\",\n  \"@ietf-netconf:rpc\": {\n    \"message-id\": \"1\",\n    \"pid\": \"4114692032\"\n  }\n}\n",
+    "xml": "<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" message-id=\"1\" pid=\"4114692032\"/>\n"
+  },
+  "typed": [
+    {
+      "any": null,
+      "flags": {
+        "default": false,
+        "new": false,
+        "when_true": false
+      },
+      "kind": "opaque",
+      "meta": [
+        {
+          "module": null,
+          "name": "message-id",
+          "value": "1"
+        },
+        {
+          "module": null,
+          "name": "pid",
+          "value": "4114692032"
+        }
+      ],
+      "opaque": {
+        "format": "xml",
+        "module": null,
+        "name": "rpc",
+        "namespace": "urn:ietf:params:xml:ns:netconf:base:1.0",
+        "prefix": null
+      },
+      "path": "/ietf-netconf:rpc",
+      "schema": null,
+      "value": {
+        "canonical": "",
+        "hints": [],
+        "type": null,
+        "typedef": null,
+        "union_member": null
+      }
+    }
+  ],
   "verdict": "invalid"
 }

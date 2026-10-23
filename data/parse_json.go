@@ -885,7 +885,9 @@ func (p *jsonParser) parseAttribute(attrNode *Node, sn *schema.Node, name, prefi
 	parent *Node, status *lyjson.Token) (*Node, error) {
 	lc := p.lc
 	idx := -1
-	if attrNode == nil {
+	// lyd_child() deliberately hides an anydata/anyxml payload, so metadata inside an any
+	// is always kept opaque here and resolved against the payload by metadataFinish.
+	if attrNode == nil && (parent == nil || !isAny(parent.schema)) {
 		lc.tree.work.Add(1)
 		sib := lc.tree.childrenOf(parent)
 		mod := ""
