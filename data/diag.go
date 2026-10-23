@@ -69,6 +69,7 @@ func (e *ValidationError) Error() string {
 type logger struct {
 	set        *schema.Set
 	diags      []yang.Diagnostic
+	nonfatal   map[int]bool              // diagnostics emitted by a nested call that itself succeeded
 	scnodes    []*schema.Node            // log_location.scnodes
 	paths      []string                  // log_location.paths
 	inputs     []func() int              // log_location.inputs: the current line of each input
@@ -143,6 +144,16 @@ func (l *logger) item(lnode *Node, sn *schema.Node, warning bool, err string, co
 	d.DataPath, d.SchemaPath, d.Line = l.location(lnode, sn)
 	l.diags = append(l.diags, d)
 	return errLogged
+}
+
+// notice appends a diagnostic emitted by a nested call that returned success. It remains in the
+// context log, but cannot decide the enclosing operation's return status (xml_print_meta is void).
+func (l *logger) notice(d yang.Diagnostic) {
+	if l.nonfatal == nil {
+		l.nonfatal = make(map[int]bool)
+	}
+	l.nonfatal[len(l.diags)] = true
+	l.diags = append(l.diags, d)
 }
 
 // storeErr is ly_err_print of a type plugin's error item d for a value of the schema node sn
@@ -222,8 +233,8 @@ func (e rcError) Error() string { return "data: " + string(e) }
 // result is the error of the operation: nil when only warnings (and the continuing XPath LY_EINT)
 // were logged, else a *ValidationError with every diagnostic.
 func (l *logger) result() error {
-	for _, d := range l.diags {
-		if failing(d) {
+	for i, d := range l.diags {
+		if !l.nonfatal[i] && failing(d) {
 			return &ValidationError{Diags: l.diags}
 		}
 	}

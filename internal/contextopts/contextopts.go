@@ -54,6 +54,13 @@ type ContextDiagnostic struct {
 // lyd_find_meta calls during the last diff merge.
 var DrainDiffDiagnostics func(any) []ContextDiagnostic
 
+// DrainContextDiagnostics reads diagnostics retained by their emitting context on a data tree.
+var DrainContextDiagnostics func(any) []ContextDiagnostic
+
+// EnableContextDiagnostics opts a data tree into retaining diagnostics emitted by foreign
+// contexts. It is used only by the conformance adapter, which models libyang context logs.
+var EnableContextDiagnostics func(any)
+
 // CheckDupContexts checks ordinary duplication's operand contexts.
 var CheckDupContexts func(any, any) error
 

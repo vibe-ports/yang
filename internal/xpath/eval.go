@@ -875,7 +875,10 @@ func (ev *evaluator) hashChild(set value, sn SchemaNode, name string, vals []str
 		keys = append(keys, sn.Child(sn.Module(), k))
 	}
 	var probe InstanceProbe
-	if prepare, ok := sn.(InstanceProbePreparer); ok && vals != nil {
+	// A value-less schema lookup still needs a prepared probe when the data
+	// adapter may perform its native opaque-sibling fallback. The probe carries
+	// the evaluator's work/cancellation hook even though there are no values.
+	if prepare, ok := sn.(InstanceProbePreparer); ok {
 		var err error
 		probe, err = prepare.PrepareInstance(vals, ev.probeCharge)
 		if err != nil {
@@ -1666,7 +1669,14 @@ func (ev *evaluator) nodeValueString(n Node) string {
 	}); ok {
 		s, err := cast.StringWithBudget(ev.ctx, ev.tick, ev.tick)
 		if err != nil {
-			ev.err = err
+			var diagnostic interface{ XPathDiagnosticOnly() }
+			if errors.As(err, &diagnostic) {
+				if ev.ec.Log != nil {
+					ev.ec.Log(err)
+				}
+			} else {
+				ev.err = err
+			}
 		}
 		return s
 	}

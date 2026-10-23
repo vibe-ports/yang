@@ -116,7 +116,7 @@ func (x *xmlPrinter) meta(n *Node) error {
 				return err
 			}
 			if !d.NoItem {
-				x.printDiags = append(x.printDiags, d)
+				x.printDiags = append(x.printDiags, printerDiag{set: x.nodeContext(n), diag: d})
 			}
 		}
 		for _, um := range pc.Used {
@@ -141,7 +141,7 @@ func (x *xmlPrinter) term(n *Node) error {
 	pc := &types.PrintCtx{Local: n.schema.Module}
 	value, err := types.Print(n.value, types.FormatXML, pc)
 	if err != nil {
-		return err
+		return x.typeError(n, err)
 	}
 	if err := x.open(n); err != nil {
 		return err

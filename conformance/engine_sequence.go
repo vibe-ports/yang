@@ -142,6 +142,13 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 			tree = nil
 		}
 		s := cur
+		// Context-local diagnostics may be emitted while a retained tree is an
+		// operation's source and then replaced. Opt both registers into retention
+		// before any selectors run and keep their identities for the post-step drain.
+		diagnosticTrees := []*data.Tree{tree, diff}
+		for _, t := range diagnosticTrees {
+			contextopts.EnableContextDiagnostics(t)
+		}
 		what := str(st, "do", "")
 		so := map[string]any{"do": what}
 		out = append(out, so)
@@ -225,15 +232,12 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 		case "edit":
 			tree, diags, rc, err = stepEdit(r, s, st, tree, detached, detachedSchema)
 		case "dup":
-			phase = ""               // source parse and duplication collect distinct diagnostic phases
+			phase = "" // source parse and duplication collect distinct diagnostic phases
+			var sourceOwner *yang.Schema
+			tree, sourceOwner, diags, err = stepDup(r, s, st, tree, detached)
 			if st["source"] == nil { // a source tree is parsed in the step's own context
-				src := detached // lyoracle.c:2107-2111
-				if st["detached"] != true {
-					src, _, _ = dupSelect(r, s, st, tree)
-				}
-				foreign = append(foreign, contextopts.NodeSchema(src))
+				foreign = append(foreign, sourceOwner)
 			}
-			tree, _, diags, err = stepDup(r, s, st, tree, detached)
 		case "link":
 			if tree == nil || empty(tree) {
 				rc = "LY_EINVAL" // LY_CHECK_ARG_RET(NULL, tree): logged without a context
@@ -504,6 +508,22 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 				return unsupported(err)
 			}
 		}
+		// Every valCtx user routes diagnostics logged by a payload's foreign
+		// context onto its operation tree. Drain every pre- and post-operation
+		// register: parse, dup, edit, diff replacement and reverse may discard the
+		// source tree before this point.
+		diagnosticTrees = append(diagnosticTrees, tree, diff)
+		seenDiagnosticTree := map[*data.Tree]bool{}
+		for _, t := range diagnosticTrees {
+			if t == nil || seenDiagnosticTree[t] {
+				continue
+			}
+			seenDiagnosticTree[t] = true
+			contextopts.EnableContextDiagnostics(t)
+			for _, item := range contextopts.DrainContextDiagnostics(t) {
+				pending[pk(item.Context)] = append(pending[pk(item.Context)], item.Diagnostic)
+			}
+		}
 		// step_edit and step_change_term collect the first tree context. A
 		// diagnostic emitted on a retained foreign node stays in that context's
 		// queue until a later collect of it. free_meta is a void C call.
@@ -609,7 +629,11 @@ func diagsOf(err error) []yang.Diagnostic {
 
 // emptyTree is the NULL tree of the oracle's sequence, which lyd_new_path and lyd_validate_all
 // fill.
-func emptyTree(s *yang.Schema) (*data.Tree, error) { return data.NewTree(s), nil }
+func emptyTree(s *yang.Schema) (*data.Tree, error) {
+	t := data.NewTree(s)
+	contextopts.EnableContextDiagnostics(t)
+	return t, nil
+}
 
 // stepCompare is step_compare: Node.Equal of the node at first in the tree and the node at second
 // in a second tree parsed like a parse step, or the retained tree with self:true
@@ -1038,7 +1062,8 @@ func dupSelect(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*
 // retained by unlink with "detached", under the node at "parent"; without a parent the copy,
 // from its top duplicated parent, replaces the tree.
 // With "target" (searchdirs, modules, context_options) the copy goes into a tree over a second
-// context built like the request's (lyd_dup_*_to_ctx).
+// context built like the request's (lyd_dup_*_to_ctx). The returned schema owns
+// the selected source node, whose context the native step collects separately.
 func stepDup(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, detached *data.Node) (*data.Tree, *yang.Schema, []yang.Diagnostic,
 	error) {
 	n := detached
@@ -1051,6 +1076,7 @@ func stepDup(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, deta
 	} else if n, parseDiags, err = dupSelect(r, s, st, tree); err != nil {
 		return tree, s, parseDiags, err
 	}
+	sourceOwner := contextopts.NodeSchema(n)
 	var parent *data.Node
 	if p, present, _ := strField(st, "parent"); present {
 		if parent, err = findNode(tree, p, "dup parent"); err != nil {
@@ -1076,10 +1102,11 @@ func stepDup(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, deta
 	}
 	if parent == nil {
 		dst = data.NewTree(ds)
+		contextopts.EnableContextDiagnostics(dst)
 	}
 	if st["target"] == nil {
 		if err := contextopts.CheckDupContexts(n, parent); err != nil {
-			return tree, s, phased(nil, diagsOf(err), "edit"), err // lyoracle.c collects it in phase edit
+			return tree, sourceOwner, phased(nil, diagsOf(err), "edit"), err // lyoracle.c collects it in phase edit
 		}
 	}
 	if tg, ok := st["target"].(map[string]any); ok {
@@ -1092,6 +1119,7 @@ func stepDup(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, deta
 		}
 		ds = targetSchema
 		dst = data.NewTree(ds)
+		contextopts.EnableContextDiagnostics(dst)
 	}
 	dup := dst.Dup
 	if st["siblings"] == true {
@@ -1099,14 +1127,14 @@ func stepDup(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, deta
 	}
 	_, diags, err := dup(n, parent, o)
 	if err != nil {
-		return tree, s, append(parseDiags, phased(nil, diagsOf(err), "edit")...), err
+		return tree, sourceOwner, append(parseDiags, phased(nil, diagsOf(err), "edit")...), err
 	}
 	if dst != tree {
 		if err := discardTree(tree); err != nil {
-			return tree, s, append(parseDiags, phased(nil, diags, "edit")...), err
+			return tree, sourceOwner, append(parseDiags, phased(nil, diags, "edit")...), err
 		}
 	}
-	return dst, ds, append(parseDiags, phased(nil, diags, "edit")...), nil
+	return dst, sourceOwner, append(parseDiags, phased(nil, diags, "edit")...), nil
 }
 
 // stepChange is the change_term step: Node.SetValue of the node at "node"; "change" is
