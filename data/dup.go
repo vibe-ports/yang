@@ -536,14 +536,9 @@ func (t *Tree) dupNodes(n, parent *Node, opts dupOpts, siblings bool) (*Node, er
 		var d *Node
 		if orig.schema != nil && orig.schema.IsKey() {
 			if local != nil {
-				// the key must already exist in the parent; libyang looks it up by the source
-				// schema node, which another context's parent never has (LOGINT, LY_ENOTFOUND)
-				for _, c := range local.kids.list {
-					if c.schema == orig.schema {
-						d = c
-						break
-					}
-				}
+				// the key must already exist in the parent; lyd_find_sibling_schema looks it up by
+				// the source schema node, matching names in another context
+				d = t.schemaLookup(&local.kids, orig.schema)
 				if d == nil { // LY_CHECK_ERR_GOTO(rc, LOGINT(trg_ctx), error), tree_data.c:2453
 					if t.dupLog != nil {
 						_ = t.dupLog.logErr("LY_EINT", "Internal error (%s:%d).", "tree_data.c", 2453)

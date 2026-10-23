@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+// ApplyDiff creates an instance equal to one a later entry of the same diff level operates on
+// (lyd_dup_inst_next builds each set from the live siblings): system-ordered leaf-lists at the
+// top level (no children hash table) and in a container with one; sl, a top-level state leaf-list,
+// is user-ordered, so a replace moves an instance between the create and the lookups.
+module pv2-dupcreate {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:conformance:pv2-dupcreate";
+  prefix pdc;
+  import ietf-yang-metadata { prefix md; }
+  md:annotation note { type string; }
+  leaf-list tl { type string; }
+  leaf-list sl { config false; type string; }
+  container c {
+    leaf a { type string; }
+    leaf b { type string; }
+    leaf d { type string; }
+    leaf-list ll { type string; }
+  }
+}

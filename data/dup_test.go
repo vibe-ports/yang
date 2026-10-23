@@ -416,13 +416,8 @@ func TestDupContexts(t *testing.T) {
 			t.Errorf("got %v, want %q", err, e.want)
 		}
 	}
-	// a key with its parents: libyang looks the key up in the duplicated list by the source
-	// schema node, which fails across contexts (LOGINT, LY_ENOTFOUND)
-	var rc rcError
-	if _, err := dupTo(findNode(t, tr, "/pv2-edit:c/l[k='b']/k"), set2, nil, dupWithParents, false); !errors.As(err, &rc) ||
-		rc != "LY_ENOTFOUND" {
-		t.Errorf("key with parents across contexts: %v", err)
-	}
+	// a key with its parents across contexts: TestDupKeyWithParentsForeignContext (compiled
+	// contexts; lyd_find_sibling_schema matches names, not schema pointers)
 	// a schema node the target lacks
 	trimmed := editSet(t)
 	tc := trimmed.Implemented("pv2-edit").Top[0]

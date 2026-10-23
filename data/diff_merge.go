@@ -281,14 +281,23 @@ func (t *Tree) propagateMeta(dm *Node, name string, mod *schema.Module) error {
 			if it.meta[i].value.Canonical() == dm.value.Canonical() {
 				delYangMeta(it, name)
 				_ = t.checkedYangModule(dm, mod, name)
-				copyYangMeta(dm, it, name, mod)
+				if !copyYangMeta(dm, it, name, mod) {
+					// lyd_dup_meta_single(NULL, ...) is LY_EINVAL (diff.c:2192); its LOGARG has
+					// no context, so nothing reaches the diff context's log
+					return &diffError{rc: "LY_EINVAL"}
+				}
 			}
 			continue
 		}
 		if it.meta[i].value.Canonical() == listPredicate(dm) {
 			lg := &logger{set: ctxOf(dm)}
-			_ = t.checkedYangModule(dm, mod, name)
-			if _, err := lg.changeMeta(it, it.meta[i], dm.meta[findYangModule(dm, mod, name)].value.Canonical()); err != nil {
+			// lyd_get_meta_value(NULL) is NULL, which lyd_change_meta takes as "" (diff.c:2203-2205,
+			// tree_data_new.c:1321-1323)
+			val := ""
+			if j := t.checkedYangModule(dm, mod, name); j >= 0 {
+				val = dm.meta[j].value.Canonical()
+			}
+			if _, err := lg.changeMeta(it, it.meta[i], val); err != nil {
 				return &opError{lg.diags[0].Err, lg.diags[0].Msg}
 			}
 		}

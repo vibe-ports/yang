@@ -859,7 +859,7 @@ type dupInst struct {
 // (added); dupInstNext skips the nodes that have left the level since.
 type dupCache struct {
 	inst      map[*Node]*dupInst
-	runs      map[*schema.Node]map[idxKey][]*Node
+	runs      map[*schema.Node]map[idxKey]*nodeDeque // sibling order; a deque, creates prepend
 	tableRuns map[*siblings]map[string][]*Node
 }
 
@@ -924,11 +924,11 @@ func (t *Tree) run(c *dupCache, inst *Node) []*Node {
 		return sib.list
 	}
 	if c.runs == nil {
-		c.runs = map[*schema.Node]map[idxKey][]*Node{}
+		c.runs = map[*schema.Node]map[idxKey]*nodeDeque{}
 	}
 	idx := c.runs[inst.schema]
 	if idx == nil {
-		idx = map[idxKey][]*Node{}
+		idx = map[idxKey]*nodeDeque{}
 		all := t.instances(sib, inst.schema)
 		if opChild(inst.schema) || sib.schemaUnordered {
 			// Merge must find every instance, including runs split by an anchor in an
@@ -938,12 +938,18 @@ func (t *Tree) run(c *dupCache, inst *Node) []*Node {
 		for n := range all {
 			t.work.Add(1)
 			if nk, ok := indexedKey(n, &t.work); ok {
-				idx[nk] = append(idx[nk], n)
+				if idx[nk] == nil {
+					idx[nk] = &nodeDeque{}
+				}
+				idx[nk].list = append(idx[nk].list, n)
 			}
 		}
 		c.runs[inst.schema] = idx
 	}
-	return idx[k]
+	if d := idx[k]; d != nil {
+		return d.list
+	}
+	return nil
 }
 
 // added records n, just inserted at the level of c, in the level's index.
@@ -956,7 +962,106 @@ func (c *dupCache) added(n *Node, work *workCounter) {
 	}
 	if idx := c.runs[n.schema]; idx != nil {
 		if k, ok := indexedKey(n, work); ok {
-			idx[k] = append(idx[k], n)
+			if idx[k] == nil {
+				idx[k] = &nodeDeque{}
+			}
+			idx[k].list = append(idx[k].list, n)
+		}
+	}
+}
+
+// created records n, just created at the level of c by ApplyDiff: lyd_find_sibling_dup_inst_set
+// reads the live siblings on each first lookup (tree_data_common.c:121-125), so a set built later
+// must include n. The registration-order index gets n at its end (n is registered last); the
+// sibling-order index gets it where it now is among the live siblings of its run.
+func (t *Tree) created(c *dupCache, n *Node) {
+	if n.schema == nil {
+		return
+	}
+	if sib := n.siblingsOf(); sib != nil && c.tableRuns != nil {
+		if idx := c.tableRuns[sib]; idx != nil {
+			key := dupNativeKey(n)
+			idx[key] = append(idx[key], n)
+		}
+	}
+	idx := c.runs[n.schema]
+	if idx == nil {
+		return // built from the live siblings on its first lookup
+	}
+	sib := n.siblingsOf()
+	if sib == nil || opChild(n.schema) || sib.schemaUnordered {
+		// ponytail: operation children and unordered copies are indexed in document order, not
+		// sibling-list order; rebuild on the next lookup (O(n) per create), slot them if it matters.
+		delete(c.runs, n.schema)
+		return
+	}
+	k, ok := indexedKey(n, &t.work)
+	if !ok {
+		return
+	}
+	run := idx[k]
+	if run == nil {
+		run = &nodeDeque{}
+		idx[k] = run
+	}
+	// the deque moves the shorter side: prepends and appends are amortized O(1), a middle slot
+	// is charged per moved entry
+	t.work.Add(int64(run.insertAt(t.runSlot(sib.list, run.list, n, k), n)))
+}
+
+// moved re-records n, just moved within the level of c by an ApplyDiff replace: lyd_diff_insert
+// unlinks and reinserts it, so a set built later sees it at its new sibling position and, in a
+// children table, registered last. Sets already built for a first instance stay as they are.
+func (t *Tree) moved(c *dupCache, n *Node) {
+	if n.schema == nil {
+		return
+	}
+	if sib := n.siblingsOf(); sib != nil && c.tableRuns != nil {
+		if idx := c.tableRuns[sib]; idx != nil {
+			key := dupNativeKey(n)
+			if i := t.indexFromEnd(idx[key], n); i >= 0 {
+				t.work.Add(int64(len(idx[key]) - 1 - i))
+				idx[key] = slices.Delete(idx[key], i, i+1)
+			}
+		}
+	}
+	if idx := c.runs[n.schema]; idx != nil {
+		if k, ok := indexedKey(n, &t.work); ok && idx[k] != nil {
+			if i := t.indexFromEnd(idx[k].list, n); i >= 0 {
+				t.work.Add(int64(idx[k].deleteAt(i)))
+			}
+		}
+	}
+	t.created(c, n)
+}
+
+// runSlot is where n goes in run, its equal instances in sibling order: before the nearest run
+// member after n, after the nearest one before it. It walks out from n both ways at once, so the
+// cost is at most the distance to the nearer end of l, which the insertion of n shifted anyway.
+func (t *Tree) runSlot(l, run []*Node, n *Node, k idxKey) int {
+	at := t.indexFromEnd(l, n)
+	member := func(c *Node) int {
+		if c.schema != n.schema {
+			return -1
+		}
+		if ck, ok := indexedKey(c, &t.work); !ok || ck != k {
+			return -1
+		}
+		return t.indexFromEnd(run, c) // the nearer run end: a prepend or append finds it at once
+	}
+	for f, b := at+1, at-1; ; f, b = f+1, b-1 {
+		t.work.Add(1)
+		if f >= len(l) {
+			return len(run) // no equal live instance after n
+		}
+		if b < 0 {
+			return 0 // none before n
+		}
+		if i := member(l[f]); i >= 0 {
+			return i
+		}
+		if i := member(l[b]); i >= 0 {
+			return i + 1
 		}
 	}
 }

@@ -125,6 +125,11 @@ func (t *Tree) applyR(parent, dn *Node, cb func(diff, node *Node) error, cache *
 		if err := t.diffInsert(parent, match, insertSource, anchor); err != nil {
 			return err
 		}
+		if op == diffCreate {
+			t.created(cache, match)
+		} else {
+			t.moved(cache, match)
+		}
 	} else {
 		switch op {
 		case diffNone:
@@ -150,6 +155,7 @@ func (t *Tree) applyR(parent, dn *Node, cb func(diff, node *Node) error, cache *
 			if err != nil {
 				return err
 			}
+			t.created(cache, match)
 		case diffDelete:
 			if match = t.findMatch(sib, dn, true, cache); match == nil {
 				return t.noInstErr(dn)
