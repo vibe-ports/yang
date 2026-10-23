@@ -8,7 +8,6 @@ import (
 	"runtime"
 	"strings"
 	"testing"
-	"time"
 )
 
 // TestCompat pins a few CompileCompat results; TestOracleCompat (build tag oracle) is the proof.
@@ -73,6 +72,8 @@ func TestCompatLinear(t *testing.T) {
 
 // TestCompatLargeClass: a class's members are merged once, not one by one (quadratic), and an
 // escape's set is built once per pattern; the compiled-size check rejects or refuses the result.
+// It measures allocated bytes, not wall time, so host load and the race detector do not change
+// the verdict: merging the 100 000 members one by one allocates ~200 GB against the 512 MiB bound.
 func TestCompatLargeClass(t *testing.T) {
 	var b strings.Builder
 	b.WriteByte('[')
@@ -83,22 +84,20 @@ func TestCompatLargeClass(t *testing.T) {
 	for _, p := range []string{b.String(), "[" + strings.Repeat(`\w`, 100000) + "]", "[" + strings.Repeat(`\p{L}\P{Nd}`, 50000) + "]"} {
 		var before, after runtime.MemStats
 		runtime.ReadMemStats(&before)
-		start := time.Now()
 		_, err := CompileCompat(p)
-		d := time.Since(start)
 		runtime.ReadMemStats(&after)
 		if err == nil {
 			t.Errorf("%.20q…: accepted", p)
 		}
-		if alloc := after.TotalAlloc - before.TotalAlloc; d > 5*time.Second || alloc > 512<<20 {
-			t.Errorf("%.20q… (%d bytes): %v, %d bytes allocated", p, len(p), d, alloc)
+		if alloc := after.TotalAlloc - before.TotalAlloc; alloc > 512<<20 {
+			t.Errorf("%.20q… (%d bytes): %d bytes allocated", p, len(p), alloc)
 		}
 	}
 }
 
 // TestClassExpansionBudget covers the adversarial shape from issue #169 in both compilation
 // modes. The budget is charged while parsing each class, before all 40 000 expanded sets can be
-// retained in the AST.
+// retained in the AST. Like TestCompatLargeClass it bounds allocated bytes, not wall time.
 func TestClassExpansionBudget(t *testing.T) {
 	for _, brackets := range []bool{false, true} {
 		part := `\W`
@@ -112,15 +111,13 @@ func TestClassExpansionBudget(t *testing.T) {
 			t.Run(fmt.Sprintf("%s/brackets=%t", name, brackets), func(t *testing.T) {
 				var before, after runtime.MemStats
 				runtime.ReadMemStats(&before)
-				start := time.Now()
 				_, err := compile(strings.Repeat(part, 40000))
-				d := time.Since(start)
 				runtime.ReadMemStats(&after)
 				if !errors.Is(err, ErrUnsupported) || !strings.Contains(err.Error(), "class expansion") {
 					t.Fatalf("Compile: %v, want class-expansion ErrUnsupported", err)
 				}
-				if alloc := after.TotalAlloc - before.TotalAlloc; d > 5*time.Second || alloc > 128<<20 {
-					t.Errorf("%v, %d bytes allocated", d, alloc)
+				if alloc := after.TotalAlloc - before.TotalAlloc; alloc > 128<<20 {
+					t.Errorf("%d bytes allocated", alloc)
 				}
 			})
 		}
