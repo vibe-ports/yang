@@ -313,7 +313,9 @@ type EvalContext struct {
 	IgnoreWhen bool // LYXP_IGNORE_WHEN: do not fail on unresolved when
 	Schema     SchemaInfo
 	// Deref resolves a leafref / instance-identifier node to its targets.
-	Deref    func(Node) ([]Node, error)
+	Deref func(Node) ([]Node, error)
+	// Log receives diagnostics produced by a successful data-value conversion.
+	Log      func(error)
 	MaxSteps int // evaluation step budget; 0 = DefaultMaxSteps
 	// Vars are the variable bindings of $name references (set->vars).
 	Vars []Var

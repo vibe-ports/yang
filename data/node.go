@@ -100,6 +100,12 @@ type Tree struct {
 	// Diagnostics from lyd_find_meta calls during a diff merge retain their
 	// emitting context even when a later wrapper reports the operation error.
 	diffLogs []diffLogEntry
+	// Diagnostics emitted by a valCtx into a context other than the operation's
+	// remain owned by that context until an adapter collects it. Retention is
+	// disabled by default and enabled only by the conformance adapter.
+	contextLogsEnabled atomic.Bool
+	contextLogMu       sync.Mutex
+	contextLogs        []diffLogEntry
 }
 
 // workCounter counts the work of a tree for tests (work, not time): comparisons made by
