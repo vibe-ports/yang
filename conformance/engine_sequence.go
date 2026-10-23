@@ -142,6 +142,13 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 			tree = nil
 		}
 		s := cur
+		// Context-local diagnostics may be emitted while a retained tree is an
+		// operation's source and then replaced. Opt both registers into retention
+		// before any selectors run and keep their identities for the post-step drain.
+		diagnosticTrees := []*data.Tree{tree, diff}
+		for _, t := range diagnosticTrees {
+			contextopts.EnableContextDiagnostics(t)
+		}
 		what := str(st, "do", "")
 		so := map[string]any{"do": what}
 		out = append(out, so)
@@ -154,6 +161,7 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 			postPrint []yang.Diagnostic
 			err       error
 		)
+		selectors := newStepSelectors()
 		stepExec := stepExecutionContexts[what]
 		if err := checkRequest(r, s, st, stepExec, stepExecutionRules[what]); err != nil {
 			return err
@@ -162,24 +170,28 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 		// refusal for the same step. Skipped steps never reach these checks.
 		switch what {
 		case "edit":
-			err = checkInsertSelectors(s, tree, detached, st)
+			err = checkInsertSelectors(s, tree, detached, st, selectors)
 		case "change_term":
-			if _, xpath, _ := strField(st, "node_xpath"); !xpath { // node_xpath: stepChange selects
-				_, err = findNode(tree, str(st, "node", ""), "change_term node")
+			if xpath, present, _ := strField(st, "node_xpath"); present {
+				_, err = selectors.xpath(tree, xpath, data.XPathOptions{Node: topNode(tree)}, "change_term node_xpath")
+			} else {
+				_, err = selectors.path(tree, str(st, "node", ""), "change_term node")
 			}
 		case "dup":
-			_, xpath, _ := strField(st, "node_xpath")
+			xpath, hasXPath, _ := strField(st, "node_xpath")
 			switch {
 			case st["detached"] == true:
 				if detached == nil {
 					err = requestError("dup retained detached node not found")
 				}
-			case st["source"] == nil && !xpath: // node_xpath or a source tree: stepDup selects
-				_, err = findNode(tree, str(st, "node", ""), "dup node")
+			case st["source"] == nil && hasXPath:
+				_, err = selectors.xpath(tree, xpath, data.XPathOptions{}, "dup node_xpath")
+			case st["source"] == nil:
+				_, err = selectors.path(tree, str(st, "node", ""), "dup node")
 			}
 			if err == nil {
 				if p, present, _ := strField(st, "parent"); present {
-					_, err = findNode(tree, p, "dup parent")
+					_, err = selectors.path(tree, p, "dup parent")
 				}
 			}
 			if err == nil && seqOptionUnsupported(what, st) != "" {
@@ -193,6 +205,7 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 				}
 			}
 		}
+		preflightDiags := selectors.take()
 		if err != nil {
 			return err
 		}
@@ -213,7 +226,9 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 		// the foreign contexts the step touched: a source node's, the diff
 		// register's, a detached parent's.
 		collectOwner := s
+		collectStepOwner := true
 		var foreign []*yang.Schema
+		foreignBeforeTail := map[any]int{}
 		switch what {
 		case "parse":
 			phase = "" // parseOne distinguishes the request's "rpc" phase from "parse"
@@ -223,17 +238,17 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 				postPrint = append(postPrint, ds...)
 			})
 		case "edit":
-			tree, diags, rc, err = stepEdit(r, s, st, tree, detached, detachedSchema)
+			tree, diags, rc, err = stepEdit(r, s, st, tree, detached, detachedSchema, selectors)
 		case "dup":
-			phase = ""               // source parse and duplication collect distinct diagnostic phases
+			phase = "" // source parse and duplication collect distinct diagnostic phases
+			var sourceOwner *yang.Schema
+			tree, sourceOwner, diags, err = stepDup(r, s, st, tree, detached, selectors)
 			if st["source"] == nil { // a source tree is parsed in the step's own context
-				src := detached // lyoracle.c:2107-2111
-				if st["detached"] != true {
-					src, _, _ = dupSelect(r, s, st, tree)
+				foreign = append(foreign, sourceOwner)
+				if err != nil {
+					foreignBeforeTail[pk(sourceOwner)] = len(diagsOf(err))
 				}
-				foreign = append(foreign, contextopts.NodeSchema(src))
 			}
-			tree, _, diags, err = stepDup(r, s, st, tree, detached)
 		case "link":
 			if tree == nil || empty(tree) {
 				rc = "LY_EINVAL" // LY_CHECK_ARG_RET(NULL, tree): logged without a context
@@ -250,17 +265,24 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 			}
 		case "change_term":
 			phase = "edit"
-			diags, err = stepChange(st, tree, so)
+			diags, err = stepChange(st, tree, so, selectors)
 		case "insert":
 			var usedDetached bool
-			if st["detached"] == true && detached != nil {
-				foreign = append(foreign, contextopts.NodeSchema(detached)) // lyoracle.c:2386
-			}
+			var sourceOwner *yang.Schema
 			moveSchema := s
 			if st["detached"] == true && (tree == nil || empty(tree)) && detachedSchema != nil {
 				moveSchema = detachedSchema
 			}
-			tree, diags, phase, usedDetached, err = stepMove(r, moveSchema, st, tree, detached)
+			tree, sourceOwner, diags, phase, usedDetached, err = stepMove(r, moveSchema, st, tree, detached, selectors)
+			if phase == "parse" && st["target"] != nil {
+				// step_insert returns immediately when parsing in other_ctx fails;
+				// its usual collect(ctx, ..., "edit") is never reached.
+				collectStepOwner = false
+			}
+			foreign = append(foreign, sourceOwner) // lyoracle.c:2450
+			if err != nil {
+				foreignBeforeTail[pk(sourceOwner)] = len(diagsOf(err))
+			}
 			if usedDetached && err == nil {
 				detached, detachedSchema = nil, nil
 			}
@@ -381,21 +403,23 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 			var selected *data.Node
 			switch {
 			case diffPresent:
-				selected, err = findNode(diff, diffPath, "unlink diff_node")
+				selected, err = selectors.path(diff, diffPath, "unlink diff_node")
 			case path == "@top":
 				selected = topNode(tree)
 			default:
-				selected, err = findNode(tree, path, "unlink node")
+				selected, err = selectors.path(tree, path, "unlink node")
 			}
 			if err == nil && selected != nil {
 				collectOwner = contextopts.NodeSchema(selected) // lyoracle.c:2994 collects only node_ctx
 				err = selected.Unlink()
 				if err == nil {
 					if detached != nil {
-						_ = detached.Remove() // the oracle frees the previous retained node on success
+						err = detached.Remove() // the oracle frees the previous retained node on success
 					}
-					detached = selected
-					detachedSchema = contextopts.NodeSchema(detached)
+					if err == nil {
+						detached = selected
+						detachedSchema = contextopts.NodeSchema(detached)
+					}
 				}
 			}
 			diags = diagsOf(err)
@@ -403,7 +427,7 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 			phase = "find_meta"
 			n := detached
 			if _, present, _ := strField(st, "node"); present {
-				if n, err = findNode(tree, str(st, "node", ""), "find_meta node"); err != nil {
+				if n, err = selectors.path(tree, str(st, "node", ""), "find_meta node"); err != nil {
 					break
 				}
 			}
@@ -504,28 +528,66 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 				return unsupported(err)
 			}
 		}
+		// Selector diagnostics precede the edit they selected a node for. Keep them
+		// separate until mutation diagnostics have been routed: an XPath evaluated in
+		// the retained tree's context may select a foreign payload node, but collect()
+		// still owns the selector log. A selector used by a source parse is drained
+		// inside that step, after parse diagnostics.
+		selectorDiags := slices.Concat(preflightDiags, selectors.take())
+		// Every valCtx user routes diagnostics logged by a payload's foreign
+		// context onto its operation tree. Drain every pre- and post-operation
+		// register: parse, dup, edit, diff replacement and reverse may discard the
+		// source tree before this point.
+		diagnosticTrees = append(diagnosticTrees, tree, diff)
+		seenDiagnosticTree := map[*data.Tree]bool{}
+		for _, t := range diagnosticTrees {
+			if t == nil || seenDiagnosticTree[t] {
+				continue
+			}
+			seenDiagnosticTree[t] = true
+			contextopts.EnableContextDiagnostics(t)
+			for _, item := range contextopts.DrainContextDiagnostics(t) {
+				pending[pk(item.Context)] = append(pending[pk(item.Context)], item.Diagnostic)
+			}
+		}
 		// step_edit and step_change_term collect the first tree context. A
 		// diagnostic emitted on a retained foreign node stays in that context's
-		// queue until a later collect of it. free_meta is a void C call.
-		if what == "edit" && st["free_meta"] != nil || what == "change_term" {
+		// queue until a later collect of it. free_meta and delete call void C
+		// frees, while new_meta still returns its failure code.
+		if (what == "edit" && (st["new_meta"] != nil || st["free_meta"] != nil || st["delete"] != nil)) || what == "change_term" {
 			path := str(st, "node", "")
 			if what == "edit" {
-				x, _ := st["free_meta"].(map[string]any)
-				path = str(x, "node", "")
+				if st["delete"] != nil {
+					path = str(st, "delete", "")
+				} else {
+					x, _ := st["new_meta"].(map[string]any)
+					if x == nil {
+						x, _ = st["free_meta"].(map[string]any)
+					}
+					path = str(x, "node", "")
+				}
 			}
 			if tree != nil {
-				if n, ferr := tree.Find(path); ferr == nil && n != nil {
+				var n *data.Node
+				var ferr error
+				if expr, present, _ := strField(st, "node_xpath"); what == "change_term" && present {
+					n, ferr = selectors.xpath(tree, expr, data.XPathOptions{Node: topNode(tree)}, "change_term node_xpath")
+				} else {
+					n, ferr = selectors.path(tree, path, what+" node")
+				}
+				if ferr == nil && n != nil {
 					owner := contextopts.NodeSchema(n)
 					if owner != nil && snap.Set(owner) != snap.Set(s) {
 						pending[pk(owner)] = append(pending[pk(owner)], diags...)
 						diags = nil
-						if what == "edit" {
+						if what == "edit" && (st["free_meta"] != nil || st["delete"] != nil) {
 							err = nil
 						}
 					}
 				}
 			}
 		}
+		diags = slices.Concat(selectorDiags, diags)
 		if err != nil {
 			if rc, err = rcOf(err); err != nil {
 				return err
@@ -533,12 +595,13 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 		}
 		// Each branch that calls collect() consumes prior logs from the retained
 		// context before its own diagnostics. links and dump do not collect.
-		if what != "links" && what != "dump" && what != "diff" {
+		if collectStepOwner && what != "links" && what != "dump" && what != "diff" {
 			prior := pending[pk(collectOwner)]
 			if phase == "" {
 				collectPhase := "parse"
 				_, hasData, _ := requestInput(r, st, "data")
-				if what == "insert" && !hasData {
+				if (what == "dup" && st["source"] == nil) ||
+					(what == "insert" && (!hasData || st["target"] != nil)) {
 					collectPhase = "edit"
 				}
 				typ := opTypes[str(st, "data_type", "data-operational")]
@@ -549,18 +612,25 @@ func runSequence(r Request, s *yang.Schema, resp map[string]any, exec executionC
 			}
 			diags = append(prior, diags...)
 			delete(pending, pk(collectOwner))
-			// ponytail: foreign queues go after the step's own diagnostics; a step
-			// logging into both contexts would interleave differently in C.
+			// Foreign contexts are collected after the step context. Within a
+			// foreign source context, queued items precede the operation failure
+			// that was logged after them.
 			fphase := phase
 			switch {
-			case fphase == "" && what == "dup":
-				fphase = "edit" // the duplication's own collection
+			case fphase == "" && (what == "dup" || what == "insert"):
+				fphase = "edit" // the copy/move operation's own collection
 			case fphase == "":
 				fphase = "diff" // diff_merge
 			}
 			for _, f := range foreign {
 				if k := pk(f); k != nil && k != pk(collectOwner) {
-					diags = append(diags, phased(nil, pending[k], fphase)...)
+					fd := phased(nil, pending[k], fphase)
+					if tail := foreignBeforeTail[k]; tail > 0 && tail <= len(diags) {
+						at := len(diags) - tail
+						diags = slices.Concat(diags[:at], fd, diags[at:])
+					} else {
+						diags = append(diags, fd...)
+					}
 					delete(pending, k)
 				}
 			}
@@ -607,9 +677,82 @@ func diagsOf(err error) []yang.Diagnostic {
 	return nil
 }
 
+type stepSelectorKey struct {
+	tree   *data.Tree
+	node   *data.Node
+	expr   string
+	module string
+	format data.XPathFormat
+	xpath  bool
+}
+
+// stepSelectors evaluates each node selector at most once in a sequence step. Successful XPath
+// calls can log diagnostics even though they return a node; retain those diagnostics for the edit
+// that uses the selection. Path selectors share the same cache so the request-order preflight and
+// the actual edit never evaluate a selector twice.
+type stepSelectors struct {
+	cache map[stepSelectorKey]stepSelectorResult
+	diags []yang.Diagnostic
+}
+
+type stepSelectorResult struct {
+	node *data.Node
+	err  error
+}
+
+func newStepSelectors() *stepSelectors {
+	return &stepSelectors{cache: map[stepSelectorKey]stepSelectorResult{}}
+}
+
+func (s *stepSelectors) findPath(tree *data.Tree, path string) (*data.Node, error) {
+	key := stepSelectorKey{tree: tree, expr: path}
+	if result, ok := s.cache[key]; ok {
+		return result.node, result.err
+	}
+	if tree == nil {
+		return nil, nil
+	}
+	n, err := tree.Find(path)
+	s.cache[key] = stepSelectorResult{node: n, err: err}
+	return n, err
+}
+
+func (s *stepSelectors) path(tree *data.Tree, path, label string) (*data.Node, error) {
+	if n, err := s.findPath(tree, path); err == nil && n != nil {
+		return n, nil
+	}
+	return nil, requestError("%s %s not found", label, path)
+}
+
+func (s *stepSelectors) xpath(tree *data.Tree, expr string, o data.XPathOptions, label string) (*data.Node, error) {
+	key := stepSelectorKey{tree: tree, node: o.Node, expr: expr, module: o.Module, format: o.Format, xpath: true}
+	if result, ok := s.cache[key]; ok {
+		return result.node, result.err
+	}
+	if tree != nil {
+		nodes, diags, err := tree.FindXPath(expr, o)
+		if err == nil && len(nodes) == 1 {
+			s.cache[key] = stepSelectorResult{node: nodes[0]}
+			s.diags = phased(s.diags, diags, "edit")
+			return nodes[0], nil
+		}
+	}
+	return nil, requestError("%s %s must select exactly one node", label, expr)
+}
+
+func (s *stepSelectors) take() []yang.Diagnostic {
+	diags := s.diags
+	s.diags = nil
+	return diags
+}
+
 // emptyTree is the NULL tree of the oracle's sequence, which lyd_new_path and lyd_validate_all
 // fill.
-func emptyTree(s *yang.Schema) (*data.Tree, error) { return data.NewTree(s), nil }
+func emptyTree(s *yang.Schema) (*data.Tree, error) {
+	t := data.NewTree(s)
+	contextopts.EnableContextDiagnostics(t)
+	return t, nil
+}
 
 // stepCompare is step_compare: Node.Equal of the node at first in the tree and the node at second
 // in a second tree parsed like a parse step, or the retained tree with self:true
@@ -768,8 +911,8 @@ func stepValidate(s *yang.Schema, st map[string]any, tree *data.Tree, so map[str
 // new_meta (Tree.NewMeta), free_meta (Node.FindMeta + Meta.Remove) and merge (a parse-only parse
 // + lyd_merge_siblings). rc is set when the outcome is an LY_ERR without a diagnostic (a delete
 // that finds nothing).
-func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, detached *data.Node, detachedSchema *yang.Schema) (*data.Tree, []yang.Diagnostic, string,
-	error) {
+func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, detached *data.Node, detachedSchema *yang.Schema,
+	selectors *stepSelectors) (*data.Tree, []yang.Diagnostic, string, error) {
 	rc := "LY_SUCCESS"
 	var err error
 	if tree == nil {
@@ -808,7 +951,7 @@ func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, det
 			x, _ = st["free_meta"].(map[string]any)
 		}
 		path := str(x, "node", "")
-		n, ferr := findNode(tree, path, "metadata node")
+		n, ferr := selectors.path(tree, path, "metadata node")
 		if ferr != nil {
 			return nil, nil, rc, ferr
 		}
@@ -821,9 +964,9 @@ func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, det
 			}
 		}
 	case st["insert_list2"] != nil:
-		err = stepInsertList2(s, st, tree)
+		err = stepInsertList2(s, st, tree, selectors)
 	case st["insert_term"] != nil || st["insert_inner"] != nil || st["insert_list"] != nil:
-		err = stepInsert(s, st, tree, detached, detachedSchema)
+		err = stepInsert(s, st, tree, detached, detachedSchema, selectors)
 	case st["delete"] != nil:
 		path := str(st, "delete", "")
 		if empty(tree) {
@@ -831,7 +974,7 @@ func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, det
 		}
 		// lyoracle.c:2644 calls lyd_find_path from the retained first node.
 		var n *data.Node
-		if n, err = tree.Find(path); err == nil {
+		if n, err = selectors.findPath(tree, path); err == nil {
 			if n == nil {
 				return tree, nil, notFoundRC(tree, path), nil
 			}
@@ -882,13 +1025,21 @@ func stepEdit(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, det
 		return tree, append(diags, diagsOf(err)...), rc, err
 	}
 	diags := diagsOf(err)
-	if detachedSchema != nil && snap.Set(s) != snap.Set(detachedSchema) {
+	if len(diags) == 1 && strings.HasPrefix(diags[0].Msg, "Different contexts mixed in a \"_lyd_new_") {
 		for _, kind := range []string{"insert_term", "insert_inner", "insert_list"} {
 			o, _ := st[kind].(map[string]any)
-			if o != nil && o["detached_parent"] == true && str(o, "module", "") != "" &&
-				len(diags) == 1 && strings.HasPrefix(diags[0].Msg, "Different contexts mixed in a \"_lyd_new_") {
+			if o == nil || str(o, "module", "") == "" {
+				continue
+			}
+			var parent *data.Node
+			if o["detached_parent"] == true {
+				parent = detached
+			} else if p, present, _ := strField(o, "parent"); present {
+				parent, _ = selectors.path(tree, p, "insert parent")
+			}
+			if parent != nil && snap.Set(contextopts.NodeSchema(parent)) != snap.Set(s) {
 				// lyoracle.c: step_edit collects sctx, while _lyd_new_* logs this
-				// context mismatch on the detached parent's foreign context.
+				// context mismatch on the attached or detached parent's context.
 				return tree, nil, rc, err
 			}
 		}
@@ -939,7 +1090,8 @@ func pathPrefixes(path string) []string {
 // stepInsert is step_edit's insert_term, insert_inner and insert_list: the node under the node at
 // "parent" (a path) or the top-level opaque node "parent_opaq", else a top-level node of the tree
 // (lyd_new_* + lyd_insert_sibling); "module" qualifies the name.
-func stepInsert(s *yang.Schema, st map[string]any, tree *data.Tree, detached *data.Node, detachedSchema *yang.Schema) error {
+func stepInsert(s *yang.Schema, st map[string]any, tree *data.Tree, detached *data.Node, detachedSchema *yang.Schema,
+	selectors *stepSelectors) error {
 	x, kind := st["insert_term"], "term"
 	if st["insert_inner"] != nil {
 		x, kind = st["insert_inner"], "inner"
@@ -953,7 +1105,7 @@ func stepInsert(s *yang.Schema, st map[string]any, tree *data.Tree, detached *da
 	var parent *data.Node
 	if p, present, _ := strField(o, "parent"); present {
 		var err error
-		if parent, err = findNode(tree, p, "insert parent"); err != nil {
+		if parent, err = selectors.path(tree, p, "insert parent"); err != nil {
 			return err
 		}
 	}
@@ -1007,7 +1159,7 @@ func stepInsert(s *yang.Schema, st map[string]any, tree *data.Tree, detached *da
 
 // dupSelect is step_dup's node selection without "detached": the node at "node" or the one
 // node "node_xpath" selects, in the retained tree or, with "source", in a tree parsed from it.
-func dupSelect(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*data.Node, []yang.Diagnostic, error) {
+func dupSelect(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, selectors *stepSelectors) (*data.Node, []yang.Diagnostic, error) {
 	src := tree
 	var parseDiags []yang.Diagnostic
 	var err error
@@ -1018,16 +1170,13 @@ func dupSelect(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*
 		}
 	}
 	if xpath, ok := st["node_xpath"].(string); ok {
-		if src == nil {
-			return nil, nil, requestError("dup node_xpath %s must select exactly one node", xpath)
+		n, err := selectors.xpath(src, xpath, data.XPathOptions{}, "dup node_xpath")
+		if err != nil {
+			return nil, nil, err
 		}
-		nodes, _, err := src.FindXPath(xpath, data.XPathOptions{})
-		if err != nil || len(nodes) != 1 {
-			return nil, nil, requestError("dup node_xpath %s must select exactly one node", xpath)
-		}
-		return nodes[0], parseDiags, nil
+		return n, parseDiags, nil
 	}
-	n, err := findNode(src, str(st, "node", ""), "dup node")
+	n, err := selectors.path(src, str(st, "node", ""), "dup node")
 	if err != nil && st["source"] != nil {
 		return nil, nil, requestError("dup node %s not found in the source", str(st, "node", ""))
 	}
@@ -1038,9 +1187,10 @@ func dupSelect(r Request, s *yang.Schema, st map[string]any, tree *data.Tree) (*
 // retained by unlink with "detached", under the node at "parent"; without a parent the copy,
 // from its top duplicated parent, replaces the tree.
 // With "target" (searchdirs, modules, context_options) the copy goes into a tree over a second
-// context built like the request's (lyd_dup_*_to_ctx).
-func stepDup(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, detached *data.Node) (*data.Tree, *yang.Schema, []yang.Diagnostic,
-	error) {
+// context built like the request's (lyd_dup_*_to_ctx). The returned schema owns
+// the selected source node, whose context the native step collects separately.
+func stepDup(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, detached *data.Node,
+	selectors *stepSelectors) (*data.Tree, *yang.Schema, []yang.Diagnostic, error) {
 	n := detached
 	var parseDiags []yang.Diagnostic
 	var err error
@@ -1048,15 +1198,17 @@ func stepDup(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, deta
 		if n == nil {
 			return nil, nil, nil, requestError("dup retained detached node not found")
 		}
-	} else if n, parseDiags, err = dupSelect(r, s, st, tree); err != nil {
+	} else if n, parseDiags, err = dupSelect(r, s, st, tree, selectors); err != nil {
 		return tree, s, parseDiags, err
 	}
+	sourceOwner := contextopts.NodeSchema(n)
 	var parent *data.Node
 	if p, present, _ := strField(st, "parent"); present {
-		if parent, err = findNode(tree, p, "dup parent"); err != nil {
+		if parent, err = selectors.path(tree, p, "dup parent"); err != nil {
 			return nil, nil, nil, err
 		}
 	}
+	parseDiags = append(parseDiags, selectors.take()...)
 	var o data.DupOptions
 	for _, f := range list(st["options"]) {
 		switch f {
@@ -1076,10 +1228,11 @@ func stepDup(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, deta
 	}
 	if parent == nil {
 		dst = data.NewTree(ds)
+		contextopts.EnableContextDiagnostics(dst)
 	}
 	if st["target"] == nil {
 		if err := contextopts.CheckDupContexts(n, parent); err != nil {
-			return tree, s, phased(nil, diagsOf(err), "edit"), err // lyoracle.c collects it in phase edit
+			return tree, sourceOwner, phased(parseDiags, diagsOf(err), "edit"), err // lyoracle.c collects both in phase edit
 		}
 	}
 	if tg, ok := st["target"].(map[string]any); ok {
@@ -1092,6 +1245,7 @@ func stepDup(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, deta
 		}
 		ds = targetSchema
 		dst = data.NewTree(ds)
+		contextopts.EnableContextDiagnostics(dst)
 	}
 	dup := dst.Dup
 	if st["siblings"] == true {
@@ -1099,34 +1253,30 @@ func stepDup(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, deta
 	}
 	_, diags, err := dup(n, parent, o)
 	if err != nil {
-		return tree, s, append(parseDiags, phased(nil, diagsOf(err), "edit")...), err
+		return tree, sourceOwner, append(parseDiags, phased(nil, diagsOf(err), "edit")...), err
 	}
 	if dst != tree {
 		if err := discardTree(tree); err != nil {
-			return tree, s, append(parseDiags, phased(nil, diags, "edit")...), err
+			return tree, sourceOwner, append(parseDiags, phased(nil, diags, "edit")...), err
 		}
 	}
-	return dst, ds, append(parseDiags, phased(nil, diags, "edit")...), nil
+	return dst, sourceOwner, append(parseDiags, phased(nil, diags, "edit")...), nil
 }
 
 // stepChange is the change_term step: Node.SetValue of the node at "node"; "change" is
 // lyd_change_term's rc, where LY_EEXIST (only the default flag cleared) and LY_ENOT (no change)
 // are results. Node.SetValue tells changed from not, so the two are told apart by the node's
 // Default flag before the call. libyang's argument checks log without a context: no diagnostics.
-func stepChange(st map[string]any, tree *data.Tree, so map[string]any) ([]yang.Diagnostic, error) {
+func stepChange(st map[string]any, tree *data.Tree, so map[string]any, selectors *stepSelectors) ([]yang.Diagnostic, error) {
 	var n *data.Node
 	if expr, present, _ := strField(st, "node_xpath"); present {
-		if tree == nil || empty(tree) {
-			return nil, requestError("change_term node_xpath %s must select exactly one node", expr)
+		var err error
+		if n, err = selectors.xpath(tree, expr, data.XPathOptions{Node: topNode(tree)}, "change_term node_xpath"); err != nil {
+			return nil, err
 		}
-		nodes, _, err := tree.FindXPath(expr, data.XPathOptions{Node: topNode(tree)})
-		if err != nil || len(nodes) != 1 {
-			return nil, requestError("change_term node_xpath %s must select exactly one node", expr)
-		}
-		n = nodes[0]
 	} else {
 		var err error
-		if n, err = findNode(tree, str(st, "node", ""), "change_term node"); err != nil {
+		if n, err = selectors.path(tree, str(st, "node", ""), "change_term node"); err != nil {
 			return nil, err
 		}
 	}
@@ -1217,14 +1367,14 @@ func linksJSONRoots(roots []*data.Node) []any {
 // stepInsertList2 is step_edit's insert_list2 (lyd_new_list2) through Tree.NewPath, which design 07
 // §6.1.7 names its replacement: the path of the list instance with the predicates, "/" + module +
 // ":" + name + keys at the top level, else below the node at "parent".
-func stepInsertList2(s *yang.Schema, st map[string]any, tree *data.Tree) error {
+func stepInsertList2(s *yang.Schema, st map[string]any, tree *data.Tree, selectors *stepSelectors) error {
 	o, _ := st["insert_list2"].(map[string]any)
 	name, mod := str(o, "name", ""), str(o, "module", "")
 	if err := checkRequest(Request{}, s, o, execStepEdit, []requestRule{{0, requestModule}}); err != nil {
 		return err
 	}
 	if p, present, _ := strField(o, "parent"); present {
-		if _, err := findNode(tree, p, "insert parent"); err != nil {
+		if _, err := selectors.path(tree, p, "insert parent"); err != nil {
 			return err
 		}
 	}
@@ -1243,7 +1393,7 @@ func stepInsertList2(s *yang.Schema, st map[string]any, tree *data.Tree) error {
 	// would build any node the path names
 	var sn *yang.SchemaNode
 	if p, present, _ := strField(o, "parent"); present {
-		if pn, _ := tree.Find(p); pn != nil && pn.Schema() != nil {
+		if pn, _ := selectors.path(tree, p, "insert parent"); pn != nil && pn.Schema() != nil {
 			sn = pn.Schema().Child(mod, name)
 		}
 	} else if m := s.Implemented(mod); m != nil {
@@ -1315,16 +1465,16 @@ func onlyPredicates(keys string) bool {
 // The parse's diagnostics (phase parse, its warnings too) come before the insert's (phase edit).
 // lyd_insert_child's and lyd_insert_sibling's argument checks log without a context: those items
 // are not reported.
-func stepMove(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, detached *data.Node) (*data.Tree, []yang.Diagnostic, string, bool,
-	error) {
+func stepMove(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, detached *data.Node,
+	selectors *stepSelectors) (*data.Tree, *yang.Schema, []yang.Diagnostic, string, bool, error) {
 	var err error
 	if tree == nil {
 		if tree, err = emptyTree(s); err != nil {
-			return nil, nil, "", false, err
+			return nil, nil, nil, "", false, err
 		}
 	} else if st["detached"] == true && empty(tree) && detached != nil && snap.Set(s) != snap.Set(contextopts.TreeSchema(tree)) {
 		if tree, err = emptyTree(s); err != nil {
-			return nil, nil, "", false, err
+			return nil, nil, nil, "", false, err
 		}
 	}
 	src, path := tree, str(st, "node", "")
@@ -1332,7 +1482,7 @@ func stepMove(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, det
 	var diags []yang.Diagnostic
 	_, hasData, err := requestInput(r, st, "data")
 	if err != nil {
-		return tree, nil, "", false, err
+		return tree, nil, nil, "", false, err
 	}
 	if hasData {
 		otherSchema := s
@@ -1340,14 +1490,14 @@ func stepMove(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, det
 			var verdict string
 			otherSchema, _, _, verdict, err = r.buildContext(Request{ID: r.ID, BaseDir: r.BaseDir, Params: tg, buildContext: r.buildContext})
 			if err != nil {
-				return tree, nil, "", false, err
+				return tree, nil, nil, "", false, err
 			}
 			if verdict != "valid" {
-				return tree, nil, "", false, requestError("insert target context failed")
+				return tree, nil, nil, "", false, requestError("insert target context failed")
 			}
 		}
 		if src, diags, err = stepParse(r, otherSchema, st, execStepInsert, nil); err != nil {
-			return tree, diags, "parse", false, err
+			return tree, nil, diags, "parse", false, err
 		}
 		for i := range diags {
 			diags[i].Phase = "parse"
@@ -1355,23 +1505,29 @@ func stepMove(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, det
 	}
 	n := detached
 	if !useDetached {
-		n, _ = selectedNode(src, st, "node", "insert node")
+		if _, present, _ := strField(st, "node"); present {
+			n, _ = selectors.path(src, path, "insert node")
+		} else {
+			n = topNode(src)
+		}
 	}
 	if n == nil {
 		if useDetached {
-			return nil, nil, "", false, requestError("insert retained detached node not found")
+			return nil, nil, nil, "", false, requestError("insert retained detached node not found")
 		}
 		if hasData {
-			return nil, nil, "", false, requestError("insert node %s not found in the data", path)
+			return nil, nil, nil, "", false, requestError("insert node %s not found in the data", path)
 		}
-		return nil, nil, "", false, requestError("insert node %s not found", path)
+		return nil, nil, nil, "", false, requestError("insert node %s not found", path)
 	}
+	sourceOwner := contextopts.NodeSchema(n)
 	var parent *data.Node
 	if p, present, _ := strField(st, "parent"); present {
-		if parent, err = findNode(tree, p, "insert parent"); err != nil {
-			return nil, nil, "", false, err
+		if parent, err = selectors.path(tree, p, "insert parent"); err != nil {
+			return nil, sourceOwner, nil, "", false, err
 		}
 	}
+	diags = append(diags, selectors.take()...)
 	if parent != nil && snap.Set(contextopts.NodeSchema(parent)) != snap.Set(contextopts.NodeSchema(n)) {
 		err = contextopts.CheckInsertSchema(parent, n)
 	}
@@ -1388,15 +1544,16 @@ func stepMove(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, det
 	if src != tree {
 		for _, rest := range slices.Collect(src.Top()) {
 			if rerr := rest.Remove(); rerr != nil {
-				return nil, nil, "", false, rerr
+				return nil, sourceOwner, nil, "", false, rerr
 			}
 		}
 	}
-	return tree, append(diags, ins...), "", useDetached, err
+	return tree, sourceOwner, append(diags, ins...), "", useDetached, err
 }
 
 // checkInsertSelectors is step_edit's module and parent lookup before construction.
-func checkInsertSelectors(s *yang.Schema, tree *data.Tree, detached *data.Node, st map[string]any) error {
+func checkInsertSelectors(s *yang.Schema, tree *data.Tree, detached *data.Node, st map[string]any,
+	selectors *stepSelectors) error {
 	for _, kind := range []string{"insert_term", "insert_inner", "insert_list", "insert_list2", "insert_opaq"} {
 		o, ok := st[kind].(map[string]any)
 		if !ok {
@@ -1410,7 +1567,7 @@ func checkInsertSelectors(s *yang.Schema, tree *data.Tree, detached *data.Node, 
 		var parent *data.Node
 		if path, present, _ := strField(o, "parent"); present {
 			var err error
-			parent, err = findNode(tree, path, "insert parent")
+			parent, err = selectors.path(tree, path, "insert parent")
 			if err != nil {
 				return err
 			}

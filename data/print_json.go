@@ -244,7 +244,7 @@ func (j *jsonPrinter) metadata(n *Node, wd *schema.Module) error {
 		j.comma()
 		j.printf("%s\"%s:%s\":%s", j.indent(), m.mod.Name, m.name, sep)
 		if err := j.value(m.value, nil); err != nil {
-			return err
+			return j.typeError(n, err)
 		}
 		j.levelDone()
 	}
@@ -313,7 +313,7 @@ func (j *jsonPrinter) attribute(n *Node) {
 func (j *jsonPrinter) leaf(n *Node) error {
 	j.member(n, false)
 	if err := j.value(n.value, n.schema.Module); err != nil {
-		return err
+		return j.typeError(n, err)
 	}
 	j.levelDone()
 	return j.attributes(n, false) // as a sibling
@@ -509,7 +509,7 @@ func (j *jsonPrinter) leafList(n *Node, sibs []*Node, i int) error {
 		}
 	} else {
 		if err := j.value(n.value, n.schema.Module); err != nil {
-			return err
+			return j.typeError(n, err)
 		}
 		if j.firstLL == nil {
 			var wd *schema.Module

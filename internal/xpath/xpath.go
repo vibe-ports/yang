@@ -313,7 +313,10 @@ type EvalContext struct {
 	IgnoreWhen bool // LYXP_IGNORE_WHEN: do not fail on unresolved when
 	Schema     SchemaInfo
 	// Deref resolves a leafref / instance-identifier node to its targets.
-	Deref    func(Node) ([]Node, error)
+	Deref func(Node) ([]Node, error)
+	// Log receives diagnostics when they are produced: successful data-value conversions and
+	// continuing internal evaluator errors. It is nil while speculative logging is suppressed.
+	Log      func(error)
 	MaxSteps int // evaluation step budget; 0 = DefaultMaxSteps
 	// Vars are the variable bindings of $name references (set->vars).
 	Vars []Var
@@ -370,7 +373,8 @@ type Result struct {
 	// callers that keep a cumulative budget across evaluations.
 	Steps int64
 	// InternalErrors counts the internal errors libyang logs and goes on after (LOGINT in
-	// set_insert_node, "Internal error (xpath.c:1348)."; also set on error).
+	// set_insert_node, "Internal error (xpath.c:1348)."; also set on error). EvalContext.Log has
+	// already received each non-suppressed error in evaluation order.
 	InternalErrors int
 }
 

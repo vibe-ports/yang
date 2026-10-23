@@ -6,7 +6,7 @@
 package types
 
 import (
-	"strings"
+	"errors"
 	"unicode/utf8"
 
 	"github.com/vibe-ports/yang/internal/lyxml"
@@ -105,9 +105,13 @@ func storeInstanceIDKeys(a *storeArgs) (Value, *Diag) {
 	switch a.f {
 	case FormatSchema, FormatSchemaResolved, FormatXML:
 		// the JSON format with prefixes is the canonical one
-		canon, d := printKeys(k, FormatJSON, &PrintCtx{})
-		if d != nil {
-			return Value{}, d
+		canon, err := printKeys(k, FormatJSON, &PrintCtx{}, nil)
+		if err != nil {
+			var d *Diag
+			if errors.As(err, &d) {
+				return Value{}, d
+			}
+			return Value{}, &Diag{Code: CodeNone, Msg: err.Error()}
 		}
 		v.canon = canon
 	}
@@ -117,23 +121,31 @@ func storeInstanceIDKeys(a *storeArgs) (Value, *Diag) {
 // printKeys ports instanceid_keys_print_value, which only the store calls (for the canonical JSON
 // form): the predicates in format f, tokens that may carry prefixes converted and the others
 // copied, with no per-bracket context. Printing in other formats goes through printXPath10.
-func printKeys(k *keysValue, f Format, pc *PrintCtx) (string, *Diag) {
+func printKeys(k *keysValue, f Format, pc *PrintCtx, budget *printBudget) (string, error) {
 	if f == FormatXML { // null the local module so that all the prefixes are printed
 		defer func(local *schema.Module) { pc.Local = local }(pc.Local)
 		pc.Local = nil
 	}
-	var b strings.Builder
+	b := printBuilder{p: budget}
 	var ctxMod *schema.Module
 	for i, t := range k.e.Toks {
 		if t != lyxp.TokNameTest && t != lyxp.TokLiteral {
-			b.WriteString(k.e.Text(i))
+			text := k.e.Text(i)
+			if err := budget.charge(len(text)); err != nil {
+				return "", err
+			}
+			if err := b.writeString(text); err != nil {
+				return "", err
+			}
 			continue
 		}
-		s, d := printXPathToken(k.e.Text(i), t == lyxp.TokNameTest, &ctxMod, k.pc, f, pc)
-		if d != nil {
-			return "", d
+		s, err := printXPathToken(k.e.Text(i), t == lyxp.TokNameTest, &ctxMod, k.pc, f, pc, budget)
+		if err != nil {
+			return "", err
 		}
-		b.WriteString(s)
+		if err := b.writeString(s); err != nil {
+			return "", err
+		}
 	}
 	return b.String(), nil
 }
@@ -141,8 +153,14 @@ func printKeys(k *keysValue, f Format, pc *PrintCtx) (string, *Diag) {
 // printXPathToken ports lyplg_type_xpath10_print_token: a token in the target format f with the
 // prefix data pc. resolve finds the modules of the prefixes the token was written with; ctxMod is
 // the module of the previous name test, which the JSON formats inherit instead of repeating it.
-func printXPathToken(tok string, isNameTest bool, ctxMod **schema.Module, resolve PrefixCtx, f Format, pc *PrintCtx) (string, *Diag) {
-	var b strings.Builder
+func printXPathToken(tok string, isNameTest bool, ctxMod **schema.Module, resolve PrefixCtx, f Format,
+	pc *PrintCtx, budget *printBudget) (string, error) {
+	// ly_value_prefix_next scans the token. Charge that work independently from the converted
+	// bytes below; the latter may be much larger than tok when an XML prefix expands.
+	if err := budget.charge(len(tok)); err != nil {
+		return "", err
+	}
+	b := printBuilder{p: budget}
 	hasPrefix := false
 	for i := 0; ; {
 		n, isPrefix, next, ok := lyxml.ValuePrefixNext(tok, i)
@@ -155,10 +173,20 @@ func printXPathToken(tok string, isNameTest bool, ctxMod **schema.Module, resolv
 		seg := tok[i : i+n]
 		switch {
 		case !isPrefix && !hasPrefix && isNameTest && f == FormatXML && *ctxMod != nil:
-			b.WriteString(pc.prefix(*ctxMod, f) + ":" + seg)
+			if err := b.writeString(pc.prefix(*ctxMod, f)); err != nil {
+				return "", err
+			}
+			if err := b.writeByte(':'); err != nil {
+				return "", err
+			}
+			if err := b.writeString(seg); err != nil {
+				return "", err
+			}
 		case !isPrefix:
 			// the first expression node may come without a prefix, which is allowed
-			b.WriteString(seg)
+			if err := b.writeString(seg); err != nil {
+				return "", err
+			}
 		default:
 			hasPrefix = true
 			var mod *schema.Module
@@ -166,6 +194,9 @@ func printXPathToken(tok string, isNameTest bool, ctxMod **schema.Module, resolv
 				mod = resolve.Resolve(seg)
 			}
 			if mod == nil && isNameTest {
+				if err := budget.charge(len(`Failed to resolve prefix "".`) + len(seg)); err != nil {
+					return "", err
+				}
 				return "", errf("Failed to resolve prefix \"%s\".", seg)
 			}
 			// the JSON formats inherit the prefix of the previous name test and do not print it again
@@ -174,7 +205,12 @@ func printXPathToken(tok string, isNameTest bool, ctxMod **schema.Module, resolv
 				if mod != nil {
 					p = pc.prefix(mod, f)
 				}
-				b.WriteString(p + ":")
+				if err := b.writeString(p); err != nil {
+					return "", err
+				}
+				if err := b.writeByte(':'); err != nil {
+					return "", err
+				}
 			}
 			if isNameTest {
 				*ctxMod = mod

@@ -109,14 +109,14 @@ func (x *xmlPrinter) meta(n *Node) error {
 		pc := &types.PrintCtx{}
 		// xml_print_meta emits an empty attribute for a NULL type-printer result, but the
 		// plugin may have logged an error item. Keep it for the completed print.
-		value, err := types.Print(m.value, types.FormatXML, pc)
+		value, err := x.printTypeValue(m.value, types.FormatXML, pc)
 		if err != nil {
 			var d *types.Diag
 			if !errors.As(err, &d) {
 				return err
 			}
 			if !d.NoItem {
-				x.printDiags = append(x.printDiags, d)
+				x.printDiags = append(x.printDiags, printerDiag{set: x.nodeContext(n), diag: d})
 			}
 		}
 		for _, um := range pc.Used {
@@ -139,9 +139,9 @@ func (x *xmlPrinter) open(n *Node) error {
 
 func (x *xmlPrinter) term(n *Node) error {
 	pc := &types.PrintCtx{Local: n.schema.Module}
-	value, err := types.Print(n.value, types.FormatXML, pc)
+	value, err := x.printTypeValue(n.value, types.FormatXML, pc)
 	if err != nil {
-		return err
+		return x.typeError(n, err)
 	}
 	if err := x.open(n); err != nil {
 		return err

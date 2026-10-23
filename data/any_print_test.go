@@ -16,7 +16,9 @@ import (
 	"testing"
 
 	"github.com/vibe-ports/yang"
+	"github.com/vibe-ports/yang/internal/contextopts"
 	"github.com/vibe-ports/yang/internal/schema"
+	"github.com/vibe-ports/yang/internal/snap"
 	"github.com/vibe-ports/yang/internal/types"
 	"github.com/vibe-ports/yang/internal/xpath"
 )
@@ -354,6 +356,35 @@ func TestAnyXPathCastErrorsAndBudget(t *testing.T) {
 			t.Fatalf("unprintable payload cast = %v", err)
 		}
 	}
+	if _, diags, err := badTree.EvalXPath("string(/anycore:a)", XPathOptions{}); err == nil {
+		t.Fatal("public unprintable payload cast succeeded")
+	} else {
+		var ve *ValidationError
+		if !errors.As(err, &ve) || ve.RC() != printed.RC() || !reflect.DeepEqual(diags, printed.Diags) ||
+			!reflect.DeepEqual(ve.Diags, printed.Diags) {
+			t.Fatalf("public unprintable payload cast = diagnostics %+v, error %v", diags, err)
+		}
+	}
+
+	// xml_print_meta is void: its xpath1.0 printer logs the unresolved prefix,
+	// emits an empty attribute and the enclosing XPath cast still succeeds.
+	goodSchema := &schema.Node{Name: "good", Kind: schema.Leaf, Module: a.Module, Parent: a,
+		Type: &schema.Type{Base: schema.String}}
+	goodValue, diag := types.Store(goodSchema.Type, "value", types.FormatJSON, types.HintString, nil, goodSchema)
+	if diag != nil {
+		t.Fatal(diag)
+	}
+	soft := &Node{schema: x, any: &anyValue{}}
+	softTree := newTree(tr.set)
+	mustLink(t, softTree.insert(nil, soft, insertDefault))
+	good := newTerm(goodSchema, goodValue)
+	good.meta = []*meta{{mod: a.Module, name: "select", value: badValue}}
+	mustLink(t, softTree.insert(soft, good, insertDefault))
+	result, diags, err := softTree.EvalXPath("string(/anycore:x)", XPathOptions{})
+	if err != nil || result.Type != XPathString || !strings.Contains(result.String, `select=""`) ||
+		len(diags) != 1 || !strings.Contains(diags[0].Msg, `prefix "missing"`) {
+		t.Fatalf("metadata cast = %q, diagnostics %+v, error %v", result.String, diags, err)
+	}
 
 	wide := &Node{schema: a, any: &anyValue{}}
 	wideTree := newTree(tr.set)
@@ -368,6 +399,348 @@ func TestAnyXPathCastErrorsAndBudget(t *testing.T) {
 	cancel()
 	if _, err := evalAnyString(ctx, t, wide, 1000); !errors.Is(err, context.Canceled) {
 		t.Fatalf("canceled cast error = %v", err)
+	}
+}
+
+const anyDiagnosticModule = `module ac {
+  yang-version 1.1;
+  namespace "urn:any-diagnostic";
+  prefix ac;
+  import ietf-yang-metadata { prefix md; }
+  import ietf-yang-types { prefix yang; }
+  md:annotation select { type yang:xpath1.0; }
+  md:annotation first { type string; }
+  md:annotation second { type string; }
+  container parent {
+    list l { key k; leaf k { type string; } }
+  }
+  list pair {
+    key "k1 k2";
+    leaf k1 { type string; }
+    leaf k2 { type string; }
+  }
+  leaf s { type string; }
+  leaf xp { type yang:xpath1.0; }
+  anydata data { must "string(.)"; }
+}`
+
+func anyDiagnosticContext(t *testing.T) *schema.Set {
+	t.Helper()
+	return xpTestCtx(t, map[string]string{
+		"ac": anyDiagnosticModule,
+		"ietf-yang-metadata": `module ietf-yang-metadata {
+  yang-version 1.1; namespace "urn:ietf:params:xml:ns:yang:ietf-yang-metadata"; prefix md;
+  extension annotation { argument name; }
+}`,
+		"ietf-yang-types": `module ietf-yang-types {
+  yang-version 1.1; namespace "urn:ietf:params:xml:ns:yang:ietf-yang-types"; prefix yang;
+  typedef xpath1.0 { type string; }
+}`,
+	})
+}
+
+const anyDiagnosticJSON = `{"ac:data":{"ac:s":"value","@ac:s":{"ac:select":"/missing:node"}}}`
+
+// xml_print_meta is void, so its retained diagnostic does not change either lyd_parse_data's
+// or lyd_validate_all's successful return status and does not make lyd_parse_data free the tree.
+func TestAnyMustPrinterDiagnosticDoesNotFailValidation(t *testing.T) {
+	set := anyDiagnosticContext(t)
+	for _, tc := range []struct {
+		name      string
+		parseOnly bool
+	}{
+		{name: "parse"},
+		{name: "validate", parseOnly: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tr, diags, err := Parse(context.Background(), strings.NewReader(anyDiagnosticJSON), FormatJSON,
+				snap.New(set), ParseOptions{ParseOnly: tc.parseOnly})
+			if err != nil || tr == nil {
+				t.Fatalf("Parse tree=%t diagnostics=%+v error=%v", tr != nil, diags, err)
+			}
+			if tc.parseOnly {
+				diags, err = tr.Validate(context.Background(), ValidateOptions{})
+			}
+			if err != nil || len(diags) != 1 || !strings.Contains(diags[0].Msg, `prefix "missing"`) {
+				t.Fatalf("diagnostics=%+v error=%v", diags, err)
+			}
+		})
+	}
+}
+
+// A successful anydata cast may retain an XML metadata printer diagnostic. Both converting its
+// untrusted value and keeping the formatted notice must consume the evaluator budget; otherwise
+// repeated casts amplify one long unresolved prefix into an unbounded operation log.
+func TestAnyXPathMetadataDiagnosticBytesBudget(t *testing.T) {
+	set := anyDiagnosticContext(t)
+	prefix := strings.Repeat("p", 1<<20)
+	input := strings.Replace(anyDiagnosticJSON, "missing", prefix, 1)
+	tr, diags, err := Parse(context.Background(), strings.NewReader(input), FormatJSON,
+		snap.New(set), ParseOptions{ParseOnly: true})
+	if err != nil || len(diags) != 0 {
+		t.Fatalf("Parse diagnostics=%+v error=%v", diags, err)
+	}
+	const casts = 16
+	args := make([]string, casts)
+	for i := range args {
+		args[i] = "string(/ac:data)"
+	}
+	e, err := xpath.Compile("concat("+strings.Join(args, ",")+")", jsonNS{set: set})
+	if err != nil {
+		t.Fatal(err)
+	}
+	lg := &logger{set: set}
+	vc := &valCtx{t: tr, log: lg, budget: xpathBudget{max: 256}}
+	if _, err = vc.eval(e, nil, xpath.RootAll, true); !errors.Is(err, yang.ErrBudget) {
+		t.Fatalf("repeated metadata casts error=%v diagnostics=%d, want XPath budget", err, len(lg.diags))
+	}
+	if len(lg.diags) != 0 {
+		t.Fatalf("budget failure retained %d diagnostics", len(lg.diags))
+	}
+}
+
+// A short JSON module name may become a long YANG prefix at every xpath1.0 name test in XML.
+// The type printer must stop on the XPath byte budget while it is building the converted token,
+// not after allocating the complete expanded metadata value.
+func TestAnyXPathMetadataExpandedPrefixBudget(t *testing.T) {
+	const names = 128
+	longPrefix := strings.Repeat("p", 16<<10)
+	module := strings.Replace(anyDiagnosticModule, "prefix ac;", "prefix "+longPrefix+";", 1)
+	set := xpTestCtx(t, map[string]string{
+		"ac": module,
+		"ietf-yang-metadata": `module ietf-yang-metadata {
+  yang-version 1.1; namespace "urn:ietf:params:xml:ns:yang:ietf-yang-metadata"; prefix md;
+  extension annotation { argument name; }
+}`,
+		"ietf-yang-types": `module ietf-yang-types {
+  yang-version 1.1; namespace "urn:ietf:params:xml:ns:yang:ietf-yang-types"; prefix yang;
+  typedef xpath1.0 { type string; }
+}`,
+	})
+	tests := make([]string, names)
+	for i := range tests {
+		tests[i] = "/ac:s"
+	}
+	input := strings.Replace(anyDiagnosticJSON, "/missing:node", strings.Join(tests, " | "), 1)
+	tr, diags, err := Parse(context.Background(), strings.NewReader(input), FormatJSON,
+		snap.New(set), ParseOptions{ParseOnly: true})
+	if err != nil || len(diags) != 0 {
+		t.Fatalf("Parse diagnostics=%+v error=%v", diags, err)
+	}
+	e, err := xpath.Compile("string(/ac:data)", jsonNS{set: set})
+	if err != nil {
+		t.Fatal(err)
+	}
+	vc := &valCtx{t: tr, log: &logger{set: set}, budget: xpathBudget{max: 512}}
+	if _, err = vc.eval(e, nil, xpath.RootAll, true); !errors.Is(err, yang.ErrBudget) {
+		t.Fatalf("expanded xpath1.0 metadata error=%v, steps=%d; want XPath budget", err, vc.budget.steps)
+	}
+}
+
+// set_insert_node logs its continuing LY_EINT while evaluating the left operand. The metadata
+// printer logs the right operand's unresolved prefix later; callback order must remain native.
+func TestXPathInternalDiagnosticPrecedesPrinterDiagnostic(t *testing.T) {
+	set := anyDiagnosticContext(t)
+	input := `{"ac:s":"outer","@ac:s":{"ac:first":"one","ac:second":"two"},` +
+		`"ac:data":{"ac:s":"inner","@ac:s":{"ac:select":"/missing:node"}}}`
+	tr, diags, err := Parse(context.Background(), strings.NewReader(input), FormatJSON,
+		snap.New(set), ParseOptions{ParseOnly: true})
+	if err != nil || len(diags) != 0 {
+		t.Fatalf("Parse diagnostics=%+v error=%v", diags, err)
+	}
+	result, diags, err := tr.EvalXPath(
+		"count(/ac:s/@*) + string-length(string(/ac:data))", XPathOptions{})
+	if err != nil || result.Type != XPathNumber {
+		t.Fatalf("EvalXPath result=%+v diagnostics=%+v error=%v", result, diags, err)
+	}
+	if len(diags) != 2 || diags[0].Err != "LY_EINT" || diags[0].Msg != msgXPathInt ||
+		diags[1].Err != "LY_EVALID" || !strings.Contains(diags[1].Msg, `prefix "missing"`) {
+		t.Fatalf("EvalXPath diagnostics=%+v; want LY_EINT then printer LY_EVALID", diags)
+	}
+}
+
+// eval_name_test_try_compile_predicates disables libyang logging. Internal LOGINT events from its
+// independent key expression must not leak later through Result.InternalErrors.
+func TestXPathSpeculativeInternalDiagnosticSuppressed(t *testing.T) {
+	set := anyDiagnosticContext(t)
+	input := `{"ac:s":"outer","@ac:s":{"ac:first":"one","ac:second":"two"},` +
+		`"ac:parent":{"l":[{"k":"2"}]}}`
+	tr, diags, err := Parse(context.Background(), strings.NewReader(input), FormatJSON,
+		snap.New(set), ParseOptions{ParseOnly: true})
+	if err != nil || len(diags) != 0 {
+		t.Fatalf("Parse diagnostics=%+v error=%v", diags, err)
+	}
+	result, diags, err := tr.EvalXPath(
+		"count(/ac:parent/l[k=count(/ac:s/@*)])", XPathOptions{})
+	if err != nil || result.Type != XPathNumber || result.Number != 1 || len(diags) != 0 {
+		t.Fatalf("EvalXPath result=%+v diagnostics=%+v error=%v", result, diags, err)
+	}
+}
+
+// eval_name_test_try_compile_predicates discards a failed candidate key value and lets the
+// ordinary predicates decide the result. The first predicate removes the only list instance,
+// so the unprintable anydata value in the second predicate is never evaluated for real.
+func TestXPathSpeculativePrinterFailureDiscarded(t *testing.T) {
+	set := anyDiagnosticContext(t)
+	input := `{"ac:pair":[{"k1":"present","k2":"value"}],` +
+		`"ac:data":{"ac:xp":"/missing:node"}}`
+	tr, diags, err := Parse(context.Background(), strings.NewReader(input), FormatJSON,
+		snap.New(set), ParseOptions{ParseOnly: true})
+	if err != nil || len(diags) != 0 {
+		t.Fatalf("Parse diagnostics=%+v error=%v", diags, err)
+	}
+	result, diags, err := tr.EvalXPath(
+		"count(/ac:pair[k1='absent'][k2=string(/ac:data)])", XPathOptions{})
+	if err != nil || result.Type != XPathNumber || result.Number != 0 || len(diags) != 0 {
+		t.Fatalf("EvalXPath result=%+v diagnostics=%+v error=%v", result, diags, err)
+	}
+}
+
+// The speculative log boundary does not suppress the port's resource limits. A printer depth
+// failure must stop evaluation even though the first ordinary predicate would remove the list.
+func TestXPathSpeculativePrinterBudgetPreserved(t *testing.T) {
+	set := anyDiagnosticContext(t)
+	input := `{"ac:pair":[{"k1":"present","k2":"value"}],"ac:data":{}}`
+	tr, diags, err := Parse(context.Background(), strings.NewReader(input), FormatJSON,
+		snap.New(set), ParseOptions{ParseOnly: true})
+	if err != nil || len(diags) != 0 {
+		t.Fatalf("Parse diagnostics=%+v error=%v", diags, err)
+	}
+	var payload *Node
+	for n := range tr.top.all() {
+		if n.schema.Name == "data" {
+			payload = n
+		}
+	}
+	if payload == nil {
+		t.Fatal("missing anydata payload")
+	}
+	parent := payload
+	for range maxPrintDepth + 1 {
+		n := newOpaque(opaque{Name: "deep", ModuleNS: "urn:any-diagnostic", Format: types.FormatXML})
+		mustLink(t, tr.insert(parent, n, insertLast))
+		parent = n
+	}
+	_, diags, err = tr.EvalXPath(
+		"count(/ac:pair[k1='absent'][k2=string(/ac:data)])", XPathOptions{})
+	if !errors.Is(err, yang.ErrBudget) || len(diags) != 0 {
+		t.Fatalf("EvalXPath diagnostics=%+v error=%v; want resource budget", diags, err)
+	}
+}
+
+// xml_print_meta logs through LYD_CTX(node). A duplicated anydata payload keeps its source
+// context, so its successful cast must leave the destination operation log empty.
+func anyCrossContextDiagnosticTree(t *testing.T) (*Tree, *schema.Set) {
+	t.Helper()
+	source, target := anyDiagnosticContext(t), anyDiagnosticContext(t)
+	src, diags, err := Parse(context.Background(), strings.NewReader(anyDiagnosticJSON), FormatJSON,
+		snap.New(source), ParseOptions{ParseOnly: true})
+	if err != nil || len(diags) != 0 {
+		t.Fatalf("source Parse diagnostics=%+v error=%v", diags, err)
+	}
+	dst := newTree(target)
+	if _, diags, err = dst.Dup(src.top.first(), nil, DupOptions{}); err != nil || len(diags) != 0 {
+		t.Fatalf("Dup diagnostics=%+v error=%v", diags, err)
+	}
+	return dst, source
+}
+
+func TestAnyCrossContextCastDoesNotRetainPrinterDiagnosticsByDefault(t *testing.T) {
+	dst, _ := anyCrossContextDiagnosticTree(t)
+	for range 100 {
+		result, diags, err := dst.EvalXPath("string(/ac:data)", XPathOptions{})
+		if err != nil || len(diags) != 0 || !strings.Contains(result.String, `select=""`) {
+			t.Fatalf("result=%q diagnostics=%+v error=%v", result.String, diags, err)
+		}
+	}
+	dst.contextLogMu.Lock()
+	if len(dst.contextLogs) != 0 {
+		t.Fatalf("default retained context diagnostics=%+v", dst.contextLogs)
+	}
+	dst.contextLogMu.Unlock()
+}
+
+func TestAnyCrossContextCastKeepsPrinterDiagnosticOwner(t *testing.T) {
+	dst, source := anyCrossContextDiagnosticTree(t)
+	contextopts.EnableContextDiagnostics(dst)
+	result, diags, err := dst.EvalXPath("string(/ac:data)", XPathOptions{})
+	if err != nil || len(diags) != 0 || !strings.Contains(result.String, `select=""`) {
+		t.Fatalf("result=%q diagnostics=%+v error=%v", result.String, diags, err)
+	}
+	dst.contextLogMu.Lock()
+	defer dst.contextLogMu.Unlock()
+	if len(dst.contextLogs) != 1 || dst.contextLogs[0].set != source ||
+		!strings.Contains(dst.contextLogs[0].diag.Msg, `prefix "missing"`) {
+		t.Fatalf("retained context diagnostics=%+v", dst.contextLogs)
+	}
+}
+
+func anyWDContext(withDefaults bool) (*schema.Set, *schema.Node, *schema.Node) {
+	set := &schema.Set{}
+	m := &schema.Module{Name: "payload", Namespace: "urn:payload", Prefix: "p", Implemented: true, Owner: set}
+	a := &schema.Node{Name: "any", Kind: schema.AnyData, Module: m}
+	d := &schema.Node{Name: "d", Kind: schema.Leaf, Module: m, Type: &schema.Type{Base: schema.String},
+		Default: []schema.DefaultValue{{Lex: "x"}}}
+	m.Top = []*schema.Node{a, d}
+	set.Modules = []*schema.Module{m}
+	if withDefaults {
+		set.Modules = append(set.Modules,
+			&schema.Module{Name: wdModule, Namespace: "urn:ietf:params:xml:ns:netconf:with-defaults:1.0",
+				Prefix: "wd", Implemented: true, Owner: set},
+			&schema.Module{Name: "default", Namespace: "urn:ietf:params:xml:ns:netconf:default:1.0",
+				Prefix: "dflt", Implemented: true, Owner: set})
+	}
+	return set, a, d
+}
+
+// Copied any payloads retain their source context. Both native printers ask LYD_CTX(node),
+// not the outer printer context, whether ietf-netconf-with-defaults is implemented.
+func TestAnyCopiedPayloadWithDefaultsUsesRetainedContext(t *testing.T) {
+	for _, tc := range []struct {
+		name                    string
+		sourceWD, destinationWD bool
+		wantTag                 bool
+	}{
+		{"payload-has-module", true, false, true},
+		{"outer-has-module", false, true, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			source, anySchema, defaultSchema := anyWDContext(tc.sourceWD)
+			target, _, _ := anyWDContext(tc.destinationWD)
+			src := newTree(source)
+			anyNode := &Node{schema: anySchema, any: &anyValue{}}
+			mustLink(t, src.insert(nil, anyNode, insertDefault))
+			v, diag := types.Store(defaultSchema.Type, "x", types.FormatJSON, types.HintString, nil, defaultSchema)
+			if diag != nil {
+				t.Fatal(diag)
+			}
+			child := newTerm(defaultSchema, v)
+			child.flags = FlagDefault
+			mustLink(t, src.insert(anyNode, child, insertDefault))
+
+			dst := newTree(target)
+			copied, _, err := dst.Dup(anyNode, nil, DupOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if ctxOf(copied.any.children.first()) != source {
+				t.Fatal("copied payload did not retain its source context")
+			}
+			for _, wd := range []WD{WDAllTagged, WDImplicitTagged} {
+				var jsonOut, xmlOut bytes.Buffer
+				if err := dst.PrintJSON(&jsonOut, PrintOptions{Shrink: true, WithDefaults: wd}); err != nil {
+					t.Fatal(err)
+				}
+				if err := dst.PrintXML(&xmlOut, PrintOptions{Shrink: true, WithDefaults: wd}); err != nil {
+					t.Fatal(err)
+				}
+				jsonTagged := strings.Contains(jsonOut.String(), `ietf-netconf-with-defaults:default`)
+				xmlTagged := strings.Contains(xmlOut.String(), `:default="true"`)
+				if jsonTagged != tc.wantTag || xmlTagged != tc.wantTag {
+					t.Fatalf("mode %d: JSON %q, XML %q, want tag %t", wd, jsonOut.String(), xmlOut.String(), tc.wantTag)
+				}
+			}
+		})
 	}
 }
 

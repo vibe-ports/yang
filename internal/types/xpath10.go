@@ -6,7 +6,6 @@ package types
 
 import (
 	"errors"
-	"strings"
 
 	"github.com/vibe-ports/yang/internal/lyxp"
 	"github.com/vibe-ports/yang/internal/schema"
@@ -47,9 +46,13 @@ func storeXPath10(a *storeArgs) (Value, *Diag) {
 	case FormatCanon, FormatJSON:
 		return v, nil
 	}
-	canon, d := printXPath10(e, k.pc, FormatJSON, &PrintCtx{})
-	if d != nil {
-		return Value{}, d
+	canon, err := printXPath10(e, k.pc, FormatJSON, &PrintCtx{}, nil)
+	if err != nil {
+		var d *Diag
+		if errors.As(err, &d) {
+			return Value{}, d
+		}
+		return Value{}, &Diag{Code: CodeNone, Msg: err.Error()}
 	}
 	v.canon = canon
 	return v, nil
@@ -58,15 +61,15 @@ func storeXPath10(a *storeArgs) (Value, *Diag) {
 // printXPath10 ports lyplg_type_print_xpath10_value: the expression e in format f, the prefixes it
 // was written with resolved through resolve, the target prefixes taken from pc. For XML the local
 // module is nulled so that all the prefixes are printed.
-func printXPath10(e *lyxp.Expr, resolve PrefixCtx, f Format, pc *PrintCtx) (string, *Diag) {
+func printXPath10(e *lyxp.Expr, resolve PrefixCtx, f Format, pc *PrintCtx, budget *printBudget) (string, error) {
 	if f == FormatXML {
 		defer func(local *schema.Module) { pc.Local = local }(pc.Local)
 		pc.Local = nil
 	}
-	var b strings.Builder
+	b := printBuilder{p: budget}
 	i := 0
-	if d := xpath10Subexpr(&b, e, &i, lyxp.TokNone, nil, resolve, f, pc); d != nil {
-		return "", d
+	if err := xpath10Subexpr(&b, e, &i, lyxp.TokNone, nil, resolve, f, pc, budget); err != nil {
+		return "", err
 	}
 	return b.String(), nil
 }
@@ -75,36 +78,51 @@ func printXPath10(e *lyxp.Expr, resolve PrefixCtx, f Format, pc *PrintCtx) (stri
 // and literals with their prefixes converted to format f, operators of logic, union and math with
 // spaces around (they reset the context module), brackets and parentheses as subexpressions with
 // the current context module.
-func xpath10Subexpr(b *strings.Builder, e *lyxp.Expr, i *int, end lyxp.Tok, ctx *schema.Module, resolve PrefixCtx, f Format, pc *PrintCtx) *Diag {
+func xpath10Subexpr(b *printBuilder, e *lyxp.Expr, i *int, end lyxp.Tok, ctx *schema.Module,
+	resolve PrefixCtx, f Format, pc *PrintCtx, budget *printBudget) error {
 	orig := ctx
 	for *i < len(e.Toks) {
 		tok, text := e.Toks[*i], e.Text(*i)
 		if tok == lyxp.TokNameTest || tok == lyxp.TokLiteral {
-			s, d := printXPathToken(text, tok == lyxp.TokNameTest, &ctx, resolve, f, pc)
-			if d != nil {
-				return d
+			s, err := printXPathToken(text, tok == lyxp.TokNameTest, &ctx, resolve, f, pc, budget)
+			if err != nil {
+				return err
 			}
-			b.WriteString(s)
+			if err := b.writeString(s); err != nil {
+				return err
+			}
 			*i++
 			continue
 		}
 		if tok == lyxp.TokOperLog || tok == lyxp.TokOperUni || tok == lyxp.TokOperMath {
-			b.WriteString(" " + text + " ")
+			if err := budget.charge(len(text)); err != nil {
+				return err
+			}
+			for _, part := range []string{" ", text, " "} {
+				if err := b.writeString(part); err != nil {
+					return err
+				}
+			}
 			ctx = orig
 		} else {
-			b.WriteString(text)
+			if err := budget.charge(len(text)); err != nil {
+				return err
+			}
+			if err := b.writeString(text); err != nil {
+				return err
+			}
 		}
 		*i++
 		switch {
 		case end != lyxp.TokNone && tok == end:
 			return nil
 		case tok == lyxp.TokBrack1:
-			if d := xpath10Subexpr(b, e, i, lyxp.TokBrack2, ctx, resolve, f, pc); d != nil {
-				return d
+			if err := xpath10Subexpr(b, e, i, lyxp.TokBrack2, ctx, resolve, f, pc, budget); err != nil {
+				return err
 			}
 		case tok == lyxp.TokPar1:
-			if d := xpath10Subexpr(b, e, i, lyxp.TokPar2, ctx, resolve, f, pc); d != nil {
-				return d
+			if err := xpath10Subexpr(b, e, i, lyxp.TokPar2, ctx, resolve, f, pc, budget); err != nil {
+				return err
 			}
 		}
 	}

@@ -3,11 +3,14 @@
 package data
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"testing"
 	"testing/fstest"
 
+	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/compile"
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
@@ -400,7 +403,7 @@ const xpTestB = `module b { namespace "urn:b"; prefix b; container q { leaf-list
 
 // xpTestCross builds ctx A's tree with a:p (leaf x = "v", list L k = "1") and the a:any payload
 // of ctx B: a:p with leaves y1..y4 and an opaque x, then b:q with n v instances.
-func xpTestCross(t *testing.T, n int) (tr *Tree, a *schema.Set, q *Node) {
+func xpTestCross(t *testing.T, n int, opaqueBeforeX ...int) (tr *Tree, a *schema.Set, q *Node) {
 	t.Helper()
 	a = xpTestCtx(t, map[string]string{"b": xpTestB, "a": `module a { namespace "urn:a"; prefix a; yang-version 1.1;
 		anydata any; container p { leaf x { type string; } list L { key k; leaf k { type string; } } } }`})
@@ -414,6 +417,12 @@ func xpTestCross(t *testing.T, n int) (tr *Tree, a *schema.Set, q *Node) {
 	pb := newInner(xpTestTop(bm, "p"))
 	for _, y := range pb.schema.Children {
 		mustLink(t, src.insert(pb, xpTestTerm(t, y, "y"), insertDefault))
+	}
+	if len(opaqueBeforeX) != 0 {
+		for i := range opaqueBeforeX[0] {
+			mustLink(t, src.insert(pb, newOpaque(opaque{Name: fmt.Sprintf("before-%d", i),
+				ModuleNS: "urn:a", Format: types.FormatXML, set: b}), insertLast))
+		}
 	}
 	mustLink(t, src.insert(pb, newOpaque(opaque{Name: "x", ModuleNS: "urn:a", Value: "o", Format: types.FormatXML, set: b}), insertLast))
 	qb := newInner(bq)
@@ -444,6 +453,36 @@ func xpTestCross(t *testing.T, n int) (tr *Tree, a *schema.Set, q *Node) {
 func TestAnyXPathCrossContextHashMissOpaque(t *testing.T) {
 	tr, _, _ := xpTestCross(t, 1)
 	xpTestCount(t, tr, "count((/a:any/a:p | /a:p)/a:x)", 2)
+
+	// lyd_find_sibling_opaq_next is linear. Every opaque sibling it inspects must
+	// consume the evaluator's work budget instead of hiding O(N) work behind one step.
+	wide, set, _ := xpTestCross(t, 1, 2000)
+	e, err := xpath.Compile("count((/a:any/a:p | /a:p)/a:x)", jsonNS{set: set})
+	if err != nil {
+		t.Fatal(err)
+	}
+	vc := &valCtx{t: wide, log: &logger{set: set}, budget: xpathBudget{max: 100}}
+	if _, err := vc.eval(e, nil, xpath.RootAll, true); !errors.Is(err, yang.ErrBudget) {
+		t.Fatalf("large opaque fallback = %v, want XPath budget", err)
+	}
+	var payloadP *Node
+	for c := range wide.top.first().any.children.all() {
+		if c.Name() == "p" {
+			payloadP = c
+		}
+	}
+	x := xpTestTop(set.Implemented("a"), "p").Children[0]
+	calls := 0
+	probe := &xprobe{node: newInner(x), set: set, charge: func(int64) error {
+		calls++
+		if calls == 10 {
+			return context.Canceled
+		}
+		return nil
+	}}
+	if _, _, err := wrap(set, payloadP).(xn).LookupPrepared(probe); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled opaque fallback = %v after %d charges", err, calls)
+	}
 }
 
 // FirstChild across contexts: with a children table the lookup is O(1) (no sibling visits);

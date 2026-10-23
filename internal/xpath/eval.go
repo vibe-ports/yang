@@ -83,7 +83,7 @@ type evaluator struct {
 	parses  int              // long number texts actually parsed (tests)
 	vars    int              // variable references being evaluated, nested
 	varASTs map[int]varAST   // parsed variable values, by index in ec.Vars
-	intErrs int              // Result.InternalErrors
+	intErrs int              // Result.InternalErrors; Log receives each one at its evaluation point
 }
 
 // metaOf returns one snapshot of n's metadata per evaluation. MetaNode implementations may need
@@ -494,7 +494,14 @@ func (ev *evaluator) attr(set value, nt nameTest, allDesc bool) (value, error) {
 			out = append(append(out, ms[0], nodes[p+1]), ms[1:len(ms)-1]...)
 			p++
 		default: // the pos libyang reads past the end is taken as the element's own
-			ev.intErrs += len(ms) - 1
+			for range len(ms) - 1 {
+				ev.intErrs++
+				// set_insert_node calls LOGINT immediately. Log may be nil while speculative
+				// predicate compilation has logging disabled; those diagnostics stay suppressed.
+				if ev.ec.Log != nil {
+					ev.ec.Log(&Error{Err: "LY_EINT", Msg: "Internal error (xpath.c:1348)."})
+				}
+			}
 			out = append(out, ms...)
 		}
 	}
@@ -651,6 +658,22 @@ func sameSchema(a, b SchemaNode) bool {
 // and when it contains both quote characters. A value is only the first operand of an '='
 // chain (the copied tokens lose the chain): [k = 'a' != 'zz'] looks up k = 'a'.
 func (ev *evaluator) hashPredicates(sn SchemaNode, preds []ast, set value) (vals []string, ok bool) {
+	// eval_name_test_try_compile_predicates disables logging for the whole speculative
+	// compilation. A failed value conversion only makes the evaluator fall back to walking
+	// and evaluating the original predicates; diagnostics belong to that real evaluation.
+	// Fatal data-printer errors carry a marker so this failed compilation can discard them;
+	// unmarked cancellation and resource errors remain sticky and stop the query.
+	log := ev.ec.Log
+	savedErr := ev.err
+	ev.ec.Log = nil
+	defer func() {
+		ev.ec.Log = log
+		var failed interface{ XPathSpeculativeFailure() }
+		if !ok && errors.As(ev.err, &failed) {
+			ev.err = savedErr
+		}
+	}()
+
 	keys := sn.Keys()
 	if sn.Kind() != KindList || len(keys) == 0 || len(preds) < len(keys) {
 		return nil, false
@@ -875,7 +898,10 @@ func (ev *evaluator) hashChild(set value, sn SchemaNode, name string, vals []str
 		keys = append(keys, sn.Child(sn.Module(), k))
 	}
 	var probe InstanceProbe
-	if prepare, ok := sn.(InstanceProbePreparer); ok && vals != nil {
+	// A value-less schema lookup still needs a prepared probe when the data
+	// adapter may perform its native opaque-sibling fallback. The probe carries
+	// the evaluator's work/cancellation hook even though there are no values.
+	if prepare, ok := sn.(InstanceProbePreparer); ok {
 		var err error
 		probe, err = prepare.PrepareInstance(vals, ev.probeCharge)
 		if err != nil {
@@ -1666,7 +1692,14 @@ func (ev *evaluator) nodeValueString(n Node) string {
 	}); ok {
 		s, err := cast.StringWithBudget(ev.ctx, ev.tick, ev.tick)
 		if err != nil {
-			ev.err = err
+			var diagnostic interface{ XPathDiagnosticOnly() }
+			if errors.As(err, &diagnostic) {
+				if ev.ec.Log != nil {
+					ev.ec.Log(err)
+				}
+			} else {
+				ev.err = err
+			}
 		}
 		return s
 	}

@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/vibe-ports/yang/internal/schema"
@@ -62,6 +63,62 @@ func (pc *PrintCtx) prefix(m *schema.Module, f Format) string {
 	return ""
 }
 
+// printBudget charges the work and produced bytes of a dynamic type conversion in the same
+// 64-byte units as the data printer. Each unit is charged before the conversion can grow a
+// builder. Keeping the partial unit here is important: xpath1.0 commonly appends many short
+// tokens, none of which may escape the cumulative byte budget.
+type printBudget struct {
+	step func() error
+	left int
+}
+
+func (b *printBudget) charge(n int) error {
+	for b != nil && b.step != nil && n > 0 {
+		if b.left == 0 {
+			if err := b.step(); err != nil {
+				return err
+			}
+			b.left = 64
+		}
+		used := min(n, b.left)
+		b.left -= used
+		n -= used
+	}
+	return nil
+}
+
+// printBuilder charges every append before strings.Builder may allocate for it.
+type printBuilder struct {
+	b strings.Builder
+	p *printBudget
+}
+
+func (b *printBuilder) writeString(s string) error {
+	if err := b.p.charge(len(s)); err != nil {
+		return err
+	}
+	_, _ = b.b.WriteString(s)
+	return nil
+}
+
+func (b *printBuilder) writeByte(c byte) error {
+	if err := b.p.charge(1); err != nil {
+		return err
+	}
+	_ = b.b.WriteByte(c)
+	return nil
+}
+
+func (b *printBuilder) writeBytes(p []byte) error {
+	if err := b.p.charge(len(p)); err != nil {
+		return err
+	}
+	_, _ = b.b.Write(p)
+	return nil
+}
+
+func (b *printBuilder) String() string { return b.b.String() }
+
 // ErrUnsupported is wrapped by errors for input this port does not handle (the root package
 // re-exports it).
 var ErrUnsupported = errors.New("not supported")
@@ -71,8 +128,9 @@ var ErrUnsupported = errors.New("not supported")
 // qualify module names with the prefixes of f (see PrintCtx), a leafref prints as its target type,
 // a union as its selected member. FormatSchemaResolved (and any unknown format) is rejected with an
 // error wrapping ErrUnsupported: it needs an ordered prefix list, NSCtx is a map. pc may be nil (no
-// local module, prefixes are not collected).
-func Print(v Value, f Format, pc *PrintCtx) (string, error) {
+// local module, prefixes are not collected). The optional byteStep is used by XPath data casts;
+// each call reserves the next 64 bytes of conversion work/output before a dynamic allocation.
+func Print(v Value, f Format, pc *PrintCtx, byteStep ...func() error) (string, error) {
 	switch f {
 	case FormatCanon, FormatJSON, FormatXML, FormatSchema:
 	default:
@@ -81,57 +139,75 @@ func Print(v Value, f Format, pc *PrintCtx) (string, error) {
 	if pc == nil {
 		pc = &PrintCtx{}
 	}
-	return printValue(v, f, pc)
+	var step func() error
+	if len(byteStep) != 0 {
+		step = byteStep[0]
+	}
+	return printValue(v, f, pc, &printBudget{step: step})
 }
 
-func printValue(v Value, f Format, pc *PrintCtx) (string, error) {
+func printValue(v Value, f Format, pc *PrintCtx, budget *printBudget) (string, error) {
 	if v.union != nil { // lyplg_type_print_union
-		return printValue(v.union.member, f, pc)
+		return printValue(v.union.member, f, pc, budget)
 	}
 	if v.typ == nil {
-		return v.canon, nil
+		return printCanonical(v.canon, budget)
 	}
 	if k, ok := v.ext.(*keysValue); ok && f != FormatCanon && f != FormatJSON {
 		// lyplg_type_print_xpath10 (xpath1.0.c), also for instance-identifier-keys, whose
 		// lyd_value_instance_identifier_keys it reads as the identically laid out lyd_value_xpath10:
 		// the expression printed with xpath10_print_subexpr_r. A failed conversion
 		// returns NULL in libyang; never replace it with unconverted canonical text.
-		s, d := printXPath10(k.e, k.pc, f, pc)
-		if d != nil {
-			return "", d
-		}
-		return s, nil
+		return printXPath10(k.e, k.pc, f, pc, budget)
 	}
 	if n, ok := v.ext.(*nodeInstanceID); ok && f != FormatCanon && f != FormatJSON {
 		// lyplg_type_print_node_instanceid (node_instanceid.c): node_instanceid_path2str in f, the
 		// same as instanceid_path2str but for the special path "/"
 		if n.path == nil {
+			if err := budget.charge(1); err != nil {
+				return "", err
+			}
 			return "/", nil
 		}
-		return printPath(n.path, f, pc)
+		return printPath(n.path, f, pc, budget)
 	}
 	switch v.typ.Base {
 	case schema.IdentityRef: // lyplg_type_print_identityref
 		if f == FormatCanon {
-			return v.canon, nil
+			return printCanonical(v.canon, budget)
+		}
+		// Resolving and converting the stored identity is work proportional to its canonical
+		// form; a qualified result below is a separate dynamic allocation.
+		if err := budget.charge(max(1, len(v.canon))); err != nil {
+			return "", err
 		}
 		if p := pc.prefix(v.ident.Module, f); p != "" {
+			if err := budget.charge(len(p) + 1 + len(v.ident.Name)); err != nil {
+				return "", err
+			}
 			return p + ":" + v.ident.Name, nil
 		}
 		return v.ident.Name, nil
 	case schema.InstanceID: // lyplg_type_print_instanceid: the canonical form is JSON
 		if f == FormatCanon || f == FormatJSON {
-			return v.canon, nil
+			return printCanonical(v.canon, budget)
 		}
-		return printPath(v.path, f, pc)
+		return printPath(v.path, f, pc, budget)
 	}
-	return v.canon, nil // lyplg_type_print_simple
+	return printCanonical(v.canon, budget) // lyplg_type_print_simple
+}
+
+func printCanonical(canon string, budget *printBudget) (string, error) {
+	if err := budget.charge(max(1, len(canon))); err != nil {
+		return "", err
+	}
+	return canon, nil
 }
 
 // printPath ports instanceid_path2str for the formats that prefix every node (XML and schema).
 // The key and leaf-list values are printed in f too: libyang stores the canonical form again and
 // prints that (lyplg_type_print_val), which yields the stored value itself.
-func printPath(p Path, f Format, pc *PrintCtx) (string, error) {
+func printPath(p Path, f Format, pc *PrintCtx, budget *printBudget) (string, error) {
 	if f == FormatXML { // null the local module so that all the prefixes are printed
 		defer func(local *schema.Module) { pc.Local = local }(pc.Local)
 		pc.Local = nil
@@ -143,26 +219,84 @@ func printPath(p Path, f Format, pc *PrintCtx) (string, error) {
 		}
 		return "(null)"
 	}
-	var b strings.Builder
+	b := printBuilder{p: budget}
 	for _, s := range p {
-		fmt.Fprintf(&b, "/%s:%s", pfx(s.Node.Module), s.Node.Name)
+		if err := b.writeByte('/'); err != nil {
+			return "", err
+		}
+		if err := b.writeString(pfx(s.Node.Module)); err != nil {
+			return "", err
+		}
+		if err := b.writeByte(':'); err != nil {
+			return "", err
+		}
+		if err := b.writeString(s.Node.Name); err != nil {
+			return "", err
+		}
 		for _, pr := range s.Preds {
 			switch pr.Kind {
 			case PredPosition:
-				fmt.Fprintf(&b, "[%d]", pr.Position)
+				var raw [20]byte
+				n := strconv.AppendUint(raw[:0], pr.Position, 10)
+				if err := b.writeByte('['); err != nil {
+					return "", err
+				}
+				if err := b.writeBytes(n); err != nil {
+					return "", err
+				}
+				if err := b.writeByte(']'); err != nil {
+					return "", err
+				}
 			case PredKey: // the value first: it may add to pc.Used before the key's prefix
-				value, err := printValue(pr.Value, f, pc)
+				value, err := printValue(pr.Value, f, pc, budget)
 				if err != nil {
 					return "", err
 				}
-				val := quoteXP(value)
-				fmt.Fprintf(&b, "[%s:%s=%s]", pfx(pr.Key.Module), pr.Key.Name, val)
+				for _, text := range []string{"[", pfx(pr.Key.Module), ":", pr.Key.Name, "="} {
+					if err := b.writeString(text); err != nil {
+						return "", err
+					}
+				}
+				quote := byte('\'')
+				if strings.IndexByte(value, quote) >= 0 {
+					quote = '"'
+				}
+				if err := b.writeByte(quote); err != nil {
+					return "", err
+				}
+				if err := b.writeString(value); err != nil {
+					return "", err
+				}
+				if err := b.writeByte(quote); err != nil {
+					return "", err
+				}
+				if err := b.writeByte(']'); err != nil {
+					return "", err
+				}
 			case PredLeafList:
-				value, err := printValue(pr.Value, f, pc)
+				value, err := printValue(pr.Value, f, pc, budget)
 				if err != nil {
 					return "", err
 				}
-				fmt.Fprintf(&b, "[.=%s]", quoteXP(value))
+				if err := b.writeString("[.="); err != nil {
+					return "", err
+				}
+				quote := byte('\'')
+				if strings.IndexByte(value, quote) >= 0 {
+					quote = '"'
+				}
+				if err := b.writeByte(quote); err != nil {
+					return "", err
+				}
+				if err := b.writeString(value); err != nil {
+					return "", err
+				}
+				if err := b.writeByte(quote); err != nil {
+					return "", err
+				}
+				if err := b.writeByte(']'); err != nil {
+					return "", err
+				}
 			}
 		}
 	}
