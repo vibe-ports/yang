@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/vibe-ports/yang/internal/ly"
+	"github.com/vibe-ports/yang/internal/resource"
 )
 
 // Pos is a position in the module text: 1-based line and byte column.
@@ -39,7 +40,7 @@ type Stmt struct {
 }
 
 // ErrBudget is wrapped by errors caused by an exceeded Budget limit.
-var ErrBudget = errors.New("parser: resource budget exceeded")
+var ErrBudget = resource.New("parser: resource budget exceeded")
 
 // Error is a parse error with libyang's code, message and line (Pos.Line is
 // libyang's line counter; 0 when libyang reports a schema path instead).

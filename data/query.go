@@ -266,6 +266,10 @@ func (t *Tree) evalCompiledXPath4(l *logger, ctxNode *Node, e *xpath.Expr, src s
 // (lyd_eval_xpath4 passes the context node as both); reparse errors without a node; LOGERR
 // errors (no validation code) without a location. Budget and cancellation errors pass through.
 func queryErr(l *logger, ctxNode *Node, err error) error {
+	var nested *ValidationError
+	if errors.As(err, &nested) {
+		return rcError(nested.RC())
+	}
 	var probe *xpathProbeError
 	if errors.As(err, &probe) {
 		return l.storeErr(nil, probe.schema, probe.diag)

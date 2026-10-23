@@ -17,20 +17,20 @@ package lyxml
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"math"
 	"strconv"
 	"unicode/utf8"
 
 	"github.com/vibe-ports/yang/internal/ly"
+	"github.com/vibe-ports/yang/internal/resource"
 )
 
 // MaxDepth is LY_MAX_BLOCK_DEPTH: the number of open elements allowed.
 const MaxDepth = 500
 
 // ErrBudget is wrapped by errors caused by an exceeded limit.
-var ErrBudget = errors.New("lyxml: resource budget exceeded")
+var ErrBudget = resource.New("lyxml: resource budget exceeded")
 
 // Error is a lexer error: libyang's vecode (ly.Success for LOGERR errors),
 // message (empty where libyang fails without logging) and line.

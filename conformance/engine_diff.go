@@ -125,7 +125,7 @@ func stepDiff(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, det
 		}
 		first = detached
 	} else if path, ok := st["node"].(string); ok {
-		if first, err = findNode(tree, path, "diff node"); err != nil {
+		if first, err = r.findNode(tree, path, "diff node"); err != nil {
 			return nil, err
 		}
 	}
@@ -160,7 +160,7 @@ func stepDiff(r Request, s *yang.Schema, st map[string]any, tree *data.Tree, det
 	}
 	// lyoracle.c:2775 resolves data_node even when no data was supplied.
 	if path, ok := st["data_node"].(string); ok {
-		if second, err = findNode(secondTree, path, "diff data_node"); err != nil {
+		if second, err = r.findNode(secondTree, path, "diff data_node"); err != nil {
 			return nil, err
 		}
 	}
@@ -301,11 +301,11 @@ func stepDiffMerge(r Request, s *yang.Schema, st map[string]any, reg **data.Tree
 				return nil, requestError("diff_merge retained detached parent not found")
 			}
 		} else if pp, ok := st["parent"].(string); ok {
-			if parent, err = findNode(*reg, pp, "diff_merge parent"); err != nil {
+			if parent, err = r.findNode(*reg, pp, "diff_merge parent"); err != nil {
 				return nil, err
 			}
 		}
-		sn, err := findNode(src, path, "diff_merge src_node")
+		sn, err := r.findNode(src, path, "diff_merge src_node")
 		if err != nil {
 			return nil, err
 		}
@@ -359,6 +359,13 @@ func stepDiffMerge(r Request, s *yang.Schema, st map[string]any, reg **data.Tree
 // resolve against input, including when the retained tree contains reply output.
 // Empty paths and a NULL tree fail as request-errors; Find's diagnostics are not
 // collected by lyoracle.
+func (r Request) findNode(t *data.Tree, path, label string) (*data.Node, error) {
+	if t != nil && path != "" && r.selectorEvaluated != nil {
+		r.selectorEvaluated(r.selectorStep, label)
+	}
+	return findNode(t, path, label)
+}
+
 func findNode(t *data.Tree, path, label string) (*data.Node, error) {
 	if t != nil && path != "" {
 		if n, err := t.Find(path); err == nil && n != nil {

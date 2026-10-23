@@ -24,6 +24,10 @@ type Request struct {
 	// independent runs can share immutable schema snapshots. Normal engine calls
 	// use buildContext directly.
 	buildContext contextBuilder
+	// selectorEvaluated observes actual selector calls in the step-matrix tests.
+	// Normal requests leave it nil; selectorStep is set by runSequence.
+	selectorEvaluated func(step int, label string)
+	selectorStep      int
 }
 
 // Engine is a YANG implementation under test. Return ErrUnsupported for inputs it cannot handle.

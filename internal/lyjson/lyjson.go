@@ -16,8 +16,9 @@ package lyjson
 
 import (
 	"bytes"
-	"errors"
 	"strconv"
+
+	"github.com/vibe-ports/yang/internal/resource"
 )
 
 // Token is libyang's LYJSON_PARSER_STATUS: what the lexer is positioned on.
@@ -49,7 +50,7 @@ const MaxDepth = 5000
 const numberMaxLen = 22
 
 // ErrNesting is wrapped by the error returned when the status stack exceeds [MaxDepth].
-var ErrNesting = errors.New("lyjson: nesting limit exceeded")
+var ErrNesting = resource.New("lyjson: nesting limit exceeded")
 
 // VECode is the validation-error code libyang attaches to a diagnostic (LYVE_*).
 type VECode uint8

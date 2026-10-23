@@ -103,6 +103,12 @@ type Tree struct {
 	// updateCtx is the context of the term the last NewPath updated (_lyd_change_term logs
 	// its store chain in LYD_CTX(term)); nil when it updated none.
 	updateCtx *schema.Set
+	// Diagnostics emitted by a valCtx into a context other than the operation's
+	// remain owned by that context until an adapter collects it. Retention is
+	// disabled by default and enabled only by the conformance adapter.
+	contextLogsEnabled atomic.Bool
+	contextLogMu       sync.Mutex
+	contextLogs        []diffLogEntry
 }
 
 // workCounter counts the work of a tree for tests (work, not time): comparisons made by

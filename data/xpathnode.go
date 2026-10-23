@@ -8,7 +8,9 @@ package data
 import (
 	"bytes"
 	"context"
+	"errors"
 
+	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/snap"
 	"github.com/vibe-ports/yang/internal/types"
@@ -112,6 +114,9 @@ func (x xn) LookupPrepared(prepared xpath.InstanceProbe) ([]xpath.Node, bool, er
 			// LY_ENOTFOUND, then lyd_find_sibling_opaq_next. Not a decline: the
 			// evaluator's scan would match the unequal node by module and name.
 			for _, c := range sib.opq {
+				if err := p.work(1); err != nil {
+					return nil, false, err
+				}
 				sib.visit()
 				if c.flags&flagDead == 0 && c.Name() == p.node.schema.Name {
 					return []xpath.Node{wrap(x.set, c)}, true, nil
@@ -253,6 +258,39 @@ func (x xn) Value() xpath.Value {
 // Serialization failures are returned to the evaluator rather than hidden by Value().
 type xpathAnyValue struct{ n *Node }
 
+// xpathPrintNotice is a completed printer call whose context log is non-empty. The XPath
+// evaluator forwards each item to its emitting context without changing the cast's return status.
+type xpathPrintNotice struct {
+	diags []printDiagnostic
+	err   *ValidationError
+}
+
+func (e *xpathPrintNotice) Error() string                            { return e.err.Error() }
+func (e *xpathPrintNotice) Unwrap() error                            { return e.err }
+func (*xpathPrintNotice) XPathDiagnosticOnly()                       {}
+func (e *xpathPrintNotice) xpathPrintDiagnostics() []printDiagnostic { return e.diags }
+
+// xpathPrintFailure preserves the context of every diagnostic from a printer that failed.
+// Unlike xpathPrintNotice it remains a fatal XPath evaluation error.
+type xpathPrintFailure struct {
+	diags []printDiagnostic
+	err   error
+}
+
+func (e *xpathPrintFailure) Error() string                            { return e.err.Error() }
+func (e *xpathPrintFailure) Unwrap() error                            { return e.err }
+func (e *xpathPrintFailure) xpathPrintDiagnostics() []printDiagnostic { return e.diags }
+
+// xpathPrintResourceFailure preserves the context of a native printer resource failure.
+type xpathPrintResourceFailure struct {
+	diags []printDiagnostic
+	err   error
+}
+
+func (e *xpathPrintResourceFailure) Error() string                            { return e.err.Error() }
+func (e *xpathPrintResourceFailure) Unwrap() error                            { return e.err }
+func (e *xpathPrintResourceFailure) xpathPrintDiagnostics() []printDiagnostic { return e.diags }
+
 func (v xpathAnyValue) String() string {
 	s, _ := v.StringWithBudget(context.Background(), nil, nil)
 	return s
@@ -302,9 +340,20 @@ func (v xpathAnyValue) StringWithBudget(ctx context.Context, step, byteStep func
 		}
 	}
 	var b bytes.Buffer
-	err := printData(&b, ctxOf(root), PrintOptions{step: step, byteStep: byteStep}, nodes, 0, true, printXML)
+	diags, err := printDataResult(&b, ctxOf(root), PrintOptions{step: step, byteStep: byteStep}, nodes, 0, true, printXML)
 	if err != nil {
-		return "", err
+		if errors.Is(err, yang.ErrBudget) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return "", &xpathPrintResourceFailure{diags: diags, err: err}
+		}
+		return "", &xpathPrintFailure{diags: diags, err: err}
+	}
+	if len(diags) != 0 {
+		flat := make([]yang.Diagnostic, len(diags))
+		for i := range diags {
+			flat[i] = diags[i].diag
+		}
+		return b.String(), &xpathPrintNotice{diags: diags,
+			err: &ValidationError{rc: flat[0].Err, Diags: flat}}
 	}
 	return b.String(), nil
 }
@@ -443,6 +492,12 @@ func (x xs) PrepareInstance(vals []string, charge func(int64) error) (xpath.Inst
 	keys := x.s.Keys
 	if x.s.Kind == schema.LeafList {
 		keys = []*schema.Node{x.s}
+	}
+	// lyd_find_sibling_schema builds a schema-only lookup. Keep the probe so a
+	// cross-context hash miss can charge lyd_find_sibling_opaq_next, but do not
+	// try to materialize absent list keys or a leaf-list value.
+	if vals == nil {
+		keys = nil
 	}
 	for i, key := range keys {
 		if err := p.work(1 + int64(len(vals[i]))); err != nil {

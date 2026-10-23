@@ -10,7 +10,9 @@ import (
 	"testing"
 
 	"github.com/vibe-ports/yang"
+	"github.com/vibe-ports/yang/internal/snap"
 	"github.com/vibe-ports/yang/internal/types"
+	"github.com/vibe-ports/yang/internal/xpath"
 )
 
 const sparseEmptyModule = `module m {
@@ -49,6 +51,50 @@ func TestStoredHashSparseXMLKeyBudget(t *testing.T) {
 		parseOpts{ParseOptions: ParseOptions{ParseOnly: true}}, parseXML, nil)
 	if !errors.Is(err, yang.ErrBudget) || got != nil || len(diags) != 0 {
 		t.Fatalf("treeReturned=%t diagnostics=%v error=%v; want silent ErrBudget", got != nil, diags, err)
+	}
+}
+
+// A failed hashed-predicate compilation falls back to the ordinary predicates. Resource
+// failures from deref() are not part of that speculative failure: even when an earlier ordinary
+// predicate would remove every row, the shared instance-identifier probe quota must stop the
+// evaluation.
+func TestXPathSpeculativeDerefStoredHashBudget(t *testing.T) {
+	set := opIndexSet(t, `module m {
+  yang-version 1.1; namespace urn:m; prefix m;
+  leaf-list target { config false; type bits { bit high { position 4294967294; } } }
+  leaf ref { config false; type instance-identifier; }
+  list pair {
+    config false; key "k1 k2";
+    leaf k1 { type string; }
+    leaf k2 { type string; }
+  }
+}`)
+	tr, diags, err := Parse(context.Background(), strings.NewReader(
+		`{"m:target":[""],"m:ref":"/m:target[.='']","m:pair":[{"k1":"present","k2":""}]}`),
+		FormatJSON, snap.New(set), ParseOptions{ParseOnly: true})
+	if err != nil || len(diags) != 0 {
+		t.Fatalf("Parse diagnostics=%v error=%v", diags, err)
+	}
+	ref := findNode(t, tr, "/m:ref")
+	measure := &valCtx{t: tr, probes: newTree(set)}
+	if _, err := measure.deref(wrap(set, ref)); err != nil {
+		t.Fatal(err)
+	}
+	oneDeref := measure.probes.work.hashUsed
+	if oneDeref == 0 || oneDeref >= defaultMaxHashWork {
+		t.Fatalf("one deref charged %d stored-hash units", oneDeref)
+	}
+
+	e, err := xpath.Compile(
+		"count(/m:pair[k1='absent'][k2=concat(deref(/m:ref),deref(/m:ref))])",
+		jsonNS{set: set})
+	if err != nil {
+		t.Fatal(err)
+	}
+	vc := &valCtx{t: tr, log: &logger{set: set}, probes: newTree(set)}
+	vc.probes.work.hashLimit = oneDeref
+	if _, err := vc.eval(e, nil, xpath.RootAll, true); !errors.Is(err, yang.ErrBudget) {
+		t.Fatalf("speculative deref error=%v; want yang.ErrBudget", err)
 	}
 }
 

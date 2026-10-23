@@ -317,7 +317,7 @@ func anyCreateError(err error) error {
 	switch {
 	case errors.As(err, &ve):
 		*result = *ve
-		l.diags = slices.Clone(ve.Diags)
+		l.emitAll(ve.Diags)
 		result.rc = ve.RC()
 	case errors.As(err, &rc):
 		result.rc = string(rc)

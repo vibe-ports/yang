@@ -17,6 +17,7 @@ import (
 	"github.com/vibe-ports/yang/internal/ly"
 	"github.com/vibe-ports/yang/internal/models"
 	"github.com/vibe-ports/yang/internal/parser"
+	"github.com/vibe-ports/yang/internal/resource"
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
 	"github.com/vibe-ports/yang/internal/xpath"
@@ -24,7 +25,7 @@ import (
 
 var (
 	// ErrBudget is wrapped by errors caused by an exceeded resource limit.
-	ErrBudget = errors.New("resource budget exceeded")
+	ErrBudget = resource.New("resource budget exceeded")
 	// ErrUnsupported is wrapped by errors for input this port does not handle (yet).
 	ErrUnsupported = types.ErrUnsupported
 )

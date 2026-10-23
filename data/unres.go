@@ -76,11 +76,15 @@ func (vc *valCtx) eval(e *xpath.Expr, ctx *Node, root xpath.RootKind, ignoreWhen
 		set = ctxOf(ctx)
 	}
 	r, err := e.EvalTo(xpath.EvalContext{Ctx: b.ctx, Node: wrap(set, ctx), Tree: vc.topNodes(), Root: root,
-		IgnoreWhen: ignoreWhen, Schema: info{set}, Deref: vc.deref, MaxSteps: int(per), Vars: vc.vars}, vc.to)
-	b.steps += r.Steps
-	for range r.InternalErrors { // LOGINT, logged and gone past as libyang
-		_ = vc.log.logErr("LY_EINT", msgXPathInt)
+		IgnoreWhen: ignoreWhen, Schema: info{set}, Deref: vc.deref, Log: vc.xpathLog,
+		SuppressLog: vc.log.suppress, MaxSteps: int(per), Vars: vc.vars}, vc.to)
+	// A failed nested printer returns its own ValidationError. Route its log now;
+	// queryErr separately preserves the return code.
+	var nested *ValidationError
+	if errors.As(err, &nested) {
+		vc.xpathLog(err)
 	}
+	b.steps += r.Steps
 	switch {
 	case errors.Is(err, xpath.ErrBudget):
 		// the cumulative budget, or the per-evaluation cap xpath.DefaultMaxSteps (U-0042)
@@ -90,6 +94,56 @@ func (vc *valCtx) eval(e *xpath.Expr, ctx *Node, root xpath.RootKind, ignoreWhen
 		return r, errIncomplete
 	}
 	return r, err
+}
+
+// xpathLog copies diagnostics from a nested data printer into lyxp_eval's operation log. The
+// printer status is handled independently by the evaluator and queryErr.
+func (vc *valCtx) xpathLog(err error) {
+	var internal *xpath.Error
+	if errors.As(err, &internal) && internal.Err == "LY_EINT" {
+		if vc.log != nil {
+			_ = vc.log.logErr(internal.Err, "%s", internal.Msg)
+		}
+		return
+	}
+	var printed interface{ xpathPrintDiagnostics() []printDiagnostic }
+	if errors.As(err, &printed) {
+		var successful *xpathPrintNotice
+		notice := errors.As(err, &successful)
+		for _, item := range printed.xpathPrintDiagnostics() {
+			vc.xpathDiagnostic(item, notice)
+		}
+		return
+	}
+	var ve *ValidationError
+	if errors.As(err, &ve) && vc.log != nil {
+		vc.log.emitAll(ve.Diags)
+	}
+}
+
+// xpathDiagnostic routes a nested printer item exactly as the context-local libyang log does.
+// A foreign item is retained separately from the operation log, including on a fatal printer
+// failure, so collecting the evaluating context cannot consume it.
+func (vc *valCtx) xpathDiagnostic(item printDiagnostic, notice bool) {
+	if vc.log == nil {
+		return
+	}
+	if item.set == nil || item.set == vc.log.set {
+		if notice {
+			vc.log.notice(item.diag)
+		} else {
+			vc.log.emit(item.diag)
+		}
+		return
+	}
+	if vc.log.isSuppressed() {
+		return
+	}
+	if vc.t != nil && vc.t.contextLogsEnabled.Load() {
+		vc.t.contextLogMu.Lock()
+		vc.t.contextLogs = append(vc.t.contextLogs, diffLogEntry(item))
+		vc.t.contextLogMu.Unlock()
+	}
 }
 
 // topNodes is the accessible tree of the evaluations: the live top-level siblings, rebuilt only

@@ -44,7 +44,7 @@ type PrintOptions struct {
 
 	dflt     *defaultCheck // set by printData: the evaluation state shared by one print
 	step     func() error  // XPath casts charge each printed node and poll cancellation
-	byteStep func() error  // XPath casts charge each 64 output bytes before allocation
+	byteStep func() error  // XPath casts charge each 64 output, type-conversion and diagnostic bytes
 }
 
 // defaultCheck is what one print shares for isDefault: the evaluation context (one XPath budget
@@ -54,6 +54,13 @@ type defaultCheck struct {
 	views map[*Node]*Tree
 	diags []yang.Diagnostic
 	err   error
+}
+
+// printDiagnostic is an item left in the context log by a printer call. XML metadata values are
+// printed with LYD_CTX(node), which may differ from the outer tree's context after duplication.
+type printDiagnostic struct {
+	set  *schema.Set
+	diag yang.Diagnostic
 }
 
 // npCont is lysc_is_np_cont: a non-presence container.
@@ -229,6 +236,25 @@ func (n *Node) print(w io.Writer, o PrintOptions, f func(*printer, []*Node, int)
 // printData runs f over sibs from index from: all of them with siblings, else only sibs[from].
 func printData(w io.Writer, set *schema.Set, o PrintOptions, sibs []*Node, from int, siblings bool,
 	f func(*printer, []*Node, int) error) error {
+	diags, err := printDataResult(w, set, o, sibs, from, siblings, f)
+	if err != nil {
+		return err
+	}
+	if len(diags) != 0 {
+		flat := make([]yang.Diagnostic, len(diags))
+		for i := range diags {
+			flat[i] = diags[i].diag
+		}
+		return &ValidationError{rc: flat[0].Err, Diags: flat}
+	}
+	return nil
+}
+
+// printDataResult keeps lyd_print_'s return status separate from diagnostics left in the
+// context log. In particular, xml_print_meta is void: a type printer may log an error and
+// return NULL, after which the XML printer emits an empty attribute and succeeds.
+func printDataResult(w io.Writer, set *schema.Set, o PrintOptions, sibs []*Node, from int, siblings bool,
+	f func(*printer, []*Node, int) error) ([]printDiagnostic, error) {
 	w, flags := printopts.Unwrap(w)
 	if o.dflt == nil { // callers cannot set it; tests do
 		o.dflt = &defaultCheck{}
@@ -238,42 +264,62 @@ func printData(w io.Writer, set *schema.Set, o PrintOptions, sibs []*Node, from 
 	if err := runPrint(f, p, sibs, from); err != nil {
 		var d *types.Diag
 		if errors.As(err, &d) {
+			owner := set
+			var pe *printerTypeError
+			if errors.As(err, &pe) {
+				owner = pe.set
+			}
 			// lyd_print_mem leaves bytes produced before a type-printer failure.
 			if _, writeErr := w.Write(p.buf.Bytes()); writeErr != nil {
-				return writeErr
+				return nil, writeErr
 			}
 			// A NULL type print callback becomes LY_EINVAL (printer_xml.c:367).
 			ve := &ValidationError{rc: "LY_EINVAL"}
-			lg := &logger{set: set}
+			out := make([]printDiagnostic, 0, len(p.printDiags)+1)
 			for _, prior := range p.printDiags {
-				lg.logged(nil, prior)
+				lg := &logger{set: prior.set}
+				lg.logged(nil, prior.diag)
+				for _, item := range lg.diags {
+					out = append(out, printDiagnostic{set: prior.set, diag: item})
+				}
 			}
 			if !d.NoItem {
 				// A plugin may log its own item before returning NULL
 				// (lyplg_type_print_xpath10). Keep that item even though the
 				// XML printer itself always returns LY_EINVAL for NULL.
+				lg := &logger{set: owner}
 				lg.logged(nil, d)
+				for _, item := range lg.diags {
+					out = append(out, printDiagnostic{set: owner, diag: item})
+				}
 			}
-			ve.Diags = lg.diags
-			return ve
+			ve.Diags = make([]yang.Diagnostic, len(out))
+			for i := range out {
+				ve.Diags[i] = out[i].diag
+			}
+			return out, ve
 		}
-		return err
+		return nil, err
 	}
 	if o.dflt.err != nil {
-		return o.dflt.err // nothing written: the output would be wrong
+		return nil, o.dflt.err // nothing written: the output would be wrong
 	}
 	_, err := w.Write(p.buf.Bytes())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if len(p.printDiags) != 0 {
-		lg := &logger{set: set}
-		for _, d := range p.printDiags {
-			lg.logged(nil, d)
+		out := make([]printDiagnostic, 0, len(p.printDiags))
+		for _, item := range p.printDiags {
+			lg := &logger{set: item.set}
+			lg.logged(nil, item.diag)
+			for _, d := range lg.diags {
+				out = append(out, printDiagnostic{set: item.set, diag: d})
+			}
 		}
-		return &ValidationError{rc: lg.diags[0].Err, Diags: lg.diags}
+		return out, nil
 	}
-	return nil
+	return nil, nil
 }
 
 // printer is the state the JSON and XML printers share (jsonpr_ctx, xmlpr_ctx).
@@ -282,11 +328,26 @@ type printer struct {
 	opts       PrintOptions
 	flags      printopts.Flags
 	siblings   bool          // LYD_PRINT_SIBLINGS: lyd_print_all, else lyd_print_tree
-	printDiags []*types.Diag // xml_print_meta may log without stopping the printer
+	printDiags []printerDiag // xml_print_meta may log without stopping the printer
 	buf        printBuffer
 	level      int // indentation level
 	depth      int // recursion bound for constructed payloads deeper than their schema
 }
+
+type printerDiag struct {
+	set  *schema.Set
+	diag *types.Diag
+}
+
+// printerTypeError retains LYD_CTX(node) for a fatal type-printer error. The outer printer
+// context can differ for payload nodes duplicated across contexts.
+type printerTypeError struct {
+	set *schema.Set
+	err error
+}
+
+func (e *printerTypeError) Error() string { return e.err.Error() }
+func (e *printerTypeError) Unwrap() error { return e.err }
 
 // printBuffer charges output in 64-byte units before bytes.Buffer can grow.
 // The private panic stops the printer at the exact failed write; runPrint only
@@ -363,6 +424,39 @@ func (p *printer) nodeContext(n *Node) *schema.Set {
 		return set
 	}
 	return p.set
+}
+
+func (p *printer) typeError(n *Node, err error) error {
+	return &printerTypeError{set: p.nodeContext(n), err: err}
+}
+
+// printTypeValue runs a type conversion under the XPath cast's byte-work budget. Public printers
+// have no byteStep and retain the ordinary unbudgeted types.Print behavior.
+func (p *printer) printTypeValue(v types.Value, f types.Format, pc *types.PrintCtx) (string, error) {
+	if p.opts.byteStep == nil {
+		return types.Print(v, f, pc)
+	}
+	// Dynamic type printers charge both conversion work and every converted fragment before
+	// growing their builders. Canonical length alone is not a bound: one short xpath1.0 module
+	// name can expand to an arbitrarily long XML prefix at every name test.
+	value, err := types.Print(v, f, pc, p.opts.byteStep)
+	var d *types.Diag
+	if errors.As(err, &d) {
+		// The conversion charged source work and message construction before returning. Account
+		// separately for the diagnostic's retained strings before xml_print_meta can append it to
+		// the successful print notices.
+		if budgetErr := chargeXPathBytes(typePrintDiagBytes(d), p.opts.byteStep); budgetErr != nil {
+			return "", budgetErr
+		}
+	}
+	return value, err
+}
+
+func typePrintDiagBytes(d *types.Diag) int {
+	if d == nil {
+		return 0
+	}
+	return len(d.Code) + len(d.Msg) + len(d.AppTag) + len(d.Err) + typePrintDiagBytes(d.Logged)
 }
 
 func (p *printer) shouldPrint(n *Node) bool { return p.opts.shouldPrint(n, p.flags) }

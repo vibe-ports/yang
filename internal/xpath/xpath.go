@@ -18,6 +18,8 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+
+	"github.com/vibe-ports/yang/internal/resource"
 )
 
 // Kind is the schema node type of a data node.
@@ -313,8 +315,16 @@ type EvalContext struct {
 	IgnoreWhen bool // LYXP_IGNORE_WHEN: do not fail on unresolved when
 	Schema     SchemaInfo
 	// Deref resolves a leafref / instance-identifier node to its targets.
-	Deref    func(Node) ([]Node, error)
-	MaxSteps int // evaluation step budget; 0 = DefaultMaxSteps
+	Deref func(Node) ([]Node, error)
+	// Log receives diagnostics when they are produced: successful data-value conversions and
+	// continuing internal evaluator errors. Speculation temporarily clears it when SuppressLog
+	// is nil; otherwise the operation sink suppresses the callback's writes.
+	Log func(error)
+	// SuppressLog enters the operation diagnostic sink's temporary no-log scope and returns the
+	// function that leaves it. Data callbacks can log without going through Log, so speculative
+	// predicate compilation uses this scope instead of relying on clearing Log.
+	SuppressLog func() func()
+	MaxSteps    int // evaluation step budget; 0 = DefaultMaxSteps
 	// Vars are the variable bindings of $name references (set->vars).
 	Vars []Var
 }
@@ -370,7 +380,8 @@ type Result struct {
 	// callers that keep a cumulative budget across evaluations.
 	Steps int64
 	// InternalErrors counts the internal errors libyang logs and goes on after (LOGINT in
-	// set_insert_node, "Internal error (xpath.c:1348)."; also set on error).
+	// set_insert_node, "Internal error (xpath.c:1348)."; also set on error). EvalContext.Log has
+	// already received each non-suppressed error in evaluation order.
 	InternalErrors int
 }
 
@@ -404,7 +415,7 @@ var (
 	// ErrIncomplete means a node with an unresolved when was reached (libyang LY_EINCOMPLETE).
 	ErrIncomplete = errors.New("xpath: unresolved when condition")
 	// ErrBudget means the step budget was exhausted.
-	ErrBudget = errors.New("xpath: evaluation step budget exceeded")
+	ErrBudget = resource.New("xpath: evaluation step budget exceeded")
 )
 
 func xpErr(format string, a ...any) *Error {

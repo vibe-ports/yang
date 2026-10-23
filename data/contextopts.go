@@ -68,6 +68,26 @@ func init() {
 		t.diffLogs = nil
 		return out
 	}
+	contextopts.DrainContextDiagnostics = func(v any) []contextopts.ContextDiagnostic {
+		t, _ := v.(*Tree)
+		if t == nil {
+			return nil
+		}
+		t.contextLogMu.Lock()
+		defer t.contextLogMu.Unlock()
+		out := make([]contextopts.ContextDiagnostic, 0, len(t.contextLogs))
+		for _, item := range t.contextLogs {
+			out = append(out, contextopts.ContextDiagnostic{Context: snap.New(item.set), Diagnostic: item.diag})
+		}
+		t.contextLogs = nil
+		return out
+	}
+	contextopts.EnableContextDiagnostics = func(v any) {
+		t, _ := v.(*Tree)
+		if t != nil {
+			t.contextLogsEnabled.Store(true)
+		}
+	}
 	contextopts.CheckDupContexts = func(node, parent any) error {
 		n, _ := node.(*Node)
 		p, _ := parent.(*Node)

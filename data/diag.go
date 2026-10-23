@@ -67,12 +67,43 @@ func (e *ValidationError) Error() string {
 // (LY_LOSTORE) and the location stack of ly_log_location (LOG_LOCSET/LOG_LOCBACK), held per
 // operation instead of thread-local.
 type logger struct {
-	set        *schema.Set
-	diags      []yang.Diagnostic
-	scnodes    []*schema.Node            // log_location.scnodes
-	paths      []string                  // log_location.paths
-	inputs     []func() int              // log_location.inputs: the current line of each input
-	beforePath func(*Node) map[*Node]int // parser-only: sorted positions of deferred-run nodes
+	set           *schema.Set
+	diags         []yang.Diagnostic
+	suppressDepth int                       // nested ly_temp_log_options scopes with no enabled options
+	nonfatal      map[int]bool              // diagnostics emitted by a nested call that itself succeeded
+	scnodes       []*schema.Node            // log_location.scnodes
+	paths         []string                  // log_location.paths
+	inputs        []func() int              // log_location.inputs: the current line of each input
+	beforePath    func(*Node) map[*Node]int // parser-only: sorted positions of deferred-run nodes
+}
+
+// suppress enters ly_temp_log_options(&zero) for this operation's diagnostic sink. Unlike an
+// evaluator callback toggle, the depth is observed by every logger entry point, including nested
+// validation callbacks that write directly to the same sink.
+func (l *logger) suppress() func() {
+	if l == nil {
+		return nil
+	}
+	l.suppressDepth++
+	return func() { l.suppressDepth-- }
+}
+
+func (l *logger) isSuppressed() bool { return l != nil && l.suppressDepth > 0 }
+
+// emit is the only insertion point into an operation diagnostic list.
+func (l *logger) emit(d yang.Diagnostic) bool {
+	if l == nil || l.suppressDepth > 0 {
+		return false
+	}
+	l.diags = append(l.diags, d)
+	return true
+}
+
+func (l *logger) emitAll(diags []yang.Diagnostic) {
+	if l == nil || l.suppressDepth > 0 {
+		return
+	}
+	l.diags = append(l.diags, diags...)
 }
 
 // locSet is LOG_LOCSET(scnode).
@@ -133,16 +164,35 @@ func (l *logger) location(lnode *Node, sn *schema.Node) (dataPath, schemaPath st
 
 // val is LOGVAL / LOGVAL_APPTAG: a validation error located at lnode (nil: the location stack).
 func (l *logger) val(lnode *Node, apptag string, code ly.Code, format string, a ...any) error {
+	if l.isSuppressed() {
+		return errLogged
+	}
 	return l.item(lnode, nil, false, "LY_EVALID", code, apptag, fmt.Sprintf(format, a...))
 }
 
 // item is ly_err_print: an error item (e.g. a type plugin's) logged at lnode with the schema
 // node sn being stored under it.
 func (l *logger) item(lnode *Node, sn *schema.Node, warning bool, err string, code ly.Code, apptag, msg string) error {
+	if l.isSuppressed() {
+		return errLogged
+	}
 	d := yang.Diagnostic{Warning: warning, Err: err, Code: code.String(), AppTag: apptag, Msg: msg}
 	d.DataPath, d.SchemaPath, d.Line = l.location(lnode, sn)
-	l.diags = append(l.diags, d)
+	l.emit(d)
 	return errLogged
+}
+
+// notice appends a diagnostic emitted by a nested call that returned success. It remains in the
+// context log, but cannot decide the enclosing operation's return status (xml_print_meta is void).
+func (l *logger) notice(d yang.Diagnostic) {
+	if l.isSuppressed() {
+		return
+	}
+	if l.nonfatal == nil {
+		l.nonfatal = make(map[int]bool)
+	}
+	l.nonfatal[len(l.diags)] = true
+	l.emit(d)
 }
 
 // storeErr is ly_err_print of a type plugin's error item d for a value of the schema node sn
@@ -183,30 +233,38 @@ func (l *logger) logged(sn *schema.Node, e *types.Diag) {
 
 // warn is LOGWRN: a warning without location.
 func (l *logger) warn(format string, a ...any) {
-	l.diags = append(l.diags, yang.Diagnostic{Warning: true, Err: "LY_SUCCESS", Code: ly.Success.String(),
-		Msg: fmt.Sprintf(format, a...)})
+	if l.isSuppressed() {
+		return
+	}
+	l.emit(yang.Diagnostic{Warning: true, Err: "LY_SUCCESS", Code: ly.Success.String(), Msg: fmt.Sprintf(format, a...)})
 }
 
 // logErr is LOGERR(ctx, errno, ...): an error without location or validation code; errno is the
 // LY_ERR name (LY_EINVAL for the depth limits and the key refusal of the tree operations, whose
 // *opError carries it).
 func (l *logger) logErr(errno, format string, a ...any) error {
-	l.diags = append(l.diags, yang.Diagnostic{Err: errno, Code: ly.Success.String(), Msg: fmt.Sprintf(format, a...)})
+	if l.isSuppressed() {
+		return errLogged
+	}
+	l.emit(yang.Diagnostic{Err: errno, Code: ly.Success.String(), Msg: fmt.Sprintf(format, a...)})
 	return errLogged
 }
 
 // lexVal is LOGVAL from a lexer: the parser's location, the lexer's line.
 func (l *logger) lexVal(code ly.Code, msg string, line int) {
+	if l.isSuppressed() {
+		return
+	}
 	d := yang.Diagnostic{Err: "LY_EVALID", Code: code.String(), Msg: msg}
 	d.DataPath, d.SchemaPath, d.Line = l.location(nil, nil)
 	if line != 0 {
 		d.Line = line
 	}
-	l.diags = append(l.diags, d)
+	l.emit(d)
 }
 
-// msgXPathInt is the LOGINT of set_insert_node during an XPath evaluation (xpath.Result.
-// InternalErrors). libyang logs it as LY_EINT and continues, so it changes no return code;
+// msgXPathInt is the LOGINT of set_insert_node during an XPath evaluation. The evaluator sends it
+// through the ordered EvalContext.Log callback and continues, so it changes no return code;
 // schema-controlled must/when messages use LY_EVALID even when their text is identical.
 const msgXPathInt = "Internal error (xpath.c:1348)."
 
@@ -222,8 +280,8 @@ func (e rcError) Error() string { return "data: " + string(e) }
 // result is the error of the operation: nil when only warnings (and the continuing XPath LY_EINT)
 // were logged, else a *ValidationError with every diagnostic.
 func (l *logger) result() error {
-	for _, d := range l.diags {
-		if failing(d) {
+	for i, d := range l.diags {
+		if !l.nonfatal[i] && failing(d) {
 			return &ValidationError{Diags: l.diags}
 		}
 	}
