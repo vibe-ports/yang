@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Hand-written conformance fixture (this repo).
+module diff-cross-context-bits-max {
+  yang-version 1.1;
+  namespace "urn:vibe-ports:yang:diff-cross-context-bits-max";
+  prefix dcbm;
+
+  container top {
+    presence "retain top";
+    leaf-list v {
+      config false;
+      type bits {
+        bit lo { position 0; }
+        bit hi { position 4294967294; }
+      }
+    }
+  }
+}

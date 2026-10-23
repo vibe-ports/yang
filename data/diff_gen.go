@@ -32,10 +32,10 @@ type DiffOptions struct {
 // replace, none) with yang:orig-value and yang:orig-default on a changed leaf, and the anchors
 // yang:key, yang:value or yang:position (and their orig- counterparts) on a created or moved
 // user-ordered instance. Either tree may be nil or empty (no data). The result is nil when the
-// trees are equal. When both trees contain nodes, they must use the same schema snapshot (D-0069).
-// Operation data with a child schema run split by another child is refused with LY_EINVAL
-// (D-0116), including when an input node is only a subtree of the operation. Errors are a
-// *ValidationError with libyang's diagnostics.
+// trees are equal. The trees may use different schema snapshots; sibling schema nodes then match
+// by module and node-name ancestry as in libyang. Operation data with a child schema run split
+// by another child is refused with LY_EINVAL (D-0116), including when an input node is only a
+// subtree of the operation. Errors are a *ValidationError with libyang's diagnostics.
 func Diff(first, second *Tree, o DiffOptions) (*Tree, error) {
 	var a, b *Node
 	if first != nil {
@@ -84,12 +84,6 @@ func diffNodes(first, second *Node, o DiffOptions, nosiblings bool, ft, st *Tree
 		if split, op := splitOpRun(in.first, in.siblings); split != nil {
 			return nil, splitOpRefusal(lg, split, op, "lyd_diff")
 		}
-	}
-	// D-0069: cross-context matching is not ported yet (#236). Without this refusal the
-	// pointer-based schema matching below treats equal nodes from two snapshots as unmatched and
-	// silently emits create diffs, even for identical trees (df create, foo none), so refuse.
-	if fs != nil && ss != nil && fs != ss {
-		return nil, lg.done(lg.logErr("LY_EINVAL", "Invalid arguments - cannot create diff for unrelated data (lyd_diff())."))
 	}
 	dataParent := func(n *Node) *schema.Node { // lysc_data_parent(n->schema), NULL for an opaque node
 		if n.schema == nil {
@@ -293,7 +287,8 @@ func (t *Tree) findMatch(sib *siblings, target *Node, defaults bool, cache *dupC
 type userord struct {
 	schema *schema.Node
 	pos    int
-	inst   []*Node
+	inst   []*Node // allocated slots; slots at or after count model libyang's out-of-count writes
+	count  int
 }
 
 // userordGet is lyd_diff_userord_get: the entry of sn, created with the instances of first's
@@ -310,6 +305,7 @@ func (t *Tree) userordGet(first *Node, sn *schema.Node, items *[]*userord) *user
 			u.inst = append(u.inst, n)
 		}
 	}
+	u.count = len(u.inst)
 	*items = append(*items, u)
 	return u
 }
@@ -324,7 +320,11 @@ func (t *Tree) userordAttrs(first, second *Node, o DiffOptions, u *userord) (dif
 	sn := u.schema
 	firstPos := 0
 	if first != nil {
-		firstPos = slices.Index(u.inst, first)
+		firstPos = slices.Index(u.inst[:u.count], first)
+		if firstPos < 0 {
+			// lyd_diff_userord_attrs uses the array count after its release-build assertion.
+			firstPos = u.count
+		}
 	}
 	secondPos := u.pos
 	u.pos++
@@ -334,7 +334,7 @@ func (t *Tree) userordAttrs(first, second *Node, o DiffOptions, u *userord) (dif
 		op = diffDelete
 	case first == nil:
 		op = diffCreate
-	case secondPos >= len(u.inst) || !compareSingle(t, second, u.inst[secondPos], isDupInstList(second.schema)):
+	case secondPos >= u.count || !compareSingle(t, second, u.inst[secondPos], isDupInstList(second.schema)):
 		op = diffReplace // another instance on this position in first: first is moved here
 	case o.Defaults && first.flags&FlagDefault != second.flags&FlagDefault:
 		op = diffNone
@@ -347,6 +347,8 @@ func (t *Tree) userordAttrs(first, second *Node, o DiffOptions, u *userord) (dif
 	pred := func(pos int) *string { // the anchor: the instance before pos, "" for the first
 		switch {
 		case pos == 0:
+			return str("")
+		case pos-1 >= len(u.inst) || u.inst[pos-1] == nil:
 			return str("")
 		case sn.Kind == schema.List:
 			return str(listPredicate(u.inst[pos-1]))
@@ -386,13 +388,32 @@ func (t *Tree) userordAttrs(first, second *Node, o DiffOptions, u *userord) (dif
 			a.origKey = pred(firstPos)
 		}
 	}
+	ensure := func(n int) {
+		if n > len(u.inst) {
+			u.inst = append(u.inst, make([]*Node, n-len(u.inst))...)
+		}
+	}
 	switch op { // the change applied to the virtual order
 	case diffCreate:
-		u.inst = slices.Insert(u.inst, min(secondPos, len(u.inst)), second)
+		// libyang increments the logical count by one but writes at second_pos even when it
+		// is beyond that new end (diff.c:827-849). Preserve those slots explicitly so the
+		// following operation observes the same release-build state without unsafe memory.
+		ensure(max(u.count+1, secondPos+1))
+		if secondPos < u.count {
+			copy(u.inst[secondPos+1:u.count+1], u.inst[secondPos:u.count])
+		}
+		u.count++
+		u.inst[secondPos] = second
 	case diffDelete:
-		u.inst = slices.Delete(u.inst, firstPos, firstPos+1)
+		if firstPos < u.count {
+			copy(u.inst[firstPos:u.count-1], u.inst[firstPos+1:u.count])
+			u.count--
+		}
 	case diffReplace:
-		copy(u.inst[secondPos+1:firstPos+1], u.inst[secondPos:firstPos])
+		ensure(max(u.count+1, secondPos+1))
+		if firstPos >= secondPos {
+			copy(u.inst[secondPos+1:firstPos+1], u.inst[secondPos:firstPos])
+		}
 		u.inst[secondPos] = first
 	}
 	return op, a, nil

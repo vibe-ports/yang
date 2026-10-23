@@ -219,12 +219,13 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 	if len(l) == 0 {
 		return 0
 	}
-	if order != insertLast && !sortedSupported(n) && n.schema.DataParent() != nil &&
-		!sameSet(ctxOf(l[0]), ctxOf(n)) {
-		// lyd_insert_get_next_anchor uses its linear path when the first sibling
-		// and new node have different contexts. For children it encounters the
-		// foreign first sibling before comparing schema order, so it is the anchor.
-		return 0
+	if order != insertLast && !sortedSupported(n) && n.schema.DataParent() != nil {
+		newCtx, firstCtx := ctxOf(n), ctxOf(l[0])
+		if newCtx != nil && (firstCtx != nil && firstCtx != newCtx || len(sib.contexts) > 1) {
+			if at, ok := t.crossContextInsertPos(sib, n, newCtx); ok {
+				return at
+			}
+		}
 	}
 	afterN := func(a *Node) bool { return t.after(a, n) }
 	if order == insertDefault && sortedSupported(n) {
@@ -311,6 +312,83 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 		}
 	}
 	return at
+}
+
+// crossContextInsertPos is lyd_insert_get_next_anchor for a child level retaining schemas from
+// several contexts. With no children table libyang walks the new node's schema context and stops
+// at the first foreign-context sibling. Once the table exists it instead walks the first
+// sibling's parent schema. Passing the new context's schema as the previous node of that foreign
+// schema tree restarts lys_getnext at its first child; lyd_find_sibling_schema can then return the
+// first same-named instance, making that instance the anchor.
+func (t *Tree) crossContextInsertPos(sib *siblings, n *Node, newCtx *schema.Set) (int, bool) {
+	l := sib.list
+	foreign := ctxOf(l[0]) != nil && ctxOf(l[0]) != newCtx
+	if !foreign {
+		// A nil context record can occur transiently for ownerless schemas. Only a known distinct
+		// retained context selects libyang's cross-context anchor path.
+		for retained, count := range sib.contexts {
+			if count > 0 && retained != nil && retained != newCtx {
+				foreign = true
+				break
+			}
+		}
+	}
+	if !foreign {
+		return 0, false
+	}
+
+	var opts schema.GetNextOpt
+	if n.schema.InOutput() {
+		opts = schema.GetNextOutput
+	}
+	if ctxOf(l[0]) == newCtx && l[0].parent != nil && l[0].parent.schema != nil && sib.ht != nil {
+		parent := l[0].parent.schema
+		found := ctxOf(l[0].parent) != newCtx
+		for sn := range schema.GetNext(parent, parent.Module.Top, opts) {
+			if !found {
+				if sn == n.schema {
+					found = true
+				}
+				continue
+			}
+			if leader := t.schemaLookup(sib, sn); leader != nil {
+				return t.indexFromEnd(l, leader), true
+			}
+		}
+		return len(l), true
+	}
+
+	owner := ownerModule(newCtx, n)
+	next, stop := iter.Pull(schema.GetNext(n.schema.DataParent(), n.schema.Module.Top, opts))
+	defer stop()
+	sn, ok := next()
+	if !ok {
+		return len(l), true
+	}
+	found := false
+	for i, a := range l {
+		t.work.Add(1)
+		if ownerModule(ctxOf(a), a) != owner {
+			return i, true
+		}
+		for !found {
+			if sn == n.schema {
+				found = true
+				break
+			}
+			if sn == a.schema {
+				break
+			}
+			sn, ok = next()
+			if !ok {
+				return len(l), true
+			}
+		}
+		if found && a.schema != n.schema {
+			return i, true
+		}
+	}
+	return len(l), true
 }
 
 // opRebuild replaces one index entry after its contiguous sibling run was sorted.
