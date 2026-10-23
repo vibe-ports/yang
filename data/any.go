@@ -14,30 +14,9 @@ import (
 	"strings"
 
 	"github.com/vibe-ports/yang"
-	"github.com/vibe-ports/yang/internal/anyview"
 	"github.com/vibe-ports/yang/internal/schema"
 	"github.com/vibe-ports/yang/internal/types"
 )
-
-func init() {
-	anyview.Register(func(v any) (anyview.Value, bool) {
-		n, ok := v.(*Node)
-		if !ok || n == nil || !isAny(n.schema) {
-			return anyview.Value{}, false
-		}
-		view := anyview.Value{}
-		switch n.anyType() {
-		case anyValueDataTree, anyValueMixed: // lyoracle: a->child wins over a stored value
-			view.Type = "datatree"
-			for c := range n.any.children.all() {
-				view.Children = append(view.Children, c)
-			}
-		case anyValueText:
-			view.Type, view.Text = "string", *n.any.text
-		}
-		return view, true
-	})
-}
 
 // AnyValueString returns the content of an anydata or anyxml node in format.
 // A payload tree is printed with all its siblings and default printer options;
@@ -132,9 +111,40 @@ func (n *Node) anyType() anyValueType {
 	return anyValueNone
 }
 
-// childrenAny is lyd_child_any (tree_data.h): ordinary children, or any payloads.
-// Keep it internal until the conformance engine can consume the public observer.
-func (n *Node) childrenAny() iter.Seq[*Node] {
+// AnyValueType is the kind of payload an anydata or anyxml node holds.
+type AnyValueType uint8
+
+// AnyValueType values: AnyValueNone for no payload or a non-any node,
+// AnyValueDataTree for a child forest (ChildrenAny), and AnyValueText for
+// stored text (AnyValueString).
+const (
+	AnyValueNone AnyValueType = iota
+	AnyValueDataTree
+	AnyValueText
+)
+
+// AnyValueType reports the payload kind of an anydata or anyxml node. A node
+// holding both a forest and text reports AnyValueDataTree, as the forest wins.
+// Other nodes report AnyValueNone.
+// Go observer over struct lyd_node_any.child/value (tree_data.h), following
+// the oracle's child-first classification (lyoracle.c).
+func (n *Node) AnyValueType() AnyValueType {
+	if n == nil || !isAny(n.schema) {
+		return AnyValueNone
+	}
+	switch n.anyType() {
+	case anyValueDataTree, anyValueMixed:
+		return AnyValueDataTree
+	case anyValueText:
+		return AnyValueText
+	}
+	return AnyValueNone
+}
+
+// ChildrenAny yields the ordinary children of n, or the payload forest of an
+// anydata/anyxml node. Unlike Children, it includes payloads.
+// Ported from lyd_child_any (tree_data.h).
+func (n *Node) ChildrenAny() iter.Seq[*Node] {
 	if n == nil {
 		return func(func(*Node) bool) {}
 	}

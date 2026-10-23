@@ -262,7 +262,7 @@ func TestAnyDupIntoPayload(t *testing.T) {
 				if err != nil || copied == nil || copied == src.top.first() || copied.parent != parent || parent.any.children.len() != want || parent.kids.len() != 0 || src.top.len() != 2 {
 					t.Fatalf("dup: %v, %v", copied, err)
 				}
-				for n := range parent.childrenAny() {
+				for n := range parent.ChildrenAny() {
 					if ctxOf(n) != tr.set {
 						t.Fatal("wrong payload context")
 					}
@@ -350,7 +350,7 @@ func TestAnyTextNULBoundary(t *testing.T) {
 func TestAnyNilHelpers(t *testing.T) {
 	t.Run("children", func(t *testing.T) {
 		var n *Node
-		if len(slices.Collect(n.childrenAny())) != 0 {
+		if len(slices.Collect(n.ChildrenAny())) != 0 {
 			t.Fatal("nil children")
 		}
 	})

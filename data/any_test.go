@@ -52,7 +52,7 @@ func TestAnyCreate(t *testing.T) {
 			if n.any.text != nil || n.any.children.len() != tc.count {
 				t.Fatalf("payload = %#v", n.any)
 			}
-			for c := range n.childrenAny() {
+			for c := range n.ChildrenAny() {
 				if c.Parent() != n {
 					t.Fatal("payload parent")
 				}
@@ -472,5 +472,55 @@ func TestAnyPayloadLinkCleanup(t *testing.T) {
 				t.Fatalf("payload links survived %s: %v", action, err)
 			}
 		})
+	}
+}
+
+func TestAnyObservers(t *testing.T) {
+	tr, a, x := anyFixture()
+	if (*Node)(nil).AnyValueType() != AnyValueNone || len(slices.Collect((*Node)(nil).ChildrenAny())) != 0 {
+		t.Fatal("nil node")
+	}
+	m := a.Module
+	c := &schema.Node{Name: "c", Kind: schema.Container, Module: m}
+	l := &schema.Node{Name: "l", Kind: schema.Leaf, Module: m, Parent: c}
+	cn, ln := &Node{schema: c}, &Node{schema: l}
+	mustLink(t, tr.insert(nil, cn, insertDefault))
+	mustLink(t, tr.insert(cn, ln, insertDefault))
+	if cn.AnyValueType() != AnyValueNone || ln.AnyValueType() != AnyValueNone {
+		t.Fatal("container/leaf not AnyValueNone")
+	}
+	if got := slices.Collect(cn.ChildrenAny()); len(got) != 1 || got[0] != ln {
+		t.Fatalf("container ChildrenAny = %v", got)
+	}
+
+	value := `<a/><b/>`
+	ad, _, err := newAnyWork(context.Background(), Budget{}).createAny(tr, a, nil, &value, 0, true, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ad.AnyValueType() != AnyValueDataTree {
+		t.Fatalf("anydata tree = %v", ad.AnyValueType())
+	}
+	if len(slices.Collect(ad.Children())) != 0 {
+		t.Fatal("Children includes payload")
+	}
+	got := slices.Collect(ad.ChildrenAny())
+	if len(got) != 2 || got[0].Name() != "a" || got[1].Name() != "b" || got[0].Parent() != ad {
+		t.Fatalf("anydata ChildrenAny = %v", got)
+	}
+
+	if n := anyText(t, tr, x, "plain", types.HintString); n.AnyValueType() != AnyValueText {
+		t.Fatalf("anyxml text = %v", n.AnyValueType())
+	}
+	empty := anyText(t, tr, x, "", types.HintString)
+	if s, ok, err := empty.AnyValueString(FormatJSON); empty.AnyValueType() != AnyValueText || s != "" || !ok || err != nil {
+		t.Fatalf("explicit empty = %v %q %t %v", empty.AnyValueType(), s, ok, err)
+	}
+	absent := &Node{schema: x, any: &anyValue{}}
+	if _, ok, err := absent.AnyValueString(FormatJSON); absent.AnyValueType() != AnyValueNone || ok || err != nil {
+		t.Fatalf("absent = %v %t %v", absent.AnyValueType(), ok, err)
+	}
+	if len(slices.Collect(absent.ChildrenAny())) != 0 {
+		t.Fatal("absent ChildrenAny")
 	}
 }

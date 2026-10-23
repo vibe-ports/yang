@@ -12,7 +12,6 @@ import (
 
 	"github.com/vibe-ports/yang"
 	"github.com/vibe-ports/yang/data"
-	"github.com/vibe-ports/yang/internal/anyview"
 	"github.com/vibe-ports/yang/internal/printopts"
 )
 
@@ -453,10 +452,13 @@ func typedJSONFrom(tree *data.Tree, start *data.Node) ([]any, error) {
 				meta = append(meta, map[string]any{"module": module, "name": m.Name(), "value": m.Value()})
 			}
 			o["meta"] = meta
-			children := []*data.Node{}
-			if view, ok := anyview.Inspect(n); ok {
-				value := map[string]any{"value_type": view.Type, "text": view.Text}
-				if view.Type == "datatree" {
+			if sn != nil && (sn.Kind() == yang.KindAnyData || sn.Kind() == yang.KindAnyXML) {
+				value := map[string]any{"value_type": nil, "text": nil}
+				if t := n.AnyValueType(); t != data.AnyValueNone {
+					value["value_type"] = "string"
+					if t == data.AnyValueDataTree {
+						value["value_type"] = "datatree"
+					}
 					text, present, err := n.AnyValueString(data.FormatJSON)
 					if err != nil {
 						return nil, unsupported(err)
@@ -466,14 +468,8 @@ func typedJSONFrom(tree *data.Tree, start *data.Node) ([]any, error) {
 					}
 				}
 				o["any"] = value
-				for _, child := range view.Children {
-					children = append(children, child.(*data.Node))
-				}
-			} else {
-				for child := range n.Children() {
-					children = append(children, child)
-				}
 			}
+			children := slices.Collect(n.ChildrenAny())
 			out = append(out, o)
 			for i := len(children) - 1; i >= 0; i-- {
 				stack = append(stack, children[i])
