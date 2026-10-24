@@ -105,9 +105,11 @@ type Tree struct {
 	mixedDiff bool
 	// foreignSchema indexes sibling schema lineages only while a cross-context diff is running.
 	// The inputs are immutable for that operation, so the cache needs no mutation invalidation.
-	foreignSchema      map[foreignSchemaCacheKey]map[string]int
+	foreignSchema      map[foreignSchemaCacheKey]map[foreignSchemaIndexKey]int
 	foreignSchemaInput map[*siblings]bool
-	schemaLineage      map[*schema.Node]string
+	schemaLineage      map[*schema.Node]schemaLineageID
+	lineageComponents  map[schemaLineageComponent]schemaLineageID
+	nextLineageID      schemaLineageID
 }
 
 // workCounter counts the work of a tree for tests (work, not time): comparisons made by

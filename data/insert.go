@@ -260,6 +260,17 @@ func (t *Tree) insertPos(sib *siblings, n *Node, order insertOrder) int {
 		newCtx, firstCtx := ctxOf(n), ctxOf(l[0])
 		mixedHere := firstCtx != nil && firstCtx != newCtx || len(sib.contexts) > 1
 		foreignParent := l[0].parent != nil && ctxOf(l[0].parent) != nil && ctxOf(l[0].parent) != newCtx
+		// Top-level nodes have no child anchor, but lyds_insert still finds an equivalent
+		// system-ordered run and uses its retained RB comparator. Keep that typed path
+		// independent of the child-only lyd_insert_get_next_anchor emulation below.
+		if newCtx != nil && n.schema.DataParent() == nil && mixedHere &&
+			order == insertDefault && sortedSupported(n) {
+			if lo := t.schemaIndex(sib, n.schema); lo >= 0 {
+				if at, compatible := t.crossContextSortedPos(sib, n, lo); compatible {
+					return at
+				}
+			}
+		}
 		// A top-level insert has no schema parent whose children lys_getnext can restart from;
 		// keep the ordinary module ordering there. The special same-child/different-parent state
 		// occurs in a mixed-context diff before the destination child list itself becomes mixed.

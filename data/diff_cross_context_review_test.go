@@ -157,8 +157,19 @@ var crossContextBuiltIns = []crossContextBuiltInCase{
 }
 
 func crossContextBuiltInSupported(first, second string) bool {
-	simple := first == "string" || first == "empty" || first == "instance-identifier" || first == "leafref"
-	if simple {
+	store := func(name string) string {
+		switch name {
+		case "int8", "int16", "int32", "int64":
+			return "int"
+		case "uint8", "uint16", "uint32", "uint64":
+			return "uint"
+		case "leafref":
+			return "string" // stored using its target realtype
+		default:
+			return name
+		}
+	}
+	if store(first) == store(second) {
 		return true
 	}
 	scalar := func(name string) bool {
@@ -172,7 +183,53 @@ func crossContextBuiltInSupported(first, second string) bool {
 	if scalar(first) {
 		return scalar(second)
 	}
-	return first == second
+	return false
+}
+
+// TestDiffCrossContextPluginStorageRefused covers a string-based plugin that writes fixed_mem.
+// Its Base is string, but uint8's callback must not silently read it as the zeroed built-in
+// string union. libyang's native read sees the IPv4 address's first byte (192); D-0121 refuses
+// this cross-callback state instead of modelling plugin-specific inline storage.
+func TestDiffCrossContextPluginStorageRefused(t *testing.T) {
+	module := func(typ string) string {
+		return `module review-plugin-storage { yang-version 1.1;
+  namespace "urn:review-plugin-storage"; prefix r;
+  import ietf-inet-types { prefix inet; }
+  container top { presence "retain"; leaf-list v { type ` + typ + `; } }
+}`
+	}
+	firstSet := reviewDiffSet(t, module("uint8"))
+	secondSet := reviewDiffSet(t, module("inet:ipv4-address-no-zone"))
+	first := parseOnlyXML(t, firstSet, `<top xmlns="urn:review-plugin-storage"><v>1</v></top>`)
+	second := parseOnlyXML(t, secondSet, `<top xmlns="urn:review-plugin-storage"><v>192.0.2.1</v></top>`)
+	diff, err := Diff(first, second, DiffOptions{})
+	var ve *ValidationError
+	if diff != nil || !errors.As(err, &ve) || ve.RC() != "LY_EINVAL" || !strings.Contains(err.Error(), "D-0121") {
+		t.Fatalf("Diff = (%v, %T %v), want nil, LY_EINVAL D-0121 refusal", diff, err, err)
+	}
+}
+
+// TestDiffApplyCrossContextTopLevelPluginRun uses independently compiled top-level leaf-lists.
+// The compatible inet callback orders addresses numerically, not by their canonical strings.
+func TestDiffApplyCrossContextTopLevelPluginRun(t *testing.T) {
+	const module = `module review-top-level-inet { yang-version 1.1;
+  namespace "urn:review-top-level-inet"; prefix r;
+  import ietf-inet-types { prefix inet; }
+  leaf-list address { type inet:ipv4-address-no-zone; }
+}`
+	a, b := reviewDiffSet(t, module), reviewDiffSet(t, module)
+	first := parseOnlyXML(t, a, `<address xmlns="urn:review-top-level-inet">192.0.2.2</address>`)
+	second := parseOnlyXML(t, b, `<address xmlns="urn:review-top-level-inet">192.0.2.2</address><address xmlns="urn:review-top-level-inet">192.0.2.10</address>`)
+	diff, err := Diff(first, second, DiffOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := first.ApplyDiff(diff, ApplyDiffOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := names(first.Top()), []string{"address=192.0.2.2", "address=192.0.2.10"}; !slices.Equal(got, want) {
+		t.Fatalf("applied top-level order = %v, want inet order %v", got, want)
+	}
 }
 
 func crossContextBuiltInModule(tc crossContextBuiltInCase) string {
@@ -299,6 +356,76 @@ func TestDiffCrossContextDisjointSchemaLookupScaling(t *testing.T) {
 	}
 	if work := first.work.Load() + second.work.Load(); work > 16*n {
 		t.Fatalf("%d disjoint leaves: %d foreign sibling visits, want linear work", n, work)
+	}
+}
+
+// TestDiffCrossContextDeepLineageMemory exercises the default parser's deep, long-identifier
+// envelope. Four hashed children share 256 16-KiB ancestry components. Interned parent identities
+// keep the Diff allocation linear; concatenated ancestry prefixes exceed a GiB here.
+func TestDiffCrossContextDeepLineageMemory(t *testing.T) {
+	const depth = 256
+	long := strings.Repeat("n", 16<<10)
+	leafPrefix := long[:len(long)-1]
+
+	var module, xml strings.Builder
+	module.Grow(depth*len(long) + 1<<20)
+	xml.Grow(2*depth*len(long) + 1<<20)
+	module.WriteString(`module review-deep-lineage { namespace "urn:review-deep-lineage"; prefix r; `)
+	for range depth {
+		module.WriteString("container ")
+		module.WriteString(long)
+		module.WriteString(" {")
+		xml.WriteByte('<')
+		xml.WriteString(long)
+		if xml.Len() == len(long)+1 {
+			xml.WriteString(` xmlns="urn:review-deep-lineage"`)
+		}
+		xml.WriteByte('>')
+	}
+	for _, suffix := range []byte{'a', 'b', 'c', 'd'} {
+		name := leafPrefix + string(suffix)
+		module.WriteString("leaf ")
+		module.WriteString(name)
+		module.WriteString(" { type string; }")
+		xml.WriteByte('<')
+		xml.WriteString(name)
+		xml.WriteString(">x</")
+		xml.WriteString(name)
+		xml.WriteByte('>')
+	}
+	for range depth {
+		module.WriteString("}")
+		xml.WriteString("</")
+		xml.WriteString(long)
+		xml.WriteByte('>')
+	}
+	module.WriteByte('}')
+
+	a, b := reviewDiffSet(t, module.String()), reviewDiffSet(t, module.String())
+	first, second := parseOnlyXML(t, a, xml.String()), parseOnlyXML(t, b, xml.String())
+	deepest := topOf(first)
+	for deepest != nil && deepest.kids.first() != nil && deepest.kids.first().schema.Kind == schema.Container {
+		deepest = deepest.kids.first()
+	}
+	if deepest == nil || deepest.kids.ht == nil {
+		t.Fatal("deepest four-child sibling set did not build the lineage hash-table path")
+	}
+
+	runtime.GC()
+	var before, after runtime.MemStats
+	runtime.ReadMemStats(&before)
+	diff, err := Diff(first, second, DiffOptions{})
+	runtime.ReadMemStats(&after)
+	if diff != nil || err != nil {
+		t.Fatalf("Diff = (%v, %v), want equal trees", diff, err)
+	}
+	if allocated := after.TotalAlloc - before.TotalAlloc; allocated > 64<<20 {
+		t.Fatalf("Diff allocated %d bytes for shared lineage, want linear storage below 64 MiB", allocated)
+	}
+
+	diff, err = diffNodesLookupLimit(topOf(first), topOf(second), DiffOptions{}, false, first, second, depth/2)
+	if diff != nil || !errors.Is(err, yang.ErrBudget) {
+		t.Fatalf("lineage lookup limit: Diff = (%v, %v), want nil, ErrBudget", diff, err)
 	}
 }
 

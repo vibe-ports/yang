@@ -122,16 +122,30 @@ var oracleBuiltIns = []oracleBuiltInCase{
 }
 
 func oracleBuiltInSupported(first, second string) bool {
-	switch first {
-	case "string", "empty", "instance-identifier", "leafref":
-		return true
-	case "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64", "boolean", "decimal64":
-		switch second {
-		case "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64", "boolean", "decimal64", "string", "empty", "leafref":
-			return true
+	store := func(name string) string {
+		switch name {
+		case "int8", "int16", "int32", "int64":
+			return "int"
+		case "uint8", "uint16", "uint32", "uint64":
+			return "uint"
+		case "leafref":
+			return "string"
+		default:
+			return name
 		}
 	}
-	return first == second
+	if store(first) == store(second) {
+		return true
+	}
+	scalar := func(name string) bool {
+		switch name {
+		case "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64",
+			"boolean", "decimal64", "string", "empty", "leafref":
+			return true
+		}
+		return false
+	}
+	return scalar(first) && scalar(second)
 }
 
 func oracleTypeStatement(declaration string) string {
@@ -179,8 +193,8 @@ func oracleMatrixXML(first oracleBuiltInCase, seconds []oracleBuiltInCase, sourc
 }
 
 // TestDiffBuiltInCallbackMatrixOracle compares every defined built-in callback/storage pair in
-// 19 batched live-oracle requests. The complementary unsafe pairs are exhaustively required to
-// return D-0121 by data/TestDiffCrossContextBuiltInTypeMatrix.
+// 19 batched live-oracle requests. The complementary unsafe cross-callback pairs are exhaustively
+// required to return D-0121 by data/TestDiffCrossContextBuiltInTypeMatrix.
 func TestDiffBuiltInCallbackMatrixOracle(t *testing.T) {
 	oracle := nativeRequestRunner(t)
 	base := t.TempDir()
@@ -231,6 +245,116 @@ func TestDiffBuiltInCallbackMatrixOracle(t *testing.T) {
 			}
 		})
 	}
+}
+
+func compareCrossContextLive(t *testing.T, base string, params map[string]any) map[string]any {
+	t.Helper()
+	got, err := (Yang{}).Run(Request{ID: "ut-diff/" + t.Name(), BaseDir: base, Params: params})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := nativeRequestRunner(t)(base, params)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, _ = withoutSkipped(want, Yang{}.SkippedFields("sequence"))
+	got, _ = withoutSkipped(got, Yang{}.SkippedFields("sequence"))
+	if diff := diffResponses(want, got); diff != "" {
+		t.Fatalf("oracle mismatch: %s\noracle: %#v\nengine: %#v", diff, want, got)
+	}
+	return want
+}
+
+// TestDiffApplyTopLevelInetRunOracle pins lyds_insert for an equivalent top-level run. The
+// address comparator orders .2 before .10 even though their canonical strings order oppositely.
+func TestDiffApplyTopLevelInetRunOracle(t *testing.T) {
+	base := t.TempDir()
+	const moduleName = "diff-cross-context-top-level-inet"
+	module := `module ` + moduleName + ` { yang-version 1.1;
+  namespace "urn:vibe-ports:yang:diff-cross-context-top-level-inet"; prefix m;
+  import ietf-inet-types { prefix inet; }
+  leaf-list address { type inet:ipv4-address-no-zone; }
+}`
+	inet, err := os.ReadFile(filepath.Join("..", "internal", "models", "libyang", "ietf-inet-types@2025-12-22.yang"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, dir := range []string{"a", "b"} {
+		path := filepath.Join(base, dir)
+		if err := os.Mkdir(path, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(path, moduleName+".yang"), []byte(module), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(path, "ietf-inet-types@2025-12-22.yang"), inet, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	first := `<address xmlns="urn:vibe-ports:yang:diff-cross-context-top-level-inet">192.0.2.2</address>`
+	second := first + `<address xmlns="urn:vibe-ports:yang:diff-cross-context-top-level-inet">192.0.2.10</address>`
+	params := map[string]any{
+		"op": "sequence", "searchdirs": []any{"a"},
+		"modules": []any{map[string]any{"name": moduleName}},
+		"steps": []any{
+			map[string]any{"do": "parse", "format": "xml", "data_type": "data", "parse_only": true, "data": first},
+			map[string]any{"do": "diff", "format": "xml", "data_type": "data", "parse_only": true,
+				"data": second, "target": map[string]any{"searchdirs": []any{"b"}, "modules": []any{map[string]any{"name": moduleName}}}},
+			map[string]any{"do": "diff_apply"},
+			map[string]any{"do": "dump"},
+		},
+	}
+	compareCrossContextLive(t, base, params)
+}
+
+// TestDiffDeepLineageOracle verifies that interned lineage identities preserve native equality;
+// the larger Go regression separately enforces the memory and lookup-work bounds.
+func TestDiffDeepLineageOracle(t *testing.T) {
+	const depth = 64
+	name := strings.Repeat("n", 256)
+	leafPrefix := name[:len(name)-1]
+	var module, xml strings.Builder
+	module.WriteString(`module diff-cross-context-deep-lineage { namespace "urn:vibe-ports:yang:diff-cross-context-deep-lineage"; prefix m; `)
+	for range depth {
+		module.WriteString("container " + name + " {")
+		xml.WriteByte('<')
+		xml.WriteString(name)
+		if xml.Len() == len(name)+1 {
+			xml.WriteString(` xmlns="urn:vibe-ports:yang:diff-cross-context-deep-lineage"`)
+		}
+		xml.WriteByte('>')
+	}
+	for _, suffix := range []byte{'a', 'b', 'c', 'd'} {
+		leaf := leafPrefix + string(suffix)
+		module.WriteString("leaf " + leaf + " { type string; }")
+		xml.WriteString("<" + leaf + ">x</" + leaf + ">")
+	}
+	for range depth {
+		module.WriteByte('}')
+		xml.WriteString("</" + name + ">")
+	}
+	module.WriteByte('}')
+
+	base := t.TempDir()
+	for _, dir := range []string{"a", "b"} {
+		path := filepath.Join(base, dir)
+		if err := os.Mkdir(path, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(path, "diff-cross-context-deep-lineage.yang"), []byte(module.String()), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	params := map[string]any{
+		"op": "sequence", "searchdirs": []any{"a"},
+		"modules": []any{map[string]any{"name": "diff-cross-context-deep-lineage"}},
+		"steps": []any{
+			map[string]any{"do": "parse", "format": "xml", "data_type": "data", "parse_only": true, "data": xml.String()},
+			map[string]any{"do": "diff", "format": "xml", "data_type": "data", "parse_only": true,
+				"data": xml.String(), "target": map[string]any{"searchdirs": []any{"b"}, "modules": []any{map[string]any{"name": "diff-cross-context-deep-lineage"}}}},
+		},
+	}
+	compareCrossContextLive(t, base, params)
 }
 
 // TestRetainedRBUnlinkOracle exercises repeated lyd_change_term unlink/reinsert operations and a

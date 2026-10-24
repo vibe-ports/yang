@@ -176,12 +176,15 @@ func sortCallback(t *schema.Type) string {
 
 // CompareCompatible invokes the first value's callback for values compiled in distinct schema
 // contexts. lyds_compare_single() does not check the second realtype before passing its storage
-// to that callback (libyang v5.8.6 src/tree_data_sorted.c:195-199,212-222). The simple callback
-// reads only the canonical cache. Scalar callbacks read the zero-initialized value union, whose
-// integer, boolean, decimal64, string, and empty representations are deterministic. Pointer and
-// type-specific fixed-memory representations are refused unless both callbacks expect them.
+// to that callback (libyang v5.8.6 src/tree_data_sorted.c:195-199,212-222). Values stored by the
+// same callback retain their ordinary comparison. Across distinct store callbacks, only built-in
+// scalar union storage is interpreted; plugin and pointer/fixed-buffer storage is refused.
 func CompareCompatible(a, b Value) (order int, compatible bool) {
 	if a.typ == nil || b.typ == nil {
+		return 0, false
+	}
+	if storeCallback(a.typ) != storeCallback(b.typ) &&
+		(!plainBuiltInScalarStorage(a.typ) || !plainBuiltInScalarStorage(b.typ)) {
 		return 0, false
 	}
 	switch sortCallback(a.typ) {
@@ -242,6 +245,43 @@ func CompareCompatible(a, b Value) (order int, compatible bool) {
 	return Compare(a, b), true
 }
 
+// storeCallback identifies the callback that populated struct lyd_value. Leafrefs have already
+// selected their target realtype before a Value is returned. Plugin IDs identify the shared
+// handler records registered for standard-module typedefs.
+func storeCallback(t *schema.Type) string {
+	if t == nil {
+		return ""
+	}
+	if p := pluginFor(t); p != nil {
+		return "plugin:" + p.id
+	}
+	switch t.Base {
+	case schema.Int8, schema.Int16, schema.Int32, schema.Int64:
+		return "int"
+	case schema.Uint8, schema.Uint16, schema.Uint32, schema.Uint64:
+		return "uint"
+	default:
+		return "builtin:" + t.Base.String()
+	}
+}
+
+// plainBuiltInScalarStorage is the set whose union bytes can be proved without modelling a
+// plugin's fixed_mem or dyn_mem. Enumeration is deliberately absent: its enum_item is a pointer,
+// but same-callback enumeration comparisons remain supported above.
+func plainBuiltInScalarStorage(t *schema.Type) bool {
+	if t == nil || pluginFor(t) != nil {
+		return false
+	}
+	switch t.Base {
+	case schema.Int8, schema.Int16, schema.Int32, schema.Int64,
+		schema.Uint8, schema.Uint16, schema.Uint32, schema.Uint64,
+		schema.Bool, schema.Dec64, schema.String, schema.Empty:
+		return true
+	default:
+		return false
+	}
+}
+
 // SortCompatible reports whether two realtypes use the same libyang sort callback.
 func SortCompatible(a, b Value) bool {
 	return a.typ != nil && b.typ != nil && sortCallback(a.typ) == sortCallback(b.typ)
@@ -252,6 +292,9 @@ func SortCompatible(a, b Value) bool {
 // scalars then write only their low bytes; string and empty leave the whole union zero. Pointer-
 // backed and type-specific fixed-memory values are refused.
 func scalarUnionStorage(v Value) (uint64, bool) {
+	if v.typ == nil || pluginFor(v.typ) != nil {
+		return 0, false
+	}
 	switch v.typ.Base {
 	case schema.Int8, schema.Int16, schema.Int32, schema.Int64,
 		schema.Uint8, schema.Uint16, schema.Uint32, schema.Uint64:
